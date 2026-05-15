@@ -1,0 +1,32 @@
+# Secrets / credentials
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+.env
+.env.*
+!.env.example
+secrets/
+
+# Xcode / build
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Personal notes / drafts
+*.private.md
+NOTES.md.private
+
+# Local development secrets directory (chmod 600 PEMs / API keys live here)
+.config/
+!.config/example/
+
+# IDE
+.vscode/
+.idea/
