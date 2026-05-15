@@ -1,0 +1,25 @@
+# Sudoku-spec
+
+iPhone + Mac 雙平台 Sudoku App 的 **spec 階段** 文件庫。本資料夾不放實作程式碼，只放需要在動工前先被確認的設計與計畫產物。
+
+## 雙重交付目標
+
+1. 上架一款可玩的 Sudoku App（iOS + macOS）。
+2. 留下一份「如何把 Claude agent 應用在實際 iOS 專案」的可重現紀錄。
+
+## 閱讀順序
+
+1. [`docs/design.md`](docs/design.md) — 產品要做什麼（§What）與技術上怎麼做（§How）。
+2. [`docs/plan.md`](docs/plan.md) — 由 design 推導出來的 TDD-ordered、可勾選實作計畫。
+3. [`docs/methodology.md`](docs/methodology.md) — Claude agent 在本專案的應用模式。Living document。
+4. [`meetings/`](meetings/) — 各次 session 的原始決策紀錄。上面三份文件「為什麼長成這樣」的真相來源。
+
+## 現況
+
+Spec 階段，尚未進入實作。實作階段將採 TDD。
+
+## 安全姿態 — Public Repo
+
+本 repo 為 **public spec repo from day 1**，不含任何 secret、PII 或可識別玩家資料。任何 commit 歷史均不得包含上述資料；違規一律視為已洩露並走 [`docs/foundations.md §7.3`](docs/foundations.md) SOP 處置。
+
+實作 repo 將於 plan.md 啟動時建立，從第一個 commit 起就遵循 `docs/foundations.md §7` 全套規範（gitleaks pre-commit hook、Xcode Cloud `ci_post_clone.sh` secret scan、GitHub Secret Scanning Alerts、`.gitignore` 黑名單）。
