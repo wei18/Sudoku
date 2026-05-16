@@ -298,4 +298,4 @@ Mac layout splits board and controls horizontally because keyboard users rarely 
 
 Rejected: (1) "ghost digit" preview when hovering before tap on Mac — adds latency and surprises keyboard users; (2) animated streak / combo counters — gamification anti-pattern for a contemplation puzzle; (3) sound effects for cell taps — descoped to v2 backlog if at all.
 
-`<USER-INPUT-NEEDED: cell digit weight on user-entered — currently regular weight + accent color tint distinguishes from given (semibold black). Alternative: both bold, only color differs. Pick before snapshot baseline freeze.>`
+`<DESIGNER-DECISION: user-entered digit stays `.regular` weight + `text.user` accent tint. Rationale: color is the natural Sudoku puzzle-paper differentiator from givens; a weight change would be heavier than the user mental model expects (pencil-on-paper convention is the same stroke weight, ink color shifts). Recorded in design-system.md §Decision log.>`

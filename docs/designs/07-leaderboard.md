@@ -204,6 +204,7 @@ Interaction:
 - Each row combined element: `"Rank 17, you, 4 minutes 11 seconds"` for self; `"Rank 1, alice, 3 minutes 48 seconds"` for others
 - Pickers: native VO support
 - Dynamic Type: rank column fixed-width; name truncates to 1 line with middle-truncation (`.truncationMode(.middle)`). Full name is available via the row's `.accessibilityLabel(fullName)` for VoiceOver and via a macOS hover tooltip (`.help(fullName)`). `<DESIGNER-DECISION: 1-line middle-truncate + VO label + Mac hover tooltip; no popover-on-tap. Rationale: HIG default for leaderboards is single-line rows; popover-on-tap is unusual UX for ranking lists and conflicts with the "tap own row = no-op" rule above. Full name remains accessible without adding a tap-gesture surface.>`
+- **AX3+ row layout**: at `@Environment(\.dynamicTypeSize) >= .accessibility3`, switch from horizontal row (rank · name · time) to **vertical-stacked** within the row (rank on top, name in middle truncating to 2 lines, time on bottom monospaced) to keep all three fields legible without horizontal truncation. Per design-system §Dynamic Type policy item 5.
 - Color-blind: "you" highlighted by font weight + accent tint background — survives monochrome rendering
 
 ## f. Design rationale

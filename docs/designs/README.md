@@ -44,13 +44,17 @@ The SwiftUI snippets in each per-View doc are designed to compile **standalone**
 
 When real targets land, port the layouts (not the stubs) into `Sources/SudokuUI/`.
 
-## Open questions for Leader / user
+## Decision log
 
-All `<USER-INPUT-NEEDED: ...>` markers across this folder are aggregated in the Designer's report-back. They block snapshot baseline freeze, but **not** Developer implementation kickoff — Developer can build with current defaults and revisit if the user picks differently.
+All initial `<USER-INPUT-NEEDED>` markers have been resolved. See:
+- `design-system.md` §Decision log — surface warmth, accent anchor, cell-digit rounded design
+- `05-board.md` §c — user-digit weight (regular + accent tint)
+
+Future open questions surface as `<USER-INPUT-NEEDED>` or `<DESIGNER-DECISION>` markers inside the relevant file; grep this folder for either tag.
 
 ## What is NOT in this folder
 
 - Production Swift code (lives in `Sources/SudokuUI/` once `plan.md` reaches that phase)
-- Binary design files (`.fig`, `.sketch`, `.psd`) — see `<USER-INPUT-NEEDED>` in `design-system.md` regarding brand color anchor; a human visual designer may want to take a pass
+- Binary design files (`.fig`, `.sketch`, `.psd`) — the v1 brand color anchor is recorded in `design-system.md` §Decision log (sage `#5C7A4F` / `#9BB87E`); a human visual designer may want to take a pass
 - Animation timing tuning curves beyond named durations — defer to implementation; designer specifies "100 ms ease-out", developer chooses `.easeOut(duration: 0.1)` literal
 - Marketing screenshots / App Store assets — out of scope for v1 visual spec

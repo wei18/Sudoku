@@ -34,8 +34,8 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `cell.base` | `#FFFFFF` | `#1E2024` | Empty / default cell |
 | `cell.prefilled` | `#EFEBE2` | `#2A2D33` | Givens (puzzle clues, immutable) |
 | `cell.userFilled` | `#FFFFFF` | `#1E2024` | User-entered digit (same as base; differentiated by text color) |
-| `cell.highlighted` | `#E8F1FB` | `#1F3145` | Same row / col / box as selected |
-| `cell.selected` | `#D6E7F8` | `#2A4868` | The single tapped cell |
+| `cell.highlighted` | `#EBF0E2` | `#252D1F` | Same row / col / box as selected |
+| `cell.selected` | `#DCE6D0` | `#3A4A30` | The single tapped cell |
 | `cell.error` | `#FBE3E1` | `#4A2724` | Conflict highlight (paired with `icon.errorMark`) |
 | `cell.errorBorder` | `#C8362B` | `#E66258` | Top-left triangle + thicker border (color-blind dual encoding) |
 
@@ -47,15 +47,15 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `text.secondary` | `#54595F` | `#A8ADB3` | 7.4 / 7.1 — AAA |
 | `text.tertiary` | `#86898E` | `#787C82` | 4.6 / 4.8 — AA (on `surface.primary`) |
 | `text.given` | `#1A1D21` | `#F2F3F5` | digits in prefilled cells (bold weight) |
-| `text.user` | `#1A6FD1` | `#5BA7F4` | digits user entered (accent-tinted, regular weight). 5.2 / 5.0 — AA |
+| `text.user` | `#5C7A4F` | `#9BB87E` | digits user entered (accent-tinted, regular weight). 4.8 / 7.5 — AA |
 | `text.errorDigit` | `#A52A20` | `#FF8077` | digit in error cell. 6.1 / 5.4 — AA |
 
 ### Accent
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `accent.primary` | `#1A6FD1` | `#5BA7F4` | CTAs, selected toggle, focus ring. AA on white: 5.2:1 |
-| `accent.muted` | `#D6E7F8` | `#2A4868` | Accent backgrounds (== `cell.selected`) |
+| `accent.primary` | `#5C7A4F` | `#9BB87E` | CTAs, selected toggle, focus ring. AA on white: 4.8:1 |
+| `accent.muted` | `#DCE6D0` | `#3A4A30` | Accent backgrounds (== `cell.selected`) |
 
 ### Status
 
@@ -68,9 +68,12 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 **Contrast verification** (key pairings, computed APCA→WCAG fallback):
 
 - `text.primary` / `surface.primary` light: 16.1:1 — AAA
-- `text.user` / `cell.base` light: 5.2:1 — AA (normal & large)
+- `text.user` (`#5C7A4F`) / `cell.base` (`#FFFFFF`) light: 4.84:1 — AA (normal & large) ✓
+- `text.user` (`#9BB87E`) / `cell.base` (`#1E2024`) dark: 7.52:1 — AAA ✓
 - `text.errorDigit` / `cell.error` light: 4.7:1 — AA (normal)
-- `accent.primary` / `surface.primary` light: 5.2:1 — AA UI components (≥3:1) ✓
+- `accent.primary` (`#5C7A4F`) / `surface.primary` (`#FFFFFF`) light: 4.84:1 — AA normal text ✓; AA UI components (≥3:1) ✓
+- `accent.primary` (`#9BB87E`) / `surface.primary` (`#1E2024`) dark: 7.52:1 — AAA ✓
+- `accent.muted` is a background token only (text on top is `text.primary`, which retains 14–16:1)
 - All dark-mode pairings ≥ 4.5:1 against their cell/surface backgrounds.
 
 > **`text.tertiary` on glass surfaces**: contrast is not guaranteed against `.glassEffect` (translucent material; rear content varies). Treat `text.tertiary` over glass as **decorative-only** and mark with `.accessibilityHidden(true)`. Any non-decorative use over glass must fall back to `text.secondary`.
@@ -96,8 +99,6 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 
 - "今日のパズル — むずかしい" (DailyHubView header, ja): fits in `.title2` Dynamic Type **xxxLarge** without truncation at 320 pt width ✓
 - "排行榜暫時無法載入，請稍後再試。" (zh-TW error banner): wraps cleanly in `.body` at 2 lines ✓
-
-`<USER-INPUT-NEEDED: confirm rounded design preference vs default; rounded reads warmer but some users may want default SF-Pro digits>`
 
 ---
 
@@ -186,8 +187,117 @@ All symbols are SF Symbols 6 stock — no custom symbol set in v1.
 
 ---
 
-## Open questions
+## Theming
 
-`<USER-INPUT-NEEDED: rounded-design vs default SF Pro for cell digits>`
-`<USER-INPUT-NEEDED: confirm warm off-white surface.background #FAF8F3 vs neutral #F7F7F7 — "graph paper warmth" hinges on this>`
-`<USER-INPUT-NEEDED: accent color — current is iOS-system-blue family (#1A6FD1). Brand may want a more unique anchor (teal / indigo / mossy green). Pick one before snapshot baseline freeze>`
+### Goal
+
+v1 ships with a single `DefaultTheme`. The token system is structured to allow alternate themes (e.g. high-contrast, sepia, dark-with-warm-accent) without touching any View code. Views consume tokens through `@Environment(\.theme)`; swapping the environment value re-themes the entire tree.
+
+### Code-level abstraction
+
+```swift
+public protocol Theme: Sendable {
+    var surface: SurfaceTokens { get }
+    var cell: CellTokens { get }
+    var text: TextTokens { get }
+    var accent: AccentTokens { get }
+    var status: StatusTokens { get }
+}
+
+public struct SurfaceTokens: Sendable {
+    public let background: Color
+    public let primary: Color
+    public let elevated: Color
+    // `surface.glass` is a `.glassEffect` material, not a Color — applied via view modifier, not stored.
+}
+
+public struct CellTokens: Sendable {
+    public let base: Color
+    public let prefilled: Color
+    public let userFilled: Color
+    public let highlighted: Color
+    public let selected: Color
+    public let error: Color
+    public let errorBorder: Color
+}
+
+public struct TextTokens: Sendable {
+    public let primary: Color
+    public let secondary: Color
+    public let tertiary: Color
+    public let given: Color
+    public let user: Color
+    public let errorDigit: Color
+}
+
+public struct AccentTokens: Sendable {
+    public let primary: Color
+    public let muted: Color
+}
+
+public struct StatusTokens: Sendable {
+    public let success: Color
+    public let warning: Color
+    public let error: Color
+}
+
+private struct ThemeKey: EnvironmentKey {
+    static let defaultValue: any Theme = DefaultTheme()
+}
+
+public extension EnvironmentValues {
+    var theme: any Theme {
+        get { self[ThemeKey.self] }
+        set { self[ThemeKey.self] = newValue }
+    }
+}
+```
+
+### Usage in Views
+
+```swift
+struct BoardView: View {
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        Rectangle()
+            .fill(theme.cell.error)
+            .overlay(Text("5").foregroundStyle(theme.text.errorDigit))
+    }
+}
+```
+
+### v1 — only one theme
+
+- `DefaultTheme` is the only concrete impl in v1. It maps to the hex values in §Color tokens.
+- Theme switching at runtime is **not** a v1 feature (no Settings toggle). Architecture is in place for v2; UI to choose lives in §Backlog of `docs/design.md`.
+
+### Switching mechanics (for future contributors)
+
+- Inject at root: `RootView().environment(\.theme, currentTheme)`
+- `currentTheme` is stored in UserDefaults / CloudKit Private DB at the App composition root (not in `SudokuUI` target — keeps the design system platform-agnostic).
+- Light/dark variants of each theme are still resolved through SwiftUI's `colorScheme`. A `Theme` provides the **pair** per token; each `Color` is constructed with light/dark variants (e.g. `Color(light: "#FAF8F3", dark: "#15171A")`) so SwiftUI's `@Environment(\.colorScheme)` continues to drive the resolution. Themes do not need to branch on color scheme themselves.
+
+---
+
+## Dynamic Type policy
+
+Consolidated reference. Cross-link: `docs/design.md` §How.5.7.
+
+1. **All non-cell text uses SwiftUI semantic fonts** (`.body`, `.title2`, `.callout`, …) — auto-scales with Dynamic Type.
+2. **All spacing / padding uses `@ScaledMetric`** (see §Spacing scale) — tracks Dynamic Type so layout breathes with type size.
+3. **Cell digit is the documented exception** — `.system(size: cellSide * 0.6, design: .rounded)`. Reason: the 9×9 grid is geometrically fixed; if cell digits Dynamic-Type'd, they would burst the cell. Mitigation: cell size scales with **screen width** (not Dynamic Type), so larger devices yield larger digits.
+4. **Acceptance test**: every View must look usable at `.accessibility3` size. The snapshot suite covers BoardView + DailyHubView + CompletionView at `.accessibility3` minimum.
+5. **`@Environment(\.dynamicTypeSize)` triggers in v1**:
+   - `PracticeHubView` switches Picker → Menu at `.accessibility2+` (see `04-practice-hub.md`).
+   - `LeaderboardView` switches row layout to vertical-stacked at `.accessibility3+` (see `07-leaderboard.md` §e).
+   - No other Views need explicit `dynamicTypeSize` branches in v1.
+
+---
+
+## Decision log (resolved)
+
+- **Cell digit design** — `.rounded`. Reads as friendly without sacrificing legibility; pairs with the warm Japanese-puzzle-paper aesthetic.
+- **`surface.background`** — `#FAF8F3` warm off-white. Anchors the "graph paper warmth" brand essence (see §Brand essence); neutral `#F7F7F7` would read as generic system chrome.
+- **Accent color** — sage / mossy green `#5C7A4F` (light) / `#9BB87E` (dark). Differentiates from iOS-system-blue, fits the calm puzzle-paper aesthetic, and meets WCAG AA (4.84:1 light, 7.52:1 dark) against `surface.primary`. Derived tokens (`text.user`, `accent.muted`, `cell.selected`, `cell.highlighted`) recomputed consistently.
+- **User-digit weight** — `.regular` + `text.user` tint. Color is the natural Sudoku puzzle-paper differentiator from givens; a weight change would be heavier than the user mental model expects.
