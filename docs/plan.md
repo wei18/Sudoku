@@ -33,7 +33,7 @@ Tests:
 - Standalone `scratch/SplitMix64Probe/` executable (`swift run splitmix64-probe`) printing 16 hex outputs for seeds `0x0` and `0x2A`.
 - Hand-computed reference (commit message captures all 32 entries):
   - seed=0 first 4: `0xE220A8397B1DCDAF`, `0x6E789E6AA1B965F4`, `0x06C45D188009454F`, `0xF88BB8A8724C81EC`
-  - seed=42 first 4: `0xC3A6EB6F4C56B931`, `0x76A8D86C92E1A04C`, `0x57D4F12B8B7E83AC`, `0xDBA37AC8CE5C9D38`
+  - seed=42 first 4: `0xBDD732262FEB6E95`, `0x28EFE333B266F103`, `0x47526757130F9F52`, `0x581CE1FF0E4AE394`
 Implementation:
 - `scratch/SplitMix64Probe/Package.swift`: executable, swift-tools 6.0, `[.macOS(.v26)]`.
 - `scratch/SplitMix64Probe/Sources/main.swift`: inline `SplitMix64` per §How.4.2; prints two 16-line blocks.
