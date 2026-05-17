@@ -43,10 +43,10 @@
 4. **Apple 框架 import 範圍受限**：`CloudKit` 只在 `PuzzleStore` + `Persistence` 直接 import；`GameKit` 只在 `GameCenterClient`。`SudokuUI` 與 `GameState` 透過 protocol 注入使用，不直接 import — 便於 UI/邏輯層的單元測試與 SwiftUI preview。
 5. **測試 target 一對一**：每個 production target 對應一個 `<Module>Tests` target。
 
-**目標模組形狀**（將來實作 repo `Sudoku/` 中）：
+**目標模組形狀**（同 repo，與 `docs/` / `meetings/` / `.claude/` 並列）：
 
 ```
-Sudoku/
+<repo root>
 ├── App/                                # 薄殼
 │   ├── SudokuApp.swift                 # @main + DI composition root
 │   └── (Assets, Info.plist, entitlements)

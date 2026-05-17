@@ -4,7 +4,7 @@ Status: **DRAFT** — awaiting first execution.
 Last updated: 2026-05-17
 Total phases: **10**; total steps: **63**.
 
-This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. The implementation lives in a sibling repo `Sudoku/` (this repo `Sudoku-spec/` is spec-only); all file paths below are anchored at the `Sudoku/` repo root.
+This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. **Implementation lives in this same repo** (originally framed as a sibling `Sudoku/` repo; collapsed into the spec repo per 2026-05-17 decision). All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / future `Packages/` sit).
 
 ---
 
@@ -30,13 +30,13 @@ Verifies `design.md §How.4.9` and unblocks Phase 2 algorithm choices.
 ### 0.1 SplitMix64 cross-architecture bit-identical reference vector
 
 Tests:
-- Standalone `Sudoku/scratch/SplitMix64Probe/` executable (`swift run splitmix64-probe`) printing 16 hex outputs for seeds `0x0` and `0x2A`.
+- Standalone `scratch/SplitMix64Probe/` executable (`swift run splitmix64-probe`) printing 16 hex outputs for seeds `0x0` and `0x2A`.
 - Hand-computed reference (commit message captures all 32 entries):
   - seed=0 first 4: `0xE220A8397B1DCDAF`, `0x6E789E6AA1B965F4`, `0x06C45D188009454F`, `0xF88BB8A8724C81EC`
   - seed=42 first 4: `0xC3A6EB6F4C56B931`, `0x76A8D86C92E1A04C`, `0x57D4F12B8B7E83AC`, `0xDBA37AC8CE5C9D38`
 Implementation:
-- `Sudoku/scratch/SplitMix64Probe/Package.swift`: executable, swift-tools 6.0, `[.macOS(.v26)]`.
-- `Sudoku/scratch/SplitMix64Probe/Sources/main.swift`: inline `SplitMix64` per §How.4.2; prints two 16-line blocks.
+- `scratch/SplitMix64Probe/Package.swift`: executable, swift-tools 6.0, `[.macOS(.v26)]`.
+- `scratch/SplitMix64Probe/Sources/main.swift`: inline `SplitMix64` per §How.4.2; prints two 16-line blocks.
 Acceptance:
 - `swift run splitmix64-probe` on macOS arm64 and `xcrun simctl spawn "iPhone 16 Pro" splitmix64-probe` produce byte-identical output matching the reference.
 - Output captured in `meetings/2026-05-17_phase0-gates.md`.
@@ -46,10 +46,10 @@ Notes: Scratch package is deleted at end of Phase 0; reference vectors migrate t
 ### 0.2 Generator performance baseline (Hard p95)
 
 Tests:
-- `Sudoku/scratch/GeneratorProbe/Tests/PerfProbeTests.swift`: `test_hardGenerator_p95_under500ms` — 30 Hard runs, asserts `p95 < 500ms`.
+- `scratch/GeneratorProbe/Tests/PerfProbeTests.swift`: `test_hardGenerator_p95_under500ms` — 30 Hard runs, asserts `p95 < 500ms`.
 Implementation:
-- `Sudoku/scratch/GeneratorProbe/Sources/PrototypeGenerator.swift`: stripped §How.4.3 flow (SplitMix64 + randomized backtracking + clue mask + `nakedSingle`-only uniqueness — baseline, not final).
-- `Sudoku/scratch/GeneratorProbe/Sources/Measure.swift`: `ContinuousClock` wall-clock.
+- `scratch/GeneratorProbe/Sources/PrototypeGenerator.swift`: stripped §How.4.3 flow (SplitMix64 + randomized backtracking + clue mask + `nakedSingle`-only uniqueness — baseline, not final).
+- `scratch/GeneratorProbe/Sources/Measure.swift`: `ContinuousClock` wall-clock.
 Acceptance:
 - 30-run Hard sample (median, p50, p95, p99, max) recorded in `meetings/2026-05-17_phase0-gates.md`.
 - Pass: **p95 < 500ms** on Apple Silicon dev machine / Xcode 26.5 iPhone 16 Pro sim.
@@ -78,17 +78,17 @@ Notes: If 2026 has new AI/algorithm disclosure clauses, document; v1 is determin
 
 ## Phase 1 — Implementation repo bootstrap + tooling
 
-Creates `Sudoku/` sibling repo with tooling baseline.
+Adds implementation tooling baseline to this repo (Sudoku-spec).
 
 ### 1.1 Repo skeleton + `.gitignore` + LICENSE
 
 Tests:
-- `Sudoku/ci_scripts/test_repo_hygiene.sh`: asserts no `.env`/`*.p8`/`*.p12`/`*.pem` tracked; `.gitignore` contains every entry from `foundations.md §7.4`.
+- `ci_scripts/test_repo_hygiene.sh`: asserts no `.env`/`*.p8`/`*.p12`/`*.pem` tracked; `.gitignore` contains every entry from `foundations.md §7.4`.
 Implementation:
-- `Sudoku/.gitignore`: verbatim §7.4.
-- `Sudoku/LICENSE`: MIT.
-- `Sudoku/README.md`: pointer to `Sudoku-spec/`.
-- `Sudoku/.gitattributes`: `*.png binary`; snapshot baseline handling.
+- `.gitignore`: verbatim §7.4.
+- `LICENSE`: MIT.
+- `README.md`: pointer to `Sudoku-spec/`.
+- `.gitattributes`: `*.png binary`; snapshot baseline handling.
 Acceptance: hygiene script exit 0; `git ls-files | grep -E '\.(p8|p12|pem|env)$'` empty.
 Skills: `apple-public-repo-security`.
 Depends on: Phase 0 green.
@@ -96,12 +96,12 @@ Depends on: Phase 0 green.
 ### 1.2 `.mise.toml` + lefthook + gitleaks
 
 Tests:
-- `Sudoku/ci_scripts/test_mise_resolves.sh`: asserts swiftlint, swiftformat, xcbeautify, gitleaks, lefthook pinned; `mise exec gitleaks -- version` ≥ v8.18.
+- `ci_scripts/test_mise_resolves.sh`: asserts swiftlint, swiftformat, xcbeautify, gitleaks, lefthook pinned; `mise exec gitleaks -- version` ≥ v8.18.
 Implementation:
-- `Sudoku/.mise.toml`: per §7.5; try `aqua:` backend first, fall back to `ubi:` (verify with `mise plugin list --all`); pin every tool to a minor.
-- `Sudoku/lefthook.yml`: verbatim §7.5.
-- `Sudoku/.gitleaks.toml`: inherits default; adds CloudKit Key ID + ASC API Key ID rules (`[A-Z0-9]{10}` with context).
-- `Sudoku/docs/setup.md`: `mise install` → `lefthook install` → Xcode Cloud env-var pointers.
+- `.mise.toml`: per §7.5; try `aqua:` backend first, fall back to `ubi:` (verify with `mise plugin list --all`); pin every tool to a minor.
+- `lefthook.yml`: verbatim §7.5.
+- `.gitleaks.toml`: inherits default; adds CloudKit Key ID + ASC API Key ID rules (`[A-Z0-9]{10}` with context).
+- `docs/setup.md`: `mise install` → `lefthook install` → Xcode Cloud env-var pointers.
 Acceptance:
 - `mise install` succeeds; `lefthook install` writes `.git/hooks/pre-commit`; a `-----BEGIN PRIVATE KEY-----` commit is blocked; mise script exit 0.
 Skills: `mise-tool-management`, `apple-public-repo-security`.
@@ -111,9 +111,9 @@ Notes: Resolves §7.11 lefthook-via-mise open item; document actual backend if a
 ### 1.3 SwiftPM package `SudokuKit` skeleton
 
 Tests:
-- `Sudoku/Packages/SudokuKit/Tests/SudokuKitSmokeTests/SmokeTests.swift`: `@Test func packageCompiles() {}`.
+- `Packages/SudokuKit/Tests/SudokuKitSmokeTests/SmokeTests.swift`: `@Test func packageCompiles() {}`.
 Implementation:
-- `Sudoku/Packages/SudokuKit/Package.swift`: swift-tools 6.0; `[.iOS(.v26), .macOS(.v26)]`; 8 product targets (`SudokuEngine`, `GameState`, `PuzzleStore`, `Persistence`, `GameCenterClient`, `Telemetry`, `SudokuUI`, `SudokuKitTesting`) + 8 test targets; `swiftLanguageMode: .v6`; strict concurrency upcoming + experimental flags.
+- `Packages/SudokuKit/Package.swift`: swift-tools 6.0; `[.iOS(.v26), .macOS(.v26)]`; 8 product targets (`SudokuEngine`, `GameState`, `PuzzleStore`, `Persistence`, `GameCenterClient`, `Telemetry`, `SudokuUI`, `SudokuKitTesting`) + 8 test targets; `swiftLanguageMode: .v6`; strict concurrency upcoming + experimental flags.
 - Per-target `Sources/<Module>/<Module>.swift` placeholder with `public func _moduleAnchor() {}`.
 - Snapshot dep: `pointfreeco/swift-snapshot-testing` from 1.17.0.
 Acceptance: `swift build` clean (0 warnings) on Swift 6 strict; smoke test green.
@@ -124,10 +124,10 @@ Depends on: 1.2.
 
 Tests: N/A (functional tests in 1.3 / Phase 8).
 Implementation:
-- `Sudoku/App/Sudoku.xcodeproj`: multiplatform App, bundle ID `com.wei18.sudoku`, iOS 26 / macOS 26.
-- `Sudoku/App/SudokuApp.swift`: minimal `@main` with `Text("placeholder")`.
-- `Sudoku/App/Info.plist`: minimum (entitlements wired in Phase 9).
-- `Sudoku/App/Assets.xcassets`: AppIcon placeholder, AccentColor `#5C7A4F`.
+- `App/Sudoku.xcodeproj`: multiplatform App, bundle ID `com.wei18.sudoku`, iOS 26 / macOS 26.
+- `App/SudokuApp.swift`: minimal `@main` with `Text("placeholder")`.
+- `App/Info.plist`: minimum (entitlements wired in Phase 9).
+- `App/Assets.xcassets`: AppIcon placeholder, AccentColor `#5C7A4F`.
 - Xcode project references `SudokuKit` via local package.
 Acceptance: `xcodebuild` for iOS Sim iPhone 16 Pro + macOS arm64 both succeed, no new warnings.
 Skills: `swiftpm-modularization`, `apple-platform-targets`.
@@ -138,8 +138,8 @@ Depends on: 1.3.
 Tests: N/A.
 Implementation:
 - ASC Xcode Cloud, 3 workflows per §4: **PR CI** (build + test, branch base merge), **Main CI** (build + archive + TestFlight internal, no tests), **Release** (tag `v*` → archive + ASC upload, manual submit).
-- `Sudoku/ci_scripts/ci_post_clone.sh`: `mise install` + `mise exec gitleaks -- git --pre-commit --staged --redact` (§7.6); fail build on non-zero.
-- `Sudoku/ci_scripts/ci_pre_xcodebuild.sh`: header-only placeholder.
+- `ci_scripts/ci_post_clone.sh`: `mise install` + `mise exec gitleaks -- git --pre-commit --staged --redact` (§7.6); fail build on non-zero.
+- `ci_scripts/ci_pre_xcodebuild.sh`: header-only placeholder.
 - Xcode 26.5 locked; no secrets needed yet.
 Acceptance: no-op PR triggers PR CI; smoke test passes; Main CI on first merge produces TestFlight build; gitleaks blocks a fake-key test PR.
 Skills: `xcode-cloud-single-track-ci`, `mise-tool-management`, `apple-public-repo-security`.
@@ -161,7 +161,7 @@ Depends on: 1.1.
 Tests: N/A.
 Implementation:
 - ASC: reserve `com.wei18.sudoku`; create iOS + macOS app records (Game Center on).
-- `Sudoku/App/Sudoku.entitlements`: iCloud-services `[CloudKit]`, container `iCloud.com.wei18.sudoku`; `game-center = true`.
+- `App/Sudoku.entitlements`: iCloud-services `[CloudKit]`, container `iCloud.com.wei18.sudoku`; `game-center = true`.
 - CloudKit Dashboard: create container with Public + Private DB scopes (Public reserved, unused in v1).
 Acceptance: auto provisioning profile builds clean via Xcode Cloud; CloudKit container present, no record types.
 Skills: `xcode-cloud-single-track-ci`, `apple-public-repo-security`.
@@ -638,7 +638,7 @@ Depends on: 8.4, Phase 5, Phase 7.
 
 Tests: N/A (artifact is acceptance).
 Implementation: verify `__Snapshots__/` contains exactly 21 PNGs per §How.5.8 matrix; commit images.
-Acceptance: `git ls-files Sudoku/Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21; all `SudokuUITests` green on PR CI.
+Acceptance: `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21; all `SudokuUITests` green on PR CI.
 Skills: (defaults only).
 Depends on: 8.3–8.10.
 
@@ -653,9 +653,9 @@ Wires the App target, ships PrivacyInfo, seeds the localization catalog.
 Tests:
 - `CompositionTests.swift`: `liveCompositionWiresAllProtocols`; `previewCompositionUsesFakes`; `testsCompositionUsesFakes`.
 Implementation:
-- `Sudoku/App/SudokuApp.swift`: per §How.1.
-- `Sudoku/App/AppComposition.swift`: three factory methods.
-- `Sudoku/App/CompositionRoot/Live.swift`, `Preview.swift`, `Tests.swift`: wire concrete impls.
+- `App/SudokuApp.swift`: per §How.1.
+- `App/AppComposition.swift`: three factory methods.
+- `App/CompositionRoot/Live.swift`, `Preview.swift`, `Tests.swift`: wire concrete impls.
 Acceptance: 3 green; App launches in iPhone + Mac sims.
 Skills: `swiftpm-modularization`.
 Depends on: Phase 8.
@@ -664,7 +664,7 @@ Depends on: Phase 8.
 
 Tests: N/A (build-time).
 Implementation:
-- `Sudoku/App/Sudoku.entitlements`: finalized from 1.7 stub.
+- `App/Sudoku.entitlements`: finalized from 1.7 stub.
 - `Info.plist`: `NSGameKitFriendListUsageDescription` 7-locale placeholders.
 Acceptance: App launches on sim; `GKLocalPlayer.local.isAuthenticated` returns a value (sandbox in Phase 10); CloudKit container query returns user zone in dev.
 Skills: `apple-public-repo-security`.
@@ -674,7 +674,7 @@ Depends on: 9.1.
 
 Tests:
 - `PrivacyManifestTests.swift`: `manifestPresent`; `noThirdPartyTrackingDomains`; `requiredReasonsAPIsDeclared` (`UserDefaults` CA92.1 if used, file-timestamp APIs if used).
-Implementation: `Sudoku/App/Resources/PrivacyInfo.xcprivacy` per `foundations.md §6` (no IDFA, no PII, no third-party SDKs).
+Implementation: `App/Resources/PrivacyInfo.xcprivacy` per `foundations.md §6` (no IDFA, no PII, no third-party SDKs).
 Acceptance: 3 green; manifest parses as valid plist.
 Skills: `apple-public-repo-security`, `apple-three-piece-analytics`.
 Depends on: 9.1.
@@ -683,7 +683,7 @@ Depends on: 9.1.
 
 Tests: `L10nTests.swift`: `allUserFacingStringsHaveEnAndZhTW` (scans `SudokuUI/` for `String(localized:)`, asserts catalog hit).
 Implementation:
-- `Sudoku/App/Resources/Localizable.xcstrings`: seeded, source = en, zh-TW filled.
+- `App/Resources/Localizable.xcstrings`: seeded, source = en, zh-TW filled.
 - Error vocabulary keys per §How.6.9 (`error.<source>.<case>.{title|body|action}`).
 Acceptance: 1 green; catalog opens in Xcode 26.5 string-catalog editor without warnings.
 Skills: `ai-translated-localization`.
@@ -703,7 +703,7 @@ Depends on: 9.4.
 
 Tests: N/A (ASC-side manual).
 Implementation:
-- `Sudoku/ci_scripts/upload_gc_metadata.sh`: uses ASC API key (Xcode Cloud secret); uploads 3 leaderboards × 7 locales = 21 + 8 achievements × 7 locales = 56 = 77 strings.
+- `ci_scripts/upload_gc_metadata.sh`: uses ASC API key (Xcode Cloud secret); uploads 3 leaderboards × 7 locales = 21 + 8 achievements × 7 locales = 56 = 77 strings.
 - Source from `Localizable.xcstrings` via a small Swift tool.
 Acceptance: ASC Game Center page shows all 77 localized entries.
 Skills: `ai-translated-localization`, `xcode-cloud-single-track-ci`.
@@ -781,19 +781,19 @@ Depends on: 10.4.
 
 | Kind | Path |
 |---|---|
-| Production code | `Sudoku/Packages/SudokuKit/Sources/<Module>/` |
-| Tests | `Sudoku/Packages/SudokuKit/Tests/<Module>Tests/` |
-| Shared testing helpers | `Sudoku/Packages/SudokuKit/Sources/SudokuKitTesting/` |
-| App target | `Sudoku/App/` (SudokuApp.swift, Assets.xcassets, Info.plist, Sudoku.entitlements, Resources/) |
-| Localization | `Sudoku/App/Resources/Localizable.xcstrings` |
-| Privacy manifest | `Sudoku/App/Resources/PrivacyInfo.xcprivacy` |
-| CI scripts | `Sudoku/ci_scripts/` (`ci_post_clone.sh`, `ci_pre_xcodebuild.sh`, `upload_gc_metadata.sh`) |
-| Tool versioning | `Sudoku/.mise.toml` |
-| Pre-commit hooks | `Sudoku/lefthook.yml` |
-| Gitleaks rules | `Sudoku/.gitleaks.toml` |
-| Setup docs | `Sudoku/docs/setup.md` |
-| Snapshot baselines | `Sudoku/Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/<TestSuite>/...` (committed) |
-| Scratch (Phase 0 only) | `Sudoku/scratch/` (deleted at end of Phase 0) |
+| Production code | `Packages/SudokuKit/Sources/<Module>/` |
+| Tests | `Packages/SudokuKit/Tests/<Module>Tests/` |
+| Shared testing helpers | `Packages/SudokuKit/Sources/SudokuKitTesting/` |
+| App target | `App/` (SudokuApp.swift, Assets.xcassets, Info.plist, Sudoku.entitlements, Resources/) |
+| Localization | `App/Resources/Localizable.xcstrings` |
+| Privacy manifest | `App/Resources/PrivacyInfo.xcprivacy` |
+| CI scripts | `ci_scripts/` (`ci_post_clone.sh`, `ci_pre_xcodebuild.sh`, `upload_gc_metadata.sh`) |
+| Tool versioning | `.mise.toml` |
+| Pre-commit hooks | `lefthook.yml` |
+| Gitleaks rules | `.gitleaks.toml` |
+| Setup docs | `docs/setup.md` |
+| Snapshot baselines | `Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/<TestSuite>/...` (committed) |
+| Scratch (Phase 0 only) | `scratch/` (deleted at end of Phase 0) |
 | Meeting logs | `Sudoku-spec/meetings/{YYYY-MM-DD}_{topic}.md` (spec repo, not impl repo) |
 
 ---
@@ -827,20 +827,20 @@ Depends on: 10.4.
 Each phase is "done" only when every command below exits 0 / every checklist is fully green.
 
 ### Phase 0
-- `swift run --package-path Sudoku/scratch/SplitMix64Probe splitmix64-probe` matches hand-computed reference.
-- `swift test --package-path Sudoku/scratch/GeneratorProbe --filter test_hardGenerator_p95_under500ms` → green.
+- `swift run --package-path scratch/SplitMix64Probe splitmix64-probe` matches hand-computed reference.
+- `swift test --package-path scratch/GeneratorProbe --filter test_hardGenerator_p95_under500ms` → green.
 - `meetings/2026-05-17_phase0-gates.md` exists and contains the App Store policy conclusion paragraph.
 
 ### Phase 1
-- `bash Sudoku/ci_scripts/test_repo_hygiene.sh` → exit 0.
-- `bash Sudoku/ci_scripts/test_mise_resolves.sh` → exit 0.
-- `swift build --package-path Sudoku/Packages/SudokuKit` → clean (0 warnings).
+- `bash ci_scripts/test_repo_hygiene.sh` → exit 0.
+- `bash ci_scripts/test_mise_resolves.sh` → exit 0.
+- `swift build --package-path Packages/SudokuKit` → clean (0 warnings).
 - `xcodebuild -scheme Sudoku -destination "platform=iOS Simulator,name=iPhone 16 Pro" build` → clean.
 - `xcodebuild -scheme Sudoku -destination "platform=macOS,arch=arm64" build` → clean.
 - Xcode Cloud PR CI passes on a no-op PR.
 
 ### Phase 2
-- `swift test --package-path Sudoku/Packages/SudokuKit --filter SudokuEngineTests` → green.
+- `swift test --package-path Packages/SudokuKit --filter SudokuEngineTests` → green.
 - Coverage of `SudokuEngine` ≥ 95% (manual `xcrun llvm-cov`; not CI-enforced).
 - 15 frozen `(seed, difficulty)` snapshots match exact strings.
 - Re-measured Hard p95 < 500ms; recorded in `meetings/`.
@@ -869,7 +869,7 @@ Each phase is "done" only when every command below exits 0 / every checklist is 
 
 ### Phase 8
 - `swift test --filter SudokuUITests` → green.
-- `git ls-files Sudoku/Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21.
+- `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21.
 - No `import CloudKit` / `import GameKit` anywhere in `Sources/SudokuUI/`.
 
 ### Phase 9
