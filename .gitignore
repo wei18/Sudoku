@@ -15,6 +15,7 @@ build/
 xcuserdata/
 *.xcuserstate
 .swiftpm/
+.build/
 
 # macOS
 .DS_Store
