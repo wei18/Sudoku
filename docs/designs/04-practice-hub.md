@@ -2,13 +2,13 @@
 
 ## a. View identity
 
-- **Purpose**: Pick a difficulty, draw a puzzle from the practice pool (mixed starter + retired daily). Open-ended play.
+- **Purpose**: Pick a difficulty, generate a fresh puzzle locally via the deterministic generator. Open-ended play, no pool, no Starter Pack.
 - **Triggers** (per §How.5.1): `PuzzleStore.fetchPracticePool(difficulty:)`.
 - **States**:
   - `idle` — difficulty picker shown, no puzzle drawn yet
   - `drawing` — fetching
+  - `drawing(>100ms)` — shimmer placeholder on the "Ready to play" card while generator runs (typical < 100 ms, p95 < 300 ms per §How.6.4)
   - `drawn(puzzleId)` — show preview + "Play" CTA (or auto-push to BoardView, see rationale)
-  - `empty(difficulty)` — no puzzles in pool (extremely unlikely; pool seeded by starter pack §How.4.7)
   - `error(reason)` — fetch failed
 
 ## b. ASCII wireframe
@@ -31,6 +31,25 @@ iPhone (compact)                       Mac (regular)
 └──────────────────────┘               └────────────────────────────────┘
 ```
 
+### b.2 Drawing state (shimmer, > 100 ms)
+
+```
+┌──────────────────────┐
+│ < Practice           │
+│                      │
+│  Difficulty          │
+│  ┌──┬──┬──┬──┐       │
+│  │E │M │H │X │       │
+│  └──┴──┴──┴──┘       │
+│                      │
+│  ┌──────────────────┐│
+│  │ ░░░░░░░░░░░░░░░  ││  ← shimmer (.redacted)
+│  │ ░░░░░░░░          ││
+│  │ [ ▶ Draw new ]   ││  ← disabled
+│  └──────────────────┘│
+└──────────────────────┘
+```
+
 ## c. SwiftUI preview code skeleton
 
 ```swift
@@ -43,9 +62,11 @@ private enum DifficultyPreview: String, CaseIterable, Identifiable {
     var shortKey: LocalizedStringKey { LocalizedStringKey(rawValue) }
 }
 
+private enum PracticeHubState { case drawn(String), drawing }
+
 struct PracticeHubView_Designs: View {
     @State private var difficulty: DifficultyPreview = .medium
-    @State private var drawnPuzzleId: String? = "24c8"
+    var state: PracticeHubState = .drawn("24c8")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -61,18 +82,31 @@ struct PracticeHubView_Designs: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Ready to play").font(.headline)
-                if let id = drawnPuzzleId {
+                switch state {
+                case .drawn(let id):
                     Text("\(difficulty.rawValue) · puzzleId \(id)")
                         .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                    } label: {
+                        Label("Draw new puzzle", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                case .drawing:
+                    Text("placeholder placeholder placeholder")
+                        .font(.caption)
+                        .redacted(reason: .placeholder)
+                        .accessibilityLabel("Loading")
+                        .accessibilityAddTraits(.updatesFrequently)
+                    Button { } label: {
+                        Label("Draw new puzzle", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(true)
                 }
-                Button {
-                    drawnPuzzleId = String(UInt32.random(in: 0..<0xFFFF), radix: 16)
-                } label: {
-                    Label("Draw new puzzle", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             }
             .padding(16)
             .glassEffect(.regular, in: .rect(cornerRadius: 16))
@@ -96,6 +130,12 @@ struct PracticeHubView_Designs: View {
         .preferredColorScheme(.dark)
         .frame(width: 900, height: 600)
 }
+
+#Preview("Practice — drawing (shimmer)") {
+    NavigationStack { PracticeHubView_Designs(state: .drawing) }
+        .environment(\.locale, .init(identifier: "en"))
+        .preferredColorScheme(.light)
+}
 ```
 
 ## d. Visual / interaction spec
@@ -109,6 +149,8 @@ struct PracticeHubView_Designs: View {
 | Puzzle id hint | `text.secondary` | default | `.caption` |
 | Draw CTA | `accent.primary` | default | `.borderedProminent`, `.controlSize(.large)`, min height 44 pt |
 | CTA pressed | — | press | system feedback; reduce-motion respected |
+| Card (drawing) | `surface.glass` | drawing | SwiftUI `.redacted(reason: .placeholder)` for system shimmer; appears only after 100 ms delay (do NOT show for sub-100 ms typical operations — avoids flash) |
+| Alert (.exhausted) | system | error | Title "Couldn't generate today's puzzle"; message "Try a different difficulty, or come back tomorrow."; primary CTA "Try again" (re-roll with fresh salt; will almost always succeed); secondary "Switch difficulty"; VoiceOver = `.assertive` |
 
 Interaction:
 - Tap segment → state moves to `idle` for that difficulty; drawn puzzleId clears (we don't retain across difficulty changes — fresh intent)
@@ -127,4 +169,6 @@ A picker + a big CTA. We keep this screen deliberately empty because the user's 
 
 Rejected: (1) thumbnail preview of the puzzle board — wastes attention, doesn't help decide; (2) "estimated time" hint — §How.4.3 explicitly descopes difficulty calibration in v1, so we can't truthfully label "≈12 min"; (3) skip-the-hub auto-route from Home → Practice straight to a Board — removes user agency over difficulty.
 
-Note: this is the simplest View. Most of its complexity is hidden in `PracticeHubViewModel`'s pool-draw logic. UI does its job by being almost invisible.
+Note: this is the simplest View. Most of its complexity is hidden in `PracticeHubViewModel`'s generator-draw logic (salt → seed → puzzle, per `design.md §How.4`). UI does its job by being almost invisible.
+
+Sub-300 ms generation budget means we deliberately avoid a `ProgressView` spinner (Apple HIG: spinners signal long indefinite work). Shimmer at 100 ms threshold is the lighter affordance; below threshold we skip animation entirely to avoid flash.

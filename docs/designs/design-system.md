@@ -26,6 +26,7 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `surface.primary` | `#FFFFFF` | `#1E2024` | Cards, sheets, list rows |
 | `surface.elevated` | `#FFFFFF` | `#262A30` | Sheets above other sheets, popovers |
 | `surface.glass` | system material | system material | `.glassEffect()` chrome surfaces only |
+| `surface.placeholder` | `#EDEAE3` | `#2A2D33` | Neutral fill behind shimmer placeholder (see §Loading & Placeholder) |
 
 ### Board cells
 
@@ -181,9 +182,37 @@ Read `@Environment(\.accessibilityReduceMotion)`; gate all transform animations 
 
 ## SF Symbols (used across Views, listed once)
 
-`gear`, `chart.bar.fill`, `trophy.fill`, `calendar`, `dice`, `dice.fill`, `play.fill`, `pause.fill`, `arrow.uturn.backward`, `arrow.uturn.forward`, `pencil`, `pencil.slash`, `delete.left`, `checkmark.circle.fill`, `xmark.circle.fill`, `exclamationmark.triangle.fill`, `person.crop.circle.badge.questionmark` (GC degraded), `person.crop.circle.badge.checkmark` (GC authenticated), `wifi.slash`, `arrow.clockwise`, `chevron.right`, `square.and.arrow.down`, `lightbulb` (hint — descoped v1 but listed for future), `1.square` through `9.square` (digit pad fallback if numeric glyphs unwanted), `cloud.sun` (DailyHubView empty state), `timer` (BoardView header).
+`gear`, `chart.bar.fill`, `trophy.fill`, `calendar`, `dice`, `dice.fill`, `play.fill`, `pause.fill`, `arrow.uturn.backward`, `arrow.uturn.forward`, `pencil`, `pencil.slash`, `delete.left`, `checkmark.circle.fill`, `xmark.circle.fill`, `exclamationmark.triangle.fill`, `person.crop.circle.badge.questionmark` (GC degraded), `person.crop.circle.badge.checkmark` (GC authenticated), `wifi.slash`, `arrow.clockwise`, `chevron.right`, `square.and.arrow.down`, `lightbulb` (hint — descoped v1 but listed for future), `1.square` through `9.square` (digit pad fallback if numeric glyphs unwanted), `timer` (BoardView header).
 
 All symbols are SF Symbols 6 stock — no custom symbol set in v1.
+
+---
+
+## Loading & Placeholder
+
+Apple HIG: spinners signal *long, indefinite* work. For short, deterministic operations (< 500 ms), use a placeholder shimmer; for very short (< 100 ms), skip animation entirely.
+
+### Thresholds
+
+| Duration | Indicator |
+|---|---|
+| 0 – 100 ms | None (operation completes before user could perceive a transition) |
+| 100 – 500 ms | SwiftUI `.redacted(reason: .placeholder)` — system shimmer on the affected surface |
+| > 500 ms | `ProgressView` (indefinite spinner) |
+
+### Tokens
+
+- `motion.shimmer.delay = 100ms` — delay before shimmer starts (avoid flash on sub-threshold ops)
+- `motion.shimmer.crossover = 500ms` — switch to ProgressView at this threshold
+- `surface.placeholder` — neutral fill behind shimmer (light: `#EDEAE3`; dark: `#2A2D33`)
+
+### Reduce-motion
+
+Under `@Environment(\.accessibilityReduceMotion) == true`, shimmer becomes a static `surface.placeholder` fill (no animation).
+
+### A11y
+
+Shimmer placeholder must carry `.accessibilityLabel("Loading")` and `.accessibilityAddTraits(.updatesFrequently)`.
 
 ---
 

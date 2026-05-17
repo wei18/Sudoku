@@ -7,7 +7,7 @@
 - **States**:
   - `loading` — fetching trio
   - `loaded(cards: [DailyCard])` — happy path
-  - `empty` — "no daily today" per §How.6.6
+  - `error(.exhausted)` — extremely rare; surfaced as Alert per §How.6.3 (Generator defect)
   - `error(reason)` — fetch failed; show retry
 
 ## b. ASCII wireframe
@@ -34,19 +34,6 @@ iPhone (compact)                       Mac (regular)
 
 The 9-cell mini-strip below each card title is a visual hint of board density (givens vs blanks) — purely decorative, low contrast.
 
-## b.2 Empty state
-
-```
-┌──────────────────────┐
-│ < Daily   May 16     │
-│                      │
-│      🌥                │
-│   No daily today     │
-│  Try Practice mode   │
-│  [ Open Practice ]   │
-└──────────────────────┘
-```
-
 ## c. SwiftUI preview code skeleton
 
 ```swift
@@ -61,7 +48,6 @@ private struct DailyCardModel: Identifiable {
 
 private enum DailyHubState {
     case loaded([DailyCardModel])
-    case empty
     case loading
 }
 
@@ -77,7 +63,6 @@ struct DailyHubView_Designs: View {
         Group {
             switch state {
             case .loaded(let cards): cardList(cards)
-            case .empty: emptyView
             case .loading: ProgressView().controlSize(.large)
             }
         }
@@ -98,16 +83,6 @@ struct DailyHubView_Designs: View {
         }
     }
 
-    private var emptyView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "cloud.sun").font(.system(size: 48)).foregroundStyle(.secondary)
-            Text("No daily today").font(.title3.weight(.medium))
-            Text("Try Practice mode while we get tomorrow's puzzles ready.")
-                .font(.callout).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).padding(.horizontal, 32)
-            Button("Open Practice") {}.buttonStyle(.borderedProminent)
-        }
-    }
 }
 
 private struct DailyCard: View {
@@ -167,8 +142,7 @@ private struct MiniBoardStrip: View {
 | Em-dash placeholder | `text.tertiary` | not completed | `.callout` |
 | Mini strip cell | `text.tertiary` α0.08/0.18 | decorative | 8 pt tall |
 | Card tap | — | press | scale 0.98 100 ms |
-| Empty icon | `text.secondary` | empty state | `cloud.sun` 48 pt |
-| Empty CTA | `accent.primary` | empty state | `.borderedProminent` |
+| Alert (.exhausted) | system | error | Title "Couldn't generate today's puzzle"; message "Try a different difficulty, or come back tomorrow."; primary CTA "Try another difficulty" (dismiss + bounce to hub); VoiceOver = `.assertive` |
 
 ## e. A11y notes
 
@@ -183,4 +157,4 @@ Three sibling cards rather than a hero "today's hardest" or a stack-by-difficult
 
 Rejected: (1) tab control to switch difficulty — adds a click before play; (2) auto-advance "next puzzle" carousel — coercive; (3) leaderboard preview inline on each card — moved into BoardView/CompletionView per §How.5.1's clear separation.
 
-Empty state is critical (§How.6.6): no Daily today = a quiet failure mode for the user. We name it ("No daily today") and redirect to Practice rather than showing a fetch error — the actual reason (CI didn't upload yet) is uninteresting to the player.
+v1 has no inline empty state — Daily puzzles are generated locally and deterministically; the only failure path is `GeneratorError.exhausted` (§How.6.3), surfaced via Alert.
