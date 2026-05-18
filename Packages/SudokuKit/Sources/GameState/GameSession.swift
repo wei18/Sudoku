@@ -35,18 +35,39 @@ public actor GameSession {
     /// Bounded (cap 20) undo / redo timeline of `placeDigit` moves.
     public private(set) var undoStack: UndoStack = UndoStack()
 
-    // MARK: - Telemetry
+    // MARK: - Telemetry + Clock
 
     private let telemetry: any GameStateTelemetry
+    private let clock: any MonotonicClock
+
+    // MARK: - Elapsed-time accounting
+
+    /// Wall-clock instant (seconds) when the current .playing span began.
+    /// nil whenever the session is not actively running (idle / paused /
+    /// completed / abandoned).
+    private var runningSince: TimeInterval?
+    /// Sum of completed .playing spans, in whole seconds.
+    private var accumulatedSeconds: Int = 0
+
+    /// Total elapsed playing time, frozen while paused / completed / abandoned.
+    /// §How.7.2: pause freezes the clock.
+    public var elapsedSeconds: Int {
+        if let runningSince {
+            return accumulatedSeconds + Int(clock.now - runningSince)
+        }
+        return accumulatedSeconds
+    }
 
     // MARK: - Init
 
     public init(
         puzzle: Puzzle,
+        clock: any MonotonicClock = LiveMonotonicClock(),
         telemetry: any GameStateTelemetry = NoOpGameStateTelemetry()
     ) {
         self.puzzle = puzzle
         self.currentBoard = puzzle.clues
+        self.clock = clock
         self.telemetry = telemetry
     }
 
@@ -54,26 +75,31 @@ public actor GameSession {
 
     public func start() async throws {
         try transition(.start)
+        runningSince = clock.now
         await telemetry.dispatch(.sessionStarted)
     }
 
     public func pause() async throws {
         try transition(.pause)
+        freezeRunningClock()
         await telemetry.dispatch(.sessionPaused)
     }
 
     public func resume() async throws {
         try transition(.resume)
+        runningSince = clock.now
         await telemetry.dispatch(.sessionResumed)
     }
 
     public func complete() async throws {
         try transition(.complete)
-        await telemetry.dispatch(.sessionCompleted(elapsedSeconds: 0))
+        freezeRunningClock()
+        await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds))
     }
 
     public func abandon() async throws {
         try transition(.abandon)
+        freezeRunningClock()
         await telemetry.dispatch(.sessionAbandoned)
     }
 
@@ -110,7 +136,8 @@ public actor GameSession {
         // (documented behavior: completion is sticky).
         if currentBoard.cells == puzzle.solution.cells {
             try transition(.complete)
-            await telemetry.dispatch(.sessionCompleted(elapsedSeconds: 0))
+            freezeRunningClock()
+            await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds))
         }
     }
 
@@ -153,6 +180,15 @@ public actor GameSession {
     }
 
     // MARK: - Internal
+
+    /// Roll the currently-running playing-span into `accumulatedSeconds`
+    /// and clear `runningSince`. Idempotent if not running.
+    private func freezeRunningClock() {
+        if let runningSince {
+            accumulatedSeconds += Int(clock.now - runningSince)
+            self.runningSince = nil
+        }
+    }
 
     private func transition(_ transition: GameSessionTransition) throws {
         guard let next = status.applying(transition) else {
