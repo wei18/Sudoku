@@ -1,0 +1,17 @@
+# mise tool versions — shared between dev machines and Xcode Cloud CI.
+# Backend selection: `aqua:` first (verified registry entries), `ubi:` fallback
+# for tools without aqua coverage. Verify with `mise plugin list --all`.
+#
+# Notes:
+# - `swift` is provided by Xcode / Xcode Cloud toolchain; not managed here.
+# - `lefthook` + `gitleaks` are not in mise core; both have aqua registry entries
+#   (`evilmartians/lefthook`, `gitleaks/gitleaks`). If `aqua:` resolution fails
+#   on a given machine, swap to `ubi:` (same owner/repo).
+# - SwiftLint / SwiftFormat / xcbeautify have aqua entries under realm/<repo>.
+
+[tools]
+swiftlint                       = "0.57"
+swiftformat                     = "0.54"
+xcbeautify                      = "2"
+"aqua:gitleaks/gitleaks"        = "8.30.1"   # foundations.md §7.5 requires ≥ 8.18
+"aqua:evilmartians/lefthook"    = "1"

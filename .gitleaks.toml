@@ -1,0 +1,34 @@
+# gitleaks custom rules — extends the built-in default ruleset.
+# `useDefault = true` keeps every built-in rule active; we only ADD here.
+# See: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+title = "Sudoku gitleaks config"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Custom rules
+# ---------------------------------------------------------------------------
+
+# App Store Connect API Key ID / APNs Auth Key ID / CloudKit Key ID
+# All three share the same shape: a 10-character upper-case alphanumeric token.
+# Require a context keyword on the same line to keep false-positive rate low.
+[[rules]]
+id          = "apple-10char-key-id"
+description = "Apple-issued 10-character Key ID (ASC API / APNs Auth / CloudKit)"
+regex       = '''(?i)(asc[_-]?key[_-]?id|apns[_-]?key[_-]?id|cloudkit[_-]?key[_-]?id|key[_-]?id)["'\s:=]+([A-Z0-9]{10})\b'''
+secretGroup = 2
+tags        = ["apple", "key-id"]
+
+# ---------------------------------------------------------------------------
+# Allowlist — false positives we accept
+# ---------------------------------------------------------------------------
+
+[allowlist]
+description = "Documentation and example files"
+paths = [
+    '''(^|/)\.env\.example$''',
+    '''(^|/)docs/.*\.md$''',
+    '''(^|/)\.config/example/.*''',
+]

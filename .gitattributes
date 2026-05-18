@@ -1,0 +1,21 @@
+# Default: auto line-ending normalization
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.p8 binary
+*.p12 binary
+*.cer binary
+*.mobileprovision binary
+
+# Swift / Xcode
+*.swift text diff=swift
+*.plist text
+*.xcconfig text
+
+# Snapshot baselines (kept as binary even though Swift snapshot library writes PNGs)
+**/__Snapshots__/**/*.png binary

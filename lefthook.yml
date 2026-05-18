@@ -1,0 +1,19 @@
+# Pre-commit hooks. Activated by `lefthook install` (writes .git/hooks/pre-commit).
+# All tools resolved through mise to match CI versions exactly.
+
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact --verbose
+    hygiene:
+      # Repo hygiene: block secret-shaped files from ever entering history.
+      # Folded in from plan.md §1.1 (no standalone shell script).
+      run: |
+        if git ls-files | grep -E '\.(p8|p12|pem|env)$'; then
+          echo "Secret-shaped files tracked. Aborting." >&2
+          exit 1
+        fi
+    swiftlint:
+      glob: "*.{swift}"
+      run: mise exec swiftlint -- swiftlint lint --quiet {staged_files}
