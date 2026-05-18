@@ -17,6 +17,14 @@ xcuserdata/
 .swiftpm/
 .build/
 
+# Tuist-generated artifacts. Source of truth is Project.swift; never commit the
+# generated *.xcodeproj / *.xcworkspace. Regenerate with `tuist generate`.
+*.xcodeproj/
+*.xcworkspace/
+Derived/
+.tuist-bin/
+.tuist-cache/
+
 # macOS
 .DS_Store
 
