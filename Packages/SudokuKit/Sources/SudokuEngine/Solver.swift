@@ -91,8 +91,20 @@ public struct Solver: Sendable {
 
     // MARK: - Naked pair
 
+    /// Applies the naked-pair candidate elimination across all units. The
+    /// technique never directly writes a Board cell — it only narrows the
+    /// in-memory `CandidateGrid`. A Board cell is filled only when the
+    /// narrowed candidate set collapses to a single digit (a cascade into
+    /// naked-single territory).
+    ///
+    /// `SolverProgress.changed` is reported **iff at least one Board cell
+    /// was filled**, not merely whenever a candidate was eliminated. The
+    /// local CandidateGrid is discarded between `applyOnce` invocations, so
+    /// reporting candidate-only eliminations as `.changed` would cause
+    /// `propagate()` to loop forever rediscovering the same naked pair on
+    /// a Board whose cells never change.
     private func applyNakedPair(to board: inout Board) -> SolverProgress {
-        var changed = false
+        var filled = false
         var grid = CandidateGrid(board: board)
         let allUnits = CandidateGrid.rowsIndices + CandidateGrid.colsIndices + CandidateGrid.boxesIndices
         for unit in allUnits {
@@ -113,14 +125,14 @@ public struct Solver: Sendable {
                     let after = before & ~mask
                     if after != before {
                         grid.masks[cellIdx] = after
-                        changed = true
                         if let digit = CandidateGrid.lonelyDigit(after) {
                             board.setCellRaw(UInt8(digit), at: cellIdx)
+                            filled = true
                         }
                     }
                 }
             }
         }
-        return changed ? .changed : .unchanged
+        return filled ? .changed : .unchanged
     }
 }
