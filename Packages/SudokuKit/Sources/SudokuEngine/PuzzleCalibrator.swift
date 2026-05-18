@@ -20,11 +20,26 @@ public enum Difficulty: String, Sendable, Equatable, Codable, CaseIterable {
 
 public enum PuzzleCalibrator {
 
+    /// Hard cap on `branchingFactor`. Once the DFS branch counter reaches
+    /// this value the calibrator short-circuits and returns it as a sentinel
+    /// meaning "≥ `branchingFactorCap` actual branches". This bounds the
+    /// worst-case DFS work at O(`branchingFactorCap`^depth), which is
+    /// necessary because low-clue Hard boards can otherwise enumerate an
+    /// exponential number of branches and never return. Difficulty rules
+    /// in `accepts(_:as:)` are unaffected: Easy requires `== 0`, Medium
+    /// requires `<= 2`, both well below the cap; Hard does not gate on
+    /// `branchingFactor` at all.
+    public static let branchingFactorCap = 8
+
     /// Compute (clueCount, branchingFactor) for a given clue board.
+    ///
+    /// `branchingFactor` is computed up to `branchingFactorCap` (default 8);
+    /// the returned value of `branchingFactorCap` is a sentinel meaning
+    /// "≥ `branchingFactorCap`". This bounds DFS work for pathologically
+    /// branchy inputs (e.g. near-empty boards).
     public static func calibrate(_ board: Board) -> PuzzleCalibration {
         let clueCount = board.cells.reduce(0) { $0 + ($1 == 0 ? 0 : 1) }
         var work = board
-        // Reset givens (we don't care for solving).
         let branches = countBranches(&work)
         return PuzzleCalibration(clueCount: clueCount, branchingFactor: branches)
     }
@@ -56,14 +71,19 @@ public enum PuzzleCalibrator {
         let solver = Solver()
         let solved = solver.propagate(to: &board)
         if solved { return 0 }
-        // Need to guess. Pick MCV cell.
         var branches = 0
         _ = recursiveCount(board: &board, branches: &branches)
-        return branches
+        // Clamp at the cap in case the recursion's exit condition incremented
+        // past it before checking (defensive — the recursion already early-exits).
+        return min(branches, branchingFactorCap)
     }
 
-    /// Returns whether a solution was found. Counts each branch taken (digit tried).
+    /// Returns whether a solution was found. Counts each branch taken
+    /// (digit tried). Returns immediately once `branches` reaches
+    /// `branchingFactorCap` — the caller treats the cap as a "≥ cap"
+    /// sentinel and does not need the true count beyond it.
     private static func recursiveCount(board: inout Board, branches: inout Int) -> Bool {
+        if branches >= branchingFactorCap { return false }
         var snapshot = board
         let solver = Solver()
         let solved = solver.propagate(to: &snapshot)
@@ -85,6 +105,7 @@ public enum PuzzleCalibrator {
         let mask = grid.masks[chosenIdx]
         for digit in CandidateGrid.digits(in: mask) {
             branches += 1
+            if branches >= branchingFactorCap { return false }
             var next = snapshot
             next.setCellRaw(UInt8(digit), at: chosenIdx)
             if recursiveCount(board: &next, branches: &branches) {
