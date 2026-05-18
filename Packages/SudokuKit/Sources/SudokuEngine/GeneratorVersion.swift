@@ -4,5 +4,6 @@
 // v1 is the initial production version.
 
 public enum GeneratorVersion: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
+    // swiftlint:disable:next identifier_name
     case v1
 }
