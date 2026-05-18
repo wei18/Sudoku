@@ -179,6 +179,65 @@ public actor GameSession {
         await telemetry.dispatch(.moveRedone)
     }
 
+    // MARK: - Snapshot / restore
+
+    /// Capture the full session state as a serializable value.
+    public func snapshot() -> GameSessionSnapshot {
+        GameSessionSnapshot(
+            puzzle: puzzle,
+            currentBoard: currentBoard,
+            status: status,
+            elapsedSeconds: elapsedSeconds,
+            undoMoves: undoStack.undoStack,
+            redoMoves: undoStack.redoStack,
+            notes: notes
+        )
+    }
+
+    /// Rebuild a session from a snapshot. The restored session is "frozen"
+    /// in whatever status the snapshot recorded; the wall clock does not
+    /// auto-resume — `elapsedSeconds` is fully captured in
+    /// `accumulatedSeconds` and a subsequent `resume()` opens a new span.
+    public static func restore(
+        from snapshot: GameSessionSnapshot,
+        clock: any MonotonicClock = LiveMonotonicClock(),
+        telemetry: any GameStateTelemetry = NoOpGameStateTelemetry()
+    ) async -> GameSession {
+        let session = GameSession(puzzle: snapshot.puzzle, clock: clock, telemetry: telemetry)
+        await session.applySnapshot(snapshot)
+        return session
+    }
+
+    /// Actor-isolated restore step. Reconstructs the undo/redo halves by
+    /// pushing all undo moves, then synthetically routing each redo move
+    /// through `push → undo` so it lands on the redo stack in order
+    /// (UndoStack's only public mutators are `push` / `undo` / `redo`).
+    private func applySnapshot(_ snapshot: GameSessionSnapshot) {
+        currentBoard = snapshot.currentBoard
+        status = snapshot.status
+        notes = snapshot.notes
+        accumulatedSeconds = snapshot.elapsedSeconds
+        runningSince = nil
+
+        // Reconstruct the undo/redo split using only the public API
+        // (`push` / `undo`). Strategy: push undoMoves in order, then push
+        // redoMoves in reverse, then `undo` exactly `redoMoves.count`
+        // times — this lands the redo half on top of redoStack in the
+        // original order. (UndoStack's `push` clears redo, so any naive
+        // alternating push/undo loop would lose prior redo entries.)
+        var stack = UndoStack()
+        for move in snapshot.undoMoves {
+            stack.push(move)
+        }
+        for move in snapshot.redoMoves.reversed() {
+            stack.push(move)
+        }
+        for _ in 0..<snapshot.redoMoves.count {
+            _ = stack.undo()
+        }
+        undoStack = stack
+    }
+
     // MARK: - Internal
 
     /// Roll the currently-running playing-span into `accumulatedSeconds`
