@@ -21,7 +21,7 @@ enum SplitMix64Reference {
         0x8621_A03F_E0BB_DB7B,
         0x8E1F_7555_983A_A92F,
         0xB54E_0F16_00CC_4D19,
-        0x84BB_3F97_971D_80AB,
+        0x84BB_3F97_971D_80AB
     ]
 
     /// First 16 outputs for seed = 0x2A (= 42).
@@ -41,6 +41,6 @@ enum SplitMix64Reference {
         0x836D_ED89_7F3E_46E6,
         0x851F_9773_47ED_6DB7,
         0xAA47_E31C_02E7_8EDC,
-        0x3414_52C5_4D7C_33F2,
+        0x3414_52C5_4D7C_33F2
     ]
 }

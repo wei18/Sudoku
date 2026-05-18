@@ -6,23 +6,17 @@ struct SplitMix64Tests {
 
     @Test func seedZeroFirst16MatchPhase0Reference() {
         var rng = SplitMix64(seed: 0)
-        for index in 0..<SplitMix64Reference.seedZero.count {
+        for (index, expected) in SplitMix64Reference.seedZero.enumerated() {
             let value = rng.next()
-            #expect(
-                value == SplitMix64Reference.seedZero[index],
-                "seed=0 index \(index): got \(String(value, radix: 16)) expected \(String(SplitMix64Reference.seedZero[index], radix: 16))"
-            )
+            #expect(value == expected, "seed=0 idx \(index)")
         }
     }
 
     @Test func seedFortyTwoFirst16MatchPhase0Reference() {
         var rng = SplitMix64(seed: 0x2A)
-        for index in 0..<SplitMix64Reference.seedFortyTwo.count {
+        for (index, expected) in SplitMix64Reference.seedFortyTwo.enumerated() {
             let value = rng.next()
-            #expect(
-                value == SplitMix64Reference.seedFortyTwo[index],
-                "seed=42 index \(index): got \(String(value, radix: 16)) expected \(String(SplitMix64Reference.seedFortyTwo[index], radix: 16))"
-            )
+            #expect(value == expected, "seed=42 idx \(index)")
         }
     }
 

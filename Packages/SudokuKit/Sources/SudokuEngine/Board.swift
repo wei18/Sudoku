@@ -115,4 +115,18 @@ public struct Board: Sendable, Equatable, Hashable, Codable {
     public var isFullyFilled: Bool {
         !cells.contains(0)
     }
+
+    // MARK: - Internal raw access (engine-private)
+
+    /// Internal raw cell read by flat index. Module-internal callers (Solver,
+    /// UniquenessValidator, CandidateGrid) operate on the flat storage directly.
+    func cellRaw(at index: Int) -> UInt8 {
+        cells[index]
+    }
+
+    /// Internal raw cell write — assumes caller has bounds-checked and
+    /// validated the digit (0...9). Does not modify givenMask.
+    mutating func setCellRaw(_ value: UInt8, at index: Int) {
+        cells[index] = value
+    }
 }
