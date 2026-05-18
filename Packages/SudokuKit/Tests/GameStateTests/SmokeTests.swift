@@ -4,6 +4,6 @@ import Testing
 @Suite("GameState smoke")
 struct GameStateSmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }

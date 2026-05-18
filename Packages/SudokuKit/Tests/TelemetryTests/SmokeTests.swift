@@ -4,6 +4,6 @@ import Testing
 @Suite("Telemetry smoke")
 struct TelemetrySmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }

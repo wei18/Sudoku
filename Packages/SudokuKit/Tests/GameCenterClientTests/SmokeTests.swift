@@ -4,6 +4,6 @@ import Testing
 @Suite("GameCenterClient smoke")
 struct GameCenterClientSmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }

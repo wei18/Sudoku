@@ -4,6 +4,6 @@ import Testing
 @Suite("Persistence smoke")
 struct PersistenceSmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }

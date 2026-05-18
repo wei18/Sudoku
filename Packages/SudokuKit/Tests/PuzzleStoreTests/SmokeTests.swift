@@ -4,6 +4,6 @@ import Testing
 @Suite("PuzzleStore smoke")
 struct PuzzleStoreSmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }

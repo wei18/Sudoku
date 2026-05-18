@@ -4,6 +4,6 @@ import Testing
 @Suite("SudokuEngine smoke")
 struct SudokuEngineSmokeTests {
     @Test func packageCompiles() {
-        _moduleAnchor()
+        moduleAnchor()
     }
 }
