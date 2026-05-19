@@ -57,6 +57,38 @@ All green, 0 warnings on Swift 6 strict, lefthook passes.
 
 Subagent dispatch + return latency was ~16 minutes total for this session (Phase 2 follow-up ~10 min, Phase 3 ~6 min). Per `[[leader-parallel-work-discipline]]` memory just written, Leader should have used those windows to write meeting logs in parallel rather than waiting. This log is being written after the fact — better than nothing, but not the target behavior.
 
+## Phase 3 follow-up closure (same-day continuation)
+
+Per user's "C->A" directive, two SudokuEngine non-urgent items addressed before Phase 4 kickoff.
+
+### Subagent dispatch (background) — SudokuEngine follow-ups
+
+- `3db8dd7` **feat(sudoku-engine): UndoStack + Move now Hashable + Codable** — +8 tests. Single-line type-declaration change; synthesis handled everything.
+- `45dbe00` **feat(sudoku-engine): PuzzleGenerator gains injectable RNG seam** — +4 tests. New generic overload `generate<RNG: DeterministicRNG>(rng:difficulty:version:seedTagForRecord:retries:)`. Seed-flavored API delegates to it. Bit-identical frozen snapshots preserved.
+
+### Decisions during closure
+
+- **Seed-tag option (b)** chosen: `Puzzle.seed` stays non-optional; seam takes caller-supplied `seedTagForRecord: UInt64`. Test code passes `0`. Avoids CloudKit/Persistence schema ripples.
+- **Made `fillSolved` and `progressivelyMask` generic** over `DeterministicRNG` (was `inout SplitMix64`). Internal-only; no public API ripple.
+
+### Surprise: "always-returns-X RNG" not pathological
+
+The meeting log + dispatch prompt assumed a `ConstantRNG(value: 0)` would force exhaustion. It doesn't — `fillSolved`'s DFS-backtracking is robust enough to find a valid solved grid even with a degenerate shuffle, then `progressivelyMask` produces a deterministic in-band board. The exhaustion test instead uses `retries: 0` to exercise the budget plumbing directly on the seam.
+
+### New follow-up (non-urgent, deferred)
+
+`GameSessionSnapshot` could now embed `UndoStack` directly (now Hashable + Codable) and drop the flatten-and-rebuild logic. CloudKit field name already lines up. Phase 5 (Persistence) is the natural moment to do this simplification. **NOT** done in this closure per hard constraint.
+
+### Tally going into Phase 4
+
+- **126 tests** (was 114 → +12), all green, 0 warnings Swift 6 strict.
+- Phase 0 / 1 / 2 / 3 plus 2 follow-up rounds (Phase 2 bugfixes + Phase 3 enhancements) all complete.
+- `SudokuEngine` is now considered **API-stable for v1**; further changes only as Phase 5+ consumers demand.
+
+## Leader-discipline retrospective
+
+This session's subagent windows totalled ~22 minutes (Phase 3: 16 min; SudokuEngine follow-ups: 6 min). I wrote this Phase 3 log AFTER both subagents returned. Per `[[leader-parallel-work-discipline]]` memory: should have started writing the Phase 3 log while the SudokuEngine follow-up subagent ran in background. Next session: write meeting logs IN PARALLEL with subagent runs, not post-hoc.
+
 ## Next session
 
-Phase 4 — `Telemetry` module. 6 steps (TelemetryEvent, TelemetrySink, Telemetry actor, OSLogSink, NoOpTrackingSink, MetricKitSink). Bridges to GameState via the adapter pattern decided above.
+Phase 4 — `Telemetry` module. 5 steps (TelemetryEvent, Telemetry actor, OSLogSink, NoOpTrackingSink, MetricKitSink) + adapter to GameState. Background dispatch already launched while writing this section.
