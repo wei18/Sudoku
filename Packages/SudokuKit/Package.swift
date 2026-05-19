@@ -36,6 +36,28 @@ let productionTargets: [Target] = [
         dependencies: ["SudokuEngine", "GameState", "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
         swiftSettings: swiftSettings
     ),
+    // Phase 9.1: production composition root. The App target is intentionally
+    // thin and depends only on this product (which re-exports SudokuUI via
+    // its public surface). Keeps the DI plumbing inside the SwiftPM package
+    // where it's testable.
+    .target(
+        name: "AppComposition",
+        dependencies: [
+            "SudokuEngine",
+            "GameState",
+            "PuzzleStore",
+            "Persistence",
+            "GameCenterClient",
+            "Telemetry",
+            "SudokuUI",
+            // `.preview()` and `.tests()` factories pull from SudokuKitTesting
+            // for the protocol fakes. Shipped in the binary; the `.live()`
+            // factory does not reference them so dead-code elimination keeps
+            // the cost bounded.
+            "SudokuKitTesting",
+        ],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Test targets (one per production target, except SudokuKitTesting which
@@ -66,6 +88,7 @@ let testTargets: [Target] = [
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
     testTarget("Telemetry", dependencies: ["Telemetry"]),
     testTarget("SudokuUI", dependencies: ["SudokuUI"]),
+    testTarget("AppComposition", dependencies: ["AppComposition"]),
 ]
 
 // MARK: - Package
@@ -85,6 +108,7 @@ let package = Package(
         .library(name: "Telemetry", targets: ["Telemetry"]),
         .library(name: "SudokuUI", targets: ["SudokuUI"]),
         .library(name: "SudokuKitTesting", targets: ["SudokuKitTesting"]),
+        .library(name: "AppComposition", targets: ["AppComposition"]),
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

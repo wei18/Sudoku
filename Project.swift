@@ -30,6 +30,7 @@ let sudokuTarget = Target.target(
     entitlements: .file(path: "App/Sudoku.entitlements"),
     dependencies: [
         .package(product: "SudokuUI"),
+        .package(product: "AppComposition"),
     ],
     settings: .settings(base: swiftSettings)
 )
