@@ -1,4 +1,6 @@
 // swift-tools-version: 6.2
+// swiftlint:disable trailing_comma
+
 import PackageDescription
 
 // MARK: - Shared settings (foundations.md §1: Swift 6 + complete concurrency)
@@ -91,6 +93,29 @@ let testTargets: [Target] = [
     testTarget("AppComposition", dependencies: ["AppComposition"]),
 ]
 
+// MARK: - ASCRegister CLI (additive tool target; not part of the App binary)
+//
+// Bootstraps Game Center achievements + leaderboards in App Store Connect
+// via the ASC API. Pure Foundation + CryptoKit — no external deps. Lives in
+// the SudokuKit package so it can share consistency tests with the
+// production GameCenterClient IDs.
+
+let ascRegisterTargets: [Target] = [
+    .executableTarget(
+        name: "ASCRegister",
+        dependencies: [],
+        path: "Sources/ASCRegister",
+        resources: [.copy("Strings/gc-strings.xcstrings.patch")],
+        swiftSettings: swiftSettings
+    ),
+    .testTarget(
+        name: "ASCRegisterTests",
+        dependencies: ["ASCRegister"],
+        path: "Tests/ASCRegisterTests",
+        swiftSettings: swiftSettings
+    ),
+]
+
 // MARK: - Package
 
 let package = Package(
@@ -113,6 +138,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
     ],
-    targets: productionTargets + testTargets,
+    targets: productionTargets + testTargets + ascRegisterTargets,
     swiftLanguageModes: [.v6]
 )
