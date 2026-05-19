@@ -22,6 +22,8 @@
     <string>1</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSGameKitFriendListUsageDescription</key>
+    <string>Sudoku uses your friend list to show your friends’ best times on the daily leaderboard.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>
