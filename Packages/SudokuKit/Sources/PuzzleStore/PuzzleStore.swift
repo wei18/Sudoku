@@ -17,6 +17,18 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     private let generator: any PuzzleGenerating
     private let generatorVersion: GeneratorVersion
 
+    /// In-memory cache of `fetchDailyTrio`. Keyed by `(utcDayString,
+    /// generatorVersion)` so a generator version bump (§How.4.5) invalidates
+    /// the prior day's contents.
+    ///
+    /// Practice puzzles are NOT cached (§How.4.7): salts are fresh per call.
+    private var dailyTrioCache: [DailyCacheKey: [PuzzleEnvelope]] = [:]
+
+    private struct DailyCacheKey: Hashable, Sendable {
+        let day: String
+        let generatorVersion: GeneratorVersion
+    }
+
     public init(
         generator: any PuzzleGenerating = LivePuzzleGenerating(),
         generatorVersion: GeneratorVersion = .v1
@@ -28,6 +40,10 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     // MARK: - PuzzleProviderProtocol
 
     public func fetchDailyTrio(date: Date) async throws -> [PuzzleEnvelope] {
+        let key = DailyCacheKey(day: utcDayString(from: date), generatorVersion: generatorVersion)
+        if let cached = dailyTrioCache[key] {
+            return cached
+        }
         var envelopes: [PuzzleEnvelope] = []
         envelopes.reserveCapacity(3)
         for difficulty in [Difficulty.easy, .medium, .hard] {
@@ -36,6 +52,7 @@ public actor PuzzleStore: PuzzleProviderProtocol {
             let identity = PuzzleIdentity.daily(date: date, difficulty: difficulty)
             envelopes.append(PuzzleEnvelope(puzzle: puzzle, identity: identity))
         }
+        dailyTrioCache[key] = envelopes
         return envelopes
     }
 
@@ -132,12 +149,13 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     // MARK: - puzzleId parsing
 
     internal struct ParsedPuzzleId {
-        enum Kind {
-            case daily(day: String)
-            case practice(salt: UInt64)
-        }
-        let kind: Kind
+        let kind: ParsedKind
         let difficulty: Difficulty
+    }
+
+    internal enum ParsedKind {
+        case daily(day: String)
+        case practice(salt: UInt64)
     }
 
     internal static func parse(puzzleId: String) throws -> ParsedPuzzleId {
@@ -219,7 +237,7 @@ private extension UInt64 {
             UInt8(truncatingIfNeeded: lowEndian >> 32),
             UInt8(truncatingIfNeeded: lowEndian >> 40),
             UInt8(truncatingIfNeeded: lowEndian >> 48),
-            UInt8(truncatingIfNeeded: lowEndian >> 56),
+            UInt8(truncatingIfNeeded: lowEndian >> 56)
         ]
     }
 }
