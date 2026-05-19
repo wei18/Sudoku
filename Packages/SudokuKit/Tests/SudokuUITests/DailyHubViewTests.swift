@@ -76,8 +76,12 @@ struct DailyHubViewTests {
     @Test func snapshotUnfinishedIPhoneLight() async {
         let viewModel = await makeViewModel()
         await viewModel.bootstrap()
-        let view = DailyHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-unfinished")
         }
@@ -88,8 +92,12 @@ struct DailyHubViewTests {
         let easyId = envelopes[0].identity.puzzleId
         let viewModel = await makeViewModel(completedDailyIds: [easyId])
         await viewModel.bootstrap()
-        let view = DailyHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-easyDone")
         }
@@ -100,8 +108,12 @@ struct DailyHubViewTests {
         let allIds = Set(envelopes.map(\.identity.puzzleId))
         let viewModel = await makeViewModel(completedDailyIds: allIds)
         await viewModel.bootstrap()
-        let view = DailyHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }

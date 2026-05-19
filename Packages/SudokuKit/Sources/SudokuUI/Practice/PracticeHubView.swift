@@ -28,6 +28,10 @@ public struct PracticeHubView: View {
                 }
             }
             .pickerStyle(.segmented)
+            // The "Difficulty" `Text` above is the section heading; the
+            // Picker's own label would render again inline on macOS.
+            .labelsHidden()
+            .tint(theme.accent.primary.resolved)
             .padding(8)
             .glassEffect(.regular, in: .rect(cornerRadius: 12))
 
@@ -64,6 +68,7 @@ public struct PracticeHubView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .tint(theme.accent.primary.resolved)
             .controlSize(.large)
             .disabled(isDrawing)
         }

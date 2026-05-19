@@ -33,6 +33,9 @@ public final class DailyHubViewModel {
     private let provider: any PuzzleProviderProtocol
     private let persistence: any PersistenceProtocol
     private let dateProvider: @Sendable () -> Date
+    /// Idempotency latch for `.task` — once `bootstrap()` has resolved we
+    /// don't re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
+    private var hasBootstrapped = false
 
     public init(
         provider: any PuzzleProviderProtocol,
@@ -45,6 +48,8 @@ public final class DailyHubViewModel {
     }
 
     public func bootstrap() async {
+        guard !hasBootstrapped else { return }
+        hasBootstrapped = true
         state = .loading
         let today = dateProvider()
         do {

@@ -75,8 +75,7 @@ struct RootViewTests {
         await viewModel.bootstrap()
 
         let view = RootView(viewModel: viewModel)
-            .preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
 
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "RootView-iPhone-light-empty")
@@ -91,8 +90,7 @@ struct RootViewTests {
         await viewModel.bootstrap()
 
         let view = RootView(viewModel: viewModel)
-            .preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.mac)
+        let host = hostingView(view, size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
 
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "RootView-Mac-light-empty")
