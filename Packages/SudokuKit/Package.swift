@@ -16,7 +16,7 @@ let productionTargets: [Target] = [
     .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
     .target(name: "PuzzleStore", dependencies: ["SudokuEngine", "Telemetry"], swiftSettings: swiftSettings),
     .target(name: "Persistence", dependencies: ["GameState", "Telemetry"], swiftSettings: swiftSettings),
-    .target(name: "GameCenterClient", dependencies: ["Telemetry"], swiftSettings: swiftSettings),
+    .target(name: "GameCenterClient", dependencies: ["Telemetry", "Persistence"], swiftSettings: swiftSettings),
     // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
     // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
     // values; Telemetry provides the production adapter that maps those events
