@@ -8,7 +8,7 @@
 // dropped from index 0. Any new `push` clears the redo stack — redo history
 // is invalidated as soon as the user diverges from it.
 
-public struct UndoStack: Sendable, Equatable {
+public struct UndoStack: Sendable, Equatable, Hashable, Codable {
 
     public static let capacity: Int = 20
 
