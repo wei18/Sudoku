@@ -17,7 +17,15 @@ let productionTargets: [Target] = [
     .target(name: "PuzzleStore", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
     .target(name: "Persistence", dependencies: ["GameState", "Telemetry"], swiftSettings: swiftSettings),
     .target(name: "GameCenterClient", dependencies: ["Telemetry"], swiftSettings: swiftSettings),
-    .target(name: "Telemetry", swiftSettings: swiftSettings),
+    // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
+    // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
+    // values; Telemetry provides the production adapter that maps those events
+    // onto `TelemetryEvent` and forwards through the fan-out facade. GameState
+    // does NOT import Telemetry (it stays on the protocol seam) so there is
+    // no cycle. Direction-of-dependency reasoning: GameState is "deeper"
+    // (no IO, pure logic) than Telemetry (Apple system imports), so this
+    // direction is correct per design.md §How.1.
+    .target(name: "Telemetry", dependencies: ["GameState"], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
         dependencies: ["GameState", "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
