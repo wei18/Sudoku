@@ -1,16 +1,22 @@
 ---
 name: ai-translated-localization
-description: Default localization scope for Apple-platform Apps — 7 locales (zh-TW, en, ja, zh-CN, es, th, ko) translated via AI agent flow as a `plan.md` step, using `Localizable.xcstrings`. Minimum viable set is zh-TW + en. Invoke when starting a new project, deciding L10n scope, choosing string catalog format, or when asked "which languages to support / how to set up the translation flow".
+description: Default localization scope AND execution playbook for Apple-platform Apps — 7 locales (zh-TW, en, ja, zh-CN, es, th, ko) translated via AI agent flow using `Localizable.xcstrings`. Minimum set zh-TW + en. Invoke when (1) deciding L10n scope / catalog format / translation flow at project setup, OR (2) actually executing a translation pass to add or refresh strings.
 ---
 
 # AI-Translated Localization
 
 ## When to invoke
 
+**Scope decisions:**
 - Starting a new App and deciding which locales to support.
 - Choosing a string catalog format (`.strings` vs `.xcstrings`).
 - Planning the translation flow (manual / agency / AI agent).
 - User asks "are 7 locales too many", "how do translations enter git", "how to handle multi-locale App Store metadata".
+
+**Execution:**
+- Adding new user-facing strings (UI keys, GC titles, ASC metadata, achievement descriptions) and need to fill out their non-source locales.
+- Refreshing strings whose source language changed (`extractionState: stale` entries in xcstrings).
+- Auditing whether a release's xcstrings is complete (every key has every locale, no `<TRANSLATE>` placeholders shipping).
 
 ## Default decisions
 
@@ -59,6 +65,89 @@ description: Default localization scope for Apple-platform Apps — 7 locales (z
 - **Regulated / sensitive content** (medical / financial / kids): **mandatory human review** after AI translation; add a review step to `plan.md`.
 - **Special scripts / RTL** (Arabic / Hebrew): UI needs additional layout verification, not just translation.
 
+## Execution playbook
+
+Use when actually performing a translation pass. The flow is **source-pair seed → AI fan-out → tricky-case review → completeness check**.
+
+### Step 1 — Seed source pair (en + zh-TW)
+
+- Source language for translation **must be English** (broader translator competence across all target locales than zh-TW).
+- Authors write English first; zh-TW is the project's primary native locale and is hand-written in parallel — *not* AI-translated from English. Both are written by the author with intent; the other 5 locales fan out from `en`.
+- Each new key lands in xcstrings with **at minimum** `en` + `zh-Hant` populated and `extractionState: manual`.
+- Other 5 locales (`ja`, `zh-Hans`, `es`, `th`, `ko`) start either absent or with the placeholder string `<TRANSLATE>` so the fan-out pass can find them with a single grep.
+
+### Step 2 — AI fan-out pass
+
+For each target locale, translate each key from `en` (source-of-truth) into the target locale. The AI doing the translation should:
+
+- **Preserve substitutions**: `%@`, `%lld`, `%1$@`, `\n`, markdown markers (`**`, `_`), and any `${...}` interpolation tokens are copied verbatim.
+- **Match plural/variation forms**: if xcstrings declares plural variations for `en`, all forms must exist in the target locale (`zero` / `one` / `two` / `few` / `many` / `other`) per CLDR plural categories for that locale — don't blindly copy English's two forms.
+- **Match length budget**: if source is a button label (≤ 12 chars typical), keep target short. Don't let "OK" become a 6-word phrase. UI labels lose to long translations.
+- **Match register / tone**: derive from `en`'s tone. Buttons are imperative, descriptions are neutral, error messages are direct. Don't add politeness markers absent in source (see locale gotchas below).
+- **Preserve product nouns**: app name, brand terms, mode names that share visual identity across locales (e.g., "Practice" → 練習 in both zh-Hant and ja for visual consistency). Maintain a small **glossary** captured per-project to enforce this.
+
+After translation, set `extractionState: translated` (per Apple xcstrings convention) so Xcode no longer flags the key as needing attention.
+
+### Step 3 — Tricky-case review (locale-specific gotchas)
+
+Lessons captured from real translation passes. Apply these as a second-pass review after the bulk AI fan-out.
+
+**Japanese (`ja`):**
+- Prefer **semantic** over literal. "Pencil" (notes / candidate input) → メモ, NOT 鉛筆. The literal kanji confuses Japanese users; the semantic UI term is correct.
+- Drop politeness markers (`です` / `ます`) in button labels and short UI strings — Japanese app UIs are typically declarative/imperative, not polite.
+- 漢字 vs かな: prefer 漢字 for nouns, ひらがな for particles, カタカナ for loanwords. Don't romanize unless the source is romanized.
+
+**Thai (`th`):**
+- **No politeness markers** (`ครับ` / `ค่ะ`) in UI strings unless the app's voice is deliberately conversational. Calm/neutral apps drop them.
+- Compound nouns: "leaderboard" → กระดานผู้นำ (no single-word equivalent). Accept the multi-word form.
+- Thai has **no word boundaries** — sentence length affects line break behavior. UI strings >24 chars need spot-check rendering.
+
+**Korean (`ko`):**
+- Use **informal-formal** style (해요체) for app UI by default — neither too casual (반말) nor overly formal (합쇼체).
+- 한자 should be avoided unless disambiguation is needed; pure 한글 is the modern default.
+- Postpositions (조사) change based on preceding character's final consonant; AI usually handles this, but spot-check `을/를`, `이/가`, `은/는`.
+
+**Spanish (`es`):**
+- Default to **neutral Latin American Spanish** unless the project explicitly targets Spain (`es-ES`). Avoid `vosotros` forms; use `ustedes`.
+- Gender agreement: nouns referring to the user (e.g., "completed") need gender-neutral phrasing if the user's gender is unknown.
+
+**Simplified Chinese (`zh-Hans`):**
+- Convert from `zh-Hant` (not from `en`) for terminology consistency; the AI still needs to substitute Mainland-preferred terms (软件 vs 軟體, 移动 vs 行動, 视频 vs 影片).
+- DON'T just run `tongwen` character conversion — phrase choice differs (e.g., zh-Hant 「設定」 → zh-Hans 「设置」, not 「設定 → 设定」).
+
+**English (`en`):**
+- US English by default. UK spellings (`colour`, `centre`, `analyse`) only if explicitly targeted.
+- Sentence case for buttons and UI; Title Case only for proper nouns and app section headers.
+
+### Step 4 — Visual / glossary consistency
+
+Beyond per-string correctness, enforce a project-level glossary so the same concept renders identically across locales and screens:
+
+- **Mode names** (e.g., "Daily" / "Practice") — pick one term per locale and use it everywhere (HomeView card, hub header, navigation title, Settings labels).
+- **Product nouns** (app name, branded features) — don't translate.
+- **Difficulty labels** (Easy / Medium / Hard) — short, consistent.
+- **Action verbs** (Submit / Confirm / Cancel) — match iOS native terminology in each locale (Apple has localized Human Interface Guidelines for major locales).
+
+Maintain the glossary as either inline comments in xcstrings, or a sidecar `Localization-Glossary.md` in `docs/` if it grows.
+
+### Step 5 — Completeness check (before PR)
+
+Verification gates before merging a translation pass:
+
+- `<TRANSLATE>` count across xcstrings = 0 (none shipped).
+- `extractionState: stale` count = 0 (all stale entries refreshed).
+- Per-key locale coverage = 100% (parse xcstrings JSON; every `localizations` dict has every declared locale).
+- For plural keys: every locale has every plural form required by CLDR for that locale.
+- Substitution token parity per key: `en` has N `%@` → all locales have N `%@` (or locale-specific reordering via `%1$@` / `%2$@`).
+- Spot-check 3-5 keys per locale visually in the simulator with `Scheme → Run → Options → App Language`.
+
+### Tooling notes
+
+- xcstrings is JSON; parse with any JSON library. Schema: `{"sourceLanguage": "en", "strings": {<key>: {"localizations": {<locale>: {"stringUnit": {"state": "translated", "value": "..."}}}}}}`.
+- Plural variations use `{"variations": {"plural": {<cldr-form>: {"stringUnit": {...}}}}}` instead of a single `stringUnit`.
+- When fanning out via an LLM, send a single key + source + glossary in the prompt; don't batch hundreds at once (latency wins less than accuracy loses).
+- For ASC metadata (App Store description, keywords, "what's new"), use the **same flow** but route to the ASC API endpoints rather than xcstrings. The translation principles (length budget, register, gotchas) apply identically.
+
 ## Verification checklist
 
 - `Localizable.xcstrings` exists and each key has 7 locale entries (2 for the minimum set).
@@ -70,3 +159,11 @@ description: Default localization scope for Apple-platform Apps — 7 locales (z
 
 - `apple-platform-targets`: xcstrings requires Xcode 15+; aligns with the deployment target's toolchain.
 - `spec-phase-orchestration`: "translation" should be an explicit step in `plan.md`.
+
+## Field notes
+
+Real translation passes have surfaced these recurring decisions:
+
+- **Source = `en`, primary = `zh-Hant`** — both written by author. The other 5 fan out from `en` because translator competence is broader from English than from Chinese for `th` / `ko` / `es`.
+- **Glossary beats per-string correctness** — visual consistency across screens matters more than the perfect translation of any single string.
+- **5 locales in one pass is the sweet spot** — fewer wastes the per-pass setup; more risks AI fatigue degradation on the last locales. 1 commit per locale keeps PR review tractable.
