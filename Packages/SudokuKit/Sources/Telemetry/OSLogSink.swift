@@ -15,7 +15,7 @@
 //   - errorOccurred                                        → .error
 //   - metricKitReport                                      → .info
 
-public import os
+internal import os
 
 public struct OSLogSink: TelemetrySink {
     private let logger: any LoggerProtocol

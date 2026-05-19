@@ -4,7 +4,7 @@
 // Changing any value here will churn snapshot baselines — coordinate with
 // the snapshot baseline lock step (plan 8.11).
 
-public import SwiftUI
+internal import SwiftUI
 
 public struct DefaultTheme: Theme {
     public init() {}

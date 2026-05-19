@@ -1,7 +1,7 @@
 // FakeAccountProvider / FakeUserHashKeychain — in-memory seams for
 // AccountMonitor tests (Phase 5.7).
 
-public import Foundation
+internal import Foundation
 public import Persistence
 
 public actor FakeAccountProvider: ICloudAccountProvider {

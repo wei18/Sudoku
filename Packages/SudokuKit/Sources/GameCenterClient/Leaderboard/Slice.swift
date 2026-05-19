@@ -9,7 +9,7 @@
 // §How.3.5. The precondition is enforced here (not in the live loader)
 // so the fake-driven tests cover it.
 
-public import Foundation
+internal import Foundation
 
 public protocol LeaderboardLoader: Sendable {
     func loadSlice(

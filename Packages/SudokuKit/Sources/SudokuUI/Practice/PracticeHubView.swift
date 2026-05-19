@@ -5,7 +5,7 @@
 // draws redact the puzzle-id hint (.redacted(reason: .placeholder)).
 
 public import SwiftUI
-public import SudokuEngine
+internal import SudokuEngine
 
 public struct PracticeHubView: View {
     @Bindable private var viewModel: PracticeHubViewModel

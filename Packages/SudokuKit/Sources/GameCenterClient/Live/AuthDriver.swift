@@ -9,7 +9,7 @@
 // exercised in CI without sandbox accounts — plan.md Phase 10) and makes
 // every state transition + error mapping trivially scriptable.
 
-public import Foundation
+internal import Foundation
 
 public protocol AuthDriver: Sendable {
     /// Run the GameKit auth handshake exactly once. The outcome surfaces
