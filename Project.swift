@@ -28,7 +28,8 @@ let sudokuTarget = Target.target(
     sources: ["App/**/*.swift"],
     resources: [
         "App/Assets.xcassets",
-        "App/Resources/PrivacyInfo.xcprivacy"
+        "App/Resources/PrivacyInfo.xcprivacy",
+        "App/Resources/Localizable.xcstrings"
     ],
     entitlements: .file(path: "App/Sudoku.entitlements"),
     dependencies: [
@@ -41,7 +42,7 @@ let sudokuTarget = Target.target(
 let project = Project(
     name: "Sudoku",
     options: .options(
-        defaultKnownRegions: ["en"],
+        defaultKnownRegions: ["en", "zh-Hant", "ja", "zh-Hans", "es", "th", "ko"],
         developmentRegion: "en"
     ),
     packages: [

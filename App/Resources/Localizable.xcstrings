@@ -1,0 +1,354 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "—" : {
+      "shouldTranslate" : false
+    },
+    "3 puzzles today" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "3 puzzles today" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日 3 題" } }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "關於" } }
+      }
+    },
+    "Account / language" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account / language" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "帳號 / 語言" } }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
+      }
+    },
+    "Clear" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清除" } }
+      }
+    },
+    "Clear cache" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear cache" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清除暫存" } }
+      }
+    },
+    "Completed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已完成" } }
+      }
+    },
+    "Couldn't generate today's puzzle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't generate today's puzzle" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日題目暫無法產生" } }
+      }
+    },
+    "Couldn't load leaderboard." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load leaderboard." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法載入排行榜。" } }
+      }
+    },
+    "Daily" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日" } }
+      }
+    },
+    "Difficulty" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Difficulty" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "難度" } }
+      }
+    },
+    "Digit %lld" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Digit %lld" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "數字 %lld" } }
+      }
+    },
+    "Draw new puzzle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Draw new puzzle" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "抽一題新的" } }
+      }
+    },
+    "Easy" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Easy" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "簡單" } }
+      }
+    },
+    "Elapsed time %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Elapsed time %@" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已用時間 %@" } }
+      }
+    },
+    "Enable Friends to see this list." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enable Friends to see this list." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請允許讀取朋友列表後再查看此榜單。" } }
+      }
+    },
+    "Friends" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Friends" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "朋友" } }
+      }
+    },
+    "Generated puzzles will be re-derived next play. Saved games are not affected." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generated puzzles will be re-derived next play. Saved games are not affected." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "下次遊玩時將重新產生題目。已存進度不受影響。" } }
+      }
+    },
+    "Generator" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generator" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "產生器" } }
+      }
+    },
+    "Global" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Global" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全球" } }
+      }
+    },
+    "Global / friends" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Global / friends" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全球 / 朋友" } }
+      }
+    },
+    "Hard" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hard" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "困難" } }
+      }
+    },
+    "Leaderboard" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leaderboard" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "排行榜" } }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Medium" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "中等" } }
+      }
+    },
+    "Mixed difficulty pool" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mixed difficulty pool" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "混合難度題庫" } }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "暫停" } }
+      }
+    },
+    "Pencil" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pencil" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "鉛筆" } }
+      }
+    },
+    "Practice" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Practice" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "練習" } }
+      }
+    },
+    "Ready to play" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to play" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "準備好了" } }
+      }
+    },
+    "Redo" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Redo" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重做" } }
+      }
+    },
+    "Reset session cache" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset session cache" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重設本機暫存" } }
+      }
+    },
+    "Resume" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "繼續" } }
+      }
+    },
+    "Resume %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume %@" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "繼續 %@" } }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重試" } }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "設定" } }
+      }
+    },
+    "Sign in to Game Center" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請登入 Game Center" } }
+      }
+    },
+    "Sign in to Game Center to compare with others." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center to compare with others." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入 Game Center 以與其他人比較成績。" } }
+      }
+    },
+    "Solved!" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Solved!" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成！" } }
+      }
+    },
+    "Solved in %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Solved in %@" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ 完成" } }
+      }
+    },
+    "Storage" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storage" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "儲存空間" } }
+      }
+    },
+    "Tap to resume" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to resume" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "點擊以繼續" } }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日" } }
+      }
+    },
+    "Try a different difficulty, or come back tomorrow." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try a different difficulty, or come back tomorrow." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請改試其他難度，或明日再來。" } }
+      }
+    },
+    "Try another difficulty" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try another difficulty" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "試試其他難度" } }
+      }
+    },
+    "Undo" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Undo" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "復原" } }
+      }
+    },
+    "Version" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "版本" } }
+      }
+    },
+    "View full leaderboard" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View full leaderboard" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "查看完整排行榜" } }
+      }
+    },
+    "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard." : {
+      "comment" : "NSGameKitFriendListUsageDescription — system prompt when requesting friends authorization.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "數獨會讀取您的 Game Center 朋友列表，以在每日排行榜上顯示您朋友的最佳成績。" } }
+      }
+    },
+    "error.persistence.icloud_unavailable.title" : {
+      "comment" : "Error vocabulary — Persistence iCloud unavailable",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "iCloud unavailable" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "iCloud 暫時無法使用" } }
+      }
+    },
+    "error.persistence.icloud_unavailable.body" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to iCloud in Settings to sync your progress across devices." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請至「設定」登入 iCloud，以便跨裝置同步進度。" } }
+      }
+    },
+    "error.persistence.icloud_unavailable.action" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟設定" } }
+      }
+    },
+    "error.gameCenter.not_authenticated.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請登入 Game Center" } }
+      }
+    },
+    "error.gameCenter.not_authenticated.body" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Submit your time to the leaderboard after signing in." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入後即可將成績上傳至排行榜。" } }
+      }
+    },
+    "error.gameCenter.not_authenticated.action" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟設定" } }
+      }
+    },
+    "error.puzzleStore.generator_failed.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't generate puzzle" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "題目暫無法產生" } }
+      }
+    },
+    "error.puzzleStore.generator_failed.body" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please try a different difficulty." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請改試其他難度。" } }
+      }
+    },
+    "error.puzzleStore.generator_failed.action" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重試" } }
+      }
+    }
+  }
+}
