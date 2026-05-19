@@ -26,19 +26,17 @@ public struct RootView: View {
 
     @ViewBuilder
     private var rootContent: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             if let candidate = viewModel.resumeCandidate {
                 ResumePill(candidate: candidate) {
                     viewModel.resumeTapped()
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 12)
             }
-            HomePlaceholder()
+            HomeView(viewModel: HomeViewModel())
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, 16)
         .background(theme.surface.background.resolved)
-        .navigationTitle("Sudoku")
     }
 
     @ViewBuilder
@@ -95,18 +93,4 @@ struct ResumePill: View {
     }
 }
 
-// MARK: - Home placeholder
-
-/// Phase 8 Part 1 stub. Replaced by `HomeView` in 8.4 (this same commit
-/// chain) — kept here so the RootView snapshots in 8.3 can render before
-/// HomeView lands.
-struct HomePlaceholder: View {
-    @Environment(\.theme) private var theme
-    var body: some View {
-        Text("Sudoku")
-            .font(.largeTitle.weight(.semibold))
-            .foregroundStyle(theme.text.primary.resolved)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
 
