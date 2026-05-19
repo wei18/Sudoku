@@ -16,6 +16,9 @@ let swiftSettings: SettingsDictionary = [
     "SWIFT_STRICT_CONCURRENCY": "complete",
     "SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "YES",
     "SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT": "YES",
+    // Automatic signing. DEVELOPMENT_TEAM is supplied by Tuist/Signing.xcconfig
+    // (gitignored — see Tuist/Signing.xcconfig.example for the template).
+    "CODE_SIGN_STYLE": "Automatic",
 ]
 
 let sudokuTarget = Target.target(
@@ -51,8 +54,8 @@ let project = Project(
     settings: .settings(
         base: swiftSettings,
         configurations: [
-            .debug(name: "Debug"),
-            .release(name: "Release"),
+            .debug(name: "Debug", xcconfig: "Tuist/Signing.xcconfig"),
+            .release(name: "Release", xcconfig: "Tuist/Signing.xcconfig"),
         ]
     ),
     targets: [sudokuTarget],
