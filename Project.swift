@@ -26,7 +26,10 @@ let sudokuTarget = Target.target(
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
     infoPlist: .file(path: "App/Info.plist"),
     sources: ["App/**/*.swift"],
-    resources: ["App/Assets.xcassets"],
+    resources: [
+        "App/Assets.xcassets",
+        "App/Resources/PrivacyInfo.xcprivacy"
+    ],
     entitlements: .file(path: "App/Sudoku.entitlements"),
     dependencies: [
         .package(product: "SudokuUI"),

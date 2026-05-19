@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Sudoku v1 privacy manifest (foundations.md §6, design.md §How.6.3).
+
+         Stance: no IDFA, no PII collection, no third-party SDKs, no in-app
+         tracking. Personal gameplay data lives in the user's own iCloud
+         Private Database — owned by the user, never read by us. Game Center
+         leaderboard/achievement submissions are mediated by Apple's
+         GameKit and follow Apple's documented privacy model.
+
+         We therefore declare:
+           - `NSPrivacyTracking = false`
+           - empty `NSPrivacyTrackingDomains`
+           - empty `NSPrivacyCollectedDataTypes`
+
+         The repo intentionally avoids the four "Required Reason" API
+         categories (UserDefaults, file timestamps, disk space, system
+         boot time) in v1 production code, so `NSPrivacyAccessedAPITypes`
+         is empty. If a transitive dependency starts using one in a
+         future release, declare it here. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array/>
+</dict>
+</plist>
