@@ -1,0 +1,115 @@
+// FakePrivateCKGateway — in-memory `PrivateCKGateway` implementation used
+// by every PersistenceTests case (plan.md Phase 5: live CloudKit deferred
+// to Phase 10).
+//
+// Records every operation it observes so tests can assert on call shape
+// (e.g. "provisioning the zone is idempotent — second call performs zero
+// `modifyRecordZones` operations").
+
+import Foundation
+public import Persistence
+
+public enum FakeCKOperation: Sendable, Equatable, Hashable {
+    case modifyRecordZones
+    case modifySubscriptions
+    case fetch(recordName: String)
+    case save(recordName: String)
+    case delete(recordName: String)
+    case query
+}
+
+public actor FakePrivateCKGateway: PrivateCKGateway {
+
+    public private(set) var operations: [FakeCKOperation] = []
+
+    // MARK: - Storage
+
+    private var zoneExists = false
+    private var subscriptionExists = false
+    private var records: [String: RecordPayload] = [:]
+
+    // MARK: - Failure injection
+
+    public enum FailureMode: Sendable, Equatable {
+        case none
+        case alwaysOnSave(PersistenceError)
+    }
+
+    public var failureMode: FailureMode = .none
+
+    public init() {}
+
+    public func setFailureMode(_ mode: FailureMode) {
+        self.failureMode = mode
+    }
+
+    // MARK: - PrivateCKGateway
+
+    public func provisionZone() async throws {
+        guard !zoneExists else { return }
+        operations.append(.modifyRecordZones)
+        zoneExists = true
+    }
+
+    public func installSubscriptionIfNeeded() async throws {
+        guard !subscriptionExists else { return }
+        operations.append(.modifySubscriptions)
+        subscriptionExists = true
+    }
+
+    public func fetch(recordName: String) async throws -> RecordPayload? {
+        operations.append(.fetch(recordName: recordName))
+        return records[recordName]
+    }
+
+    public func save(_ payload: RecordPayload) async throws {
+        if case .alwaysOnSave(let error) = failureMode {
+            throw error
+        }
+        operations.append(.save(recordName: payload.recordName))
+        records[payload.recordName] = payload
+    }
+
+    public func delete(recordName: String) async throws {
+        operations.append(.delete(recordName: recordName))
+        records.removeValue(forKey: recordName)
+    }
+
+    public func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
+        operations.append(.query)
+        return records.values.filter { Self.matches($0, predicate: predicate) }
+    }
+
+    // MARK: - Test helpers
+
+    /// Reach into the store directly without recording an op. Used by tests
+    /// to seed fixtures.
+    public func seed(_ payload: RecordPayload) {
+        records[payload.recordName] = payload
+    }
+
+    public func recordCount() -> Int { records.count }
+
+    public func resetOperations() { operations.removeAll() }
+
+    // MARK: - Predicate evaluation
+
+    private static func matches(_ payload: RecordPayload, predicate: RecordPredicate) -> Bool {
+        switch predicate {
+        case .all(let type):
+            return payload.recordType == type
+        case let .statusEquals(type, status):
+            guard payload.recordType == type else { return false }
+            if case .string(let value) = payload.fields["status"] {
+                return value == status
+            }
+            return false
+        case .dailyCompletedOn(let dayPrefix):
+            guard payload.recordType == PrivateCKConstants.savedGameRecordType else { return false }
+            guard case .string("daily") = payload.fields["mode"] else { return false }
+            guard case .string("completed") = payload.fields["status"] else { return false }
+            guard case .string(let puzzleId) = payload.fields["puzzleId"] else { return false }
+            return puzzleId.hasPrefix(dayPrefix)
+        }
+    }
+}
