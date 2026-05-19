@@ -42,12 +42,18 @@ let productionTargets: [Target] = [
 // IS the shared testing helpers consumed by these test targets.)
 
 func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
+    // Snapshot baselines are read by pointfreeco/swift-snapshot-testing
+    // directly from the source tree via `#filePath`, so they don't need
+    // to be bundled — but SwiftPM's "unhandled file" detection still flags
+    // them. Exclude `__Snapshots__/` from the test target file scan to
+    // keep `swift test` warning-free.
     .testTarget(
         name: "\(name)Tests",
         dependencies: dependencies + [
             "SudokuKitTesting",
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ],
+        exclude: name == "SudokuUI" ? ["__Snapshots__"] : [],
         swiftSettings: swiftSettings
     )
 }
