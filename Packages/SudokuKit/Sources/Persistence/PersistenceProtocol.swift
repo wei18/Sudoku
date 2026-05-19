@@ -1,0 +1,51 @@
+// PersistenceProtocol — the VM-facing seam for CloudKit Private DB.
+//
+// Per design.md §How.5.4. Stays primitive-string for `mode` / `difficulty`
+// to match the Telemetry seam (Phase 4 deviation): the Persistence target
+// must not pull SudokuEngine's `Difficulty` or any GameMode enum into its
+// public API, so callers convert `.rawValue` once at the call site.
+//
+// All methods are `async throws`; protocol is `Sendable` so existential
+// `any PersistenceProtocol` can cross actor boundaries (Phase 8 ViewModels).
+
+public import Foundation
+public import GameState
+
+public protocol PersistenceProtocol: Sendable {
+    /// Most-recently-modified `status == "inProgress"` SavedGame across all
+    /// modes/difficulties. Used by RootViewModel to show "Resume".
+    func latestInProgress() async throws -> SavedGameSummary?
+
+    /// Load the in-progress SavedGame for `puzzleId`, or seed a fresh one
+    /// from a default GameSession for that puzzle if none exists.
+    func loadOrCreate(
+        puzzleId: String,
+        mode: String,
+        difficulty: String
+    ) async throws -> GameSessionSnapshot
+
+    /// Persist the current snapshot. Debounced upstream by the VM; the
+    /// store itself is idempotent on the same `(puzzleId, mode, difficulty)`.
+    func save(_ snapshot: GameSessionSnapshot) async throws
+
+    /// Flip `status` to `"completed"` for the given summary's record.
+    func markCompleted(_ summary: SavedGameSummary) async throws
+
+    /// Hard-delete a SavedGame (used when the player explicitly abandons).
+    func deleteAbandoned(recordName: String) async throws
+
+    /// puzzleIds of all `mode == "daily" && status == "completed"` records
+    /// for the given UTC date. Seeds GameCenterSink's local dedup cache.
+    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String>
+
+    /// Fetch the PersonalRecord for `(mode, difficulty)`; returns an empty
+    /// record if none exists yet (never throws on first read).
+    func fetchPersonalRecord(
+        mode: String,
+        difficulty: String
+    ) async throws -> PersonalRecord
+
+    /// Upsert. Implementations apply per-field LWW on server conflict
+    /// (§How.6.7) and the "same puzzleId no rescore" dedup (§How.2 末段).
+    func upsertPersonalRecord(_ record: PersonalRecord) async throws
+}
