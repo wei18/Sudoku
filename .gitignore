@@ -9,6 +9,10 @@
 !.env.example
 secrets/
 
+# Apple Developer signing — DEVELOPMENT_TEAM lives in this gitignored xcconfig.
+# Template (committed): Tuist/Signing.xcconfig.example
+Tuist/Signing.xcconfig
+
 # Xcode / build
 DerivedData/
 build/
