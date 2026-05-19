@@ -1,0 +1,190 @@
+// BoardView — 9×9 grid + digit pad + controls + pause overlay.
+//
+// Per docs/designs/05-board.md + design.md §How.5.7 (A11y). NO `.glassEffect`
+// on the board itself (§How.5.1). Mac keyboard: `.focusable()` + `.onKeyPress`
+// for arrows / 1–9 / 0 / delete / `p`; ⌘Z / ⌘⇧Z bound for undo / redo.
+
+public import SwiftUI
+import SudokuEngine
+
+public struct BoardView: View {
+    @Bindable private var viewModel: GameViewModel
+    @Environment(\.theme) private var theme
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @FocusState private var keyboardFocus: Bool
+
+    public init(viewModel: GameViewModel) {
+        self.viewModel = viewModel
+    }
+
+    public var body: some View {
+        VStack(spacing: 16) {
+            header
+            boardWithOverlay
+            DigitPadView(
+                pencilMode: viewModel.pencilMode,
+                canUndo: viewModel.canUndo,
+                canRedo: viewModel.canRedo,
+                onDigit: { digit in Task { await placeOrToggle(digit) } },
+                onClear: { Task { await viewModel.placeDigit(nil) } },
+                onTogglePencil: { viewModel.togglePencil() },
+                onUndo: { Task { await viewModel.undo() } },
+                onRedo: { Task { await viewModel.redo() } }
+            )
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.surface.background.resolved)
+        .focusable()
+        .focused($keyboardFocus)
+        .onAppear { keyboardFocus = true }
+        .onKeyPress(phases: .down, action: handleKeyPress)
+        .background(undoRedoShortcuts)
+    }
+
+    // MARK: - Layout
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Text(LocalizedStringKey(viewModel.identity.difficulty.capitalized))
+                .font(.headline)
+                .foregroundStyle(theme.text.primary.resolved)
+            Spacer()
+            Label(elapsedLabel, systemImage: "timer")
+                .monospacedDigit()
+                .foregroundStyle(theme.text.secondary.resolved)
+                .accessibilityLabel("Elapsed time \(elapsedLabel)")
+            Button {
+                Task {
+                    if viewModel.isPaused {
+                        await viewModel.resume()
+                    } else {
+                        await viewModel.pause()
+                    }
+                }
+            } label: {
+                Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+            }
+            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+        }
+    }
+
+    private var boardWithOverlay: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let cellSide = side / CGFloat(Board.dimension)
+            ZStack {
+                VStack(spacing: 0) {
+                    ForEach(0..<Board.dimension, id: \.self) { row in
+                        HStack(spacing: 0) {
+                            ForEach(0..<Board.dimension, id: \.self) { col in
+                                cell(row: row, column: col, side: cellSide)
+                            }
+                        }
+                    }
+                }
+                .frame(width: side, height: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if viewModel.isPaused {
+                    PauseOverlayView(onResume: {
+                        Task { await viewModel.resume() }
+                    })
+                    .frame(width: side, height: side)
+                }
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+    }
+
+    private func cell(row: Int, column: Int, side: CGFloat) -> some View {
+        let index = Board.index(row: row, column: column)
+        let digit = viewModel.board.digit(atIndex: index)
+        let isGiven = viewModel.board.givenMask[index]
+        let isSelected = viewModel.selection.map { $0.row == row && $0.column == column } ?? false
+        let isError = viewModel.errorIndices.contains(index)
+        let noteMask = viewModel.notes.masks[index]
+        return Button {
+            viewModel.select(row: row, column: column)
+        } label: {
+            BoardCellView(
+                row: row,
+                column: column,
+                digit: digit,
+                isGiven: isGiven,
+                isSelected: isSelected,
+                isError: isError,
+                isPencilNotes: digit == nil,
+                noteMask: noteMask,
+                side: side
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Keyboard
+
+    private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
+        // Arrow keys: move focus.
+        switch keyPress.key {
+        case .leftArrow:
+            viewModel.moveSelection(rowDelta: 0, columnDelta: -1); return .handled
+        case .rightArrow:
+            viewModel.moveSelection(rowDelta: 0, columnDelta: 1); return .handled
+        case .upArrow:
+            viewModel.moveSelection(rowDelta: -1, columnDelta: 0); return .handled
+        case .downArrow:
+            viewModel.moveSelection(rowDelta: 1, columnDelta: 0); return .handled
+        case .delete:
+            Task { await viewModel.placeDigit(nil) }; return .handled
+        default:
+            break
+        }
+        // Character keys.
+        let chars = keyPress.characters
+        if chars == "p" || chars == "P" {
+            viewModel.togglePencil()
+            return .handled
+        }
+        if chars == "0" {
+            Task { await viewModel.placeDigit(nil) }
+            return .handled
+        }
+        if let scalar = chars.unicodeScalars.first,
+           let digit = Int(String(scalar)),
+           (1...9).contains(digit) {
+            Task { await placeOrToggle(digit) }
+            return .handled
+        }
+        return .ignored
+    }
+
+    private func placeOrToggle(_ digit: Int) async {
+        if viewModel.pencilMode {
+            await viewModel.toggleNote(digit)
+        } else {
+            await viewModel.placeDigit(digit)
+        }
+    }
+
+    @ViewBuilder
+    private var undoRedoShortcuts: some View {
+        // Hidden buttons that own the ⌘Z / ⌘⇧Z bindings (Mac App menu picks
+        // them up automatically; iPad external keyboards inherit).
+        Group {
+            Button("Undo") { Task { await viewModel.undo() } }
+                .keyboardShortcut("z", modifiers: .command)
+            Button("Redo") { Task { await viewModel.redo() } }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
+        .hidden()
+        .accessibilityHidden(true)
+    }
+
+    private var elapsedLabel: String {
+        let total = viewModel.elapsedSeconds
+        let minutes = total / 60
+        let seconds = total % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
