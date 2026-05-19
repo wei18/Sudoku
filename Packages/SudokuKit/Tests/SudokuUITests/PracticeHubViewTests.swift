@@ -79,8 +79,12 @@ struct PracticeHubViewTests {
 
     @Test func snapshotIdleIPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
-        let view = PracticeHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-idle")
         }
@@ -89,8 +93,12 @@ struct PracticeHubViewTests {
     @Test func snapshotShimmerIPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         viewModel.setLoadingStateForTesting(.drawingShimmer)
-        let view = PracticeHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-shimmer")
         }
@@ -100,8 +108,12 @@ struct PracticeHubViewTests {
         let provider = FakePuzzleProvider()
         let viewModel = PracticeHubViewModel(provider: provider)
         await viewModel.drawPuzzle()
-        let view = PracticeHubView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-drawn")
         }

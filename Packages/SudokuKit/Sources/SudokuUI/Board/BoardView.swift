@@ -70,6 +70,10 @@ public struct BoardView: View {
     }
 
     private var boardWithOverlay: some View {
+        // GeometryReader reports the offered size to its children but takes
+        // the full offered frame for its own layout — so we read the offered
+        // box here, compute the square `side`, and explicitly size both the
+        // grid and the overlay to that square.
         GeometryReader { geo in
             let side = min(geo.size.width, geo.size.height)
             let cellSide = side / CGFloat(Board.dimension)
@@ -84,7 +88,6 @@ public struct BoardView: View {
                     }
                 }
                 .frame(width: side, height: side)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if viewModel.isPaused {
                     PauseOverlayView(onResume: {
@@ -93,6 +96,10 @@ public struct BoardView: View {
                     .frame(width: side, height: side)
                 }
             }
+            // Centre the square grid within the GR's offered rectangle so
+            // the board sits inline with the surrounding header/digit pad
+            // padding instead of sticking to the leading edge.
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
         }
         .aspectRatio(1, contentMode: .fit)
     }

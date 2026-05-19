@@ -25,6 +25,10 @@ public final class CompletionViewModel {
     public var path: [AppRoute] = []
 
     private let gameCenter: any GameCenterClient
+    /// Idempotency latch for `.task` — once `bootstrap()` has resolved (or
+    /// the state was set via the testing seam) we don't re-enter the fetch
+    /// path on subsequent SwiftUI lifecycle ticks.
+    private var hasBootstrapped = false
 
     public init(
         puzzleId: String,
@@ -42,9 +46,23 @@ public final class CompletionViewModel {
     /// fetch. Use one of the static factories instead of `bootstrap()`.
     public func setStateForTesting(_ state: CompletionState) {
         self.state = state
+        self.hasBootstrapped = true
+    }
+
+    /// User-triggered retry from the `.failed` block. Clears the idempotency
+    /// latch so `bootstrap()` will re-enter the fetch path exactly once more.
+    public func retry() async {
+        hasBootstrapped = false
+        await bootstrap()
     }
 
     public func bootstrap() async {
+        // Skip if a prior call (or the testing seam) already settled state.
+        // Without this guard the `.task` re-entry from CompletionView would
+        // overwrite `.loaded` / `.unauthenticated` / `.failed` back to
+        // `.loading` on every view-lifecycle tick.
+        guard !hasBootstrapped else { return }
+        hasBootstrapped = true
         state = .loading
         do {
             let slice = try await gameCenter.fetchLeaderboardSlice(

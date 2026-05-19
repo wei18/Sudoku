@@ -130,7 +130,7 @@ public struct CompletionView: View {
             Text("Couldn't load leaderboard.")
                 .foregroundStyle(theme.text.primary.resolved)
             Button {
-                Task { await viewModel.bootstrap() }
+                Task { await viewModel.retry() }
             } label: {
                 Label("Retry", systemImage: "arrow.clockwise")
             }

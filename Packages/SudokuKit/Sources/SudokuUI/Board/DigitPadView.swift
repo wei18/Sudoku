@@ -60,13 +60,15 @@ struct DigitPadView: View {
     }
 
     private var digitRow: some View {
+        // Each digit shares the available horizontal width equally so the
+        // 9-button row never exceeds the parent at iPhone compact widths.
         HStack(spacing: 6) {
             ForEach(1...9, id: \.self) { digit in
                 Button {
                     onDigit(digit)
                 } label: {
                     Text("\(digit)")
-                        .frame(minWidth: 30, minHeight: 44)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Digit \(digit)")

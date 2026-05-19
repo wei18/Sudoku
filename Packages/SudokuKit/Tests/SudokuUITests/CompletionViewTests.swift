@@ -39,8 +39,12 @@ struct CompletionViewTests {
     @Test func snapshot_authenticatedLoaded_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.loaded(Self.sampleSlice))
-        let view = CompletionView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            CompletionView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-loaded")
         }
@@ -50,10 +54,13 @@ struct CompletionViewTests {
         // zh-TW locale variant for hero copy.
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.unauthenticated)
-        let view = CompletionView(viewModel: viewModel)
-            .preferredColorScheme(.light)
-            .environment(\.locale, .init(identifier: "zh-Hant"))
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            CompletionView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            locale: .init(identifier: "zh-Hant"),
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-unauthenticated-zhTW")
         }
@@ -62,8 +69,12 @@ struct CompletionViewTests {
     @Test func snapshot_fetchFailed_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.failed("network offline"))
-        let view = CompletionView(viewModel: viewModel).preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            CompletionView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed")
         }

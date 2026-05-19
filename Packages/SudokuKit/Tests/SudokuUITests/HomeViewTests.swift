@@ -29,18 +29,24 @@ struct HomeViewTests {
     }
 
     @Test func snapshotIPhoneLight() {
-        let view = HomeView(viewModel: HomeViewModel())
-            .preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone)
+        let host = hostingView(
+            HomeView(viewModel: HomeViewModel()),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light")
         }
     }
 
     @Test func snapshotMacLight() {
-        let view = HomeView(viewModel: HomeViewModel())
-            .preferredColorScheme(.light)
-        let host = hostingView(view, size: SnapshotLayouts.mac)
+        let host = hostingView(
+            HomeView(viewModel: HomeViewModel()),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "HomeView-Mac-light")
         }
