@@ -34,7 +34,7 @@ For each View:
 - Architecture / state machines / View map → `docs/design.md §How.5`
 - Module / target boundaries → `docs/foundations.md §2`
 - Swift 6 / Sendable / `@MainActor` rules → `docs/foundations.md §1` + skill `swift6-concurrency`
-- Snapshot baseline (≥ 18 images; subject to revision — see `docs/design.md §How.5.8`)
+- Snapshot baseline (25 images; locked at plan.md §8.11 — see `docs/design.md §How.5.8`)
 - L10n hook policy → `docs/design.md §How.5.6` + skill `ai-translated-localization`
 - A11y baseline → `docs/design.md §How.5.7` + `design-system.md` (this folder)
 
