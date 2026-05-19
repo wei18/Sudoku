@@ -1,0 +1,135 @@
+// Config — single-source-of-truth for ASCRegister content.
+//
+// Mirrors design.md §How.3.1 (3 leaderboards) and §How.3.2 (8 achievements,
+// 550 total points). IDs MUST stay byte-equal to:
+//   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
+//   - GameCenterClient/GameCenterSink.swift  (achievement prefix)
+//   - GameCenterClient/AchievementEvaluator.swift (8 short IDs emitted)
+//
+// ConfigConsistencyTests enforces that equality. If you change an ID here
+// you MUST change it in the production target — and bump the leaderboard
+// `.v1` suffix per §How.4.5 if the generator version changed.
+
+// swiftlint:disable orphaned_doc_comment trailing_comma
+
+import Foundation
+
+internal enum Config {
+
+    // MARK: - Leaderboards (§How.3.1)
+
+    /// Bundle-id-rooted prefix shared by all 3 daily leaderboards.
+    /// Must equal `LeaderboardIDs.dailyPrefix`.
+    internal static let leaderboardPrefix = "com.wei18.sudoku.leaderboard"
+    /// Generator family suffix. Must equal `LeaderboardIDs.versionSuffix`.
+    internal static let leaderboardVersionSuffix = "v1"
+
+    /// 2-hour upper bound for valid completion times, per §How.3.1 score range.
+    internal static let leaderboardScoreMaxMilliseconds: Int64 = 7_200_000
+
+    internal static let leaderboards: [LeaderboardConfig] = [
+        LeaderboardConfig(
+            id: "\(leaderboardPrefix).easy.daily.\(leaderboardVersionSuffix)",
+            referenceName: "Daily Easy v1",
+            difficulty: "easy"
+        ),
+        LeaderboardConfig(
+            id: "\(leaderboardPrefix).medium.daily.\(leaderboardVersionSuffix)",
+            referenceName: "Daily Medium v1",
+            difficulty: "medium"
+        ),
+        LeaderboardConfig(
+            id: "\(leaderboardPrefix).hard.daily.\(leaderboardVersionSuffix)",
+            referenceName: "Daily Hard v1",
+            difficulty: "hard"
+        )
+    ]
+
+    internal static var allLeaderboardIds: [String] {
+        leaderboards.map(\.id)
+    }
+
+    // MARK: - Achievements (§How.3.2)
+
+    /// Prefix applied at submission time by `GameCenterSink`. Must equal
+    /// the `achievementPrefix` literal in GameCenterSink.swift.
+    internal static let achievementPrefix = "com.wei18.sudoku.achievement."
+
+    /// 8 v1 achievements, total = 550 points (§How.3.2). Order matches
+    /// the design.md table top-to-bottom for review readability.
+    internal static let achievements: [AchievementConfig] = [
+        AchievementConfig(shortId: "first_puzzle", points: 10, isHidden: false),
+        AchievementConfig(shortId: "daily.complete_one", points: 20, isHidden: false),
+        AchievementConfig(shortId: "daily.streak_3", points: 50, isHidden: false),
+        AchievementConfig(shortId: "daily.streak_7", points: 100, isHidden: false),
+        AchievementConfig(shortId: "practice.complete_10", points: 30, isHidden: false),
+        AchievementConfig(shortId: "practice.complete_100", points: 100, isHidden: false),
+        AchievementConfig(shortId: "hard.master", points: 150, isHidden: false),
+        AchievementConfig(shortId: "daily.sweep", points: 90, isHidden: false)
+    ]
+
+    internal static var allAchievementShortIds: [String] {
+        achievements.map(\.shortId)
+    }
+
+    internal static var allAchievementFullIds: [String] {
+        achievements.map { achievementPrefix + $0.shortId }
+    }
+
+    internal static var totalAchievementPoints: Int {
+        achievements.reduce(0) { $0 + $1.points }
+    }
+}
+
+// MARK: - Value types
+
+internal struct LeaderboardConfig: Sendable, Equatable {
+    internal let id: String
+    /// Internal reference name (not localized; visible only in ASC).
+    internal let referenceName: String
+    /// "easy" / "medium" / "hard" — used to look up `gc.leaderboard.<d>.daily.title`.
+    internal let difficulty: String
+
+    /// Score format type for ASC. mm:ss.SSS time format.
+    // UNCONFIRMED: ASC API exact enum value for "mm:ss.SSS" elapsed-time score
+    // format. Candidates from public docs: `INTEGER_MILLISECONDS_FORMATTED_AS_TIME`
+    // or `ELAPSED_TIME_MILLISECONDS`. Resolve from a real `GET
+    // /v1/gameCenterLeaderboards/{id}` response before `apply`.
+    internal var scoreFormatType: String { "INTEGER_MILLISECONDS_FORMATTED_AS_TIME" }
+
+    /// Low-to-high (ascending = better), per §How.3.1.
+    internal var sortOrder: String { "ASCENDING" }
+
+    /// Recurring daily, UTC 00:00 reset.
+    // UNCONFIRMED: ASC API nesting shape for `recurrenceRule` / `recurrenceStartDate`
+    // / `recurrenceDuration`. Resolve from a real GET response.
+    internal var recurrenceDurationDays: Int { 1 }
+}
+
+internal struct AchievementConfig: Sendable, Equatable {
+    /// Short ID emitted by `AchievementEvaluator` (no prefix).
+    internal let shortId: String
+    /// GC points (sum across all 8 = 550).
+    internal let points: Int
+    /// All v1 achievements are visible (§How.3.2: "皆 visible").
+    internal let isHidden: Bool
+
+    /// Full ASC achievement ID (with prefix).
+    internal var fullId: String { Config.achievementPrefix + shortId }
+
+    /// Localization keys (mirrored in `Strings/gc-strings.xcstrings.patch`).
+    internal var titleKey: String { "gc.achievement.\(shortId).title" }
+    internal var descriptionKey: String { "gc.achievement.\(shortId).description" }
+    internal var unearnedDescriptionKey: String { "gc.achievement.\(shortId).unearnedDescription" }
+
+    /// Progress percent step (1 = report whole percents; 100 = boolean).
+    /// Per §How.3.2: quantitative ones report percent; streak/sweep are boolean.
+    internal var stepCount: Int {
+        switch shortId {
+        case "practice.complete_10", "practice.complete_100", "hard.master":
+            return 100
+        default:
+            return 1 // boolean: 0 or 100
+        }
+    }
+}

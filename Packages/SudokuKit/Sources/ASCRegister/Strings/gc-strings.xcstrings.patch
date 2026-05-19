@@ -1,0 +1,336 @@
+// gc-strings.xcstrings.patch — proposed merge fragment for
+// App/Resources/Localizable.xcstrings.
+//
+// MANUAL MERGE INSTRUCTIONS:
+//   1. Open App/Resources/Localizable.xcstrings.
+//   2. Copy each top-level entry from the `strings` object below into the
+//      existing file's `strings` object (alphabetic order is preserved by
+//      Xcode on save — no need to sort).
+//   3. Do NOT touch `sourceLanguage` / `version`.
+//   4. After merge: run `ASCRegister validate --xcstrings <path>`. It will
+//      confirm en + zh-Hant coverage for all 27 gc.* keys.
+//
+// Locale coverage in this fragment:
+//   - en      → filled (source language, per design.md §How.3.1 / §How.3.2)
+//   - zh-Hant → filled (per design.md §How.3.1 table; achievements drafted
+//               to match the §How.3.2 trigger semantics)
+//   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
+//     translation-agent flow (foundations.md §L10n).
+//
+// File extension `.xcstrings.patch` is non-standard; Xcode will NOT try to
+// parse this as a string catalog. The wrapping `.txt`-style header comments
+// above are stripped from the JSON object below — everything from the
+// opening `{` to the matching closing `}` is valid JSON.
+//
+// Total: 27 keys × 7 locales = 189 string units. 27 × 2 = 54 filled,
+// 27 × 5 = 135 marked <TRANSLATE>.
+
+{
+  "strings" : {
+    "gc.leaderboard.easy.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Easy" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日簡單" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.leaderboard.medium.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Medium" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日中等" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.leaderboard.hard.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Hard" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日困難" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.first_puzzle.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "First Puzzle" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首戰告捷" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.first_puzzle.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed your first Sudoku puzzle." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成第一道數獨。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.first_puzzle.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete any Sudoku puzzle to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任意一道數獨即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.daily.complete_one.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Debut" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日初體驗" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.complete_one.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed your first Daily puzzle." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首次完成每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.complete_one.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Finish any Daily puzzle to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一每日挑戰即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.daily.streak_3.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "3-Day Streak" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "三日連勝" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_3.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed a Daily puzzle on 3 consecutive days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 3 天完成每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_3.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete a Daily puzzle on 3 consecutive UTC days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 3 個 UTC 日各完成至少 1 道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.daily.streak_7.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "7-Day Streak" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "七日連勝" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_7.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed a Daily puzzle on 7 consecutive days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 7 天完成每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_7.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete a Daily puzzle on 7 consecutive UTC days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 7 個 UTC 日各完成至少 1 道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.practice.complete_10.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Practice Apprentice" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "練習新手" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.practice.complete_10.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed 10 Practice puzzles." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成 10 道練習。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.practice.complete_10.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete 10 Practice puzzles across any difficulty." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於任意難度的練習模式累積完成 10 題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.practice.complete_100.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Practice Veteran" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "練習老手" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.practice.complete_100.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed 100 Practice puzzles." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成 100 道練習。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.practice.complete_100.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete 100 Practice puzzles across any difficulty." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於任意難度的練習模式累積完成 100 題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.hard.master.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Hard Master" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "困難大師" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.hard.master.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed 25 Hard puzzles." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成 25 道困難題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.hard.master.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete 25 Hard puzzles across Daily and Practice." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於每日與練習模式累積完成 25 道困難題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.daily.sweep.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Sweep" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日全收" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.sweep.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed all 3 Daily puzzles on the same day." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於同一日完成 3 道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.sweep.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete Easy, Medium, and Hard Daily puzzles on the same UTC day." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於同一 UTC 日完成簡單、中等、困難三道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    }
+  }
+}
