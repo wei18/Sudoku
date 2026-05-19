@@ -4,7 +4,7 @@
 // snapshot restore) funnel illegal-state errors through this enum so that
 // callers (Phase 8 ViewModel) can pattern-match a single error type.
 
-public import SudokuEngine
+internal import SudokuEngine
 
 public enum GameSessionError: Error, Sendable, Equatable {
     /// State-machine violation per `GameSessionStatus.isLegal`.

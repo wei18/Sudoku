@@ -9,7 +9,7 @@
 // pencilled in". Bit 0 unused.
 
 import Foundation
-public import SudokuEngine
+internal import SudokuEngine
 
 public struct NotesGrid: Sendable, Equatable, Hashable, Codable {
 

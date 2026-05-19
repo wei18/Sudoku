@@ -11,7 +11,7 @@
 // current file ships authentication only; score/achievement methods throw
 // `.notAuthenticated` as a deliberate placeholder until those steps land.
 
-public import Foundation
+internal import Foundation
 
 public actor LiveGameCenterClient: GameCenterClient {
 
@@ -60,7 +60,7 @@ public actor LiveGameCenterClient: GameCenterClient {
         guard observerTask == nil else { return }
         observerTask = Task { [authDriver] in
             for await outcome in await authDriver.observeStateChanges() {
-                await self.handleObservedOutcome(outcome)
+                self.handleObservedOutcome(outcome)
             }
         }
     }
