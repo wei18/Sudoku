@@ -85,6 +85,19 @@ public struct OSLogSink: TelemetrySink {
                 message: "errorOccurred source=\(source) code=\(code) message=\(message)",
                 privacy: .privateValue
             )
+        case .gameSaved(let puzzleId):
+            // puzzleId is .publicValue (deterministic, non-PII).
+            logger.log(
+                level: .info,
+                message: "gameSaved puzzleId=\(puzzleId)",
+                privacy: .publicValue
+            )
+        case .gameSaveFailed(let puzzleId, let reason):
+            logger.log(
+                level: .error,
+                message: "gameSaveFailed puzzleId=\(puzzleId) reason=\(reason)",
+                privacy: .publicValue
+            )
         case .metricKitReport(let report):
             logger.log(
                 level: .info,

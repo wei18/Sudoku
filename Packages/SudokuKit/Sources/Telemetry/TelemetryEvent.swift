@@ -29,5 +29,11 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     case puzzleCompleted(puzzleId: String, mode: String, difficulty: String, elapsedSeconds: Int)
     case sessionAbandoned(puzzleId: String, mode: String, difficulty: String, elapsedSeconds: Int)
     case errorOccurred(source: String, code: String, message: String)
+    /// Successful Persistence save (Phase 5.4). Emitted after a SavedGame
+    /// record has been persisted to CloudKit Private DB.
+    case gameSaved(puzzleId: String)
+    /// Failed Persistence save. `reason` is a short stable string (e.g.
+    /// `"quotaExceeded"` / `"underlying"`) — not user-facing copy.
+    case gameSaveFailed(puzzleId: String, reason: String)
     case metricKitReport(MetricReport)
 }
