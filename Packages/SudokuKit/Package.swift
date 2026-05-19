@@ -14,7 +14,7 @@ let swiftSettings: [SwiftSetting] = [
 let productionTargets: [Target] = [
     .target(name: "SudokuEngine", swiftSettings: swiftSettings),
     .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
-    .target(name: "PuzzleStore", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
+    .target(name: "PuzzleStore", dependencies: ["SudokuEngine", "Telemetry"], swiftSettings: swiftSettings),
     .target(name: "Persistence", dependencies: ["GameState", "Telemetry"], swiftSettings: swiftSettings),
     .target(name: "GameCenterClient", dependencies: ["Telemetry"], swiftSettings: swiftSettings),
     // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:

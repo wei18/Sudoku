@@ -12,10 +12,13 @@
 
 public import Foundation
 public import SudokuEngine
+public import Telemetry
 
 public actor PuzzleStore: PuzzleProviderProtocol {
     private let generator: any PuzzleGenerating
     private let generatorVersion: GeneratorVersion
+    private let saltSource: PracticeSalt
+    private let logger: any LoggerProtocol
 
     /// In-memory cache of `fetchDailyTrio`. Keyed by `(utcDayString,
     /// generatorVersion)` so a generator version bump (§How.4.5) invalidates
@@ -31,10 +34,19 @@ public actor PuzzleStore: PuzzleProviderProtocol {
 
     public init(
         generator: any PuzzleGenerating = LivePuzzleGenerating(),
-        generatorVersion: GeneratorVersion = .v1
+        generatorVersion: GeneratorVersion = .v1,
+        saltSource: PracticeSalt = PracticeSalt(),
+        logger: (any LoggerProtocol)? = nil
     ) {
         self.generator = generator
         self.generatorVersion = generatorVersion
+        self.saltSource = saltSource
+        // Default logger: `OSLogSink`'s live adapter. We don't construct an
+        // OSLoggerAdapter directly here (it's internal to Telemetry) — instead
+        // we re-use the public `OSLogSink(subsystem:category:)` path's
+        // adapter by going through a small inline init. For the default case
+        // we accept nil and treat it as "no logging" via a private no-op.
+        self.logger = logger ?? NoOpLogger()
     }
 
     // MARK: - PuzzleProviderProtocol
@@ -57,10 +69,14 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     }
 
     public func fetchPracticePool(difficulty: Difficulty) async throws -> PuzzleEnvelope {
-        // Salt sourcing + logging deferred to step 6.4. For step 6.2 we use a
-        // system-entropy UInt64 directly so the "distinct salts → distinct ids"
-        // contract is observable.
-        let salt = UInt64.random(in: 0...UInt64.max)
+        let salt = saltSource.next()
+        // Log salt `.public` per §How.4.1 末段 — deterministic content, no PII,
+        // enables "player reports a hard puzzle" debugging.
+        logger.log(
+            level: .info,
+            message: "PracticeSalt salt=0x\(String(salt, radix: 16, uppercase: true)) difficulty=\(difficulty.rawValue)",
+            privacy: .publicValue
+        )
         let seed = practiceSeed(salt: salt, difficulty: difficulty)
         let puzzle = try runGenerator(seed: seed, difficulty: difficulty)
         let identity = PuzzleIdentity.practice(salt: salt, difficulty: difficulty)
@@ -259,6 +275,16 @@ extension CrockfordBase32 {
         }
         return result
     }
+}
+
+// MARK: - Default logger
+
+/// Default logger when callers don't inject one. Production composition is
+/// expected to inject `OSLogSink`'s adapter via the `logger:` parameter; the
+/// no-op keeps the default path zero-cost when telemetry isn't wired up
+/// (e.g. command-line / unit tests that don't care).
+private struct NoOpLogger: LoggerProtocol {
+    func log(level: LogLevel, message: String, privacy: LogPrivacy) {}
 }
 
 // Legacy anchor: kept so older test imports of `moduleAnchor` keep compiling
