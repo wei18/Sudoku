@@ -30,10 +30,40 @@ public struct PuzzleGenerator: Sendable {
         difficulty: Difficulty,
         version: GeneratorVersion
     ) throws -> Puzzle {
+        // Reseeding loop preserved verbatim: each attempt gets a fresh
+        // SplitMix64(seed: seed + attempt). Per-attempt work is delegated
+        // to the RNG-injected seam below (which itself runs a single attempt
+        // when called this way — `retryBudget = 1`).
         for attempt in 0..<retryBudget {
             let attemptSeed = seed &+ UInt64(attempt)
             var rng = SplitMix64(seed: attemptSeed)
+            if let puzzle = try? generate(
+                rng: &rng,
+                difficulty: difficulty,
+                version: version,
+                seedTagForRecord: seed,
+                retries: 1
+            ) {
+                return puzzle
+            }
+        }
+        throw GeneratorError.exhausted
+    }
 
+    /// RNG-injected seam. Runs up to `retries` attempts against the provided
+    /// RNG (which advances continuously — no internal reseeding). The returned
+    /// `Puzzle.seed` carries `seedTagForRecord` verbatim; callers using this
+    /// seam directly may pass any tag they like (0 in tests is fine).
+    ///
+    /// Throws `GeneratorError.exhausted` if no attempt produces a valid puzzle.
+    public static func generate<RNG: DeterministicRNG>(
+        rng: inout RNG,
+        difficulty: Difficulty,
+        version: GeneratorVersion,
+        seedTagForRecord: UInt64,
+        retries: Int = retryBudget
+    ) throws -> Puzzle {
+        for _ in 0..<retries {
             // 1. Solve a full grid via randomized backtracking.
             var solved = Board()
             guard fillSolved(&solved, &rng) else {
@@ -71,7 +101,7 @@ public struct PuzzleGenerator: Sendable {
                 solution: solved,
                 difficulty: difficulty,
                 generatorVersion: version,
-                seed: seed
+                seed: seedTagForRecord
             )
         }
         throw GeneratorError.exhausted
@@ -81,7 +111,7 @@ public struct PuzzleGenerator: Sendable {
 
     /// Fill `board` (assumed empty or partially filled) to a complete valid Sudoku
     /// using randomized digit ordering driven by `rng`. Returns true on success.
-    private static func fillSolved(_ board: inout Board, _ rng: inout SplitMix64) -> Bool {
+    private static func fillSolved<RNG: DeterministicRNG>(_ board: inout Board, _ rng: inout RNG) -> Bool {
         let grid = CandidateGrid(board: board)
         var chosenIdx = -1
         var chosenCount = 10
@@ -139,10 +169,10 @@ public struct PuzzleGenerator: Sendable {
     /// strict subset of the techniques in §How.4.4), without paying the cost
     /// of a full DFS uniqueness check at every step. Per-difficulty final
     /// validation runs once at the call site.
-    private static func progressivelyMask(
+    private static func progressivelyMask<RNG: DeterministicRNG>(
         solved: Board,
         difficulty: Difficulty,
-        rng: inout SplitMix64
+        rng: inout RNG
     ) -> Board {
         var indices: [Int] = Array(0..<Board.cellCount)
         rng.shuffleInPlace(&indices)
