@@ -634,11 +634,11 @@ Acceptance: 2 behavior tests green.
 Skills: `swiftui-expert-skill`.
 Depends on: 8.4, Phase 5, Phase 7.
 
-### 8.11 Snapshot baseline lock (21 images)
+### 8.11 Snapshot baseline lock (25 images)
 
 Tests: N/A (artifact is acceptance).
-Implementation: verify `__Snapshots__/` contains exactly 21 PNGs per §How.5.8 matrix; commit images.
-Acceptance: `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21; all `SudokuUITests` green on PR CI.
+Implementation: verify `__Snapshots__/` contains exactly 25 PNGs. The §How.5.8 matrix lists 21 (BoardView 12 + DailyHubView 3 + PracticeHubView 3 + CompletionView 3); steps 8.3 (RootView 2) and 8.4 (HomeView 2) record 4 additional baselines so the navigation root + home composition is also gated. Total: 12 + 3 + 3 + 3 + 2 + 2 = 25.
+Acceptance: `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 25; all `SudokuUITests` green on PR CI.
 Skills: (defaults only).
 Depends on: 8.3–8.10.
 
@@ -869,7 +869,7 @@ Each phase is "done" only when every command below exits 0 / every checklist is 
 
 ### Phase 8
 - `swift test --filter SudokuUITests` → green.
-- `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 21.
+- `git ls-files Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ | wc -l` = 25 (per amended §8.11).
 - No `import CloudKit` / `import GameKit` anywhere in `Sources/SudokuUI/`.
 
 ### Phase 9
