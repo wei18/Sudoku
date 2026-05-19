@@ -1,8 +1,8 @@
 # Sudoku v1 — Implementation Plan
 
-Status: **DRAFT** — awaiting first execution.
-Last updated: 2026-05-17
-Total phases: **10**; total steps: **63**.
+Status: **EXECUTED** — Phases 0–9 complete (2026-05-17 → 2026-05-19); Phase 10 (manual ASC + TestFlight + signing) remains.
+Last updated: 2026-05-19
+Total phases: **11** (Phase 0–10); total steps: **67**.
 
 This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. **Implementation lives in this same repo** (originally framed as a sibling `Sudoku/` repo; collapsed into the spec repo per 2026-05-17 decision). All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / future `Packages/` sit).
 
@@ -653,9 +653,10 @@ Wires the App target, ships PrivacyInfo, seeds the localization catalog.
 Tests:
 - `CompositionTests.swift`: `liveCompositionWiresAllProtocols`; `previewCompositionUsesFakes`; `testsCompositionUsesFakes`.
 Implementation:
-- `App/SudokuApp.swift`: per §How.1.
-- `App/AppComposition.swift`: three factory methods.
-- `App/CompositionRoot/Live.swift`, `Preview.swift`, `Tests.swift`: wire concrete impls.
+- `App/SudokuApp.swift`: per §How.1 — imports `AppComposition` + `SudokuUI` only.
+- `Packages/SudokuKit/Sources/AppComposition/AppComposition.swift`: `@MainActor` struct + `live()` / `preview()` / `tests()` factory methods. Promoted from raw `App/` files to a SwiftPM target so `swift test` can reach the DI wiring (Phase 9 decision; see `meetings/2026-05-19_phase-9-app-wiring.md`).
+- `Packages/SudokuKit/Sources/AppComposition/Live.swift`, `Preview.swift`: wire concrete impls.
+- `Packages/SudokuKit/Sources/Persistence/LivePersistence.swift`: public live façade composing the module-internal stores (`SavedGameStore`, `PersonalRecordStore`, `LivePrivateCKGateway`). Originally planned at `App/CompositionRoot/LivePersistence.swift`; moved into the Persistence module because the composed stores are `internal` (Phase 9 decision).
 Acceptance: 3 green; App launches in iPhone + Mac sims.
 Skills: `swiftpm-modularization`.
 Depends on: Phase 8.
