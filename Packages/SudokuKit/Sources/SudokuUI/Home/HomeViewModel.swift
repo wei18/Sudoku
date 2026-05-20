@@ -36,25 +36,34 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
 @MainActor
 @Observable
 public final class HomeViewModel {
-    /// Local fallback path — used when no external binding is supplied
-    /// (previews, unit tests, AppComposition's standalone factory). When the
-    /// owning view (e.g. `RootView`) hoists its own `[AppRoute]`, it passes
-    /// a `Binding` via `init(path:)` and `select(_:)` mutates THAT binding,
-    /// so the same array drives `NavigationStack`.
-    public var path: [AppRoute] = []
+    /// Private fallback storage used only when no external binding is
+    /// supplied (previews / unit tests). When `RootView` hoists its own
+    /// `[AppRoute]` and passes a `Binding` via `init(path:)`, this stays
+    /// empty and `path` reads/writes through `externalPath` instead.
+    private var localPath: [AppRoute] = []
 
     @ObservationIgnored
     private let externalPath: Binding<[AppRoute]>?
+
+    /// Single public view of the navigation path. Routes to the external
+    /// binding when one was injected; otherwise falls back to the local
+    /// stub array. Callers do not need to know which mode is active.
+    public var path: [AppRoute] {
+        get { externalPath?.wrappedValue ?? localPath }
+        set {
+            if let externalPath {
+                externalPath.wrappedValue = newValue
+            } else {
+                localPath = newValue
+            }
+        }
+    }
 
     public init(path: Binding<[AppRoute]>? = nil) {
         self.externalPath = path
     }
 
     public func select(_ mode: HomeMode) {
-        if let externalPath {
-            externalPath.wrappedValue.append(mode.appRoute)
-        } else {
-            path.append(mode.appRoute)
-        }
+        path.append(mode.appRoute)
     }
 }
