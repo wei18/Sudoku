@@ -37,7 +37,6 @@ extension AppComposition {
 
         return AppComposition(
             rootViewModel: rootViewModel,
-            homeViewModelFactory: { HomeViewModel() },
             dailyHubViewModelFactory: {
                 DailyHubViewModel(provider: provider, persistence: persistence)
             },

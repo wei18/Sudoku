@@ -27,7 +27,6 @@ internal import Telemetry
 @MainActor
 public struct AppComposition {
     public let rootViewModel: RootViewModel
-    public let homeViewModelFactory: @MainActor () -> HomeViewModel
     public let dailyHubViewModelFactory: @MainActor () -> DailyHubViewModel
     public let practiceHubViewModelFactory: @MainActor () -> PracticeHubViewModel
     public let gameViewModelFactory: (PuzzleEnvelope) async throws -> GameViewModel
@@ -37,7 +36,6 @@ public struct AppComposition {
 
     public init(
         rootViewModel: RootViewModel,
-        homeViewModelFactory: @escaping @MainActor () -> HomeViewModel,
         dailyHubViewModelFactory: @escaping @MainActor () -> DailyHubViewModel,
         practiceHubViewModelFactory: @escaping @MainActor () -> PracticeHubViewModel,
         gameViewModelFactory: @escaping (PuzzleEnvelope) async throws -> GameViewModel,
@@ -46,7 +44,6 @@ public struct AppComposition {
         settingsViewModelFactory: @escaping @MainActor () -> SettingsViewModel
     ) {
         self.rootViewModel = rootViewModel
-        self.homeViewModelFactory = homeViewModelFactory
         self.dailyHubViewModelFactory = dailyHubViewModelFactory
         self.practiceHubViewModelFactory = practiceHubViewModelFactory
         self.gameViewModelFactory = gameViewModelFactory
