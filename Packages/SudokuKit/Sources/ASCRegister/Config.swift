@@ -83,9 +83,12 @@ internal enum Config {
     // MARK: - Locale code mapping (issue #31)
 
     /// Map an xcstrings locale code (the App's source-of-truth, e.g. `"en"`,
-    /// `"zh-Hant"`) to the regional ASC code expected by App Store Connect
-    /// (e.g. `"en-US"`, `"zh-Hant-TW"`). Round-6 apply rejected the bare
-    /// xcstrings codes with `LOCALE_INVALID`.
+    /// `"zh-Hant"`) to the ASC code expected by App Store Connect
+    /// (e.g. `"en-US"`, `"zh-Hant"`). Round-6 apply rejected the bare
+    /// xcstrings codes with `LOCALE_INVALID`; round-7 then rejected
+    /// `"zh-Hant-TW"` for Game Center — ASC's Game Center locale catalog
+    /// uses the script-only form `"zh-Hant"` / `"zh-Hans"` (no region) for
+    /// Chinese (issue #37).
     ///
     /// Unknown codes pass through unchanged — preserves any locale we add
     /// in the future without re-hardcoding here, at the cost of a
@@ -93,8 +96,8 @@ internal enum Config {
     internal static func ascLocaleCode(for xcstringsCode: String) -> String {
         switch xcstringsCode {
         case "en":      return "en-US"
-        case "zh-Hant": return "zh-Hant-TW"
-        case "zh-Hans": return "zh-Hans-CN"
+        case "zh-Hant": return "zh-Hant"
+        case "zh-Hans": return "zh-Hans"
         case "ja":      return "ja"
         case "es":      return "es-ES"
         case "th":      return "th-TH"

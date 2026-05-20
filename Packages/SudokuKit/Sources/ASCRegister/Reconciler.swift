@@ -119,11 +119,12 @@ internal struct Reconciler: Sendable {
                 guard let title = XCStringsParser.leaderboardTitle(
                     in: strings, locale: locale, difficulty: lb.difficulty
                 ) else { continue }
-                // ASC requires regional locale codes (issue #31). xcstrings
-                // uses the bare form (`"en"`, `"zh-Hant"`); map to ASC
-                // (`"en-US"`, `"zh-Hant-TW"`) before lookup + emission so
-                // the POST body and the RemoteState key are in the same
-                // space ASC returns from GET.
+                // ASC requires its own locale codes (issue #31, #37).
+                // xcstrings uses the bare form (`"en"`, `"zh-Hant"`); map
+                // via `Config.ascLocaleCode` (e.g. `"en"` → `"en-US"`;
+                // `"zh-Hant"` stays `"zh-Hant"` for Game Center) before
+                // lookup + emission so the POST body and the RemoteState
+                // key are in the same space ASC returns from GET.
                 let ascLocale = Config.ascLocaleCode(for: locale)
                 let key = RemoteState.LocalizationKey(vendorId: lb.id, locale: ascLocale)
                 if let locId = remote.leaderboardLocalizations[key] {
