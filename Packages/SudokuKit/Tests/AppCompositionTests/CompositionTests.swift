@@ -20,14 +20,8 @@ struct CompositionTests {
     @Test
     func liveCompositionWiresAllProtocols() async {
         let composition = AppComposition.live()
-        // RootViewModel is constructed; factories are non-nil.
+        // RootViewModel is constructed.
         _ = composition.rootViewModel
-        _ = composition.dailyHubViewModelFactory
-        _ = composition.practiceHubViewModelFactory
-        _ = composition.gameViewModelFactory
-        _ = composition.completionViewModelFactory
-        _ = composition.leaderboardViewModelFactory
-        _ = composition.settingsViewModelFactory
 
         // The Mirror children of RootViewModel expose the injected
         // collaborators by stored-property name; assert live types.

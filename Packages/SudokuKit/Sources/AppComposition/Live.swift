@@ -5,17 +5,11 @@
 //   - LivePersistence(...) bound to a PuzzleStore puzzle loader
 //   - PuzzleStore() — default LivePuzzleGenerating
 //   - Telemetry(sinks: [OSLogSink, NoOpTrackingSink, MetricKitSink])
-//
-// The GameViewModel factory is `async throws` because it must `await
-// persistence.loadOrCreate(...)` to seed the live `GameSession` before
-// constructing the VM (Phase 8 Part 2 forecast).
 
 internal import Foundation
 internal import GameCenterClient
-internal import GameState
 internal import Persistence
 internal import PuzzleStore
-internal import SudokuEngine
 internal import SudokuUI
 internal import Telemetry
 
@@ -53,63 +47,7 @@ extension AppComposition {
         )
 
         return AppComposition(
-            rootViewModel: rootViewModel,
-            dailyHubViewModelFactory: {
-                DailyHubViewModel(provider: puzzleStore, persistence: persistence)
-            },
-            practiceHubViewModelFactory: {
-                PracticeHubViewModel(provider: puzzleStore)
-            },
-            gameViewModelFactory: { envelope in
-                // Async factory: load (or seed) the snapshot from Persistence
-                // FIRST, then build a live GameSession + GameViewModel.
-                let identity = envelope.identity
-                let snapshot = try await persistence.loadOrCreate(
-                    puzzleId: identity.puzzleId,
-                    mode: identity.kind.rawValue,
-                    difficulty: identity.difficulty
-                )
-                let adapter = GameStateTelemetryAdapter(
-                    telemetry: telemetry,
-                    puzzleId: identity.puzzleId,
-                    mode: identity.kind.rawValue,
-                    difficulty: identity.difficulty
-                )
-                let session = await GameSession.restore(
-                    from: snapshot,
-                    telemetry: adapter
-                )
-                return await MainActor.run {
-                    GameViewModel(
-                        identity: identity,
-                        session: session,
-                        initialBoard: snapshot.currentBoard,
-                        initialNotes: snapshot.notes,
-                        initialStatus: snapshot.status,
-                        initialElapsedSeconds: snapshot.elapsedSeconds,
-                        persistence: persistence
-                    )
-                }
-            },
-            completionViewModelFactory: { puzzleId, elapsedSeconds in
-                // Map difficulty out of puzzleId to pick the right leaderboard.
-                let leaderboardId = Self.leaderboardId(for: puzzleId)
-                return CompletionViewModel(
-                    puzzleId: puzzleId,
-                    elapsedSeconds: elapsedSeconds,
-                    leaderboardId: leaderboardId,
-                    gameCenter: gameCenter
-                )
-            },
-            leaderboardViewModelFactory: { leaderboardId in
-                LeaderboardViewModel(
-                    leaderboardId: leaderboardId,
-                    gameCenter: gameCenter
-                )
-            },
-            settingsViewModelFactory: {
-                SettingsViewModel(persistence: persistence)
-            }
+            rootViewModel: rootViewModel
         )
     }
 
@@ -135,20 +73,5 @@ private enum LiveMetricKitRetainer {
             metricSink.startReceivingSystemReports()
         }
         sink = metricSink
-    }
-}
-
-extension AppComposition {
-    /// Map a daily-puzzleId to its leaderboard. Practice puzzles return the
-    /// difficulty-matched daily leaderboard as a fallback — practice scores
-    /// are never submitted (§How.3.1) so this is informational only.
-    fileprivate static func leaderboardId(for puzzleId: String) -> String {
-        if puzzleId.hasSuffix("-hard") {
-            return LeaderboardIDs.id(for: .dailyHard)
-        }
-        if puzzleId.hasSuffix("-medium") {
-            return LeaderboardIDs.id(for: .dailyMedium)
-        }
-        return LeaderboardIDs.id(for: .dailyEasy)
     }
 }
