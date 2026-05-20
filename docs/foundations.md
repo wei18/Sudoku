@@ -430,12 +430,9 @@ Skill 選用矩陣與觸發時機屬於**協作流程**範疇，已寫入 `metho
 
 _討論過程中浮現、但本輪暫不處理的工具/套件/語言特性/CI/agent skill 想法。每條一行；需要上下文時附 meeting log 日期。_
 
-- 主要開發在 Swift Package 內以 targets 分模組，App target 僅作為 entry point 呼叫 Package 的 products 使用（2026-05-15；§2 會深入討論）。
-- Swift 官方宣布支援 Android 後，純 Swift module（典型如 `SudokuEngine`）有機會以 Swift Package 形式輸出給 Android Studio 使用；§2 模組切法應預留這個可能（2026-05-15）。
+- Swift 官方宣布支援 Android 後，純 Swift module（典型如 `SudokuEngine`）有機會以 Swift Package 形式輸出給 Android Studio 使用；§2 模組切法應預留這個可能（2026-05-15）。與 `design.md §不在 v1 範圍 §平台與輸入` 的「Android via Swift SDK」條目對偶。
 - 未來考慮導入 [`mikeger/XcodeSelectiveTesting`](https://github.com/mikeger/XcodeSelectiveTesting) 來在 CI 上依模組相依關係只跑被影響的 test target，降低執行時間。前提是 §2 的模組切法已收斂穩定（2026-05-15）。
-- 如需使用 GitHub 上開源 Swift package 提供的 **binary CLI / build tool**（如 swiftlint、swiftformat、xcbeautify 等），統一用 [`mise`](https://mise.jdx.dev/) 管理版本與安裝；開發機與 CI 共用同一份 `.mise.toml` 確保版本一致（2026-05-15）。
 - 開發者可透過 [`nektos/act`](https://github.com/nektos/act) 在本機重現 GitHub Actions workflow，縮短「推 PR → 等 CI 紅」的迴圈。注意：act 對 macOS runner 與 Xcode 工具鏈支援有限，可能僅適用於非 build 類 job（如 lint、metadata 驗證）；§4 CI 設計時再衡量哪些 job 適合（2026-05-15）。
-- **Telemetry 統一介面提案**：Logger 與 Tracking 走同一個 facade protocol，呼叫端只說「發生了什麼事件」，facade 同時派發給 Logger（人類除錯訊息）與 Tracking（產品分析事件）。例：`telemetry.observe(.viewWillAppear(...))` → 內部 fan-out 到 `logger.info(...)` 與 `tracker.send(event)`。待 §5/§6 展開（2026-05-15）。
 - **GitHub Actions（v1 暫不採用）**：v1 CI 全押 Xcode Cloud，repo 仍 host 在 GitHub 但不引入 GH Actions workflow。將來如需要以下任一項，可重新評估啟用：
   - PR 元資料規範（conventional commits、PR title lint、auto-label / required reviewer）
   - SwiftLint / SwiftFormat 等 binary tool 在 PR 上跑（透過 `mise` 管理版本）
