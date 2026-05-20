@@ -111,10 +111,12 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// `submissionType` attribute was flagged REQUIRED by round-2 409 (issue #19).
     internal var submissionType: String { "BEST_SCORE" }
 
-    /// ISO 8601 duration of one recurrence cycle. `"P1D"` = 1 day, matching
-    /// the `DAILY` `recurrenceRule`. Flagged REQUIRED by round-3 409
-    /// (issue #22).
-    internal var recurrenceDuration: String { "P1D" }
+    /// ISO 8601 duration of one recurrence cycle. `"PT24H"` = 24 hours,
+    /// matching the `DAILY` `recurrenceRule`. ASC requires the form with
+    /// time components (the date-only `"P1D"` was rejected by round-4 with
+    /// "Expected an ISO 8601 duration with time components", issue #24).
+    /// Flagged REQUIRED by round-3 409 (issue #22).
+    internal var recurrenceDuration: String { "PT24H" }
 
     /// Returns the current UTC midnight as an ISO 8601 datetime string
     /// (`yyyy-MM-dd'T'00:00:00Z`) — the anchor instant for ASC's
