@@ -22,7 +22,6 @@ struct CompositionTests {
         let composition = AppComposition.live()
         // RootViewModel is constructed; factories are non-nil.
         _ = composition.rootViewModel
-        _ = composition.homeViewModelFactory
         _ = composition.dailyHubViewModelFactory
         _ = composition.practiceHubViewModelFactory
         _ = composition.gameViewModelFactory
