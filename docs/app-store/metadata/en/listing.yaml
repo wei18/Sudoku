@@ -53,3 +53,6 @@ whats_new: |
 marketing_url: null
 support_url: "https://github.com/wei18/Sudoku/issues"
 privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"
+primary_category: "Games > Puzzle"
+secondary_category: "Games > Family"
+age_rating: "4+"
