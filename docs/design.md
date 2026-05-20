@@ -1394,6 +1394,7 @@ _章節通過後逐條補上。_
 ### 平台與輸入
 - iPad-specific 排版、Apple Pencil 特化
 - Apple Watch、visionOS
+- **Android App via Swift SDK for Android**（2026-05-20）：使用 swift.org 官方 Swift SDK for Android cross-compile `SudokuEngine` / `GameState` / `PuzzleStore` 等純 Swift module 為 Android shared library，再用 Kotlin/Jetpack Compose 撰寫 UI 層、透過 JNI 呼叫共享 core。Game Center / CloudKit 不可用，需替代方案（Google Play Games Services + Firestore 或自架 backend）。雙平台後 §How.4 deterministic generator 仍能跨 OS 產出同題（純 Swift + FNV-1a seed derivation 不依賴 Apple 框架），daily leaderboard 改走中立 backend 才能跨平台同榜。先驗證 swift-android-sdk 在 SudokuEngine target 的可編譯性 + JNI 邊界開銷，再決定 SudokuUI 是否也共享（多半否，UI 各平台 idiomatic）。
 
 ### 商業模式
 - **v2 廣告投放**：App 內出現廣告，預設頻率「每 14 天一次」；進階方案為動態頻率 — 依 CloudKit operating cost 與當下使用者人數反推每位用戶該分攤的成本，動態調整曝光頻率以剛好回收營運費用（2026-05-15）。
