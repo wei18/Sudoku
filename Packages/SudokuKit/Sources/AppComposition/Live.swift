@@ -47,7 +47,11 @@ extension AppComposition {
         )
 
         return AppComposition(
-            rootViewModel: rootViewModel
+            rootViewModel: rootViewModel,
+            puzzleProvider: puzzleStore,
+            persistence: persistence,
+            gameCenter: gameCenter,
+            telemetry: telemetry
         )
     }
 

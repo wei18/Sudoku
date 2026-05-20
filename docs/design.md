@@ -134,15 +134,22 @@ struct SudokuApp: App {
     private let composition = AppComposition.live()
     var body: some Scene {
         WindowGroup {
-            SudokuUI.RootView(composition: composition)
+            SudokuUI.RootView(
+                viewModel: composition.rootViewModel,
+                puzzleProvider: composition.puzzleProvider,
+                persistence: composition.persistence,
+                gameCenter: composition.gameCenter,
+                telemetry: composition.telemetry
+            )
         }
     }
 }
 
 struct AppComposition: Sendable {
-    let puzzleStore: any PuzzleProviderProtocol
+    let rootViewModel: RootViewModel
+    let puzzleProvider: any PuzzleProviderProtocol
     let persistence: any PersistenceProtocol
-    let gameCenter: any GameCenterProtocol
+    let gameCenter: any GameCenterClient
     let telemetry: Telemetry
 
     static func live() -> AppComposition { /* CloudKit / GameKit / OSLog 具體實作 */ }
@@ -154,6 +161,10 @@ struct AppComposition: Sendable {
 三入口（`live` / `preview` / `tests`）對應三種跑得起來的環境。
 
 > 實作位置（Phase 9 落地）：`AppComposition` 為獨立 SwiftPM target（`Packages/SudokuKit/Sources/AppComposition/`），`@MainActor`-isolated；`App/SudokuApp.swift` 只 import `AppComposition` + `SudokuUI`。Persistence 的 live façade `LivePersistence` 內建於 Persistence module（`Packages/SudokuKit/Sources/Persistence/LivePersistence.swift`），不在 `App/CompositionRoot/`——因模組內 stores 為 `internal`。詳見 `meetings/2026-05-19_phase-9-app-wiring.md`。
+
+> 下游 View+VM 構造採 **inline-in-destination-closure** 模式：`RootView` 內 `NavigationStackHost.destination` 對 `AppRoute` 做 `switch` 並就地建構對應 View + ViewModel，不引入 per-VM factory 閉包、不快取 VM 實例（每次 push 拿新的 VM，pop 後 GC 回收，符合 §How.5.4 ownership）。`.board(puzzleId)` 是唯一例外：因 `GameViewModel` 的 live ctor 需要透過 `await PersistenceProtocol.loadOrCreate` + `GameSession.restore` 取得 snapshot，無法在 `@ViewBuilder` 同步閉包內完成，遂以 `BoardLoaderView` 薄包裝（`Packages/SudokuKit/Sources/SudokuUI/Board/BoardLoaderView.swift`）做 async 載入後再 mount `BoardView`。
+>
+> 歷史紀錄：早期 spec 曾規劃 per-view `*ViewModelFactory` 注入，後因發現 factory 全為單一 call site 的薄包裝、徒增模組面積而於 issue #34 / PR #34 全數移除（dead-VM-factory audit）。Issue #15 / PR #33 將 `HomeView` 改為 inline 建構於 `rootContent`；issue #45 / PR #44 將同模式延伸到 destination closure 所有 case 並修補 `NavigationStack(path:)` binding，至此導航閉環完成。
 
 ### §How.2 CloudKit Schema
 
@@ -1409,6 +1420,9 @@ _章節通過後逐條補上。_
 
 ### 在地化
 - **L10n 擴充至 10 個語言**：目前 v1 為 7 個 locale（zh-TW、en、ja、zh-Hans、es、th、ko，見 `ai-translated-localization` skill 預設）。候選擴充：法語（fr）、德語（de）、葡萄牙語巴西（pt-BR）。觸發條件以 App Store 後台市場分析（特定 storefront 安裝量 / 留存）為主，每加一個 locale 需執行一次完整 AI translation pass、新增 ASC metadata locale、Game Center leaderboard / achievement title 新增 locale，與 PrivacyInfo 對應 App Store 隱私政策頁同步翻譯。`gc-strings.xcstrings.patch` 與 `ASCRegister` CLI 已可自動處理新 locale 的 GC 註冊。建議分批 — 先加 1-2 個觀察後續 ARPU 與翻譯維護成本，再決定是否補到 10（2026-05-20）。
+
+### 導航
+- **`AppRoute.completion` 攜帶 difficulty / mode 以便正確路由到 leaderboard**：目前 `case .completion(puzzleId, elapsedSeconds)` 不帶 difficulty 或 mode，所以從 Completion → Leaderboard 的 `viewLeaderboardTapped()` 與 RootView destination 內的 `CompletionViewModel.leaderboardId` 都得使用固定 placeholder `LeaderboardIDs.id(for: .dailyEasy)`，把所有 medium / hard 完成事件全部錯誤指向 easy 排行。應擴充 case 為 `.completion(puzzleId, elapsedSeconds, difficulty, mode)`（或注入 `LeaderboardKind`），同步更新 `HomeMode.leaderboard.appRoute`、`RootView.destinationView(for:)` 的 `.completion` 分支、`CompletionViewModel.viewLeaderboardTapped`、以及所有測試 fixture（2026-05-20，從 issue #45 PROPOSAL 浮現）。
 
 ### 動畫與微互動
 - **Lottie 整合（[`airbnb/lottie-ios`](https://github.com/airbnb/lottie-ios)）**：自製 Lottie JSON 動畫接入 App，候選使用點：(1) Completion 完成題目時播 `.sweep` / `.streak` 等里程碑慶祝動畫；(2) Practice 抽題 shimmer 升級為更個性的等待動畫；(3) Daily Hub 連續達成 7 天時的低調慶祝；(4) Game Center 解鎖 achievement 時 App 內 toast 動畫。仍與 brand essence 「不喧鬧」相容 — 動畫須是 calm/quick 風格，避免迪士尼級 confetti。先導入 `lottie-ios` SwiftPM dep，再用 Bodymovin / LottieFiles 自製 1-2 個動畫 trial run；若 binary size + runtime cost 可接受，再擴充。注意：此為**第一個第三方 dep**，會打破 v1「Apple-only stack」紀律 — 加入前需在 foundations.md §3 補充「為什麼破例」的決策紀錄（2026-05-20）。

@@ -7,6 +7,7 @@
 
 internal import SudokuKitTesting
 internal import SudokuUI
+internal import Telemetry
 
 extension AppComposition {
 
@@ -21,6 +22,8 @@ extension AppComposition {
     internal static func fakeComposition() -> AppComposition {
         let gameCenter = FakeGameCenterClient()
         let persistence = FakePersistence()
+        let puzzleProvider = FakePuzzleProvider()
+        let telemetry = Telemetry(sinks: [])
 
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
@@ -28,7 +31,11 @@ extension AppComposition {
         )
 
         return AppComposition(
-            rootViewModel: rootViewModel
+            rootViewModel: rootViewModel,
+            puzzleProvider: puzzleProvider,
+            persistence: persistence,
+            gameCenter: gameCenter,
+            telemetry: telemetry
         )
     }
 }
