@@ -16,14 +16,14 @@ internal struct ConfigLocaleMappingTests {
         #expect(Config.ascLocaleCode(for: "en") == "en-US")
     }
 
-    @Test("zh-Hant → zh-Hant-TW")
+    @Test("zh-Hant → zh-Hant (no region, per issue #37)")
     internal func zhHant() {
-        #expect(Config.ascLocaleCode(for: "zh-Hant") == "zh-Hant-TW")
+        #expect(Config.ascLocaleCode(for: "zh-Hant") == "zh-Hant")
     }
 
-    @Test("zh-Hans → zh-Hans-CN")
+    @Test("zh-Hans → zh-Hans (no region, per issue #37)")
     internal func zhHans() {
-        #expect(Config.ascLocaleCode(for: "zh-Hans") == "zh-Hans-CN")
+        #expect(Config.ascLocaleCode(for: "zh-Hans") == "zh-Hans")
     }
 
     @Test("ja → ja (educated guess; see §未決)")
