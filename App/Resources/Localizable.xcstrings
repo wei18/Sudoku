@@ -1,639 +1,2687 @@
 {
   "sourceLanguage" : "en",
-  "version" : "1.0",
   "strings" : {
-    "—" : {
-      "shouldTranslate" : false
-    },
     "3 puzzles today" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "3 puzzles today" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日 3 題" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日 3 题" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日のパズル 3 問" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘의 퍼즐 3개" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "3 puzles para hoy" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "3 ข้อสำหรับวันนี้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 puzzles today"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 puzles para hoy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日のパズル 3 問"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘의 퍼즐 3개"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 ข้อสำหรับวันนี้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日 3 题"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日 3 題"
+          }
+        }
       }
     },
     "About" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "關於" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关于" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このアプリについて" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "정보" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Acerca de" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เกี่ยวกับ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリについて"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정보"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เกี่ยวกับ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於"
+          }
+        }
       }
     },
     "Account / language" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account / language" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "帳號 / 語言" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "账号 / 语言" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウント / 言語" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "계정 / 언어" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cuenta / idioma" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "บัญชี / ภาษา" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account / language"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuenta / idioma"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウント / 言語"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계정 / 언어"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชี / ภาษา"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "账号 / 语言"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帳號 / 語言"
+          }
+        }
       }
     },
     "Cancel" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "取消" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセル" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "취소" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ยกเลิก" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャンセル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취소"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยกเลิก"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
       }
     },
     "Clear" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清除" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "クリア" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지우기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Borrar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ล้าง" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリア"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지우기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ล้าง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        }
       }
     },
     "Clear cache" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear cache" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "清除暫存" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除缓存" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャッシュを消去" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "캐시 지우기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Borrar caché" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ล้างแคช" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear cache"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar caché"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャッシュを消去"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐시 지우기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ล้างแคช"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除缓存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除暫存"
+          }
+        }
       }
     },
     "Completed" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Completed" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已完成" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已完成" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "完了" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Completado" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เสร็จสิ้น" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "완료"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสร็จสิ้น"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        }
       }
     },
     "Couldn't generate today's puzzle" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't generate today's puzzle" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日題目暫無法產生" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日题目暂时无法生成" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日のパズルを生成できませんでした" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘의 퍼즐을 생성하지 못했습니다" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo generar el puzle de hoy" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ไม่สามารถสร้างปริศนาประจำวันนี้ได้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't generate today's puzzle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo generar el puzle de hoy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日のパズルを生成できませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘의 퍼즐을 생성하지 못했습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถสร้างปริศนาประจำวันนี้ได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日题目暂时无法生成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日題目暫無法產生"
+          }
+        }
       }
     },
     "Couldn't load leaderboard." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load leaderboard." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法載入排行榜。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法加载排行榜。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リーダーボードを読み込めませんでした。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "리더보드를 불러오지 못했습니다." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo cargar la clasificación." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ไม่สามารถโหลดกระดานผู้นำได้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load leaderboard."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar la clasificación."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リーダーボードを読み込めませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "리더보드를 불러오지 못했습니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถโหลดกระดานผู้นำได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法加载排行榜。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法載入排行榜。"
+          }
+        }
       }
     },
     "Daily" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日のパズル" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘의 퍼즐" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Diario" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ประจำวัน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diario"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日のパズル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘의 퍼즐"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ประจำวัน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日"
+          }
+        }
       }
     },
     "Difficulty" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Difficulty" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "難度" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "难度" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "難易度" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "난이도" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Dificultad" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ระดับความยาก" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difficulty"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dificultad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "難易度"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "난이도"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ระดับความยาก"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "难度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "難度"
+          }
+        }
       }
     },
     "Digit %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Digit %lld" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "數字 %lld" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数字 %lld" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "数字 %lld" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "숫자 %lld" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Dígito %lld" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "หมายเลข %lld" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digit %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dígito %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数字 %lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "숫자 %lld"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หมายเลข %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数字 %lld"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "數字 %lld"
+          }
+        }
       }
     },
     "Draw new puzzle" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Draw new puzzle" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "抽一題新的" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "抽取新题目" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "新しいパズルを引く" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "새 퍼즐 뽑기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sacar nuevo puzle" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "สุ่มปริศนาใหม่" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draw new puzzle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sacar nuevo puzle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しいパズルを引く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 퍼즐 뽑기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สุ่มปริศนาใหม่"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "抽取新题目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "抽一題新的"
+          }
+        }
       }
     },
     "Easy" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Easy" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "簡單" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "简单" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "やさしい" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쉬움" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Fácil" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ง่าย" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Easy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fácil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "やさしい"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "쉬움"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ง่าย"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "简单"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "簡單"
+          }
+        }
       }
     },
     "Elapsed time %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Elapsed time %@" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已用時間 %@" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已用时间 %@" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "経過時間 %@" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "경과 시간 %@" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tiempo transcurrido %@" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เวลาที่ผ่านไป %@" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elapsed time %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiempo transcurrido %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "経過時間 %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "경과 시간 %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เวลาที่ผ่านไป %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已用时间 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已用時間 %@"
+          }
+        }
       }
     },
     "Enable Friends to see this list." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enable Friends to see this list." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請允許讀取朋友列表後再查看此榜單。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请允许读取好友列表后再查看此榜单。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フレンドリストへのアクセスを許可するとこのランキングを表示できます。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "친구 목록 접근을 허용하면 이 순위를 볼 수 있습니다." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Activa Amigos para ver esta lista." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "อนุญาตการเข้าถึงรายชื่อเพื่อนเพื่อดูรายการนี้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable Friends to see this list."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activa Amigos para ver esta lista."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フレンドリストへのアクセスを許可するとこのランキングを表示できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "친구 목록 접근을 허용하면 이 순위를 볼 수 있습니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาตการเข้าถึงรายชื่อเพื่อนเพื่อดูรายการนี้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请允许读取好友列表后再查看此榜单。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請允許讀取朋友列表後再查看此榜單。"
+          }
+        }
+      }
+    },
+    "error.gameCenter.not_authenticated.action" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定を開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 열기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดการตั้งค่า"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟設定"
+          }
+        }
+      }
+    },
+    "error.gameCenter.not_authenticated.body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Submit your time to the leaderboard after signing in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envía tu tiempo a la clasificación después de iniciar sesión."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サインイン後にタイムをランキングへ送信できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인하면 리더보드에 기록을 제출할 수 있습니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ส่งเวลาของคุณขึ้นกระดานผู้นำได้หลังจากลงชื่อเข้าใช้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录后即可将成绩提交至排行榜。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入後即可將成績上傳至排行榜。"
+          }
+        }
+      }
+    },
+    "error.gameCenter.not_authenticated.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to Game Center"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en Game Center"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center にサインイン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center에 로그인"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลงชื่อเข้าใช้ Game Center"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请登录 Game Center"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請登入 Game Center"
+          }
+        }
+      }
+    },
+    "error.persistence.icloud_unavailable.action" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定を開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 열기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดการตั้งค่า"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟設定"
+          }
+        }
+      }
+    },
+    "error.persistence.icloud_unavailable.body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to iCloud in Settings to sync your progress across devices."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en iCloud desde Ajustes para sincronizar tu progreso entre dispositivos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「設定」から iCloud にサインインすると、デバイス間で進行状況を同期できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 간에 진행 상황을 동기화하려면 「설정」에서 iCloud에 로그인하세요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลงชื่อเข้าใช้ iCloud ใน «การตั้งค่า» เพื่อซิงค์ความคืบหน้าข้ามอุปกรณ์"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请前往「设置」登录 iCloud，以便跨设备同步进度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請至「設定」登入 iCloud，以便跨裝置同步進度。"
+          }
+        }
+      }
+    },
+    "error.persistence.icloud_unavailable.title" : {
+      "comment" : "Error vocabulary — Persistence iCloud unavailable",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud no disponible"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud を利用できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud을 사용할 수 없습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ใช้งานไม่ได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 暂时不可用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud 暫時無法使用"
+          }
+        }
+      }
+    },
+    "error.puzzleStore.generator_failed.action" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう一度試す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลองอีกครั้ง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重試"
+          }
+        }
+      }
+    },
+    "error.puzzleStore.generator_failed.body" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please try a different difficulty."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba con otra dificultad."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別の難易度をお試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 난이도를 시도해 주세요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โปรดลองระดับความยากอื่น"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请改试其他难度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請改試其他難度。"
+          }
+        }
+      }
+    },
+    "error.puzzleStore.generator_failed.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't generate puzzle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo generar el puzle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パズルを生成できませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "퍼즐을 생성하지 못했습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถสร้างปริศนาได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "题目暂时无法生成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "題目暫無法產生"
+          }
+        }
       }
     },
     "Friends" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Friends" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "朋友" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好友" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フレンド" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "친구" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Amigos" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เพื่อน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friends"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amigos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フレンド"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "친구"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพื่อน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好友"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朋友"
+          }
+        }
       }
     },
     "Generated puzzles will be re-derived next play. Saved games are not affected." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generated puzzles will be re-derived next play. Saved games are not affected." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "下次遊玩時將重新產生題目。已存進度不受影響。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下次游玩时将重新生成题目。已保存的进度不受影响。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "次回プレイ時にパズルが再生成されます。保存済みのゲームには影響しません。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다음 플레이 시 퍼즐이 다시 생성됩니다. 저장된 게임에는 영향이 없습니다." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los puzles se regenerarán la próxima vez. Las partidas guardadas no se verán afectadas." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ปริศนาจะถูกสร้างใหม่ในการเล่นครั้งต่อไป เกมที่บันทึกไว้จะไม่ได้รับผลกระทบ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generated puzzles will be re-derived next play. Saved games are not affected."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los puzles se regenerarán la próxima vez. Las partidas guardadas no se verán afectadas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次回プレイ時にパズルが再生成されます。保存済みのゲームには影響しません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음 플레이 시 퍼즐이 다시 생성됩니다. 저장된 게임에는 영향이 없습니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปริศนาจะถูกสร้างใหม่ในการเล่นครั้งต่อไป เกมที่บันทึกไว้จะไม่ได้รับผลกระทบ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下次游玩时将重新生成题目。已保存的进度不受影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下次遊玩時將重新產生題目。已存進度不受影響。"
+          }
+        }
       }
     },
     "Generator" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generator" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "產生器" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "生成器" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ジェネレーター" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "생성기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Generador" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ตัวสร้าง" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generator"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generador"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ジェネレーター"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "생성기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตัวสร้าง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "產生器"
+          }
+        }
       }
     },
     "Global" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Global" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全球" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全球" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "グローバル" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Global" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ทั่วโลก" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グローバル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทั่วโลก"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全球"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全球"
+          }
+        }
       }
     },
     "Global / friends" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Global / friends" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全球 / 朋友" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全球 / 好友" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "グローバル / フレンド" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 / 친구" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Global / amigos" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ทั่วโลก / เพื่อน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global / friends"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global / amigos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グローバル / フレンド"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체 / 친구"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทั่วโลก / เพื่อน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全球 / 好友"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全球 / 朋友"
+          }
+        }
       }
     },
     "Hard" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hard" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "困難" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "困难" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "むずかしい" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어려움" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Difícil" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ยาก" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difícil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "むずかしい"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어려움"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยาก"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "困难"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "困難"
+          }
+        }
       }
     },
     "Leaderboard" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leaderboard" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "排行榜" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "排行榜" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランキング" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "리더보드" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Clasificación" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "กระดานผู้นำ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leaderboard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clasificación"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ランキング"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "리더보드"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กระดานผู้นำ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排行榜"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排行榜"
+          }
+        }
       }
     },
     "Medium" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Medium" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "中等" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "中等" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ふつう" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "보통" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Medio" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ปานกลาง" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ふつう"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "보통"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปานกลาง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中等"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中等"
+          }
+        }
       }
     },
     "Mixed difficulty pool" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mixed difficulty pool" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "混合難度題庫" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "混合难度题库" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "難易度ミックスのプール" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "난이도 혼합 풀" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Banco de dificultad mixta" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "คลังปริศนาคละความยาก" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mixed difficulty pool"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Banco de dificultad mixta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "難易度ミックスのプール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "난이도 혼합 풀"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คลังปริศนาคละความยาก"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "混合难度题库"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "混合難度題庫"
+          }
+        }
       }
     },
     "Pause" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "暫停" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂停" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "一時停止" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일시정지" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "หยุดชั่วคราว" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時停止"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일시정지"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดชั่วคราว"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫停"
+          }
+        }
       }
     },
     "Pencil" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pencil" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "鉛筆" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "铅笔" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "メモ" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "메모" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Lápiz" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ดินสอ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pencil"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メモ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메모"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดินสอ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "铅笔"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "鉛筆"
+          }
+        }
       }
     },
     "Practice" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Practice" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "練習" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "练习" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "練習" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "연습" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Práctica" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ฝึกฝน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Práctica"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "練習"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연습"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ฝึกฝน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "练习"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "練習"
+          }
+        }
       }
     },
     "Ready to play" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready to play" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "準備好了" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "准备好了" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "プレイ準備完了" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "플레이 준비 완료" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Listo para jugar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "พร้อมเล่น" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to play"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo para jugar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プレイ準備完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "플레이 준비 완료"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พร้อมเล่น"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "准备好了"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "準備好了"
+          }
+        }
       }
     },
     "Redo" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Redo" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重做" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重做" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "やり直す" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 실행" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rehacer" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ทำซ้ำ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rehacer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "やり直す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 실행"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทำซ้ำ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重做"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重做"
+          }
+        }
       }
     },
     "Reset session cache" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset session cache" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重設本機暫存" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重置本地缓存" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "セッションキャッシュをリセット" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "세션 캐시 초기화" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Restablecer caché de sesión" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "รีเซ็ตแคชเซสชัน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset session cache"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer caché de sesión"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "セッションキャッシュをリセット"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "세션 캐시 초기화"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รีเซ็ตแคชเซสชัน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置本地缓存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重設本機暫存"
+          }
+        }
       }
     },
     "Resume" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "繼續" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "再開" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "재개" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reanudar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เล่นต่อ" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reanudar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재개"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เล่นต่อ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續"
+          }
+        }
       }
     },
     "Resume %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume %@" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "繼續 %@" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续 %@" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ を再開" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ 재개" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reanudar %@" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เล่นต่อ %@" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reanudar %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ を再開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 재개"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เล่นต่อ %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續 %@"
+          }
+        }
       }
     },
     "Retry" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重試" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "再試行" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 시도" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reintentar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลองอีกครั้ง" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試行"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลองอีกครั้ง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重試"
+          }
+        }
       }
     },
     "Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "設定" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ajustes" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "การตั้งค่า" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การตั้งค่า"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
+          }
+        }
       }
     },
     "Sign in to Game Center" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請登入 Game Center" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请登录 Game Center" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Game Center にサインイン" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Game Center에 로그인" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en Game Center" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลงชื่อเข้าใช้ Game Center" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to Game Center"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en Game Center"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center にサインイン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center에 로그인"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลงชื่อเข้าใช้ Game Center"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请登录 Game Center"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請登入 Game Center"
+          }
+        }
       }
     },
     "Sign in to Game Center to compare with others." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center to compare with others." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入 Game Center 以與其他人比較成績。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录 Game Center 以与他人比较成绩。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Game Center にサインインして他のプレイヤーとタイムを比較しましょう。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Game Center에 로그인하여 다른 사람과 기록을 비교해 보세요." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en Game Center para compararte con otros." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลงชื่อเข้าใช้ Game Center เพื่อเปรียบเทียบเวลากับคนอื่น" } }
-      }
-    },
-    "Solved!" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Solved!" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成！" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成！" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "クリア！" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "완료!" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "¡Resuelto!" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "สำเร็จ!" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to Game Center to compare with others."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en Game Center para compararte con otros."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center にサインインして他のプレイヤーとタイムを比較しましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center에 로그인하여 다른 사람과 기록을 비교해 보세요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลงชื่อเข้าใช้ Game Center เพื่อเปรียบเทียบเวลากับคนอื่น"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录 Game Center 以与他人比较成绩。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入 Game Center 以與其他人比較成績。"
+          }
+        }
       }
     },
     "Solved in %@" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Solved in %@" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ 完成" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 完成" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ でクリア" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@ 만에 완료" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Resuelto en %@" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ทำเสร็จใน %@" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solved in %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resuelto en %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ でクリア"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 만에 완료"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทำเสร็จใน %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 完成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 完成"
+          }
+        }
+      }
+    },
+    "Solved!" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solved!"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Resuelto!"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリア！"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "완료!"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สำเร็จ!"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成！"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成！"
+          }
+        }
       }
     },
     "Storage" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storage" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "儲存空間" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "存储空间" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ストレージ" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "저장 공간" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Almacenamiento" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "พื้นที่จัดเก็บ" } }
-      }
-    },
-    "Tap to resume" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to resume" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "點擊以繼續" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点按以继续" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "タップして再開" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "탭하여 재개" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Toca para reanudar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "แตะเพื่อเล่นต่อ" } }
-      }
-    },
-    "Today" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hoy" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "วันนี้" } }
-      }
-    },
-    "Try a different difficulty, or come back tomorrow." : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try a different difficulty, or come back tomorrow." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請改試其他難度，或明日再來。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请改试其他难度，或明天再来。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "別の難易度を試すか、明日もう一度お越しください。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다른 난이도를 시도하거나 내일 다시 와 주세요." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Prueba con otra dificultad o vuelve mañana." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลองเปลี่ยนระดับความยาก หรือกลับมาใหม่พรุ่งนี้" } }
-      }
-    },
-    "Try another difficulty" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try another difficulty" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "試試其他難度" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "试试其他难度" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "別の難易度を試す" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다른 난이도 시도" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Probar otra dificultad" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลองระดับความยากอื่น" } }
-      }
-    },
-    "Undo" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Undo" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "復原" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "取り消す" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "실행 취소" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เลิกทำ" } }
-      }
-    },
-    "Version" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "版本" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "版本" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バージョン" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "버전" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Versión" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เวอร์ชัน" } }
-      }
-    },
-    "View full leaderboard" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "View full leaderboard" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "查看完整排行榜" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看完整排行榜" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランキング全体を表示" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 리더보드 보기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver clasificación completa" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ดูกระดานผู้นำเต็ม" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Almacenamiento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストレージ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장 공간"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พื้นที่จัดเก็บ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储空间"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存空間"
+          }
+        }
       }
     },
     "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard." : {
       "comment" : "NSGameKitFriendListUsageDescription — system prompt when requesting friends authorization.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "數獨會讀取您的 Game Center 朋友列表，以在每日排行榜上顯示您朋友的最佳成績。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数独会读取您的 Game Center 好友列表，以在每日排行榜上显示您好友的最佳成绩。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku は Game Center のフレンドリストを参照して、デイリーランキングにフレンドのベストタイムを表示します。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku는 Game Center 친구 목록을 이용해 데일리 리더보드에 친구들의 최고 기록을 표시합니다." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku usa tu lista de amigos para mostrar los mejores tiempos de tus amigos en la clasificación diaria." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "Sudoku ใช้รายชื่อเพื่อนของคุณเพื่อแสดงเวลาที่ดีที่สุดของเพื่อนบนกระดานผู้นำประจำวัน" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku usa tu lista de amigos para mostrar los mejores tiempos de tus amigos en la clasificación diaria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku は Game Center のフレンドリストを参照して、デイリーランキングにフレンドのベストタイムを表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku는 Game Center 친구 목록을 이용해 데일리 리더보드에 친구들의 최고 기록을 표시합니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku ใช้รายชื่อเพื่อนของคุณเพื่อแสดงเวลาที่ดีที่สุดของเพื่อนบนกระดานผู้นำประจำวัน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数独会读取您的 Game Center 好友列表，以在每日排行榜上显示您好友的最佳成绩。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "數獨會讀取您的 Game Center 朋友列表，以在每日排行榜上顯示您朋友的最佳成績。"
+          }
+        }
       }
     },
-    "error.persistence.icloud_unavailable.title" : {
-      "comment" : "Error vocabulary — Persistence iCloud unavailable",
+    "Tap to resume" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "iCloud unavailable" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "iCloud 暫時無法使用" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "iCloud 暂时不可用" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "iCloud を利用できません" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "iCloud을 사용할 수 없습니다" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "iCloud no disponible" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "iCloud ใช้งานไม่ได้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to resume"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca para reanudar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップして再開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭하여 재개"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แตะเพื่อเล่นต่อ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按以继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點擊以繼續"
+          }
+        }
       }
     },
-    "error.persistence.icloud_unavailable.body" : {
+    "Today" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to iCloud in Settings to sync your progress across devices." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請至「設定」登入 iCloud，以便跨裝置同步進度。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请前往「设置」登录 iCloud，以便跨设备同步进度。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "「設定」から iCloud にサインインすると、デバイス間で進行状況を同期できます。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "기기 간에 진행 상황을 동기화하려면 「설정」에서 iCloud에 로그인하세요." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en iCloud desde Ajustes para sincronizar tu progreso entre dispositivos." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลงชื่อเข้าใช้ iCloud ใน «การตั้งค่า» เพื่อซิงค์ความคืบหน้าข้ามอุปกรณ์" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日"
+          }
+        }
       }
     },
-    "error.persistence.icloud_unavailable.action" : {
+    "Try a different difficulty, or come back tomorrow." : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟設定" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开设置" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定を開く" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정 열기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Ajustes" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เปิดการตั้งค่า" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try a different difficulty, or come back tomorrow."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba con otra dificultad o vuelve mañana."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別の難易度を試すか、明日もう一度お越しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 난이도를 시도하거나 내일 다시 와 주세요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลองเปลี่ยนระดับความยาก หรือกลับมาใหม่พรุ่งนี้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请改试其他难度，或明天再来。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請改試其他難度，或明日再來。"
+          }
+        }
       }
     },
-    "error.gameCenter.not_authenticated.title" : {
+    "Try another difficulty" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請登入 Game Center" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请登录 Game Center" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Game Center にサインイン" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Game Center에 로그인" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en Game Center" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลงชื่อเข้าใช้ Game Center" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try another difficulty"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probar otra dificultad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別の難易度を試す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 난이도 시도"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลองระดับความยากอื่น"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试其他难度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "試試其他難度"
+          }
+        }
       }
     },
-    "error.gameCenter.not_authenticated.body" : {
+    "Undo" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Submit your time to the leaderboard after signing in." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入後即可將成績上傳至排行榜。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录后即可将成绩提交至排行榜。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインイン後にタイムをランキングへ送信できます。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "로그인하면 리더보드에 기록을 제출할 수 있습니다." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Envía tu tiempo a la clasificación después de iniciar sesión." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ส่งเวลาของคุณขึ้นกระดานผู้นำได้หลังจากลงชื่อเข้าใช้" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取り消す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실행 취소"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลิกทำ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "復原"
+          }
+        }
       }
     },
-    "error.gameCenter.not_authenticated.action" : {
+    "Version" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開啟設定" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开设置" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定を開く" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "설정 열기" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Ajustes" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "เปิดการตั้งค่า" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "バージョン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "버전"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เวอร์ชัน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本"
+          }
+        }
       }
     },
-    "error.puzzleStore.generator_failed.title" : {
+    "View full leaderboard" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't generate puzzle" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "題目暫無法產生" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "题目暂时无法生成" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "パズルを生成できませんでした" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "퍼즐을 생성하지 못했습니다" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo generar el puzle" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ไม่สามารถสร้างปริศนาได้" } }
-      }
-    },
-    "error.puzzleStore.generator_failed.body" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please try a different difficulty." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "請改試其他難度。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请改试其他难度。" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "別の難易度をお試しください。" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다른 난이도를 시도해 주세요." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Prueba con otra dificultad." } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "โปรดลองระดับความยากอื่น" } }
-      }
-    },
-    "error.puzzleStore.generator_failed.action" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重試" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "もう一度試す" } },
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다시 시도" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reintentar" } },
-        "th" : { "stringUnit" : { "state" : "translated", "value" : "ลองอีกครั้ง" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View full leaderboard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver clasificación completa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ランキング全体を表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체 리더보드 보기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดูกระดานผู้นำเต็ม"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看完整排行榜"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看完整排行榜"
+          }
+        }
       }
     }
-  }
+  },
+  "version" : "1.0"
 }

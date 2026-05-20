@@ -33,12 +33,18 @@ internal actor ASCClient {
     }
 
     internal enum ClientError: Error, Sendable, Equatable {
-        case httpStatus(code: Int, body: String)
+        case httpStatus(code: Int, path: String, body: String)
+        // TODO: remove if still unused after error refactor settles
         case missingResponseBody
-        case decodeFailed(String)
+        case decodeFailed(reason: String, path: String, status: Int, bodyExcerpt: String)
         case invalidURL(String)
         case unsupportedOnLinux  // FoundationNetworking lacks `data(for:)` async
     }
+
+    /// Maximum bytes of response body retained in error messages.
+    /// Bodies larger than this are truncated with an explicit marker so the
+    /// reader knows content was elided rather than silently cut.
+    internal static let errorBodyByteCap: Int = 2048
 
     private let auth: Auth
     private let mode: Mode
@@ -199,17 +205,17 @@ internal actor ASCClient {
     internal func getResource(path: String) async throws -> APIResource {
         let (data, status) = try await send(method: "GET", path: path, body: nil)
         guard (200..<300).contains(status) else {
-            throw ClientError.httpStatus(code: status, body: stringify(data))
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
         }
-        return try APIResource.decodeSingle(from: data)
+        return try APIResource.decodeSingle(from: data, path: path, status: status)
     }
 
     internal func getCollection(path: String) async throws -> [APIResource] {
         let (data, status) = try await send(method: "GET", path: path, body: nil)
         guard (200..<300).contains(status) else {
-            throw ClientError.httpStatus(code: status, body: stringify(data))
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
         }
-        return try APIResource.decodeCollection(from: data)
+        return try APIResource.decodeCollection(from: data, path: path, status: status)
     }
 
     internal func mutate(method: String, path: String, body: [String: Any]) async throws -> APIResource {
@@ -221,10 +227,10 @@ internal actor ASCClient {
         }
         let (data, status) = try await send(method: method, path: path, body: bodyData)
         guard (200..<300).contains(status) else {
-            throw ClientError.httpStatus(code: status, body: stringify(data))
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
         }
         log("[apply] \(method) \(path) → \(status)")
-        return try APIResource.decodeSingle(from: data)
+        return try APIResource.decodeSingle(from: data, path: path, status: status)
     }
 
     fileprivate func send(method: String, path: String, body: Data?) async throws -> (Data, Int) {
@@ -244,6 +250,24 @@ internal actor ASCClient {
     }
 }
 
+/// Returns a UTF-8 excerpt of `data` capped at `ASCClient.errorBodyByteCap` bytes.
+/// When the input exceeds the cap, appends an explicit
+/// `... <truncated, N more bytes>` marker so the reader knows content was
+/// elided rather than silently cut. Non-UTF-8 payloads degrade to a byte-count
+/// placeholder (same shape as `ASCClient.stringify`).
+internal func truncateBody(_ data: Data) -> String {
+    let cap = ASCClient.errorBodyByteCap
+    if data.count <= cap {
+        return String(data: data, encoding: .utf8) ?? "<\(data.count) bytes non-utf8>"
+    }
+    let head = data.prefix(cap)
+    let remaining = data.count - cap
+    guard let headString = String(data: head, encoding: .utf8) else {
+        return "<\(data.count) bytes non-utf8>"
+    }
+    return "\(headString)... <truncated, \(remaining) more bytes>"
+}
+
 // MARK: - Minimal JSON:API decoding
 
 internal struct APIResource: Sendable, Equatable {
@@ -252,29 +276,49 @@ internal struct APIResource: Sendable, Equatable {
     /// Subset of attributes we care about. Stored as opaque strings.
     internal let attributes: [String: String]
 
-    internal static func decodeSingle(from data: Data) throws -> APIResource {
+    internal static func decodeSingle(from data: Data, path: String, status: Int) throws -> APIResource {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let inner = json["data"] as? [String: Any]
         else {
-            throw ASCClient.ClientError.decodeFailed("missing data")
+            throw ASCClient.ClientError.decodeFailed(
+                reason: "missing data",
+                path: path,
+                status: status,
+                bodyExcerpt: truncateBody(data)
+            )
         }
-        return try fromDict(inner)
+        return try fromDict(inner, path: path, status: status, data: data)
     }
 
-    internal static func decodeCollection(from data: Data) throws -> [APIResource] {
+    internal static func decodeCollection(from data: Data, path: String, status: Int) throws -> [APIResource] {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let arr = json["data"] as? [[String: Any]]
         else {
-            throw ASCClient.ClientError.decodeFailed("missing data array")
+            throw ASCClient.ClientError.decodeFailed(
+                reason: "missing data array",
+                path: path,
+                status: status,
+                bodyExcerpt: truncateBody(data)
+            )
         }
-        return try arr.map(fromDict)
+        return try arr.map { try fromDict($0, path: path, status: status, data: data) }
     }
 
-    private static func fromDict(_ dict: [String: Any]) throws -> APIResource {
+    private static func fromDict(
+        _ dict: [String: Any],
+        path: String,
+        status: Int,
+        data: Data
+    ) throws -> APIResource {
         guard let id = dict["id"] as? String,
               let type = dict["type"] as? String
         else {
-            throw ASCClient.ClientError.decodeFailed("missing id/type")
+            throw ASCClient.ClientError.decodeFailed(
+                reason: "missing id/type",
+                path: path,
+                status: status,
+                bodyExcerpt: truncateBody(data)
+            )
         }
         var attrs: [String: String] = [:]
         if let raw = dict["attributes"] as? [String: Any] {
