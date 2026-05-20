@@ -108,8 +108,18 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
         )
     }
 
-    public func save(_ snapshot: GameSessionSnapshot) async throws {
-        try await savedGameStore().save(snapshot)
+    public func save(
+        _ snapshot: GameSessionSnapshot,
+        puzzleId: String,
+        mode: String,
+        difficulty: String
+    ) async throws {
+        try await savedGameStore().save(
+            snapshot,
+            puzzleId: puzzleId,
+            mode: mode,
+            difficulty: difficulty
+        )
     }
 
     public func markCompleted(_ summary: SavedGameSummary) async throws {

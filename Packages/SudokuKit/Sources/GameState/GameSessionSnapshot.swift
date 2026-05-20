@@ -5,7 +5,7 @@
 //
 // Pure value type: Sendable + Equatable + Hashable + Codable.
 
-import Foundation
+public import Foundation
 public import SudokuEngine
 
 public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
@@ -21,6 +21,11 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
     public let undoMoves: [Move]
     public let redoMoves: [Move]
     public let notes: NotesGrid
+    /// Wall-clock instant of the first `.start()` on the originating
+    /// session. `nil` if the session was never started (idle snapshot).
+    /// Single source of truth for the `SavedGame.startedAt` CloudKit field
+    /// (per impl-notes 2026-05-20_wave-2-blocker-fixes §B4).
+    public let startedAt: Date?
 
     public init(
         puzzle: Puzzle,
@@ -29,7 +34,8 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
         elapsedSeconds: Int,
         undoMoves: [Move],
         redoMoves: [Move],
-        notes: NotesGrid
+        notes: NotesGrid,
+        startedAt: Date? = nil
     ) {
         self.puzzle = puzzle
         self.currentBoard = currentBoard
@@ -38,5 +44,6 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
         self.undoMoves = undoMoves
         self.redoMoves = redoMoves
         self.notes = notes
+        self.startedAt = startedAt
     }
 }

@@ -83,9 +83,14 @@ public actor FakePersistence: PersistenceProtocol {
         throw PersistenceError.zoneNotProvisioned
     }
 
-    public func save(_ snapshot: GameSessionSnapshot) async throws {
-        // Puzzle has no embedded puzzleId; use seed as the identity proxy.
-        operations.append(.save(puzzleId: String(snapshot.puzzle.seed)))
+    public func save(
+        _ snapshot: GameSessionSnapshot,
+        puzzleId: String,
+        mode: String,
+        difficulty: String
+    ) async throws {
+        _ = (mode, difficulty)
+        operations.append(.save(puzzleId: puzzleId))
     }
 
     public func markCompleted(_ summary: SavedGameSummary) async throws {

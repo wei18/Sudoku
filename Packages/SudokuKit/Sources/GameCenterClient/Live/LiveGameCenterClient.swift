@@ -80,9 +80,27 @@ public actor LiveGameCenterClient: GameCenterClient {
 
     private func startObservingIfNeeded() {
         guard observerTask == nil else { return }
-        observerTask = Task { [authDriver] in
-            for await outcome in await authDriver.observeStateChanges() {
-                self.handleObservedOutcome(outcome)
+        // Per impl-notes 2026-05-20_wave-2-blocker-fixes §B3.
+        //
+        // Pre-fix: the Task implicitly captured `self` strongly via
+        // `self.handleObservedOutcome(outcome)`. The for-await loop
+        // never terminates on its own, so the actor could never deinit
+        // — permanent retain cycle.
+        //
+        // Fix: capture `self` weakly. Snapshot `authDriver` (an actor
+        // ref, value-like since the property is `let`) into the
+        // closure's capture list so the outer for-await can run
+        // without an unconditional `self?.` chain. Per iteration, we
+        // re-grab a strong `self` via `guard let`; the inner await on
+        // a strong reference (NOT an optional weak) avoids the
+        // `await self?.X` codegen path that exhibited test-harness
+        // pathologies (see §未決) and ensures we either dispatch or
+        // exit cleanly when the actor is gone.
+        observerTask = Task { [weak self, authDriver] in
+            let stream = await authDriver.observeStateChanges()
+            for await outcome in stream {
+                guard let strongSelf = self else { return }
+                await strongSelf.handleObservedOutcome(outcome)
             }
         }
     }

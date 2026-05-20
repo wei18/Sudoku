@@ -79,7 +79,12 @@ private struct DummyPersistence: PersistenceProtocol {
     ) async throws -> GameSessionSnapshot {
         throw PersistenceError.iCloudNotSignedIn
     }
-    func save(_ snapshot: GameSessionSnapshot) async throws {}
+    func save(
+        _ snapshot: GameSessionSnapshot,
+        puzzleId: String,
+        mode: String,
+        difficulty: String
+    ) async throws {}
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
