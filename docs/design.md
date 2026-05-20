@@ -245,7 +245,7 @@ GameCenterSink 收到 `puzzleCompleted` 事件後：
 
 | Leaderboard ID | Score Type | Sort | Recurrence | Format | Score Range |
 |---|---|---|---|---|---|
-| `com.wei18.sudoku.leaderboard.easy.daily.v1` | Time（毫秒）| Low to High（**ascending = better**）| Daily, **UTC 00:00 reset** | `mm:ss.SSS` | `1` ~ `7_200_000`（2 小時上限，**v1 暫定**）|
+| `com.wei18.sudoku.leaderboard.easy.daily.v1` | Time（百分秒）| Low to High（**ascending = better**）| Daily, **UTC 00:00 reset** | `mm:ss.SS` | `1` ~ `720_000`（2 小時上限，**v1 暫定**）|
 | `com.wei18.sudoku.leaderboard.medium.daily.v1` | 同上 | 同上 | 同上 | 同上 | 同上 |
 | `com.wei18.sudoku.leaderboard.hard.daily.v1` | 同上 | 同上 | 同上 | 同上 | 同上 |
 
@@ -253,7 +253,9 @@ GameCenterSink 收到 `puzzleCompleted` 事件後：
 
 **Recurrence 設定**（App Store Connect → Game Center → Leaderboard → Recurring）：Start Date = 發版當日 UTC 00:00；Duration = 1 day；Reset Time = 每日 UTC 00:00（與 `puzzleId = YYYY-MM-DD-*` 對齊）。
 
-**Score 提交**：`GameState.elapsedSeconds × 1000` → Int64 ms。
+**Score 提交**：`GameState.elapsedSeconds × 100` → Int64 百分秒（centiseconds）。
+
+> **ASC API ceiling（2026-05-20，issue #17）**：Apple `ELAPSED_TIME_CENTISECOND` 是 ASC GC leaderboard 支援之最高精度 elapsed-time formatter（2 位小數）。GC 提交層做 s → centisecond 轉換；內部 `PersonalRecord` 仍以毫秒保留更高精度（無 internal 精度損失）。`formattedScore` UI 顯示 `mm:ss.SS`。
 
 **Locale Title**（每條 leaderboard 在 App Store Connect 需各 locale 一組）：
 
