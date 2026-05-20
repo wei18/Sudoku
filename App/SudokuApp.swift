@@ -8,7 +8,13 @@ struct SudokuApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(viewModel: composition.rootViewModel)
+            RootView(
+                viewModel: composition.rootViewModel,
+                puzzleProvider: composition.puzzleProvider,
+                persistence: composition.persistence,
+                gameCenter: composition.gameCenter,
+                telemetry: composition.telemetry
+            )
         }
     }
 }

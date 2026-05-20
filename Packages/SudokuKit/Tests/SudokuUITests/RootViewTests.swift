@@ -13,7 +13,9 @@ import Testing
 
 import GameCenterClient
 import Persistence
+import PuzzleStore
 import SudokuKitTesting
+import Telemetry
 
 @MainActor
 @Suite("RootView — bootstrap + snapshots")
@@ -74,7 +76,13 @@ struct RootViewTests {
         )
         await viewModel.bootstrap()
 
-        let view = RootView(viewModel: viewModel)
+        let view = RootView(
+            viewModel: viewModel,
+            puzzleProvider: FakePuzzleProvider(),
+            persistence: FakePersistence(),
+            gameCenter: FakeGameCenterClient(),
+            telemetry: Telemetry(sinks: [])
+        )
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
 
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -89,7 +97,13 @@ struct RootViewTests {
         )
         await viewModel.bootstrap()
 
-        let view = RootView(viewModel: viewModel)
+        let view = RootView(
+            viewModel: viewModel,
+            puzzleProvider: FakePuzzleProvider(),
+            persistence: FakePersistence(),
+            gameCenter: FakeGameCenterClient(),
+            telemetry: Telemetry(sinks: [])
+        )
         let host = hostingView(view, size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
 
         withSnapshotTesting(record: SnapshotMode.recordMode) {
