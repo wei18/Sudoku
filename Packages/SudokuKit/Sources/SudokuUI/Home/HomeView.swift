@@ -65,6 +65,7 @@ struct ModeCard: View {
         }
         .padding(16)
         .frame(minHeight: 72)
+        .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
