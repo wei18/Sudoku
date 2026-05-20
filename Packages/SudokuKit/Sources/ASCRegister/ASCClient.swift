@@ -101,7 +101,8 @@ internal actor ASCClient {
                     "vendorIdentifier": config.id,
                     "defaultFormatter": config.defaultFormatter,
                     "scoreSortType": config.sortOrder,
-                    "recurrenceRule": config.recurrenceRule
+                    "recurrenceRule": config.recurrenceRule,
+                    "submissionType": config.submissionType
                 ],
                 "relationships": [
                     "gameCenterDetail": [

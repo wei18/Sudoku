@@ -76,4 +76,18 @@ internal struct ConfigConsistencyTests {
             #expect(board.recurrenceRule == "DAILY")
         }
     }
+
+    @Test("All 3 leaderboards use ASC sortOrder token (issue #19 ASC enum: 'ASC' | 'DESC')")
+    internal func sortOrder() {
+        for board in Config.leaderboards {
+            #expect(board.sortOrder == "ASC")
+        }
+    }
+
+    @Test("All 3 leaderboards use BEST_SCORE submissionType (sudoku semantics, issue #19)")
+    internal func submissionType() {
+        for board in Config.leaderboards {
+            #expect(board.submissionType == "BEST_SCORE")
+        }
+    }
 }

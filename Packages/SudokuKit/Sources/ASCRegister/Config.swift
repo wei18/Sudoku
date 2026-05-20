@@ -95,12 +95,21 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// (`mm:ss.SS`, 2 decimals). Confirmed by ASC 409 response 2026-05-20, issue #17.
     internal var defaultFormatter: String { "ELAPSED_TIME_CENTISECOND" }
 
-    /// Low-to-high (ascending = better), per §How.3.1.
-    internal var sortOrder: String { "ASCENDING" }
+    /// Low-to-high (ascending = better), per §How.3.1. ASC's `scoreSortType` enum
+    /// expects the short token `"ASC"` (confirmed by round-2 409 response 2026-05-20,
+    /// issue #19: "Expected one of: 'ASC', 'DESC'").
+    internal var sortOrder: String { "ASC" }
 
     /// ASC recurrence cadence (plain string). Confirmed by 409 response that the
     /// attribute is a STRING; value `"DAILY"` mirrors the ASC console terminology.
     internal var recurrenceRule: String { "DAILY" }
+
+    /// Score submission policy. `BEST_SCORE` keeps each player's lowest (best)
+    /// completion time per daily cycle — required by §How.3.1 semantics
+    /// ("保留每位玩家當日最佳完成時間"). The alternative `MOST_RECENT_SCORE`
+    /// would overwrite stored records on every submit and is wrong for our domain.
+    /// `submissionType` attribute was flagged REQUIRED by round-2 409 (issue #19).
+    internal var submissionType: String { "BEST_SCORE" }
 }
 
 internal struct AchievementConfig: Sendable, Equatable {
