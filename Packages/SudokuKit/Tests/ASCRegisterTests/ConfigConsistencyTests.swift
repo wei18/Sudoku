@@ -91,10 +91,10 @@ internal struct ConfigConsistencyTests {
         }
     }
 
-    @Test("All 3 leaderboards use P1D recurrenceDuration (ISO 8601 1-day, issue #22)")
+    @Test("All 3 leaderboards use PT24H recurrenceDuration (ISO 8601 24-hour, issue #24)")
     internal func recurrenceDuration() {
         for board in Config.leaderboards {
-            #expect(board.recurrenceDuration == "P1D")
+            #expect(board.recurrenceDuration == "PT24H")
         }
     }
 }
