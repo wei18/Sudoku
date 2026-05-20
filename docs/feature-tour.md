@@ -67,7 +67,7 @@ iPhone（iOS 26+）跟 Mac（macOS 26+）共用一份 codebase。SwiftUI multipl
 
 ## 目前狀態
 
-- v1 程式碼**全部寫完**，336+ 個自動化測試全綠，25 張 UI snapshot 視覺驗證過
+- v1 程式碼**全部寫完**，364 個自動化測試全綠，25 張 UI snapshot 視覺驗證過
 - 已修掉幾個 macOS smoke test 抓到的 bug（HomeView 點擊區、Mac sidebar 連結、ResumePill）
 
 ## 還沒做的（Phase 10 上架流程）

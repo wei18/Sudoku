@@ -312,99 +312,130 @@ GameCenterSink 收到 `puzzleCompleted` 事件後：
 
 #### §How.3.3 GameCenterClient Protocol
 
-**設計原則**：所有方法 `async throws`、所有值型別 `Sendable`、protocol `: Sendable`；不暴露 `GameKit` 型別（只有 live 實作 import GameKit）；失敗模式顯式可 throw `GameCenterError`。
+**設計原則**：所有方法 `async throws`、所有值型別 `Sendable + Equatable`、protocol `: Sendable`；不暴露 `GameKit` 型別（只有 `Sources/GameCenterClient/Live/*.swift` 可 `import GameKit`，per `foundations.md §2`）；失敗模式顯式 throw `GameCenterError`。
+
+**Source of truth**：`Packages/SudokuKit/Sources/GameCenterClient/GameCenterClient.swift`。下面 shape 為該檔的鏡像；如有 drift 以 source 為準。PR 軌跡：PR #17（`mm:ss.SS` formatter）、PR #25（`recurrenceDuration` PT24H + 7200s 上限）、PR #30（ms → centisecond 提交層轉換）。
 
 ```swift
 public protocol GameCenterClient: Sendable {
-    func authenticate() async -> AuthState
+    /// 跑一次 GameKit auth handshake。降級狀態（unauthenticated /
+    /// restricted / unavailableInRegion）回傳對應 enum；GameKit 真實錯誤 throw。
+    func authenticate() async throws -> GameCenterAuthState
 
-    /// 最近已知的 auth state，非同步快取讀取（由 `@Observable` VM 同步使用）。
-    nonisolated var currentAuthState: AuthState { get }
+    /// Auth state 變更流（sign-in / sign-out / region change）。VM `.task` await。
+    func authStateUpdates() async -> AsyncStream<GameCenterAuthState>
 
-    /// 連續 auth state 變更流。VM `.task` 持續 await。
-    func authStateUpdates() -> AsyncStream<AuthState>
+    /// 提交一筆 daily 分數。Live 實作以 `LeaderboardIDs`（Step 7.3）
+    /// 將 `puzzleId` + `difficulty` + `leaderboardKind` 映射為 `.v1`-suffixed
+    /// leaderboard ID — VM 端不直接組 ID。內部做 `elapsedSeconds × 100` →
+    /// Int64 centisecond（per §How.3.1 ASC `ELAPSED_TIME_CENTISECOND`）。
+    func submitScore(
+        puzzleId: String,
+        elapsedSeconds: Int,
+        difficulty: String,
+        leaderboardKind: LeaderboardKind
+    ) async throws
 
-    /// 朋友列表授權狀態（iOS 14.5+）。fetchLeaderboardSlice(.friendsOnly) 前置檢查。
+    /// 回報單一 achievement 進度（0...100）。
+    func reportAchievement(_ achievement: AchievementProgress) async throws
+
+    /// 拉 leaderboard slice。`around` 為 nil → 該 scope 的 top-of-world；
+    /// 帶 player ID → 以該玩家為中心 ±`limit/2` 視窗。
+    func fetchLeaderboardSlice(
+        leaderboardId: String,
+        scope: LeaderboardScope,
+        around player: String?,
+        limit: Int
+    ) async throws -> LeaderboardSlice
+
+    /// 朋友列表授權狀態。`friendsAllTime` 前置必查。
     func friendsAuthorizationStatus() async -> FriendsAuthStatus
 
-    /// 啟動 GameKit 系統朋友授權 prompt（一個 session 內只請求一次）。
-    func requestFriendsAuthorization() async throws
-
-    func submitScore(
-        leaderboardID: String,
-        elapsedMilliseconds: Int64,
-        context: UInt64
-    ) async throws
-
-    func reportAchievement(
-        achievementID: String,
-        percentComplete: Double,
-        showsCompletionBanner: Bool
-    ) async throws
-
-    func fetchLeaderboardSlice(
-        leaderboardID: String,
-        scope: LeaderboardScope,
-        topCount: Int                  // v1 預設 10
-    ) async throws -> LeaderboardSlice
+    /// 觸發系統 friends prompt；回傳玩家選擇後的狀態。
+    func requestFriendsAuthorization() async throws -> FriendsAuthStatus
 }
 
-public enum FriendsAuthStatus: Sendable, Equatable {
-    case notDetermined
-    case denied
-    case restricted
-    case authorized
-}
+// MARK: - Value types
 
-public enum AuthState: Sendable, Equatable {
+public enum GameCenterAuthState: Sendable, Equatable, Hashable, Codable {
     case unknown
-    case authenticated(Player)
     case unauthenticated
+    case authenticated(PlayerSummary)
     case restricted
-    case failed(GameCenterError)
+    case unavailableInRegion
 }
 
-public struct Player: Sendable, Equatable {
-    public let gamePlayerID: String
+public struct PlayerSummary: Sendable, Equatable, Hashable, Codable {
+    /// `GKPlayer.gamePlayerID` — 跨 alias / display-name 改變仍穩定。
+    /// 公開 API 以 `teamPlayerId` 命名以避免暴露 GameKit 術語。
+    public let teamPlayerId: String
     public let displayName: String
-    public let alias: String
 }
 
-public enum LeaderboardScope: Sendable, Equatable {
-    case globalTop
-    case aroundPlayer            // 自己 ±topCount/2
-    case friendsOnly
+/// v1 leaderboard families。每一個對應一條 `.v1`-suffixed leaderboard ID
+/// （由 `LeaderboardIDs` 統一組裝）。
+public enum LeaderboardKind: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
+    case dailyEasy
+    case dailyMedium
+    case dailyHard
 }
 
-public struct LeaderboardSlice: Sendable, Equatable {
-    public let leaderboardID: String
+public enum LeaderboardScope: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
+    case globalAllTime
+    case globalToday
+    case friendsAllTime
+}
+
+public struct LeaderboardEntry: Sendable, Equatable, Hashable, Codable {
+    public let rank: Int
+    public let player: PlayerSummary
+    /// 已耗秒數（time-based leaderboard：lower = better）。
+    /// UI 端透過 §How.3.1 formatter 轉 `mm:ss.SS` 顯示。
+    public let score: Int
+}
+
+public struct LeaderboardSlice: Sendable, Equatable, Hashable, Codable {
+    public let leaderboardId: String
     public let scope: LeaderboardScope
     public let entries: [LeaderboardEntry]
-    public let localPlayerEntry: LeaderboardEntry?    // 玩家當前 occurrence 尚未 submit 時為 nil
     public let totalPlayerCount: Int
     public let fetchedAt: Date
 }
 
-public struct LeaderboardEntry: Sendable, Equatable, Identifiable {
-    public var id: String { player.gamePlayerID + "#" + String(rank) }
-    public let player: Player
-    public let rank: Int                        // 1-based
-    public let formattedScore: String           // "mm:ss.SSS"
-    public let rawScore: Int64                  // 毫秒
+public struct AchievementProgress: Sendable, Equatable, Hashable, Codable {
+    /// 短 stable id（例：`"first_puzzle"`）。GameKit prefix
+    /// `com.wei18.sudoku.achievement.` 由 submit 時補上。
+    public let achievementId: String
+    /// 0...100。
+    public let percentComplete: Double
+}
+
+public enum FriendsAuthStatus: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
+    case notDetermined
+    case restricted
+    case denied
+    case authorized
 }
 
 public enum GameCenterError: Error, Sendable, Equatable {
     case notAuthenticated
-    case authenticationCancelled
-    case authenticationFailed(reason: String)
+    case cancelled
+    case restricted
     case unavailableInRegion
     case friendsAccessDenied
-    case scoreOutOfRange
-    case networkUnavailable
-    case rateLimited
-    case underlying(code: Int, description: String)   // GKError.Code.rawValue + 訊息，不 import GameKit
+    case scoreSubmitFailed(reason: String)
+    case achievementReportFailed(reason: String)
+    /// GKError 的內容打平為純值（domain / code / description），protocol 端不 import GameKit。
+    case underlying(domain: String, code: Int, description: String)
 }
 ```
+
+**設計筆記**：
+- `authenticate()` 是 `async throws -> GameCenterAuthState`（不是 `async -> AuthState`）— throw 讓 live 實作能把真實 GameKit 錯誤帶上來；降級狀態（`.unauthenticated` / `.restricted` / `.unavailableInRegion`）仍以 enum 表達。
+- `submitScore` 接 `puzzleId` + `difficulty` + `LeaderboardKind`、不接組好的 leaderboard ID — `.v1` suffix 邏輯收斂在 `LeaderboardIDs`，避免 VM 重複組 ID。
+- `PlayerSummary.teamPlayerId` 對應 `GKPlayer.gamePlayerID`；命名上去除 GameKit 字眼。
+- `LeaderboardEntry.score` 為「已耗秒數」（lower = better）；UI 顯示用的 `mm:ss.SS` 字串由 §How.3.1 formatter 在呈現層生成（不污染 transport 型別）。
+- `LeaderboardScope` 只有 3 個 case；「我的鄰近」窗格透過 `fetchLeaderboardSlice` 的 `around player:` 參數表達，而非獨立 scope（§How.3.5 三種視圖共用底層 API）。
 
 **Sink 使用模式**：
 
@@ -424,11 +455,15 @@ case .puzzleCompleted(puzzleId, mode, difficulty, seconds):
       // toast「此局跨日完成，未列入今日排行」；仍寫 PersonalRecord
       return
   }
+  // 2 小時上限保護（§How.3.1）：超過視為 abandon，不提交 GC。
+  guard seconds <= 7200 else { return }
   try await client.submitScore(
-      leaderboardID: leaderboardID(for: difficulty),
-      elapsedMilliseconds: Int64(seconds * 1000),
-      context: 0
+      puzzleId: puzzleId,
+      elapsedSeconds: seconds,
+      difficulty: difficulty.rawValue,
+      leaderboardKind: leaderboardKind(for: difficulty)
   )
+  // seconds → centisecond Int64 的轉換在 live 實作內完成（per §How.3.1 L267）。
   completedDailyPuzzleIds.insert(puzzleId)
 ```
 
@@ -706,16 +741,23 @@ flowchart TD
     Root -.->|resumeCandidate?| Board
 ```
 
-**Deep link**：CompletionView → Leaderboard 透過 `NavigationPath` + `AppRoute` enum：
+**Deep link**：CompletionView → Leaderboard 透過 `NavigationPath` + `AppRoute` enum。Source of truth：`Packages/SudokuKit/Sources/SudokuUI/Navigation/AppRoute.swift`。
 
 ```swift
-public enum AppRoute: Hashable, Sendable {
-    case daily(date: Date)
-    case practice(difficulty: Difficulty)
+public enum AppRoute: Hashable, Sendable, Codable {
+    case home
+    case daily
+    case practice
     case board(puzzleId: String)
-    case leaderboard(id: String, scope: LeaderboardScope)
+    case completion(puzzleId: String, elapsedSeconds: Int)
+    case leaderboard(leaderboardId: String)
+    case settings
 }
 ```
+
+每個 case 對應 §How.5.1 的一個 View（Root 為 container；Home / Daily / Practice / Board / Completion / Leaderboard / Settings 上 stack）。`daily` / `practice` / `home` / `settings` 不帶參數（hub 本身管理當下狀態）；`board` 帶 `puzzleId`；`completion` 帶 `puzzleId` + `elapsedSeconds`；`leaderboard` 帶組好的 `leaderboardId`（scope 由 LeaderboardView 內部 toggle 切換，per §How.3.5）。
+
+> **Footnote**：`§Backlog`（design.md 底部）追蹤 issue #49（native GameCenter UI switch — 改用 `GKAccessPoint` / 系統 leaderboard sheet 取代自製 SwiftUI `LeaderboardView`）。若該 issue 落地，`.leaderboard` case 可能整條刪除，呼叫端改用 `GKGameCenterViewController` 開原生面板。在 #49 結論前本節保留 7 case。
 
 #### §How.5.3 單局狀態機
 
@@ -1389,7 +1431,23 @@ func boardA11yLabels() {
 
 ## §Decisions
 
-_章節通過後逐條補上。_
+針對未來貢獻者影響最大的決策清單。每條一行：what + why + trail（meeting log / PR / issue）。完整脈絡見對應的 meeting log。
+
+- **OS floor = iOS 26 / macOS 26**：放棄 iOS 18 / macOS 15 基線，全採 Apple Silicon-only。理由：Liquid Glass / `@Observable` / 跨 arch 純整數 RNG 等都受惠；deviation 紀錄 in `foundations.md §1`（2026-05-15 kickoff，`meetings/2026-05-15_kickoff-brainstorming.md`）。
+- **單一 repo（Sudoku-spec/）**：放棄原本「sibling `Sudoku/` impl repo + `Sudoku-spec/` 規格 repo」雙 repo 結構，所有產出統一在本 repo。理由：複本 / sync 成本與單人專案規模不成比例（2026-05-17，README.md L8）。
+- **Deterministic local generator（no server）**：放棄 CloudKit-served puzzle pool（route C）+ hybrid override（route B），改為純本機 `SplitMix64` deterministic 產題。理由：v1 portfolio scope 內最低複雜度、零 secret 表面、可離線（2026-05-16，`meetings/2026-05-16_local-generator-pivot.md`；詳 §How.4）。
+- **`GeneratorVersion` post-ship frozen**：v1 演算法凍結；改算法必 bump version + 開新 leaderboard family（`.v1` → `.v2`）。理由：分數可比性必須伴隨確定性題目（§How.4.5；同 2026-05-16 pivot）。
+- **CloudKit Private-only in v1**：Public DB scope 保留（container 已建）但 v1 完全不寫；只用 Private DB `com.wei18.sudoku.userZone` 存 `SavedGame` + `PersonalRecord`。`PuzzleOverride` record type 留 v2（§How.2、§Backlog；2026-05-16 pivot）。
+- **Score precision = centisecond（`mm:ss.SS`）**：GC submission 走 ASC `ELAPSED_TIME_CENTISECOND` formatter（Apple 上限精度，2 位小數）；內部 `PersonalRecord` 仍以毫秒保留更高精度（無 internal 精度損失）。PR #17 引入 formatter、PR #30 加入 s → centisecond 提交層轉換（§How.3.1 L269）。
+- **Leaderboard `recurrenceDuration` = `PT24H`**（不是 `P1D`）：ASC API 拒絕 `P1D`，必須用 ISO 8601 PT24H 表達。發現於 ASCRegister CLI round（`meetings/2026-05-20_asc-recurrence-duration-pt24h.impl-notes.md`、issue #24 / PR #25）。
+- **Daily 上限 7200 秒（2 小時）**：超過即視為 abandon，不提交 GC、不更新 `PersonalRecord.bestTimeSeconds`、`SavedGame` 維持 `inProgress`。Score range 設 `1` ~ `720_000` centisecond（§How.3.1）。
+- **8 個 achievements / 總點 500**：每 achievement points 上限 100（ASC `INVALID_POINTS_RANGE`），`hard.master` 由 150 → 100；總預算保留 500 給 v2 增量（§How.3.2；issue #40，2026-05-20）。
+- **v1 不做 GC 離線提交佇列**：daily occurrence 跨日後關閉、佇列在隔日送會 silently 失敗或送錯 occurrence。資料完整性由 CloudKit `PersonalRecord` + `SavedGame` 擔保；GC 排行只是「炫耀面」（§How.3.4，design.md 2026-05-15）。
+- **Practice mode 不入 GC leaderboard**：但 achievement 評估仍跨模式（`practice.complete_10/100`、`hard.master` 不分模式累積）。Sink 以 `guard mode == .daily` 短路 score 提交（§How.3.1 / §How.3.3）。
+- **跨日完成不提交 GC**：玩家 23:59 UTC 開始、00:01 UTC 完成 → Sink 偵測完成時間 UTC 日 ≠ `puzzleId` UTC 日，跳過 GC submission 並 toast，仍寫 `PersonalRecord`。理由：GameKit `submitScore` 永遠寫入當前 active occurrence，無法 retarget 已關閉 occurrence（§How.3.1 reset 邊緣案例）。
+- **AppRoute 7 case 結構**：`home` / `daily` / `practice` / `board` / `completion` / `leaderboard` / `settings`，僅 `board` / `completion` / `leaderboard` 帶參數（§How.5.2）。`completion` 不帶 difficulty / mode 為已知限制 — 詳 §Backlog "Completion 攜帶 difficulty / mode" 條（issue #45）。
+- **L10n = 7 locale**：zh-TW、en、ja、zh-Hans、es、th、ko；用 `Localizable.xcstrings` + AI translation flow，源語 zh-TW + en 手寫，其餘由 agent 翻譯。擴充候選（fr / de / pt-BR）入 §Backlog（`ai-translated-localization` skill、2026-05-15）。
+- **Native GameCenter UI switch（in flight）**：issue #49 評估以 `GKAccessPoint` + `GKGameCenterViewController` 取代自製 `LeaderboardView` SwiftUI 實作，刪 ~400 lines 自製 UI。AppRoute `.leaderboard` case 可能整條移除（`meetings/2026-05-20_native-gamecenter-switch.impl-notes.md`，2026-05-20）。
 
 ---
 

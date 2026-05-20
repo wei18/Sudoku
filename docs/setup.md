@@ -24,8 +24,8 @@ This file covers two things:
 ### 1.2 First-clone steps
 
 ```sh
-git clone https://github.com/Wei18/Sudoku.git
-cd Sudoku
+git clone https://github.com/Wei18/Sudoku-spec.git
+cd Sudoku-spec
 
 # 1) Install pinned CLI tools (swiftlint, swiftformat, xcbeautify, gitleaks,
 #    lefthook, tuist).
