@@ -1399,3 +1399,9 @@ _章節通過後逐條補上。_
 - **v2 廣告投放**：App 內出現廣告，預設頻率「每 14 天一次」；進階方案為動態頻率 — 依 CloudKit operating cost 與當下使用者人數反推每位用戶該分攤的成本，動態調整曝光頻率以剛好回收營運費用（2026-05-15）。
 - IAP / 付費階層（無時程）
 
+### 通知與留存
+- **本機通知提醒（Local Notification for daily reminder）**：使用 `UNUserNotificationCenter` 排程每日提醒，引導玩家完成當天的 daily 題。需設計：權限請求時機（不在 onboarding 第一步，避免 prompt fatigue）、預設時間（玩家可在 §Settings 自訂）、跨日 reset 與 timezone 處理、靜音時段、未完成 daily 才提醒的條件邏輯。entitlements 不需要新增，但 `Info.plist` 與 §How.3 / §Settings 介面需擴充。一定要考慮玩家連續錯過時的 escalation/de-escalation 策略，避免變成騷擾（2026-05-20）。
+
+### 在地化
+- **L10n 擴充至 10 個語言**：目前 v1 為 7 個 locale（zh-TW、en、ja、zh-Hans、es、th、ko，見 `ai-translated-localization` skill 預設）。候選擴充：法語（fr）、德語（de）、葡萄牙語巴西（pt-BR）。觸發條件以 App Store 後台市場分析（特定 storefront 安裝量 / 留存）為主，每加一個 locale 需執行一次完整 AI translation pass、新增 ASC metadata locale、Game Center leaderboard / achievement title 新增 locale，與 PrivacyInfo 對應 App Store 隱私政策頁同步翻譯。`gc-strings.xcstrings.patch` 與 `ASCRegister` CLI 已可自動處理新 locale 的 GC 註冊。建議分批 — 先加 1-2 個觀察後續 ARPU 與翻譯維護成本，再決定是否補到 10（2026-05-20）。
+
