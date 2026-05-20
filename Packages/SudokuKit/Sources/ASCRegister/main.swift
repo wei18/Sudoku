@@ -177,7 +177,7 @@ internal enum ASCRegisterCLI {
     private static func execute(_ action: Action, client: ASCClient, detailId: String) async throws {
         switch action {
         case .createLeaderboard(let cfg):
-            let startDate = LeaderboardConfig.currentRecurrenceStartDateUTC()
+            let startDate = LeaderboardConfig.nextRecurrenceStartDateUTC()
             _ = try await client.createLeaderboard(
                 detailId: detailId,
                 config: cfg,
