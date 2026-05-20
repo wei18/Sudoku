@@ -1410,3 +1410,6 @@ _章節通過後逐條補上。_
 ### 在地化
 - **L10n 擴充至 10 個語言**：目前 v1 為 7 個 locale（zh-TW、en、ja、zh-Hans、es、th、ko，見 `ai-translated-localization` skill 預設）。候選擴充：法語（fr）、德語（de）、葡萄牙語巴西（pt-BR）。觸發條件以 App Store 後台市場分析（特定 storefront 安裝量 / 留存）為主，每加一個 locale 需執行一次完整 AI translation pass、新增 ASC metadata locale、Game Center leaderboard / achievement title 新增 locale，與 PrivacyInfo 對應 App Store 隱私政策頁同步翻譯。`gc-strings.xcstrings.patch` 與 `ASCRegister` CLI 已可自動處理新 locale 的 GC 註冊。建議分批 — 先加 1-2 個觀察後續 ARPU 與翻譯維護成本，再決定是否補到 10（2026-05-20）。
 
+### 動畫與微互動
+- **Lottie 整合（[`airbnb/lottie-ios`](https://github.com/airbnb/lottie-ios)）**：自製 Lottie JSON 動畫接入 App，候選使用點：(1) Completion 完成題目時播 `.sweep` / `.streak` 等里程碑慶祝動畫；(2) Practice 抽題 shimmer 升級為更個性的等待動畫；(3) Daily Hub 連續達成 7 天時的低調慶祝；(4) Game Center 解鎖 achievement 時 App 內 toast 動畫。仍與 brand essence 「不喧鬧」相容 — 動畫須是 calm/quick 風格，避免迪士尼級 confetti。先導入 `lottie-ios` SwiftPM dep，再用 Bodymovin / LottieFiles 自製 1-2 個動畫 trial run；若 binary size + runtime cost 可接受，再擴充。注意：此為**第一個第三方 dep**，會打破 v1「Apple-only stack」紀律 — 加入前需在 foundations.md §3 補充「為什麼破例」的決策紀錄（2026-05-20）。
+
