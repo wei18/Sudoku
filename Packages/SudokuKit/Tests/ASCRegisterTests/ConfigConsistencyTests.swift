@@ -62,4 +62,18 @@ internal struct ConfigConsistencyTests {
     internal func scoreRange() {
         #expect(Config.leaderboardScoreMaxMilliseconds == 7_200_000)
     }
+
+    @Test("All 3 leaderboards use ELAPSED_TIME_CENTISECOND formatter (ASC ceiling, issue #17)")
+    internal func defaultFormatter() {
+        for board in Config.leaderboards {
+            #expect(board.defaultFormatter == "ELAPSED_TIME_CENTISECOND")
+        }
+    }
+
+    @Test("All 3 leaderboards use DAILY recurrence (plain string per ASC 409 contract)")
+    internal func recurrenceRule() {
+        for board in Config.leaderboards {
+            #expect(board.recurrenceRule == "DAILY")
+        }
+    }
 }

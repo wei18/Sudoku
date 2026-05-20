@@ -90,20 +90,17 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// "easy" / "medium" / "hard" — used to look up `gc.leaderboard.<d>.daily.title`.
     internal let difficulty: String
 
-    /// Score format type for ASC. mm:ss.SSS time format.
-    // UNCONFIRMED: ASC API exact enum value for "mm:ss.SSS" elapsed-time score
-    // format. Candidates from public docs: `INTEGER_MILLISECONDS_FORMATTED_AS_TIME`
-    // or `ELAPSED_TIME_MILLISECONDS`. Resolve from a real `GET
-    // /v1/gameCenterLeaderboards/{id}` response before `apply`.
-    internal var scoreFormatType: String { "INTEGER_MILLISECONDS_FORMATTED_AS_TIME" }
+    /// ASC score formatter (plain string attribute on `gameCenterLeaderboards`).
+    /// `ELAPSED_TIME_CENTISECOND` is Apple's highest-precision elapsed-time formatter
+    /// (`mm:ss.SS`, 2 decimals). Confirmed by ASC 409 response 2026-05-20, issue #17.
+    internal var defaultFormatter: String { "ELAPSED_TIME_CENTISECOND" }
 
     /// Low-to-high (ascending = better), per §How.3.1.
     internal var sortOrder: String { "ASCENDING" }
 
-    /// Recurring daily, UTC 00:00 reset.
-    // UNCONFIRMED: ASC API nesting shape for `recurrenceRule` / `recurrenceStartDate`
-    // / `recurrenceDuration`. Resolve from a real GET response.
-    internal var recurrenceDurationDays: Int { 1 }
+    /// ASC recurrence cadence (plain string). Confirmed by 409 response that the
+    /// attribute is a STRING; value `"DAILY"` mirrors the ASC console terminology.
+    internal var recurrenceRule: String { "DAILY" }
 }
 
 internal struct AchievementConfig: Sendable, Equatable {

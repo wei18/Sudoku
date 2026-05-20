@@ -88,27 +88,20 @@ internal actor ASCClient {
         detailId: String,
         config: LeaderboardConfig
     ) async throws -> APIResource {
-        // UNCONFIRMED: exact `type` literal and recurrence nesting. Best
-        // guess based on ASC OpenAPI shape:
+        // Body shape confirmed by ASC 409 response 2026-05-20 (issue #17):
+        // `defaultFormatter` and `recurrenceRule` are plain string attributes;
+        // `scoreFormat` is not an attribute on `gameCenterLeaderboards`;
+        // `scoreRangeStart`/`scoreRangeEnd` have no documented home on the
+        // create payload and the 2-hour cap is enforced client-side (§How.3.1).
         let body: [String: Any] = [
             "data": [
                 "type": "gameCenterLeaderboards",
                 "attributes": [
                     "referenceName": config.referenceName,
                     "vendorIdentifier": config.id,
-                    "scoreFormat": config.scoreFormatType,
+                    "defaultFormatter": config.defaultFormatter,
                     "scoreSortType": config.sortOrder,
-                    "defaultFormatter": [
-                        // UNCONFIRMED: minimum/maximum field names.
-                        "scoreRangeStart": "1",
-                        "scoreRangeEnd": String(Config.leaderboardScoreMaxMilliseconds)
-                    ],
-                    "recurrenceRule": [
-                        // UNCONFIRMED: ASC may want "DURATION_DAYS": 1 or an
-                        // ISO-8601 "P1D" duration, or a frequency enum.
-                        "frequency": "DAILY",
-                        "duration": "P1D"
-                    ]
+                    "recurrenceRule": config.recurrenceRule
                 ],
                 "relationships": [
                     "gameCenterDetail": [
