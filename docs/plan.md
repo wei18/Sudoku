@@ -4,7 +4,7 @@ Status: **EXECUTED** — Phases 0–9 complete (2026-05-17 → 2026-05-19); Phas
 Last updated: 2026-05-19
 Total phases: **11** (Phase 0–10); total steps: **67**.
 
-This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. **Implementation lives in this same repo** (originally framed as a sibling `Sudoku/` repo; collapsed into the spec repo per 2026-05-17 decision). All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / future `Packages/` sit).
+This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / `Packages/` sit).
 
 ---
 
@@ -87,7 +87,7 @@ Tests:
 Implementation:
 - `.gitignore`: verbatim §7.4.
 - `LICENSE`: MIT.
-- `README.md`: pointer to `Sudoku-spec/`.
+- `README.md`: project root README.
 - `.gitattributes`: `*.png binary`; snapshot baseline handling.
 Acceptance: hygiene script exit 0; `git ls-files | grep -E '\.(p8|p12|pem|env)$'` empty.
 Skills: `apple-public-repo-security`.
@@ -763,7 +763,7 @@ Tests: N/A.
 Implementation:
 - 7-locale ASC metadata (title, subtitle, description, keywords, promotional text, what's new).
 - Screenshot sets: iPhone 6.7" + 6.1" + iPad 12.9" + Mac — captured via Phase 8 snapshot infra (re-use `BoardView` snapshots tweaked for ASC dimensions).
-- Privacy policy URL: GitHub Pages from `Sudoku-spec/`.
+- Privacy policy URL: GitHub Pages from this repo.
 Acceptance: ASC "Ready for Submission" checklist all green.
 Skills: `ai-translated-localization`, `ui-ux-pro-max:ui-ux-pro-max`.
 Depends on: 10.2, 10.3.
@@ -795,7 +795,7 @@ Depends on: 10.4.
 | Setup docs | `docs/setup.md` |
 | Snapshot baselines | `Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/<TestSuite>/...` (committed) |
 | Scratch (Phase 0 only) | `scratch/` (deleted at end of Phase 0) |
-| Meeting logs | `Sudoku-spec/meetings/{YYYY-MM-DD}_{topic}.md` (spec repo, not impl repo) |
+| Meeting logs | `meetings/{YYYY-MM-DD}_{topic}.md` |
 
 ---
 
