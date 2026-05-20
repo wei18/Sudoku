@@ -79,6 +79,29 @@ internal enum Config {
     internal static var totalAchievementPoints: Int {
         achievements.reduce(0) { $0 + $1.points }
     }
+
+    // MARK: - Locale code mapping (issue #31)
+
+    /// Map an xcstrings locale code (the App's source-of-truth, e.g. `"en"`,
+    /// `"zh-Hant"`) to the regional ASC code expected by App Store Connect
+    /// (e.g. `"en-US"`, `"zh-Hant-TW"`). Round-6 apply rejected the bare
+    /// xcstrings codes with `LOCALE_INVALID`.
+    ///
+    /// Unknown codes pass through unchanged — preserves any locale we add
+    /// in the future without re-hardcoding here, at the cost of a
+    /// `LOCALE_INVALID` reply ASC-side that surfaces the gap on next apply.
+    internal static func ascLocaleCode(for xcstringsCode: String) -> String {
+        switch xcstringsCode {
+        case "en":      return "en-US"
+        case "zh-Hant": return "zh-Hant-TW"
+        case "zh-Hans": return "zh-Hans-CN"
+        case "ja":      return "ja"
+        case "es":      return "es-ES"
+        case "th":      return "th-TH"
+        case "ko":      return "ko-KR"
+        default:        return xcstringsCode
+        }
+    }
 }
 
 // MARK: - Value types
