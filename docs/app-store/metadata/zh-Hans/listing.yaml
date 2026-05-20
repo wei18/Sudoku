@@ -1,0 +1,55 @@
+locale: zh-Hans
+name: "数独 — 每日与练习"
+subtitle: "iPhone 与 Mac 的安静逻辑"
+promotional_text: |
+  每天 UTC 00:00 三道新题（简单／中等／困难）。iPhone、Mac 同一个 iCloud 账号自动接续进度。无广告、无追踪、无额外账号。
+description: |
+  数独，留给思考，不留给嘈杂。
+
+  每天 UTC 00:00，三道题准时出现：简单、中等、困难。全球玩家同题，你的时间属于自己，排行榜告诉你跟其他人比起来如何。
+
+  想单纯练手不比快？切到 Practice 模式。难度自己选、抽到的题不会重复、没有计时压力、也不会上排行榜。
+
+  内容
+
+  • Daily 模式：每天三个难度各一题、UTC 00:00 重置的每日排行榜、同题只有一次计分机会。
+  • Practice 模式：按难度随机抽题，不计分、不上榜。
+  • 铅笔笔记：每格最多 9 个候选数字，跟纸笔写法一样。
+  • Undo / Redo：最多回退 20 步。
+  • 实时错误提示：填错立刻有红框，不用等到全部填完才发现。
+  • 随时暂停与续玩：自动存档，回到首页一键继续。
+  • Game Center：3 条每日排行榜、8 个成就，总计 500 点。
+
+  真正的跨平台
+
+  一份代码,两个平台。Mac 版本是货真价实的 SwiftUI Mac 应用 — 不是 iPad-on-Mac、也不是 Catalyst。窗口缩放、键盘操作（方向键、1-9 数字键、delete、⌘Z、⌘⇧Z）、Mac 原生菜单栏,全都按照 Mac 用户的习惯。手边哪台设备在线,就在那台继续。
+
+  关于隐私
+
+  不收集个人信息、不接入第三方 analytics 或广告 SDK。存档放在你自己的 iCloud Private Database — 你看得到,我们看不到。Game Center 分数由 Apple 处理。这份清单就到这里,没有别的。
+
+  七种语言
+
+  繁体中文、英文、日文、简体中文、西班牙文、泰文、韩文 — 界面、Game Center 标题、商店描述都包含在内。
+
+  无障碍
+
+  支持 Dynamic Type、完整 VoiceOver、明暗模式切换,sage 绿 + 米色暖纸背景为长时间游玩调整过。
+
+  需要 iOS 26 或 macOS 26 以上。
+keywords: "数独,sudoku,每日,益智,逻辑,推理,脑力,离线,ipad,mac,无广告,笔记"
+whats_new: |
+  v1.0 — 首次公开上架。
+
+  • Daily 模式:每天 UTC 00:00 三道新题,各难度独立的每日排行榜。
+  • Practice 模式:按难度随机抽题,无计时、无排行。
+  • 跨设备同步:iPhone 与 Mac 通过你自己的 iCloud Private Database 同步存档与记录。
+  • Game Center:3 条每日排行榜、8 个成就(总计 500 点)。
+  • 上架日支持 7 种语言:繁中、英、日、简中、西、泰、韩。
+  • Mac 原生 build,不是 Catalyst — 完整键盘支持与原生菜单栏。
+  • 无广告、无追踪、无第三方 SDK。
+
+  谢谢试玩。问题与建议欢迎到支持链接反馈。
+marketing_url: null
+support_url: "https://github.com/wei18/Sudoku/issues"
+privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"

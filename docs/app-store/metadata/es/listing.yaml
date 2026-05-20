@@ -1,0 +1,55 @@
+locale: es
+name: "Sudoku — Diario y Práctica"
+subtitle: "Lógica tranquila para iPhone y Mac"
+promotional_text: |
+  Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac con la misma cuenta de iCloud. Sin anuncios, sin seguimiento, sin cuentas adicionales.
+description: |
+  Sudoku, hecho para pensar, no para hacer ruido.
+
+  Cada día a las 00:00 UTC llegan tres puzles: Fácil, Medio y Difícil. Los mismos para todos los jugadores del mundo. Tu tiempo es tuyo; el ranking te muestra cómo se compara.
+
+  Si prefieres practicar en lugar de competir, cambia al modo Práctica. Tableros aleatorios cuando los necesites, sin cronómetro encima, sin envío de puntuaciones, sin nada que demostrar.
+
+  Contenido
+
+  • Modo Diario: tres dificultades cada día, rankings recurrentes que se reinician a las 00:00 UTC, una sola puntuación por puzle.
+  • Modo Práctica: tableros aleatorios ilimitados por dificultad, sin puntuación ni clasificación.
+  • Notas a lápiz: hasta nueve candidatos por celda, igual que en papel.
+  • Deshacer y rehacer: hasta veinte pasos atrás.
+  • Detección de errores en tiempo real: el dígito incorrecto se marca al instante, no al final.
+  • Pausa y reanuda cuando quieras: el guardado es automático y la pantalla principal te ofrece continuar con un toque.
+  • Game Center: tres rankings diarios y ocho logros, 500 puntos en total.
+
+  Multiplataforma de verdad
+
+  Una sola base de código, dos plataformas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst. Redimensionar ventanas, navegación con teclado (flechas, 1-9, supr, ⌘Z, ⌘⇧Z) y menús nativos de Mac funcionan como un usuario de Mac espera. Sigue tu partida en el dispositivo que tengas cerca.
+
+  Privacidad, sin rodeos
+
+  No recopilamos datos personales. No hay SDK de analítica ni de publicidad de terceros. Tus partidas viven en tu propia base de datos privada de iCloud — visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. La lista termina aquí.
+
+  Siete idiomas
+
+  Chino tradicional, inglés, japonés, chino simplificado, español, tailandés y coreano — interfaz, títulos de Game Center y descripción incluidos.
+
+  Accesibilidad
+
+  Dynamic Type, cobertura completa de VoiceOver, modo claro y oscuro, paleta verde salvia y papel cálido pensada para sesiones largas.
+
+  Requiere iOS 26 o macOS 26.
+keywords: "sudoku,diario,puzzle,logica,cerebro,numeros,offline,ipad,mac,sin anuncios,lapiz,notas"
+whats_new: |
+  Versión 1.0 — primera publicación.
+
+  • Modo Diario: tres puzles nuevos cada día a las 00:00 UTC con sus propios rankings recurrentes.
+  • Modo Práctica: tableros aleatorios por dificultad, sin reloj ni puntuación.
+  • Sincronización entre dispositivos: las partidas y estadísticas viajan entre iPhone y Mac a través de tu base de datos privada de iCloud.
+  • Game Center: tres rankings diarios y ocho logros (500 puntos en total).
+  • Siete idiomas desde el día uno: chino tradicional, inglés, japonés, chino simplificado, español, tailandés, coreano.
+  • Mac nativo, sin Catalyst — teclado completo y elementos en la barra de menús.
+  • Sin anuncios, sin seguimiento, sin SDK de terceros.
+
+  Gracias por probarlo. Comentarios y errores son bienvenidos en el enlace de soporte.
+marketing_url: null
+support_url: "https://github.com/wei18/Sudoku/issues"
+privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"
