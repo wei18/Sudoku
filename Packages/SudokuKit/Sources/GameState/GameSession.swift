@@ -11,7 +11,7 @@
 //
 // Imports: ONLY Foundation + SudokuEngine. No Apple framework imports.
 
-import Foundation
+public import Foundation
 public import SudokuEngine
 
 public actor GameSession {
@@ -39,6 +39,19 @@ public actor GameSession {
 
     private let telemetry: any GameStateTelemetry
     private let clock: any MonotonicClock
+    /// Wall-clock provider for `startedAt`. Default `Date()`; tests inject
+    /// a deterministic closure. Per impl-notes
+    /// 2026-05-20_wave-2-blocker-fixes §B4: the snapshot is the single
+    /// source of truth for `startedAt` so the mapper stays pure.
+    private let now: @Sendable () -> Date
+
+    // MARK: - startedAt
+
+    /// Wall-clock instant of the first successful `.start()` on this
+    /// session. Nil until `.start()` has been called at least once.
+    /// Preserved across `restore(from:)` so analytics + conflict resolution
+    /// see the original session-open time, not "time of last save".
+    public private(set) var startedAt: Date?
 
     // MARK: - Elapsed-time accounting
 
@@ -63,12 +76,14 @@ public actor GameSession {
     public init(
         puzzle: Puzzle,
         clock: any MonotonicClock = LiveMonotonicClock(),
-        telemetry: any GameStateTelemetry = NoOpGameStateTelemetry()
+        telemetry: any GameStateTelemetry = NoOpGameStateTelemetry(),
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.puzzle = puzzle
         self.currentBoard = puzzle.clues
         self.clock = clock
         self.telemetry = telemetry
+        self.now = now
     }
 
     // MARK: - Transitions
@@ -76,6 +91,9 @@ public actor GameSession {
     public func start() async throws {
         try transition(.start)
         runningSince = clock.now
+        if startedAt == nil {
+            startedAt = now()
+        }
         await telemetry.dispatch(.sessionStarted)
     }
 
@@ -141,6 +159,34 @@ public actor GameSession {
         }
     }
 
+    /// Clear the digit at (row, col). Pushes the move onto the undo stack
+    /// so subsequent `undo()` restores the prior digit. No-op if the cell is
+    /// already empty (no move is pushed). Per impl-notes
+    /// 2026-05-20_wave-2-blocker-fixes §B1: routing clear through the actor
+    /// is what fixes the silent no-op (resync no longer overwrites because
+    /// the actor IS the source of truth post-clear).
+    public func clearDigit(row: Int, col: Int) async throws {
+        guard status == .playing else {
+            throw GameSessionError.invalidStateForAction(status: status)
+        }
+        guard (0..<Board.dimension).contains(row),
+              (0..<Board.dimension).contains(col) else {
+            throw GameSessionError.outOfRange
+        }
+        let index = Board.index(row: row, column: col)
+        if currentBoard.givenMask[index] {
+            throw GameSessionError.cellImmutable(row: row, col: col)
+        }
+        let previous = currentBoard.digit(atIndex: index)
+        if previous == nil { return }   // already empty — no move recorded.
+
+        try currentBoard.setDigit(nil, atRow: row, column: col)
+        undoStack.push(.clearDigit(row: row, col: col, previous: previous))
+        // No `.digitPlaced(digit: 0, ...)` dispatch — the telemetry enum has
+        // no clear case yet. Adding `.digitCleared` is a follow-up flagged in
+        // impl-notes §未決 (out of scope for the BLOCKER PR).
+    }
+
     /// Toggle a pencil note (1...9) in a non-clue cell.
     public func toggleNote(row: Int, col: Int, digit: Int) async throws {
         guard status == .playing else {
@@ -190,7 +236,8 @@ public actor GameSession {
             elapsedSeconds: elapsedSeconds,
             undoMoves: undoStack.undoStack,
             redoMoves: undoStack.redoStack,
-            notes: notes
+            notes: notes,
+            startedAt: startedAt
         )
     }
 
@@ -201,9 +248,10 @@ public actor GameSession {
     public static func restore(
         from snapshot: GameSessionSnapshot,
         clock: any MonotonicClock = LiveMonotonicClock(),
-        telemetry: any GameStateTelemetry = NoOpGameStateTelemetry()
+        telemetry: any GameStateTelemetry = NoOpGameStateTelemetry(),
+        now: @escaping @Sendable () -> Date = { Date() }
     ) async -> GameSession {
-        let session = GameSession(puzzle: snapshot.puzzle, clock: clock, telemetry: telemetry)
+        let session = GameSession(puzzle: snapshot.puzzle, clock: clock, telemetry: telemetry, now: now)
         await session.applySnapshot(snapshot)
         return session
     }
@@ -218,6 +266,7 @@ public actor GameSession {
         notes = snapshot.notes
         accumulatedSeconds = snapshot.elapsedSeconds
         runningSince = nil
+        startedAt = snapshot.startedAt
 
         // Reconstruct the undo/redo split using only the public API
         // (`push` / `undo`). Strategy: push undoMoves in order, then push
@@ -260,6 +309,8 @@ public actor GameSession {
         switch move {
         case let .placeDigit(row, col, _, previous):
             try currentBoard.setDigit(previous, atRow: row, column: col)
+        case let .clearDigit(row, col, previous):
+            try currentBoard.setDigit(previous, atRow: row, column: col)
         }
     }
 
@@ -267,6 +318,8 @@ public actor GameSession {
         switch move {
         case let .placeDigit(row, col, digit, _):
             try currentBoard.setDigit(digit, atRow: row, column: col)
+        case let .clearDigit(row, col, _):
+            try currentBoard.setDigit(nil, atRow: row, column: col)
         }
     }
 }

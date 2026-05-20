@@ -91,22 +91,12 @@ internal actor SavedGameStore: Sendable {
         return snapshot
     }
 
-    func save(_ snapshot: GameSessionSnapshot) async throws {
-        let puzzleId = snapshot.puzzle.seed.description   // fallback: callers should
-                                                          // overload via the qualified
-                                                          // variant below.
-        try await save(
-            snapshot,
-            puzzleId: puzzleId,
-            mode: "practice",
-            difficulty: snapshot.puzzle.difficulty.rawValue,
-            recordName: Self.recordName(for: puzzleId, mode: "practice")
-        )
-    }
-
     /// Qualified save — `mode` cannot be inferred from `GameSessionSnapshot`
     /// alone (the snapshot carries `Puzzle` but not "daily vs practice").
-    /// The VM layer holds the mode and calls this variant.
+    /// The VM layer holds the mode and calls this variant. The previously
+    /// existing seed-fallback `save(_:)` overload was removed per impl-notes
+    /// 2026-05-20_wave-2-blocker-fixes §B2 — it wrote to the wrong record
+    /// name and created orphan records on every save.
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,

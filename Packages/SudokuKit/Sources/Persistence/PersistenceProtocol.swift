@@ -26,7 +26,19 @@ public protocol PersistenceProtocol: Sendable {
 
     /// Persist the current snapshot. Debounced upstream by the VM; the
     /// store itself is idempotent on the same `(puzzleId, mode, difficulty)`.
-    func save(_ snapshot: GameSessionSnapshot) async throws
+    ///
+    /// Identity primitives are passed alongside the snapshot because
+    /// `GameSessionSnapshot` carries `Puzzle` but not "daily vs practice"
+    /// nor a user-facing `puzzleId`. The VM holds these on
+    /// `GameViewModel.identity` and forwards them here. Per impl-notes
+    /// 2026-05-20_wave-2-blocker-fixes §B2 — replaces the prior
+    /// `save(_:)` overload whose seed-fallback wrote to a wrong record name.
+    func save(
+        _ snapshot: GameSessionSnapshot,
+        puzzleId: String,
+        mode: String,
+        difficulty: String
+    ) async throws
 
     /// Flip `status` to `"completed"` for the given summary's record.
     func markCompleted(_ summary: SavedGameSummary) async throws

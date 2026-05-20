@@ -49,6 +49,12 @@ internal enum SavedGameMapper {
             statusString = "inProgress"
         }
 
+        // Per impl-notes 2026-05-20_wave-2-blocker-fixes §B4: write the
+        // snapshot's authoritative `startedAt`. Fall back to `lastModifiedAt`
+        // ONLY when the snapshot was taken before `.start()` was ever
+        // dispatched (idle snapshot — first save of a fresh record).
+        let startedAt = snapshot.startedAt ?? lastModifiedAt
+
         let fields: [String: RecordValue] = [
             SavedGameStore.Field.puzzleId: .string(puzzleId),
             SavedGameStore.Field.mode: .string(mode),
@@ -56,7 +62,7 @@ internal enum SavedGameMapper {
             SavedGameStore.Field.boardState: .string(snapshot.currentBoard.encoded()),
             SavedGameStore.Field.notesState: .data(notesData),
             SavedGameStore.Field.undoStack: .data(undoData),
-            SavedGameStore.Field.startedAt: .date(lastModifiedAt),
+            SavedGameStore.Field.startedAt: .date(startedAt),
             SavedGameStore.Field.lastModifiedAt: .date(lastModifiedAt),
             SavedGameStore.Field.elapsedSeconds: .int(snapshot.elapsedSeconds),
             SavedGameStore.Field.status: .string(statusString),
@@ -103,6 +109,16 @@ internal enum SavedGameMapper {
 
         let board = try Board(encoded: boardString, against: puzzle)
 
+        // Rehydrate `startedAt` from the CK record (per §B4). Missing /
+        // wrong-type fields collapse to nil — restore() will treat that as
+        // "session never started", which is correct for fresh records.
+        let startedAt: Date?
+        if case .date(let value) = payload.fields[SavedGameStore.Field.startedAt] {
+            startedAt = value
+        } else {
+            startedAt = nil
+        }
+
         return GameSessionSnapshot(
             puzzle: puzzle,
             currentBoard: board,
@@ -110,7 +126,8 @@ internal enum SavedGameMapper {
             elapsedSeconds: elapsed,
             undoMoves: undo.undo,
             redoMoves: undo.redo,
-            notes: notes
+            notes: notes,
+            startedAt: startedAt
         )
     }
 

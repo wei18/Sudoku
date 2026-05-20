@@ -154,9 +154,11 @@ public final class GameViewModel {
             if let digit {
                 try? await session.placeDigit(row: coord.row, col: coord.column, digit: digit)
             } else {
-                // Clearing a user cell isn't on the Move stack; mutate the
-                // local mirror directly. The persistence write picks it up.
-                try? board.setDigit(nil, atRow: coord.row, column: coord.column)
+                // Per impl-notes 2026-05-20_wave-2-blocker-fixes §B1: clear
+                // routes through the actor like place. The actor records a
+                // `.clearDigit` undo move and updates `currentBoard`, so the
+                // subsequent `resyncFromSession()` keeps the cell cleared.
+                try? await session.clearDigit(row: coord.row, col: coord.column)
             }
             await resyncFromSession()
         } else {
@@ -240,11 +242,23 @@ public final class GameViewModel {
         guard let persistence, let session else { return }
         pendingSaveTask?.cancel()
         let delay = saveDebounceNanos
+        // Capture identity primitives at scheduling time — they cannot
+        // change for a given VM instance, and capturing them here keeps the
+        // Task body off `self`'s isolation domain. Per impl-notes
+        // 2026-05-20_wave-2-blocker-fixes §B2.
+        let puzzleId = identity.puzzleId
+        let mode = identity.kind.rawValue
+        let difficulty = identity.difficulty
         pendingSaveTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: delay)
             if Task.isCancelled { return }
             guard let snapshot = await self?.captureSnapshot() else { return }
-            try? await persistence.save(snapshot)
+            try? await persistence.save(
+                snapshot,
+                puzzleId: puzzleId,
+                mode: mode,
+                difficulty: difficulty
+            )
         }
         _ = session  // silence unused-capture warning
     }
@@ -260,7 +274,12 @@ public final class GameViewModel {
         pendingSaveTask?.cancel()
         guard let snapshot = await captureSnapshot(),
               let persistence else { return }
-        try? await persistence.save(snapshot)
+        try? await persistence.save(
+            snapshot,
+            puzzleId: identity.puzzleId,
+            mode: identity.kind.rawValue,
+            difficulty: identity.difficulty
+        )
     }
 
     // MARK: - Internal helpers
