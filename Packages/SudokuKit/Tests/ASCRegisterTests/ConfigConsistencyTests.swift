@@ -46,9 +46,16 @@ internal struct ConfigConsistencyTests {
         #expect(Config.achievementPrefix == "com.wei18.sudoku.achievement.")
     }
 
-    @Test("Total achievement points sum to 550 (§How.3.2 budget)")
+    @Test("Total achievement points sum to 500 (§How.3.2 budget; ASC 0-100 cap, issue #40)")
     internal func pointsBudget() {
-        #expect(Config.totalAchievementPoints == 550)
+        #expect(Config.totalAchievementPoints == 500)
+    }
+
+    @Test("Every achievement's points respect ASC's 0-100 per-entry range (issue #40)")
+    internal func pointsRange() {
+        for ach in Config.achievements {
+            #expect(ach.points >= 0 && ach.points <= 100)
+        }
     }
 
     @Test("Full achievement IDs are correctly prefixed")

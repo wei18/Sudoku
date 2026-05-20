@@ -1,7 +1,7 @@
 // Config — single-source-of-truth for ASCRegister content.
 //
 // Mirrors design.md §How.3.1 (3 leaderboards) and §How.3.2 (8 achievements,
-// 550 total points). IDs MUST stay byte-equal to:
+// 500 total points; ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
 //   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
 //   - GameCenterClient/GameCenterSink.swift  (achievement prefix)
 //   - GameCenterClient/AchievementEvaluator.swift (8 short IDs emitted)
@@ -55,8 +55,13 @@ internal enum Config {
     /// the `achievementPrefix` literal in GameCenterSink.swift.
     internal static let achievementPrefix = "com.wei18.sudoku.achievement."
 
-    /// 8 v1 achievements, total = 550 points (§How.3.2). Order matches
+    /// 8 v1 achievements, total = 500 points (§How.3.2). Order matches
     /// the design.md table top-to-bottom for review readability.
+    ///
+    /// ASC enforces a per-achievement points range of 0-100 (round-8 apply
+    /// rejected `hard.master = 150` with `INVALID_POINTS_RANGE: points
+    /// between 0 and 100`, issue #40). `hard.master` is capped at 100; total
+    /// budget drops 550 → 500.
     internal static let achievements: [AchievementConfig] = [
         AchievementConfig(shortId: "first_puzzle", points: 10, isHidden: false),
         AchievementConfig(shortId: "daily.complete_one", points: 20, isHidden: false),
@@ -64,7 +69,7 @@ internal enum Config {
         AchievementConfig(shortId: "daily.streak_7", points: 100, isHidden: false),
         AchievementConfig(shortId: "practice.complete_10", points: 30, isHidden: false),
         AchievementConfig(shortId: "practice.complete_100", points: 100, isHidden: false),
-        AchievementConfig(shortId: "hard.master", points: 150, isHidden: false),
+        AchievementConfig(shortId: "hard.master", points: 100, isHidden: false),
         AchievementConfig(shortId: "daily.sweep", points: 90, isHidden: false)
     ]
 
@@ -185,7 +190,7 @@ internal struct LeaderboardConfig: Sendable, Equatable {
 internal struct AchievementConfig: Sendable, Equatable {
     /// Short ID emitted by `AchievementEvaluator` (no prefix).
     internal let shortId: String
-    /// GC points (sum across all 8 = 550).
+    /// GC points (sum across all 8 = 500; ASC caps each entry at 0-100, issue #40).
     internal let points: Int
     /// All v1 achievements are visible (§How.3.2: "皆 visible").
     internal let isHidden: Bool
