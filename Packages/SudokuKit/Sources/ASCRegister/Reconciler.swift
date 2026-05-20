@@ -119,17 +119,23 @@ internal struct Reconciler: Sendable {
                 guard let title = XCStringsParser.leaderboardTitle(
                     in: strings, locale: locale, difficulty: lb.difficulty
                 ) else { continue }
-                let key = RemoteState.LocalizationKey(vendorId: lb.id, locale: locale)
+                // ASC requires regional locale codes (issue #31). xcstrings
+                // uses the bare form (`"en"`, `"zh-Hant"`); map to ASC
+                // (`"en-US"`, `"zh-Hant-TW"`) before lookup + emission so
+                // the POST body and the RemoteState key are in the same
+                // space ASC returns from GET.
+                let ascLocale = Config.ascLocaleCode(for: locale)
+                let key = RemoteState.LocalizationKey(vendorId: lb.id, locale: ascLocale)
                 if let locId = remote.leaderboardLocalizations[key] {
                     // Always emit an update — title may have changed. In a
                     // future revision we could store the last-pushed value
                     // for true diffing.
                     out.append(.updateLeaderboardLocalization(
-                        localizationId: locId, locale: locale, title: title
+                        localizationId: locId, locale: ascLocale, title: title
                     ))
                 } else {
                     out.append(.createLeaderboardLocalization(
-                        leaderboardVendorId: lb.id, locale: locale, title: title
+                        leaderboardVendorId: lb.id, locale: ascLocale, title: title
                     ))
                 }
             }
@@ -162,11 +168,14 @@ internal struct Reconciler: Sendable {
                 let unearned = XCStringsParser.achievementUnearnedDescription(
                     in: strings, locale: locale, shortId: ach.shortId
                 ) else { continue }
-                let key = RemoteState.LocalizationKey(vendorId: ach.fullId, locale: locale)
+                // xcstrings → ASC code mapping; see leaderboard branch
+                // above. Same rationale (issue #31).
+                let ascLocale = Config.ascLocaleCode(for: locale)
+                let key = RemoteState.LocalizationKey(vendorId: ach.fullId, locale: ascLocale)
                 if let locId = remote.achievementLocalizations[key] {
                     out.append(.updateAchievementLocalization(
                         localizationId: locId,
-                        locale: locale,
+                        locale: ascLocale,
                         title: title,
                         description: desc,
                         unearnedDescription: unearned
@@ -174,7 +183,7 @@ internal struct Reconciler: Sendable {
                 } else {
                     out.append(.createAchievementLocalization(
                         achievementVendorId: ach.fullId,
-                        locale: locale,
+                        locale: ascLocale,
                         title: title,
                         description: desc,
                         unearnedDescription: unearned

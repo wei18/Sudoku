@@ -55,7 +55,8 @@ internal struct ReconcilerTests {
         switch actions[1] {
         case .createLeaderboardLocalization(let vendorId, let locale, let title):
             #expect(vendorId == "com.wei18.sudoku.leaderboard.easy.daily.v1")
-            #expect(locale == "en")
+            // ASC code, not xcstrings `"en"` — issue #31.
+            #expect(locale == "en-US")
             #expect(title == "Daily Easy")
         default:
             Issue.record("expected createLeaderboardLocalization second")
@@ -69,7 +70,8 @@ internal struct ReconcilerTests {
         switch actions[3] {
         case .createAchievementLocalization(let vendorId, let locale, let title, let desc, let unearned):
             #expect(vendorId == "com.wei18.sudoku.achievement.first_puzzle")
-            #expect(locale == "en")
+            // ASC code, not xcstrings `"en"` — issue #31.
+            #expect(locale == "en-US")
             #expect(title == "First Puzzle")
             #expect(desc == "Done.")
             #expect(unearned == "Do it.")
@@ -82,12 +84,14 @@ internal struct ReconcilerTests {
     internal func fullRemote() {
         var remote = RemoteState()
         remote.leaderboards["com.wei18.sudoku.leaderboard.easy.daily.v1"] = "lb-asc-1"
+        // RemoteState mirrors what main.swift populates from ASC GET
+        // responses — ASC returns regional locale codes (issue #31).
         remote.leaderboardLocalizations[
-            RemoteState.LocalizationKey(vendorId: "com.wei18.sudoku.leaderboard.easy.daily.v1", locale: "en")
+            RemoteState.LocalizationKey(vendorId: "com.wei18.sudoku.leaderboard.easy.daily.v1", locale: "en-US")
         ] = "lb-loc-en"
         remote.achievements["com.wei18.sudoku.achievement.first_puzzle"] = "ach-asc-1"
         remote.achievementLocalizations[
-            RemoteState.LocalizationKey(vendorId: "com.wei18.sudoku.achievement.first_puzzle", locale: "en")
+            RemoteState.LocalizationKey(vendorId: "com.wei18.sudoku.achievement.first_puzzle", locale: "en-US")
         ] = "ach-loc-en"
 
         let actions = Reconciler.plan(
@@ -105,7 +109,7 @@ internal struct ReconcilerTests {
         switch actions[1] {
         case .updateLeaderboardLocalization(let locId, let locale, let title):
             #expect(locId == "lb-loc-en")
-            #expect(locale == "en")
+            #expect(locale == "en-US")
             #expect(title == "Daily Easy")
         default:
             Issue.record("expected updateLeaderboardLocalization")
@@ -119,7 +123,7 @@ internal struct ReconcilerTests {
         switch actions[3] {
         case .updateAchievementLocalization(let locId, let locale, _, _, _):
             #expect(locId == "ach-loc-en")
-            #expect(locale == "en")
+            #expect(locale == "en-US")
         default:
             Issue.record("expected updateAchievementLocalization")
         }
@@ -167,7 +171,8 @@ internal struct ReconcilerTests {
             default: return nil
             }
         }
-        #expect(Set(localesEmitted) == ["en"])
+        // ASC code, not xcstrings — issue #31.
+        #expect(Set(localesEmitted) == ["en-US"])
     }
 
     @Test("Full live config produces leaderboards first, then achievements")
