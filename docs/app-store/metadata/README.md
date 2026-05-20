@@ -70,6 +70,10 @@ Counts are taken with Unicode grapheme clusters (i.e. the way Apple counts them 
 
 ## Open items (see impl-notes log)
 
-- App Store category(ies) confirmation (Primary `Games > Puzzle`; Secondary TBD).
-- Age rating confirmation (4+ recommended).
 - Marketing URL — currently `null` everywhere; update if a project site is published.
+
+## Locked decisions (2026-05-20)
+
+- **Primary category**: `Games > Puzzle`
+- **Secondary category**: `Games > Family`
+- **Age rating**: `4+`
