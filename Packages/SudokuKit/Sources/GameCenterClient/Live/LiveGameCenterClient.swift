@@ -6,22 +6,44 @@
 // — this actor runs once per session, caches the last observed state, and
 // fans subsequent transitions out via `authStateUpdates()`.
 //
-// `submitScore`, `reportAchievement`, `fetchLeaderboardSlice` and the
-// friends-auth pair are wired in subsequent steps (7.3 / 7.4 / 7.5). The
-// current file ships authentication only; score/achievement methods throw
-// `.notAuthenticated` as a deliberate placeholder until those steps land.
+// `reportAchievement`, `fetchLeaderboardSlice` and the friends-auth pair
+// are wired in subsequent phases. `submitScore` performs the canonical
+// **seconds → centiseconds** conversion at the GameKit boundary (per
+// design.md §How.3.1: `GameState.elapsedSeconds × 100 → Int64 centiseconds`,
+// `ELAPSED_TIME_CENTISECOND` ASC formatter, `mm:ss.SS` display). The actual
+// `GKLeaderboard.submitScore(...)` call remains a Phase 10 manual-device
+// integration task; the conversion is wired today via an injectable
+// `@Sendable (Int64) async throws -> Void` seam so the multiply is unit
+// tested in isolation. See impl-notes
+// `meetings/2026-05-20_submit-score-centisecond.impl-notes.md` and
+// GitHub issue (filed by Leader) for the issue context.
 
 internal import Foundation
 
 public actor LiveGameCenterClient: GameCenterClient {
 
+    /// Test seam: receives the post-conversion **centisecond** value the
+    /// client would hand to `GKLeaderboard.submitScore(...)`. Default
+    /// implementation is a no-op (Phase 10 manual integration will replace
+    /// this with the real GameKit call). Tests inject a spy to assert the
+    /// `seconds × 100` conversion happens exactly once, at this boundary.
+    public typealias SubmitScoreHook = @Sendable (
+        _ leaderboardId: String,
+        _ centiseconds: Int64
+    ) async throws -> Void
+
     private let authDriver: any AuthDriver
+    private let submitScoreHook: SubmitScoreHook
     private var cachedState: GameCenterAuthState = .unknown
     private var continuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
     private var observerTask: Task<Void, Never>?
 
-    public init(authDriver: any AuthDriver) {
+    public init(
+        authDriver: any AuthDriver,
+        submitScoreHook: @escaping SubmitScoreHook = { _, _ in }
+    ) {
         self.authDriver = authDriver
+        self.submitScoreHook = submitScoreHook
     }
 
     deinit {
@@ -107,9 +129,15 @@ public actor LiveGameCenterClient: GameCenterClient {
         difficulty: String,
         leaderboardKind: LeaderboardKind
     ) async throws {
-        _ = (puzzleId, elapsedSeconds, difficulty, leaderboardKind)
-        // Real implementation lands in 7.3 (live GKLeaderboard submit).
-        throw GameCenterError.notAuthenticated
+        _ = (puzzleId, difficulty)
+        // Per design.md §How.3.1 (`ELAPSED_TIME_CENTISECOND` formatter):
+        // ASC's elapsed-time leaderboards use 1/100-second resolution.
+        // Convert seconds → centiseconds at this boundary exactly once
+        // (callers + the public protocol stay seconds-only). See impl-notes
+        // `meetings/2026-05-20_submit-score-centisecond.impl-notes.md`.
+        let centiseconds = Int64(elapsedSeconds) * 100
+        let leaderboardId = LeaderboardIDs.id(for: leaderboardKind)
+        try await submitScoreHook(leaderboardId, centiseconds)
     }
 
     public func reportAchievement(_ achievement: AchievementProgress) async throws {
