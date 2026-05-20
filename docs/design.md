@@ -276,7 +276,9 @@ GameCenterSink 收到 `puzzleCompleted` 事件後：
 
 #### §How.3.2 Achievements
 
-**v1 設 8 個 achievements，總點數 = 550**（GC 上限 1000；保留 **450 點** 給 v2 增量，避免「全用滿 = v2 無餘裕」反 pattern）。觸發條件必須能從 `TelemetryEvent.puzzleCompleted` 串流 + Private DB 查詢觀測得到。
+**v1 設 8 個 achievements，總點數 = 500**（GC 上限 1000；保留 **500 點** 給 v2 增量，避免「全用滿 = v2 無餘裕」反 pattern）。觸發條件必須能從 `TelemetryEvent.puzzleCompleted` 串流 + Private DB 查詢觀測得到。
+
+> **Apple ASC 每個 achievement points 限制：0-100**（round-8 apply 回 `INVALID_POINTS_RANGE: points between 0 and 100`，發現於 2026-05-20，issue #40）。`hard.master` 由 150 降至 100，總預算 550 → 500。
 
 | ID | Points | Trigger |
 |---|---|---|
@@ -286,10 +288,10 @@ GameCenterSink 收到 `puzzleCompleted` 事件後：
 | `daily.streak_7` | 100 | 連續 7 天 |
 | `practice.complete_10` | 30 | `mode == .practice` 累積 10 題 |
 | `practice.complete_100` | 100 | 100 題 |
-| `hard.master` | 150 | `difficulty == .hard` 累積 25 題（不分模式）|
+| `hard.master` | 100 | `difficulty == .hard` 累積 25 題（不分模式）|
 | `daily.sweep` | 90 | 同一 UTC 日完成當日 3 難度全收 |
 
-所有 ID 加前綴 `com.wei18.sudoku.achievement.`。**v2 候選**（保留點數）：`daily.streak_30` (200)、`practice.complete_500` (250)，合計 450 點。
+所有 ID 加前綴 `com.wei18.sudoku.achievement.`。**v2 候選**（保留點數，每項 ≤ 100）：`daily.streak_30` (100)、`practice.complete_500` (100)、另餘 300 點待後續分配，合計 500 點 v2 預算。
 
 **Progress 回報**：量化型（complete_10/100/500、hard.master）以 percent 累進回報，GC 端取 max + dedupe。Streak 與 sweep 為二值（達成即 100、否則不 submit），計算由 `GameCenterSink.receive` 內一次 `CKQuery` 完成（過去 30 天視窗、`mode == .daily` 過濾）。
 
