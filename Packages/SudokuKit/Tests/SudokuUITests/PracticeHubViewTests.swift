@@ -32,24 +32,37 @@ struct PracticeHubViewTests {
         }
     }
 
-    @Test func overThresholdDrawShowsShimmer() async {
-        let provider = FakePuzzleProvider()
-        // 800 ms fetch + 50 ms shimmer — large margins to survive parallel
-        // test scheduling jitter.
-        await provider.setArtificialDelay(nanos: 800_000_000)
-        let viewModel = PracticeHubViewModel(
-            provider: provider,
-            shimmerDelayNanos: 50_000_000
-        )
+    // The shimmer transition is split into two deterministic tests rather
+    // than driven by wall-clock timing. The previous wall-clock test (kick
+    // off drawPuzzle, sleep 400ms, assert state) was flaky under parallel
+    // MainActor contention: when other @MainActor suites held the global
+    // main actor, the internal 50ms shimmer wake-up was sometimes deferred
+    // past the test's 400ms read, leaving state at .drawingQuiet.
+    //
+    // The integration path (drawPuzzle actually spawns the shimmer task)
+    // remains covered by subThresholdDrawSkipsShimmer above: if the timer
+    // gating were broken, that test would land on .drawingShimmer instead
+    // of .drawn under its sub-threshold delay.
 
-        // Kick off the draw and observe an intermediate shimmer state.
-        let drawTask = Task { await viewModel.drawPuzzle() }
-        // Sleep well past shimmer threshold but before fetch completes.
-        try? await Task.sleep(nanoseconds: 400_000_000)
-        let mid = viewModel.loadingState
-        await drawTask.value
+    @Test func promoteToShimmerFlipsFromDrawingQuiet() {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        viewModel.setLoadingStateForTesting(.drawingQuiet)
 
-        #expect(mid == .drawingShimmer)
+        viewModel.promoteToShimmer()
+
+        #expect(viewModel.loadingState == .drawingShimmer)
+    }
+
+    @Test func promoteToShimmerNoOpFromNonQuietStates() {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+
+        viewModel.setLoadingStateForTesting(.idle)
+        viewModel.promoteToShimmer()
+        #expect(viewModel.loadingState == .idle)
+
+        viewModel.setLoadingStateForTesting(.failed("boom"))
+        viewModel.promoteToShimmer()
+        #expect(viewModel.loadingState == .failed("boom"))
     }
 
     @Test func selectDifficultyResetsLoadingState() async {
