@@ -90,4 +90,11 @@ internal struct ConfigConsistencyTests {
             #expect(board.submissionType == "BEST_SCORE")
         }
     }
+
+    @Test("All 3 leaderboards use P1D recurrenceDuration (ISO 8601 1-day, issue #22)")
+    internal func recurrenceDuration() {
+        for board in Config.leaderboards {
+            #expect(board.recurrenceDuration == "P1D")
+        }
+    }
 }
