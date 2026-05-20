@@ -110,6 +110,33 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// would overwrite stored records on every submit and is wrong for our domain.
     /// `submissionType` attribute was flagged REQUIRED by round-2 409 (issue #19).
     internal var submissionType: String { "BEST_SCORE" }
+
+    /// ISO 8601 duration of one recurrence cycle. `"P1D"` = 1 day, matching
+    /// the `DAILY` `recurrenceRule`. Flagged REQUIRED by round-3 409
+    /// (issue #22).
+    internal var recurrenceDuration: String { "P1D" }
+
+    /// Returns the current UTC midnight as an ISO 8601 datetime string
+    /// (`yyyy-MM-dd'T'00:00:00Z`) — the anchor instant for ASC's
+    /// `recurrenceStartDate` attribute per §How.3.1 ("發版當日 UTC 00:00").
+    ///
+    /// Implemented with an explicit POSIX `DateFormatter` (not
+    /// `ISO8601DateFormatter`) so the literal shape is deterministic across
+    /// platforms — no fractional seconds, no `+00:00` offset variants.
+    internal static func currentRecurrenceStartDateUTC(at now: Date = Date()) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        // swiftlint:disable:next force_unwrapping
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let comps = calendar.dateComponents([.year, .month, .day], from: now)
+        // swiftlint:disable:next force_unwrapping
+        let midnight = calendar.date(from: comps)!
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        // swiftlint:disable:next force_unwrapping
+        formatter.timeZone = TimeZone(identifier: "UTC")!
+        formatter.dateFormat = "yyyy-MM-dd'T'00:00:00'Z'"
+        return formatter.string(from: midnight)
+    }
 }
 
 internal struct AchievementConfig: Sendable, Equatable {

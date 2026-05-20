@@ -86,13 +86,17 @@ internal actor ASCClient {
 
     internal func createLeaderboard(
         detailId: String,
-        config: LeaderboardConfig
+        config: LeaderboardConfig,
+        startDate: String
     ) async throws -> APIResource {
-        // Body shape confirmed by ASC 409 response 2026-05-20 (issue #17):
-        // `defaultFormatter` and `recurrenceRule` are plain string attributes;
-        // `scoreFormat` is not an attribute on `gameCenterLeaderboards`;
-        // `scoreRangeStart`/`scoreRangeEnd` have no documented home on the
-        // create payload and the 2-hour cap is enforced client-side (§How.3.1).
+        // Body shape confirmed by ASC 409 responses 2026-05-20:
+        // - Issue #17: `defaultFormatter` and `recurrenceRule` are plain string
+        //   attributes; `scoreFormat` is not an attribute on
+        //   `gameCenterLeaderboards`; `scoreRangeStart`/`scoreRangeEnd` have no
+        //   documented home on the create payload and the 2-hour cap is
+        //   enforced client-side (§How.3.1).
+        // - Issue #22: `recurrenceStartDate` (ISO 8601 datetime, computed by
+        //   caller) and `recurrenceDuration` (`"P1D"`) are required.
         let body: [String: Any] = [
             "data": [
                 "type": "gameCenterLeaderboards",
@@ -102,6 +106,8 @@ internal actor ASCClient {
                     "defaultFormatter": config.defaultFormatter,
                     "scoreSortType": config.sortOrder,
                     "recurrenceRule": config.recurrenceRule,
+                    "recurrenceStartDate": startDate,
+                    "recurrenceDuration": config.recurrenceDuration,
                     "submissionType": config.submissionType
                 ],
                 "relationships": [

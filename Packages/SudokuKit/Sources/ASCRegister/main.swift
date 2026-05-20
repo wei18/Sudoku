@@ -39,6 +39,8 @@ internal enum ASCRegisterCLI {
                 try await runRemote(args: rest, mode: .plan)
             case "apply":
                 try await runRemote(args: rest, mode: .apply)
+            case "inspect":
+                try await runInspect(args: rest)
             case "-h", "--help", "help":
                 printUsage()
             default:
@@ -175,7 +177,12 @@ internal enum ASCRegisterCLI {
     private static func execute(_ action: Action, client: ASCClient, detailId: String) async throws {
         switch action {
         case .createLeaderboard(let cfg):
-            _ = try await client.createLeaderboard(detailId: detailId, config: cfg)
+            let startDate = LeaderboardConfig.currentRecurrenceStartDateUTC()
+            _ = try await client.createLeaderboard(
+                detailId: detailId,
+                config: cfg,
+                startDate: startDate
+            )
         case .updateLeaderboard(let id, let cfg):
             _ = try await client.updateLeaderboard(leaderboardId: id, config: cfg)
         case .leaderboardUnchanged:
@@ -256,10 +263,53 @@ internal enum ASCRegisterCLI {
     private static func printUsage() {
         print("""
         Usage:
-          ASCRegister validate --xcstrings <path>
-          ASCRegister plan     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
-          ASCRegister apply    --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister validate  --xcstrings <path>
+          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
         """)
+    }
+
+    // MARK: - inspect
+
+    /// GET an existing ASC leaderboard by vendor identifier and print its
+    /// full attribute dictionary, one `key=value` line per attribute. Lets
+    /// operators read Apple's real schema in one request instead of
+    /// discovering required fields through iterative 4xx responses (issue
+    /// #22 motivation).
+    private static func runInspect(args: [String]) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let appId = try opts.required("app-id")
+        let vendorId = try opts.required("leaderboard")
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: .plan  // inspect performs GETs only; plan-mode is fine.
+        )
+
+        let detail = try await client.getGameCenterDetail(appId: appId)
+        let leaderboards = try await client.listLeaderboards(detailId: detail.id)
+        guard let match = leaderboards.first(where: { $0.attributes["vendorIdentifier"] == vendorId }) else {
+            let found = leaderboards.compactMap { $0.attributes["vendorIdentifier"] }.sorted()
+            FileHandle.standardError.write(Data(
+                "No leaderboard found with vendorIdentifier=\(vendorId).\nKnown vendor IDs: \(found)\n".utf8
+            ))
+            exit(1)
+        }
+        print("id=\(match.id)")
+        print("type=\(match.type)")
+        for key in match.attributes.keys.sorted() {
+            // swiftlint:disable:next force_unwrapping
+            print("\(key)=\(match.attributes[key]!)")
+        }
     }
 }
 
