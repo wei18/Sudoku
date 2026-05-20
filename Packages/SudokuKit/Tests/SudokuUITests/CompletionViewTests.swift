@@ -82,19 +82,14 @@ struct CompletionViewTests {
 
     // MARK: - Behavior
 
-    @Test func viewLeaderboardTapped_appendsLeaderboardRoute() {
-        let viewModel = makeViewModel()
-        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
-        viewModel.viewLeaderboardTapped()
-        #expect(viewModel.path.count == 1)
-        guard case .leaderboard(let id) = viewModel.path[0] else {
-            Issue.record("expected leaderboard route, got \(viewModel.path)")
-            return
-        }
-        #expect(id == "com.wei18.sudoku.leaderboard.easy.daily.v1")
-    }
+    // Issue #49 (2026-05-20): the prior `viewLeaderboardTapped_appendsLeaderboardRoute`
+    // test was removed when the CTA switched from a stack push to a native
+    // Game Center modal. Invoking `GameCenterDashboard.present(...)` reaches
+    // Apple's `GKAccessPoint.shared` singleton, which can't be faked from
+    // unit-test scope without a UI host — the behavior is exercised manually
+    // in Phase 10 sandbox validation (plan.md §10.2).
 
-    @Test func bootstrapUnauthenticated_transitionsToUnauthenticated() async {
+@Test func bootstrapUnauthenticated_transitionsToUnauthenticated() async {
         let fake = FakeGameCenterClient()
         await fake.setLeaderboardSlice(Self.sampleSlice)
         // Re-script: throw `.notAuthenticated` from fetchLeaderboardSlice — but

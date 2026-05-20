@@ -6,7 +6,6 @@
 
 public import Foundation
 public import SwiftUI
-import GameCenterClient
 
 public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Identifiable {
     case daily
@@ -15,22 +14,6 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
     case settings
 
     public var id: String { rawValue }
-
-    /// Canonical 1:1 mapping from a Home mode to the navigation destination.
-    /// Shared by `HomeViewModel.select(_:)` and the Mac sidebar in `RootView`
-    /// so both entry points push the same route.
-    public var appRoute: AppRoute {
-        switch self {
-        case .daily:
-            return .daily
-        case .practice:
-            return .practice
-        case .leaderboard:
-            return .leaderboard(leaderboardId: LeaderboardIDs.id(for: .dailyEasy))
-        case .settings:
-            return .settings
-        }
-    }
 }
 
 @MainActor
@@ -64,6 +47,17 @@ public final class HomeViewModel {
     }
 
     public func select(_ mode: HomeMode) {
-        path.append(mode.appRoute)
+        // `.leaderboard` is a side-effect (presents Apple's native Game Center
+        // dashboard) rather than a stack push — issue #49 (2026-05-20).
+        switch mode {
+        case .daily:
+            path.append(.daily)
+        case .practice:
+            path.append(.practice)
+        case .settings:
+            path.append(.settings)
+        case .leaderboard:
+            GameCenterDashboard.present()
+        }
     }
 }

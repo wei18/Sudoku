@@ -896,7 +896,7 @@
 <header class="header">
   <div class="header-left">
     <h1>Sudoku v1 — Design Mockup</h1>
-    <div class="meta">Generated 2026-05-20 · 18 screens · single-file HTML · Light mode · Sage + warm-paper theme</div>
+    <div class="meta">Generated 2026-05-20 · 15 screens · single-file HTML · Light mode · Sage + warm-paper theme</div>
     <div class="essence">&ldquo;Calm graph paper, lit by daylight.&rdquo; — Per docs/designs/design-system.md. Warm off-white surfaces, restrained ink-tone strokes, sage accent used sparingly.</div>
   </div>
   <div class="legend">
@@ -1493,116 +1493,15 @@
 
   <!-- ============ FLOW 6: LEADERBOARD + SETTINGS ============ -->
   <section class="flow">
-    <h2 class="flow-title">Leaderboard &amp; Settings <span class="flow-count">4 screens — Global &middot; Friends &middot; AX3 stack &middot; Settings</span></h2>
+    <h2 class="flow-title">Settings <span class="flow-count">1 screen — Settings (Leaderboard browsing delegated to Apple's native Game Center UI, issue #49, 2026-05-20)</span></h2>
     <div class="flow-frames">
 
-      <!-- S15 global -->
+      <!-- S15 / S16 / S17 (former Leaderboard variants) removed by issue #49 (2026-05-20):
+           full-page leaderboard browsing is now Apple's native Game Center UI presented as
+           a modal (GKAccessPoint / GKGameCenterViewController) — no in-app screen exists. -->
+
+      <!-- Settings (formerly S18; renumbered to S15 after S15/S16/S17 deletion, issue #49) -->
       <div class="phone" id="S15">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span class="time">15:51</span><span class="status-icons"><svg width="18" height="11" viewBox="0 0 20 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx="0.5"/><rect x="5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="3" width="3" height="11" rx="0.5"/><rect x="15" y="0" width="3" height="14" rx="0.5"/></svg><svg width="17" height="11" viewBox="0 0 20 14" fill="currentColor"><path d="M10 14 a1.5 1.5 0 1 0 0 -3 a1.5 1.5 0 0 0 0 3 z"/><path d="M5 9 C7 7 13 7 15 9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M2 5 C5 2 15 2 18 5" stroke="currentColor" stroke-width="2" fill="none"/></svg><svg width="26" height="11" viewBox="0 0 28 14" fill="none"><rect x="0.5" y="0.5" width="23" height="13" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="20" height="10" rx="1.5" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="5" rx="1" fill="currentColor" opacity="0.5"/></svg></span></div>
-          <div class="screen-content">
-            <div class="navbar-inline">
-              <span class="back"><svg width="10" height="16" viewBox="0 0 12 20" fill="none"><path d="M9.5 2 L2 10 L9.5 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>&nbsp;Back</span>
-              <span class="title">Leaderboard</span>
-              <span></span>
-            </div>
-            <div class="lb-scope">
-              <div class="seg active">Global</div>
-              <div class="seg">Around me</div>
-              <div class="seg">Friends</div>
-            </div>
-            <div class="lb-diff">
-              <div class="seg active">Easy</div>
-              <div class="seg">Medium</div>
-              <div class="seg">Hard</div>
-              <div class="seg">Expert</div>
-            </div>
-            <div class="lb-row"><span class="rank">1.</span><span class="name">alice</span><span class="time">3:48</span></div>
-            <div class="lb-row"><span class="rank">2.</span><span class="name">bob</span><span class="time">3:55</span></div>
-            <div class="lb-row"><span class="rank">3.</span><span class="name">carol</span><span class="time">4:02</span></div>
-            <div class="lb-row"><span class="rank">4.</span><span class="name">dave</span><span class="time">4:18</span></div>
-            <div class="lb-row"><span class="rank">5.</span><span class="name">eve</span><span class="time">4:24</span></div>
-            <div class="lb-row"><span class="rank">6.</span><span class="name">frank</span><span class="time">4:31</span></div>
-            <div class="lb-row"><span class="rank">7.</span><span class="name">grace</span><span class="time">4:42</span></div>
-            <div class="lb-row"><span class="rank">8.</span><span class="name">heidi</span><span class="time">4:48</span></div>
-            <div style="text-align:center;font-size:12px;color:var(--color-text-tertiary);padding:4px 0;">···</div>
-            <div class="lb-row is-me"><span class="rank">17.</span><span class="name">you</span><span class="time">4:11</span></div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label"><strong>S15</strong> — Leaderboard <span class="sub">Global scope</span></div>
-      </div>
-
-      <!-- S16 friends -->
-      <div class="phone" id="S16">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span class="time">15:51</span><span class="status-icons"><svg width="18" height="11" viewBox="0 0 20 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx="0.5"/><rect x="5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="3" width="3" height="11" rx="0.5"/><rect x="15" y="0" width="3" height="14" rx="0.5"/></svg><svg width="17" height="11" viewBox="0 0 20 14" fill="currentColor"><path d="M10 14 a1.5 1.5 0 1 0 0 -3 a1.5 1.5 0 0 0 0 3 z"/><path d="M5 9 C7 7 13 7 15 9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M2 5 C5 2 15 2 18 5" stroke="currentColor" stroke-width="2" fill="none"/></svg><svg width="26" height="11" viewBox="0 0 28 14" fill="none"><rect x="0.5" y="0.5" width="23" height="13" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="20" height="10" rx="1.5" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="5" rx="1" fill="currentColor" opacity="0.5"/></svg></span></div>
-          <div class="screen-content">
-            <div class="navbar-inline">
-              <span class="back"><svg width="10" height="16" viewBox="0 0 12 20" fill="none"><path d="M9.5 2 L2 10 L9.5 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>&nbsp;Back</span>
-              <span class="title">Leaderboard</span>
-              <span></span>
-            </div>
-            <div class="lb-scope">
-              <div class="seg">Global</div>
-              <div class="seg">Around me</div>
-              <div class="seg active">Friends</div>
-            </div>
-            <div class="lb-diff">
-              <div class="seg active">Easy</div>
-              <div class="seg">Medium</div>
-              <div class="seg">Hard</div>
-              <div class="seg">Expert</div>
-            </div>
-            <div class="lb-row"><span class="rank">1.</span><span class="name">jordan</span><span class="time">3:58</span></div>
-            <div class="lb-row"><span class="rank">2.</span><span class="name">sam</span><span class="time">4:05</span></div>
-            <div class="lb-row is-me"><span class="rank">3.</span><span class="name">you</span><span class="time">4:11</span></div>
-            <div class="lb-row"><span class="rank">4.</span><span class="name">pat</span><span class="time">4:33</span></div>
-            <div class="lb-row"><span class="rank">5.</span><span class="name">riley</span><span class="time">4:47</span></div>
-            <div style="text-align:center;font-size:13px;color:var(--color-text-tertiary);padding:16px;font-style:italic;">5 friends playing</div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label"><strong>S16</strong> — Leaderboard <span class="sub">Friends scope</span></div>
-      </div>
-
-      <!-- S17 AX3 -->
-      <div class="phone" id="S17">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span class="time">15:51</span><span class="status-icons"><svg width="18" height="11" viewBox="0 0 20 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx="0.5"/><rect x="5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="3" width="3" height="11" rx="0.5"/><rect x="15" y="0" width="3" height="14" rx="0.5"/></svg><svg width="17" height="11" viewBox="0 0 20 14" fill="currentColor"><path d="M10 14 a1.5 1.5 0 1 0 0 -3 a1.5 1.5 0 0 0 0 3 z"/><path d="M5 9 C7 7 13 7 15 9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M2 5 C5 2 15 2 18 5" stroke="currentColor" stroke-width="2" fill="none"/></svg><svg width="26" height="11" viewBox="0 0 28 14" fill="none"><rect x="0.5" y="0.5" width="23" height="13" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="20" height="10" rx="1.5" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="5" rx="1" fill="currentColor" opacity="0.5"/></svg></span></div>
-          <div class="screen-content">
-            <div class="navbar-inline">
-              <span class="back" style="font-size:22px;"><svg width="14" height="22" viewBox="0 0 12 20" fill="none"><path d="M9.5 2 L2 10 L9.5 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>&nbsp;Back</span>
-              <span class="title" style="font-size:22px;">Leaderboard</span>
-              <span></span>
-            </div>
-            <div style="margin: 8px 16px;padding:6px 10px;background:rgba(168,106,14,0.10);border-radius:6px;font-size:11px;color:var(--color-status-warning);text-align:center;">Dynamic Type: AX3 — rows stack vertically</div>
-            <div class="lb-row-vstack">
-              <div class="rank-line">Rank 1</div>
-              <div class="name-line">alice</div>
-              <div class="time-line">3:48</div>
-            </div>
-            <div class="lb-row-vstack">
-              <div class="rank-line">Rank 2</div>
-              <div class="name-line">bob</div>
-              <div class="time-line">3:55</div>
-            </div>
-            <div class="lb-row-vstack is-me">
-              <div class="rank-line" style="color:var(--color-tint);">Rank 17 &middot; you</div>
-              <div class="name-line">you</div>
-              <div class="time-line">4:11</div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label"><strong>S17</strong> — Leaderboard <span class="sub">AX3 vertical-stacked rows (Dynamic Type)</span></div>
-      </div>
-
-      <!-- S18 settings -->
-      <div class="phone" id="S18">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
           <div class="status-bar"><span class="time">15:51</span><span class="status-icons"><svg width="18" height="11" viewBox="0 0 20 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx="0.5"/><rect x="5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="3" width="3" height="11" rx="0.5"/><rect x="15" y="0" width="3" height="14" rx="0.5"/></svg><svg width="17" height="11" viewBox="0 0 20 14" fill="currentColor"><path d="M10 14 a1.5 1.5 0 1 0 0 -3 a1.5 1.5 0 0 0 0 3 z"/><path d="M5 9 C7 7 13 7 15 9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M2 5 C5 2 15 2 18 5" stroke="currentColor" stroke-width="2" fill="none"/></svg><svg width="26" height="11" viewBox="0 0 28 14" fill="none"><rect x="0.5" y="0.5" width="23" height="13" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="20" height="10" rx="1.5" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="5" rx="1" fill="currentColor" opacity="0.5"/></svg></span></div>
@@ -1668,7 +1567,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label"><strong>S18</strong> — Settings <span class="sub">account &middot; language &middot; cache clear</span></div>
+        <div class="phone-label"><strong>S15</strong> — Settings <span class="sub">account &middot; language &middot; cache clear</span></div>
       </div>
 
     </div>
@@ -1683,7 +1582,7 @@
          Row 3 (Practice):    title ~Y=1992,                  phones ~2056,  bottom ~2908
          Row 4 (Board):       title ~Y=2968,                  phones ~3032,  bottom ~3884
          Row 5 (Completion):  title ~Y=3944,                  phones ~4008,  bottom ~4860
-         Row 6 (LB+Settings): title ~Y=4920,                  phones ~4984,  bottom ~5836
+         Row 6 (Settings only, post issue #49): title ~Y=4920, phone ~4984, bottom ~5836
        Phone X positions (left of phone-shell): col_idx * 473 + 40
          Col 0: x=40 (right=433)
          Col 1: x=513 (right=906)
@@ -1731,17 +1630,18 @@
           fill="none" stroke="#5C7A4F" stroke-width="2" marker-end="url(#arr-sage)"/>
     <text x="120" y="1880" font-size="11" fill="#5C7A4F" font-weight="600">tap &ldquo;Practice&rdquo;</text>
 
-    <!-- ===== S02 → S15 (Leaderboard) ===== -->
-    <!-- S02 bottom (709, 956) → S15 top (40, 4984). big sweep down-left -->
-    <path d="M 906 956 C 1900 2500, 40 3500, 40 4984"
-          fill="none" stroke="#5C7A4F" stroke-width="2" stroke-opacity="0.55" marker-end="url(#arr-sage)"/>
-    <text x="1850" y="2400" font-size="11" fill="#5C7A4F" font-weight="600">tap &ldquo;Leaderboard&rdquo;</text>
+    <!-- ===== S02 → (native GC modal, no in-app screen) =====
+         Issue #49 (2026-05-20): Home "Leaderboard" tap presents Apple's native
+         Game Center dashboard as a modal — no destination screen exists, so
+         this arrow is annotation-only (no path drawn). Mac sidebar Leaderboard
+         row uses the same seam (GameCenterDashboard.present(leaderboardId: nil)). -->
+    <text x="1100" y="2400" font-size="11" fill="#5C7A4F" font-weight="600" font-style="italic">tap &ldquo;Leaderboard&rdquo; → present native GC modal (no in-app screen)</text>
 
-    <!-- ===== S02 → S18 (Settings) ===== -->
-    <!-- S02 bottom (709,956) → S18 top (1459, 4984) -->
-    <path d="M 906 956 C 1500 2400, 1880 3500, 1459 4984"
+    <!-- ===== S02 → S15 (Settings; formerly S18 before S15/S16/S17 deletion) ===== -->
+    <!-- S02 bottom (709,956) → S15 top (40, 4984) -->
+    <path d="M 906 956 C 1500 2400, 200 3500, 40 4984"
           fill="none" stroke="#5C7A4F" stroke-width="2" stroke-opacity="0.55" marker-end="url(#arr-sage)"/>
-    <text x="1700" y="3200" font-size="11" fill="#5C7A4F" font-weight="600">tap &ldquo;Settings&rdquo;</text>
+    <text x="1100" y="3200" font-size="11" fill="#5C7A4F" font-weight="600">tap &ldquo;Settings&rdquo;</text>
 
     <!-- ===== Row 2 intra-row: S03 → S04 → S05 (state progression, dashed since same View) ===== -->
     <path d="M 433 1506 C 463 1506, 483 1506, 513 1506"
@@ -1810,28 +1710,17 @@
           fill="none" stroke="#C7C7CC" stroke-width="1.5" stroke-dasharray="3 3"/>
     <text x="946" y="4424" font-size="10" fill="#86898E" text-anchor="middle" font-style="italic">variant: fetch fail</text>
 
-    <!-- ===== S12 → S15 (View full leaderboard) ===== -->
-    <!-- S12 bottom (236, 4860) → S15 top (40, 4984) -->
-    <path d="M 236 4860 C 236 4920, 40 4920, 40 4984"
-          fill="none" stroke="#5C7A4F" stroke-width="2" marker-end="url(#arr-sage)"/>
-    <text x="130" y="4910" font-size="11" fill="#5C7A4F" font-weight="600">View full leaderboard</text>
+    <!-- ===== S12 → (native GC modal) =====
+         Issue #49 (2026-05-20): "View full leaderboard" CTA presents Apple's
+         native dashboard focused on the just-solved difficulty (via
+         GameCenterDashboard.present(leaderboardId: ...)) — no in-app screen
+         destination, so this is annotation-only. -->
+    <text x="130" y="4910" font-size="11" fill="#5C7A4F" font-weight="600" font-style="italic">&ldquo;View full leaderboard&rdquo; → present native GC modal</text>
 
-    <!-- ===== S13 → S15 (sign in then view — dashed conditional) ===== -->
-    <!-- S13 bottom (709, 4860) → S15 top (236, 4984) -->
-    <path d="M 709 4860 C 709 4920, 236 4920, 236 4984"
-          fill="none" stroke="#FF9500" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arr-dashed)"/>
-    <text x="500" y="4915" font-size="11" fill="#FF9500" text-anchor="middle" font-style="italic">sign in then view (conditional)</text>
-
-    <!-- ===== S15 ↔ S16 (scope toggle, double-headed) ===== -->
-    <!-- S15 right (433, 5410) ↔ S16 left (513, 5410) -->
-    <path d="M 433 5410 C 463 5410, 483 5410, 513 5410"
-          fill="none" stroke="#8E8E93" stroke-width="2" marker-start="url(#arr-gray-start)" marker-end="url(#arr-gray-end)"/>
-    <text x="473" y="5400" font-size="11" fill="#8E8E93" text-anchor="middle" font-weight="600">scope toggle</text>
-
-    <!-- S16 → S17 (AX3 variant, dashed conditional/accessibility) -->
-    <path d="M 906 5410 L 986 5410"
-          fill="none" stroke="#C7C7CC" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <text x="946" y="5400" font-size="10" fill="#86898E" text-anchor="middle" font-style="italic">at AX3 type size</text>
+    <!-- (S13 → S15 sign-in conditional, S15 ↔ S16 scope toggle, S16 → S17 AX3
+         variant were all removed alongside S15/S16/S17 screen frames — Apple's
+         native dashboard handles sign-in affordance, scope toggle, and Dynamic
+         Type vertical stacking internally.) -->
 
   </svg>
 
@@ -1986,7 +1875,7 @@
       </div>
       <p style="font-size:11px;color:var(--color-text-tertiary);">Level 1: cards. Level 2: pills + hero. Level 3: device frame.</p>
       <h3 style="margin-top:18px;">Liquid Glass surfaces</h3>
-      <p style="font-size:12px;color:var(--color-text-secondary);">Used on: Mode cards (S02), Daily cards (S03–S05), Practice picker + card (S06–S08), Completion hero (S12–S14), Leaderboard scope picker (S15–S17). <strong>Never</strong> on Board (§How.5.1 — would muddy cell.error).</p>
+      <p style="font-size:12px;color:var(--color-text-secondary);">Used on: Mode cards (S02), Daily cards (S03–S05), Practice picker + card (S06–S08), Completion hero (S12–S14). <strong>Never</strong> on Board (§How.5.1 — would muddy cell.error). The former Leaderboard scope picker (pre-issue-#49) is gone — Apple's native GC dashboard handles its own chrome.</p>
     </div>
 
     <!-- Components -->
@@ -2071,7 +1960,7 @@
       </div>
 
       <div class="component-row">
-        <div class="c-label">Leaderboard row &mdash; default + &ldquo;you&rdquo; highlight</div>
+        <div class="c-label">Leaderboard mini-row &mdash; default + &ldquo;you&rdquo; highlight <span style="font-size:10px;color:var(--color-text-tertiary);">(used only in CompletionView top-3 mini-slice — full leaderboard browsing is Apple's native dashboard post issue #49)</span></div>
         <div style="max-width:340px;">
           <div class="lb-row"><span class="rank">1.</span><span class="name">alice</span><span class="time">3:48</span></div>
           <div class="lb-row is-me"><span class="rank">17.</span><span class="name">you</span><span class="time">4:11</span></div>
@@ -2085,7 +1974,7 @@
   <h3 style="margin-top:32px;font-size:17px;">Touch targets &amp; accessibility baseline</h3>
   <ul style="font-size:13px;color:var(--color-text-secondary);line-height:1.6;">
     <li><strong>Touch target minimum</strong> &mdash; 44 &times; 44pt (HIG). <strong>Exception</strong>: 9&times;9 cell on iPhone SE = 36pt (acknowledged HIG deviation; tap zone extended to cell border).</li>
-    <li><strong>Dynamic Type</strong> &mdash; all non-cell text uses semantic SwiftUI fonts; spacing wrapped in <code>@ScaledMetric</code>; cell digit scales with cellSide, not type size; AX3 row stacks (S17).</li>
+    <li><strong>Dynamic Type</strong> &mdash; all non-cell text uses semantic SwiftUI fonts; spacing wrapped in <code>@ScaledMetric</code>; cell digit scales with cellSide, not type size. (Former AX3 leaderboard row stacking is now Apple's responsibility — native GC dashboard handles its own Dynamic Type, issue #49.)</li>
     <li><strong>Color-blind error</strong> &mdash; triple encoding: cell bg tint (#FBE3E1) + corner triangle shape (#C8362B) + digit color (#A52A20). Never red-only.</li>
     <li><strong>Reduce motion</strong> &mdash; pulse becomes static; cell place animation removed; shimmer becomes static fill.</li>
     <li><strong>Contrast (key pairs)</strong> &mdash; text.primary/surface.primary 16.1:1 AAA · text.user/cell.base 4.84:1 AA · accent.primary/surface.primary 4.84:1 AA · text.errorDigit/cell.error 4.7:1 AA.</li>

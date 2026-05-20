@@ -40,7 +40,7 @@
 1. **單 Package 多 target**：所有 module 收在一個 `SudokuKit` Swift Package 內，以 target 切分。
 2. **App target 極薄**：只含 `@main`、`App` struct、Info.plist、entitlements、Assets，以及一個 DI composition root（把 protocol 與具體實作接起來）。所有畫面、邏輯、Storage 都在 Package。
 3. **Package platforms 與 App target 對齊**：`iOS 26 / macOS 26`，與 §1 一致。
-4. **Apple 框架 import 範圍受限**：`CloudKit` 只在 `PuzzleStore` + `Persistence` 直接 import；`GameKit` 只在 `GameCenterClient`。`SudokuUI` 與 `GameState` 透過 protocol 注入使用，不直接 import — 便於 UI/邏輯層的單元測試與 SwiftUI preview。
+4. **Apple 框架 import 範圍受限**：`CloudKit` 只在 `PuzzleStore` + `Persistence` 直接 import；`GameKit` 只在 `GameCenterClient`。`SudokuUI` 與 `GameState` 透過 protocol 注入使用，不直接 import — 便於 UI/邏輯層的單元測試與 SwiftUI preview。**例外（issue #49, 2026-05-20）**：`SudokuUI/Leaderboard/GameCenterDashboard.swift` 直接 `import GameKit` / `UIKit` / `AppKit`，因 Apple 原生 Game Center dashboard（`GKAccessPoint` / `GKGameCenterViewController`）為終端 UI 表面、無 protocol-injectable seam 可走。檔案層級的局部 import 不污染 SudokuUI 其餘 Views 的測試性（其他 View 仍透過 `any GameCenterClient` 注入）。
 5. **測試 target 一對一**：每個 production target 對應一個 `<Module>Tests` target。
 
 **目標模組形狀**（同 repo，與 `docs/` / `meetings/` / `.claude/` 並列）：
