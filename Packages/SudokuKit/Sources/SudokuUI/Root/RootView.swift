@@ -34,20 +34,32 @@ public struct RootView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
             }
-            HomeView(viewModel: HomeViewModel())
+            HomeView(
+                viewModel: HomeViewModel(
+                    path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
+                )
+            )
         }
         .background(theme.surface.background.resolved)
     }
 
     @ViewBuilder
     private var sidebarPlaceholder: some View {
-        // Phase 8 Part 1: sidebar is a stub; sidebar selections will be
-        // wired via HomeView destinations in Phase 8 Part 2 / 9 (DI step).
+        // Sidebar pushes the same `AppRoute` as the matching HomeView card.
+        // Mapping lives on `HomeMode.appRoute` so both entry points stay in sync.
         List {
-            Label("Daily", systemImage: "calendar")
-            Label("Practice", systemImage: "dice")
-            Label("Leaderboard", systemImage: "trophy.fill")
-            Label("Settings", systemImage: "gear")
+            NavigationLink(value: HomeMode.daily.appRoute) {
+                Label("Daily", systemImage: "calendar")
+            }
+            NavigationLink(value: HomeMode.practice.appRoute) {
+                Label("Practice", systemImage: "dice")
+            }
+            NavigationLink(value: HomeMode.leaderboard.appRoute) {
+                Label("Leaderboard", systemImage: "trophy.fill")
+            }
+            NavigationLink(value: HomeMode.settings.appRoute) {
+                Label("Settings", systemImage: "gear")
+            }
         }
         .navigationTitle("Sudoku")
     }
@@ -79,6 +91,7 @@ struct ResumePill: View {
             }
             .padding(12)
             .background(theme.surface.primary.resolved, in: .rect(cornerRadius: 14))
+            .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
         }
