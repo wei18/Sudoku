@@ -70,10 +70,10 @@ internal struct ConfigConsistencyTests {
         }
     }
 
-    @Test("All 3 leaderboards use DAILY recurrence (plain string per ASC 409 contract)")
+    @Test("All 3 leaderboards use RFC 5545 RRULE FREQ=DAILY;INTERVAL=1 (issue #26)")
     internal func recurrenceRule() {
         for board in Config.leaderboards {
-            #expect(board.recurrenceRule == "DAILY")
+            #expect(board.recurrenceRule == "FREQ=DAILY;INTERVAL=1")
         }
     }
 

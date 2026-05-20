@@ -100,9 +100,11 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// issue #19: "Expected one of: 'ASC', 'DESC'").
     internal var sortOrder: String { "ASC" }
 
-    /// ASC recurrence cadence (plain string). Confirmed by 409 response that the
-    /// attribute is a STRING; value `"DAILY"` mirrors the ASC console terminology.
-    internal var recurrenceRule: String { "DAILY" }
+    /// ASC recurrence cadence (plain string). Round-5 409 response 2026-05-20
+    /// (issue #26) revealed the attribute is an iCalendar RFC 5545 RRULE string
+    /// of the form `FREQ=[MINUTELY,HOURLY,DAILY];INTERVAL=$INT`. Daily ⇒
+    /// `"FREQ=DAILY;INTERVAL=1"`.
+    internal var recurrenceRule: String { "FREQ=DAILY;INTERVAL=1" }
 
     /// Score submission policy. `BEST_SCORE` keeps each player's lowest (best)
     /// completion time per daily cycle — required by §How.3.1 semantics
@@ -118,26 +120,39 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// Flagged REQUIRED by round-3 409 (issue #22).
     internal var recurrenceDuration: String { "PT24H" }
 
-    /// Returns the current UTC midnight as an ISO 8601 datetime string
+    /// Returns the next future UTC midnight as an ISO 8601 datetime string
     /// (`yyyy-MM-dd'T'00:00:00Z`) — the anchor instant for ASC's
-    /// `recurrenceStartDate` attribute per §How.3.1 ("發版當日 UTC 00:00").
+    /// `recurrenceStartDate` attribute per §How.3.1.
+    ///
+    /// ASC requires `recurrenceStartDate` to be **strictly in the future**
+    /// (round-5 409 response 2026-05-20, issue #26 — past-dated values were
+    /// rejected). The algorithm:
+    ///   1. Compute today's UTC midnight from `now`.
+    ///   2. If that midnight is ≤ `now` (i.e. now is past 00:00 UTC today, or
+    ///      exactly at 00:00 UTC), add 86400s to get tomorrow's UTC midnight.
+    ///   3. Otherwise (the rare case `now` precedes today's UTC midnight —
+    ///      e.g. an injected pre-epoch test date), return today's midnight.
+    /// In practice every real-clock call returns tomorrow's UTC 00:00.
     ///
     /// Implemented with an explicit POSIX `DateFormatter` (not
     /// `ISO8601DateFormatter`) so the literal shape is deterministic across
     /// platforms — no fractional seconds, no `+00:00` offset variants.
-    internal static func currentRecurrenceStartDateUTC(at now: Date = Date()) -> String {
+    internal static func nextRecurrenceStartDateUTC(at now: Date = Date()) -> String {
         var calendar = Calendar(identifier: .gregorian)
         // swiftlint:disable:next force_unwrapping
         calendar.timeZone = TimeZone(identifier: "UTC")!
         let comps = calendar.dateComponents([.year, .month, .day], from: now)
         // swiftlint:disable:next force_unwrapping
-        let midnight = calendar.date(from: comps)!
+        let todayMidnight = calendar.date(from: comps)!
+        let target: Date = (todayMidnight <= now)
+            ? todayMidnight.addingTimeInterval(86_400)
+            : todayMidnight
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         // swiftlint:disable:next force_unwrapping
         formatter.timeZone = TimeZone(identifier: "UTC")!
         formatter.dateFormat = "yyyy-MM-dd'T'00:00:00'Z'"
-        return formatter.string(from: midnight)
+        return formatter.string(from: target)
     }
 }
 
