@@ -65,19 +65,24 @@ public struct RootView: View {
 
     @ViewBuilder
     private var sidebarPlaceholder: some View {
-        // Sidebar pushes the same `AppRoute` as the matching HomeView card.
-        // Mapping lives on `HomeMode.appRoute` so both entry points stay in sync.
+        // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push
+        // an `AppRoute`; Leaderboard is a side effect — it presents Apple's
+        // native Game Center dashboard modally (issue #49, 2026-05-20) rather
+        // than pushing onto the stack.
         List {
-            NavigationLink(value: HomeMode.daily.appRoute) {
+            NavigationLink(value: AppRoute.daily) {
                 Label("Daily", systemImage: "calendar")
             }
-            NavigationLink(value: HomeMode.practice.appRoute) {
+            NavigationLink(value: AppRoute.practice) {
                 Label("Practice", systemImage: "dice")
             }
-            NavigationLink(value: HomeMode.leaderboard.appRoute) {
+            Button {
+                GameCenterDashboard.present()
+            } label: {
                 Label("Leaderboard", systemImage: "trophy.fill")
             }
-            NavigationLink(value: HomeMode.settings.appRoute) {
+            .buttonStyle(.plain)
+            NavigationLink(value: AppRoute.settings) {
                 Label("Settings", systemImage: "gear")
             }
         }
@@ -123,13 +128,6 @@ public struct RootView: View {
                     puzzleId: puzzleId,
                     elapsedSeconds: elapsedSeconds,
                     leaderboardId: LeaderboardIDs.id(for: .dailyEasy),
-                    gameCenter: gameCenter
-                )
-            )
-        case .leaderboard(let leaderboardId):
-            LeaderboardView(
-                viewModel: LeaderboardViewModel(
-                    leaderboardId: leaderboardId,
                     gameCenter: gameCenter
                 )
             )

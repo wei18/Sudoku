@@ -20,19 +20,20 @@ struct AppRouteTests {
             .practice,
             .board(puzzleId: "2026-05-19-easy"),
             .completion(puzzleId: "2026-05-19-easy", elapsedSeconds: 251),
-            .leaderboard(leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1"),
             .settings
         ]
         let set = Set(routes)
         #expect(set.count == routes.count)
     }
 
-    @Test func codableRoundTripCompletionToLeaderboard() throws {
-        // Mirrors the CompletionView → LeaderboardView deep-link payload
-        // described in design.md §How.5.2.
+    @Test func codableRoundTripBoardToCompletion() throws {
+        // Mirrors the BoardView → CompletionView push payload described in
+        // design.md §How.5.2. The leaderboard CTA is no longer a stack push
+        // (issue #49); the deepest stack payload that needs Codable
+        // round-tripping is now Board → Completion.
         let source: [AppRoute] = [
-            .completion(puzzleId: "2026-05-19-medium", elapsedSeconds: 720),
-            .leaderboard(leaderboardId: "com.wei18.sudoku.leaderboard.medium.daily.v1")
+            .board(puzzleId: "2026-05-19-medium"),
+            .completion(puzzleId: "2026-05-19-medium", elapsedSeconds: 720)
         ]
         let encoded = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode([AppRoute].self, from: encoded)

@@ -2,7 +2,9 @@
 //
 // Per docs/designs/06-completion.md + design.md §How.5.4. Four observable
 // states: `.loading` → `.loaded(slice)` / `.unauthenticated` / `.failed`.
-// Caller deep-links to LeaderboardView via the bound `path`.
+// The embedded top-3 mini-slice stays (post-solve UX affordance); the
+// "View full leaderboard" CTA presents Apple's native Game Center dashboard
+// (issue #49, 2026-05-20) instead of pushing a custom view onto the stack.
 
 public import Foundation
 public import GameCenterClient
@@ -22,7 +24,6 @@ public final class CompletionViewModel {
     public let elapsedSeconds: Int
     public let leaderboardId: String
     public private(set) var state: CompletionState = .loading
-    public var path: [AppRoute] = []
 
     private let gameCenter: any GameCenterClient
     /// Idempotency latch for `.task` — once `bootstrap()` has resolved (or
@@ -79,8 +80,10 @@ public final class CompletionViewModel {
         }
     }
 
-    /// Deep-link CTA — pushes the full LeaderboardView onto the bound stack.
+    /// CTA — presents Apple's native Game Center dashboard focused on the
+    /// just-solved difficulty's leaderboard (issue #49, 2026-05-20). Side
+    /// effect: no stack push, no `path` mutation.
     public func viewLeaderboardTapped() {
-        path.append(.leaderboard(leaderboardId: leaderboardId))
+        GameCenterDashboard.present(leaderboardId: leaderboardId)
     }
 }
