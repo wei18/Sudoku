@@ -8,6 +8,12 @@
 // itself decides whether to render anything (it consults `AdGate`); HomeView
 // just hands it the protocol deps. When the gate says no banner the slot
 // collapses to 0pt so the layout is unaffected.
+//
+// v2.3.6: an optional 5th "Remove Ads" card sits below the four mode cards
+// (above the banner slot) when an unpurchased `MonetizationStateController`
+// is injected. It taps into the same purchase flow as Settings → Remove Ads;
+// after a successful purchase the controller flips `hasPurchasedRemoveAds`
+// and the card disappears on the next observation pass.
 
 public import MonetizationCore
 public import SwiftUI
@@ -16,17 +22,20 @@ public struct HomeView: View {
     @Bindable private var viewModel: HomeViewModel
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    private let monetizationController: MonetizationStateController?
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     public init(
         viewModel: HomeViewModel,
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        monetizationController: MonetizationStateController? = nil
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
+        self.monetizationController = monetizationController
     }
 
     public var body: some View {
@@ -40,6 +49,17 @@ public struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                if let controller = monetizationController, !controller.hasPurchasedRemoveAds {
+                    Button {
+                        Task { await controller.purchaseRemoveAds() }
+                    } label: {
+                        RemoveAdsCard(controller: controller)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(controller.purchaseInFlight)
+                    .accessibilityIdentifier("HomeView.RemoveAdsCard")
+                }
             }
             .padding(16)
 
@@ -51,6 +71,11 @@ public struct HomeView: View {
         }
         .background(theme.surface.background.resolved)
         .navigationTitle("Sudoku")
+        .task {
+            if let controller = monetizationController {
+                await controller.bootstrap()
+            }
+        }
     }
 
     private var columns: [GridItem] {
@@ -88,6 +113,48 @@ struct ModeCard: View {
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// 5th mode-card slot for Remove Ads. Tinted with `difficulty.medium` to
+/// signal commerce intent (per v2.3.6 brief: not a difficulty cue; reuses
+/// the medium clay accent token from PR #78). Layout mirrors `ModeCard`
+/// so the grid row height stays consistent.
+struct RemoveAdsCard: View {
+    @Bindable var controller: MonetizationStateController
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "sparkles")
+                .font(.title2)
+                .foregroundStyle(theme.difficulty.medium.resolved)
+                .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Remove Ads")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(theme.text.primary.resolved)
+                Text("One-time purchase")
+                    .font(.caption)
+                    .foregroundStyle(theme.text.secondary.resolved)
+            }
+            Spacer()
+            if controller.purchaseInFlight {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Text(controller.removeAdsDisplayPrice)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(theme.difficulty.medium.resolved)
+            }
+        }
+        .padding(16)
+        .frame(minHeight: 72)
+        .contentShape(Rectangle())
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
         .accessibilityAddTraits(.isButton)
     }
 }

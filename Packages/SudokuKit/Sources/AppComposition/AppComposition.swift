@@ -18,6 +18,7 @@
 //     in v2.3.7, individual destination views that escape the RouteFactory
 //     such as HomeView's Game Center modal callback in v2.3.4-6).
 
+internal import AdsAdMob
 internal import Foundation
 public import GameCenterClient
 public import MonetizationCore
@@ -40,6 +41,13 @@ public struct AppComposition {
     public let adProvider: any AdProvider
     public let iapClient: any IAPClient
     public let adGate: AdGate
+    // v2.3.6: the persisted MonetizationState store + the shared @Observable
+    // controller derived from it. Settings + HomeView read the controller
+    // directly; `monetizationStateStore` stays exposed so future Views
+    // (e.g. v2.4 purchase entry from CompletionView) can rebuild a controller
+    // without re-routing through Persistence.
+    public let monetizationStateStore: any AdGateStateStore
+    public let monetizationController: MonetizationStateController
 
     public init(
         rootViewModel: RootViewModel,
@@ -50,7 +58,9 @@ public struct AppComposition {
         telemetry: Telemetry,
         adProvider: any AdProvider,
         iapClient: any IAPClient,
-        adGate: AdGate
+        adGate: AdGate,
+        monetizationStateStore: any AdGateStateStore,
+        monetizationController: MonetizationStateController
     ) {
         self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
@@ -61,5 +71,46 @@ public struct AppComposition {
         self.adProvider = adProvider
         self.iapClient = iapClient
         self.adGate = adGate
+        self.monetizationStateStore = monetizationStateStore
+        self.monetizationController = monetizationController
+    }
+
+    // MARK: - v2.3.7 boot order
+
+    /// App-launch monetization boot. Runs UMP consent → ATT prompt → AdMob
+    /// SDK initialize in that order. Each step is attempted independently;
+    /// a failing earlier step never blocks later steps (banner gate will
+    /// surface `.failed` honestly while AdMob is still un-initialized).
+    ///
+    /// Callable from `.task` on the root scene — the boot runs concurrently
+    /// with first-frame rendering, never blocks UI.
+    public func bootMonetization() async {
+        let bridges = MonetizationBootBridges.live(adProvider: adProvider)
+        let telemetryHandle = telemetry
+        let coordinator = MonetizationBootCoordinator(
+            bridges: bridges,
+            log: { outcome in
+                // Telemetry's typed catalog does not have an "info"/"trace"
+                // case suited to boot-sequence breadcrumbs, so we only fan
+                // failures into Telemetry.observe(.errorOccurred(...)); the
+                // success path takes the `print` fallback per spec §boot
+                // notes. (See impl-notes §未決 — promoting boot events to
+                // a first-class TelemetryEvent case is deferred to v2.4.)
+                if !outcome.succeeded {
+                    Task {
+                        await telemetryHandle.observe(
+                            .errorOccurred(
+                                source: "MonetizationBoot",
+                                code: outcome.step.rawValue,
+                                message: outcome.errorDescription ?? "unknown"
+                            )
+                        )
+                    }
+                } else {
+                    print("[MonetizationBoot] step=\(outcome.step.rawValue) succeeded")
+                }
+            }
+        )
+        await coordinator.boot()
     }
 }
