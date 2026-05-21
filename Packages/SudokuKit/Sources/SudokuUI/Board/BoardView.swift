@@ -4,23 +4,40 @@
 // on the board itself (§How.5.1). Mac keyboard: `.focusable()` + `.onKeyPress`
 // for arrows / 1–9 / 0 / delete / `p`; ⌘Z / ⌘⇧Z bound for undo / redo.
 
+public import MonetizationCore
 public import SwiftUI
 import SudokuEngine
 
 public struct BoardView: View {
     @Bindable private var viewModel: GameViewModel
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @FocusState private var keyboardFocus: Bool
 
-    public init(viewModel: GameViewModel) {
+    public init(
+        viewModel: GameViewModel,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
+    ) {
         self.viewModel = viewModel
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     public var body: some View {
         VStack(spacing: 16) {
             header
             boardWithOverlay
+            // v2.3.5: banner sits between the grid and the digit pad. It
+            // is suppressed while the game is paused — pause is a moment
+            // of intentional quiet (PauseOverlayView already dims the
+            // grid), and showing an ad on top of that contradicts the
+            // calm contract.
+            if !viewModel.isPaused, let adProvider, let adGate {
+                BannerSlotView(adProvider: adProvider, adGate: adGate)
+            }
             DigitPadView(
                 pencilMode: viewModel.pencilMode,
                 canUndo: viewModel.canUndo,

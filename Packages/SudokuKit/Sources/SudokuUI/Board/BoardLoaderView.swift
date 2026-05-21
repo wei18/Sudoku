@@ -12,6 +12,7 @@
 // what `RootView.destination` already has) so `GameViewModel.swift` and
 // `BoardView.swift` stay untouched.
 
+public import MonetizationCore
 public import SwiftUI
 public import Persistence
 public import PuzzleStore
@@ -30,6 +31,10 @@ public struct BoardLoaderView: View {
     private let puzzleId: String
     private let puzzleProvider: any PuzzleProviderProtocol
     private let persistence: any PersistenceProtocol
+    // v2.3.5: forwarded to `BoardView` so the banner slot can render
+    // between the grid and the digit pad once the puzzle has loaded.
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -37,11 +42,15 @@ public struct BoardLoaderView: View {
     public init(
         puzzleId: String,
         puzzleProvider: any PuzzleProviderProtocol,
-        persistence: any PersistenceProtocol
+        persistence: any PersistenceProtocol,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     public var body: some View {
@@ -58,7 +67,7 @@ public struct BoardLoaderView: View {
             ProgressView()
                 .controlSize(.large)
         case .loaded(let viewModel):
-            BoardView(viewModel: viewModel)
+            BoardView(viewModel: viewModel, adProvider: adProvider, adGate: adGate)
         case .failed(let reason):
             failedBlock(reason: reason)
         }
