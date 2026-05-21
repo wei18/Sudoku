@@ -10,10 +10,7 @@ struct SudokuApp: App {
         WindowGroup {
             RootView(
                 viewModel: composition.rootViewModel,
-                puzzleProvider: composition.puzzleProvider,
-                persistence: composition.persistence,
-                gameCenter: composition.gameCenter,
-                telemetry: composition.telemetry
+                routeFactory: composition.routeFactory
             )
         }
     }

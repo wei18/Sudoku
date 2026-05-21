@@ -5,6 +5,9 @@
 // entry purely so future Preview-only tweaks (canned snapshots etc.) can
 // land without affecting unit/snapshot test behavior.
 
+internal import Foundation
+internal import MonetizationCore
+internal import MonetizationTesting
 internal import SudokuKitTesting
 internal import SudokuUI
 internal import Telemetry
@@ -25,17 +28,39 @@ extension AppComposition {
         let puzzleProvider = FakePuzzleProvider()
         let telemetry = Telemetry(sinks: [])
 
+        // v2 monetization fakes.
+        let adProvider: any AdProvider = FakeAdProvider()
+        let iapClient: any IAPClient = FakeIAPClient()
+        let adGateStore = FakeAdGateStateStore(
+            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+        )
+        let adGate = AdGate(store: adGateStore)
+
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence
         )
 
-        return AppComposition(
-            rootViewModel: rootViewModel,
+        let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleProvider,
             persistence: persistence,
             gameCenter: gameCenter,
-            telemetry: telemetry
+            telemetry: telemetry,
+            adProvider: adProvider,
+            iapClient: iapClient,
+            adGate: adGate
+        )
+
+        return AppComposition(
+            rootViewModel: rootViewModel,
+            routeFactory: routeFactory,
+            puzzleProvider: puzzleProvider,
+            persistence: persistence,
+            gameCenter: gameCenter,
+            telemetry: telemetry,
+            adProvider: adProvider,
+            iapClient: iapClient,
+            adGate: adGate
         )
     }
 }

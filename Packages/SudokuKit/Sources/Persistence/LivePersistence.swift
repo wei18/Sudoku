@@ -144,4 +144,31 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     public func upsertPersonalRecord(_ record: PersonalRecord) async throws {
         try await personalRecordStore().upsert(record)
     }
+
+    // MARK: - Monetization wiring helper (v2.3.1)
+
+    /// Construct a `LiveMonetizationStateStore` that shares this facade's
+    /// underlying `PrivateCKGateway`. AppComposition.live calls this to wire
+    /// AdGate without having to know about the gateway type (which stays
+    /// internal to this module).
+    public func monetizationStateStore() -> LiveMonetizationStateStore {
+        // Defer gateway construction until the first IO call so callers
+        // (AppComposition.live) can build the wiring graph without booting
+        // CloudKit — matches the same lazy contract used by saved-game and
+        // personal-record store accessors above.
+        LiveMonetizationStateStore(
+            gatewayProvider: { [weak self] in
+                guard let self else {
+                    // The facade outlives every store it vends in normal use
+                    // (it is held by AppComposition for the App's lifetime),
+                    // so this branch is defensive. Synthesise a fresh gateway
+                    // rather than crashing — IO on it will fail downstream
+                    // with the same `containerIdentifier` trap, surfacing as
+                    // a normal CloudKit error path.
+                    return LivePrivateCKGateway()
+                }
+                return self.gateway()
+            }
+        )
+    }
 }

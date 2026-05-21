@@ -1,14 +1,15 @@
-// CompositionTests — phase 9.1: AppComposition.live / .preview / .tests
-// produce fully-wired AppComposition values.
+// CompositionTests — phase 9.1 + v2.3.2/3: AppComposition.live / .preview /
+// .tests produce fully-wired AppComposition values.
 //
-// Live wiring goes through CloudKit / GameKit constructors; we do NOT
-// invoke any IO method (no `await persistence.bootstrap()`). The tests
-// only check that all factory closures are present and that .preview /
-// .tests use fakes (typecheck via Mirror inspection on the rootViewModel).
+// Live wiring goes through CloudKit / GameKit / AdMob / StoreKit2 constructors;
+// we do NOT invoke any IO method. The tests only check that all factory
+// closures are present and that .preview / .tests use fakes (typecheck via
+// Mirror inspection).
 
 import Foundation
 import Testing
 import GameCenterClient
+import MonetizationCore
 import Persistence
 import SudokuKitTesting
 @testable import AppComposition
@@ -20,20 +21,33 @@ struct CompositionTests {
     @Test
     func liveCompositionWiresAllProtocols() async {
         let composition = AppComposition.live()
-        // RootViewModel is constructed.
         _ = composition.rootViewModel
 
-        // The Mirror children of RootViewModel expose the injected
-        // collaborators by stored-property name; assert live types.
         let mirror = Mirror(reflecting: composition.rootViewModel)
         let gcChild = mirror.children.first(where: { $0.label == "gameCenter" })?.value
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
         #expect(gcChild != nil)
         #expect(persistChild != nil)
-        // Use type-name string as a cheap discriminator (no `is` check —
-        // the protocol existentials erase the concrete actor type).
         #expect(String(describing: type(of: gcChild!)).contains("LiveGameCenterClient"))
         #expect(String(describing: type(of: persistChild!)).contains("LivePersistence"))
+    }
+
+    @Test
+    func liveCompositionExposesMonetizationDeps() async {
+        let composition = AppComposition.live()
+        // v2.3.2: all three monetization stored properties resolve to Live impls.
+        #expect(String(describing: type(of: composition.adProvider)).contains("LiveAdMobAdProvider"))
+        #expect(String(describing: type(of: composition.iapClient)).contains("LiveStoreKit2IAPClient"))
+        // adGate is the same concrete type for both live + preview (it is
+        // injection-driven via its store), so type identity here is just
+        // a smoke that the property exists and is reachable.
+        _ = composition.adGate
+    }
+
+    @Test
+    func liveCompositionExposesRouteFactory() async {
+        let composition = AppComposition.live()
+        #expect(String(describing: type(of: composition.routeFactory)).contains("LiveRouteFactory"))
     }
 
     @Test
@@ -44,6 +58,8 @@ struct CompositionTests {
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
         #expect(String(describing: type(of: gcChild!)).contains("FakeGameCenterClient"))
         #expect(String(describing: type(of: persistChild!)).contains("FakePersistence"))
+        #expect(String(describing: type(of: composition.adProvider)).contains("FakeAdProvider"))
+        #expect(String(describing: type(of: composition.iapClient)).contains("FakeIAPClient"))
     }
 
     @Test
@@ -54,5 +70,7 @@ struct CompositionTests {
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
         #expect(String(describing: type(of: gcChild!)).contains("FakeGameCenterClient"))
         #expect(String(describing: type(of: persistChild!)).contains("FakePersistence"))
+        #expect(String(describing: type(of: composition.adProvider)).contains("FakeAdProvider"))
+        #expect(String(describing: type(of: composition.iapClient)).contains("FakeIAPClient"))
     }
 }

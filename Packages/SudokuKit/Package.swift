@@ -17,7 +17,18 @@ let productionTargets: [Target] = [
     .target(name: "SudokuEngine", swiftSettings: swiftSettings),
     .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
     .target(name: "PuzzleStore", dependencies: ["SudokuEngine", "Telemetry"], swiftSettings: swiftSettings),
-    .target(name: "Persistence", dependencies: ["GameState", "Telemetry"], swiftSettings: swiftSettings),
+    .target(
+        name: "Persistence",
+        dependencies: [
+            "GameState",
+            "Telemetry",
+            // v2.3.1: re-exports `AdGateStateStore` via `MonetizationStateStore`
+            // typealias; concrete `LiveMonetizationStateStore` lives here so
+            // CloudKit Private wiring stays inside the Sudoku App layer.
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
     .target(name: "GameCenterClient", dependencies: ["Telemetry", "Persistence"], swiftSettings: swiftSettings),
     // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
     // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
@@ -30,7 +41,19 @@ let productionTargets: [Target] = [
     .target(name: "Telemetry", dependencies: ["GameState"], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
-        dependencies: ["GameState", "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
+        dependencies: [
+            "GameState",
+            "PuzzleStore",
+            "Persistence",
+            "GameCenterClient",
+            "Telemetry",
+            // v2.3.3: RouteFactory holds AdProvider / IAPClient / AdGate
+            // protocol deps so individual destination Views (v2.3.4-6) can
+            // pull them at construction. SudokuUI does not depend on the
+            // AdMob / StoreKit2 concrete-impl targets — those stay isolated
+            // in AppComposition (foundations.md §9.1).
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+        ],
         swiftSettings: swiftSettings
     ),
     .target(
@@ -57,6 +80,13 @@ let productionTargets: [Target] = [
             // factory does not reference them so dead-code elimination keeps
             // the cost bounded.
             "SudokuKitTesting",
+            // v2.3.2: monetization wiring. AppComposition.live builds
+            // LiveAdMobAdProvider + LiveStoreKit2IAPClient + AdGate via
+            // LiveMonetizationStateStore. Preview / tests use MonetizationTesting fakes.
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            .product(name: "AdsAdMob", package: "AppMonetizationKit"),
+            .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
+            .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -82,15 +112,21 @@ func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
     )
 }
 
+// Convenience dep set used by tests that need to construct AdGate / monetization fakes.
+let monetizationTestDeps: [Target.Dependency] = [
+    .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+    .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
+]
+
 let testTargets: [Target] = [
     testTarget("SudokuEngine", dependencies: ["SudokuEngine"]),
     testTarget("GameState", dependencies: ["GameState"]),
     testTarget("PuzzleStore", dependencies: ["PuzzleStore"]),
-    testTarget("Persistence", dependencies: ["Persistence"]),
+    testTarget("Persistence", dependencies: ["Persistence"] + monetizationTestDeps),
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
     testTarget("Telemetry", dependencies: ["Telemetry"]),
-    testTarget("SudokuUI", dependencies: ["SudokuUI"]),
-    testTarget("AppComposition", dependencies: ["AppComposition"]),
+    testTarget("SudokuUI", dependencies: ["SudokuUI"] + monetizationTestDeps),
+    testTarget("AppComposition", dependencies: ["AppComposition"] + monetizationTestDeps),
 ]
 
 // MARK: - ASCRegister CLI (additive tool target; not part of the App binary)
@@ -137,6 +173,10 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        // v2.3.2: sibling local package providing MonetizationCore +
+        // AdsAdMob (Google Mobile Ads bridge) + IAPStoreKit2 (StoreKit2 bridge)
+        // + MonetizationTesting fakes. Lives one directory up under Packages/.
+        .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
     ],
     targets: productionTargets + testTargets + ascRegisterTargets,
     swiftLanguageModes: [.v6]
