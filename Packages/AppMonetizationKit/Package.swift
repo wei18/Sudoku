@@ -22,7 +22,14 @@ let swiftSettings: [SwiftSetting] = [
 
 let productionTargets: [Target] = [
     .target(name: "MonetizationCore", swiftSettings: swiftSettings),
-    .target(name: "AdsAdMob", dependencies: ["MonetizationCore"], swiftSettings: swiftSettings),
+    .target(
+        name: "AdsAdMob",
+        dependencies: [
+            "MonetizationCore",
+            .product(name: "GoogleMobileAds", package: "swift-package-manager-google-mobile-ads"),
+        ],
+        swiftSettings: swiftSettings
+    ),
     .target(name: "IAPStoreKit2", dependencies: ["MonetizationCore"], swiftSettings: swiftSettings),
     .target(name: "MonetizationTesting", dependencies: ["MonetizationCore"], swiftSettings: swiftSettings),
 ]
@@ -66,7 +73,18 @@ let package = Package(
         .library(name: "IAPStoreKit2", targets: ["IAPStoreKit2"]),
         .library(name: "MonetizationTesting", targets: ["MonetizationTesting"]),
     ],
-    dependencies: [],
+    dependencies: [
+        // foundations.md §9.1: third-party SDK is isolated to AdsAdMob target only.
+        // Pinned to 11.x — first major aligned with Swift 6 toolchain era. Allow
+        // semver-major drift via `from:`; bridge seam (AdMobBridge) shields the
+        // rest of the package from API churn.
+        .package(
+            url: "https://github.com/googleads/swift-package-manager-google-mobile-ads",
+            from: "11.0.0"
+        ),
+    ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )
+
+// swiftlint:enable trailing_comma
