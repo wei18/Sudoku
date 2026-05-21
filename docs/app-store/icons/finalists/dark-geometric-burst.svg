@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Concept 09: Geometric Burst -->
+  <!-- Deep navy bg; bright amber grid; 4-cell pinwheel sage/clay/lavender/amber asymmetric -->
+  <defs>
+    <radialGradient id="navyGlow" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0" stop-color="#34487A"/>
+      <stop offset="1" stop-color="#2A3B5C"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#navyGlow)"/>
+  <!-- Pinwheel: 4 corner cells of the 3x3 with rotating palette -->
+  <!-- top-left sage, top-right clay, bottom-left amber, bottom-right lavender -->
+  <rect x="212" y="212" width="200" height="200" fill="#7E9E70"/>
+  <rect x="612" y="212" width="200" height="200" fill="#C97D5F"/>
+  <rect x="212" y="612" width="200" height="200" fill="#E6A857"/>
+  <rect x="612" y="612" width="200" height="200" fill="#B5A6D6"/>
+  <!-- Center cell: subtle amber tint to anchor -->
+  <rect x="412" y="412" width="200" height="200" fill="#E6A857" opacity="0.18"/>
+  <!-- Bright amber grid strokes -->
+  <g stroke="#E6A857" stroke-width="14" fill="none" stroke-linecap="square">
+    <rect x="212" y="212" width="600" height="600"/>
+    <line x1="412" y1="212" x2="412" y2="812"/>
+    <line x1="612" y1="212" x2="612" y2="812"/>
+    <line x1="212" y1="412" x2="812" y2="412"/>
+    <line x1="212" y1="612" x2="812" y2="612"/>
+  </g>
+</svg>
