@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- AppIcon Tinted variant — single-channel friendly per Apple HIG.
+       System renders foreground (white) in user's accent color over a
+       near-black background. Reuses the original Concept 01 single-dot
+       motif (deleted from concepts/ in #63) but designed monochrome. -->
+  <!-- 24% corner radius (246pt) matches the light + dark finalists. -->
+  <defs>
+    <clipPath id="iconMask">
+      <rect width="1024" height="1024" rx="246" ry="246"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#iconMask)">
+    <!-- Near-black bg; system tinting reads this as the "negative space" -->
+    <rect width="1024" height="1024" fill="#0A0A0A"/>
+    <!-- Single accent cell (center-top), filled white -> tints to accent color -->
+    <rect x="412" y="212" width="200" height="200" fill="#FFFFFF"/>
+    <!-- White grid strokes -->
+    <g stroke="#FFFFFF" stroke-width="12" fill="none" stroke-linecap="square">
+      <rect x="212" y="212" width="600" height="600"/>
+      <line x1="412" y1="212" x2="412" y2="812"/>
+      <line x1="612" y1="212" x2="612" y2="812"/>
+      <line x1="212" y1="412" x2="812" y2="412"/>
+      <line x1="212" y1="612" x2="812" y2="612"/>
+    </g>
+  </g>
+</svg>
