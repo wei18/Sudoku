@@ -94,7 +94,9 @@ public struct LiveRouteFactory: RouteFactory {
                 BoardLoaderView(
                     puzzleId: puzzleId,
                     puzzleProvider: puzzleProvider,
-                    persistence: persistence
+                    persistence: persistence,
+                    adProvider: adProvider,
+                    adGate: adGate
                 )
             )
         case .completion(let puzzleId, let elapsedSeconds):

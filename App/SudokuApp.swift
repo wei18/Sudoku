@@ -10,7 +10,9 @@ struct SudokuApp: App {
         WindowGroup {
             RootView(
                 viewModel: composition.rootViewModel,
-                routeFactory: composition.routeFactory
+                routeFactory: composition.routeFactory,
+                adProvider: composition.adProvider,
+                adGate: composition.adGate
             )
         }
     }

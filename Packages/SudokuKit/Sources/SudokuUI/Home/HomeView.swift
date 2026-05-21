@@ -3,16 +3,30 @@
 // Per docs/designs/02-home.md. Single state, no loading. Liquid Glass on
 // each card (.glassEffect available on iOS 26 / macOS 26 — the deployment
 // targets per foundations.md §1).
+//
+// v2.3.4: an optional `BannerSlotView` lives below the mode cards. The slot
+// itself decides whether to render anything (it consults `AdGate`); HomeView
+// just hands it the protocol deps. When the gate says no banner the slot
+// collapses to 0pt so the layout is unaffected.
 
+public import MonetizationCore
 public import SwiftUI
 
 public struct HomeView: View {
     @Bindable private var viewModel: HomeViewModel
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    public init(viewModel: HomeViewModel) {
+    public init(
+        viewModel: HomeViewModel,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
+    ) {
         self.viewModel = viewModel
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     public var body: some View {
@@ -28,6 +42,12 @@ public struct HomeView: View {
                 }
             }
             .padding(16)
+
+            if let adProvider, let adGate {
+                BannerSlotView(adProvider: adProvider, adGate: adGate)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
         }
         .background(theme.surface.background.resolved)
         .navigationTitle("Sudoku")

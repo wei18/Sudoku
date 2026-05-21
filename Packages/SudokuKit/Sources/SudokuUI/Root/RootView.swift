@@ -7,6 +7,7 @@
 // and a `routeFactory`; no protocol-dep leakage, so future feature growth
 // does not bloat this signature.
 
+public import MonetizationCore
 public import SwiftUI
 internal import Persistence
 
@@ -15,13 +16,24 @@ public struct RootView: View {
     @Environment(\.theme) private var theme
 
     private let routeFactory: any RouteFactory
+    // v2.3.4: forwarded to HomeView for its `BannerSlotView` mount. The
+    // route factory already holds these privately for destination views;
+    // HomeView is the root content (not a destination), so RootView still
+    // has to thread them in directly. Two extra deps, not eight — the
+    // RouteFactory absorbs the rest.
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
 
     public init(
         viewModel: RootViewModel,
-        routeFactory: any RouteFactory
+        routeFactory: any RouteFactory,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.routeFactory = routeFactory
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     public var body: some View {
@@ -47,7 +59,9 @@ public struct RootView: View {
             HomeView(
                 viewModel: HomeViewModel(
                     path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
-                )
+                ),
+                adProvider: adProvider,
+                adGate: adGate
             )
         }
         .background(theme.surface.background.resolved)
