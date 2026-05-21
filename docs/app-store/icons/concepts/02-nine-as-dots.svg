@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Concept 02: Nine as Dots -->
+  <!-- 3x3 array of sage circles, dot diameter 140, spacing 80 -->
+  <!-- Total span: 3*140 + 2*80 = 580; center the array -->
+  <!-- Center positions for dots: columns/rows at 232, 452, 672 -->
+  <rect width="1024" height="1024" fill="#FAF8F3"/>
+  <g fill="#5C7A4F">
+    <circle cx="282" cy="282" r="70"/>
+    <circle cx="512" cy="282" r="70"/>
+    <circle cx="742" cy="282" r="70"/>
+    <circle cx="282" cy="512" r="70"/>
+    <circle cx="512" cy="512" r="70"/>
+    <circle cx="742" cy="512" r="70"/>
+    <circle cx="282" cy="742" r="70"/>
+    <circle cx="512" cy="742" r="70"/>
+    <circle cx="742" cy="742" r="70"/>
+  </g>
+</svg>
