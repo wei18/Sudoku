@@ -1479,8 +1479,8 @@ func boardA11yLabels() {
 - **Android App via Swift SDK for Android**（2026-05-20）：使用 swift.org 官方 Swift SDK for Android cross-compile `SudokuEngine` / `GameState` / `PuzzleStore` 等純 Swift module 為 Android shared library，再用 Kotlin/Jetpack Compose 撰寫 UI 層、透過 JNI 呼叫共享 core。Game Center / CloudKit 不可用，需替代方案（Google Play Games Services + Firestore 或自架 backend）。雙平台後 §How.4 deterministic generator 仍能跨 OS 產出同題（純 Swift + FNV-1a seed derivation 不依賴 Apple 框架），daily leaderboard 改走中立 backend 才能跨平台同榜。先驗證 swift-android-sdk 在 SudokuEngine target 的可編譯性 + JNI 邊界開銷，再決定 SudokuUI 是否也共享（多半否，UI 各平台 idiomatic）。
 
 ### 商業模式
-- **v2 廣告投放**：App 內出現廣告，預設頻率「每 14 天一次」；進階方案為動態頻率 — 依 CloudKit operating cost 與當下使用者人數反推每位用戶該分攤的成本，動態調整曝光頻率以剛好回收營運費用（2026-05-15）。
-- IAP / 付費階層（無時程）
+- **v2 廣告投放 + IAP — promoted from backlog 2026-05-20**：詳細決策見 [`docs/v2/design.md`](v2/design.md)。鎖定要點：AdMob + StoreKit2 IAP「Remove Ads」$2.99；廣告頻率 = 7-day grace + 1/day max + dismissed-skip；Banner（非 interstitial）插入 Home/Board view；frequency state 走 CloudKit Private `MonetizationState`；Apple-only impl。舊 backlog 提到的「每 14 天一次」被「7-day grace + 1/day max」取代（更貼近 calm brand）；「動態頻率依 CloudKit cost 反推」defer 到 v2.1+ 等 telemetry pipeline 跟上。
+- IAP 進階方案（subscription / pro tier / tip jar / premium puzzle pack）— v3+，需要先有 pro 內容可賣或 brand 接受度
 
 ### 通知與留存
 - **本機通知提醒（Local Notification for daily reminder）**：使用 `UNUserNotificationCenter` 排程每日提醒，引導玩家完成當天的 daily 題。需設計：權限請求時機（不在 onboarding 第一步，避免 prompt fatigue）、預設時間（玩家可在 §Settings 自訂）、跨日 reset 與 timezone 處理、靜音時段、未完成 daily 才提醒的條件邏輯。entitlements 不需要新增，但 `Info.plist` 與 §How.3 / §Settings 介面需擴充。一定要考慮玩家連續錯過時的 escalation/de-escalation 策略，避免變成騷擾（2026-05-20）。
