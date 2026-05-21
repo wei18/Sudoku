@@ -47,6 +47,10 @@ public struct LiveRouteFactory: RouteFactory {
     private let adProvider: any AdProvider
     private let iapClient: any IAPClient
     private let adGate: AdGate
+    // v2.3.6: optional so existing callers (route factory tests, snapshot
+    // fixtures) keep working without constructing a controller. Live wiring
+    // injects one so Settings renders the Remove Ads section.
+    private let monetizationController: MonetizationStateController?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -55,7 +59,8 @@ public struct LiveRouteFactory: RouteFactory {
         telemetry: Telemetry,
         adProvider: any AdProvider,
         iapClient: any IAPClient,
-        adGate: AdGate
+        adGate: AdGate,
+        monetizationController: MonetizationStateController? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -64,6 +69,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.adProvider = adProvider
         self.iapClient = iapClient
         self.adGate = adGate
+        self.monetizationController = monetizationController
     }
 
     @MainActor
@@ -112,7 +118,10 @@ public struct LiveRouteFactory: RouteFactory {
             )
         case .settings:
             return AnyView(
-                SettingsView(viewModel: SettingsViewModel(persistence: persistence))
+                SettingsView(
+                    viewModel: SettingsViewModel(persistence: persistence),
+                    monetizationController: monetizationController
+                )
             )
         }
     }

@@ -126,7 +126,12 @@ let testTargets: [Target] = [
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
     testTarget("Telemetry", dependencies: ["Telemetry"]),
     testTarget("SudokuUI", dependencies: ["SudokuUI"] + monetizationTestDeps),
-    testTarget("AppComposition", dependencies: ["AppComposition"] + monetizationTestDeps),
+    // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
+    // `MonetizationBootCoordinator` directly with recording bridges.
+    testTarget(
+        "AppComposition",
+        dependencies: ["AppComposition", .product(name: "AdsAdMob", package: "AppMonetizationKit")] + monetizationTestDeps
+    ),
 ]
 
 // MARK: - ASCRegister CLI (additive tool target; not part of the App binary)

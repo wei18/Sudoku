@@ -53,6 +53,16 @@ extension AppComposition {
         let adProvider: any AdProvider = LiveAdMobAdProvider()
         let iapClient: any IAPClient = LiveStoreKit2IAPClient()
 
+        // v2.3.6: shared @Observable controller for Settings + HomeView's
+        // Remove Ads surfaces. Constructed eagerly so both views observe the
+        // same instance; `.bootstrap()` is invoked lazily inside each View's
+        // `.task` modifier.
+        let monetizationController = MonetizationStateController(
+            iapClient: iapClient,
+            stateStore: monetizationStateStore,
+            adGate: adGate
+        )
+
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence
@@ -65,7 +75,8 @@ extension AppComposition {
             telemetry: telemetry,
             adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate
+            adGate: adGate,
+            monetizationController: monetizationController
         )
 
         return AppComposition(
@@ -77,7 +88,9 @@ extension AppComposition {
             telemetry: telemetry,
             adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate
+            adGate: adGate,
+            monetizationStateStore: monetizationStateStore,
+            monetizationController: monetizationController
         )
     }
 

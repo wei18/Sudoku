@@ -31,10 +31,16 @@ extension AppComposition {
         // v2 monetization fakes.
         let adProvider: any AdProvider = FakeAdProvider()
         let iapClient: any IAPClient = FakeIAPClient()
-        let adGateStore = FakeAdGateStateStore(
+        let adGateStore: any AdGateStateStore = FakeAdGateStateStore(
             initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
         )
         let adGate = AdGate(store: adGateStore)
+
+        let monetizationController = MonetizationStateController(
+            iapClient: iapClient,
+            stateStore: adGateStore,
+            adGate: adGate
+        )
 
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
@@ -48,7 +54,8 @@ extension AppComposition {
             telemetry: telemetry,
             adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate
+            adGate: adGate,
+            monetizationController: monetizationController
         )
 
         return AppComposition(
@@ -60,7 +67,9 @@ extension AppComposition {
             telemetry: telemetry,
             adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate
+            adGate: adGate,
+            monetizationStateStore: adGateStore,
+            monetizationController: monetizationController
         )
     }
 }

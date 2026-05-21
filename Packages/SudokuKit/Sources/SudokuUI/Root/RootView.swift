@@ -23,17 +23,23 @@ public struct RootView: View {
     // RouteFactory absorbs the rest.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    // v2.3.6: shared monetization controller; reaches HomeView for the 5th
+    // "Remove Ads" card and the route factory hands the same instance to
+    // SettingsView so both surfaces observe the same `hasPurchasedRemoveAds`.
+    private let monetizationController: MonetizationStateController?
 
     public init(
         viewModel: RootViewModel,
         routeFactory: any RouteFactory,
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        monetizationController: MonetizationStateController? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.routeFactory = routeFactory
         self.adProvider = adProvider
         self.adGate = adGate
+        self.monetizationController = monetizationController
     }
 
     public var body: some View {
@@ -61,7 +67,8 @@ public struct RootView: View {
                     path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
                 ),
                 adProvider: adProvider,
-                adGate: adGate
+                adGate: adGate,
+                monetizationController: monetizationController
             )
         }
         .background(theme.surface.background.resolved)
