@@ -66,6 +66,18 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `status.warning` | `#A86A0E` | `#E0A95C` | Degraded GC auth, schemaVersion stale |
 | `status.error` | `#C8362B` | `#E66258` | Validator error, fetch fail |
 
+### Difficulty (v2+)
+
+Restrained-saturation warm trio used **only for difficulty signaling** — DailyHubView puzzle-card tints and PracticeHubView Picker chip tints. The calmness contract of the brand is preserved by limiting their footprint to this signaling role; do NOT promote these tokens to general accent / CTA use.
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `difficulty.easy` | `#5C7A4F` (sage) | `#9BB87E` (lighter sage) | Easy puzzles — matches `accent.primary` |
+| `difficulty.medium` | `#C97D5F` (clay) | `#D89A82` (lighter clay) | Medium puzzles — warm terracotta, new in v2 |
+| `difficulty.hard` | `#E6A857` (amber) | `#EFC07F` (lighter amber) | Hard puzzles — warm amber, new in v2 |
+
+**Canonical example**: `docs/app-store/icons/finalists/light-difficulty-trio.svg` (AppIcon 07) uses these exact three hexes. Canonized as a brand vocabulary after AppIcon Round 2 adoption (see #63).
+
 **Contrast verification** (key pairings, computed APCA→WCAG fallback):
 
 - `text.primary` / `surface.primary` light: 16.1:1 — AAA

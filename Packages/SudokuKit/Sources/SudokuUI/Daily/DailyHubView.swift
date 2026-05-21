@@ -91,10 +91,14 @@ struct DailyPuzzleCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(difficultyTint)
+                    .frame(width: 10, height: 10)
+                    .accessibilityHidden(true)
                 Text(LocalizedStringKey(card.difficulty.capitalized))
                     .font(.title3.weight(.medium))
-                    .foregroundStyle(theme.text.primary.resolved)
+                    .foregroundStyle(difficultyTint)
                 Spacer()
                 if card.isCompleted {
                     Image(systemName: "checkmark.circle.fill")
@@ -115,6 +119,18 @@ struct DailyPuzzleCard: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// Map the envelope's difficulty string to the matching `difficulty.*`
+    /// token. Unknown strings fall back to `text.primary` so we never go
+    /// off-token.
+    private var difficultyTint: Color {
+        switch card.difficulty.lowercased() {
+        case "easy": return theme.difficulty.easy.resolved
+        case "medium": return theme.difficulty.medium.resolved
+        case "hard": return theme.difficulty.hard.resolved
+        default: return theme.text.primary.resolved
+        }
     }
 }
 
