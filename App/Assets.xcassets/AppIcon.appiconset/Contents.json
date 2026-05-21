@@ -3,7 +3,6 @@
     {
       "filename" : "AppIcon-Light.png",
       "idiom" : "universal",
-      "platform" : "ios",
       "size" : "1024x1024"
     },
     {
@@ -15,7 +14,6 @@
       ],
       "filename" : "AppIcon-Dark.png",
       "idiom" : "universal",
-      "platform" : "ios",
       "size" : "1024x1024"
     },
     {
@@ -27,7 +25,6 @@
       ],
       "filename" : "AppIcon-Light.png",
       "idiom" : "universal",
-      "platform" : "ios",
       "size" : "1024x1024"
     }
   ],
