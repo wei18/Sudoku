@@ -46,18 +46,12 @@ internal final class LiveAdMobBridge: AdMobBridge {
 
     internal func loadBanner() async throws -> AdBannerHandle {
         #if canImport(GoogleMobileAds)
-        // v2.2 minimum-viable banner load: we create the banner view and let
-        // the SDK fetch a creative, then resolve once the delegate reports
-        // success/failure. Anchor + presentation wiring lands in v2.3.
-        //
-        // For the v2.2 deliverable we synthesize an `AdBannerHandle` on
-        // request creation — the real lifecycle / handle-to-view mapping is
-        // built in v2.3 alongside `BannerSlotView`. This satisfies the
-        // `AdProvider.refreshBanner()` contract: SDK in-flight = `.loading`,
-        // handle returned = `.loaded(handle)`.
-        let handle = AdBannerHandle()
-        setCachedStatus(.loaded(handle))
-        return handle
+        // Real SDK wiring (GADBannerView + Request + delegate) lands in v2.3.5
+        // alongside `BannerSlotView`. Until then we surface a visible failure
+        // so the UI layer cannot pretend a creative was fetched.
+        let reason = "loadBanner not implemented until v2.3.5"
+        setCachedStatus(.failed(reason: reason))
+        throw AdMobBridgeError.loadFailed(reason: reason)
         #else
         throw AdMobBridgeError.unsupportedPlatform
         #endif
