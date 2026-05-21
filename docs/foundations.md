@@ -422,7 +422,31 @@ Skill 選用矩陣與觸發時機屬於**協作流程**範疇，已寫入 `metho
 
 - **Plan 體系採用 `superpowers:writing-plans` + `superpowers:executing-plans`**，**不**使用 `claude-mem:make-plan` / `do`，避免兩套 plan 體系並存。
 
+## §9 第三方 SDK 例外條款（v2 起）
 
+v1 維持「Apple-only stack」（見 §6 不引入第三方 tracking）。v2 開始有受控例外：
+
+### §9.1 AdMob — AppMonetizationKit/AdsAdMob target 內隔離
+
+- **SDK**：Google Mobile Ads SDK，via SPM `https://github.com/googleads/swift-package-manager-google-mobile-ads`
+- **理由**：ad-serving 必須接 SDK，Apple 沒有提供能 deliver ads 的原生替代（`AdServices` 只做 attribution，不能 serve ads）。詳細決策過程見 `docs/v2/design.md §How.9`。
+- **隔離契約**：
+  - 第三方依賴只在 `AppMonetizationKit/Sources/AdsAdMob` 這個 sub-target 內，**不能跨 target border**
+  - `MonetizationCore` / `IAPStoreKit2` / Sudoku 主 App 程式碼 **一律不直接 `import GoogleMobileAds`**
+  - protocol 中性面（`AdProvider`、`AdBannerStatus` 等）不暴露 `GADBannerView` 等具體型別
+- **Privacy 連帶**：`PrivacyInfo.xcprivacy` `NSPrivacyTracking` 從 `false` 改 `true`，加上 AdMob domains + advertising identifier 等宣告；App Store nutrition labels 同步更新
+
+### §9.2 新增第三方 SDK 的程序
+
+任何 v2+ 想引入的新第三方 SDK 必須：
+
+1. 在本節新增子小節（§9.X），包含：
+   - SDK 名稱 + SPM URL
+   - 為什麼沒有 Apple-only 替代方案的論證
+   - 隔離契約（哪個 target 可以 import、哪個不行）
+   - Privacy 連帶（如果觸發 tracking / data collection）
+2. 在 `docs/v<N>/design.md` 寫詳細決策過程
+3. PR review 由 Leader 把關「隔離」是否真的有效
 
 ---
 
