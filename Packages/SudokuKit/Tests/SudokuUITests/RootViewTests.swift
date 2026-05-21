@@ -12,10 +12,28 @@ import Testing
 @testable import SudokuUI
 
 import GameCenterClient
+import MonetizationCore
+import MonetizationTesting
 import Persistence
 import PuzzleStore
 import SudokuKitTesting
 import Telemetry
+
+@MainActor
+private func makeTestRouteFactory() -> LiveRouteFactory {
+    let store = FakeAdGateStateStore(
+        initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+    )
+    return LiveRouteFactory(
+        puzzleProvider: FakePuzzleProvider(),
+        persistence: FakePersistence(),
+        gameCenter: FakeGameCenterClient(),
+        telemetry: Telemetry(sinks: []),
+        adProvider: FakeAdProvider(),
+        iapClient: FakeIAPClient(),
+        adGate: AdGate(store: store)
+    )
+}
 
 @MainActor
 @Suite("RootView — bootstrap + snapshots")
@@ -78,10 +96,7 @@ struct RootViewTests {
 
         let view = RootView(
             viewModel: viewModel,
-            puzzleProvider: FakePuzzleProvider(),
-            persistence: FakePersistence(),
-            gameCenter: FakeGameCenterClient(),
-            telemetry: Telemetry(sinks: [])
+            routeFactory: makeTestRouteFactory()
         )
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
 
@@ -99,10 +114,7 @@ struct RootViewTests {
 
         let view = RootView(
             viewModel: viewModel,
-            puzzleProvider: FakePuzzleProvider(),
-            persistence: FakePersistence(),
-            gameCenter: FakeGameCenterClient(),
-            telemetry: Telemetry(sinks: [])
+            routeFactory: makeTestRouteFactory()
         )
         let host = hostingView(view, size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
 

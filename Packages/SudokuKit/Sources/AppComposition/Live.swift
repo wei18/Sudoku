@@ -5,9 +5,15 @@
 //   - LivePersistence(...) bound to a PuzzleStore puzzle loader
 //   - PuzzleStore() — default LivePuzzleGenerating
 //   - Telemetry(sinks: [OSLogSink, NoOpTrackingSink, MetricKitSink])
+//   - LiveAdMobAdProvider() / LiveStoreKit2IAPClient() (v2.3.2)
+//   - AdGate(store: LivePersistence.monetizationStateStore()) (v2.3.2)
+//   - LiveRouteFactory composing all of the above (v2.3.3)
 
+internal import AdsAdMob
 internal import Foundation
 internal import GameCenterClient
+internal import IAPStoreKit2
+internal import MonetizationCore
 internal import Persistence
 internal import PuzzleStore
 internal import SudokuUI
@@ -41,17 +47,37 @@ extension AppComposition {
         // Game Center client.
         let gameCenter = LiveGameCenterClient(authDriver: GKAuthDriver())
 
+        // v2 monetization deps.
+        let monetizationStateStore = persistence.monetizationStateStore()
+        let adGate = AdGate(store: monetizationStateStore)
+        let adProvider: any AdProvider = LiveAdMobAdProvider()
+        let iapClient: any IAPClient = LiveStoreKit2IAPClient()
+
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence
         )
 
-        return AppComposition(
-            rootViewModel: rootViewModel,
+        let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleStore,
             persistence: persistence,
             gameCenter: gameCenter,
-            telemetry: telemetry
+            telemetry: telemetry,
+            adProvider: adProvider,
+            iapClient: iapClient,
+            adGate: adGate
+        )
+
+        return AppComposition(
+            rootViewModel: rootViewModel,
+            routeFactory: routeFactory,
+            puzzleProvider: puzzleStore,
+            persistence: persistence,
+            gameCenter: gameCenter,
+            telemetry: telemetry,
+            adProvider: adProvider,
+            iapClient: iapClient,
+            adGate: adGate
         )
     }
 

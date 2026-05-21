@@ -38,6 +38,13 @@ let sudokuTarget = Target.target(
     dependencies: [
         .package(product: "SudokuUI"),
         .package(product: "AppComposition"),
+        // v2.3.2: explicit App-target links so Google Mobile Ads + StoreKit2
+        // bridge binaries are embedded in the .app bundle. AppComposition
+        // already pulls these transitively, but Tuist surfaces them at the
+        // App target so the linker discovers the .xcframework slices.
+        .package(product: "MonetizationCore"),
+        .package(product: "AdsAdMob"),
+        .package(product: "IAPStoreKit2"),
     ],
     settings: .settings(base: swiftSettings)
 )
@@ -50,6 +57,7 @@ let project = Project(
     ),
     packages: [
         .local(path: "Packages/SudokuKit"),
+        .local(path: "Packages/AppMonetizationKit"),
     ],
     settings: .settings(
         base: swiftSettings,

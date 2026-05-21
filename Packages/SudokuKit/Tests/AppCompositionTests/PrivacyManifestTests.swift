@@ -1,9 +1,11 @@
-// PrivacyManifestTests — Phase 9.3.
+// PrivacyManifestTests — Phase 9.3 + v2.4.
 //
-// Locks the privacy manifest contents: no third-party tracking, empty
-// `NSPrivacyCollectedDataTypes`, and a parseable plist. The manifest
-// lives next to the App target (`App/Resources/PrivacyInfo.xcprivacy`)
-// — we navigate up from the test source file's path to read it.
+// Locks the privacy manifest contents. v2 (post #62) declares AdMob
+// tracking: NSPrivacyTracking=true, 8 tracking domains, OtherUsageData
+// collection (Tracking=true, ThirdPartyAdvertising purpose), and the
+// UserDefaults Required Reason API (CA92.1). The manifest lives next to
+// the App target (`App/Resources/PrivacyInfo.xcprivacy`) — we navigate
+// up from the test source file's path to read it.
 
 import Foundation
 import Testing
@@ -41,7 +43,10 @@ struct PrivacyManifestTests {
     }
 
     @Test
-    func noThirdPartyTrackingDomains() throws {
+    func adMobTrackingDeclared() throws {
+        // v2 (post #62): AdMob is the third-party tracker; the manifest
+        // must declare tracking + the 8 AdMob domains + the OtherUsageData
+        // collection mapped to ThirdPartyAdvertising.
         let url = Self.manifestURL()
         let data = try Data(contentsOf: url)
         let plist = try PropertyListSerialization.propertyList(
@@ -50,19 +55,24 @@ struct PrivacyManifestTests {
             format: nil
         ) as? [String: Any]
         let tracking = plist?["NSPrivacyTracking"] as? Bool
-        let domains = plist?["NSPrivacyTrackingDomains"] as? [Any]
-        let collected = plist?["NSPrivacyCollectedDataTypes"] as? [Any]
-        #expect(tracking == false)
-        #expect(domains?.isEmpty == true)
-        #expect(collected?.isEmpty == true)
+        let domains = plist?["NSPrivacyTrackingDomains"] as? [String]
+        let collected = plist?["NSPrivacyCollectedDataTypes"] as? [[String: Any]]
+        #expect(tracking == true)
+        #expect(domains?.contains("googleadservices.com") == true)
+        #expect(domains?.contains("doubleclick.net") == true)
+        #expect((domains?.count ?? 0) >= 8)
+        #expect(collected?.isEmpty == false)
+        let entry = collected?.first
+        #expect(entry?["NSPrivacyCollectedDataType"] as? String == "NSPrivacyCollectedDataTypeOtherUsageData")
+        #expect(entry?["NSPrivacyCollectedDataTypeTracking"] as? Bool == true)
+        let purposes = entry?["NSPrivacyCollectedDataTypePurposes"] as? [String]
+        #expect(purposes?.contains("NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising") == true)
     }
 
     @Test
     func requiredReasonsAPIsDeclared() throws {
-        // v1 production code does not invoke any "Required Reason" API
-        // category — so the array is intentionally empty. The test guards
-        // the shape: the key must be present (even if empty) so that the
-        // App Store validator does not warn.
+        // v2 (post #62): AdMob reads UserDefaults internally per Google's
+        // privacy manifest docs — declared with reason CA92.1.
         let url = Self.manifestURL()
         let data = try Data(contentsOf: url)
         let plist = try PropertyListSerialization.propertyList(
@@ -70,8 +80,13 @@ struct PrivacyManifestTests {
             options: [],
             format: nil
         ) as? [String: Any]
-        let apis = plist?["NSPrivacyAccessedAPITypes"] as? [Any]
-        #expect(apis != nil)
-        #expect(apis?.isEmpty == true)
+        let apis = plist?["NSPrivacyAccessedAPITypes"] as? [[String: Any]]
+        #expect(apis?.isEmpty == false)
+        let userDefaults = apis?.first { entry in
+            (entry["NSPrivacyAccessedAPIType"] as? String) == "NSPrivacyAccessedAPICategoryUserDefaults"
+        }
+        #expect(userDefaults != nil)
+        let reasons = userDefaults?["NSPrivacyAccessedAPITypeReasons"] as? [String]
+        #expect(reasons?.contains("CA92.1") == true)
     }
 }

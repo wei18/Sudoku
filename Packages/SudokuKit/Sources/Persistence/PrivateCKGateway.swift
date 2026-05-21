@@ -71,4 +71,5 @@ public enum PrivateCKConstants {
     public static let subscriptionID = "com.wei18.sudoku.userZone.changes"
     public static let savedGameRecordType = "SavedGame"
     public static let personalRecordRecordType = "PersonalRecord"
+    public static let monetizationStateRecordType = "MonetizationState"
 }
