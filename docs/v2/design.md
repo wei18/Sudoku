@@ -285,15 +285,9 @@ public static func live() async throws -> AppComposition {
 
 ### §How.9 foundations.md §9 破例條款
 
-`foundations.md §6` 目前說「v1 走 Apple 三件套，不引入第三方 tracking SDK」。v2 在 `foundations.md §9` 加 break-glass：
+`foundations.md §6` 目前說「v1 走 Apple 三件套，不引入第三方 tracking SDK」。v2 在 `foundations.md §9` 加 break-glass。
 
-> **§3.1 第三方 SDK 例外（v2 起）**
-> 
-> AppMonetizationKit/AdsAdMob 是 v2 起的唯一第三方 SDK 例外。
-> 
-> - **理由**：ad-serving 必須接 SDK，無 Apple-only 替代方案（Apple `AdServices` 只做 attribution，不能 deliver ads）。
-> - **隔離**：第三方依賴只在 `AppMonetizationKit/Sources/AdsAdMob` 這個 sub-target 內，不能跨 target border。`MonetizationCore` / `IAPStoreKit2` / Sudoku 主程式 一律不直接 `import GoogleMobileAds`。
-> - **未來新增**：任何 v2+ 想引入的新第三方 SDK 必須在這裡列出，含「為什麼沒有 Apple-only 替代方案」的論證。
+詳見 [`docs/foundations.md §9.1 AdMob / AppMonetizationKit/AdsAdMob target 內隔離`](../foundations.md)（canonical 條款，包含理由、isolation 契約、Privacy posture、§9.2 未來新增 SDK 程序）。
 
 ---
 
@@ -311,7 +305,7 @@ public static func live() async throws -> AppComposition {
 | Frequency state = CloudKit Private MonetizationState | brainstorm Q7 |
 | Banner（非 interstitial）| brainstorm Q8 |
 | Sudoku v2 整合改動 += AppComposition 加 3 deps + Home/Board banner slot + Settings Restore + ATT/UMP 整合 + PrivacyInfo + Privacy Policy + App Store nutrition labels | 本文件 |
-| foundations.md §3 加 break-glass for AdMob | 本文件 |
+| foundations.md §9 加 break-glass for AdMob | 本文件 |
 | RouteFactory pattern promote 自 Wave 3 audit backlog | 本文件（壓垮稻草）|
 
 ---
@@ -330,8 +324,8 @@ public static func live() async throws -> AppComposition {
 
 ## 下一步
 
-1. PR 本文件
-2. 更新 `docs/foundations.md §3` 加 break-glass 條款
-3. 更新 `docs/design.md §不在 v1 範圍 §商業模式` 標記 「promoted to v2 design」+ 連結
-4. 起 `docs/v2/plan.md` 拆解實作步驟（TDD-ordered）
-5. 派 implementer subagent 走 plan.md v2 step by step
+1. ~~PR 本文件~~ ✓ done
+2. ~~更新 `docs/foundations.md §9` 加 break-glass 條款~~ ✓ done（§9.1 / §9.2）
+3. ~~更新 `docs/design.md §不在 v1 範圍 §商業模式` 標記 「promoted to v2 design」+ 連結~~ ✓ done
+4. ~~起 `docs/v2/plan.md` 拆解實作步驟（TDD-ordered）~~ ✓ done
+5. 派 implementer subagent 走 plan.md v2 step by step（v2.0–v2.2 + v2.3 Part A + v2.4 Part 1 已落地）
