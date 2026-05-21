@@ -15,6 +15,7 @@ public protocol Theme: Sendable {
     var text: TextTokens { get }
     var accent: AccentTokens { get }
     var status: StatusTokens { get }
+    var difficulty: DifficultyTokens { get }
     var spacing: SpacingTokens { get }
 }
 
@@ -131,6 +132,21 @@ public struct StatusTokens: Sendable, Equatable, Hashable {
         self.success = success
         self.warning = warning
         self.error = error
+    }
+}
+
+/// Difficulty signaling tokens (v2+) — design-system.md §Difficulty.
+/// Restricted to difficulty signaling only (Daily card tints, Practice
+/// Picker chip tints); not for general accent / CTA use.
+public struct DifficultyTokens: Sendable, Equatable, Hashable {
+    public let easy: ThemeColor
+    public let medium: ThemeColor
+    public let hard: ThemeColor
+
+    public init(easy: ThemeColor, medium: ThemeColor, hard: ThemeColor) {
+        self.easy = easy
+        self.medium = medium
+        self.hard = hard
     }
 }
 

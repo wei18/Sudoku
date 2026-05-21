@@ -31,7 +31,11 @@ public struct PracticeHubView: View {
             // The "Difficulty" `Text` above is the section heading; the
             // Picker's own label would render again inline on macOS.
             .labelsHidden()
-            .tint(theme.accent.primary.resolved)
+            // Tint the segmented control with the *selected* difficulty's
+            // token so the active chip reads as that difficulty's color.
+            // SwiftUI segmented Pickers don't expose per-segment tints,
+            // so this is the closest we can get without a custom control.
+            .tint(tint(for: viewModel.difficulty))
             .padding(8)
             .glassEffect(.regular, in: .rect(cornerRadius: 12))
 
@@ -68,7 +72,9 @@ public struct PracticeHubView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .tint(theme.accent.primary.resolved)
+            // CTA carries the selected difficulty's tint, keeping the
+            // segmented Picker and the draw button visually linked.
+            .tint(tint(for: viewModel.difficulty))
             .controlSize(.large)
             .disabled(isDrawing)
         }
@@ -97,6 +103,15 @@ public struct PracticeHubView: View {
             Text(reason)
                 .font(.caption)
                 .foregroundStyle(theme.status.error.resolved)
+        }
+    }
+
+    /// Map a `Difficulty` to its `difficulty.*` token.
+    private func tint(for difficulty: Difficulty) -> Color {
+        switch difficulty {
+        case .easy: return theme.difficulty.easy.resolved
+        case .medium: return theme.difficulty.medium.resolved
+        case .hard: return theme.difficulty.hard.resolved
         }
     }
 

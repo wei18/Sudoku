@@ -46,5 +46,11 @@ public struct DefaultTheme: Theme {
         error: ThemeColor(light: 0xC8362B, dark: 0xE66258)
     )
 
+    public let difficulty = DifficultyTokens(
+        easy: ThemeColor(light: 0x5C7A4F, dark: 0x9BB87E),
+        medium: ThemeColor(light: 0xC97D5F, dark: 0xD89A82),
+        hard: ThemeColor(light: 0xE6A857, dark: 0xEFC07F)
+    )
+
     public let spacing = SpacingTokens()
 }
