@@ -39,9 +39,9 @@ mise exec -- tuist generate --no-open
 
 # 3.3) Resolve SwiftPM packages at workspace level (Tuist generates the
 # workspace but disables automatic resolution; we re-enable for the first
-# build so AdMob/UMP SDKs can fetch).
+# build so all packages — including test-target deps like snapshot-testing
+# — can fetch. Omit -scheme so resolve is workspace-wide.
 xcodebuild -resolvePackageDependencies \
     -workspace Sudoku.xcworkspace \
-    -scheme Sudoku \
     -clonedSourcePackagesDirPath "${CI_DERIVED_DATA_PATH:-DerivedData}/SourcePackages" \
     -onlyUsePackageVersionsFromResolvedFile NO
