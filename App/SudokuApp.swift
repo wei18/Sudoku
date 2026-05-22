@@ -13,7 +13,8 @@ struct SudokuApp: App {
                 routeFactory: composition.routeFactory,
                 adProvider: composition.adProvider,
                 adGate: composition.adGate,
-                monetizationController: composition.monetizationController
+                monetizationController: composition.monetizationController,
+                toastController: composition.toastController
             )
             .task {
                 // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent

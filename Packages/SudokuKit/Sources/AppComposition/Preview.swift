@@ -36,10 +36,13 @@ extension AppComposition {
         )
         let adGate = AdGate(store: adGateStore)
 
+        let toastController = ToastController()
+
         let monetizationController = MonetizationStateController(
             iapClient: iapClient,
             stateStore: adGateStore,
-            adGate: adGate
+            adGate: adGate,
+            toastController: toastController
         )
 
         let rootViewModel = RootViewModel(
@@ -69,7 +72,8 @@ extension AppComposition {
             iapClient: iapClient,
             adGate: adGate,
             monetizationStateStore: adGateStore,
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            toastController: toastController
         )
     }
 }

@@ -1,0 +1,39 @@
+{
+  "identifier" : "F6E1B2A4-9C8D-4E1A-8B27-1A5F9E3C0D11",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : true,
+      "internalID" : "A1B2C3D4-E5F6-4789-9012-345678ABCDEF",
+      "localizations" : [
+        {
+          "description" : "Permanently remove banner ads in Sudoku.",
+          "displayName" : "Remove Ads",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "永久移除 Sudoku 中的橫幅廣告。",
+          "displayName" : "移除廣告",
+          "locale" : "zh_Hant"
+        }
+      ],
+      "productID" : "com.wei18.sudoku.iap.remove_ads",
+      "referenceName" : "Remove Ads",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0000000000",
+    "_developerTeamID" : "0000000000",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

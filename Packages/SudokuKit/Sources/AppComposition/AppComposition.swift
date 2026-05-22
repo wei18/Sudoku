@@ -48,6 +48,10 @@ public struct AppComposition {
     // without re-routing through Persistence.
     public let monetizationStateStore: any AdGateStateStore
     public let monetizationController: MonetizationStateController
+    // v2.4.5: shared toast surface. RootView mounts this as a bottom overlay;
+    // MonetizationStateController pushes success / failure toasts on purchase
+    // and restore (and on out-of-band `purchaseUpdates()` events).
+    public let toastController: ToastController
 
     public init(
         rootViewModel: RootViewModel,
@@ -60,7 +64,8 @@ public struct AppComposition {
         iapClient: any IAPClient,
         adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
-        monetizationController: MonetizationStateController
+        monetizationController: MonetizationStateController,
+        toastController: ToastController
     ) {
         self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
@@ -73,6 +78,7 @@ public struct AppComposition {
         self.adGate = adGate
         self.monetizationStateStore = monetizationStateStore
         self.monetizationController = monetizationController
+        self.toastController = toastController
     }
 
     // MARK: - v2.3.7 boot order

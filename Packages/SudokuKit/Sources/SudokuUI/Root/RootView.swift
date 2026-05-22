@@ -27,19 +27,24 @@ public struct RootView: View {
     // "Remove Ads" card and the route factory hands the same instance to
     // SettingsView so both surfaces observe the same `hasPurchasedRemoveAds`.
     private let monetizationController: MonetizationStateController?
+    // v2.4.5: bottom-anchored transient surface for purchase / restore results.
+    // Wired via `.toastOverlay(...)` below.
+    private let toastController: ToastController?
 
     public init(
         viewModel: RootViewModel,
         routeFactory: any RouteFactory,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
-        monetizationController: MonetizationStateController? = nil
+        monetizationController: MonetizationStateController? = nil,
+        toastController: ToastController? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.routeFactory = routeFactory
         self.adProvider = adProvider
         self.adGate = adGate
         self.monetizationController = monetizationController
+        self.toastController = toastController
     }
 
     public var body: some View {
@@ -50,6 +55,7 @@ public struct RootView: View {
             destination: { route in routeFactory.view(for: route) }
         )
         .task { await viewModel.bootstrap() }
+        .toastOverlay(toastController)
     }
 
     @ViewBuilder

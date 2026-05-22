@@ -57,10 +57,16 @@ extension AppComposition {
         // Remove Ads surfaces. Constructed eagerly so both views observe the
         // same instance; `.bootstrap()` is invoked lazily inside each View's
         // `.task` modifier.
+        // v2.4.5: shared toast surface. Constructed before the controller so
+        // we can inject it; RootView mounts the same instance as a bottom
+        // overlay.
+        let toastController = ToastController()
+
         let monetizationController = MonetizationStateController(
             iapClient: iapClient,
             stateStore: monetizationStateStore,
-            adGate: adGate
+            adGate: adGate,
+            toastController: toastController
         )
 
         let rootViewModel = RootViewModel(
@@ -90,7 +96,8 @@ extension AppComposition {
             iapClient: iapClient,
             adGate: adGate,
             monetizationStateStore: monetizationStateStore,
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            toastController: toastController
         )
     }
 
