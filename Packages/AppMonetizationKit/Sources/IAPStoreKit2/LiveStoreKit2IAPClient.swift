@@ -11,24 +11,48 @@ public import MonetizationCore
 // fetched products). All mutation goes through actor isolation.
 
 public actor LiveStoreKit2IAPClient: IAPClient {
+    /// Placeholder rendered in place of a real `displayPrice` on the
+    /// synthesised fallback `IAPProduct` (M3 / v2-audit-code-polish). An
+    /// em-dash is locale-neutral and renders harmlessly in any "$<price>"
+    /// template; a UI showing "Receipt: —" reads as "details refreshing"
+    /// rather than as a broken empty field. Hosts that want a localised
+    /// "Refreshing…" string should map the empty-displayName + this
+    /// sentinel in their view-layer.
+    public static let unknownDisplayPricePlaceholder: String = "—"
+
     private let bridge: any StoreKitBridge
     private let knownProductIds: Set<String>
+    private let onCatalogDesync: (@Sendable (String) -> Void)?
 
     // MARK: Init
 
     /// Production initializer — wraps the real StoreKit 2 globals via
     /// `LiveStoreKitBridge` and fetches the canonical `IAPProductIDs.all`
     /// set on every `availableProducts()` call.
-    public init() {
+    ///
+    /// - Parameter onCatalogDesync: Optional sink invoked with the purchased
+    ///   `productId` when a post-purchase product re-fetch returns empty.
+    ///   The host (`AppComposition`) wires this to `Telemetry.errorOccurred`
+    ///   so catalog instability is observable instead of silently shipping
+    ///   an empty `displayPrice` to the UI (M3).
+    public init(
+        onCatalogDesync: (@Sendable (String) -> Void)? = nil
+    ) {
         self.bridge = LiveStoreKitBridge()
         self.knownProductIds = IAPProductIDs.all
+        self.onCatalogDesync = onCatalogDesync
     }
 
     /// Test-only initializer — injects a bridge fake and an explicit
     /// product-ID set. `internal` so production callers never see it.
-    internal init(bridge: any StoreKitBridge, knownProductIds: Set<String>) {
+    internal init(
+        bridge: any StoreKitBridge,
+        knownProductIds: Set<String>,
+        onCatalogDesync: (@Sendable (String) -> Void)? = nil
+    ) {
         self.bridge = bridge
         self.knownProductIds = knownProductIds
+        self.onCatalogDesync = onCatalogDesync
     }
 
     // MARK: IAPClient — availableProducts
@@ -55,10 +79,16 @@ public actor LiveStoreKit2IAPClient: IAPClient {
                 // Edge: purchase succeeded but the catalog lookup failed.
                 // Synthesize a minimal product carrying the verified ID so
                 // upstream still gets `.success` with a usable handle.
+                //
+                // M3 (v2-audit-code-polish): substitute an em-dash placeholder
+                // for `displayPrice` so UI consumers don't render an empty
+                // string ("Receipt:  for "), and flag catalog desync through
+                // the injected closure so it lights up in Telemetry.
+                onCatalogDesync?(id)
                 let synthesized = IAPProduct(
                     id: id,
                     displayName: id,
-                    displayPrice: "",
+                    displayPrice: Self.unknownDisplayPricePlaceholder,
                     isPurchased: true
                 )
                 return .success(synthesized)

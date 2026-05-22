@@ -11,6 +11,10 @@
 //     lastShownDate        Date?   (omitted when nil)
 //     dismissedDate        Date?   (omitted when nil)
 //     hasPurchasedRemoveAds Int    (0 / 1 — RecordValue lacks a Bool case)
+//     lastSeenWallClock    Date?   (omitted when nil — added v2-audit-polish
+//                                   per design.md §How.3.1; CloudKit adds the
+//                                   field on first write of a non-nil value,
+//                                   old records parse missing field as nil)
 //
 // First-launch seeding: if `fetch` returns nil, the store synthesises an
 // `AdGateState(firstLaunchAt: Date())` AND immediately writes it back so
@@ -28,6 +32,7 @@ public actor LiveMonetizationStateStore: MonetizationStateStore {
         static let lastShownDate = "lastShownDate"
         static let dismissedDate = "dismissedDate"
         static let hasPurchasedRemoveAds = "hasPurchasedRemoveAds"
+        static let lastSeenWallClock = "lastSeenWallClock"
     }
 
     public static let recordType = PrivateCKConstants.monetizationStateRecordType
@@ -99,6 +104,9 @@ public actor LiveMonetizationStateStore: MonetizationStateStore {
         if let dismissed = state.dismissedDate {
             fields[Field.dismissedDate] = .date(dismissed)
         }
+        if let wallClock = state.lastSeenWallClock {
+            fields[Field.lastSeenWallClock] = .date(wallClock)
+        }
         return RecordPayload(
             recordType: recordType,
             recordName: recordName,
@@ -130,11 +138,20 @@ public actor LiveMonetizationStateStore: MonetizationStateStore {
         } else {
             purchased = false
         }
+        // Old records (pre-v2-audit-polish) don't carry `lastSeenWallClock`;
+        // absent field → nil → fresh anti-tamper baseline next observation.
+        let lastSeenWallClock: Date?
+        if case .date(let value) = payload.fields[Field.lastSeenWallClock] {
+            lastSeenWallClock = value
+        } else {
+            lastSeenWallClock = nil
+        }
         return AdGateState(
             firstLaunchAt: firstLaunch,
             lastShownDate: lastShown,
             dismissedDate: dismissed,
-            hasPurchasedRemoveAds: purchased
+            hasPurchasedRemoveAds: purchased,
+            lastSeenWallClock: lastSeenWallClock
         )
     }
 }

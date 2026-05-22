@@ -127,7 +127,37 @@ struct ProtocolShapeTests {
     @Test func adPresentationAnchorIsSendableAndCarriesID() {
         let uuid = UUID()
         let anchor = AdPresentationAnchor(id: uuid)
-        #expect(anchor.id == AnyHashable(uuid))
+        #expect(anchor.id == uuid)
+        assertSendable(anchor)
+    }
+
+    // MARK: Value-type Sendable compile-time coverage (N6)
+    //
+    // `assertSendable<T: Sendable>` is a compile-time-only checker — if any of
+    // these value types accidentally lose their `Sendable` conformance the
+    // file stops compiling here. Runtime assertion is trivial; the test
+    // exists for the compile-time signal.
+
+    @Test func valueTypesRemainSendable() {
+        let state = AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+        assertSendable(state)
+
+        let product = IAPProduct(id: "x", displayName: "X", displayPrice: "$1", isPurchased: false)
+        assertSendable(product)
+
+        let purchased: IAPPurchaseEvent = .purchased(productId: "x")
+        assertSendable(purchased)
+
+        let revoked: IAPPurchaseEvent = .revoked(productId: "x")
+        assertSendable(revoked)
+
+        let purchaseResultSuccess: IAPPurchaseResult = .success(product)
+        assertSendable(purchaseResultSuccess)
+
+        let bannerStatus: AdBannerStatus = .loaded(AdBannerHandle())
+        assertSendable(bannerStatus)
+
+        let anchor = AdPresentationAnchor()
         assertSendable(anchor)
     }
 }

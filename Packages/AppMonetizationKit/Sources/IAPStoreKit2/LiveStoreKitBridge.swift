@@ -76,7 +76,12 @@ internal struct LiveStoreKitBridge: StoreKitBridge {
 
     func transactionUpdates() -> AsyncStream<BridgeTransactionEvent> {
         AsyncStream { continuation in
-            let task = Task.detached(priority: .background) {
+            // N4 (v2-audit-code-polish): `.utility` rather than `.background`
+            // — `Transaction.updates` delivers refund / family-share revocation
+            // events that flip entitlement state, and we want those visible
+            // promptly while the user is in-session, not deprioritised behind
+            // arbitrary low-priority work.
+            let task = Task.detached(priority: .utility) {
                 for await result in Transaction.updates {
                     guard case .verified(let transaction) = result else {
                         // Drop unverified entries — we never adjust

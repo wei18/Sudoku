@@ -99,9 +99,12 @@ struct HomeViewBannerTests {
         let postAllowed = await gate.shouldShowBanner(now: Date())
         #expect(postAllowed == false)
 
-        // And the store recorded a write.
+        // And the store recorded the dismissal write. Note: total saves is
+        // ≥ 2 because `shouldShowBanner` now also persists the monotonic
+        // `lastSeenWallClock` high-water mark (design.md §How.3.1 clock-tamper
+        // defense). We only care here that the dismissal write landed.
         let saves = await store.saveCallCount
-        #expect(saves == 1)
+        #expect(saves >= 1)
         let peeked = await store.peekState()
         #expect(peeked?.dismissedDate != nil)
     }
