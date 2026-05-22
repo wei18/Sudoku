@@ -129,9 +129,16 @@ public actor AdGate {
         // 1. User purchased Remove Ads (check IAPClient state)
         // 2. firstLaunchAt + 7 days > now (grace period)
         // 3. dismissedDate == today (calendar-local)
-        // 4. lastShownDate == today AND not yet dismissed
-        //    → 銜接「1/day max」：當天已 shown 一次後，dismissed 前 keep showing
-        //    （banner persistent; 我們不重複「shown次數」，only count days）
+        // 4. lastSeenWallClock indicates clock moved backwards (anti-tamper;
+        //    see §How.3.1 below)
+        // Otherwise → show.
+        //
+        // Banner is persistent: once shown on a given day it stays visible
+        // until the user dismisses it. `lastShownDate` is recorded for
+        // telemetry / future dynamic-frequency work but is NOT itself a
+        // gating predicate — re-querying `shouldShowBanner` on the same day
+        // before dismissal returns `true` (the visible banner state is owned
+        // by `BannerSlotView`, not by the gate's frequency count).
     }
     
     public func recordBannerShown(now: Date = .now) async  // updates lastShownDate
@@ -149,12 +156,23 @@ public struct AdGateState: Sendable, Codable, Equatable {
     public var lastShownDate: Date?  // calendar-day at start
     public var dismissedDate: Date?  // calendar-day at start
     public var hasPurchasedRemoveAds: Bool
+    public var lastSeenWallClock: Date?  // §How.3.1 anti-tamper baseline
 }
 ```
 
-**State 儲存**：實作 `AdGateStateStore` 由 Sudoku App 端決定。**v2 採用 CloudKit Private**：新增一個 `MonetizationState` record type 在 `com.wei18.sudoku.userZone`，含上面 4 個欄位。`SudokuKit/Persistence` 模組擴充 `MonetizationStateStore` 實作。
+#### §How.3.1 系統時鐘倒撥防護（anti-tamper）
 
-理由：跨 iCloud 帳號 sync — 玩家換新 iPhone 不需要再經歷 7 天 grace；買過 Remove Ads 也跨機。
+玩家若手動把 system clock 撥到 `firstLaunchAt` 之前（甚至 1970），會永遠停留在 7-day grace、bypass 廣告。我們在 `AdGateState` 紀錄 `lastSeenWallClock`：每次 `shouldShowBanner(now:)` 觀察到比歷史最大值更新的 `now` 就 monotonic-advance 並保存。若 `now < lastSeenWallClock - 24h tolerance`，視為 clock 倒撥，回傳 `false`（不爆音、不告警 — 玩家「自我作弊以多看廣告」非威脅模型，只是不讓 grace 重置）。
+
+容差 24h 是為了正常情境（DST、跨時區回到較早時區、NTP 微調）不誤判。Tolerance 內的小幅倒撥仍視為「同一時刻」，照常 evaluate 其他規則。
+
+#### §How.3.2 State 儲存
+
+**v2 採用 CloudKit Private**：新增一個 `MonetizationState` record type 在 `com.wei18.sudoku.userZone`，含上面 5 個欄位。`SudokuKit/Persistence` 模組擴充 `MonetizationStateStore` 實作。
+
+新欄位 `lastSeenWallClock` 為 optional Date — `LiveMonetizationStateStore` 走 add-field-via-write 路徑自動新增 schema（CloudKit Dashboard 不需預先宣告），舊紀錄缺欄位時 parser 視為 `nil`。
+
+理由：跨 iCloud 帳號 sync — 玩家換新 iPhone 不需要再經歷 7 天 grace；買過 Remove Ads 也跨機；`lastSeenWallClock` 也跟著 iCloud 走，clock-tamper 跨機亦無效。
 
 ### §How.4 ATT + UMP（GDPR）整合
 
@@ -225,46 +243,36 @@ public enum ATTOutcome: Sendable {
 
 ### §How.7 Sudoku 整合 — AppComposition 改動
 
+> **Final shape (v2.3.3 RouteFactory promotion, PR #71)**：原本此處示範「v1 5 deps + v2 加 3 deps = 8 個個別 typed deps 直接傳進 `RootView.init`」的中間狀態。實際 v2 開頭即 fold in RouteFactory refactor（Wave 3 architecture backlog 此時 promote），`RootView.init` 只讀 `rootViewModel` + `routeFactory`；其餘 deps 仍掛在 bag 上，供逃離 RouteFactory 的 callsites（v2.3.7 boot order、HomeView GC modal callback、Settings restore、banner slot 等）直接讀取。下方 snippet 為最終形狀（節錄自 `Packages/SudokuKit/Sources/AppComposition/AppComposition.swift`）。
+
 ```swift
-// AppComposition.swift（v2 擴充）
+// AppComposition.swift（v2 最終形狀，v2.3.3 RouteFactory + v2.3.6 monetization controller + v2.4.5 toast）
 @MainActor
 public struct AppComposition {
     public let rootViewModel: RootViewModel
+    public let routeFactory: any RouteFactory      // v2.3.3 promotion
     public let puzzleProvider: any PuzzleProviderProtocol
     public let persistence: any PersistenceProtocol
     public let gameCenter: any GameCenterClient
     public let telemetry: Telemetry
-    
-    // v2 additions
-    public let adProvider: any AdProvider          // NEW
-    public let iapClient: any IAPClient            // NEW
-    public let adGate: AdGate                      // NEW
-}
+    // v2 monetization deps（v2.3.4-6 由 individual Views 直接讀取；v2.3.7 boot 用）
+    public let adProvider: any AdProvider
+    public let iapClient: any IAPClient
+    public let adGate: AdGate
+    // v2.3.6: persisted store + shared @Observable controller
+    public let monetizationStateStore: any AdGateStateStore
+    public let monetizationController: MonetizationStateController
+    // v2.4.5: shared toast surface（RootView bottom overlay）
+    public let toastController: ToastController
 
-// AppComposition.live() 內部
-public static func live() async throws -> AppComposition {
-    // ... existing v1 wiring ...
-    let monetizationStateStore = LiveMonetizationStateStore(gateway: persistenceGateway)
-    let adGate = AdGate(store: monetizationStateStore, clock: .continuous)
-    let adProvider = LiveAdMobAdProvider(gate: adGate)
-    let iapClient = LiveStoreKit2IAPClient()
-    
-    return AppComposition(
-        rootViewModel: ...,
-        puzzleProvider: ...,
-        persistence: ...,
-        gameCenter: ...,
-        telemetry: ...,
-        adProvider: adProvider,
-        iapClient: iapClient,
-        adGate: adGate
-    )
+    public static func live() async throws -> AppComposition { /* ... */ }
+
+    /// v2.3.7: UMP consent → ATT prompt → AdMob init，concurrent with first frame
+    public func bootMonetization() async { /* ... */ }
 }
 ```
 
-`AppComposition.preview()` / `.tests()` 注入 fakes from `MonetizationTesting`。
-
-`RootView.init` 再多 3 個 deps（adProvider / iapClient / adGate）— PR #48 RouteFactory pattern 沒做，這次增加 3 個是壓垮的稻草，**v2 開頭應該 fold in RouteFactory refactor**（Wave 3 architecture backlog item 此時 promote）。
+`AppComposition.preview()` / `.tests()` 注入 fakes from `MonetizationTesting`。`RootView.init` 只取 `rootViewModel` + `routeFactory`（RouteFactory pattern 把其餘 deps 從建構簽章移走）；逃離 RouteFactory 的 callsites 仍可直接從 bag 讀 monetization / GC / persistence 等屬性。
 
 ### §How.8 Privacy posture 更新
 
