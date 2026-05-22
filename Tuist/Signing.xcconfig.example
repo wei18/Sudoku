@@ -11,8 +11,9 @@
 //   # then edit Tuist/Signing.xcconfig and replace YOUR_TEAM_ID_HERE
 //   mise exec -- tuist generate
 //
-// For CI (Xcode Cloud): set DEVELOPMENT_TEAM via a `ci_pre_xcodebuild.sh`
-// script that writes Signing.xcconfig from an Xcode Cloud environment
-// variable. See foundations.md §7 for the full secrets posture.
+// For CI (Xcode Cloud): set the SUDOKU_DEVELOPMENT_TEAM environment
+// variable in the Xcode Cloud workflow settings. ci_post_clone.sh
+// writes this file from that env var before `tuist generate` runs.
+// See foundations.md §7 for the full secrets posture.
 
 DEVELOPMENT_TEAM = YOUR_TEAM_ID_HERE
