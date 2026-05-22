@@ -53,6 +53,21 @@
 
 Sub-agent 回傳後由主 agent 審核，**通過審核才向使用者報告**。審核時 Leader 先讀 impl-notes，再對齊 diff 與驗證標準。
 
+8. **Code Reviewer 強制插入門檻**（hybrid review，user-confirmed 2026-05-22）：Senior Developer / Frontend Developer 等 IMPL subagent 回傳後，Leader 在 commit 前**必須**插入一輪 `Code Reviewer` subagent，當以下任一條件成立：
+   - **Diff 規模**：> 50 added/modified lines（累計 across 該 dispatch 全部檔案）
+   - **核心模組命中**：任何 source 變動落在
+     - `Packages/SudokuKit/Sources/Persistence/`
+     - `Packages/SudokuKit/Sources/AppComposition/`
+     - `Packages/AppMonetizationKit/Sources/MonetizationCore/`
+     - `Packages/AppMonetizationKit/Sources/AdsAdMob/`（第三方 SDK isolation 契約）
+     - `Packages/AppMonetizationKit/Sources/IAPStoreKit2/`
+     - 頂層 `Project.swift`（Tuist）、`Package.swift`
+     - `App/Resources/PrivacyInfo.xcprivacy`
+
+   兩條都不命中（CI script 微調、doc fix、asset 替換、test-only 改動）→ Leader 自行讀 impl-notes + diff + 跑 focused build/test 即可，**不需**派 Code Reviewer。
+
+   Code Reviewer 給 approve → Leader commit；reject → Leader 帶 feedback 回派 IMPL subagent（同一 agent 用 SendMessage，保留 context），revise 後 loop。borderline 情況一律派 Code Reviewer（門檻為 floor，非 ceiling）。
+
 
 ## Agent skills 使用矩陣
 
