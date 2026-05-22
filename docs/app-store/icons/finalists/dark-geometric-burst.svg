@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!-- Concept 09: Geometric Burst -->
-  <!-- Deep navy bg; bright amber grid; 4-cell pinwheel sage/clay/lavender/amber asymmetric -->
+  <!-- Deep navy bg (flat, per design-system "flat surfaces"); bright amber grid; 4-cell pinwheel sage/clay/lavender/amber asymmetric -->
   <!-- 24% corner radius (246pt) for macOS native rendering; iOS will re-apply squircle on top -->
   <defs>
-    <radialGradient id="navyGlow" cx="0.5" cy="0.5" r="0.7">
-      <stop offset="0" stop-color="#34487A"/>
-      <stop offset="1" stop-color="#2A3B5C"/>
-    </radialGradient>
     <clipPath id="iconMask">
       <rect width="1024" height="1024" rx="246" ry="246"/>
     </clipPath>
   </defs>
   <g clip-path="url(#iconMask)">
-    <rect width="1024" height="1024" fill="url(#navyGlow)"/>
+    <rect width="1024" height="1024" fill="#2A3B5C"/>
     <!-- Pinwheel: 4 corner cells of the 3x3 with rotating palette -->
     <!-- top-left sage, top-right clay, bottom-left amber, bottom-right lavender -->
     <rect x="212" y="212" width="200" height="200" fill="#7E9E70"/>
@@ -22,8 +18,8 @@
     <rect x="612" y="612" width="200" height="200" fill="#B5A6D6"/>
     <!-- Center cell: subtle amber tint to anchor -->
     <rect x="412" y="412" width="200" height="200" fill="#E6A857" opacity="0.18"/>
-    <!-- Bright amber grid strokes -->
-    <g stroke="#E6A857" stroke-width="14" fill="none" stroke-linecap="square">
+    <!-- Bright amber grid strokes (S3-B: stroke-width 14 -> 18 for 60px legibility) -->
+    <g stroke="#E6A857" stroke-width="18" fill="none" stroke-linecap="square">
       <rect x="212" y="212" width="600" height="600"/>
       <line x1="412" y1="212" x2="412" y2="812"/>
       <line x1="612" y1="212" x2="612" y2="812"/>
