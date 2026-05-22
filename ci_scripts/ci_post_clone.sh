@@ -18,15 +18,17 @@ mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact
 # 3) Repo-root setup for Tuist (cd once, then xcconfig + generate)
 cd "${CI_PRIMARY_REPOSITORY_PATH:-$(dirname "$0")/..}"
 
-# 3.1) Signing.xcconfig from CI env var (gitignored secret; never committed)
+# 3.1) Signing.xcconfig from Xcode Cloud's built-in $CI_TEAM_ID
+#      (https://developer.apple.com/documentation/xcode/environment-variable-reference)
+#      gitignored locally so the team ID never lands in a tracked file.
 if [[ ! -f "Tuist/Signing.xcconfig" ]]; then
-    if [[ -n "${SUDOKU_DEVELOPMENT_TEAM:-}" ]]; then
+    if [[ -n "${CI_TEAM_ID:-}" ]]; then
         cat > "Tuist/Signing.xcconfig" <<EOF
-DEVELOPMENT_TEAM = ${SUDOKU_DEVELOPMENT_TEAM}
+DEVELOPMENT_TEAM = ${CI_TEAM_ID}
 EOF
-        echo "Wrote Tuist/Signing.xcconfig from SUDOKU_DEVELOPMENT_TEAM"
+        echo "Wrote Tuist/Signing.xcconfig from CI_TEAM_ID"
     else
-        echo "ERROR: SUDOKU_DEVELOPMENT_TEAM env var not set; cannot generate Signing.xcconfig"
+        echo "ERROR: CI_TEAM_ID env var not set (expected in Xcode Cloud); cannot generate Signing.xcconfig"
         exit 1
     fi
 fi
