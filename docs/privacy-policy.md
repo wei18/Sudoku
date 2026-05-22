@@ -68,10 +68,10 @@ When serving ads, AdMob:
 
 - 讀取裝置的 **Advertising Identifier (IDFA)**。玩家可在 iOS 設定 → 隱私權與安全性 → Apple 廣告 / 追蹤功能 關閉或重設。
   Reads the device's **Advertising Identifier (IDFA)**. You can disable or reset it via iOS Settings → Privacy & Security → Apple Advertising / Tracking.
-- 在首次啟動時透過 Apple 的 **App Tracking Transparency (ATT)** 取得追蹤許可。若玩家拒絕，廣告仍會顯示，但為非個人化（non-personalized）廣告。
-  Requests tracking permission on first launch via Apple's **App Tracking Transparency (ATT)** prompt. If you decline, ads are still shown but are non-personalized.
-- 對歐盟 / 英國 / 加州等司法管轄區的使用者，於首次啟動時透過 Google 的 **User Messaging Platform (UMP)** 顯示 GDPR / CCPA consent 對話框。
-  For users in the EU / UK / California and similar jurisdictions, presents a GDPR / CCPA consent dialog on first launch via Google's **User Messaging Platform (UMP)**.
+- 對歐盟 / 英國 / 加州等司法管轄區的使用者，於首次啟動時先透過 Google 的 **User Messaging Platform (UMP)** 顯示 GDPR / CCPA consent 對話框；UMP 完成後才會出現 ATT prompt。
+  For users in the EU / UK / California and similar jurisdictions, presents a GDPR / CCPA consent dialog on first launch via Google's **User Messaging Platform (UMP)** *before* the ATT prompt is shown.
+- 在 UMP 之後（或不適用 UMP 的地區，於首次啟動時）透過 Apple 的 **App Tracking Transparency (ATT)** 取得追蹤許可。若玩家拒絕，廣告仍會顯示，但為非個人化（non-personalized）廣告。
+  After UMP (or on first launch in regions where UMP does not apply), requests tracking permission via Apple's **App Tracking Transparency (ATT)** prompt. If you decline, ads are still shown but are non-personalized.
 
 對應的 PrivacyInfo.xcprivacy 宣告（v2 起）：
 

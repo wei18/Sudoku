@@ -37,7 +37,7 @@ iPhone (iOS 26+) 與 Mac (macOS 26+) 雙平台 Sudoku App，以 Swift 6 + SwiftU
 - 玩家可下載、開始今日 Daily 題、完成它，並在當日 Daily Leaderboard 看到自己的時間 — 在 iPhone 與 Mac 同一 iCloud 帳號下表現一致。
 - 玩家可進入 Practice Mode、抽到隨機產生的題目、自由練習而不影響排行。
 - Daily 與 Practice 題目皆**本機產生**；同一 `(date, difficulty)` 在所有裝置與 iCloud 帳號下產生相同題目，生成完全離線執行。
-- 除了 CloudKit + Game Center + Xcode Cloud + App Store Connect Analytics + MetricKit 之外，**我方不維運任何後端服務、不引第三方 SDK**。
+- 除了 CloudKit + Game Center + Xcode Cloud + App Store Connect Analytics + MetricKit 之外，**我方不維運任何後端服務、不引第三方 SDK**。（v2 起 AdMob 為受控例外，見 `foundations.md §9.1` 與 `docs/v2/design.md`；本 v1 criterion 仍以 v1 build 為準。）
 - 7 個 locale 的 App 字串、metadata、Game Center 名稱齊備並通過 App Store 審核。
 
 ---
@@ -1493,5 +1493,5 @@ func boardA11yLabels() {
 - **`AppRoute.completion` 攜帶 difficulty / mode 以便正確路由到 leaderboard**：目前 `case .completion(puzzleId, elapsedSeconds)` 不帶 difficulty 或 mode，所以從 Completion → Leaderboard 的 `viewLeaderboardTapped()` 與 RootView destination 內的 `CompletionViewModel.leaderboardId` 都得使用固定 placeholder `LeaderboardIDs.id(for: .dailyEasy)`，把所有 medium / hard 完成事件全部錯誤指向 easy 排行。應擴充 case 為 `.completion(puzzleId, elapsedSeconds, difficulty, mode)`（或注入 `LeaderboardKind`），同步更新 `HomeMode.leaderboard.appRoute`、`RootView.destinationView(for:)` 的 `.completion` 分支、`CompletionViewModel.viewLeaderboardTapped`、以及所有測試 fixture（2026-05-20，從 issue #45 PROPOSAL 浮現）。
 
 ### 動畫與微互動
-- **Lottie 整合（[`airbnb/lottie-ios`](https://github.com/airbnb/lottie-ios)）**：自製 Lottie JSON 動畫接入 App，候選使用點：(1) Completion 完成題目時播 `.sweep` / `.streak` 等里程碑慶祝動畫；(2) Practice 抽題 shimmer 升級為更個性的等待動畫；(3) Daily Hub 連續達成 7 天時的低調慶祝；(4) Game Center 解鎖 achievement 時 App 內 toast 動畫。仍與 brand essence 「不喧鬧」相容 — 動畫須是 calm/quick 風格，避免迪士尼級 confetti。先導入 `lottie-ios` SwiftPM dep，再用 Bodymovin / LottieFiles 自製 1-2 個動畫 trial run；若 binary size + runtime cost 可接受，再擴充。注意：此為**第一個第三方 dep**，會打破 v1「Apple-only stack」紀律 — 加入前需在 foundations.md §3 補充「為什麼破例」的決策紀錄（2026-05-20）。
+- **Lottie 整合（[`airbnb/lottie-ios`](https://github.com/airbnb/lottie-ios)）**：自製 Lottie JSON 動畫接入 App，候選使用點：(1) Completion 完成題目時播 `.sweep` / `.streak` 等里程碑慶祝動畫；(2) Practice 抽題 shimmer 升級為更個性的等待動畫；(3) Daily Hub 連續達成 7 天時的低調慶祝；(4) Game Center 解鎖 achievement 時 App 內 toast 動畫。仍與 brand essence 「不喧鬧」相容 — 動畫須是 calm/quick 風格，避免迪士尼級 confetti。先導入 `lottie-ios` SwiftPM dep，再用 Bodymovin / LottieFiles 自製 1-2 個動畫 trial run；若 binary size + runtime cost 可接受，再擴充。注意：AdMob 已於 v2.0 起為第一個第三方 SDK；若引入 Lottie 將為**第二個**第三方 dep，仍會擴大破例範圍 — 加入前需按 `foundations.md §9` §9.2 程序補充「為什麼再次破例」的決策紀錄（2026-05-20）。
 
