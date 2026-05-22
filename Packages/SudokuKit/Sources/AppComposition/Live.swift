@@ -49,9 +49,41 @@ extension AppComposition {
 
         // v2 monetization deps.
         let monetizationStateStore = persistence.monetizationStateStore()
-        let adGate = AdGate(store: monetizationStateStore)
+        // Route AdGate's CloudKit save failures into the same Telemetry
+        // facade other subsystems use. `AdGate` doesn't depend on Telemetry
+        // directly — the host injects the sink so MonetizationCore stays
+        // observability-stack-free (M2 from v2-audit-code-polish).
+        let adGate = AdGate(
+            store: monetizationStateStore,
+            onPersistenceError: { [telemetry] error in
+                Task {
+                    await telemetry.observe(
+                        .errorOccurred(
+                            source: "AdGate",
+                            code: "save_failed",
+                            message: String(describing: error)
+                        )
+                    )
+                }
+            }
+        )
         let adProvider: any AdProvider = LiveAdMobAdProvider()
-        let iapClient: any IAPClient = LiveStoreKit2IAPClient()
+        // `LiveStoreKit2IAPClient` reports catalog-desync (post-purchase
+        // refetch returns empty) through the same Telemetry channel so the
+        // M3 placeholder substitution doesn't silently mask a backend issue.
+        let iapClient: any IAPClient = LiveStoreKit2IAPClient(
+            onCatalogDesync: { [telemetry] productId in
+                Task {
+                    await telemetry.observe(
+                        .errorOccurred(
+                            source: "LiveStoreKit2IAPClient",
+                            code: "catalog_desync_post_purchase",
+                            message: "post-purchase refetch returned empty for productId=\(productId)"
+                        )
+                    )
+                }
+            }
+        )
 
         // v2.3.6: shared @Observable controller for Settings + HomeView's
         // Remove Ads surfaces. Constructed eagerly so both views observe the

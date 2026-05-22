@@ -159,6 +159,149 @@ struct AdGateLogicTests {
 
     // MARK: Calendar timezone independence
 
+    // M4: timezone-shift / cross-date-line dismissal
+    //
+    // Scenario: user dismisses the banner near the end of a UTC day, then
+    // queries (e.g. via wake from background / pull-to-refresh) after the
+    // UTC day has rolled over. Even though the wall-clock difference is
+    // small (16h-23.5h = -7.5h, but in absolute terms it is +16.5h forward),
+    // the dismissal landed on a *different* calendar day than the query —
+    // so the gate should NOT suppress the banner.
+    @Test func dismissedTodayAcrossDateLineCrossing() async {
+        // Calendar fixed to UTC so the test is timezone-host-independent.
+        var dismissComponents = DateComponents()
+        dismissComponents.year = 2026
+        dismissComponents.month = 5
+        dismissComponents.day = 20
+        dismissComponents.hour = 23
+        dismissComponents.minute = 30
+        dismissComponents.timeZone = TimeZone(identifier: "UTC")
+        let dismissedAt = utcCalendar.date(from: dismissComponents)!
+
+        var queryComponents = DateComponents()
+        queryComponents.year = 2026
+        queryComponents.month = 5
+        queryComponents.day = 21
+        queryComponents.hour = 16
+        queryComponents.minute = 0
+        queryComponents.timeZone = TimeZone(identifier: "UTC")
+        let queryAt = utcCalendar.date(from: queryComponents)!
+
+        let state = AdGateState(
+            firstLaunchAt: firstLaunch,
+            dismissedDate: utcCalendar.startOfDay(for: dismissedAt)
+        )
+        let (gate, _) = await freshGate(state: state)
+        // Dismissed on 2026-05-20 UTC; query is on 2026-05-21 UTC — banner
+        // CAN show (the dismissed-today gate no longer applies).
+        #expect(await gate.shouldShowBanner(now: queryAt) == true)
+    }
+
+    // MARK: Clock-tamper defense (M5 / design.md §How.3.1)
+
+    @Test func clockMovedBackwardsRefusesGraceAdvance() async {
+        // Use a far-past `firstLaunchAt` so the 7-day grace rule (rule #2)
+        // passes for the rewound `now`, ensuring the M5 tamper-guard branch
+        // (rule #4) is the one that fires.
+        //
+        //   firstLaunchAt          = 2024-01-01  (>1y before rewound)
+        //   lastSeenWallClock      = 2026-05-21T12:00:00Z
+        //   now (rewound)          = 2026-01-01  (~5 months back, far beyond 24h)
+        //
+        // Verification: temporarily commenting out the `if let lastSeen…`
+        // block in `AdGate.shouldShowBanner` makes this test RED (returns
+        // true once the guard is gone). Restoring the guard makes it GREEN.
+        var firstLaunchPastComponents = DateComponents()
+        firstLaunchPastComponents.year = 2024
+        firstLaunchPastComponents.month = 1
+        firstLaunchPastComponents.day = 1
+        firstLaunchPastComponents.timeZone = TimeZone(identifier: "UTC")
+        let firstLaunchFarPast = utcCalendar.date(from: firstLaunchPastComponents)!
+
+        var baselineComponents = DateComponents()
+        baselineComponents.year = 2026
+        baselineComponents.month = 5
+        baselineComponents.day = 21
+        baselineComponents.hour = 12
+        baselineComponents.timeZone = TimeZone(identifier: "UTC")
+        let baseline = utcCalendar.date(from: baselineComponents)!
+
+        var rewoundComponents = DateComponents()
+        rewoundComponents.year = 2026
+        rewoundComponents.month = 1
+        rewoundComponents.day = 1
+        rewoundComponents.timeZone = TimeZone(identifier: "UTC")
+        let rewound = utcCalendar.date(from: rewoundComponents)!
+
+        let state = AdGateState(
+            firstLaunchAt: firstLaunchFarPast,
+            lastSeenWallClock: baseline
+        )
+        let (gate, _) = await freshGate(state: state)
+        // `rewound` is well past `firstLaunchAt + 7d` (>1 year past grace),
+        // so rule #2 PASSES. The clock-tamper guard (rule #4) refuses to
+        // show — the user moved their clock back ~5 months.
+        #expect(await gate.shouldShowBanner(now: rewound) == false)
+    }
+
+    @Test func clockToleranceWithin24hStillShows() async {
+        // Same scenario, but only a 1h backwards delta — well inside the
+        // 24h tolerance (covers DST / cross-timezone moves / NTP drift).
+        var baselineComponents = DateComponents()
+        baselineComponents.year = 2026
+        baselineComponents.month = 5
+        baselineComponents.day = 21
+        baselineComponents.hour = 12
+        baselineComponents.timeZone = TimeZone(identifier: "UTC")
+        let baseline = utcCalendar.date(from: baselineComponents)!
+        let oneHourEarlier = baseline.addingTimeInterval(-3600)
+
+        let state = AdGateState(
+            firstLaunchAt: firstLaunch,
+            lastSeenWallClock: baseline
+        )
+        let (gate, _) = await freshGate(state: state)
+        #expect(await gate.shouldShowBanner(now: oneHourEarlier) == true)
+    }
+
+    // MARK: M2 — persistence-error closure
+
+    @Test func saveFailureSurfacesViaOnPersistenceError() async {
+        // Wire a fake store that throws on save, plus a sink that records the
+        // error. Verify the closure fires and that the in-memory cache still
+        // reflects the attempted mutation (consistency invariant).
+        struct StubError: Error, Equatable {}
+        let store = FakeAdGateStateStore(
+            initial: AdGateState(firstLaunchAt: firstLaunch)
+        )
+        await store.scriptSaveError(StubError())
+
+        // `Mutex`-style capture via an actor — keeps `Sendable` clean.
+        actor Sink {
+            var captured: [String] = []
+            func record(_ description: String) { captured.append(description) }
+        }
+        let sink = Sink()
+
+        let gate = AdGate(
+            store: store,
+            calendar: utcCalendar,
+            onPersistenceError: { error in
+                Task { await sink.record(String(describing: error)) }
+            }
+        )
+        await gate.recordBannerDismissed(now: days(10, after: firstLaunch))
+
+        // Drain any pending sink work.
+        await Task.yield()
+        // Some platforms need a brief hop for the detached `Task` above.
+        try? await Task.sleep(nanoseconds: 10_000_000)
+
+        let captured = await sink.captured
+        #expect(captured.count == 1)
+        #expect(captured.first?.contains("StubError") == true)
+    }
+
     @Test func dismissedTodayHonorsInjectedCalendarTimezone() async {
         // Same wall-clock instant, but two different calendar-day perceptions:
         // - UTC: 2026-01-11 23:00 → day 10 still
