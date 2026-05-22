@@ -14,3 +14,7 @@ mise install
 
 # 2) Second-line secret scan — backstops a `git commit --no-verify` bypass.
 mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact
+
+# 3) Generate Xcode workspace via Tuist (repo does not commit .xcworkspace)
+mise exec -- tuist install
+mise exec -- tuist generate --no-open
