@@ -16,5 +16,6 @@ mise install
 mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact
 
 # 3) Generate Xcode workspace via Tuist (repo does not commit .xcworkspace)
+cd "${CI_PRIMARY_REPOSITORY_PATH:-$(dirname "$0")/..}"
 mise exec -- tuist install
 mise exec -- tuist generate --no-open
