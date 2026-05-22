@@ -9,8 +9,17 @@
 //   - `availableProducts: [IAPProduct]` — cached on bootstrap so the Settings
 //     CTA can show the locale-formatted price (`"$2.99"` / `"NT$89"` etc.) the
 //     App Store returns; falls back to `"$2.99"` if the lookup fails.
-//   - `latestMessage: Message?` — surfaces success / failure inline (no toast
-//     infra exists in SudokuUI yet — see impl-notes §未決).
+//   - `latestMessage: Message?` — a11y / VoiceOver source of truth for the
+//     Settings inline `Label` row. The visual surface is the `ToastController`
+//     (v2.4.5); `latestMessage` stays because VoiceOver does not reliably
+//     announce a transient overlay toast.
+//
+// v2.4.5 additions:
+//   - Optional `ToastController` injection. When present, purchase / restore
+//     results push a toast in addition to setting `latestMessage`.
+//   - `startListening()` subscribes to `iapClient.purchaseUpdates()` for the
+//     app's lifetime, handling out-of-band events (refunds, family-share
+//     revocations). Called by `bootstrap()`; cancelled on `deinit`.
 //
 // Lifetime: one instance is constructed in AppComposition's preview/tests/live
 // path and re-used across HomeView and Settings so both surfaces observe the
@@ -48,22 +57,36 @@ public final class MonetizationStateController {
     private let stateStore: any AdGateStateStore
     @ObservationIgnored
     private let adGate: AdGate
+    @ObservationIgnored
+    private let toastController: ToastController?
+    @ObservationIgnored
+    private var updatesTask: Task<Void, Never>?
 
     public init(
         iapClient: any IAPClient,
         stateStore: any AdGateStateStore,
         adGate: AdGate,
+        toastController: ToastController? = nil,
         initialPurchased: Bool = false
     ) {
         self.iapClient = iapClient
         self.stateStore = stateStore
         self.adGate = adGate
+        self.toastController = toastController
         self.hasPurchasedRemoveAds = initialPurchased
+    }
+
+    deinit {
+        updatesTask?.cancel()
     }
 
     /// One-shot read of persisted state + available products. Safe to call
     /// repeatedly (Settings and HomeView both invoke it from `.task`); the
     /// store + IAPClient are responsible for their own caching.
+    ///
+    /// v2.4.5: also kicks `startListening()` so the controller subscribes to
+    /// `iapClient.purchaseUpdates()` for the app's lifetime. Subsequent calls
+    /// re-arm the task (the old one is cancelled).
     public func bootstrap() async {
         if let loaded = try? await stateStore.loadState() {
             hasPurchasedRemoveAds = loaded.hasPurchasedRemoveAds
@@ -77,6 +100,36 @@ public final class MonetizationStateController {
                removeAds.isPurchased {
                 hasPurchasedRemoveAds = true
             }
+        }
+        startListening()
+    }
+
+    /// Long-running subscriber for out-of-band purchase events (refunds,
+    /// family-share revocations, parental-approval grants). Safe to call
+    /// multiple times — any previous task is cancelled first.
+    public func startListening() {
+        updatesTask?.cancel()
+        let stream = iapClient.purchaseUpdates()
+        updatesTask = Task { [weak self] in
+            for await event in stream {
+                guard let self else { return }
+                await self.handle(event)
+            }
+        }
+    }
+
+    private func handle(_ event: IAPPurchaseEvent) async {
+        switch event {
+        case .purchased(let productId):
+            guard productId == removeAdsProductId else { return }
+            await markPurchased()
+            latestMessage = .adsRemoved
+            toastController?.show(Toast(style: .success, message: "Ads removed"))
+        case .revoked(let productId):
+            guard productId == removeAdsProductId else { return }
+            hasPurchasedRemoveAds = false
+            latestMessage = .failure(reason: "Purchase revoked")
+            toastController?.show(Toast(style: .failure, message: "Purchase revoked"))
         }
     }
 
@@ -97,15 +150,21 @@ public final class MonetizationStateController {
             case .success:
                 await markPurchased()
                 latestMessage = .adsRemoved
+                toastController?.show(Toast(style: .success, message: "Ads removed"))
             case .userCancelled:
                 latestMessage = nil
             case .pending:
-                latestMessage = .failure(reason: "Purchase pending approval")
+                let reason = "Purchase pending approval"
+                latestMessage = .failure(reason: reason)
+                toastController?.show(Toast(style: .failure, message: reason))
             case .failed(let reason):
                 latestMessage = .failure(reason: reason)
+                toastController?.show(Toast(style: .failure, message: reason))
             }
         } catch {
-            latestMessage = .failure(reason: String(describing: error))
+            let reason = String(describing: error)
+            latestMessage = .failure(reason: reason)
+            toastController?.show(Toast(style: .failure, message: reason))
         }
     }
 
@@ -121,8 +180,11 @@ public final class MonetizationStateController {
             }
             availableProducts = restored
             latestMessage = .restored
+            toastController?.show(Toast(style: .success, message: "Purchases restored"))
         } catch {
-            latestMessage = .failure(reason: String(describing: error))
+            let reason = String(describing: error)
+            latestMessage = .failure(reason: reason)
+            toastController?.show(Toast(style: .failure, message: reason))
         }
     }
 
