@@ -27,7 +27,7 @@ public struct SettingsView: View {
     public var body: some View {
         Form {
             if let controller = monetizationController {
-                Section("Remove Ads") {
+                Section("Purchases") {
                     if !controller.hasPurchasedRemoveAds {
                         RemoveAdsRow(controller: controller)
                     }
@@ -113,21 +113,27 @@ public struct SettingsView: View {
 
 struct RemoveAdsRow: View {
     @Bindable var controller: MonetizationStateController
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button {
             Task { await controller.purchaseRemoveAds() }
         } label: {
             HStack {
+                Image(systemName: "nosign")
+                    .foregroundStyle(theme.accent.primary.resolved)
                 Text("Remove Ads")
                 Spacer()
-                if controller.purchaseInFlight {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Text(controller.removeAdsDisplayPrice)
-                        .foregroundStyle(.secondary)
+                Group {
+                    if controller.purchaseInFlight {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(controller.removeAdsDisplayPrice)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .frame(minWidth: 60, alignment: .trailing)
             }
         }
         .disabled(controller.purchaseInFlight)
@@ -137,18 +143,28 @@ struct RemoveAdsRow: View {
 
 struct RestorePurchasesRow: View {
     @Bindable var controller: MonetizationStateController
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button {
             Task { await controller.restorePurchases() }
         } label: {
             HStack {
+                Image(systemName: "arrow.clockwise")
+                    .foregroundStyle(theme.accent.primary.resolved)
                 Text("Restore Purchases")
                 Spacer()
-                if controller.restoreInFlight {
-                    ProgressView()
-                        .controlSize(.small)
+                Group {
+                    if controller.restoreInFlight {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
+                .frame(minWidth: 60, alignment: .trailing)
             }
         }
         .disabled(controller.restoreInFlight)
