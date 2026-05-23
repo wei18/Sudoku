@@ -51,6 +51,9 @@ public struct LiveRouteFactory: RouteFactory {
     // fixtures) keep working without constructing a controller. Live wiring
     // injects one so Settings renders the Remove Ads section.
     private let monetizationController: MonetizationStateController?
+    // v2.4.6: optional toast surface forwarded to `SettingsViewModel` so the
+    // clear-cache success can route through the same overlay as IAP results.
+    private let toastController: ToastController?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -60,7 +63,8 @@ public struct LiveRouteFactory: RouteFactory {
         adProvider: any AdProvider,
         iapClient: any IAPClient,
         adGate: AdGate,
-        monetizationController: MonetizationStateController? = nil
+        monetizationController: MonetizationStateController? = nil,
+        toastController: ToastController? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -70,6 +74,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.iapClient = iapClient
         self.adGate = adGate
         self.monetizationController = monetizationController
+        self.toastController = toastController
     }
 
     @MainActor
@@ -119,7 +124,10 @@ public struct LiveRouteFactory: RouteFactory {
         case .settings:
             return AnyView(
                 SettingsView(
-                    viewModel: SettingsViewModel(persistence: persistence),
+                    viewModel: SettingsViewModel(
+                        persistence: persistence,
+                        toastController: toastController
+                    ),
                     monetizationController: monetizationController
                 )
             )
