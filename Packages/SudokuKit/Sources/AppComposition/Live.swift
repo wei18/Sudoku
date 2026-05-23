@@ -67,7 +67,15 @@ extension AppComposition {
                 }
             }
         )
+        // AdMob SDK ships iOS-only binaries — see AppMonetizationKit/Package.swift
+        // gating. On macOS we wire the `NoopAdProvider` (status always
+        // `.suppressed`, BannerSlotView collapses to EmptyView); on iOS we use
+        // the live AdMob-backed provider as before.
+        #if os(iOS)
         let adProvider: any AdProvider = LiveAdMobAdProvider()
+        #else
+        let adProvider: any AdProvider = NoopAdProvider()
+        #endif
         // `LiveStoreKit2IAPClient` reports catalog-desync (post-purchase
         // refetch returns empty) through the same Telemetry channel so the
         // M3 placeholder substitution doesn't silently mask a backend issue.

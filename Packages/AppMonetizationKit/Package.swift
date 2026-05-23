@@ -26,7 +26,25 @@ let productionTargets: [Target] = [
         name: "AdsAdMob",
         dependencies: [
             "MonetizationCore",
-            .product(name: "GoogleMobileAds", package: "swift-package-manager-google-mobile-ads"),
+            // Both products ship iOS-only xcframeworks (Google does not provide
+            // macOS binary slices). Gate the link-time dependency on iOS so
+            // macOS builds — which include the AdsAdMob source via the App's
+            // `[.iPhone, .iPad, .mac]` destinations — link cleanly. The
+            // `#if canImport(GoogleMobileAds)` / `canImport(UserMessagingPlatform)`
+            // guards in this target's sources already handle symbol absence.
+            // UMP is declared as a direct dep here (rather than picked up
+            // transitively from GoogleMobileAds) so we can attach the same
+            // `.iOS` platform condition.
+            .product(
+                name: "GoogleMobileAds",
+                package: "swift-package-manager-google-mobile-ads",
+                condition: .when(platforms: [.iOS])
+            ),
+            .product(
+                name: "GoogleUserMessagingPlatform",
+                package: "swift-package-manager-google-user-messaging-platform",
+                condition: .when(platforms: [.iOS])
+            ),
         ],
         swiftSettings: swiftSettings
     ),
@@ -81,6 +99,16 @@ let package = Package(
         .package(
             url: "https://github.com/googleads/swift-package-manager-google-mobile-ads",
             from: "11.0.0"
+        ),
+        // UMP is also pulled in transitively by GoogleMobileAds, but we declare
+        // it directly so the AdsAdMob target can attach `.condition(.when(platforms: [.iOS]))`
+        // to its product dependency. Without this direct declaration the
+        // transitive UMP target still links unconditionally on macOS and the
+        // build fails on the missing macOS slice in UserMessagingPlatform.xcframework.
+        // Version range mirrors what GoogleMobileAds 11.x already pins.
+        .package(
+            url: "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git",
+            from: "2.0.0"
         ),
     ],
     targets: productionTargets + testTargets,
