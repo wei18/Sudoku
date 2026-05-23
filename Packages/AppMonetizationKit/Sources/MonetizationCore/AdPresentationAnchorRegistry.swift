@@ -1,4 +1,4 @@
-public import Foundation
+internal import Foundation
 
 // MARK: - AdPresentationAnchorRegistry
 //
