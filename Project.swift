@@ -72,7 +72,13 @@ let project = Project(
             name: "Sudoku",
             shared: true,
             buildAction: .buildAction(targets: ["Sudoku"]),
-            runAction: .runAction(configuration: "Debug", executable: "Sudoku")
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "Sudoku",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/Resources/Sudoku.storekit")
+                )
+            )
         ),
     ]
 )
