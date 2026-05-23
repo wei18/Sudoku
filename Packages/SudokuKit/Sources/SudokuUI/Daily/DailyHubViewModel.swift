@@ -1,6 +1,6 @@
 // DailyHubViewModel — owns trio fetch + completion overlay.
 //
-// Per docs/designs/03-daily-hub.md + design.md §How.5.4. Bootstraps by
+// Per docs/designs/03-daily-hub.md + docs/v1/design.md §How.5.4. Bootstraps by
 // fetching today's trio from PuzzleProvider and the already-completed
 // daily puzzleIds from Persistence; merges them into 3 `DailyCard` rows.
 

@@ -1,4 +1,4 @@
-// SplitMix64 — verbatim from `docs/design.md §How.4.2`.
+// SplitMix64 — verbatim from `docs/v1/docs/v1/design.md §How.4.2`.
 //
 // Pure integer ops (add, shift, xor, multiply with overflow-truncating &+ / &*).
 // Cross-architecture bit-identical per Phase 0 evidence

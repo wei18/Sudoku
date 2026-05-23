@@ -1,4 +1,4 @@
-// UndoStack — capacity-20 undo/redo buffer (design.md §What v1.3).
+// UndoStack — capacity-20 undo/redo buffer (docs/v1/design.md §What v1.3).
 //
 // Pure value type — does NOT mutate any Board. Callers (Phase 3 GameState)
 // are responsible for applying / reverting move effects on their own Board

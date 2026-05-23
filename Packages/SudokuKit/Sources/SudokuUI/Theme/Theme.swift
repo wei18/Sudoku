@@ -1,6 +1,6 @@
 // Theme — design-system token bundle.
 //
-// Per design.md §How.5.4 and docs/designs/design-system.md §Theming.
+// Per docs/v1/design.md §How.5.4 and docs/designs/design-system.md §Theming.
 // Views consume tokens via `@Environment(\.theme)`. A `Theme` exposes
 // `ThemeColor` pairs (light, dark) for every visual token; concrete SwiftUI
 // `Color` resolution happens at the call site via `Color(light:dark:)`.

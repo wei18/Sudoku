@@ -1,6 +1,6 @@
 // UniquenessValidator — DFS solver that short-circuits at the 2nd solution.
 //
-// Per design.md §How.4.4 / §How.4.5.
+// Per docs/v1/design.md §How.4.4 / §How.4.5.
 
 public enum ValidationResult: Sendable, Equatable {
     /// Exactly one solution exists. The unique solved Board is provided.

@@ -17,7 +17,7 @@
 | 2 | **AdMob (Google)** | 主流、生態穩、fill rate 最高、文件最齊 |
 | 3 | **IAP = Remove Ads only**（one-time non-consumable，$2.99 USD） | 與 AdMob 配套；不引入 subscription / pro features 複雜度 |
 | 4 | **Package = `AppMonetizationKit`** | App-prefix 表示可裝任何 App target；非個人品牌 |
-| 5 | **Apple-only impl，protocol 中性** | iOS / macOS first；Android via Swift SDK 是 design.md §不在 v1 範圍 backlog，未來再說 |
+| 5 | **Apple-only impl，protocol 中性** | iOS / macOS first；Android via Swift SDK 是 docs/v1/design.md §不在 v1 範圍 backlog，未來再說 |
 | 6 | **廣告頻率：7-day grace + 1/day max + dismissed-that-day skip** | calm brand 不打擾、初體驗保護期、用戶 close 後當天不再煩 |
 | 7 | **Frequency state = CloudKit Private `MonetizationState` record** | 跨 iCloud 帳號 sync；換新 iPhone 不重置 7-day grace |
 | 8 | **廣告插入點 = Home / Board view 內 banner** | 非 interstitial；持續存在但不全螢幕打斷；與 calm brand 相容 |
@@ -325,7 +325,7 @@ public struct AppComposition {
 - **Subscription / Pro tier**：v3+，需要有 pro feature 可賣
 - **Tip Jar**：考慮（calm brand-friendly），v2.1+
 - **Premium puzzle pack**：與 PuzzleOverride backlog 接合，v2.1+
-- **Android implementation**：與 design.md Android via Swift SDK backlog 接合
+- **Android implementation**：與 docs/v1/design.md Android via Swift SDK backlog 接合
 - **ASCRegister IAP mode**：自動化 IAP product 註冊到 ASC（目前手動）
 
 ---
@@ -334,6 +334,6 @@ public struct AppComposition {
 
 1. ~~PR 本文件~~ ✓ done
 2. ~~更新 `docs/foundations.md §9` 加 break-glass 條款~~ ✓ done（§9.1 / §9.2）
-3. ~~更新 `docs/design.md §不在 v1 範圍 §商業模式` 標記 「promoted to v2 design」+ 連結~~ ✓ done
+3. ~~更新 `docs/v1/design.md §不在 v1 範圍 §商業模式` 標記 「promoted to v2 design」+ 連結~~ ✓ done
 4. ~~起 `docs/v2/plan.md` 拆解實作步驟（TDD-ordered）~~ ✓ done
 5. 派 implementer subagent 走 plan.md v2 step by step（v2.0–v2.2 + v2.3 Part A + v2.4 Part 1 已落地）

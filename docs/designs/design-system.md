@@ -95,7 +95,7 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 
 ## Typography scale
 
-**Per design.md §How.5.7**: SwiftUI semantic fonts only, except the in-cell digit which is bound to cell size (Dynamic Type would burst the grid).
+**Per docs/v1/design.md §How.5.7**: SwiftUI semantic fonts only, except the in-cell digit which is bound to cell size (Dynamic Type would burst the grid).
 
 | Role | SwiftUI | Weight | Use |
 |---|---|---|---|
@@ -143,7 +143,7 @@ VStack(spacing: spacingMd) { … }.padding(spacingLg)
 
 ## Liquid Glass usage
 
-Per design.md §How.5.1. iOS 26 / macOS 26 minimum (foundations §1 / §2) — `.glassEffect()` is available everywhere.
+Per docs/v1/design.md §How.5.1. iOS 26 / macOS 26 minimum (foundations §1 / §2) — `.glassEffect()` is available everywhere.
 
 | View | Glass used? | Where | Rationale |
 |---|---|---|---|
@@ -311,7 +311,7 @@ struct BoardView: View {
 ### v1 — only one theme
 
 - `DefaultTheme` is the only concrete impl in v1. It maps to the hex values in §Color tokens.
-- Theme switching at runtime is **not** a v1 feature (no Settings toggle). Architecture is in place for v2; UI to choose lives in §Backlog of `docs/design.md`.
+- Theme switching at runtime is **not** a v1 feature (no Settings toggle). Architecture is in place for v2; UI to choose lives in §Backlog of `docs/v1/design.md`.
 
 ### Switching mechanics (for future contributors)
 
@@ -323,7 +323,7 @@ struct BoardView: View {
 
 ## Dynamic Type policy
 
-Consolidated reference. Cross-link: `docs/design.md` §How.5.7.
+Consolidated reference. Cross-link: `docs/v1/design.md` §How.5.7.
 
 1. **All non-cell text uses SwiftUI semantic fonts** (`.body`, `.title2`, `.callout`, …) — auto-scales with Dynamic Type.
 2. **All spacing / padding uses `@ScaledMetric`** (see §Spacing scale) — tracks Dynamic Type so layout breathes with type size.

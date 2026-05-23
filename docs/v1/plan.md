@@ -4,7 +4,7 @@ Status: **EXECUTED** — Phases 0–9 complete (2026-05-17 → 2026-05-19); Phas
 Last updated: 2026-05-19
 Total phases: **11** (Phase 0–10); total steps: **67**.
 
-This plan operationalizes `docs/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / `Packages/` sit).
+This plan operationalizes `docs/v1/design.md §How.1`–`§How.7` and `docs/foundations.md §1`–`§8`. All file paths below are anchored at the repo root (where `.gitignore` / `docs/` / `Packages/` sit).
 
 ---
 
@@ -101,7 +101,7 @@ Implementation:
 - `.mise.toml`: per §7.5; try `aqua:` backend first, fall back to `ubi:` (verify with `mise plugin list --all`); pin every tool to a minor.
 - `lefthook.yml`: verbatim §7.5.
 - `.gitleaks.toml`: inherits default; adds CloudKit Key ID + ASC API Key ID rules (`[A-Z0-9]{10}` with context).
-- `docs/setup.md`: `mise install` → `lefthook install` → Xcode Cloud env-var pointers.
+- `docs/v1/setup.md`: `mise install` → `lefthook install` → Xcode Cloud env-var pointers.
 Acceptance:
 - `mise install` succeeds; `lefthook install` writes `.git/hooks/pre-commit`; a `-----BEGIN PRIVATE KEY-----` commit is blocked; mise script exit 0.
 Skills: `mise-tool-management`, `apple-public-repo-security`.
@@ -792,7 +792,7 @@ Depends on: 10.4.
 | Tool versioning | `.mise.toml` |
 | Pre-commit hooks | `lefthook.yml` |
 | Gitleaks rules | `.gitleaks.toml` |
-| Setup docs | `docs/setup.md` |
+| Setup docs | `docs/v1/setup.md` |
 | Snapshot baselines | `Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/<TestSuite>/...` (committed) |
 | Scratch (Phase 0 only) | `scratch/` (deleted at end of Phase 0) |
 | Meeting logs | `meetings/{YYYY-MM-DD}_{topic}.md` |

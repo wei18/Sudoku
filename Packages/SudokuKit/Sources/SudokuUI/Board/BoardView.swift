@@ -1,6 +1,6 @@
 // BoardView — 9×9 grid + digit pad + controls + pause overlay.
 //
-// Per docs/designs/05-board.md + design.md §How.5.7 (A11y). NO `.glassEffect`
+// Per docs/designs/05-board.md + docs/v1/design.md §How.5.7 (A11y). NO `.glassEffect`
 // on the board itself (§How.5.1). Mac keyboard: `.focusable()` + `.onKeyPress`
 // for arrows / 1–9 / 0 / delete / `p`; ⌘Z / ⌘⇧Z bound for undo / redo.
 

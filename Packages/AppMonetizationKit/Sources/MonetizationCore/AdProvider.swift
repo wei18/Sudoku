@@ -4,7 +4,7 @@ public import Foundation
 //
 // Provider-neutral surface for "show a banner ad". Concrete implementation
 // (AdsAdMob.LiveAdMobAdProvider) lives in a separate target so the third-party
-// SDK dependency does not leak across MonetizationCore. See design.md §How.2.
+// SDK dependency does not leak across MonetizationCore. See docs/v1/design.md §How.2.
 
 public protocol AdProvider: Sendable {
     /// Start the underlying SDK and load the first banner. Idempotent — safe

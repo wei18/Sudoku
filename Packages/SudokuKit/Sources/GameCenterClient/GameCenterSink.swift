@@ -1,7 +1,7 @@
 // GameCenterSink — TelemetrySink that wires `puzzleCompleted` events to
 // GameCenter score submission + achievement reporting.
 //
-// Per design.md §How.3.3 fan-out pseudocode:
+// Per docs/v1/design.md §How.3.3 fan-out pseudocode:
 // 1. If auth state is not `.authenticated`, no-op silently (no submit,
 //    no achievements). Includes `.restricted` / `.unavailableInRegion` /
 //    `.unauthenticated` — every degraded state.
@@ -16,7 +16,7 @@
 // Error handling: TelemetrySink.receive(_:) is non-throwing. Any failure
 // from GameCenterClient.submitScore / .reportAchievement is swallowed —
 // these branches are best-effort. We do NOT retry, queue, or surface to
-// the user: design.md §How.3.4 explicitly disallows an offline retry queue
+// the user: docs/v1/design.md §How.3.4 explicitly disallows an offline retry queue
 // in v1 (CloudKit `PersonalRecord` + `SavedGame` are the durable record
 // of truth; GC is the "炫耀面" leaderboard layer only). The errors are
 // observable via the GameCenterClient's own OSLog in production.
@@ -31,7 +31,7 @@ public actor GameCenterSink: TelemetrySink {
     private let achievements: AchievementEvaluator
     private let authStateProvider: @Sendable () async -> GameCenterAuthState
     private let clock: @Sendable () -> Date
-    /// Achievement id prefix per design.md §How.3.2.
+    /// Achievement id prefix per docs/v1/design.md §How.3.2.
     private let achievementPrefix = "com.wei18.sudoku.achievement."
 
     public init(

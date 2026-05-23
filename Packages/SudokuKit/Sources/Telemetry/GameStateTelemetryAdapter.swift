@@ -3,7 +3,7 @@
 //
 // Why this lives in the Telemetry target (not SudokuKitTesting):
 //   - The adapter is real production wiring used by the App's composition
-//     root (design.md §How.1); test-only modules cannot ship it.
+//     root (docs/v1/design.md §How.1); test-only modules cannot ship it.
 //   - GameState owns the upstream protocol + event surface; Telemetry owns
 //     the downstream facade. The adapter is exactly the bridge between
 //     the two, so Telemetry is the natural home.

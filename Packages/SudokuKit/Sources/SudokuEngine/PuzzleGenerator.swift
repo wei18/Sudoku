@@ -1,6 +1,6 @@
 // PuzzleGenerator — single-retry-loop deterministic generator.
 //
-// Per design.md §How.4.3:
+// Per docs/v1/design.md §How.4.3:
 //   1. Init SplitMix64 from seed.
 //   2. Generate a complete solved 9x9 grid via randomized backtracking.
 //   3. Mask cells in random order to a difficulty-specific target count,
@@ -18,7 +18,7 @@
 
 public struct PuzzleGenerator: Sendable {
 
-    /// Retry budget per design.md §How.4.3 (N=32).
+    /// Retry budget per docs/v1/design.md §How.4.3 (N=32).
     public static let retryBudget: Int = 32
 
     public init() {}

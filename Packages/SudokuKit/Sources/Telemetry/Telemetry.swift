@@ -1,4 +1,4 @@
-// Telemetry — the fan-out facade (foundations.md §5 / design.md §How.1).
+// Telemetry — the fan-out facade (foundations.md §5 / docs/v1/design.md §How.1).
 //
 // Callers say "what happened" (`telemetry.observe(event)`); the facade
 // dispatches sequentially to every sink. Sequential dispatch (rather than

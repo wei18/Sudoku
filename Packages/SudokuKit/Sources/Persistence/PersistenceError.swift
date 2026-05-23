@@ -1,6 +1,6 @@
 // PersistenceError — taxonomy for the Persistence module.
 //
-// Per design.md §How.6.5 (account cases) + §How.6.7 (sync conflict) +
+// Per docs/v1/design.md §How.6.5 (account cases) + §How.6.7 (sync conflict) +
 // §How.6.8 (schema version) + §How.6.2 (general error surface).
 //
 // `underlying` carries an erased description so the Persistence target does

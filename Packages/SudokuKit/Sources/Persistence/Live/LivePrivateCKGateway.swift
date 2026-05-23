@@ -3,7 +3,7 @@
 // COMPILE-ONLY in Phase 5; live behavior is validated in Phase 10
 // (plan.md). All unit tests run against `FakePrivateCKGateway`.
 //
-// Per design.md §How.2:
+// Per docs/v1/design.md §How.2:
 //   - custom zone `com.wei18.sudoku.userZone`
 //   - single `CKDatabaseSubscription` named `com.wei18.sudoku.userZone.changes`
 //   - record types `SavedGame` / `PersonalRecord`

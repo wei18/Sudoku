@@ -1,6 +1,6 @@
 // OSLogSink — TelemetrySink that forwards every event to `os.Logger`.
 //
-// Privacy policy (design.md §How.6.3 + foundations.md §5):
+// Privacy policy (docs/v1/design.md §How.6.3 + foundations.md §5):
 //   - Default everything to `.privateValue`.
 //   - `puzzleId` is `.publicValue` — it is deterministic content, not PII.
 //   - Numeric coordinates / digits / elapsedSeconds are `.privateValue` by

@@ -1,6 +1,6 @@
 // HomeViewModel — owns the 4-mode card list + drives navigation.
 //
-// Per design.md §How.5.4. Routing is delegated through a binding so the
+// Per docs/v1/design.md §How.5.4. Routing is delegated through a binding so the
 // same VM works inside RootView (bound to its `path`) and standalone in
 // previews / unit tests (bound to a local stub array).
 

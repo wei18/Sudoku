@@ -1,7 +1,7 @@
 // LocalCache — file-system store inside the App container that survives
 // offline / signed-out periods (§How.6.5 Case A/B).
 //
-// Per design.md §How.6.5 Case A: read paths against the local cache
+// Per docs/v1/design.md §How.6.5 Case A: read paths against the local cache
 // continue to work even when CloudKit is unreachable; Case B: the
 // in-progress snapshot flushes to the local cache when iCloud goes away
 // mid-session.

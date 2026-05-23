@@ -1,4 +1,4 @@
-// PuzzleCalibrator — difficulty classification per design.md §How.4.4.
+// PuzzleCalibrator — difficulty classification per docs/v1/design.md §How.4.4.
 //
 // Pure value-based; no Foundation; no RNG. Uses Solver + DFS guessing counter
 // to estimate `branchingFactor` (the number of guesses needed to drive the
@@ -45,7 +45,7 @@ public enum PuzzleCalibrator {
     }
 
     /// Accept the board for the given difficulty label if it satisfies the
-    /// design.md §How.4.4 calibrator rules:
+    /// docs/v1/design.md §How.4.4 calibrator rules:
     ///   - Easy: clueCount in [32, 50], branchingFactor == 0
     ///   - Medium: clueCount in [28, 38], branchingFactor <= 2
     ///   - Hard: clueCount in [22, 32], no branchingFactor cap (but > 3 only "warns")

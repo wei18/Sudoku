@@ -1,4 +1,4 @@
-// ConflictResolver — pure per-field LWW resolution per design.md §How.6.7.
+// ConflictResolver — pure per-field LWW resolution per docs/v1/design.md §How.6.7.
 //
 // SavedGame:
 //   - boardState / notesState / undoStack: switch as a GROUP based on

@@ -1,12 +1,12 @@
 // RootViewModel — coordinates app-launch bootstrap.
 //
-// Per design.md §How.5.4 (VM ownership / @Observable @MainActor). Owns the
+// Per docs/v1/design.md §How.5.4 (VM ownership / @Observable @MainActor). Owns the
 // auth handshake (`GameCenterClient.authenticate`) and the resume-candidate
 // fetch (`PersistenceProtocol.latestInProgress`). Both are kicked off in
 // `bootstrap()` from the View's `.task`.
 //
 // Errors from either fetch are swallowed into degraded states — Root should
-// never block Home (design.md §How.5.1: "Bootstrap never blocks Home").
+// never block Home (docs/v1/design.md §How.5.1: "Bootstrap never blocks Home").
 
 public import Foundation
 public import GameCenterClient

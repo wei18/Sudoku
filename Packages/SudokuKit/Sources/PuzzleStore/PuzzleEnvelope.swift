@@ -1,5 +1,5 @@
 // PuzzleEnvelope — bundles a `Puzzle` (pure math, owned by SudokuEngine)
-// with its product-layer `PuzzleIdentity` (design.md §How.4.3).
+// with its product-layer `PuzzleIdentity` (docs/v1/design.md §How.4.3).
 //
 // SudokuEngine deliberately does NOT know about puzzleId / kind — keeping the
 // engine pure means the same `Puzzle` value can be re-wrapped for different

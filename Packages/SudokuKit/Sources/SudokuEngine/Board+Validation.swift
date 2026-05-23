@@ -1,7 +1,7 @@
 // Board validation — row / column / box duplicate detection + solved predicate.
 //
 // All operations are pure value-based: no Foundation, no Set ordering relied upon
-// in iteration (we iterate fixed-range arrays, per design.md §How.4.6).
+// in iteration (we iterate fixed-range arrays, per docs/v1/design.md §How.4.6).
 
 extension Board {
 

@@ -1,6 +1,6 @@
 // RegionMapper — heuristic classification of GameKit errors as "this
 // device's region does not support Game Center" rather than a transient
-// auth failure (design.md §How.3.4 末段).
+// auth failure (docs/v1/design.md §How.3.4 末段).
 //
 // Why a heuristic, not an authoritative API: Apple does not publish a
 // stable list of GC-unavailable regions, and the underlying `GKError`

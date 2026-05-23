@@ -1,6 +1,6 @@
 # Snapshot Matrix — v1 UI baseline
 
-Tracks every PNG snapshot the snapshot-test target must produce. Aligns with `docs/design.md §How.5.8` (21-view baseline) **plus** component-level snapshots so the user can visually grok every atomic UI piece.
+Tracks every PNG snapshot the snapshot-test target must produce. Aligns with `docs/v1/design.md §How.5.8` (21-view baseline) **plus** component-level snapshots so the user can visually grok every atomic UI piece.
 
 Conventions:
 

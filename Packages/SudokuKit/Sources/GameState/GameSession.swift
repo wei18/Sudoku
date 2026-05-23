@@ -1,6 +1,6 @@
 // GameSession — actor owning a single game's mutable state.
 //
-// Design choice (per docs/design.md §How.5.4 + plan.md Phase 3 dispatch):
+// Design choice (per docs/v1/docs/v1/design.md §How.5.4 + plan.md Phase 3 dispatch):
 //
 //   We use `actor GameSession` (NOT `final class @unchecked Sendable`) for
 //   Swift 6 strict-concurrency cleanliness. The Phase-8 `GameViewModel` is

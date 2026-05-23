@@ -167,7 +167,7 @@ This plan operationalizes [`docs/v2/design.md`](design.md) + [`docs/foundations.
   - record schema：`firstLaunchAt: Date`、`lastShownDate: Date?`、`dismissedDate: Date?`、`hasPurchasedRemoveAds: Bool`
   - CloudKit Dashboard 不用手動建 record type（first write auto-creates）
 
-**Acceptance**：4-6 unit tests 全綠；persistence schema doc 更新 `design.md §How.2.X`。
+**Acceptance**：4-6 unit tests 全綠；persistence schema doc 更新 `docs/v1/design.md §How.2.X`。
 
 ### v2.3.2 — AppComposition +3 deps（暫態，準備 RouteFactory）
 

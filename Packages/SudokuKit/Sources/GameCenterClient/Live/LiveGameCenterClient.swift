@@ -2,14 +2,14 @@
 //
 // Coordinates an injected `AuthDriver` (real `GKAuthDriver` in production,
 // `FakeAuthDriver` in tests) with the score/achievement/leaderboard APIs.
-// Per design.md §How.3.4 the authentication call site is `RootView.task`
+// Per docs/v1/design.md §How.3.4 the authentication call site is `RootView.task`
 // — this actor runs once per session, caches the last observed state, and
 // fans subsequent transitions out via `authStateUpdates()`.
 //
 // `reportAchievement`, `fetchLeaderboardSlice` and the friends-auth pair
 // are wired in subsequent phases. `submitScore` performs the canonical
 // **seconds → centiseconds** conversion at the GameKit boundary (per
-// design.md §How.3.1: `GameState.elapsedSeconds × 100 → Int64 centiseconds`,
+// docs/v1/design.md §How.3.1: `GameState.elapsedSeconds × 100 → Int64 centiseconds`,
 // `ELAPSED_TIME_CENTISECOND` ASC formatter, `mm:ss.SS` display). The actual
 // `GKLeaderboard.submitScore(...)` call remains a Phase 10 manual-device
 // integration task; the conversion is wired today via an injectable
@@ -148,7 +148,7 @@ public actor LiveGameCenterClient: GameCenterClient {
         leaderboardKind: LeaderboardKind
     ) async throws {
         _ = (puzzleId, difficulty)
-        // Per design.md §How.3.1 (`ELAPSED_TIME_CENTISECOND` formatter):
+        // Per docs/v1/design.md §How.3.1 (`ELAPSED_TIME_CENTISECOND` formatter):
         // ASC's elapsed-time leaderboards use 1/100-second resolution.
         // Convert seconds → centiseconds at this boundary exactly once
         // (callers + the public protocol stay seconds-only). See impl-notes

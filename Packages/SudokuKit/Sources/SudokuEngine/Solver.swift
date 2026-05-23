@@ -1,4 +1,4 @@
-// Solver — 3-layer constraint propagation per design.md §How.4.4.
+// Solver — 3-layer constraint propagation per docs/v1/design.md §How.4.4.
 //
 // Pure functions over Board (in-out for the imperative variants).
 // No RNG, no DFS — DFS lives in UniquenessValidator.

@@ -1,4 +1,4 @@
-// PuzzleProviderProtocol — design.md §How.5.1.
+// PuzzleProviderProtocol — docs/v1/design.md §How.5.1.
 //
 // The UI layer talks only to this protocol; `PuzzleStore` (this module) is the
 // production impl, `FakePuzzleProvider` (in SudokuKitTesting, future step) is
