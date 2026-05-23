@@ -93,22 +93,25 @@ let package = Package(
     ],
     dependencies: [
         // foundations.md §9.1: third-party SDK is isolated to AdsAdMob target only.
-        // Pinned to 11.x — first major aligned with Swift 6 toolchain era. Allow
-        // semver-major drift via `from:`; bridge seam (AdMobBridge) shields the
-        // rest of the package from API churn.
+        // Pinned to 13.x — first major exposing Swift-native API names
+        // (`MobileAds.shared`, `ConsentForm`, `ConsentInformation`). v13.0
+        // raised the minimum deployment target and removed a swathe of
+        // deprecated ObjC-prefixed surface; our `.iOS(.v26)` floor exceeds the
+        // v13 min iOS 13 requirement. Bridge seam (`AdMobBridge`) shields the
+        // rest of the package from future API churn.
         .package(
             url: "https://github.com/googleads/swift-package-manager-google-mobile-ads",
-            from: "11.0.0"
+            from: "13.0.0"
         ),
         // UMP is also pulled in transitively by GoogleMobileAds, but we declare
         // it directly so the AdsAdMob target can attach `.condition(.when(platforms: [.iOS]))`
         // to its product dependency. Without this direct declaration the
         // transitive UMP target still links unconditionally on macOS and the
         // build fails on the missing macOS slice in UserMessagingPlatform.xcframework.
-        // Version range mirrors what GoogleMobileAds 11.x already pins.
+        // UMP 3.0 introduced the Swift-native names matching GoogleMobileAds 13.x.
         .package(
             url: "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git",
-            from: "2.0.0"
+            from: "3.0.0"
         ),
     ],
     targets: productionTargets + testTargets,

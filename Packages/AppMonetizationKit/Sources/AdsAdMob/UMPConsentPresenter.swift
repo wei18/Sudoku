@@ -68,14 +68,15 @@ public enum UMPConsentPresenter {
 internal struct LiveUMPBridge: UMPBridge {
     internal func requestConsentInfoUpdate() async throws {
         #if canImport(UserMessagingPlatform)
-        // UMP 2.x ships only ObjC-prefixed symbols (`UMPRequestParameters`,
-        // `UMPConsentInformation`, `UMPConsentForm`). The unprefixed Swift
-        // names (`RequestParameters`, `ConsentInformation`, `ConsentForm`)
-        // were introduced in a later major. See `LiveAdMobBridge.swift` for
-        // the parallel situation with GoogleMobileAds 11.x.
-        let parameters = UMPRequestParameters()
+        // UMP 3.x exposes Swift-native names via `NS_SWIFT_NAME`:
+        // `UMPRequestParameters` → `RequestParameters`,
+        // `UMPConsentInformation` → `ConsentInformation`,
+        // `UMPConsentForm` → `ConsentForm`, `sharedInstance` → `shared`.
+        // See `LiveAdMobBridge.swift` for the parallel GoogleMobileAds 13.x
+        // case — same upgrade landed in lockstep.
+        let parameters = RequestParameters()
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            UMPConsentInformation.sharedInstance.requestConsentInfoUpdate(with: parameters) { error in
+            ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
@@ -90,7 +91,7 @@ internal struct LiveUMPBridge: UMPBridge {
 
     internal func isConsentFormRequired() async -> Bool {
         #if canImport(UserMessagingPlatform)
-        return UMPConsentInformation.sharedInstance.consentStatus == .required
+        return ConsentInformation.shared.consentStatus == .required
         #else
         return false
         #endif
@@ -99,7 +100,7 @@ internal struct LiveUMPBridge: UMPBridge {
     internal func loadAndPresentConsentFormIfRequired() async throws {
         #if canImport(UserMessagingPlatform)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            UMPConsentForm.loadAndPresentIfRequired(from: nil) { error in
+            ConsentForm.loadAndPresentIfRequired(from: nil) { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
