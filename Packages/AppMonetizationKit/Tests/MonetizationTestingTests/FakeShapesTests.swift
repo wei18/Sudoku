@@ -111,4 +111,56 @@ struct FakeIAPClientTests {
             .revoked(productId: Self.product.id),
         ])
     }
+
+    // N5-followup (impl-notes 2026-05-23 §未決 #3): two concurrent
+    // subscribers must each receive every emitted event, matching Live
+    // semantics.
+    @Test func purchaseUpdatesMultipleConcurrentSubscribersAllReceive() async {
+        let fake = FakeIAPClient()
+        let s1 = fake.purchaseUpdates()
+        let s2 = fake.purchaseUpdates()
+        #expect(fake.purchaseUpdatesSubscriberCount == 2)
+
+        await fake.emit(.purchased(productId: Self.product.id))
+        await fake.emit(.revoked(productId: Self.product.id))
+        await fake.finishUpdates()
+
+        async let collected1: [IAPPurchaseEvent] = {
+            var acc: [IAPPurchaseEvent] = []
+            for await event in s1 { acc.append(event) }
+            return acc
+        }()
+        async let collected2: [IAPPurchaseEvent] = {
+            var acc: [IAPPurchaseEvent] = []
+            for await event in s2 { acc.append(event) }
+            return acc
+        }()
+        let (c1, c2) = await (collected1, collected2)
+        let expected: [IAPPurchaseEvent] = [
+            .purchased(productId: Self.product.id),
+            .revoked(productId: Self.product.id),
+        ]
+        #expect(c1 == expected)
+        #expect(c2 == expected)
+    }
+
+    @Test func purchaseUpdatesSubscriberCountDropsOnCancellation() async {
+        let fake = FakeIAPClient()
+        // Spawn a task that subscribes, then cancel it; the registry
+        // should unregister the continuation via `onTermination`.
+        let task = Task {
+            for await _ in fake.purchaseUpdates() {
+                // Drain — should exit on cancellation.
+            }
+        }
+        // Give the task a beat to enter the for-await (and thus register).
+        try? await Task.sleep(nanoseconds: 10_000_000)
+        #expect(fake.purchaseUpdatesSubscriberCount == 1)
+
+        task.cancel()
+        // onTermination fires on cancel; allow a brief hop.
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await task.value
+        #expect(fake.purchaseUpdatesSubscriberCount == 0)
+    }
 }

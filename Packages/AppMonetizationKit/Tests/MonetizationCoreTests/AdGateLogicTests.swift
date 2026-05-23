@@ -302,6 +302,48 @@ struct AdGateLogicTests {
         #expect(captured.first?.contains("StubError") == true)
     }
 
+    // MARK: M5-followup — wall-clock advance throttle (impl-notes 2026-05-23 §3)
+
+    @Test func wallClockAdvanceThrottledWithin6h() async {
+        // Far past grace, no prior dismissal, no purchase — banner shows on
+        // every call. With the 6h throttle (`wallClockAdvanceMinInterval`),
+        // multiple shouldShowBanner calls within a 6h window should result
+        // in exactly ONE persisted advance (the first one).
+        let baseline = days(30, after: firstLaunch)  // well past 7d grace
+        let (gate, store) = await freshGate()
+
+        // First call: no `lastSeenWallClock` yet → persists.
+        _ = await gate.shouldShowBanner(now: baseline)
+        #expect(await store.saveCallCount == 1)
+
+        // Two more calls within 6h → cache-only updates, no extra saves.
+        _ = await gate.shouldShowBanner(now: baseline.addingTimeInterval(3_600))      // +1h
+        _ = await gate.shouldShowBanner(now: baseline.addingTimeInterval(5 * 3_600))  // +5h
+        #expect(await store.saveCallCount == 1)
+
+        // Crossing the 6h threshold → second persistence.
+        _ = await gate.shouldShowBanner(now: baseline.addingTimeInterval(6 * 3_600 + 1))
+        #expect(await store.saveCallCount == 2)
+    }
+
+    @Test func wallClockAdvanceStillUpdatesCacheForTamperGuard() async {
+        // Even when the throttle suppresses persistence, the in-session
+        // cache must advance — otherwise a clock-rewind between two
+        // within-6h calls would slip past the tamper guard.
+        let baseline = days(30, after: firstLaunch)
+        let (gate, _) = await freshGate()
+
+        // First call seeds `lastSeenWallClock` (persisted).
+        #expect(await gate.shouldShowBanner(now: baseline) == true)
+        // Second call within 6h, advancing the cache (no save).
+        #expect(await gate.shouldShowBanner(now: baseline.addingTimeInterval(3_600)) == true)
+        // Now rewind well beyond the 24h tolerance. The tamper guard reads
+        // the *cached* (baseline+1h) high-water mark, sees `now < (cached) - 24h`,
+        // and refuses to show.
+        let rewound = baseline.addingTimeInterval(-2 * 86_400)  // 2 days back
+        #expect(await gate.shouldShowBanner(now: rewound) == false)
+    }
+
     @Test func dismissedTodayHonorsInjectedCalendarTimezone() async {
         // Same wall-clock instant, but two different calendar-day perceptions:
         // - UTC: 2026-01-11 23:00 → day 10 still

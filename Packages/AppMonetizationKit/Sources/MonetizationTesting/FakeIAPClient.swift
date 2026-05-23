@@ -7,28 +7,31 @@ internal import os
 public actor FakeIAPClient: IAPClient {
     private var products: [IAPProduct] = []
     private var scriptedResults: [String: IAPPurchaseResult] = [:]
-    /// Stream + continuation are pre-created at init time so the `nonisolated`
-    /// `purchaseUpdates()` accessor can return them without touching actor
-    /// state. `AsyncStream` is single-consumer; tests should subscribe once.
+
+    /// Fan-out broadcaster for `purchaseUpdates()` subscribers.
     ///
-    /// N5 (v2-audit-code-polish): the Live client wraps its underlying bridge
-    /// stream in a fresh `AsyncStream` per call (so multiple subscribers each
-    /// get their own task), while this Fake hands out the shared stream — a
-    /// second subscriber would receive no events. We `precondition` against
-    /// the second subscribe so tests fail loudly instead of hanging silently.
-    private nonisolated let updatesStream: AsyncStream<IAPPurchaseEvent>
-    private nonisolated let updatesContinuation: AsyncStream<IAPPurchaseEvent>.Continuation
-    private nonisolated let purchaseUpdatesSubscribed = OSAllocatedUnfairLock<Bool>(initialState: false)
+    /// N5-followup (impl-notes 2026-05-23 §未決 #3): the Live StoreKit2 client
+    /// returns a fresh `AsyncStream` per `purchaseUpdates()` call, so multiple
+    /// concurrent subscribers each get their own iterator. The previous Fake
+    /// shared a single `AsyncStream` and only the first subscriber received
+    /// events. We now mirror Live semantics: each `purchaseUpdates()` call
+    /// allocates a new stream whose continuation is registered in
+    /// `subscribers`; `emit(_:)` fans out to all live continuations.
+    ///
+    /// Continuations are held by token (`UUID`) so we can remove them when
+    /// the consumer cancels iteration (via the stream's `onTermination`
+    /// hook). The lock keeps `subscribers` writes safe across the
+    /// `nonisolated` `purchaseUpdates()` accessor and the actor-isolated
+    /// `emit`.
+    private nonisolated let subscribers = OSAllocatedUnfairLock<
+        [UUID: AsyncStream<IAPPurchaseEvent>.Continuation]
+    >(initialState: [:])
 
     public private(set) var availableProductsCallCount: Int = 0
     public private(set) var purchaseCallCount: Int = 0
     public private(set) var restoreCallCount: Int = 0
 
-    public init() {
-        let (stream, continuation) = AsyncStream<IAPPurchaseEvent>.makeStream()
-        self.updatesStream = stream
-        self.updatesContinuation = continuation
-    }
+    public init() {}
 
     // MARK: Scripting API
 
@@ -40,14 +43,28 @@ public actor FakeIAPClient: IAPClient {
         scriptedResults[productId] = result
     }
 
-    /// Emit a purchase event into the `purchaseUpdates()` stream.
+    /// Emit a purchase event to every live `purchaseUpdates()` subscriber.
     public func emit(_ event: IAPPurchaseEvent) {
-        updatesContinuation.yield(event)
+        let snapshot = subscribers.withLock { $0 }
+        for continuation in snapshot.values {
+            continuation.yield(event)
+        }
     }
 
-    /// Finish the updates stream — used by tests that want bounded iteration.
+    /// Finish all live `purchaseUpdates()` streams — used by tests that
+    /// want bounded iteration. After this, in-flight `for await` loops
+    /// exit; subsequent `purchaseUpdates()` calls allocate new streams
+    /// (the broadcaster itself is not "closed", only the live continuations
+    /// at the moment of the call).
     public func finishUpdates() {
-        updatesContinuation.finish()
+        let snapshot = subscribers.withLock { current in
+            let copy = current
+            current.removeAll()
+            return copy
+        }
+        for continuation in snapshot.values {
+            continuation.finish()
+        }
     }
 
     // MARK: IAPClient
@@ -78,29 +95,27 @@ public actor FakeIAPClient: IAPClient {
     }
 
     public nonisolated func purchaseUpdates() -> AsyncStream<IAPPurchaseEvent> {
-        // N5 (v2-audit-code-polish): the *Live* client wraps the bridge stream
-        // in a fresh `AsyncStream` per call (each `for await` gets its own
-        // subscriber task), whereas this Fake hands back the shared
-        // single-consumer underlying stream. Practical implication: if your
-        // test forks two parallel `for await` loops over `purchaseUpdates()`,
-        // only the FIRST iterator will see events (per `AsyncStream`'s
-        // single-consumer contract). Production code that re-subscribes
-        // (e.g. `MonetizationStateController.startListening` cancelling and
-        // restarting its task) is fine because it serialises subscriptions —
-        // the prior `for await` has exited before the next one starts.
-        //
-        // We track subscription count for diagnostic purposes only — tests
-        // that need to verify "exactly one subscribe happened" can read
-        // `purchaseUpdatesSubscribeCount` directly. We deliberately do NOT
-        // trap (no precondition / assertionFailure) so legitimate restarts
-        // continue to work.
-        purchaseUpdatesSubscribed.withLock { subscribed in subscribed = true }
-        return updatesStream
+        // Fresh stream per call (mirrors Live). The continuation is
+        // registered in `subscribers` under a UUID token so `emit(_:)` can
+        // fan out and `onTermination` can unregister when the consumer
+        // cancels.
+        let token = UUID()
+        let subs = subscribers
+        return AsyncStream<IAPPurchaseEvent> { continuation in
+            subs.withLock { current in
+                current[token] = continuation
+            }
+            continuation.onTermination = { _ in
+                subs.withLock { current in
+                    _ = current.removeValue(forKey: token)
+                }
+            }
+        }
     }
 
-    /// Diagnostic: has `purchaseUpdates()` ever been called? Useful in tests
-    /// that need to assert the subscriber wired up.
-    public nonisolated var purchaseUpdatesWasSubscribed: Bool {
-        purchaseUpdatesSubscribed.withLock { $0 }
+    /// Diagnostic: number of currently-live `purchaseUpdates()` subscribers.
+    /// Useful in tests that need to assert subscribe / cancel lifecycle.
+    public nonisolated var purchaseUpdatesSubscriberCount: Int {
+        subscribers.withLock { $0.count }
     }
 }
