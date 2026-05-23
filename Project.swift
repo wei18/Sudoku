@@ -21,6 +21,17 @@ let swiftSettings: SettingsDictionary = [
     "CODE_SIGN_STYLE": "Automatic",
 ]
 
+// Per-platform AppIcon: iOS uses `AppIcon.appiconset` (single 1024 universal
+// with light / dark / tinted appearances), macOS uses a dedicated
+// `AppIcon-macOS.appiconset` with the full 16…1024 size ladder. Without the
+// SDK-scoped override, Xcode 26 emits the "AppIcon has N unassigned children"
+// archive warning because `idiom: universal` entries don't satisfy the macOS
+// AppKit icon ladder requirement.
+let appTargetSettings: SettingsDictionary = swiftSettings.merging([
+    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]": "AppIcon-macOS",
+]) { _, new in new }
+
 let sudokuTarget = Target.target(
     name: "Sudoku",
     destinations: [.iPhone, .iPad, .mac],
@@ -46,7 +57,7 @@ let sudokuTarget = Target.target(
         .package(product: "AdsAdMob"),
         .package(product: "IAPStoreKit2"),
     ],
-    settings: .settings(base: swiftSettings)
+    settings: .settings(base: appTargetSettings)
 )
 
 let project = Project(
