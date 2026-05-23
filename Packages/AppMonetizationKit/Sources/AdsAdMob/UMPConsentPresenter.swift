@@ -68,9 +68,14 @@ public enum UMPConsentPresenter {
 internal struct LiveUMPBridge: UMPBridge {
     internal func requestConsentInfoUpdate() async throws {
         #if canImport(UserMessagingPlatform)
-        let parameters = RequestParameters()
+        // UMP 2.x ships only ObjC-prefixed symbols (`UMPRequestParameters`,
+        // `UMPConsentInformation`, `UMPConsentForm`). The unprefixed Swift
+        // names (`RequestParameters`, `ConsentInformation`, `ConsentForm`)
+        // were introduced in a later major. See `LiveAdMobBridge.swift` for
+        // the parallel situation with GoogleMobileAds 11.x.
+        let parameters = UMPRequestParameters()
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { error in
+            UMPConsentInformation.sharedInstance.requestConsentInfoUpdate(with: parameters) { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
@@ -85,7 +90,7 @@ internal struct LiveUMPBridge: UMPBridge {
 
     internal func isConsentFormRequired() async -> Bool {
         #if canImport(UserMessagingPlatform)
-        return ConsentInformation.shared.consentStatus == .required
+        return UMPConsentInformation.sharedInstance.consentStatus == .required
         #else
         return false
         #endif
@@ -94,7 +99,7 @@ internal struct LiveUMPBridge: UMPBridge {
     internal func loadAndPresentConsentFormIfRequired() async throws {
         #if canImport(UserMessagingPlatform)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ConsentForm.loadAndPresentIfRequired(from: nil) { error in
+            UMPConsentForm.loadAndPresentIfRequired(from: nil) { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {

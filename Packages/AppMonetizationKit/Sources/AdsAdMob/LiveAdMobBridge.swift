@@ -29,12 +29,13 @@ internal final class LiveAdMobBridge: AdMobBridge {
 
     internal func start() async throws {
         #if canImport(GoogleMobileAds)
-        // `MobileAds.shared.start(completionHandler:)` is the modern (v11+)
-        // entry point; the legacy `GADMobileAds.sharedInstance().start(...)`
-        // signature is also forwarded but documented as deprecated. Swift
-        // bridging exposes it as `MobileAds.shared`.
+        // AdMob 11.x ships only ObjC-prefixed symbols (`GADMobileAds`); the
+        // Swift-friendly `MobileAds` name was introduced in 12.x. The package
+        // is pinned to `from: "11.0.0"` per foundations.md §9.1, so we use the
+        // ObjC type names directly. When the SDK pin is bumped to 12.x the
+        // bridge seam (this file) is the single switch point.
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            MobileAds.shared.start { _ in
+            GADMobileAds.sharedInstance().start { _ in
                 continuation.resume()
             }
         }
