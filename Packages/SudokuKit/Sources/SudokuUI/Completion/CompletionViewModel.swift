@@ -1,6 +1,6 @@
 // CompletionViewModel — owns leaderboard slice + auth gating.
 //
-// Per docs/designs/06-completion.md + design.md §How.5.4. Four observable
+// Per docs/designs/06-completion.md + docs/v1/design.md §How.5.4. Four observable
 // states: `.loading` → `.loaded(slice)` / `.unauthenticated` / `.failed`.
 // The embedded top-3 mini-slice stays (post-solve UX affordance); the
 // "View full leaderboard" CTA presents Apple's native Game Center dashboard

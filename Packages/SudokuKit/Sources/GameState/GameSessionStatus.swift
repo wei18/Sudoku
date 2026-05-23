@@ -1,6 +1,6 @@
 // GameSessionStatus — finite state machine for a single GameSession.
 //
-// Per design.md §How.5.3, the legal lifecycle is:
+// Per docs/v1/design.md §How.5.3, the legal lifecycle is:
 //
 //     idle → playing (start)
 //     playing → paused (pause)
@@ -35,7 +35,7 @@ public enum GameSessionTransition: String, Sendable, Hashable, Codable, CaseIter
 extension GameSessionStatus {
 
     /// True if `transition` may be applied while the session is in `from`.
-    /// Pure function — encodes the design.md §How.5.3 transition table.
+    /// Pure function — encodes the docs/v1/design.md §How.5.3 transition table.
     public static func isLegal(
         from: GameSessionStatus,
         applying transition: GameSessionTransition

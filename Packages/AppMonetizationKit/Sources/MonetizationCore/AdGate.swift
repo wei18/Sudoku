@@ -3,7 +3,7 @@ public import Foundation
 // MARK: - AdGateState
 
 /// Persisted state driving banner-frequency decisions. Sync target: CloudKit
-/// Private (see design.md §How.3) so a player's grace-period progress + Remove
+/// Private (see docs/v1/design.md §How.3) so a player's grace-period progress + Remove
 /// Ads entitlement follow them across devices.
 public struct AdGateState: Sendable, Codable, Equatable {
     /// First-ever launch timestamp (per iCloud account). Set once by the
@@ -16,7 +16,7 @@ public struct AdGateState: Sendable, Codable, Equatable {
     /// User has purchased the Remove Ads non-consumable IAP.
     public var hasPurchasedRemoveAds: Bool
     /// Monotonic high-water mark of `now` observed by `shouldShowBanner`.
-    /// Used purely as anti-tamper baseline (design.md §How.3.1): if a later
+    /// Used purely as anti-tamper baseline (docs/v1/design.md §How.3.1): if a later
     /// query arrives with `now` materially before this value, we treat the
     /// system clock as moved backwards and refuse to advance the grace
     /// window. `nil` for fresh installs (and for records persisted before
@@ -51,11 +51,11 @@ public protocol AdGateStateStore: Sendable {
 
 // MARK: - AdGate
 //
-// Frequency arbiter. Logic (design.md §How.3, brief):
+// Frequency arbiter. Logic (docs/v1/design.md §How.3, brief):
 //   1. `hasPurchasedRemoveAds == true` → false (highest precedence).
 //   2. `now < firstLaunchAt + 7 days` → false (grace period).
 //   3. `dismissedDate` is the same calendar day as `now` → false.
-//   4. Clock-tamper guard (design.md §How.3.1): if `lastSeenWallClock` is set
+//   4. Clock-tamper guard (docs/v1/design.md §How.3.1): if `lastSeenWallClock` is set
 //      and `now < lastSeenWallClock - 24h tolerance`, treat as a clock
 //      manipulation attempt and return false. 24h tolerance accommodates
 //      DST shifts, NTP corrections, and timezone-jumping travel.
@@ -64,7 +64,7 @@ public protocol AdGateStateStore: Sendable {
 // `lastShownDate` is recorded for telemetry / future dynamic-frequency work
 // but does NOT itself gate display: once a banner has been shown on a given
 // day, it remains visible until the user dismisses it (banner is persistent,
-// per design.md §How.3).
+// per docs/v1/design.md §How.3).
 //
 // Concurrency: a plain `actor` (NOT `@MainActor actor` — that's a language
 // contradiction; see impl-notes §未決). UI components await from MainActor
@@ -79,7 +79,7 @@ public actor AdGate {
 
     /// Minimum interval between `lastSeenWallClock` persisted advances on
     /// the read path. `shouldShowBanner` is called every Home appear; without
-    /// a throttle each call writes through to CloudKit (design.md §How.3.1
+    /// a throttle each call writes through to CloudKit (docs/v1/design.md §How.3.1
     /// trade-off — "always-consistent baseline" vs "extra CloudKit save per
     /// Home appear"). 6h is short enough that the tamper-guard baseline stays
     /// fresh (well under the 24h tolerance window) while collapsing typical

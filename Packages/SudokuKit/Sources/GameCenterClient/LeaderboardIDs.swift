@@ -1,5 +1,5 @@
 // LeaderboardIDs — single source of truth for the App Store Connect
-// leaderboard ID format (design.md §How.3.1 + §How.4.5).
+// leaderboard ID format (docs/v1/design.md §How.3.1 + §How.4.5).
 //
 // `.v1` suffix is mandatory: every bump of `GeneratorVersion` MUST open a
 // new leaderboard family so v1-generated and v2-generated puzzle times do

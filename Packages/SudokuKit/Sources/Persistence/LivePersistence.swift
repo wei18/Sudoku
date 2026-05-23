@@ -1,7 +1,7 @@
 // LivePersistence — public production facade composing the Live stores
 // behind the `PersistenceProtocol` seam.
 //
-// Per design.md §How.1 (DI composition root): the App target should not have
+// Per docs/v1/design.md §How.1 (DI composition root): the App target should not have
 // to know about the internal split between `SavedGameStore`,
 // `PersonalRecordStore`, `LivePrivateCKGateway`, `AccountMonitor`, or
 // `SubscriptionInstaller`. This facade is the single public entry that

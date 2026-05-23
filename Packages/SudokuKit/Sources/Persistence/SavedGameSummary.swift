@@ -1,7 +1,7 @@
 // SavedGameSummary — projection of a `SavedGame` CloudKit record used at
 // the protocol surface (e.g. `latestInProgress()`).
 //
-// Per design.md §How.2 (Private DB schema) and §How.5.4 (VM-facing types).
+// Per docs/v1/design.md §How.2 (Private DB schema) and §How.5.4 (VM-facing types).
 //
 // `generatorVersion` is stored as `Int` (mirroring the CloudKit field type
 // `Int(64)`). `SudokuEngine.GeneratorVersion` is a String enum (`.v1`); the

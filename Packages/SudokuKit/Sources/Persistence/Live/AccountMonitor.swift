@@ -1,4 +1,4 @@
-// AccountMonitor — implements design.md §How.6.5 Cases A/B/C.
+// AccountMonitor — implements docs/v1/design.md §How.6.5 Cases A/B/C.
 //
 // Listens (via injected providers) for the iCloud account state and the
 // current user record ID. Compares the hashed user record ID against the

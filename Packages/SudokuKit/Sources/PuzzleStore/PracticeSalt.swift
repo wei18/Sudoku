@@ -1,6 +1,6 @@
 // PracticeSalt — UInt64 entropy source for practice puzzle ids.
 //
-// Per design.md §How.4.1 末段: salt comes from injected non-persistent system
+// Per docs/v1/design.md §How.4.1 末段: salt comes from injected non-persistent system
 // entropy. The default closure pulls from `SystemRandomNumberGenerator` (which
 // uses arc4random on Apple platforms); tests can inject a deterministic
 // closure (e.g. an incrementing counter) for reproducibility.

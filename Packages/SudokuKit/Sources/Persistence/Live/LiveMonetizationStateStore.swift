@@ -1,5 +1,5 @@
 // LiveMonetizationStateStore — CloudKit Private implementation of
-// `MonetizationStateStore` (plan.md v2.3.1, design.md §How.3).
+// `MonetizationStateStore` (plan.md v2.3.1, docs/v1/design.md §How.3).
 //
 // Record schema (auto-created on first write — CloudKit Dashboard pre-decl
 // not required):
@@ -12,7 +12,7 @@
 //     dismissedDate        Date?   (omitted when nil)
 //     hasPurchasedRemoveAds Int    (0 / 1 — RecordValue lacks a Bool case)
 //     lastSeenWallClock    Date?   (omitted when nil — added v2-audit-polish
-//                                   per design.md §How.3.1; CloudKit adds the
+//                                   per docs/v1/design.md §How.3.1; CloudKit adds the
 //                                   field on first write of a non-nil value,
 //                                   old records parse missing field as nil)
 //

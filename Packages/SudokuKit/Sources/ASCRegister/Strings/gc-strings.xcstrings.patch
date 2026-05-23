@@ -11,8 +11,8 @@
 //      confirm en + zh-Hant coverage for all 27 gc.* keys.
 //
 // Locale coverage in this fragment:
-//   - en      → filled (source language, per design.md §How.3.1 / §How.3.2)
-//   - zh-Hant → filled (per design.md §How.3.1 table; achievements drafted
+//   - en      → filled (source language, per docs/v1/design.md §How.3.1 / §How.3.2)
+//   - zh-Hant → filled (per docs/v1/design.md §How.3.1 table; achievements drafted
 //               to match the §How.3.2 trigger semantics)
 //   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
 //     translation-agent flow (foundations.md §L10n).

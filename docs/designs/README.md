@@ -1,6 +1,6 @@
 # `docs/designs/` — v1 visual design artifacts
 
-Text-based design spec for the 8 Views defined in `docs/design.md §How.5.1`. No `.fig` / `.sketch` binaries — every artifact here is reviewable in plain markdown + reproducible in a SwiftUI Preview.
+Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`. No `.fig` / `.sketch` binaries — every artifact here is reviewable in plain markdown + reproducible in a SwiftUI Preview.
 
 ## Index
 
@@ -22,7 +22,7 @@ Text-based design spec for the 8 Views defined in `docs/design.md §How.5.1`. No
 
 For each View:
 
-1. **§a Identity** — what this View does and what async ops trigger it. Cross-reference `design.md §How.5.1` table.
+1. **§a Identity** — what this View does and what async ops trigger it. Cross-reference `docs/v1/design.md §How.5.1` table.
 2. **§b ASCII wireframe** — confirm the layout structure (which elements, what order) before writing SwiftUI.
 3. **§c SwiftUI preview skeleton** — copy into `docs/designs/code/<View>_Designs.swift` (or directly inline a `#Preview` in the production target). Stubs are **preview-only**: they invent placeholder ViewModels because the real protocols (`PuzzleStoreProtocol`, `PersistenceProtocol`, `GameCenterClient`) don't exist yet (per `plan.md`). When real protocols land, replace the stub VMs with the real ones.
 4. **§d Spec table** — drives implementation. Token names map to `design-system.md`. Specific values (44 pt min height, 16 pt padding, `.borderedProminent`, etc.) are non-negotiable unless flagged.
@@ -31,12 +31,12 @@ For each View:
 
 ## Cross-links
 
-- Architecture / state machines / View map → `docs/design.md §How.5`
+- Architecture / state machines / View map → `docs/v1/design.md §How.5`
 - Module / target boundaries → `docs/foundations.md §2`
 - Swift 6 / Sendable / `@MainActor` rules → `docs/foundations.md §1` + skill `swift6-concurrency`
-- Snapshot baseline (25 images; locked at plan.md §8.11 — see `docs/design.md §How.5.8`)
-- L10n hook policy → `docs/design.md §How.5.6` + skill `ai-translated-localization`
-- A11y baseline → `docs/design.md §How.5.7` + `design-system.md` (this folder)
+- Snapshot baseline (25 images; locked at plan.md §8.11 — see `docs/v1/design.md §How.5.8`)
+- L10n hook policy → `docs/v1/design.md §How.5.6` + skill `ai-translated-localization`
+- A11y baseline → `docs/v1/design.md §How.5.7` + `design-system.md` (this folder)
 
 ## Preview compilation note
 

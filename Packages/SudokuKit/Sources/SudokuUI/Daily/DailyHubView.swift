@@ -1,7 +1,7 @@
 // DailyHubView — 3 puzzle cards per day, checkmark on completion.
 //
 // Per docs/designs/03-daily-hub.md. Failure path `exhausted` surfaces as
-// an Alert per design.md §How.6.3.
+// an Alert per docs/v1/design.md §How.6.3.
 
 public import SwiftUI
 

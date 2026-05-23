@@ -2,7 +2,7 @@
 // payload into a TelemetryEvent.metricKitReport, then forwards through
 // the downstream Telemetry facade.
 //
-// Architectural shape (design.md §How.1 + foundations.md §6):
+// Architectural shape (docs/v1/design.md §How.1 + foundations.md §6):
 //
 //   MXMetricManager (system)
 //        │

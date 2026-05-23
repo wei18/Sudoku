@@ -1,6 +1,6 @@
 // PuzzleStore — product-layer wrapper over `SudokuEngine.PuzzleGenerator`.
 //
-// Responsibilities (design.md §How.5.1):
+// Responsibilities (docs/v1/design.md §How.5.1):
 //   - Derive deterministic seeds from (generatorVersion, dateUTC|salt, difficulty)
 //     per §How.4.1.
 //   - Assemble `PuzzleEnvelope` (Puzzle + PuzzleIdentity).

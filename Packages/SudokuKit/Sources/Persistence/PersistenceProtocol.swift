@@ -1,6 +1,6 @@
 // PersistenceProtocol — the VM-facing seam for CloudKit Private DB.
 //
-// Per design.md §How.5.4. Stays primitive-string for `mode` / `difficulty`
+// Per docs/v1/design.md §How.5.4. Stays primitive-string for `mode` / `difficulty`
 // to match the Telemetry seam (Phase 4 deviation): the Persistence target
 // must not pull SudokuEngine's `Difficulty` or any GameMode enum into its
 // public API, so callers convert `.rawValue` once at the call site.

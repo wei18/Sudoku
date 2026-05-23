@@ -1,5 +1,5 @@
 // SubmitGuards — the three Daily-only / first-time / same-UTC-day rules
-// gating GameCenter score submission (design.md §How.3.1 + §How.3.3 Sink
+// gating GameCenter score submission (docs/v1/design.md §How.3.1 + §How.3.3 Sink
 // pseudocode).
 //
 // Rules enforced:

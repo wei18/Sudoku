@@ -1,6 +1,6 @@
 // Config — single-source-of-truth for ASCRegister content.
 //
-// Mirrors design.md §How.3.1 (3 leaderboards) and §How.3.2 (8 achievements,
+// Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (8 achievements,
 // 500 total points; ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
 //   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
 //   - GameCenterClient/GameCenterSink.swift  (achievement prefix)

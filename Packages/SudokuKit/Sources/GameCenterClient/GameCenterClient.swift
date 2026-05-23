@@ -1,6 +1,6 @@
 // GameCenterClient — VM-facing protocol for Game Center integration.
 //
-// Per design.md §How.3.3. Surface intentionally hides GameKit types so
+// Per docs/v1/design.md §How.3.3. Surface intentionally hides GameKit types so
 // that only `Sources/GameCenterClient/Live/*.swift` may `import GameKit`
 // (foundations.md §2 framework-import discipline).
 //
@@ -9,7 +9,7 @@
 // existential `any GameCenterClient` can cross actor boundaries
 // (Phase 8 ViewModels, Phase 7.6 GameCenterSink).
 //
-// Protocol shape note vs design.md §How.3.3:
+// Protocol shape note vs docs/v1/design.md §How.3.3:
 // - `authenticate()` is `async throws` (returns `GameCenterAuthState`) rather
 //   than `async -> AuthState` — the throw lets `LiveGameCenterClient`
 //   surface real GameKit auth errors to callers that need them; the

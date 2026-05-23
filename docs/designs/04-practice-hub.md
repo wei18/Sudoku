@@ -169,6 +169,6 @@ A picker + a big CTA. We keep this screen deliberately empty because the user's 
 
 Rejected: (1) thumbnail preview of the puzzle board — wastes attention, doesn't help decide; (2) "estimated time" hint — §How.4.3 explicitly descopes difficulty calibration in v1, so we can't truthfully label "≈12 min"; (3) skip-the-hub auto-route from Home → Practice straight to a Board — removes user agency over difficulty.
 
-Note: this is the simplest View. Most of its complexity is hidden in `PracticeHubViewModel`'s generator-draw logic (salt → seed → puzzle, per `design.md §How.4`). UI does its job by being almost invisible.
+Note: this is the simplest View. Most of its complexity is hidden in `PracticeHubViewModel`'s generator-draw logic (salt → seed → puzzle, per `docs/v1/design.md §How.4`). UI does its job by being almost invisible.
 
 Sub-300 ms generation budget means we deliberately avoid a `ProgressView` spinner (Apple HIG: spinners signal long indefinite work). Shimmer at 100 ms threshold is the lighter affordance; below threshold we skip animation entirely to avoid flash.

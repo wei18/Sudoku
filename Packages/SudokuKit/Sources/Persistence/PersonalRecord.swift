@@ -1,6 +1,6 @@
 // PersonalRecord — per (mode × difficulty) personal best.
 //
-// Per design.md §How.2 (Private DB schema, max 6 records / player) +
+// Per docs/v1/design.md §How.2 (Private DB schema, max 6 records / player) +
 // §How.2 末段 («同 puzzleId 不重計分») — `completedPuzzleIds` provides the
 // dedup key for "the same puzzle does not double-count".
 //

@@ -1,4 +1,4 @@
-// Live composition — concrete impls for production. design.md §How.1.
+// Live composition — concrete impls for production. docs/v1/design.md §How.1.
 //
 // Wires:
 //   - LiveGameCenterClient(authDriver: GKAuthDriver())

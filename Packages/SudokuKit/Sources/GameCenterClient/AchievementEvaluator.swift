@@ -1,5 +1,5 @@
 // AchievementEvaluator — computes the 8 v1 achievements from Persistence
-// counts (design.md §How.3.2 + §How.3.3 Sink pseudocode).
+// counts (docs/v1/design.md §How.3.2 + §How.3.3 Sink pseudocode).
 //
 // Design rationale: achievements are re-derived from persisted state on
 // each completion rather than incrementally tracked in memory. This

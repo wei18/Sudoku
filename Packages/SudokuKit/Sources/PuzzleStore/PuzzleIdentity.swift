@@ -1,4 +1,4 @@
-// PuzzleIdentity — product-layer puzzle naming (design.md §How.4.3).
+// PuzzleIdentity — product-layer puzzle naming (docs/v1/design.md §How.4.3).
 //
 // `puzzleId` is the user-facing key used across Persistence (`SavedGame`),
 // GameCenter (leaderboard / achievement payloads) and Telemetry. It is

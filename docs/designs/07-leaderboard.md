@@ -42,7 +42,7 @@ Apple's GC dashboard ships with all the affordances that the retired
 post-solve screen — that is a different affordance (immediate rank
 feedback) and is **not** the full leaderboard. Its data source remains
 `GameCenterClient.fetchLeaderboardSlice(.globalAllTime, limit: 3)`
-(design.md §How.3.3 still defines this protocol method).
+(docs/v1/design.md §How.3.3 still defines this protocol method).
 
 The "View full leaderboard" button below the mini-slice is the
 deep-link into Apple's dashboard via the §b CompletionView trigger

@@ -9,7 +9,7 @@
 // it up at fetch time.
 
 internal enum IAPProductIDs {
-    /// Non-consumable "Remove Ads" entitlement. See design.md §How.IAP.
+    /// Non-consumable "Remove Ads" entitlement. See docs/v1/design.md §How.IAP.
     static let removeAds: String = "com.wei18.sudoku.iap.remove_ads"
 
     /// All product IDs that `LiveStoreKit2IAPClient` will fetch from the

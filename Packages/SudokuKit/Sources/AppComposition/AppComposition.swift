@@ -1,4 +1,4 @@
-// AppComposition — DI composition root (design.md §How.1).
+// AppComposition — DI composition root (docs/v1/design.md §How.1).
 //
 // Three factory methods produce a fully-wired `AppComposition` for the
 // three environments the App needs to run in:

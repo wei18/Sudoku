@@ -1,5 +1,5 @@
 // MonetizationStateStore — Persistence seam for AppMonetizationKit's `AdGate`
-// state (design.md §How.3, plan.md v2.3.1).
+// state (docs/v1/design.md §How.3, plan.md v2.3.1).
 //
 // The protocol is a type alias for `AdGateStateStore` from `MonetizationCore`:
 // AdGate already operates against `AdGateStateStore`, so re-exposing the same
