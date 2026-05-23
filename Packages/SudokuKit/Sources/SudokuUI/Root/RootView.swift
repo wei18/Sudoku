@@ -86,24 +86,42 @@ public struct RootView: View {
         // an `AppRoute`; Leaderboard is a side effect — it presents Apple's
         // native Game Center dashboard modally (issue #49, 2026-05-20) rather
         // than pushing onto the stack.
+        //
+        // 2026-05-23: switched away from value-based `NavigationLink(value:)`.
+        // The `.navigationDestination(for: AppRoute.self)` lives inside the
+        // detail pane's NavigationStack (see NavigationStackHost), which on
+        // macOS NavigationSplitView is a separate scope from the sidebar's
+        // List. SwiftUI's value-link lookup walks ancestors for a matching
+        // destination, and the cross-pane scope made the push fire
+        // inconsistently. Mirroring HomeView's pattern — direct
+        // `viewModel.path.append(...)` — keeps mutation inside the same
+        // scope as the destination registry, so the push is deterministic.
         List {
-            NavigationLink(value: AppRoute.daily) {
-                Label("Daily", systemImage: "calendar")
+            sidebarRow("Daily", systemImage: "calendar") {
+                viewModel.path.append(.daily)
             }
-            NavigationLink(value: AppRoute.practice) {
-                Label("Practice", systemImage: "dice")
+            sidebarRow("Practice", systemImage: "dice") {
+                viewModel.path.append(.practice)
             }
-            Button {
+            sidebarRow("Leaderboard", systemImage: "trophy.fill") {
                 GameCenterDashboard.present()
-            } label: {
-                Label("Leaderboard", systemImage: "trophy.fill")
             }
-            .buttonStyle(.plain)
-            NavigationLink(value: AppRoute.settings) {
-                Label("Settings", systemImage: "gear")
+            sidebarRow("Settings", systemImage: "gear") {
+                viewModel.path.append(.settings)
             }
         }
         .navigationTitle("Sudoku")
+    }
+
+    private func sidebarRow(
+        _ title: LocalizedStringKey,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+        }
+        .buttonStyle(.plain)
     }
 }
 
