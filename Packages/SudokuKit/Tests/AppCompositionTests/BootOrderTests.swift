@@ -12,6 +12,8 @@ import os
 
 import AdsAdMob
 import MonetizationCore
+import Telemetry
+@testable import AppComposition
 
 @Suite("MonetizationBootCoordinator — UMP → ATT → AdMob ordering")
 struct BootOrderTests {
@@ -187,3 +189,62 @@ struct BootOrderTests {
         #expect(logged[2].step == .adMob && logged[2].succeeded == true)
     }
 }
+
+// MARK: - v2.3.7 platform guard: bootMonetization() early-returns on non-iOS
+//
+// On macOS the AdMob + UMP xcframeworks ship no slice, so calling through to
+// the live coordinator would surface `.unsupported` on every cold launch and
+// the failure path would fan 2 spurious `Telemetry.errorOccurred` breadcrumbs
+// per launch. The fix is a `#if !os(iOS)` early-return in
+// `AppComposition.bootMonetization()`. This suite verifies the observable
+// contract: zero telemetry events emitted on macOS.
+
+#if !os(iOS)
+@MainActor
+@Suite("AppComposition.bootMonetization — non-iOS early-return")
+struct BootMonetizationPlatformGuardTests {
+
+    /// Records every event for assertion. Sendable via the same unfair-lock
+    /// pattern used by `Recorder` above.
+    private final class RecordingSink: TelemetrySink, @unchecked Sendable {
+        private let state = OSAllocatedUnfairLock<[TelemetryEvent]>(initialState: [])
+
+        func receive(_ event: TelemetryEvent) async {
+            state.withLock { $0.append(event) }
+        }
+
+        var events: [TelemetryEvent] {
+            state.withLock { $0 }
+        }
+    }
+
+    @Test("bootMonetization early-returns on non-iOS (no telemetry events)")
+    func bootMonetization_earlyReturns_onNonIOS() async {
+        let sink = RecordingSink()
+        let base = AppComposition.tests()
+        let composition = AppComposition(
+            rootViewModel: base.rootViewModel,
+            routeFactory: base.routeFactory,
+            puzzleProvider: base.puzzleProvider,
+            persistence: base.persistence,
+            gameCenter: base.gameCenter,
+            telemetry: Telemetry(sinks: [sink]),
+            adProvider: base.adProvider,
+            iapClient: base.iapClient,
+            adGate: base.adGate,
+            monetizationStateStore: base.monetizationStateStore,
+            monetizationController: base.monetizationController,
+            toastController: base.toastController
+        )
+
+        await composition.bootMonetization()
+
+        // Drain any pending Task spawned by the (skipped) coordinator log
+        // closure. The fix returns synchronously before spawning anything,
+        // so this should still settle to zero.
+        await Task.yield()
+
+        #expect(sink.events.isEmpty)
+    }
+}
+#endif

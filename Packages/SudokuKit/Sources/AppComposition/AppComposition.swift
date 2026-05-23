@@ -91,6 +91,16 @@ public struct AppComposition {
     /// Callable from `.task` on the root scene — the boot runs concurrently
     /// with first-frame rendering, never blocks UI.
     public func bootMonetization() async {
+        #if !os(iOS)
+        // AdMob + UMP are iOS-only (Google's xcframeworks ship iOS slices
+        // only — see PR #101 for the conditional dep wiring). On macOS /
+        // other platforms, `NoopAdProvider` is wired in Live.swift and the
+        // UMP / ATT bridges always return `.unsupported`, which the
+        // coordinator's failure path would otherwise misclassify as a
+        // runtime fault and fan into `Telemetry.errorOccurred` (2 spurious
+        // breadcrumbs per cold launch). Nothing to initialize here.
+        return
+        #else
         let bridges = MonetizationBootBridges.live(adProvider: adProvider)
         let telemetryHandle = telemetry
         let coordinator = MonetizationBootCoordinator(
@@ -118,5 +128,6 @@ public struct AppComposition {
             }
         )
         await coordinator.boot()
+        #endif
     }
 }
