@@ -58,7 +58,8 @@ extension AppComposition {
             adProvider: adProvider,
             iapClient: iapClient,
             adGate: adGate,
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            toastController: toastController
         )
 
         return AppComposition(

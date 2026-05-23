@@ -4,9 +4,13 @@
 //
 // v2.3.6: a new "Remove Ads" Section hosts two rows (Remove Ads CTA hidden
 // once purchased; Restore Purchases always visible). Both rows flip to a
-// `ProgressView` while the underlying async call is in flight; success /
-// failure surfaces inline at the bottom of the Form via a Label row (no
-// toast infra exists yet — see impl-notes §未決).
+// `ProgressView` while the underlying async call is in flight.
+//
+// v2.4.6: purchase/restore success/failure and clear-cache confirmation
+// surface via `ToastController` (bottom-center capsule, mounted on
+// `RootView`) instead of orphan `Label` rows in the Form. `latestMessage`
+// on the controller stays as the VoiceOver source of truth; the visual
+// surface is the toast overlay.
 
 public import SwiftUI
 
@@ -14,7 +18,6 @@ public struct SettingsView: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
     @State private var showClearCacheConfirmation = false
-    @Environment(\.theme) private var theme
 
     public init(
         viewModel: SettingsViewModel,
@@ -33,13 +36,6 @@ public struct SettingsView: View {
                     }
                     RestorePurchasesRow(controller: controller)
                 }
-
-                if let message = monetizationMessage(for: controller) {
-                    Section {
-                        Label(message.text, systemImage: message.systemImage)
-                            .foregroundStyle(message.tint(theme: theme))
-                    }
-                }
             }
 
             Section("About") {
@@ -50,13 +46,6 @@ public struct SettingsView: View {
             Section("Storage") {
                 Button("Clear cache", role: .destructive) {
                     showClearCacheConfirmation = true
-                }
-            }
-
-            if let message = viewModel.clearCacheConfirmation {
-                Section {
-                    Label(message, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(theme.status.success.resolved)
                 }
             }
         }
@@ -84,28 +73,6 @@ public struct SettingsView: View {
     private var generatorLabel: String {
         // `GeneratorVersion.v1.rawValue` == `"v1"` — already prefixed.
         viewModel.generatorVersion.rawValue
-    }
-
-    private struct MonetizationLabel {
-        let text: String
-        let systemImage: String
-        let isSuccess: Bool
-
-        func tint(theme: any Theme) -> Color {
-            isSuccess ? theme.status.success.resolved : theme.status.error.resolved
-        }
-    }
-
-    private func monetizationMessage(for controller: MonetizationStateController) -> MonetizationLabel? {
-        switch controller.latestMessage {
-        case .none: return nil
-        case .adsRemoved:
-            return MonetizationLabel(text: "Ads removed", systemImage: "checkmark.circle.fill", isSuccess: true)
-        case .restored:
-            return MonetizationLabel(text: "Restored", systemImage: "arrow.clockwise.circle.fill", isSuccess: true)
-        case .failure(let reason):
-            return MonetizationLabel(text: reason, systemImage: "exclamationmark.triangle.fill", isSuccess: false)
-        }
     }
 }
 
