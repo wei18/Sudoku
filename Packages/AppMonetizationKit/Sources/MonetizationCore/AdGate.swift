@@ -77,10 +77,25 @@ public actor AdGate {
     /// authoritative; tests inject `now` instead.
     internal static let clockTamperTolerance: TimeInterval = 86_400
 
+    /// Minimum interval between `lastSeenWallClock` persisted advances on
+    /// the read path. `shouldShowBanner` is called every Home appear; without
+    /// a throttle each call writes through to CloudKit (design.md §How.3.1
+    /// trade-off — "always-consistent baseline" vs "extra CloudKit save per
+    /// Home appear"). 6h is short enough that the tamper-guard baseline stays
+    /// fresh (well under the 24h tolerance window) while collapsing typical
+    /// session traffic into ≤4 writes/day. The in-memory cache still updates
+    /// on every call so anti-tamper checks within a session remain exact.
+    internal static let wallClockAdvanceMinInterval: TimeInterval = 6 * 3_600
+
     private let store: any AdGateStateStore
     private let calendar: Calendar
     private let onPersistenceError: (@Sendable (any Error) -> Void)?
     private var cachedState: AdGateState?
+    /// Last `lastSeenWallClock` value we actually persisted via `saveState`.
+    /// Separate from `cachedState.lastSeenWallClock` because the cache is
+    /// advanced on every forward step (for in-session tamper checks), while
+    /// persistence is throttled to ≤ once per `wallClockAdvanceMinInterval`.
+    private var lastPersistedWallClock: Date?
 
     /// - Parameters:
     ///   - store: Persistence seam (CloudKit-backed in production, fake in
@@ -167,14 +182,34 @@ public actor AdGate {
         return loaded
     }
 
-    /// Bump `lastSeenWallClock` monotonically if `now` is later than the
-    /// stored high-water mark. No-op (and no persistence write) otherwise —
-    /// `shouldShowBanner` is on the read path and must stay cheap.
+    /// Bump `lastSeenWallClock` monotonically. The in-memory cache is updated
+    /// on every forward step so within-session tamper checks stay exact;
+    /// persistence (`mutate → saveState`) only runs when the previous
+    /// persisted advance is at least `wallClockAdvanceMinInterval` (6h) old.
+    /// `shouldShowBanner` is on the read path and must stay cheap — without
+    /// the throttle each Home appear would write through to CloudKit.
     private func advanceWallClock(to now: Date) async {
-        let current = cachedState?.lastSeenWallClock ?? .distantPast
-        guard now > current else { return }
-        await mutate { state in
+        let cachedHighWater = cachedState?.lastSeenWallClock ?? .distantPast
+        guard now > cachedHighWater else { return }
+        // Throttle persistence: compare against the last value we actually
+        // wrote through, NOT the cached high-water mark (which advances on
+        // every forward call).
+        let lastPersisted = lastPersistedWallClock
+            ?? cachedState?.lastSeenWallClock  // first call after load
+            ?? .distantPast
+        let shouldPersist = now.timeIntervalSince(lastPersisted) >= Self.wallClockAdvanceMinInterval
+        if shouldPersist {
+            await mutate { state in
+                state.lastSeenWallClock = max(state.lastSeenWallClock ?? .distantPast, now)
+            }
+            lastPersistedWallClock = now
+        } else if var state = cachedState {
+            // Cache-only update: keep the high-water mark current for the
+            // session without burning a CloudKit save. `cachedState` is
+            // guaranteed non-nil here because `shouldShowBanner` populates
+            // it via `currentState()` before calling `advanceWallClock`.
             state.lastSeenWallClock = max(state.lastSeenWallClock ?? .distantPast, now)
+            cachedState = state
         }
     }
 
