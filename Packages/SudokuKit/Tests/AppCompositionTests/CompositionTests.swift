@@ -36,7 +36,15 @@ struct CompositionTests {
     func liveCompositionExposesMonetizationDeps() async {
         let composition = AppComposition.live()
         // v2.3.2: all three monetization stored properties resolve to Live impls.
+        // On non-iOS platforms (macOS) AdMob's xcframework has no platform
+        // slice, so the live composition wires `NoopAdProvider` instead of
+        // `LiveAdMobAdProvider`. IAP via StoreKit 2 is cross-platform and
+        // keeps its live wiring on every platform.
+        #if os(iOS)
         #expect(String(describing: type(of: composition.adProvider)).contains("LiveAdMobAdProvider"))
+        #else
+        #expect(String(describing: type(of: composition.adProvider)).contains("NoopAdProvider"))
+        #endif
         #expect(String(describing: type(of: composition.iapClient)).contains("LiveStoreKit2IAPClient"))
         // adGate is the same concrete type for both live + preview (it is
         // injection-driven via its store), so type identity here is just
