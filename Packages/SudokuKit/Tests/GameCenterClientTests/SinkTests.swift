@@ -3,6 +3,7 @@ import Testing
 @testable import GameCenterClient
 import Persistence
 import GameState
+import SudokuEngine
 import Telemetry
 import SudokuKitTesting
 
@@ -134,7 +135,7 @@ private actor StubPersistence: PersistenceProtocol {
     private var dailyIds: [String: Set<String>] = [:]
 
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
-        let key = AchievementEvaluator.utcDayString(from: date)
+        let key = UTCDay.string(from: date)
         return dailyIds[key] ?? []
     }
 

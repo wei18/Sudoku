@@ -16,7 +16,7 @@ public import GameState
 public import SudokuEngine
 public import Telemetry
 
-public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
+public actor LivePersistence: PersistenceProtocol {
 
     public typealias PuzzleLoader = @Sendable (String) async throws -> Puzzle
 
@@ -28,7 +28,6 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     // construction lets `AppComposition.live()` be safely called from unit
     // tests that do not own those entitlements — IO calls would fail later,
     // but the wiring is exercised.
-    private let lock = NSLock()
     private var _gateway: LivePrivateCKGateway?
     private var _savedGameStore: SavedGameStore?
     private var _personalRecordStore: PersonalRecordStore?
@@ -42,8 +41,6 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     }
 
     private func gateway() -> LivePrivateCKGateway {
-        lock.lock()
-        defer { lock.unlock() }
         if let existing = _gateway { return existing }
         let gateway = LivePrivateCKGateway()
         _gateway = gateway
@@ -51,16 +48,9 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     }
 
     private func savedGameStore() -> SavedGameStore {
-        lock.lock()
-        defer { lock.unlock() }
         if let existing = _savedGameStore { return existing }
-        let gateway = _gateway ?? {
-            let gateway = LivePrivateCKGateway()
-            _gateway = gateway
-            return gateway
-        }()
         let store = SavedGameStore(
-            gateway: gateway,
+            gateway: gateway(),
             telemetry: telemetry,
             puzzleLoader: puzzleLoader
         )
@@ -69,15 +59,8 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     }
 
     private func personalRecordStore() -> PersonalRecordStore {
-        lock.lock()
-        defer { lock.unlock() }
         if let existing = _personalRecordStore { return existing }
-        let gateway = _gateway ?? {
-            let gateway = LivePrivateCKGateway()
-            _gateway = gateway
-            return gateway
-        }()
-        let store = PersonalRecordStore(gateway: gateway)
+        let store = PersonalRecordStore(gateway: gateway())
         _personalRecordStore = store
         return store
     }
@@ -151,23 +134,19 @@ public final class LivePersistence: PersistenceProtocol, @unchecked Sendable {
     /// underlying `PrivateCKGateway`. AppComposition.live calls this to wire
     /// AdGate without having to know about the gateway type (which stays
     /// internal to this module).
-    public func monetizationStateStore() -> LiveMonetizationStateStore {
-        // Defer gateway construction until the first IO call so callers
-        // (AppComposition.live) can build the wiring graph without booting
-        // CloudKit — matches the same lazy contract used by saved-game and
-        // personal-record store accessors above.
+    ///
+    /// `nonisolated` so `AppComposition.live()` stays sync. Returns a fresh
+    /// `LiveMonetizationStateStore` whose own lazy provider does the
+    /// CloudKit hop on first IO — symmetric to other store factories above.
+    public nonisolated func monetizationStateStore() -> LiveMonetizationStateStore {
         LiveMonetizationStateStore(
-            gatewayProvider: { [weak self] in
-                guard let self else {
-                    // The facade outlives every store it vends in normal use
-                    // (it is held by AppComposition for the App's lifetime),
-                    // so this branch is defensive. Synthesise a fresh gateway
-                    // rather than crashing — IO on it will fail downstream
-                    // with the same `containerIdentifier` trap, surfacing as
-                    // a normal CloudKit error path.
-                    return LivePrivateCKGateway()
-                }
-                return self.gateway()
+            gatewayProvider: {
+                // Fresh gateway per store — observationally identical to
+                // routing through actor `self.gateway()` (lazy CKContainer
+                // construction is the only state to share, and CK's
+                // identity-on-container guarantees idempotent zone /
+                // subscription install).
+                LivePrivateCKGateway()
             }
         )
     }

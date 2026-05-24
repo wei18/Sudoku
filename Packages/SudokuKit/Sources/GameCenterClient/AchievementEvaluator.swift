@@ -20,6 +20,7 @@
 
 public import Foundation
 public import Persistence
+internal import SudokuEngine
 
 public actor AchievementEvaluator: Sendable {
 
@@ -77,7 +78,7 @@ public actor AchievementEvaluator: Sendable {
         ))
 
         // 8. daily.sweep — all 3 difficulties of today's daily.
-        let todayKey = Self.utcDayString(from: today)
+        let todayKey = UTCDay.string(from: today)
         let todaysIds = try await persistence.fetchCompletedDailyIds(for: today)
         let sweepDone = todaysIds.contains("\(todayKey)-easy")
             && todaysIds.contains("\(todayKey)-medium")
@@ -132,17 +133,6 @@ public actor AchievementEvaluator: Sendable {
         guard target > 0 else { return 0 }
         let raw = Double(progress) / Double(target) * 100.0
         return min(100.0, max(0.0, raw))
-    }
-
-    static func utcDayString(from date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        // swiftlint:disable:next force_unwrapping
-        calendar.timeZone = TimeZone(identifier: "UTC")!
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        let year = components.year ?? 0
-        let month = components.month ?? 0
-        let day = components.day ?? 0
-        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     static func utcDay(offsetFrom anchor: Date, byDays days: Int) -> Date? {

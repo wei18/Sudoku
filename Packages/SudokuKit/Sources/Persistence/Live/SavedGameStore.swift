@@ -137,7 +137,7 @@ internal actor SavedGameStore: Sendable {
     }
 
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
-        let prefix = Self.dayPrefix(for: date)
+        let prefix = UTCDay.string(from: date)
         let payloads = try await gateway.query(.dailyCompletedOn(dayPrefix: prefix))
         var ids: Set<String> = []
         for payload in payloads {
@@ -183,17 +183,6 @@ internal actor SavedGameStore: Sendable {
 
     static func recordName(for puzzleId: String, mode: String) -> String {
         "\(mode)-\(puzzleId)"
-    }
-
-    static func dayPrefix(for date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        guard let utc = TimeZone(identifier: "UTC") else { return "" }
-        calendar.timeZone = utc
-        let comps = calendar.dateComponents([.year, .month, .day], from: date)
-        let year = comps.year ?? 0
-        let month = comps.month ?? 0
-        let day = comps.day ?? 0
-        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     private static func reason(for error: PersistenceError) -> String {

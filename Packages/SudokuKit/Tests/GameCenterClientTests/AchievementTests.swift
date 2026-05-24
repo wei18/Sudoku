@@ -3,6 +3,7 @@ import Testing
 @testable import GameCenterClient
 import Persistence
 import GameState
+import SudokuEngine
 
 @Suite("GameCenterClient — achievement evaluator")
 struct AchievementEvaluatorTests {
@@ -129,7 +130,7 @@ private actor StubPersistence: PersistenceProtocol {
     // MARK: PersistenceProtocol — only the methods used by AchievementEvaluator
 
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
-        let key = AchievementEvaluator.utcDayString(from: date)
+        let key = UTCDay.string(from: date)
         return dailyIds[key] ?? []
     }
 

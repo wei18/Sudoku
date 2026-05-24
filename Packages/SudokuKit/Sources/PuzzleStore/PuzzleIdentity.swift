@@ -25,7 +25,7 @@ public struct PuzzleIdentity: Sendable, Equatable, Hashable, Codable {
 
     /// Daily puzzle: id = "YYYY-MM-DD-{difficulty}" using the UTC date floor.
     public static func daily(date: Date, difficulty: Difficulty) -> PuzzleIdentity {
-        let day = utcDayString(from: date)
+        let day = UTCDay.string(from: date)
         return PuzzleIdentity(
             puzzleId: "\(day)-\(difficulty.rawValue)",
             kind: .daily,
@@ -46,19 +46,6 @@ public struct PuzzleIdentity: Sendable, Equatable, Hashable, Codable {
 }
 
 // MARK: - Internal helpers
-
-/// Format the UTC date floor as "YYYY-MM-DD". Uses a fixed Gregorian calendar
-/// in UTC so the result is independent of the host TZ / locale.
-internal func utcDayString(from date: Date) -> String {
-    var calendar = Calendar(identifier: .gregorian)
-    // swiftlint:disable:next force_unwrapping
-    calendar.timeZone = TimeZone(identifier: "UTC")!
-    let components = calendar.dateComponents([.year, .month, .day], from: date)
-    let year = components.year ?? 0
-    let month = components.month ?? 0
-    let day = components.day ?? 0
-    return String(format: "%04d-%02d-%02d", year, month, day)
-}
 
 /// Crockford base32 encoder for `UInt64`. Output is the minimal representation
 /// of the integer in big-endian base32; salt=0 → "0".

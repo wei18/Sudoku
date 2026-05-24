@@ -52,7 +52,7 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     // MARK: - PuzzleProviderProtocol
 
     public func fetchDailyTrio(date: Date) async throws -> [PuzzleEnvelope] {
-        let key = DailyCacheKey(day: utcDayString(from: date), generatorVersion: generatorVersion)
+        let key = DailyCacheKey(day: UTCDay.string(from: date), generatorVersion: generatorVersion)
         if let cached = dailyTrioCache[key] {
             return cached
         }
@@ -122,7 +122,7 @@ public actor PuzzleStore: PuzzleProviderProtocol {
     /// Daily seed: `stableHash(generatorVersion, utcDayString, difficulty)`.
     private func dailySeed(date: Date, difficulty: Difficulty) -> UInt64 {
         Self.dailySeed(
-            day: utcDayString(from: date),
+            day: UTCDay.string(from: date),
             difficulty: difficulty,
             generatorVersion: generatorVersion
         )
