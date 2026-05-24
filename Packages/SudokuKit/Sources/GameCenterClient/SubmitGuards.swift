@@ -20,6 +20,7 @@
 //    from the daily puzzleId and compares to the current UTC day.
 
 public import Foundation
+internal import SudokuEngine
 
 public actor SubmitGuards: Sendable {
 
@@ -43,7 +44,7 @@ public actor SubmitGuards: Sendable {
         guard let puzzleDay = Self.extractDailyDay(from: puzzleId) else {
             return false
         }
-        let today = Self.utcDayString(from: clock())
+        let today = UTCDay.string(from: clock())
         return puzzleDay == today
     }
 
@@ -83,17 +84,4 @@ public actor SubmitGuards: Sendable {
         return day
     }
 
-    /// Format a Date as `YYYY-MM-DD` in UTC. Mirrors PuzzleStore's
-    /// `utcDayString(from:)` — duplicated here to avoid the cross-target
-    /// dependency.
-    static func utcDayString(from date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        // swiftlint:disable:next force_unwrapping
-        calendar.timeZone = TimeZone(identifier: "UTC")!
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        let year = components.year ?? 0
-        let month = components.month ?? 0
-        let day = components.day ?? 0
-        return String(format: "%04d-%02d-%02d", year, month, day)
-    }
 }
