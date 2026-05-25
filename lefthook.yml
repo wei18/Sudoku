@@ -2,7 +2,11 @@
 # All tools resolved through mise to match CI versions exactly.
 
 pre-commit:
-  parallel: true
+  # Serialized per RCA H4 — concurrent `mise exec swiftlint` + `mise exec
+  # gitleaks` invocations deadlock on mise's process-level cache lock,
+  # observed empirically across multiple sessions. See
+  # meetings/2026-05-25_swift-test-hang-rca.md §H4 + Prevention bullet 2.
+  parallel: false
   commands:
     gitleaks:
       run: mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact --verbose
