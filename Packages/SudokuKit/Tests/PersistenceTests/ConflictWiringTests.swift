@@ -80,6 +80,97 @@ struct ConflictWiringTests {
         }
     }
 
+    // MARK: - Merge correctness (issue #64 N-3)
+
+    /// Issue #64 Code Reviewer follow-up: existing tests assert retry count
+    /// but not that the RESUBMITTED payload actually contains
+    /// `ConflictResolver.resolve(local:server:)` output. This test seeds a
+    /// server payload that is "newer + completed + larger elapsed" so every
+    /// resolver rule fires in the server's favour, then verifies the
+    /// gateway's persisted payload (i.e. the resubmitted record) matches
+    /// the resolver's expected output per §How.6.7.
+    @Test func savedGameMergePicksResolverOutputOnResubmit() async throws {
+        let gateway = FakePrivateCKGateway()
+        let telemetry = Telemetry(sinks: [])
+        let puzzle = PuzzleFixtures.latinSquarePuzzle()
+        // Local clock fixed in the past so the seeded server payload's
+        // `lastModifiedAt` (future) is unambiguously newer per LWW.
+        let localClock = Date(timeIntervalSince1970: 1_000)
+        let serverModifiedAt = Date(timeIntervalSince1970: 2_000)
+        let store = SavedGameStore(
+            gateway: gateway,
+            telemetry: telemetry,
+            puzzleLoader: { _ in puzzle },
+            clock: { localClock }
+        )
+        let session = GameSession(puzzle: puzzle)
+        try await session.start()
+        try await session.placeDigit(row: 0, col: 0, digit: 1)
+        let snapshot = await session.snapshot()
+
+        let recordName = SavedGameStore.recordName(for: "p1", mode: .practice)
+
+        // Seed the server-side payload with values that should WIN every
+        // resolver rule: newer lastModifiedAt, "completed" status, larger
+        // elapsedSeconds, and a distinctive board/notes/undo group.
+        let serverBoard = "SERVER_BOARD_GROUP_MARKER"
+        let serverNotes = Data([0xAA, 0xBB, 0xCC])
+        let serverUndo = Data([0x11, 0x22, 0x33])
+        let seeded = RecordPayload(
+            recordType: PrivateCKConstants.savedGameRecordType,
+            recordName: recordName,
+            fields: [
+                SavedGameStore.Field.puzzleId: .string("p1"),
+                SavedGameStore.Field.mode: .string(Mode.practice.rawValue),
+                SavedGameStore.Field.difficulty: .string(Difficulty.easy.rawValue),
+                SavedGameStore.Field.boardState: .string(serverBoard),
+                SavedGameStore.Field.notesState: .data(serverNotes),
+                SavedGameStore.Field.undoStack: .data(serverUndo),
+                SavedGameStore.Field.startedAt: .date(localClock),
+                SavedGameStore.Field.lastModifiedAt: .date(serverModifiedAt),
+                SavedGameStore.Field.elapsedSeconds: .int(999),
+                SavedGameStore.Field.status: .string("completed"),
+                SavedGameStore.Field.generatorVersion: .int(1),
+                SavedGameStore.Field.schemaVersion: .int(SavedGameStore.currentSchemaVersion),
+            ]
+        )
+        await gateway.seed(seeded)
+        // Script exactly 1 conflict so the retry loop runs the merge path
+        // once and the 2nd attempt succeeds with the resolved payload.
+        await gateway.setConflictOnSaveTimes(1, recordName: recordName)
+
+        try await store.save(
+            snapshot,
+            puzzleId: "p1",
+            mode: .practice,
+            difficulty: .easy
+        )
+
+        let persisted = try #require(try await gateway.fetch(recordName: recordName))
+
+        // boardState / notesState / undoStack — server's group must win
+        // (LWW: server.lastModifiedAt > local clock).
+        #expect(persisted.fields[SavedGameStore.Field.boardState] == .string(serverBoard))
+        #expect(persisted.fields[SavedGameStore.Field.notesState] == .data(serverNotes))
+        #expect(persisted.fields[SavedGameStore.Field.undoStack] == .data(serverUndo))
+        // elapsedSeconds — max(local=0, server=999) = 999.
+        #expect(persisted.fields[SavedGameStore.Field.elapsedSeconds] == .int(999))
+        // status — "completed" always wins over the local snapshot's
+        // "inProgress" regardless of timestamps.
+        #expect(persisted.fields[SavedGameStore.Field.status] == .string("completed"))
+        // NOTE: `lastModifiedAt` is intentionally NOT asserted here. The
+        // resolver picks `max(local, server)` (= server's serverModifiedAt
+        // for this fixture), but the retry loop in SavedGameStore.save
+        // re-stamps `lastModifiedAt = clockRef()` at the top of every
+        // attempt — including the post-merge resubmit. The persisted value
+        // is therefore the local clock at the moment of the successful
+        // resubmit attempt, not the resolver's max. This is by design:
+        // each retry must advance the local-side LWW position so a future
+        // conflict's tie-break favours the resolved (locally-canonical)
+        // payload over any stale server copy. See `SavedGameStore.swift`
+        // line ~185 comment.
+    }
+
     // MARK: - PersonalRecordStore
 
     @Test func personalRecordUpsertRetriesAfterConflict() async throws {
