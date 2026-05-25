@@ -41,6 +41,9 @@ public struct LiveRouteFactory: RouteFactory {
     private let persistence: any PersistenceProtocol
     private let gameCenter: any GameCenterClient
     private let telemetry: Telemetry
+    // M10 (issue #67): unified error funnel passed into VMs / loader views
+    // that previously `try?`-swallowed CloudKit / Persistence errors.
+    private let errorReporter: any ErrorReporter
     // v2 monetization deps. Currently consumed by destination views landing
     // in v2.3.4-6 (HomeView banner, BoardView banner, Settings IAP rows).
     // Stored here now so RootView's signature does not have to grow.
@@ -60,6 +63,7 @@ public struct LiveRouteFactory: RouteFactory {
         persistence: any PersistenceProtocol,
         gameCenter: any GameCenterClient,
         telemetry: Telemetry,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: any AdProvider,
         iapClient: any IAPClient,
         adGate: AdGate,
@@ -70,6 +74,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.telemetry = telemetry
+        self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.iapClient = iapClient
         self.adGate = adGate
@@ -90,7 +95,8 @@ public struct LiveRouteFactory: RouteFactory {
                 DailyHubView(
                     viewModel: DailyHubViewModel(
                         provider: puzzleProvider,
-                        persistence: persistence
+                        persistence: persistence,
+                        errorReporter: errorReporter
                     )
                 )
             )
@@ -106,6 +112,7 @@ public struct LiveRouteFactory: RouteFactory {
                     puzzleId: puzzleId,
                     puzzleProvider: puzzleProvider,
                     persistence: persistence,
+                    errorReporter: errorReporter,
                     adProvider: adProvider,
                     adGate: adGate
                 )
@@ -126,6 +133,7 @@ public struct LiveRouteFactory: RouteFactory {
                 SettingsView(
                     viewModel: SettingsViewModel(
                         persistence: persistence,
+                        errorReporter: errorReporter,
                         toastController: toastController
                     ),
                     monetizationController: monetizationController

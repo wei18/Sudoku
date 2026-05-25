@@ -54,6 +54,9 @@ public final class PracticeHubViewModel {
     public func drawPuzzle() async {
         loadingState = .drawingQuiet
         let shimmerTask = Task { @MainActor [weak self, shimmerDelayNanos] in
+            // try?: Task.sleep cancellation is normal control flow (the
+            // outer drawPuzzle's defer cancels this shimmer task once the
+            // fetch resolves). M10 (issue #67) — not an error path.
             try? await Task.sleep(nanoseconds: shimmerDelayNanos)
             guard !Task.isCancelled else { return }
             self?.promoteToShimmer()

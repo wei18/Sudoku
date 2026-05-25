@@ -35,6 +35,12 @@ public struct AppComposition {
     public let persistence: any PersistenceProtocol
     public let gameCenter: any GameCenterClient
     public let telemetry: Telemetry
+    /// M10 (issue #67): unified error funnel. Live wiring constructs a
+    /// `LiveErrorReporter` over the shared `Telemetry` actor; `.preview()`
+    /// and `.tests()` wire `NoopErrorReporter`. VMs that previously
+    /// `try?`-swallowed CloudKit / Persistence errors now route through
+    /// this reporter so failures surface in OSLog + telemetry breadcrumbs.
+    public let errorReporter: any ErrorReporter
     // v2 monetization deps. v2.3.4-6 read these directly from individual Views
     // (banner slot, IAP CTAs, restore button); v2.3.7 reads them to drive the
     // UMP → ATT → AdMob boot sequence.
@@ -60,6 +66,7 @@ public struct AppComposition {
         persistence: any PersistenceProtocol,
         gameCenter: any GameCenterClient,
         telemetry: Telemetry,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: any AdProvider,
         iapClient: any IAPClient,
         adGate: AdGate,
@@ -73,6 +80,7 @@ public struct AppComposition {
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.telemetry = telemetry
+        self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.iapClient = iapClient
         self.adGate = adGate

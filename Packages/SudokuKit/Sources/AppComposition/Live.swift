@@ -31,6 +31,14 @@ extension AppComposition {
         ])
         LiveMetricKitRetainer.install(downstream: telemetry)
 
+        // M10 (issue #67): unified error funnel. All VM / loader catch sites
+        // that previously `try?`-swallowed CloudKit / Persistence errors now
+        // route through this reporter, which fans into the same Telemetry
+        // facade as every other event (so OSLog + future tracking sinks both
+        // see the failure) and retains a bounded ring buffer of the most
+        // recent 20 reports for future diagnostic surfaces.
+        let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
+
         // PuzzleStore (default generator, v1 version).
         let puzzleStore = PuzzleStore()
 
@@ -116,7 +124,8 @@ extension AppComposition {
 
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
-            persistence: persistence
+            persistence: persistence,
+            errorReporter: errorReporter
         )
 
         let routeFactory = LiveRouteFactory(
@@ -124,6 +133,7 @@ extension AppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             telemetry: telemetry,
+            errorReporter: errorReporter,
             adProvider: adProvider,
             iapClient: iapClient,
             adGate: adGate,
@@ -138,6 +148,7 @@ extension AppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             telemetry: telemetry,
+            errorReporter: errorReporter,
             adProvider: adProvider,
             iapClient: iapClient,
             adGate: adGate,

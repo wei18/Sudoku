@@ -67,6 +67,7 @@ public actor FakePuzzleProvider: PuzzleProviderProtocol {
 
     private func maybeDelay() async {
         if artificialDelayNanos > 0 {
+            // try?: test-fixture Task.sleep cancellation — not an error path.
             try? await Task.sleep(nanoseconds: artificialDelayNanos)
         }
     }

@@ -13,6 +13,7 @@
 public import Foundation
 public import Persistence
 public import SudokuEngine
+public import Telemetry
 
 @MainActor
 @Observable
@@ -33,29 +34,57 @@ public final class SettingsViewModel {
     @ObservationIgnored
     private let persistence: any PersistenceProtocol
     @ObservationIgnored
+    private let errorReporter: any ErrorReporter
+    @ObservationIgnored
     private let toastController: ToastController?
 
     public init(
         generatorVersion: GeneratorVersion = .v1,
         appVersion: String = "1.0.0",
         persistence: any PersistenceProtocol,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         toastController: ToastController? = nil
     ) {
         self.generatorVersion = generatorVersion
         self.appVersion = appVersion
         self.persistence = persistence
+        self.errorReporter = errorReporter
         self.toastController = toastController
     }
 
     public func bootstrap() async {
-        self.resumeCandidate = try? await persistence.latestInProgress()
+        // M10 (issue #67): nil candidate is still legal (no in-progress
+        // game). Catch + report the *failure* path so a CloudKit fetch
+        // throw doesn't silently mask the Settings resume row.
+        do {
+            self.resumeCandidate = try await persistence.latestInProgress()
+        } catch {
+            self.resumeCandidate = nil
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "SettingsViewModel.bootstrap"
+            )
+        }
     }
 
     /// Confirm + execute "Clear cache": deletes the active in-progress
     /// record if one exists. No-op when nothing is cached.
     public func clearCache() async {
         if let candidate = resumeCandidate {
-            try? await persistence.deleteAbandoned(recordName: candidate.recordName)
+            // M10 (issue #67): delete failure surfaces through the funnel
+            // but we still optimistically clear local resumeCandidate — the
+            // user explicitly asked to clear, and a fail-loud toast is the
+            // user-visible feedback today.
+            do {
+                try await persistence.deleteAbandoned(recordName: candidate.recordName)
+            } catch {
+                await errorReporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "SettingsViewModel.clearCache"
+                )
+            }
             self.resumeCandidate = nil
         }
         let message = "Cache cleared"
