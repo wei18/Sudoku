@@ -1072,6 +1072,8 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 
 #### §How.6.7 CloudKit 同步衝突解決
 
+> **Implementation status (2026-05-25, issue #64)**: `ConflictResolver` + `RetryHarness` are now wired into `SavedGameStore.save(...)` and `PersonalRecordStore.upsert(...)`. The gateway's `serverRecordChanged` is translated to `PersistenceError.syncConflict(recordName:)` at the seam; on conflict the store re-fetches the server payload, runs `ConflictResolver.resolve(local:server:)`, and re-submits the merged payload via `RetryHarness.run`. Budget is 2 retries; the 3rd conflict throws `PersistenceError.syncConflict`. Test coverage: `ConflictWiringTests` drives the wiring via `FakePrivateCKGateway.setConflictOnSaveTimes(_:recordName:)`.
+
 **Policy — Per-field last-writer-wins by `lastModifiedAt`**：
 
 | Field | 衝突解法 |
