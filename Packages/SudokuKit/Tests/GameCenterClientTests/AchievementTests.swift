@@ -24,7 +24,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: "practice", difficulty: "easy", today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
         )
         let first = progress(result, "first_puzzle")
         #expect(first?.percentComplete == 100)
@@ -39,7 +39,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-easy", mode: "daily", difficulty: "easy", today: today
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, today: today
         )
         #expect(progress(result, "daily.streak_3")?.percentComplete == 100)
         #expect(progress(result, "daily.streak_7") == nil)
@@ -51,7 +51,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: "practice", difficulty: "easy", today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
         )
         // 70 / 10 capped at 100; 70 / 100 == 70.
         #expect(progress(result, "practice.complete_10")?.percentComplete == 100)
@@ -67,14 +67,14 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-hard", mode: "daily", difficulty: "hard", today: today
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, today: today
         )
         #expect(progress(result, "daily.sweep")?.percentComplete == 100)
 
         // Missing one difficulty → not awarded.
         await persistence.setDailyIds(forDay: "2026-05-19", ids: ["2026-05-19-easy", "2026-05-19-medium"])
         let partial = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-medium", mode: "daily", difficulty: "medium", today: today
+            puzzleId: "2026-05-19-medium", mode: .daily, difficulty: .medium, today: today
         )
         #expect(progress(partial, "daily.sweep") == nil)
     }
@@ -85,7 +85,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-hard", mode: "daily", difficulty: "hard", today: today
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, today: today
         )
         #expect(progress(result, "hard.master")?.percentComplete == 40)
     }
@@ -98,10 +98,10 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let first = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: "practice", difficulty: "easy", today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
         )
         let second = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: "practice", difficulty: "easy", today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
         )
         #expect(first == second)
     }
@@ -134,18 +134,18 @@ private actor StubPersistence: PersistenceProtocol {
         return dailyIds[key] ?? []
     }
 
-    func fetchPersonalRecord(mode: String, difficulty: String) async throws -> PersonalRecord {
+    func fetchPersonalRecord(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
         var count = 0
-        if mode == "practice" {
-            count = practiceCounts[difficulty] ?? 0
-        } else if mode == "daily", difficulty == "hard" {
+        if mode == .practice {
+            count = practiceCounts[difficulty.rawValue] ?? 0
+        } else if mode == .daily, difficulty == .hard {
             count = hardCounts["daily"] ?? 0
         }
-        if mode == "practice", difficulty == "hard" {
+        if mode == .practice, difficulty == .hard {
             count = max(count, hardCounts["practice"] ?? 0)
         }
         return PersonalRecord(
-            recordName: "\(mode)-\(difficulty)",
+            recordName: "\(mode.rawValue)-\(difficulty.rawValue)",
             mode: mode,
             difficulty: difficulty,
             bestTimeSeconds: nil,
@@ -158,14 +158,14 @@ private actor StubPersistence: PersistenceProtocol {
 
     // Unused-by-this-suite methods — return defaults.
     func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: String, difficulty: String) async throws -> GameSessionSnapshot {
+    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: Difficulty) async throws -> GameSessionSnapshot {
         throw PersistenceError.zoneNotProvisioned
     }
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {}
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}

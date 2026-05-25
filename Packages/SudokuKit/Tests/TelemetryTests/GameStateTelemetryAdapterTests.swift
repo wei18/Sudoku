@@ -1,6 +1,7 @@
 import Testing
 @testable import Telemetry
 import GameState
+import SudokuEngine
 import SudokuKitTesting
 
 @Suite("GameStateTelemetryAdapter — mapping")
@@ -12,8 +13,8 @@ struct GameStateTelemetryAdapterTests {
         let adapter = GameStateTelemetryAdapter(
             telemetry: telemetry,
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy"
+            mode: .daily,
+            difficulty: .easy
         )
         return (adapter, recorder)
     }
@@ -24,8 +25,8 @@ struct GameStateTelemetryAdapterTests {
         let received = await recorder.received
         #expect(received == [.sessionStarted(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy"
+            mode: .daily,
+            difficulty: .easy
         )])
     }
 
@@ -35,8 +36,8 @@ struct GameStateTelemetryAdapterTests {
         let received = await recorder.received
         #expect(received == [.puzzleCompleted(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             elapsedSeconds: 321
         )])
     }
@@ -47,8 +48,8 @@ struct GameStateTelemetryAdapterTests {
         let received = await recorder.received
         #expect(received == [.sessionAbandoned(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             elapsedSeconds: 0
         )])
     }

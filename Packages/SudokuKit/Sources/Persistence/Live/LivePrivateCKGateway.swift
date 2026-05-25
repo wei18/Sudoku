@@ -14,6 +14,7 @@
 
 internal import CloudKit
 internal import Foundation
+internal import SudokuEngine
 
 internal actor LivePrivateCKGateway: PrivateCKGateway {
 
@@ -138,9 +139,12 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
         case let .statusEquals(type, status):
             return (type, NSPredicate(format: "status == %@", status))
         case .dailyCompletedOn(let dayPrefix):
+            // M5 (issue #65): wire-layer CK query — `Mode.daily.rawValue`
+            // matches the on-disk schema (kept here as the single
+            // serialization seam, not a stray literal).
             let predicate = NSPredicate(
                 format: "mode == %@ AND status == %@ AND puzzleId BEGINSWITH %@",
-                "daily", "completed", dayPrefix
+                Mode.daily.rawValue, "completed", dayPrefix
             )
             return (PrivateCKConstants.savedGameRecordType, predicate)
         }

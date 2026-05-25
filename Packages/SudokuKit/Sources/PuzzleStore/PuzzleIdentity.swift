@@ -4,20 +4,19 @@
 // GameCenter (leaderboard / achievement payloads) and Telemetry. It is
 // deterministic content with no PII — `OSLog .public`-safe.
 //
-// Difficulty is stored as a String here (not `SudokuEngine.Difficulty`)
-// to avoid coupling downstream consumers (Persistence CKRecord field,
-// GameCenter score context) to SudokuEngine. The String value is always
-// `Difficulty.rawValue`.
+// M5 (issue #65): `kind` (now `Mode`) + `difficulty` (now `Difficulty`)
+// are typed at the API surface. The `puzzleId` string still encodes them
+// as `.rawValue` for wire-format compatibility.
 
 public import Foundation
 public import SudokuEngine
 
 public struct PuzzleIdentity: Sendable, Equatable, Hashable, Codable {
     public let puzzleId: String
-    public let kind: PuzzleKind
-    public let difficulty: String
+    public let kind: Mode
+    public let difficulty: Difficulty
 
-    public init(puzzleId: String, kind: PuzzleKind, difficulty: String) {
+    public init(puzzleId: String, kind: Mode, difficulty: Difficulty) {
         self.puzzleId = puzzleId
         self.kind = kind
         self.difficulty = difficulty
@@ -29,7 +28,7 @@ public struct PuzzleIdentity: Sendable, Equatable, Hashable, Codable {
         return PuzzleIdentity(
             puzzleId: "\(day)-\(difficulty.rawValue)",
             kind: .daily,
-            difficulty: difficulty.rawValue
+            difficulty: difficulty
         )
     }
 
@@ -40,7 +39,7 @@ public struct PuzzleIdentity: Sendable, Equatable, Hashable, Codable {
         return PuzzleIdentity(
             puzzleId: "practice-\(body)-\(difficulty.rawValue)",
             kind: .practice,
-            difficulty: difficulty.rawValue
+            difficulty: difficulty
         )
     }
 }

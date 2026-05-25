@@ -21,6 +21,7 @@
 //   The Phase 8 ViewModels never construct leaderboard IDs directly.
 
 public import Foundation
+public import SudokuEngine
 
 public protocol GameCenterClient: Sendable {
     /// Run the GameKit authentication handshake exactly once per session.
@@ -37,7 +38,7 @@ public protocol GameCenterClient: Sendable {
     func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: String,
+        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws
 

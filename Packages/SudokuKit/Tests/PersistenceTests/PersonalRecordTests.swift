@@ -2,6 +2,7 @@
 
 import Foundation
 import Testing
+import SudokuEngine
 import SudokuKitTesting
 @testable import Persistence
 
@@ -17,19 +18,19 @@ struct PersonalRecordTests {
     }
 
     @Test func recordNameIsModeDifficulty() {
-        #expect(PersonalRecordStore.recordName(mode: "daily", difficulty: "easy") == "daily-easy")
-        #expect(PersonalRecordStore.recordName(mode: "practice", difficulty: "hard") == "practice-hard")
+        #expect(PersonalRecordStore.recordName(mode: .daily, difficulty: .easy) == "daily-easy")
+        #expect(PersonalRecordStore.recordName(mode: .practice, difficulty: .hard) == "practice-hard")
     }
 
     @Test func reCompletingSamePuzzleIdDoesNotBump() async throws {
         let (store, _) = makeStore()
         let first = try await store.recordCompletion(
-            puzzleId: "2026-06-01-easy", mode: "daily", difficulty: "easy", elapsedSeconds: 100
+            puzzleId: "2026-06-01-easy", mode: .daily, difficulty: .easy, elapsedSeconds: 100
         )
         #expect(first.completedCount == 1)
         #expect(first.bestTimeSeconds == 100)
         let second = try await store.recordCompletion(
-            puzzleId: "2026-06-01-easy", mode: "daily", difficulty: "easy", elapsedSeconds: 90
+            puzzleId: "2026-06-01-easy", mode: .daily, difficulty: .easy, elapsedSeconds: 90
         )
         #expect(second.completedCount == 1) // unchanged
         #expect(second.bestTimeSeconds == 100) // unchanged
@@ -39,10 +40,10 @@ struct PersonalRecordTests {
     @Test func differentPuzzleIdsBumpCount() async throws {
         let (store, _) = makeStore()
         _ = try await store.recordCompletion(
-            puzzleId: "p1", mode: "daily", difficulty: "easy", elapsedSeconds: 100
+            puzzleId: "p1", mode: .daily, difficulty: .easy, elapsedSeconds: 100
         )
         let second = try await store.recordCompletion(
-            puzzleId: "p2", mode: "daily", difficulty: "easy", elapsedSeconds: 200
+            puzzleId: "p2", mode: .daily, difficulty: .easy, elapsedSeconds: 200
         )
         #expect(second.completedCount == 2)
         #expect(second.totalTimeSeconds == 300)
@@ -50,18 +51,17 @@ struct PersonalRecordTests {
 
     @Test func fetchAllReturnsAtMostSix() async throws {
         let (store, _) = makeStore()
-        let modes = ["daily", "practice"]
-        let difficulties = ["easy", "medium", "hard"]
-        for mode in modes {
-            for diff in difficulties {
+        for mode in Mode.allCases {
+            for diff in Difficulty.allCases {
                 _ = try await store.recordCompletion(
-                    puzzleId: "p-\(mode)-\(diff)", mode: mode, difficulty: diff, elapsedSeconds: 60
+                    puzzleId: "p-\(mode.rawValue)-\(diff.rawValue)",
+                    mode: mode, difficulty: diff, elapsedSeconds: 60
                 )
             }
         }
         var records: [PersonalRecord] = []
-        for mode in modes {
-            for diff in difficulties {
+        for mode in Mode.allCases {
+            for diff in Difficulty.allCases {
                 records.append(try await store.fetch(mode: mode, difficulty: diff))
             }
         }
@@ -74,7 +74,7 @@ struct PersonalRecordTests {
     @Test func firstCompletionSetsBestTime() async throws {
         let (store, _) = makeStore()
         let result = try await store.recordCompletion(
-            puzzleId: "p1", mode: "practice", difficulty: "medium", elapsedSeconds: 250
+            puzzleId: "p1", mode: .practice, difficulty: .medium, elapsedSeconds: 250
         )
         #expect(result.bestTimeSeconds == 250)
     }
@@ -82,10 +82,10 @@ struct PersonalRecordTests {
     @Test func betterCompletionLowersBestTime() async throws {
         let (store, _) = makeStore()
         _ = try await store.recordCompletion(
-            puzzleId: "p1", mode: "practice", difficulty: "medium", elapsedSeconds: 300
+            puzzleId: "p1", mode: .practice, difficulty: .medium, elapsedSeconds: 300
         )
         let updated = try await store.recordCompletion(
-            puzzleId: "p2", mode: "practice", difficulty: "medium", elapsedSeconds: 200
+            puzzleId: "p2", mode: .practice, difficulty: .medium, elapsedSeconds: 200
         )
         #expect(updated.bestTimeSeconds == 200)
     }
@@ -93,17 +93,17 @@ struct PersonalRecordTests {
     @Test func worseCompletionPreservesBestTime() async throws {
         let (store, _) = makeStore()
         _ = try await store.recordCompletion(
-            puzzleId: "p1", mode: "practice", difficulty: "medium", elapsedSeconds: 200
+            puzzleId: "p1", mode: .practice, difficulty: .medium, elapsedSeconds: 200
         )
         let updated = try await store.recordCompletion(
-            puzzleId: "p2", mode: "practice", difficulty: "medium", elapsedSeconds: 300
+            puzzleId: "p2", mode: .practice, difficulty: .medium, elapsedSeconds: 300
         )
         #expect(updated.bestTimeSeconds == 200)
     }
 
     @Test func emptyFetchReturnsEmptyRecord() async throws {
         let (store, _) = makeStore()
-        let record = try await store.fetch(mode: "daily", difficulty: "hard")
+        let record = try await store.fetch(mode: .daily, difficulty: .hard)
         #expect(record.bestTimeSeconds == nil)
         #expect(record.completedCount == 0)
         #expect(record.totalTimeSeconds == 0)

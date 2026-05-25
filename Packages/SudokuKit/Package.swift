@@ -21,6 +21,10 @@ let productionTargets: [Target] = [
         name: "Persistence",
         dependencies: [
             "GameState",
+            // M5 (issue #65): pulls in `Mode` / `Difficulty` enums so the
+            // PersistenceProtocol surface is typed; the CK serialization
+            // seam still encodes raw String to preserve wire format.
+            "SudokuEngine",
             "Telemetry",
             // v2.3.1: re-exports `AdGateStateStore` via `MonetizationStateStore`
             // typealias; concrete `LiveMonetizationStateStore` lives here so
@@ -29,7 +33,9 @@ let productionTargets: [Target] = [
         ],
         swiftSettings: swiftSettings
     ),
-    .target(name: "GameCenterClient", dependencies: ["Telemetry", "Persistence"], swiftSettings: swiftSettings),
+    // M5 (issue #65): SudokuEngine added so GameCenterSink's
+    // `leaderboardKind(forDifficulty:)` switch is exhaustive on `Difficulty`.
+    .target(name: "GameCenterClient", dependencies: ["SudokuEngine", "Telemetry", "Persistence"], swiftSettings: swiftSettings),
     // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
     // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
     // values; Telemetry provides the production adapter that maps those events
@@ -38,7 +44,11 @@ let productionTargets: [Target] = [
     // no cycle. Direction-of-dependency reasoning: GameState is "deeper"
     // (no IO, pure logic) than Telemetry (Apple system imports), so this
     // direction is correct per design.md §How.1.
-    .target(name: "Telemetry", dependencies: ["GameState"], swiftSettings: swiftSettings),
+    // M5 (issue #65): SudokuEngine added so `TelemetryEvent` payloads carry
+    // typed `Mode` / `Difficulty` instead of bare `String` (callers no longer
+    // need to remember `.rawValue` conversion — typos at call sites now fail
+    // to compile rather than dropping silently at the GameCenter sink).
+    .target(name: "Telemetry", dependencies: ["GameState", "SudokuEngine"], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
         dependencies: [

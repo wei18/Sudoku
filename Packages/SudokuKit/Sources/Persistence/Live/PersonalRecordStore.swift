@@ -9,6 +9,7 @@
 // the LWW retry loop on conflict).
 
 internal import Foundation
+internal import SudokuEngine
 
 internal actor PersonalRecordStore: Sendable {
 
@@ -36,7 +37,7 @@ internal actor PersonalRecordStore: Sendable {
         self.clock = clock
     }
 
-    func fetch(mode: String, difficulty: String) async throws -> PersonalRecord {
+    func fetch(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
         let recordName = Self.recordName(mode: mode, difficulty: difficulty)
         if let payload = try await gateway.fetch(recordName: recordName),
            let record = PersonalRecordMapper.record(from: payload) {
@@ -55,8 +56,8 @@ internal actor PersonalRecordStore: Sendable {
     @discardableResult
     func recordCompletion(
         puzzleId: String,
-        mode: String,
-        difficulty: String,
+        mode: Mode,
+        difficulty: Difficulty,
         elapsedSeconds: Int
     ) async throws -> PersonalRecord {
         let existing = try await fetch(mode: mode, difficulty: difficulty)
@@ -85,8 +86,8 @@ internal actor PersonalRecordStore: Sendable {
         return updated
     }
 
-    static func recordName(mode: String, difficulty: String) -> String {
-        "\(mode)-\(difficulty)"
+    static func recordName(mode: Mode, difficulty: Difficulty) -> String {
+        "\(mode.rawValue)-\(difficulty.rawValue)"
     }
 }
 
@@ -95,9 +96,11 @@ internal actor PersonalRecordStore: Sendable {
 internal enum PersonalRecordMapper {
 
     static func payload(from record: PersonalRecord) -> RecordPayload {
+        // M5 (issue #65): wire format encodes `.rawValue` (existing records
+        // round-trip — `Mode.daily.rawValue == "daily"` etc.).
         var fields: [String: RecordValue] = [
-            PersonalRecordStore.Field.mode: .string(record.mode),
-            PersonalRecordStore.Field.difficulty: .string(record.difficulty),
+            PersonalRecordStore.Field.mode: .string(record.mode.rawValue),
+            PersonalRecordStore.Field.difficulty: .string(record.difficulty.rawValue),
             PersonalRecordStore.Field.totalTimeSeconds: .int(record.totalTimeSeconds),
             PersonalRecordStore.Field.completedCount: .int(record.completedCount),
             PersonalRecordStore.Field.lastUpdatedAt: .date(record.lastUpdatedAt),
@@ -116,12 +119,18 @@ internal enum PersonalRecordMapper {
 
     static func record(from payload: RecordPayload) -> PersonalRecord? {
         guard
-            case .string(let mode) = payload.fields[PersonalRecordStore.Field.mode],
-            case .string(let difficulty) = payload.fields[PersonalRecordStore.Field.difficulty],
+            case .string(let modeRaw) = payload.fields[PersonalRecordStore.Field.mode],
+            case .string(let difficultyRaw) = payload.fields[PersonalRecordStore.Field.difficulty],
             case .int(let total) = payload.fields[PersonalRecordStore.Field.totalTimeSeconds],
             case .int(let count) = payload.fields[PersonalRecordStore.Field.completedCount],
             case .date(let last) = payload.fields[PersonalRecordStore.Field.lastUpdatedAt]
         else {
+            return nil
+        }
+        // M5 (issue #65): drop the row if wire format carries an unknown
+        // raw value (forward-compat — same posture as the other guards).
+        guard let mode = Mode(rawValue: modeRaw),
+              let difficulty = Difficulty(rawValue: difficultyRaw) else {
             return nil
         }
         let bestTime: Int?

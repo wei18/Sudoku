@@ -31,8 +31,8 @@ struct SavedGameCRUDTests {
         let (store, gateway, _) = await makeStore()
         let snapshot = try await store.loadOrCreate(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy"
+            mode: .daily,
+            difficulty: .easy
         )
         #expect(snapshot.status == .idle)
         #expect(snapshot.elapsedSeconds == 0)
@@ -55,13 +55,13 @@ struct SavedGameCRUDTests {
         try await store.save(
             snapshot,
             puzzleId: "p1",
-            mode: "practice",
-            difficulty: "easy"
+            mode: .practice,
+            difficulty: .easy
         )
         let loaded = try await store.loadOrCreate(
             puzzleId: "p1",
-            mode: "practice",
-            difficulty: "easy"
+            mode: .practice,
+            difficulty: .easy
         )
         #expect(loaded.currentBoard == snapshot.currentBoard)
         #expect(loaded.status == snapshot.status)
@@ -75,12 +75,12 @@ struct SavedGameCRUDTests {
         let puzzle = PuzzleFixtures.latinSquarePuzzle()
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        try await store.save(snapshot, puzzleId: "p1", mode: "daily", difficulty: "easy")
+        try await store.save(snapshot, puzzleId: "p1", mode: .daily, difficulty: .easy)
         let summary = SavedGameSummary(
-            recordName: SavedGameStore.recordName(for: "p1", mode: "daily"),
+            recordName: SavedGameStore.recordName(for: "p1", mode: .daily),
             puzzleId: "p1",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             lastModifiedAt: Date(timeIntervalSince1970: 0),
             elapsedSeconds: 0,
             status: "inProgress",
@@ -96,13 +96,13 @@ struct SavedGameCRUDTests {
         let puzzle = PuzzleFixtures.latinSquarePuzzle()
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        try await store.save(snapshot, puzzleId: "p1", mode: "practice", difficulty: "easy")
-        let recordName = SavedGameStore.recordName(for: "p1", mode: "practice")
+        try await store.save(snapshot, puzzleId: "p1", mode: .practice, difficulty: .easy)
+        let recordName = SavedGameStore.recordName(for: "p1", mode: .practice)
         try await store.deleteAbandoned(recordName: recordName)
         let count = await gateway.recordCount()
         #expect(count == 0)
         // loadOrCreate re-seeds a fresh record.
-        let reseeded = try await store.loadOrCreate(puzzleId: "p1", mode: "practice", difficulty: "easy")
+        let reseeded = try await store.loadOrCreate(puzzleId: "p1", mode: .practice, difficulty: .easy)
         #expect(reseeded.status == .idle)
     }
 
@@ -111,9 +111,9 @@ struct SavedGameCRUDTests {
         let puzzle = PuzzleFixtures.latinSquarePuzzle()
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        try await store.save(snapshot, puzzleId: "pX", mode: "daily", difficulty: "easy")
+        try await store.save(snapshot, puzzleId: "pX", mode: .daily, difficulty: .easy)
 
-        let recordName = SavedGameStore.recordName(for: "pX", mode: "daily")
+        let recordName = SavedGameStore.recordName(for: "pX", mode: .daily)
         let payload = try await gateway.fetch(recordName: recordName)
         guard case .int(let value) = payload?.fields[SavedGameStore.Field.generatorVersion] else {
             Issue.record("generatorVersion field missing")
@@ -127,7 +127,7 @@ struct SavedGameCRUDTests {
         let puzzle = PuzzleFixtures.latinSquarePuzzle()
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        try await store.save(snapshot, puzzleId: "p-tele", mode: "practice", difficulty: "easy")
+        try await store.save(snapshot, puzzleId: "p-tele", mode: .practice, difficulty: .easy)
 
         let received = await sink.received
         #expect(received.contains(.gameSaved(puzzleId: "p-tele")))
@@ -140,7 +140,7 @@ struct SavedGameCRUDTests {
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
         await #expect(throws: PersistenceError.self) {
-            try await store.save(snapshot, puzzleId: "p-fail", mode: "practice", difficulty: "easy")
+            try await store.save(snapshot, puzzleId: "p-fail", mode: .practice, difficulty: .easy)
         }
         let received = await sink.received
         #expect(received.contains(.gameSaveFailed(puzzleId: "p-fail", reason: "quotaExceeded")))

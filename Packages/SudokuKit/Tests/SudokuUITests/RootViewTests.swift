@@ -16,6 +16,7 @@ import MonetizationCore
 import MonetizationTesting
 import Persistence
 import PuzzleStore
+import SudokuEngine
 import SudokuKitTesting
 import Telemetry
 
@@ -56,8 +57,8 @@ struct RootViewTests {
         let summary = SavedGameSummary(
             recordName: "saved-2026-05-19-easy",
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             lastModifiedAt: Date(timeIntervalSince1970: 1_715_000_000),
             elapsedSeconds: 201,
             status: "inProgress",

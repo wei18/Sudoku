@@ -20,23 +20,23 @@
 // itself doesn't care which puzzle it is). The composition root knows the
 // puzzle and binds a fresh adapter per session.
 //
-// mode / difficulty are `String` (e.g. "daily" / "easy") — the caller is
-// responsible for `.rawValue` conversion at the seam, per the
-// TelemetryEvent.swift design note.
+// M5 (issue #65): mode / difficulty are typed `Mode` / `Difficulty`
+// (no more `.rawValue` conversion at the construction site).
 
 public import GameState
+public import SudokuEngine
 
 public struct GameStateTelemetryAdapter: GameStateTelemetry {
     private let telemetry: Telemetry
     private let puzzleId: String
-    private let mode: String
-    private let difficulty: String
+    private let mode: Mode
+    private let difficulty: Difficulty
 
     public init(
         telemetry: Telemetry,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) {
         self.telemetry = telemetry
         self.puzzleId = puzzleId

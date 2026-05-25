@@ -56,8 +56,8 @@ struct StartedAtPreservationTests {
         #expect(snap1.startedAt == originalStart)
 
         let puzzleId = "p-started-at"
-        let mode = "practice"
-        let difficulty = "easy"
+        let mode: Mode = .practice
+        let difficulty: Difficulty = .easy
         try await store.save(snap1, puzzleId: puzzleId, mode: mode, difficulty: difficulty)
 
         // First load — startedAt must equal the session's start, NOT the
@@ -106,8 +106,8 @@ struct StartedAtPreservationTests {
         let snapshot = await session.snapshot()
 
         let puzzleId = "p-mapper"
-        let mode = "practice"
-        let difficulty = "easy"
+        let mode: Mode = .practice
+        let difficulty: Difficulty = .easy
         try await store.save(snapshot, puzzleId: puzzleId, mode: mode, difficulty: difficulty)
 
         let recordName = SavedGameStore.recordName(for: puzzleId, mode: mode)

@@ -20,7 +20,7 @@
 
 public import Foundation
 public import Persistence
-internal import SudokuEngine
+public import SudokuEngine
 
 public actor AchievementEvaluator: Sendable {
 
@@ -35,8 +35,8 @@ public actor AchievementEvaluator: Sendable {
     /// re-derives the calendar UTC day from it.
     public func evaluateForCompletion(
         puzzleId: String,
-        mode: String,
-        difficulty: String,
+        mode: Mode,
+        difficulty: Difficulty,
         today: Date
     ) async throws -> [AchievementProgress] {
         var results: [AchievementProgress] = []
@@ -45,7 +45,7 @@ public actor AchievementEvaluator: Sendable {
         results.append(AchievementProgress(achievementId: "first_puzzle", percentComplete: 100))
 
         // 2. daily.complete_one — Daily mode only, 100% on first daily.
-        if mode == "daily" {
+        if mode == .daily {
             results.append(AchievementProgress(achievementId: "daily.complete_one", percentComplete: 100))
         }
 
@@ -60,7 +60,7 @@ public actor AchievementEvaluator: Sendable {
         }
 
         // 5 + 6. Practice counts — sum across difficulties.
-        let practiceCount = try await totalCompletedCount(mode: "practice")
+        let practiceCount = try await totalCompletedCount(mode: .practice)
         results.append(AchievementProgress(
             achievementId: "practice.complete_10",
             percentComplete: percent(progress: practiceCount, target: 10)
@@ -78,11 +78,14 @@ public actor AchievementEvaluator: Sendable {
         ))
 
         // 8. daily.sweep — all 3 difficulties of today's daily.
+        // M5 (issue #65): build puzzleId suffixes from `Difficulty.rawValue`
+        // so the trio remains in lockstep with the enum (compiler will catch
+        // a future case addition).
         let todayKey = UTCDay.string(from: today)
         let todaysIds = try await persistence.fetchCompletedDailyIds(for: today)
-        let sweepDone = todaysIds.contains("\(todayKey)-easy")
-            && todaysIds.contains("\(todayKey)-medium")
-            && todaysIds.contains("\(todayKey)-hard")
+        let sweepDone = Difficulty.allCases.allSatisfy { diff in
+            todaysIds.contains("\(todayKey)-\(diff.rawValue)")
+        }
         if sweepDone {
             results.append(AchievementProgress(achievementId: "daily.sweep", percentComplete: 100))
         }
@@ -109,9 +112,9 @@ public actor AchievementEvaluator: Sendable {
         return streak
     }
 
-    private func totalCompletedCount(mode: String) async throws -> Int {
+    private func totalCompletedCount(mode: Mode) async throws -> Int {
         var total = 0
-        for difficulty in ["easy", "medium", "hard"] {
+        for difficulty in Difficulty.allCases {
             let record = try await persistence.fetchPersonalRecord(mode: mode, difficulty: difficulty)
             total += record.completedCount
         }
@@ -120,8 +123,8 @@ public actor AchievementEvaluator: Sendable {
 
     private func totalHardCount() async throws -> Int {
         var total = 0
-        for mode in ["daily", "practice"] {
-            let record = try await persistence.fetchPersonalRecord(mode: mode, difficulty: "hard")
+        for mode in Mode.allCases {
+            let record = try await persistence.fetchPersonalRecord(mode: mode, difficulty: .hard)
             total += record.completedCount
         }
         return total

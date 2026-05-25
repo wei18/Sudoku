@@ -40,8 +40,8 @@ struct GameCenterSinkTests {
         let stack = makeStack(authState: .authenticated(player))
         let event = TelemetryEvent.puzzleCompleted(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             elapsedSeconds: 180
         )
         await stack.sink.receive(event)
@@ -62,8 +62,8 @@ struct GameCenterSinkTests {
         let stack = makeStack(authState: .authenticated(player))
         await stack.sink.receive(.puzzleCompleted(
             puzzleId: "practice-AB-easy",
-            mode: "practice",
-            difficulty: "easy",
+            mode: .practice,
+            difficulty: .easy,
             elapsedSeconds: 200
         ))
         let ops = await stack.client.operations
@@ -79,8 +79,8 @@ struct GameCenterSinkTests {
         let stack = makeStack(authState: .unauthenticated)
         await stack.sink.receive(.puzzleCompleted(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             elapsedSeconds: 180
         ))
         let ops = await stack.client.operations
@@ -91,8 +91,8 @@ struct GameCenterSinkTests {
         let stack = makeStack(authState: .restricted)
         await stack.sink.receive(.puzzleCompleted(
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             elapsedSeconds: 180
         ))
         let ops = await stack.client.operations
@@ -104,8 +104,8 @@ struct GameCenterSinkTests {
         let stack = makeStack(authState: .authenticated(player))
         await stack.sink.receive(.puzzleCompleted(
             puzzleId: "practice-ZZ-medium",
-            mode: "practice",
-            difficulty: "medium",
+            mode: .practice,
+            difficulty: .medium,
             elapsedSeconds: 240
         ))
         let ops = await stack.client.operations
@@ -139,9 +139,9 @@ private actor StubPersistence: PersistenceProtocol {
         return dailyIds[key] ?? []
     }
 
-    func fetchPersonalRecord(mode: String, difficulty: String) async throws -> PersonalRecord {
+    func fetchPersonalRecord(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
         PersonalRecord(
-            recordName: "\(mode)-\(difficulty)",
+            recordName: "\(mode.rawValue)-\(difficulty.rawValue)",
             mode: mode, difficulty: difficulty,
             bestTimeSeconds: nil, totalTimeSeconds: 0,
             completedCount: 0,
@@ -151,14 +151,14 @@ private actor StubPersistence: PersistenceProtocol {
     }
 
     func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: String, difficulty: String) async throws -> GameSessionSnapshot {
+    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: Difficulty) async throws -> GameSessionSnapshot {
         throw PersistenceError.zoneNotProvisioned
     }
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {}
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}

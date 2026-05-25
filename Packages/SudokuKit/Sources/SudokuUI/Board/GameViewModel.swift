@@ -247,7 +247,7 @@ public final class GameViewModel {
         // Task body off `self`'s isolation domain. Per impl-notes
         // 2026-05-20_wave-2-blocker-fixes §B2.
         let puzzleId = identity.puzzleId
-        let mode = identity.kind.rawValue
+        let mode = identity.kind
         let difficulty = identity.difficulty
         pendingSaveTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: delay)
@@ -277,7 +277,7 @@ public final class GameViewModel {
         try? await persistence.save(
             snapshot,
             puzzleId: identity.puzzleId,
-            mode: identity.kind.rawValue,
+            mode: identity.kind,
             difficulty: identity.difficulty
         )
     }

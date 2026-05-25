@@ -63,7 +63,7 @@ public struct BoardView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text(LocalizedStringKey(viewModel.identity.difficulty.capitalized))
+            Text(LocalizedStringKey(viewModel.identity.difficulty.rawValue.capitalized))
                 .font(.headline)
                 .foregroundStyle(theme.text.primary.resolved)
             Spacer()

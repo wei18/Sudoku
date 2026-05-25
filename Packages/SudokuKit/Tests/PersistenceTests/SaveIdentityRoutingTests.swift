@@ -37,8 +37,8 @@ struct SaveIdentityRoutingTests {
         )
 
         let puzzleId = "2026-05-20-easy"
-        let mode = "daily"
-        let difficulty = "easy"
+        let mode: Mode = .daily
+        let difficulty: Difficulty = .easy
 
         // 1) loadOrCreate seeds a fresh record under the QUALIFIED identity.
         _ = try await store.loadOrCreate(
@@ -85,8 +85,8 @@ struct SaveIdentityRoutingTests {
         )
 
         let puzzleId = "practice-AB-medium"
-        let mode = "practice"
-        let difficulty = "medium"
+        let mode: Mode = .practice
+        let difficulty: Difficulty = .medium
 
         // Only (0,0) is mutable on this fixture (the one missing cell).
         // Place an INCORRECT digit so we don't auto-complete.

@@ -27,8 +27,8 @@ internal enum SavedGameMapper {
         from snapshot: GameSessionSnapshot,
         recordName: String,
         puzzleId: String,
-        mode: String,
-        difficulty: String,
+        mode: Mode,
+        difficulty: Difficulty,
         lastModifiedAt: Date,
         schemaVersion: Int
     ) -> RecordPayload {
@@ -55,10 +55,12 @@ internal enum SavedGameMapper {
         // dispatched (idle snapshot — first save of a fresh record).
         let startedAt = snapshot.startedAt ?? lastModifiedAt
 
+        // M5 (issue #65): CK wire format encodes raw String; the call-site
+        // `Mode` / `Difficulty` enums round-trip via `.rawValue` here.
         let fields: [String: RecordValue] = [
             SavedGameStore.Field.puzzleId: .string(puzzleId),
-            SavedGameStore.Field.mode: .string(mode),
-            SavedGameStore.Field.difficulty: .string(difficulty),
+            SavedGameStore.Field.mode: .string(mode.rawValue),
+            SavedGameStore.Field.difficulty: .string(difficulty.rawValue),
             SavedGameStore.Field.boardState: .string(snapshot.currentBoard.encoded()),
             SavedGameStore.Field.notesState: .data(notesData),
             SavedGameStore.Field.undoStack: .data(undoData),
@@ -134,13 +136,21 @@ internal enum SavedGameMapper {
     static func summary(from payload: RecordPayload) -> SavedGameSummary? {
         guard
             case .string(let puzzleId) = payload.fields[SavedGameStore.Field.puzzleId],
-            case .string(let mode) = payload.fields[SavedGameStore.Field.mode],
-            case .string(let difficulty) = payload.fields[SavedGameStore.Field.difficulty],
+            case .string(let modeRaw) = payload.fields[SavedGameStore.Field.mode],
+            case .string(let difficultyRaw) = payload.fields[SavedGameStore.Field.difficulty],
             case .date(let lastModifiedAt) = payload.fields[SavedGameStore.Field.lastModifiedAt],
             case .int(let elapsed) = payload.fields[SavedGameStore.Field.elapsedSeconds],
             case .string(let status) = payload.fields[SavedGameStore.Field.status],
             case .int(let genVersion) = payload.fields[SavedGameStore.Field.generatorVersion]
         else {
+            return nil
+        }
+        // M5 (issue #65): decode raw wire strings into typed enums. Unknown
+        // values (e.g. a CKRecord written by a future schema with a new
+        // difficulty case) drop the row from the summary projection rather
+        // than crashing — same posture as the other `guard case` rejections.
+        guard let mode = Mode(rawValue: modeRaw),
+              let difficulty = Difficulty(rawValue: difficultyRaw) else {
             return nil
         }
         return SavedGameSummary(

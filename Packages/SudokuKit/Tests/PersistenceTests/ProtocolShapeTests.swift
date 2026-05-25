@@ -22,8 +22,8 @@ struct ProtocolShapeTests {
         let summary = SavedGameSummary(
             recordName: "r1",
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             lastModifiedAt: Date(timeIntervalSince1970: 0),
             elapsedSeconds: 12,
             status: "inProgress",
@@ -37,8 +37,8 @@ struct ProtocolShapeTests {
 
     @Test func personalRecordShape() {
         let record = PersonalRecord.empty(
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             at: Date(timeIntervalSince1970: 0)
         )
         assertSendable(record)
@@ -65,7 +65,7 @@ struct ProtocolShapeTests {
 private func assertProtocolShape<T: PersistenceProtocol>(_ persistence: T) async throws {
     _ = try await persistence.latestInProgress()
     _ = try await persistence.fetchCompletedDailyIds(for: Date(timeIntervalSince1970: 0))
-    _ = try await persistence.fetchPersonalRecord(mode: "daily", difficulty: "easy")
+    _ = try await persistence.fetchPersonalRecord(mode: .daily, difficulty: .easy)
 }
 
 /// Throwaway impl whose only purpose is to prove the protocol is satisfiable
@@ -74,23 +74,23 @@ private struct DummyPersistence: PersistenceProtocol {
     func latestInProgress() async throws -> SavedGameSummary? { nil }
     func loadOrCreate(
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> GameSessionSnapshot {
         throw PersistenceError.iCloudNotSignedIn
     }
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {}
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
     func fetchPersonalRecord(
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> PersonalRecord {
         PersonalRecord.empty(mode: mode, difficulty: difficulty, at: Date(timeIntervalSince1970: 0))
     }

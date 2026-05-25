@@ -27,8 +27,8 @@ struct SettingsViewTests {
         let candidate = SavedGameSummary(
             recordName: "saved-easy",
             puzzleId: "2026-05-19-easy",
-            mode: "daily",
-            difficulty: "easy",
+            mode: .daily,
+            difficulty: .easy,
             lastModifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
             elapsedSeconds: 120,
             status: "inProgress",

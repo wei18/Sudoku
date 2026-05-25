@@ -47,7 +47,7 @@ struct PuzzleStoreLiveTests {
         // Distinct salts overwhelmingly likely → distinct ids.
         #expect(first.identity.puzzleId != second.identity.puzzleId)
         #expect(first.identity.kind == .practice)
-        #expect(first.identity.difficulty == "easy")
+        #expect(first.identity.difficulty == .easy)
     }
 
     @Test func generatorExhaustionPropagates() async throws {
