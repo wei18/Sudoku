@@ -1047,6 +1047,8 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 
 #### §How.6.5 iCloud 帳號邊緣案例
 
+> **Implementation status (2026-05-25, issue #64)**: Case A/B/C wiring is **deferred post-v2.5**. The original `AccountMonitor` + `LocalCache` Persistence-internal scaffolding has been deleted because a production wire-up requires net-new `ICloudAccountProvider` (CKContainer wrap) and `UserHashKeychain` (Keychain Services wrap) Live implementations — proper feature-scope work inappropriate before App Store submission. The spec below remains canonical and will be re-implemented as a dedicated issue after submission. CRUD entry points currently surface generic `PersistenceError.underlying` instead of the distinguishing `.iCloudNotSignedIn` / `.iCloudSignedOutDuringSession` / `.iCloudAccountChanged` cases.
+
 **Case A — 從未登入 iCloud**：同步 / Leaderboard 降級；**Daily 與 Practice 題目本身完全可用**（本機 generator 產生、無 iCloud 相依）；HomeView 常駐 banner + 「開啟設定」按鈕；不擋啟動。
 
 **Case B — Session 中登出 iCloud**：
