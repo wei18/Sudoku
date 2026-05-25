@@ -31,7 +31,9 @@ public struct SettingsView: View {
         Form {
             if let controller = monetizationController {
                 Section("Purchases") {
-                    if !controller.hasPurchasedRemoveAds {
+                    if controller.hasPurchasedRemoveAds {
+                        AdsRemovedRow()
+                    } else {
                         RemoveAdsRow(controller: controller)
                     }
                     RestorePurchasesRow(controller: controller)
@@ -39,13 +41,25 @@ public struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent("Version", value: viewModel.appVersion)
-                LabeledContent("Generator", value: generatorLabel)
+                LabeledContent {
+                    Text(viewModel.appVersion).foregroundStyle(.secondary)
+                } label: {
+                    Label("Version", systemImage: "info.circle")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent {
+                    Text(generatorLabel).foregroundStyle(.secondary)
+                } label: {
+                    Label("Generator", systemImage: "gearshape")
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Storage") {
-                Button("Clear cache", role: .destructive) {
+                Button(role: .destructive) {
                     showClearCacheConfirmation = true
+                } label: {
+                    Label("Clear cache", systemImage: "trash")
                 }
             }
         }
@@ -87,7 +101,7 @@ struct RemoveAdsRow: View {
             Task { await controller.purchaseRemoveAds() }
         } label: {
             HStack {
-                Image(systemName: "nosign")
+                Image(systemName: "sparkles")
                     .foregroundStyle(theme.accent.primary.resolved)
                 Text("Remove Ads")
                 Spacer()
@@ -105,6 +119,22 @@ struct RemoveAdsRow: View {
         }
         .disabled(controller.purchaseInFlight)
         .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
+    }
+}
+
+struct AdsRemovedRow: View {
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        HStack {
+            Label("Ads Removed", systemImage: "checkmark.seal.fill")
+                .foregroundStyle(theme.accent.primary.resolved)
+            Spacer()
+            Text("Active")
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Ads removed. Active.")
     }
 }
 
