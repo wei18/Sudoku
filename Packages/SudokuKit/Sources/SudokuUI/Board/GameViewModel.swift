@@ -15,6 +15,7 @@ public import GameState
 public import Persistence
 public import PuzzleStore
 public import SudokuEngine
+public import Telemetry
 
 @MainActor
 @Observable
@@ -51,6 +52,11 @@ public final class GameViewModel {
 
     private let session: GameSession?
     private let persistence: (any PersistenceProtocol)?
+    /// M10 (issue #67): unified error funnel. Routes session / persistence
+    /// failures into Telemetry + recent-errors buffer instead of silent
+    /// `try?` swallowing. Default `NoopErrorReporter` keeps the snapshot /
+    /// preview init paths zero-IO.
+    private let errorReporter: any ErrorReporter
 
     /// Debounce interval for the save task; injectable so tests can shrink it.
     private let saveDebounceNanos: UInt64
@@ -67,6 +73,7 @@ public final class GameViewModel {
         initialStatus: GameSessionStatus = .idle,
         initialElapsedSeconds: Int = 0,
         persistence: any PersistenceProtocol,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         saveDebounceNanos: UInt64 = 500_000_000
     ) {
         self.identity = identity
@@ -76,6 +83,7 @@ public final class GameViewModel {
         self.status = initialStatus
         self.elapsedSeconds = initialElapsedSeconds
         self.persistence = persistence
+        self.errorReporter = errorReporter
         self.saveDebounceNanos = saveDebounceNanos
     }
 
@@ -97,6 +105,7 @@ public final class GameViewModel {
         self.identity = identity
         self.session = nil
         self.persistence = nil
+        self.errorReporter = NoopErrorReporter()
         self.saveDebounceNanos = 0
         self.board = board
         self.notes = notes
@@ -152,17 +161,23 @@ public final class GameViewModel {
 
         if let session {
             if let digit {
-                try? await session.placeDigit(row: coord.row, col: coord.column, digit: digit)
+                await runSession("placeDigit") {
+                    try await session.placeDigit(row: coord.row, col: coord.column, digit: digit)
+                }
             } else {
                 // Per impl-notes 2026-05-20_wave-2-blocker-fixes §B1: clear
                 // routes through the actor like place. The actor records a
                 // `.clearDigit` undo move and updates `currentBoard`, so the
                 // subsequent `resyncFromSession()` keeps the cell cleared.
-                try? await session.clearDigit(row: coord.row, col: coord.column)
+                await runSession("clearDigit") {
+                    try await session.clearDigit(row: coord.row, col: coord.column)
+                }
             }
             await resyncFromSession()
         } else {
             // Preview / test path: poke the mirror without crossing actor.
+            // try?: preview-only Board mutation; an invalid coord is a
+            // programmer error in fixture wiring, never a runtime user path.
             try? board.setDigit(digit, atRow: coord.row, column: coord.column)
             recomputeErrors()
         }
@@ -175,7 +190,9 @@ public final class GameViewModel {
         if board.givenMask[index] { return }
 
         if let session {
-            try? await session.toggleNote(row: selection.row, col: selection.column, digit: digit)
+            await runSession("toggleNote") {
+                try await session.toggleNote(row: selection.row, col: selection.column, digit: digit)
+            }
             await resyncFromSession()
         } else {
             _ = notes.toggle(digit: digit, row: selection.row, col: selection.column)
@@ -185,14 +202,14 @@ public final class GameViewModel {
 
     public func undo() async {
         guard let session else { return }
-        try? await session.undo()
+        await runSession("undo") { try await session.undo() }
         await resyncFromSession()
         scheduleSave()
     }
 
     public func redo() async {
         guard let session else { return }
-        try? await session.redo()
+        await runSession("redo") { try await session.redo() }
         await resyncFromSession()
         scheduleSave()
     }
@@ -202,7 +219,7 @@ public final class GameViewModel {
             status = .paused
             return
         }
-        try? await session.pause()
+        await runSession("pause") { try await session.pause() }
         await resyncFromSession()
         await flush()
     }
@@ -212,8 +229,29 @@ public final class GameViewModel {
             status = .playing
             return
         }
-        try? await session.resume()
+        await runSession("resume") { try await session.resume() }
         await resyncFromSession()
+    }
+
+    /// M10 (issue #67): unified session-call helper. Catches the throw,
+    /// routes it through the error funnel, and absorbs locally so the
+    /// VM can re-sync state instead of propagating up to SwiftUI (which
+    /// has no recovery surface for these failures — see design.md §How.5.4
+    /// + §How.6.1 principle 1: in-flight game must never crash on save
+    /// failures). Source string identifies the specific actor method.
+    private func runSession(
+        _ method: String,
+        _ body: () async throws -> Void
+    ) async {
+        do {
+            try await body()
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameViewModel.\(method)"
+            )
+        }
     }
 
     public func togglePencil() {
@@ -249,16 +287,27 @@ public final class GameViewModel {
         let puzzleId = identity.puzzleId
         let mode = identity.kind
         let difficulty = identity.difficulty
+        let reporter = errorReporter
         pendingSaveTask = Task { [weak self] in
+            // try?: Task.sleep cancellation is normal control flow (debounce
+            // window was re-armed by the next user input).
             try? await Task.sleep(nanoseconds: delay)
             if Task.isCancelled { return }
             guard let snapshot = await self?.captureSnapshot() else { return }
-            try? await persistence.save(
-                snapshot,
-                puzzleId: puzzleId,
-                mode: mode,
-                difficulty: difficulty
-            )
+            do {
+                try await persistence.save(
+                    snapshot,
+                    puzzleId: puzzleId,
+                    mode: mode,
+                    difficulty: difficulty
+                )
+            } catch {
+                await reporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "GameViewModel.debouncedSave"
+                )
+            }
         }
         _ = session  // silence unused-capture warning
     }
@@ -274,12 +323,20 @@ public final class GameViewModel {
         pendingSaveTask?.cancel()
         guard let snapshot = await captureSnapshot(),
               let persistence else { return }
-        try? await persistence.save(
-            snapshot,
-            puzzleId: identity.puzzleId,
-            mode: identity.kind,
-            difficulty: identity.difficulty
-        )
+        do {
+            try await persistence.save(
+                snapshot,
+                puzzleId: identity.puzzleId,
+                mode: identity.kind,
+                difficulty: identity.difficulty
+            )
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameViewModel.flush"
+            )
+        }
     }
 
     // MARK: - Internal helpers

@@ -8,6 +8,7 @@ public import Foundation
 public import PuzzleStore
 public import Persistence
 public import SudokuEngine
+public import Telemetry
 
 public struct DailyCard: Sendable, Equatable, Hashable, Identifiable {
     public let envelope: PuzzleEnvelope
@@ -33,6 +34,7 @@ public final class DailyHubViewModel {
 
     private let provider: any PuzzleProviderProtocol
     private let persistence: any PersistenceProtocol
+    private let errorReporter: any ErrorReporter
     private let dateProvider: @Sendable () -> Date
     /// Idempotency latch for `.task` — once `bootstrap()` has resolved we
     /// don't re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
@@ -41,10 +43,12 @@ public final class DailyHubViewModel {
     public init(
         provider: any PuzzleProviderProtocol,
         persistence: any PersistenceProtocol,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         dateProvider: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.provider = provider
         self.persistence = persistence
+        self.errorReporter = errorReporter
         self.dateProvider = dateProvider
     }
 
@@ -57,7 +61,23 @@ public final class DailyHubViewModel {
             async let trioCall = provider.fetchDailyTrio(date: today)
             async let completedCall = persistence.fetchCompletedDailyIds(for: today)
             let trio = try await trioCall
-            let completed = (try? await completedCall) ?? []
+            // M10 (issue #67): completion-list failure must still degrade
+            // gracefully to "no daily completed yet" (every card shows as
+            // un-completed) — design.md §How.6.1 principle 1, Daily hub
+            // must never block. Funnel reports the underlying error so a
+            // CloudKit fetch failure is observable in OSLog instead of
+            // silently rendering an inaccurate hub state.
+            let completed: Set<String>
+            do {
+                completed = try await completedCall
+            } catch {
+                await errorReporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "DailyHubViewModel.fetchCompletedDailyIds"
+                )
+                completed = []
+            }
             let cards = trio.map { envelope in
                 DailyCard(envelope: envelope, isCompleted: completed.contains(envelope.identity.puzzleId))
             }

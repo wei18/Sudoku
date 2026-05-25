@@ -56,6 +56,9 @@ public final class ToastController {
         current = toast
         let duration = toast.duration
         dismissTask = Task { [weak self] in
+            // try?: Task.sleep cancellation is normal control flow (a
+            // subsequent show()/dismiss() cancels this task). M10
+            // (issue #67) — not an error path.
             try? await Task.sleep(for: duration)
             guard !Task.isCancelled else { return }
             self?.current = nil
