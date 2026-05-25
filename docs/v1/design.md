@@ -1047,6 +1047,8 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 
 #### §How.6.5 iCloud 帳號邊緣案例
 
+> **Implementation status (2026-05-25, issue #64)**: Case A/B/C wiring is **deferred post-v2.5**. The original `AccountMonitor` + `LocalCache` Persistence-internal scaffolding has been deleted because a production wire-up requires net-new `ICloudAccountProvider` (CKContainer wrap) and `UserHashKeychain` (Keychain Services wrap) Live implementations — proper feature-scope work inappropriate before App Store submission. The spec below remains canonical and will be re-implemented as a dedicated issue after submission. CRUD entry points currently surface generic `PersistenceError.underlying` instead of the distinguishing `.iCloudNotSignedIn` / `.iCloudSignedOutDuringSession` / `.iCloudAccountChanged` cases.
+
 **Case A — 從未登入 iCloud**：同步 / Leaderboard 降級；**Daily 與 Practice 題目本身完全可用**（本機 generator 產生、無 iCloud 相依）；HomeView 常駐 banner + 「開啟設定」按鈕；不擋啟動。
 
 **Case B — Session 中登出 iCloud**：
@@ -1069,6 +1071,8 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 本節在 v1 不再適用 — 題目改由本機 deterministic generator 產生（§How.4），不存在 server-side 投放失敗導致「今天沒題」的路徑。Generator 唯一可能的失敗為 `GeneratorError.exhausted`（§How.6.3），屬 defect 級事件、走 alert + MetricKit。
 
 #### §How.6.7 CloudKit 同步衝突解決
+
+> **Implementation status (2026-05-25, issue #64)**: `ConflictResolver` + `RetryHarness` are wired into `SavedGameStore.save(...)` and `PersonalRecordStore.upsert(...)`. `CKError.serverRecordChanged` is translated to `PersistenceError.syncConflict(recordName:)` inside `LivePrivateCKGateway.save(_:)` via the `translate(_:recordName:)` boundary helper (verified by `LivePrivateCKGatewayTests`) — the stores' `catch PersistenceError.syncConflict` clause is therefore reachable in production, not just in the Fake. On conflict the store re-fetches the server payload, runs `ConflictResolver.resolve(local:server:)`, and re-submits the merged payload via `RetryHarness.run`. Merge-correctness wiring (newer-wins for `boardState`/`notesState`/`undoStack`, `max` for `elapsedSeconds`, "completed"-wins for `status`) is covered end-to-end by `ConflictWiringTests`. Budget: 2 retries; the 3rd conflict throws `PersistenceError.syncConflict`.
 
 **Policy — Per-field last-writer-wins by `lastModifiedAt`**：
 

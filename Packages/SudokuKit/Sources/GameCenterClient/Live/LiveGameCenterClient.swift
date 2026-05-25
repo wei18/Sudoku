@@ -35,16 +35,19 @@ public actor LiveGameCenterClient: GameCenterClient {
 
     private let authDriver: any AuthDriver
     private let submitScoreHook: SubmitScoreHook
+    private let leaderboardLoader: any LeaderboardLoader
     private var cachedState: GameCenterAuthState = .unknown
     private var continuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
     private var observerTask: Task<Void, Never>?
 
     public init(
         authDriver: any AuthDriver,
-        submitScoreHook: @escaping SubmitScoreHook = { _, _ in }
+        submitScoreHook: @escaping SubmitScoreHook = { _, _ in },
+        leaderboardLoader: any LeaderboardLoader = GKLeaderboardLoader()
     ) {
         self.authDriver = authDriver
         self.submitScoreHook = submitScoreHook
+        self.leaderboardLoader = leaderboardLoader
     }
 
     deinit {
@@ -170,8 +173,24 @@ public actor LiveGameCenterClient: GameCenterClient {
         around player: String?,
         limit: Int
     ) async throws -> LeaderboardSlice {
-        _ = (leaderboardId, scope, player, limit)
-        throw GameCenterError.notAuthenticated
+        // Per §How.3.5: delegate the friends-auth precondition + load to
+        // LeaderboardSliceService. Closures hop back through self so the
+        // friends status reflects this actor's latest known state.
+        let loader = leaderboardLoader
+        return try await LeaderboardSliceService.fetch(
+            loader: loader,
+            friendsStatus: { [weak self] in
+                await self?.friendsAuthorizationStatus() ?? .notDetermined
+            },
+            requestFriendsAuthorization: { [weak self] in
+                guard let self else { return .notDetermined }
+                return try await self.requestFriendsAuthorization()
+            },
+            leaderboardId: leaderboardId,
+            scope: scope,
+            around: player,
+            limit: limit
+        )
     }
 
     public func friendsAuthorizationStatus() async -> FriendsAuthStatus {

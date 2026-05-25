@@ -47,8 +47,28 @@ internal actor PersonalRecordStore: Sendable {
     }
 
     func upsert(_ record: PersonalRecord) async throws {
-        let payload = PersonalRecordMapper.payload(from: record)
-        try await gateway.save(payload)
+        // §How.6.7: wrap the live save in RetryHarness; on
+        // `.syncConflict` from the gateway, fetch the server record,
+        // run ConflictResolver.resolve(local:server:), and resubmit the
+        // merged record. Budget: 2 retries; 3rd → throw.
+        let working = MutableRef(value: record)
+        let gatewayRef = gateway
+        try await RetryHarness.run(recordName: record.recordName) { _ in
+            let current = await working.get()
+            let payload = PersonalRecordMapper.payload(from: current)
+            do {
+                try await gatewayRef.save(payload)
+                return .success(())
+            } catch PersistenceError.syncConflict {
+                guard let serverPayload = try await gatewayRef.fetch(recordName: current.recordName),
+                      let serverRecord = PersonalRecordMapper.record(from: serverPayload) else {
+                    return .conflict
+                }
+                let merged = ConflictResolver.resolve(local: current, server: serverRecord)
+                await working.set(merged)
+                return .conflict
+            }
+        }
     }
 
     /// High-level "record this completion" entry. Encodes the dedup rule:

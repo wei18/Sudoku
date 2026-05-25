@@ -3,9 +3,8 @@
 //
 // Per docs/v1/design.md §How.1 (DI composition root): the App target should not have
 // to know about the internal split between `SavedGameStore`,
-// `PersonalRecordStore`, `LivePrivateCKGateway`, `AccountMonitor`, or
-// `SubscriptionInstaller`. This facade is the single public entry that
-// `AppComposition.live(...)` constructs.
+// `PersonalRecordStore`, and `LivePrivateCKGateway`. This facade is the
+// single public entry that `AppComposition.live(...)` constructs.
 //
 // The CloudKit-talking parts (`LivePrivateCKGateway`, zone provisioning,
 // subscription installation) stay internal to this module — only this
