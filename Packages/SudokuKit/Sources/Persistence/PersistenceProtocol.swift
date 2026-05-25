@@ -1,15 +1,17 @@
 // PersistenceProtocol — the VM-facing seam for CloudKit Private DB.
 //
-// Per docs/v1/design.md §How.5.4. Stays primitive-string for `mode` / `difficulty`
-// to match the Telemetry seam (Phase 4 deviation): the Persistence target
-// must not pull SudokuEngine's `Difficulty` or any GameMode enum into its
-// public API, so callers convert `.rawValue` once at the call site.
+// Per docs/v1/design.md §How.5.4. M5 (issue #65): the protocol takes typed
+// `Mode` / `Difficulty` from SudokuEngine rather than raw `String`. The CK
+// wire format remains string-based — mappers do the `.rawValue` conversion
+// at the storage seam (`SavedGameMapper`, `PersonalRecordMapper`,
+// `LivePrivateCKGateway.translate`).
 //
 // All methods are `async throws`; protocol is `Sendable` so existential
 // `any PersistenceProtocol` can cross actor boundaries (Phase 8 ViewModels).
 
 public import Foundation
 public import GameState
+public import SudokuEngine
 
 public protocol PersistenceProtocol: Sendable {
     /// Most-recently-modified `status == "inProgress"` SavedGame across all
@@ -20,8 +22,8 @@ public protocol PersistenceProtocol: Sendable {
     /// from a default GameSession for that puzzle if none exists.
     func loadOrCreate(
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> GameSessionSnapshot
 
     /// Persist the current snapshot. Debounced upstream by the VM; the
@@ -36,8 +38,8 @@ public protocol PersistenceProtocol: Sendable {
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws
 
     /// Flip `status` to `"completed"` for the given summary's record.
@@ -53,8 +55,8 @@ public protocol PersistenceProtocol: Sendable {
     /// Fetch the PersonalRecord for `(mode, difficulty)`; returns an empty
     /// record if none exists yet (never throws on first read).
     func fetchPersonalRecord(
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> PersonalRecord
 
     /// Upsert. Implementations apply per-field LWW on server conflict

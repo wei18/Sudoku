@@ -10,6 +10,7 @@
 public import MonetizationCore
 public import SwiftUI
 internal import Persistence
+internal import SudokuEngine
 
 public struct RootView: View {
     @State private var viewModel: RootViewModel
@@ -138,7 +139,7 @@ struct ResumePill: View {
                 Image(systemName: "arrow.clockwise")
                     .foregroundStyle(theme.accent.primary.resolved)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Resume \(candidate.difficulty.capitalized)")
+                    Text("Resume \(candidate.difficulty.rawValue.capitalized)")
                         .font(.body.weight(.medium))
                         .foregroundStyle(theme.text.primary.resolved)
                     Text(elapsedLabel)

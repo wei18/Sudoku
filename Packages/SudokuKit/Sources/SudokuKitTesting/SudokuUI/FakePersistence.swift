@@ -7,6 +7,7 @@
 public import Foundation
 public import GameState
 public import Persistence
+public import SudokuEngine
 
 public actor FakePersistence: PersistenceProtocol {
 
@@ -17,7 +18,7 @@ public actor FakePersistence: PersistenceProtocol {
         case markCompleted(recordName: String)
         case deleteAbandoned(recordName: String)
         case fetchCompletedDailyIds(date: Date)
-        case fetchPersonalRecord(mode: String, difficulty: String)
+        case fetchPersonalRecord(mode: Mode, difficulty: Difficulty)
         case upsertPersonalRecord(recordName: String)
     }
 
@@ -27,8 +28,11 @@ public actor FakePersistence: PersistenceProtocol {
     public var completedDailyIds: Set<String> = []
     public var personalRecord: PersonalRecord = PersonalRecord(
         recordName: "",
-        mode: "",
-        difficulty: "",
+        // M5 (issue #65): default mode/difficulty must be valid enum cases;
+        // tests that exercise this fake's PersonalRecord path override
+        // `personalRecord` explicitly.
+        mode: .daily,
+        difficulty: .easy,
         bestTimeSeconds: nil,
         totalTimeSeconds: 0,
         completedCount: 0,
@@ -70,8 +74,8 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func loadOrCreate(
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> GameSessionSnapshot {
         operations.append(.loadOrCreate(puzzleId: puzzleId))
         if let error = loadOrCreateError {
@@ -86,8 +90,8 @@ public actor FakePersistence: PersistenceProtocol {
     public func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {
         _ = (mode, difficulty)
         operations.append(.save(puzzleId: puzzleId))
@@ -107,8 +111,8 @@ public actor FakePersistence: PersistenceProtocol {
     }
 
     public func fetchPersonalRecord(
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> PersonalRecord {
         operations.append(.fetchPersonalRecord(mode: mode, difficulty: difficulty))
         return personalRecord

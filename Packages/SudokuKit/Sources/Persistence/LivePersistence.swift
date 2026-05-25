@@ -81,8 +81,8 @@ public actor LivePersistence: PersistenceProtocol {
 
     public func loadOrCreate(
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> GameSessionSnapshot {
         try await savedGameStore().loadOrCreate(
             puzzleId: puzzleId,
@@ -94,8 +94,8 @@ public actor LivePersistence: PersistenceProtocol {
     public func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {
         try await savedGameStore().save(
             snapshot,
@@ -118,8 +118,8 @@ public actor LivePersistence: PersistenceProtocol {
     }
 
     public func fetchPersonalRecord(
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> PersonalRecord {
         try await personalRecordStore().fetch(mode: mode, difficulty: difficulty)
     }

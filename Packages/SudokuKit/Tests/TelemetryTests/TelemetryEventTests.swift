@@ -1,4 +1,5 @@
 import Foundation
+import SudokuEngine
 import Testing
 @testable import Telemetry
 
@@ -20,11 +21,11 @@ struct TelemetryEventTests {
             .noteToggled(row: 1, col: 2, digit: 3, added: true),
             .moveUndone,
             .moveRedone,
-            .sessionStarted(puzzleId: "p", mode: "daily", difficulty: "easy"),
+            .sessionStarted(puzzleId: "p", mode: .daily, difficulty: .easy),
             .sessionPaused,
             .sessionResumed,
-            .puzzleCompleted(puzzleId: "p", mode: "daily", difficulty: "easy", elapsedSeconds: 60),
-            .sessionAbandoned(puzzleId: "p", mode: "practice", difficulty: "hard", elapsedSeconds: 12),
+            .puzzleCompleted(puzzleId: "p", mode: .daily, difficulty: .easy, elapsedSeconds: 60),
+            .sessionAbandoned(puzzleId: "p", mode: .practice, difficulty: .hard, elapsedSeconds: 12),
             .errorOccurred(source: "Persistence", code: "lww.conflict", message: "x"),
             .metricKitReport(metric)
         ]
@@ -43,8 +44,8 @@ struct TelemetryEventTests {
                 != .digitPlaced(row: 0, col: 0, digit: 2, previous: nil)
         )
         #expect(
-            TelemetryEvent.puzzleCompleted(puzzleId: "a", mode: "daily", difficulty: "easy", elapsedSeconds: 60)
-                != .puzzleCompleted(puzzleId: "a", mode: "daily", difficulty: "easy", elapsedSeconds: 61)
+            TelemetryEvent.puzzleCompleted(puzzleId: "a", mode: .daily, difficulty: .easy, elapsedSeconds: 60)
+                != .puzzleCompleted(puzzleId: "a", mode: .daily, difficulty: .easy, elapsedSeconds: 61)
         )
     }
 
@@ -59,11 +60,11 @@ struct TelemetryEventTests {
             .noteToggled(row: 0, col: 0, digit: 5, added: false),
             .moveUndone,
             .moveRedone,
-            .sessionStarted(puzzleId: "2026-05-19-easy", mode: "daily", difficulty: "easy"),
+            .sessionStarted(puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy),
             .sessionPaused,
             .sessionResumed,
-            .puzzleCompleted(puzzleId: "p-1", mode: "practice", difficulty: "medium", elapsedSeconds: 333),
-            .sessionAbandoned(puzzleId: "p-2", mode: "daily", difficulty: "hard", elapsedSeconds: 10),
+            .puzzleCompleted(puzzleId: "p-1", mode: .practice, difficulty: .medium, elapsedSeconds: 333),
+            .sessionAbandoned(puzzleId: "p-2", mode: .daily, difficulty: .hard, elapsedSeconds: 10),
             .errorOccurred(source: "GameCenter", code: "auth.cancelled", message: "user cancelled"),
             .metricKitReport(metric)
         ]

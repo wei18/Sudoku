@@ -3,6 +3,7 @@
 
 import Foundation
 import Testing
+import SudokuEngine
 @testable import Persistence
 
 @Suite("Persistence — conflict resolver")
@@ -71,12 +72,12 @@ struct ConflictResolverTests {
     @Test func personalRecordBestTimeTakesMin() {
         let now = Date(timeIntervalSince1970: 1_000)
         let local = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 120, totalTimeSeconds: 300, completedCount: 2,
             lastUpdatedAt: now, completedPuzzleIds: ["a", "b"]
         )
         let server = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 90, totalTimeSeconds: 200, completedCount: 1,
             lastUpdatedAt: now, completedPuzzleIds: ["b", "c"]
         )
@@ -87,12 +88,12 @@ struct ConflictResolverTests {
     @Test func personalRecordCountsTakeMax() {
         let now = Date(timeIntervalSince1970: 1_000)
         let local = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 120, totalTimeSeconds: 300, completedCount: 2,
             lastUpdatedAt: now, completedPuzzleIds: ["a"]
         )
         let server = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 120, totalTimeSeconds: 500, completedCount: 4,
             lastUpdatedAt: now, completedPuzzleIds: ["b"]
         )
@@ -104,12 +105,12 @@ struct ConflictResolverTests {
     @Test func personalRecordCompletedPuzzleIdsTakeUnion() {
         let now = Date(timeIntervalSince1970: 1_000)
         let local = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 120, totalTimeSeconds: 300, completedCount: 2,
             lastUpdatedAt: now, completedPuzzleIds: ["a", "b"]
         )
         let server = PersonalRecord(
-            recordName: "daily-easy", mode: "daily", difficulty: "easy",
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
             bestTimeSeconds: 120, totalTimeSeconds: 300, completedCount: 2,
             lastUpdatedAt: now, completedPuzzleIds: ["b", "c"]
         )

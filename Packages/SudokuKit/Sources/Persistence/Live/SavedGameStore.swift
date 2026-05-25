@@ -70,8 +70,8 @@ internal actor SavedGameStore: Sendable {
 
     func loadOrCreate(
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws -> GameSessionSnapshot {
         let recordName = Self.recordName(for: puzzleId, mode: mode)
         if let existing = try await gateway.fetch(recordName: recordName) {
@@ -100,8 +100,8 @@ internal actor SavedGameStore: Sendable {
     func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String
+        mode: Mode,
+        difficulty: Difficulty
     ) async throws {
         let recordName = Self.recordName(for: puzzleId, mode: mode)
         try await save(
@@ -153,8 +153,8 @@ internal actor SavedGameStore: Sendable {
     private func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,
-        mode: String,
-        difficulty: String,
+        mode: Mode,
+        difficulty: Difficulty,
         recordName: String
     ) async throws {
         let now = clock()
@@ -181,8 +181,8 @@ internal actor SavedGameStore: Sendable {
 
     // MARK: - Helpers
 
-    static func recordName(for puzzleId: String, mode: String) -> String {
-        "\(mode)-\(puzzleId)"
+    static func recordName(for puzzleId: String, mode: Mode) -> String {
+        "\(mode.rawValue)-\(puzzleId)"
     }
 
     private static func reason(for error: PersistenceError) -> String {

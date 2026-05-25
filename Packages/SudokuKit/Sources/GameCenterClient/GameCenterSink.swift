@@ -22,6 +22,7 @@
 // observable via the GameCenterClient's own OSLog in production.
 
 public import Foundation
+internal import SudokuEngine
 public import Telemetry
 
 public actor GameCenterSink: TelemetrySink {
@@ -67,12 +68,15 @@ public actor GameCenterSink: TelemetrySink {
 
     private func submitScoreIfEligible(
         puzzleId: String,
-        mode: String,
-        difficulty: String,
+        mode: Mode,
+        difficulty: Difficulty,
         elapsedSeconds: Int
     ) async {
-        guard mode == "daily" else { return }
-        guard let kind = Self.leaderboardKind(forDifficulty: difficulty) else { return }
+        guard mode == .daily else { return }
+        // M5 (issue #65): exhaustive switch — no `nil` case, no silent
+        // score-drop. A typo at the call site fails to compile rather
+        // than reaching this branch with a junk string.
+        let kind = Self.leaderboardKind(forDifficulty: difficulty)
         let allow = await guards.shouldSubmit(puzzleId: puzzleId)
         guard allow else { return }
         do {
@@ -89,7 +93,7 @@ public actor GameCenterSink: TelemetrySink {
         }
     }
 
-    private func reportAchievements(puzzleId: String, mode: String, difficulty: String) async {
+    private func reportAchievements(puzzleId: String, mode: Mode, difficulty: Difficulty) async {
         do {
             let progresses = try await achievements.evaluateForCompletion(
                 puzzleId: puzzleId,
@@ -115,12 +119,14 @@ public actor GameCenterSink: TelemetrySink {
         }
     }
 
-    private static func leaderboardKind(forDifficulty difficulty: String) -> LeaderboardKind? {
+    /// M5 (issue #65): non-optional, exhaustive on `Difficulty`. The
+    /// compiler now refuses to let this map drift out of sync with new
+    /// difficulty cases.
+    private static func leaderboardKind(forDifficulty difficulty: Difficulty) -> LeaderboardKind {
         switch difficulty {
-        case "easy": return .dailyEasy
-        case "medium": return .dailyMedium
-        case "hard": return .dailyHard
-        default: return nil
+        case .easy: return .dailyEasy
+        case .medium: return .dailyMedium
+        case .hard: return .dailyHard
         }
     }
 }

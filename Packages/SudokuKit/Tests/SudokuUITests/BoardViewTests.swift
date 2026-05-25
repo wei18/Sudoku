@@ -57,7 +57,7 @@ struct BoardViewTests {
     private static let identityEasy = PuzzleIdentity(
         puzzleId: "test-easy",
         kind: .practice,
-        difficulty: "easy"
+        difficulty: .easy
     )
 
     /// Build a preview VM with the given clue string + selection + errors.

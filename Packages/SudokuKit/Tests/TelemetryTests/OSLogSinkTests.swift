@@ -1,3 +1,4 @@
+import SudokuEngine
 import Testing
 @testable import Telemetry
 import SudokuKitTesting
@@ -41,7 +42,7 @@ struct OSLogSinkTests {
         let logger = FakeLogger()
         let sink = OSLogSink(logger: logger)
 
-        await sink.receive(.sessionStarted(puzzleId: "2026-05-19-easy", mode: "daily", difficulty: "easy"))
+        await sink.receive(.sessionStarted(puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy))
 
         await logger.settle()
         let entries = await logger.entries
@@ -57,8 +58,8 @@ struct OSLogSinkTests {
 
         await sink.receive(.puzzleCompleted(
             puzzleId: "2026-05-19-hard",
-            mode: "daily",
-            difficulty: "hard",
+            mode: .daily,
+            difficulty: .hard,
             elapsedSeconds: 444
         ))
 

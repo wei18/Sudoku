@@ -19,6 +19,7 @@
 // GitHub issue (filed by Leader) for the issue context.
 
 internal import Foundation
+public import SudokuEngine
 
 public actor LiveGameCenterClient: GameCenterClient {
 
@@ -144,7 +145,7 @@ public actor LiveGameCenterClient: GameCenterClient {
     public func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: String,
+        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws {
         _ = (puzzleId, difficulty)

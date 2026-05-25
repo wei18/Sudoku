@@ -100,7 +100,7 @@ public struct BoardLoaderView: View {
         do {
             let snapshot = try await persistence.loadOrCreate(
                 puzzleId: puzzleId,
-                mode: identity.kind.rawValue,
+                mode: identity.kind,
                 difficulty: identity.difficulty
             )
             let session = await GameSession.restore(from: snapshot)
@@ -126,12 +126,13 @@ public struct BoardLoaderView: View {
     ///   - practice: "practice-{base32}-{difficulty}"
     ///
     /// Difficulty is the suffix after the last `-`. If parsing fails the
-    /// difficulty falls back to `"easy"` so the load path still progresses;
+    /// difficulty falls back to `.easy` so the load path still progresses;
     /// the snapshot's `puzzle.difficulty` is the authoritative value used
     /// by `BoardView` (this identity only feeds the header label).
     private static func identity(from puzzleId: String) -> PuzzleIdentity {
-        let kind: PuzzleKind = puzzleId.hasPrefix("practice-") ? .practice : .daily
-        let difficulty = puzzleId.split(separator: "-").last.map(String.init) ?? "easy"
+        let kind: Mode = puzzleId.hasPrefix("practice-") ? .practice : .daily
+        let difficultyRaw = puzzleId.split(separator: "-").last.map(String.init) ?? Difficulty.easy.rawValue
+        let difficulty = Difficulty(rawValue: difficultyRaw) ?? .easy
         return PuzzleIdentity(puzzleId: puzzleId, kind: kind, difficulty: difficulty)
     }
 }

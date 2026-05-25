@@ -7,6 +7,7 @@
 // (see impl-notes 2026-05-20_submit-score-centisecond).
 
 import Foundation
+import SudokuEngine
 import Testing
 @testable import GameCenterClient
 import SudokuKitTesting
@@ -41,7 +42,7 @@ struct LiveGameCenterClientSubmitTests {
         try await client.submitScore(
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 251,
-            difficulty: "easy",
+            difficulty: .easy,
             leaderboardKind: .dailyEasy
         )
         let calls = await spy.calls
@@ -58,7 +59,7 @@ struct LiveGameCenterClientSubmitTests {
         try await client.submitScore(
             puzzleId: "2026-05-19-medium",
             elapsedSeconds: 0,
-            difficulty: "medium",
+            difficulty: .medium,
             leaderboardKind: .dailyMedium
         )
         let calls = await spy.calls
@@ -75,7 +76,7 @@ struct LiveGameCenterClientSubmitTests {
         try await client.submitScore(
             puzzleId: "2026-05-19-hard",
             elapsedSeconds: 7_200,
-            difficulty: "hard",
+            difficulty: .hard,
             leaderboardKind: .dailyHard
         )
         let calls = await spy.calls

@@ -26,7 +26,7 @@ struct BoardViewBannerTests {
     private static let identity = PuzzleIdentity(
         puzzleId: "test-banner",
         kind: .practice,
-        difficulty: "easy"
+        difficulty: .easy
     )
     private static let emptyClues = String(repeating: ".", count: 81)
 

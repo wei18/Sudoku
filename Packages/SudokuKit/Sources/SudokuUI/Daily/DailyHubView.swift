@@ -4,6 +4,7 @@
 // an Alert per docs/v1/design.md §How.6.3.
 
 public import SwiftUI
+internal import SudokuEngine
 
 public struct DailyHubView: View {
     @Bindable private var viewModel: DailyHubViewModel
@@ -96,7 +97,7 @@ struct DailyPuzzleCard: View {
                     .fill(difficultyTint)
                     .frame(width: 10, height: 10)
                     .accessibilityHidden(true)
-                Text(LocalizedStringKey(card.difficulty.capitalized))
+                Text(LocalizedStringKey(card.difficulty.rawValue.capitalized))
                     .font(.title3.weight(.medium))
                     .foregroundStyle(difficultyTint)
                 Spacer()
@@ -121,15 +122,14 @@ struct DailyPuzzleCard: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    /// Map the envelope's difficulty string to the matching `difficulty.*`
-    /// token. Unknown strings fall back to `text.primary` so we never go
-    /// off-token.
+    /// Map the typed `Difficulty` enum to the matching `difficulty.*`
+    /// theme token. M5 (issue #65): switch is exhaustive — adding a new
+    /// difficulty case forces this map to update.
     private var difficultyTint: Color {
-        switch card.difficulty.lowercased() {
-        case "easy": return theme.difficulty.easy.resolved
-        case "medium": return theme.difficulty.medium.resolved
-        case "hard": return theme.difficulty.hard.resolved
-        default: return theme.text.primary.resolved
+        switch card.difficulty {
+        case .easy: return theme.difficulty.easy.resolved
+        case .medium: return theme.difficulty.medium.resolved
+        case .hard: return theme.difficulty.hard.resolved
         }
     }
 }

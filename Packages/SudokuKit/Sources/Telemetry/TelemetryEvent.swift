@@ -1,33 +1,32 @@
 // TelemetryEvent — the canonical event surface for the Telemetry facade.
 //
-// DESIGN NOTE — primitive payload fields instead of mirror enums:
+// M5 (issue #65) — typed payload fields:
 //
-// plan.md §4.1 originally specified mirror `Difficulty` / `GameMode` types
-// living inside the Telemetry target. We deliberately deviate: payloads carry
-// raw `String` values (e.g. `mode: "daily"`, `difficulty: "easy"`) and callers
-// at the adapter seam perform `.rawValue` conversion. Rationale:
+// `mode` / `difficulty` payload fields are typed `Mode` / `Difficulty`
+// (both from SudokuEngine). Previously they were raw `String`, which
+// allowed call-site typos ("eazy", "Daily") to slip through to the
+// GameCenterSink — where `leaderboardKind(forDifficulty:)` would return
+// `nil` and silently drop the score. With typed enums, those typos now
+// fail to compile.
 //
-// - Telemetry should not depend on SudokuEngine (where `Difficulty` lives) —
-//   doing so would make the lowest-level observability module pull in the
-//   pure-domain core.
-// - Shipping a duplicate `Difficulty` definition inside Telemetry invites
-//   silent drift between two truths.
-//
-// The narrow seam is `GameStateTelemetryAdapter` (this target) which performs
-// the string conversion exactly once.
+// The original concern that this would "leak SudokuEngine into the lowest
+// observability module" is resolved by the fact that `Mode` / `Difficulty`
+// are zero-IO, zero-dependency String-raw enums — they carry the same
+// semantic weight as primitives, with compile-time safety.
 
-import Foundation
+public import Foundation
+public import SudokuEngine
 
 public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     case digitPlaced(row: Int, col: Int, digit: Int, previous: Int?)
     case noteToggled(row: Int, col: Int, digit: Int, added: Bool)
     case moveUndone
     case moveRedone
-    case sessionStarted(puzzleId: String, mode: String, difficulty: String)
+    case sessionStarted(puzzleId: String, mode: Mode, difficulty: Difficulty)
     case sessionPaused
     case sessionResumed
-    case puzzleCompleted(puzzleId: String, mode: String, difficulty: String, elapsedSeconds: Int)
-    case sessionAbandoned(puzzleId: String, mode: String, difficulty: String, elapsedSeconds: Int)
+    case puzzleCompleted(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int)
+    case sessionAbandoned(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int)
     case errorOccurred(source: String, code: String, message: String)
     /// Successful Persistence save (Phase 5.4). Emitted after a SavedGame
     /// record has been persisted to CloudKit Private DB.

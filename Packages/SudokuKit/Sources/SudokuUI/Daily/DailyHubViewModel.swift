@@ -7,13 +7,14 @@
 public import Foundation
 public import PuzzleStore
 public import Persistence
+public import SudokuEngine
 
 public struct DailyCard: Sendable, Equatable, Hashable, Identifiable {
     public let envelope: PuzzleEnvelope
     public let isCompleted: Bool
 
     public var id: String { envelope.identity.puzzleId }
-    public var difficulty: String { envelope.identity.difficulty }
+    public var difficulty: Difficulty { envelope.identity.difficulty }
 }
 
 public enum DailyHubState: Sendable, Equatable {

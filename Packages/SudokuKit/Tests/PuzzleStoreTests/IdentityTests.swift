@@ -30,7 +30,7 @@ struct PuzzleIdentityTests {
         #expect(medium.puzzleId == "2026-06-01-medium")
         #expect(hard.puzzleId == "2026-06-01-hard")
         #expect(easy.kind == .daily)
-        #expect(easy.difficulty == "easy")
+        #expect(easy.difficulty == .easy)
     }
 
     @Test func dailyIdentityFloorsToUTCMidnight() {
@@ -84,9 +84,10 @@ struct PuzzleIdentityTests {
         #expect(decoded == original)
     }
 
-    @Test func puzzleKindCases() {
-        #expect(PuzzleKind.allCases.count == 2)
-        #expect(PuzzleKind.allCases.contains(.daily))
-        #expect(PuzzleKind.allCases.contains(.practice))
+    @Test func modeCases() {
+        // M5 (issue #65): `PuzzleKind` was collapsed into `SudokuEngine.Mode`.
+        #expect(Mode.allCases.count == 2)
+        #expect(Mode.allCases.contains(.daily))
+        #expect(Mode.allCases.contains(.practice))
     }
 }
