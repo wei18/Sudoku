@@ -239,7 +239,11 @@ internal actor SavedGameStore: Sendable {
         let status: String
         if case .string(let value) = payload.fields[Field.status] { status = value } else { status = "inProgress" }
         let lastModified: Date
-        if case .date(let value) = payload.fields[Field.lastModifiedAt] { lastModified = value } else { lastModified = .distantPast }
+        if case .date(let value) = payload.fields[Field.lastModifiedAt] {
+            lastModified = value
+        } else {
+            lastModified = .distantPast
+        }
         return ConflictResolver.SavedGameSnapshot(
             boardState: board,
             notesState: notes,
