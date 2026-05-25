@@ -68,7 +68,17 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
                 score: Int(entry.score / 100)
             )
         }
-        _ = (player) // around-player handling is a Phase 10 follow-up.
+        // TODO(issue: TBD-around-player): centre the entries range on the
+        // given player's rank — requires a two-step GKLeaderboard call
+        // (`loadEntries(for: [player], ...)` to discover rank, then a
+        // second `loadEntries(for:timeScope:range:)` with
+        // `NSRange(location: max(1, rank - window), length: limit)`).
+        // Currently the param is accepted at the protocol seam but the
+        // range always starts at rank 1; this is a correctness gap (not
+        // a verification task) and must NOT be deferred to Phase 10.
+        // Tracked separately so this PR stays scoped to issue #64
+        // dead-code wiring.
+        _ = (player)
         return LeaderboardSlice(
             leaderboardId: leaderboardId,
             scope: scope,
