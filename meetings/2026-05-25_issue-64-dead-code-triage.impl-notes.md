@@ -98,3 +98,43 @@ Leader diverged from Phase 1 proposal: AccountMonitor + LocalCache deferred (req
 ### 未決 (Open questions)
 
 None blocking; Leader's scope decision resolved Q1/Q2/Q3/Q4 from Phase 1.
+
+---
+
+## Phase 2 — Execution log (2026-05-25, 4th attempt — landed)
+
+Branch: `worktree-agent-a7a1b56b1d52b424c` (on top of `wip/issue-64-phase1` @ 4e3019d).
+
+Commits landed (4 new on top of inherited):
+
+1. `4e80c7e` — refactor(persistence): delete AccountMonitor + AccountFlowTests + FakeAccountProvider; design.md §How.6.5 deferred-status banner.
+2. `e0aa24b` — refactor(persistence): delete LocalCache.
+3. `6a764f8` — feat(persistence): wire ConflictResolver/RetryHarness into SavedGameStore.save + PersonalRecordStore.upsert; FakePrivateCKGateway gains `setConflictOnSaveTimes(_:recordName:)`; ConflictWiringTests (4); design.md §How.6.7 status callout.
+4. `3c95e29` — feat(game-center): wire LeaderboardSliceService into LiveGameCenterClient.fetchLeaderboardSlice; new GKLeaderboardLoader adapter; LiveGameCenterClientLeaderboardSliceTests (3); SavedGameStore line-length tidy carryover.
+
+### 偏離 (Deviations from Phase 2 plan)
+
+- **Step 1 (SubscriptionInstaller delete) inherited from `4e3019d`** — not redone; already committed by prior attempt.
+- **Conflict merge done at the payload layer, not snapshot layer** — original plan was to project both sides to `GameSessionSnapshot`, merge, then re-encode via `SavedGameMapper`. Doing this required reconstructing a `Board` via the private `Board(encoded:against:)` extension on `SavedGameMapper`, plus duplicating `NotesEnvelope` / `UndoEnvelope` Codable shapes. Cleaner: project payloads into `ConflictResolver.SavedGameSnapshot`, run resolver, write resolved fields back into the local payload's `fields` dict — preserves non-LWW fields (`puzzleId` / `mode` / `difficulty` / `startedAt`) implicitly and avoids re-encoding round-trips. Same observable behavior; fewer moving parts.
+- **MutableRef actor** — Swift 6 strict concurrency forbids mutating captured vars from `@Sendable` closures. Introduced a small file-scope `internal actor MutableRef<Value: Sendable>` (in `SavedGameStore.swift`) to hold the per-attempt working payload / record. Reused by both stores. Considered alternative: make `RetryHarness.run`'s body inout — rejected because it would push concurrency semantics across an existing API surface that has clean tests (`ConflictResolverTests`).
+- **GKLeaderboardLoader marked `public struct`, not `internal`** — `LiveGameCenterClient.init` exposes `leaderboardLoader:` as a public default param, so the type must be public to be the default value. Compile-only `#if canImport(GameKit)` body; non-Apple fallback throws `.notAuthenticated`.
+- **`around: player` not yet plumbed into GKLeaderboard** — the live adapter takes the param but currently ignores it (loadEntries range starts at rank 1). Spec §How.3.5 doesn't require around-player for v1 mini-slice; flagged as Phase 10 follow-up via inline comment.
+
+### 折衷 (Tradeoffs)
+
+- **`FakePrivateCKGateway.setConflictOnSaveTimes` semantics** — chose "throw N times then succeed" instead of "always conflict / never conflict" modes. The 3-arg form (`(times, recordName)`) keeps the test surface narrow but means budget-exhaustion tests script exactly `maxRetries + 1` conflicts. Considered: a callback `(RecordPayload) -> Decision` — rejected as overkill for the 4 wiring tests.
+- **Sendable closure capture of `gateway` / `clock`** — copied to local lets `gatewayRef` / `clockRef` before the RetryHarness call to avoid re-capturing `self` and to keep the closure body's `await` chain readable. Closure body never touches `self` directly.
+
+### 驗證 (Verification)
+
+- `swift build` clean between each step.
+- `swift test --filter ConflictWiring` — 4/4 passed (0.001s).
+- `swift test --filter LeaderboardSlice` — 9/9 passed (3 new + 6 existing; 0.001s).
+- `swift test --filter Persistence` — 48/48 passed.
+- Full suite: running in background.
+- `grep -r "AccountMonitor\|LocalCache\|SubscriptionInstaller" Packages/SudokuKit/Sources/` → 0 hits.
+
+### Discipline notes
+
+- Commit-after-every-step discipline held (4 separate commits, hooks ran <1s sequentially each, no `--no-verify`).
+- Two lefthook warnings observed but non-blocking: SavedGameStore line-length (fixed in commit 4); GKLeaderboardLoader function_body_length (acceptable — 53 lines for a CloudKit-style adapter is within reason); test type-name length (acceptable — descriptive integration-test class name).
