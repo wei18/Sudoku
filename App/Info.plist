@@ -22,6 +22,19 @@
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <!--
+      Google Mobile Ads SDK 13.x requires this key to be present at app launch
+      (the SDK crashes early in `MobileAds.shared.start` if absent).
+      v2.5.2 uses Google's universal TEST App ID so real-device verification
+      cannot accidentally serve production creatives. v2.5.3 (user-owned, just
+      before ASC submission) swaps to the production App ID:
+        ca-app-pub-8986741979385138~8581337790
+      The per-ad-unit ID lives in `LiveAdMobBridge.swift` (DEBUG/Release pivot)
+      — both swap points are part of the v2.5.3 release checklist in
+      `docs/v2/v2.5-readiness.md §v2.5.3`.
+    -->
+    <key>GADApplicationIdentifier</key>
+    <string>ca-app-pub-3940256099942544~1458002511</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>
