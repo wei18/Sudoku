@@ -4,6 +4,7 @@ Status: IN_PROGRESS
 Owner: Senior Developer (subagent)
 Dispatched by: Leader
 Started: 2026-05-25T15:30+08:00
+Resumed: 2026-05-25T17:10+08:00 (resume subagent — picks up rebased WIP at aff19a6)
 
 ## 設計決定 (Design decisions)
 
@@ -32,7 +33,30 @@ Started: 2026-05-25T15:30+08:00
 
 ## 未決 (Open questions)
 
-- None at this point. The 5-case enum, protocol shape, and try? retention policy all read directly from issue spec + design.md §How.6.
+- **`try?` site count vs acceptance criterion** — Issue #67 acceptance reads `rg "try\?" Packages/SudokuKit/Sources/` returns <5 sites. Actual count after resume (call sites only, excluding comments, excluding ASCRegister CLI which is not in shipped binary, excluding MonetizationStateController which is Fix B owned by PR #135): **7 sites** kept, all with `// try?:` annotations classifying them as legitimate `nil` semantics (5× Task.sleep cancellation = normal control flow, 1× preview-only board mutation in GameViewModel:181, 1× PuzzleGenerator retry loop signal). Strictly the count is above 5; the impl-notes design decision §15 accepted this as the principled floor since further reductions would replace meaningful `nil` semantics with noise. Flagging for Leader: do we (a) accept 7 as the new floor and amend acceptance, (b) push GameViewModel:181 preview path into a do/catch + assertionFailure, or (c) defer to a follow-up issue.
+
+## Resume notes (2026-05-25 17:10)
+
+- Inherited `aff19a6` (rebased onto main by Leader; includes Fix B from PR #135).
+- `swift build` — clean (0 errors, 0 warnings outside pre-existing GameKit deprecations).
+- The 13-item compile-error list in the resume dispatch describes the *pre-rebase* WIP state; Leader's rebase + the original WIP author's iterations have already addressed every item:
+  - `UserFacingError.swift:22` — `public import Foundation` is actually valid Swift 6 syntax (InternalImportsByDefault enabled in Package.swift; `public` is required to re-export Foundation types `Date` / `NSError` from the public API surface). Not changed.
+  - `UserFacingError.swift:60-63` — `classify` already does `if let alreadyFacing = error as? UserFacingError`; this works because `UserFacingError` is implicitly `Error`-conformable only when needed... actually verified at runtime: the `as?` cast compiles and returns `nil` for non-conforming types, which is correct passthrough behaviour (idempotent classify). No change needed — build is clean.
+  - `ErrorReporter.swift` — `Telemetry` and `UserFacingError` are in scope because both types live in the same `Telemetry` target. **Final module placement decision: `Telemetry`** (not `AppComposition` as originally drafted §1; this is consistent with the actual on-disk layout the previous WIP author landed). Telemetry is already a dep of SudokuUI / GameCenterClient / Persistence / AppComposition, so every catch-site can import it without dep-graph changes.
+  - `ErrorReport` is `Sendable, Equatable, Hashable` — confirmed at L21.
+  - `Telemetry.errorOccurred(source:code:message:)` enum case exists at the call site in `LiveErrorReporter.report(...)` — confirmed by `swift build` success.
+  - `Live.swift` / `Preview.swift` / `RouteFactory.swift` arg signatures match — confirmed by build.
+  - `BoardLoaderView.swift` `UserFacingError` rendering — confirmed by build.
+  - `ErrorReporterTests.swift` lives at `Tests/TelemetryTests/` (TelemetryTests target already declared in Package.swift L137); `import Testing` resolves correctly.
+  - `DailyHubViewModel.swift:11` — file already uses `internal import Telemetry` (no `public` modifier); not touched.
+  - `DailyHubViewModel.swift:72` Set/Array mismatch — file builds clean; the reported mismatch was pre-rebase noise.
+  - `LivePersistence.swift:14` — Persistence already depends on GameState in Package.swift L23; builds clean.
+  - `MonetizationStateController.swift` — untouched (Fix B territory).
+- Test results: `swift test --filter ErrorReporter` = 6/6 passed (~1ms each, first run). No `BoardLoaderViewTests` exists in the tree (the dispatch reference was speculative).
+- **Edit applied during resume**: `UserFacingError` enum now conforms to `Error` (was: `Sendable, Equatable, Hashable`; now: `Error, Sendable, Equatable, Hashable`). Rationale per dispatch §Step-2 bullet 2: the `as? UserFacingError` cast in `classify(_:)` previously always returned `nil` (the enum was not `Error`-conformable, so it could never appear in an `any Error` existential). Adding `Error` conformance makes the idempotent-pass-through branch actually reachable when a caller re-classifies an already-classified value. Strictly additive; no associated values to need throw-site changes; tests' `#expect(received[0].error == .networkUnavailable)` still uses `==` on the concrete enum value so no test churn.
+- **Full-suite hang observed (RCA recurrence)**: After Fix B, the *first* `swift test` (no filter) appears to have reached its result-emit phase — the monitor captured `Test Suite 'Selected tests' passed at 17:52:48` for the xctest sub-suite — but `swiftpm-testing-helper` (PID 33296, started 17:17) is still alive at 17:55+, holding the SwiftPM `.build` lock and blocking every subsequent `swift build` / `swift test` invocation. Stack of waiters: PIDs 33280 (swift-test wrapper), 38780, 41338, 42295, 45493 (swift-build), 46988, 52018 (swift-test --filter). All in state `S` with ~0 CPU; the helper had ~4s CPU then stopped. This matches H1 wall-clock signature even though Fix B addressed the `MonetizationStateController` leak — so a *second* long-lived task source must exist (candidates: `LiveGameCenterClient` listener per RCA H2, or a swift-testing 6.2 suite-instance retention issue beyond the IAP path). Aborting per dispatch §Step-3 rule "if hangs, abort + report PIDs (don't kill -9 yourself)".
+- **PIDs to report to Leader** (do not kill from subagent): 33296 (swiftpm-testing-helper, primary suspect — held SwiftPM lock for 38+ min), 33280 (swift-test parent), plus the queued waiters 38780 / 41338 / 42295 / 45493 / 46988 / 52018. The wrapper shell PID 33278 (`zsh -c '... | tail -20'`) is itself waiting on swift-test EOF; killing 33296 should cascade-release everything.
+- **Net result of resume work**: 1 file edited (`UserFacingError.swift`, +6 chars). Build state at start of resume already clean; targeted ErrorReporter tests still pass. Full-suite verification blocked by lock contention from the very full-suite invocation that this subagent attempted — same RCA bug class as documented, not a regression introduced here.
 
 ## 變更檔案清單 (will be filled as edits land)
 

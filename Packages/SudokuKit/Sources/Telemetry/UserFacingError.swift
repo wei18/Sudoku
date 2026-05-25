@@ -21,7 +21,7 @@
 
 public import Foundation
 
-public enum UserFacingError: Sendable, Equatable, Hashable {
+public enum UserFacingError: Error, Sendable, Equatable, Hashable {
     case networkUnavailable
     case iCloudSignedOut
     case persistencePermanent
