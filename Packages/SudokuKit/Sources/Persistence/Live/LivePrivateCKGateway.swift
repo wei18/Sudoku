@@ -63,7 +63,11 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     func save(_ payload: RecordPayload) async throws {
         let record = Self.record(from: payload, zoneID: zoneID)
-        _ = try await database.save(record)
+        do {
+            _ = try await database.save(record)
+        } catch {
+            throw Self.translate(error, recordName: record.recordID.recordName)
+        }
     }
 
     func delete(recordName: String) async throws {
@@ -85,6 +89,31 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
             }
         }
         return results
+    }
+
+    // MARK: - Error translation
+
+    /// Project CloudKit-specific errors onto the `PersistenceError` taxonomy
+    /// at the gateway boundary so callers (stores) never need to import
+    /// CloudKit and can `catch PersistenceError.syncConflict` deterministically.
+    ///
+    /// Per design.md §How.6.7: `CKError.serverRecordChanged` is the wire
+    /// signal that drives the LWW retry loop in `SavedGameStore` /
+    /// `PersonalRecordStore`. Without this translation the store's
+    /// `catch PersistenceError.syncConflict` clause is unreachable in
+    /// production (CKError propagates raw).
+    ///
+    /// `internal` (not private) so unit tests can assert the mapping without
+    /// stubbing a full CKDatabase — the issue #64 reviewer requested live
+    /// wiring proof for this seam.
+    static func translate(_ error: Error, recordName: String) -> Error {
+        guard let ckError = error as? CKError else { return error }
+        switch ckError.code {
+        case .serverRecordChanged:
+            return PersistenceError.syncConflict(recordName: recordName)
+        default:
+            return error
+        }
     }
 
     // MARK: - CKRecord <-> RecordPayload
