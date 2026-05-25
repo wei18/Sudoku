@@ -1072,7 +1072,7 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 
 #### §How.6.7 CloudKit 同步衝突解決
 
-> **Implementation status (2026-05-25, issue #64)**: `ConflictResolver` + `RetryHarness` are now wired into `SavedGameStore.save(...)` and `PersonalRecordStore.upsert(...)`. The gateway's `serverRecordChanged` is translated to `PersistenceError.syncConflict(recordName:)` at the seam; on conflict the store re-fetches the server payload, runs `ConflictResolver.resolve(local:server:)`, and re-submits the merged payload via `RetryHarness.run`. Budget is 2 retries; the 3rd conflict throws `PersistenceError.syncConflict`. Test coverage: `ConflictWiringTests` drives the wiring via `FakePrivateCKGateway.setConflictOnSaveTimes(_:recordName:)`.
+> **Implementation status (2026-05-25, issue #64)**: `ConflictResolver` + `RetryHarness` are wired into `SavedGameStore.save(...)` and `PersonalRecordStore.upsert(...)`. `CKError.serverRecordChanged` is translated to `PersistenceError.syncConflict(recordName:)` inside `LivePrivateCKGateway.save(_:)` via the `translate(_:recordName:)` boundary helper (verified by `LivePrivateCKGatewayTests`) — the stores' `catch PersistenceError.syncConflict` clause is therefore reachable in production, not just in the Fake. On conflict the store re-fetches the server payload, runs `ConflictResolver.resolve(local:server:)`, and re-submits the merged payload via `RetryHarness.run`. Merge-correctness wiring (newer-wins for `boardState`/`notesState`/`undoStack`, `max` for `elapsedSeconds`, "completed"-wins for `status`) is covered end-to-end by `ConflictWiringTests`. Budget: 2 retries; the 3rd conflict throws `PersistenceError.syncConflict`.
 
 **Policy — Per-field last-writer-wins by `lastModifiedAt`**：
 
