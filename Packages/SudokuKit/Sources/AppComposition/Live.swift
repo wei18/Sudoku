@@ -108,6 +108,11 @@ extension AppComposition {
             adGate: adGate,
             toastController: toastController
         )
+        // Fix B (RCA 2026-05-25): bootstrap() no longer auto-subscribes
+        // to `purchaseUpdates()`. Production opts in here, exactly once,
+        // for the lifetime of the app. Tests opt in per-test + tear down
+        // via `FakeIAPClient.finishUpdates()`.
+        monetizationController.startListeningForLifetimeOfApp()
 
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
