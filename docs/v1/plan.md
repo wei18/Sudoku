@@ -397,7 +397,7 @@ Depends on: 5.1.
 ### 5.3 `CKDatabaseSubscription` setup
 
 Tests: `SubscriptionTests.swift`: `subscriptionCreatedOnFirstLaunch`; `idempotentOnRelaunch`.
-Implementation: `Sources/Persistence/Live/SubscriptionInstaller.swift`: single `CKDatabaseSubscription` per §How.2.
+Implementation: ~~`Sources/Persistence/Live/SubscriptionInstaller.swift`~~: single `CKDatabaseSubscription` per §How.2. <!-- Deferred post-v2.5 — see issue #64 verdict 2026-05-25. SubscriptionInstaller was deleted as redundant; `LivePersistence.bootstrap()` calls `gateway.installSubscriptionIfNeeded()` directly. -->
 Acceptance: 2 green.
 Depends on: 5.2.
 
@@ -431,7 +431,7 @@ Depends on: 5.4, 5.5.
 Tests:
 - `AccountFlowTests.swift`: `caseANeverSignedIn` (`iCloudNotSignedIn` thrown, local cache reads still succeed); `caseBSignedOutDuringSession` (flush, cache retained, CK ops throw `iCloudSignedOutDuringSession`); `caseCAccountChanged` (hash mismatch → wipe-on-confirm).
 Implementation:
-- `Sources/Persistence/Live/AccountMonitor.swift`: observes `CKAccountChanged`; tracks `fetchUserRecordID` hash in Keychain.
+- ~~`Sources/Persistence/Live/AccountMonitor.swift`~~: observes `CKAccountChanged`; tracks `fetchUserRecordID` hash in Keychain. <!-- Deferred post-v2.5 — see issue #64 verdict 2026-05-25 and design.md §How.6.5 deferral banner. AccountMonitor + LocalCache scaffolding deleted; production wiring requires net-new `ICloudAccountProvider` + `UserHashKeychain` Live impls. -->
 - Local cache (file-system in App container).
 Acceptance: 3 green.
 Skills: `apple-public-repo-security`.
