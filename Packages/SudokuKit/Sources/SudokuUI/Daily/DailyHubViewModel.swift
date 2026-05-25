@@ -87,9 +87,19 @@ public final class DailyHubViewModel {
             case .generatorFailed:
                 state = .exhausted
             default:
+                await errorReporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "DailyHubViewModel.bootstrap"
+                )
                 state = .failed(String(describing: error))
             }
         } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "DailyHubViewModel.bootstrap"
+            )
             state = .failed(String(describing: error))
         }
     }

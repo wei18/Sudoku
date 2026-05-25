@@ -176,9 +176,13 @@ public final class GameViewModel {
             await resyncFromSession()
         } else {
             // Preview / test path: poke the mirror without crossing actor.
-            // try?: preview-only Board mutation; an invalid coord is a
-            // programmer error in fixture wiring, never a runtime user path.
-            try? board.setDigit(digit, atRow: coord.row, column: coord.column)
+            // An invalid coord here is a programmer error in fixture wiring,
+            // never a runtime user path — make it loud in DEBUG.
+            do {
+                try board.setDigit(digit, atRow: coord.row, column: coord.column)
+            } catch {
+                assertionFailure("preview fixture wiring bug: \(error)")
+            }
             recomputeErrors()
         }
         scheduleSave()

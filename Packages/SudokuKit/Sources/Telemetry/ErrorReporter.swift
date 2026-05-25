@@ -90,6 +90,7 @@ public actor LiveErrorReporter: ErrorReporter {
 
     /// Snapshot of the most recent reports (oldest first). Exposed for
     /// future debug surfaces; tests use `FakeErrorReporter` instead.
+    // TODO(issue: TBD): wire debug overlay surface
     public func recent() -> [ErrorReport] {
         buffer
     }

@@ -58,6 +58,19 @@ Resumed: 2026-05-25T17:10+08:00 (resume subagent — picks up rebased WIP at aff
 - **PIDs to report to Leader** (do not kill from subagent): 33296 (swiftpm-testing-helper, primary suspect — held SwiftPM lock for 38+ min), 33280 (swift-test parent), plus the queued waiters 38780 / 41338 / 42295 / 45493 / 46988 / 52018. The wrapper shell PID 33278 (`zsh -c '... | tail -20'`) is itself waiting on swift-test EOF; killing 33296 should cascade-release everything.
 - **Net result of resume work**: 1 file edited (`UserFacingError.swift`, +6 chars). Build state at start of resume already clean; targeted ErrorReporter tests still pass. Full-suite verification blocked by lock contention from the very full-suite invocation that this subagent attempted — same RCA bug class as documented, not a regression introduced here.
 
+## Code Reviewer nits applied (2026-05-25, post-PR-#138 review)
+
+- **S-1** `GameViewModel.swift:181` — promoted `try? board.setDigit(...)` (preview-only mutation) to `do { try ... } catch { assertionFailure(...) }`. Makes fixture-wiring bugs loud in DEBUG while preserving Release behaviour (assertionFailure is a no-op in Release). +5 LOC.
+- **S-2** `DailyHubViewModel.swift` outer `catch` blocks — added `await errorReporter.report(UserFacingError.classify(error), underlying: error, source: "DailyHubViewModel.bootstrap")` before both `.failed(...)` assignments (typed `PuzzleStoreError.default` branch + generic `catch`). **Chose minimal fix** (keep `.failed(String)` shape) over full `.failed(UserFacingError)` reshape because: (1) dispatch explicitly allowed minimal when ripple ≥ 5 LOC, (2) `BoardLoaderView` already migrated to `UserFacingError` for the loading-error case which is the user-visible failure path; this outer catch only affects DailyHub state which currently renders the raw string in a `.failed` toast that nobody designed a `UserFacingError`-typed equivalent for. Now the underlying error is observable in OSLog/funnel even if UI still shows the legacy string. Follow-up issue can reshape `.failed(UserFacingError)` when DailyHub failure UI gets dedicated treatment. +10 LOC.
+- **S-4** `ErrorReporter.swift` — added `// TODO(issue: TBD): wire debug overlay surface` marker above `LiveErrorReporter.recent()`. +1 LOC.
+
+Verification:
+- `swift build` clean (29s, only pre-existing GameKit deprecations).
+- `swift test --filter ErrorReporter` → 6/6 pass.
+- `swift test --filter DailyHub` → 7/7 pass.
+- `swift test --filter SudokuUITests.BoardView` → 20/20 pass.
+- `grep -nE "try\?" Sources/SudokuUI/Board/GameViewModel.swift` → only legitimate Task.sleep cancellation (line 298) + docstring reference (line 57). Line 181 cleaned.
+
 ## 變更檔案清單 (will be filled as edits land)
 
 - `Packages/SudokuKit/Sources/AppComposition/UserFacingError.swift` (new)
