@@ -27,6 +27,10 @@ extension AppComposition {
         let persistence = FakePersistence()
         let puzzleProvider = FakePuzzleProvider()
         let telemetry = Telemetry(sinks: [])
+        // M10 (issue #67): preview / tests reporter is a Noop — Preview hosts
+        // must stay zero-IO, and tests that need to observe reports inject a
+        // `FakeErrorReporter` directly through the affected VM init.
+        let errorReporter: any ErrorReporter = NoopErrorReporter()
 
         // v2 monetization fakes.
         let adProvider: any AdProvider = FakeAdProvider()
@@ -47,7 +51,8 @@ extension AppComposition {
 
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
-            persistence: persistence
+            persistence: persistence,
+            errorReporter: errorReporter
         )
 
         let routeFactory = LiveRouteFactory(
@@ -55,6 +60,7 @@ extension AppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             telemetry: telemetry,
+            errorReporter: errorReporter,
             adProvider: adProvider,
             iapClient: iapClient,
             adGate: adGate,
@@ -69,6 +75,7 @@ extension AppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             telemetry: telemetry,
+            errorReporter: errorReporter,
             adProvider: adProvider,
             iapClient: iapClient,
             adGate: adGate,

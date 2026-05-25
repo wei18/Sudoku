@@ -27,6 +27,7 @@ public actor SlowSink: TelemetrySink {
     }
 
     public func receive(_ event: TelemetryEvent) async {
+        // try?: test-fixture Task.sleep cancellation — not an error path.
         try? await Task.sleep(nanoseconds: delayNanoseconds)
         received.append(event)
     }

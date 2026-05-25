@@ -32,6 +32,10 @@ public actor GameCenterSink: TelemetrySink {
     private let achievements: AchievementEvaluator
     private let authStateProvider: @Sendable () async -> GameCenterAuthState
     private let clock: @Sendable () -> Date
+    /// M10 (issue #67): unified error funnel for the two previously-swallowed
+    /// branches (submitScore / reportAchievement). No-retry policy from
+    /// §How.3.4 stays — but the failure is now observable instead of silent.
+    private let errorReporter: any ErrorReporter
     /// Achievement id prefix per docs/v1/design.md §How.3.2.
     private let achievementPrefix = "com.wei18.sudoku.achievement."
 
@@ -40,12 +44,14 @@ public actor GameCenterSink: TelemetrySink {
         guards: SubmitGuards,
         achievements: AchievementEvaluator,
         authStateProvider: @escaping @Sendable () async -> GameCenterAuthState,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.client = client
         self.guards = guards
         self.achievements = achievements
         self.authStateProvider = authStateProvider
+        self.errorReporter = errorReporter
         self.clock = clock
     }
 
@@ -88,8 +94,14 @@ public actor GameCenterSink: TelemetrySink {
             )
             await guards.markSubmitted(puzzleId: puzzleId)
         } catch {
-            // Swallowed by design (§How.3.4: no offline retry queue;
-            // PersonalRecord on Private DB is the durable record).
+            // M10 (issue #67): policy stays (no retry queue per §How.3.4)
+            // but failure is now observable via the funnel so engineering
+            // can see the score-submit error in OSLog instead of silence.
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameCenterSink.submitScore"
+            )
         }
     }
 
@@ -109,13 +121,25 @@ public actor GameCenterSink: TelemetrySink {
                 do {
                     try await client.reportAchievement(prefixed)
                 } catch {
-                    // Swallowed per §How.3.4.
+                    // M10 (issue #67): policy stays (no retry per §How.3.4)
+                    // but funnel records the failure for OSLog visibility.
+                    await errorReporter.report(
+                        UserFacingError.classify(error),
+                        underlying: error,
+                        source: "GameCenterSink.reportAchievement"
+                    )
                 }
             }
         } catch {
-            // Evaluator failures (e.g. Persistence unavailable) are
-            // swallowed: achievement reporting is non-critical and will
-            // re-derive correctly on the next completion.
+            // M10 (issue #67): evaluator failure (e.g. Persistence
+            // unavailable) — achievement reporting is non-critical and
+            // will re-derive on the next completion; funnel reports so
+            // the underlying Persistence error is observable.
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameCenterSink.evaluateForCompletion"
+            )
         }
     }
 

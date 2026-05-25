@@ -99,9 +99,21 @@ public final class MonetizationStateController {
     /// after `bootstrap()`. Tests that need the listener opt in
     /// explicitly + tear down via `FakeIAPClient.finishUpdates()`.
     public func bootstrap() async {
+        // try?: graceful local-fallback semantics — when the state store
+        // throws (CloudKit unreachable / first launch), the controller
+        // keeps the `initialPurchased` default already set in init. M10
+        // (issue #67): the underlying CloudKit failure is reported by
+        // `AdGate(onPersistenceError:)` wired in `AppComposition.live`
+        // (see Live.swift), so this layer doesn't double-report. The
+        // AdMob banner gate honours the false default and the toast on
+        // an actual purchase attempt surfaces failure to the user.
         if let loaded = try? await stateStore.loadState() {
             hasPurchasedRemoveAds = loaded.hasPurchasedRemoveAds
         }
+        // try?: same rationale — IAP catalog desync is reported by
+        // `LiveStoreKit2IAPClient(onCatalogDesync:)` in Live.swift; an
+        // empty `availableProducts` here is a benign UI state (Settings
+        // shows the fallback `"$2.99"` placeholder per the M3 polish doc).
         if let products = try? await iapClient.availableProducts() {
             availableProducts = products
             // Stay in sync with the App Store side too — a restored entitlement

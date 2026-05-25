@@ -37,6 +37,12 @@ public struct PuzzleGenerator: Sendable {
         for attempt in 0..<retryBudget {
             let attemptSeed = seed &+ UInt64(attempt)
             var rng = SplitMix64(seed: attemptSeed)
+            // try?: this is the retry-loop exit signal (per-attempt failures
+            // are expected; only the *outer* loop's exhaustion is the
+            // user-visible error, raised as `GeneratorError.exhausted` once
+            // every attempt has been spent). M10 (issue #67) — funnelling
+            // each per-attempt throw would generate retryBudget × log
+            // entries per successful puzzle.
             if let puzzle = try? generate(
                 rng: &rng,
                 difficulty: difficulty,

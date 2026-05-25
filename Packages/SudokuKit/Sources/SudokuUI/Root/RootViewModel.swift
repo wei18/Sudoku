@@ -11,6 +11,7 @@
 public import Foundation
 public import GameCenterClient
 public import Persistence
+public import Telemetry
 
 @MainActor
 @Observable
@@ -23,13 +24,16 @@ public final class RootViewModel {
 
     private let gameCenter: any GameCenterClient
     private let persistence: any PersistenceProtocol
+    private let errorReporter: any ErrorReporter
 
     public init(
         gameCenter: any GameCenterClient,
-        persistence: any PersistenceProtocol
+        persistence: any PersistenceProtocol,
+        errorReporter: any ErrorReporter = NoopErrorReporter()
     ) {
         self.gameCenter = gameCenter
         self.persistence = persistence
+        self.errorReporter = errorReporter
     }
 
     /// Idempotent: only the first call performs IO; subsequent calls return
@@ -42,10 +46,32 @@ public final class RootViewModel {
         do {
             self.authState = try await gameCenter.authenticate()
         } catch {
+            // M10 (issue #67): authentication failure must still degrade to
+            // `.unauthenticated` per design.md §How.6.1 principle 1 (never
+            // block bootstrap), but the underlying error now travels through
+            // the funnel so OSLog / telemetry record what actually went wrong
+            // instead of silently masking to "unauthenticated".
             self.authState = .unauthenticated
+            await errorReporter.report(
+                .gameCenterUnauthenticated,
+                underlying: error,
+                source: "RootViewModel.bootstrap.authenticate"
+            )
         }
 
-        self.resumeCandidate = (try? await persistence.latestInProgress()) ?? nil
+        // M10 (issue #67): replace `try?` swallow with funnel report. nil
+        // resume candidate remains valid (no in-flight game); only catch +
+        // route the *failure* — not the absence of data.
+        do {
+            self.resumeCandidate = try await persistence.latestInProgress()
+        } catch {
+            self.resumeCandidate = nil
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "RootViewModel.bootstrap.latestInProgress"
+            )
+        }
     }
 
     public func resumeTapped() {

@@ -16,6 +16,7 @@ public import MonetizationCore
 public import SwiftUI
 public import Persistence
 public import PuzzleStore
+public import Telemetry
 import GameState
 import SudokuEngine
 
@@ -25,12 +26,17 @@ public struct BoardLoaderView: View {
     private enum LoadState {
         case loading
         case loaded(GameViewModel)
-        case failed(String)
+        /// M10 (issue #67): carries a `UserFacingError` (typed bucket) instead
+        /// of a raw `String(describing: error)`. UI renders localized copy via
+        /// the enum's `messageKey`; engineering still sees the underlying
+        /// error in OSLog via the error funnel.
+        case failed(UserFacingError)
     }
 
     private let puzzleId: String
     private let puzzleProvider: any PuzzleProviderProtocol
     private let persistence: any PersistenceProtocol
+    private let errorReporter: any ErrorReporter
     // v2.3.5: forwarded to `BoardView` so the banner slot can render
     // between the grid and the digit pad once the puzzle has loaded.
     private let adProvider: (any AdProvider)?
@@ -43,12 +49,14 @@ public struct BoardLoaderView: View {
         puzzleId: String,
         puzzleProvider: any PuzzleProviderProtocol,
         persistence: any PersistenceProtocol,
+        errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
+        self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.adGate = adGate
     }
@@ -68,19 +76,21 @@ public struct BoardLoaderView: View {
                 .controlSize(.large)
         case .loaded(let viewModel):
             BoardView(viewModel: viewModel, adProvider: adProvider, adGate: adGate)
-        case .failed(let reason):
-            failedBlock(reason: reason)
+        case .failed(let userFacing):
+            failedBlock(userFacing: userFacing)
         }
     }
 
-    private func failedBlock(reason: String) -> some View {
+    private func failedBlock(userFacing: UserFacingError) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 32))
                 .foregroundStyle(theme.status.warning.resolved)
             Text("Couldn't load puzzle.")
                 .foregroundStyle(theme.text.primary.resolved)
-            Text(reason)
+            // M10 (issue #67): render localized body for the typed
+            // UserFacingError bucket instead of `String(describing: error)`.
+            Text(LocalizedStringResource(stringLiteral: userFacing.messageKey))
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
                 .multilineTextAlignment(.center)
@@ -111,11 +121,21 @@ public struct BoardLoaderView: View {
                 initialNotes: snapshot.notes,
                 initialStatus: snapshot.status,
                 initialElapsedSeconds: snapshot.elapsedSeconds,
-                persistence: persistence
+                persistence: persistence,
+                errorReporter: errorReporter
             )
             state = .loaded(viewModel)
         } catch {
-            state = .failed(String(describing: error))
+            // M10 (issue #67): typed bucket + funnel report. The view
+            // displays the localized bucket copy; engineering OSLog / the
+            // recent-errors buffer carries the underlying error detail.
+            let bucket = UserFacingError.classify(error)
+            await errorReporter.report(
+                bucket,
+                underlying: error,
+                source: "BoardLoaderView.load"
+            )
+            state = .failed(bucket)
         }
     }
 
