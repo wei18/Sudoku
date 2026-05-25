@@ -6,6 +6,29 @@ internal import os
 internal import GoogleMobileAds
 #endif
 
+#if canImport(UIKit)
+internal import UIKit
+#endif
+
+// MARK: - Ad unit IDs
+//
+// v2.5.2 ships with Google's universal TEST banner ad unit so real-device
+// verification cannot serve production creatives. v2.5.3 (user-owned, just
+// before ASC submission) swaps to the production ad unit ID. The
+// `GADApplicationIdentifier` in `App/Info.plist` follows the same DEBUG vs
+// production swap point — both flip together; see
+// `docs/v2/v2.5-readiness.md §v2.5.3`.
+//
+// `#if DEBUG` over Info.plist read: keeps the ID local to the one file that
+// already isolates Google SDK concerns (foundations.md §9.1), and matches the
+// "single grep target for the swap" property the readiness doc relies on.
+
+#if DEBUG
+private let bannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
+#else
+private let bannerAdUnitID = "ca-app-pub-8986741979385138/3172412685"
+#endif
+
 // MARK: - LiveAdMobBridge
 //
 // The single permitted `import GoogleMobileAds` site inside AdsAdMob — see
@@ -22,6 +45,20 @@ internal final class LiveAdMobBridge: AdMobBridge {
     // of `NSLock` — its `withLock` overloads are `nonisolated` and callable
     // from async contexts, unlike `NSLock.lock()` which is restricted.
     private let state = OSAllocatedUnfairLock<AdBannerStatus>(initialState: .notInitialized)
+
+    #if canImport(GoogleMobileAds)
+    // Live `BannerView` instances are retained here keyed by `AdBannerHandle.id`
+    // so they survive past the delegate callback that resolves `loadBanner()`.
+    // A later phase (out of v2.5.2 scope) plumbs the view into a SwiftUI
+    // `UIViewRepresentable` via a UIKit-typed accessor that stays internal to
+    // AdsAdMob (foundations §9.1: `GADBannerView` / `BannerView` must not cross
+    // the target border).
+    private let liveBanners = OSAllocatedUnfairLock<[UUID: BannerView]>(initialState: [:])
+
+    // In-flight delegates are strong-held here because `BannerView.delegate` is
+    // weak. The delegate removes itself on first callback (success OR failure).
+    private let inFlightDelegates = OSAllocatedUnfairLock<Set<BannerLoadDelegate>>(initialState: [])
+    #endif
 
     internal init() {}
 
@@ -46,12 +83,56 @@ internal final class LiveAdMobBridge: AdMobBridge {
 
     internal func loadBanner() async throws -> AdBannerHandle {
         #if canImport(GoogleMobileAds)
-        // Real SDK wiring (GADBannerView + Request + delegate) lands in v2.3.5
-        // alongside `BannerSlotView`. Until then we surface a visible failure
-        // so the UI layer cannot pretend a creative was fetched.
-        let reason = "loadBanner not implemented until v2.3.5"
-        setCachedStatus(.failed(reason: reason))
-        throw AdMobBridgeError.loadFailed(reason: reason)
+        // Construct + load the banner on the main actor — `BannerView` is a
+        // `UIView` subclass and must be touched only from the main thread.
+        // `BannerView.delegate` is `weak`; the delegate is retained in
+        // `inFlightDelegates` until the SDK fires either callback, at which
+        // point it self-removes (single-resume guarded by an internal lock).
+        let handle = AdBannerHandle()
+        let rootVC = await MainActor.run { Self.resolveRootViewController() }
+
+        let bannerView: BannerView = await MainActor.run {
+            let view = BannerView(adSize: AdSizeBanner)
+            view.adUnitID = bannerAdUnitID
+            view.rootViewController = rootVC
+            return view
+        }
+
+        liveBanners.withLock { $0[handle.id] = bannerView }
+
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let delegate = BannerLoadDelegate { [weak self] result in
+                    guard let self else { return }
+                    // Drop the delegate retain so it (and the continuation
+                    // capture chain) can deallocate.
+                    self.inFlightDelegates.withLock { set in
+                        // Identity-based removal — Set<BannerLoadDelegate> uses
+                        // ObjectIdentifier hashing (final class default).
+                        set = set.filter { ObjectIdentifier($0) != ObjectIdentifier(result.delegate) }
+                    }
+                    switch result.outcome {
+                    case .success:
+                        continuation.resume(returning: ())
+                    case .failure(let error):
+                        continuation.resume(throwing: error)
+                    }
+                }
+                inFlightDelegates.withLock { $0.insert(delegate) }
+                Task { @MainActor in
+                    bannerView.delegate = delegate
+                    bannerView.load(Request())
+                }
+            }
+            setCachedStatus(.loaded(handle))
+            return handle
+        } catch {
+            // Release the view we never got a successful load for.
+            liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+            let reason = String(describing: error)
+            setCachedStatus(.failed(reason: reason))
+            throw AdMobBridgeError.loadFailed(reason: reason)
+        }
         #else
         throw AdMobBridgeError.unsupportedPlatform
         #endif
@@ -66,7 +147,68 @@ internal final class LiveAdMobBridge: AdMobBridge {
     private func setCachedStatus(_ status: AdBannerStatus) {
         state.withLock { $0 = status }
     }
+
+    #if canImport(GoogleMobileAds) && canImport(UIKit)
+    /// Resolve the foreground-active `UIWindowScene`'s key window's root view
+    /// controller. AdMob requires `rootViewController` only when the user taps
+    /// the ad (click-through presentation); ad fetch itself succeeds with
+    /// `nil` but click-through silently fails. Returning the key window's RVC
+    /// is the documented Google recommendation
+    /// (https://developers.google.com/admob/ios/banner).
+    @MainActor
+    private static func resolveRootViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes
+        let active = scenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.compactMap({ $0 as? UIWindowScene }).first
+        return active?.windows.first(where: { $0.isKeyWindow })?.rootViewController
+            ?? active?.windows.first?.rootViewController
+    }
+    #endif
 }
+
+#if canImport(GoogleMobileAds)
+// MARK: - BannerLoadDelegate
+//
+// Per-load delegate that bridges `BannerViewDelegate`'s two terminal callbacks
+// into a single Swift `Result`. AdMob's contract fires at most one of
+// `bannerViewDidReceiveAd` / `bannerView(_:didFailToReceiveAdWithError:)` per
+// load, but the implementation belt-and-braces guards against double-fire via
+// an `OSAllocatedUnfairLock<Bool>` single-resume flag.
+
+internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecked Sendable {
+    internal struct CompletionResult {
+        let delegate: BannerLoadDelegate
+        let outcome: Result<Void, Error>
+    }
+
+    private let hasResumed = OSAllocatedUnfairLock<Bool>(initialState: false)
+    private let onComplete: @Sendable (CompletionResult) -> Void
+
+    internal init(onComplete: @escaping @Sendable (CompletionResult) -> Void) {
+        self.onComplete = onComplete
+    }
+
+    private func resumeOnce(_ outcome: Result<Void, Error>) {
+        let shouldFire = hasResumed.withLock { fired -> Bool in
+            guard !fired else { return false }
+            fired = true
+            return true
+        }
+        guard shouldFire else { return }
+        onComplete(CompletionResult(delegate: self, outcome: outcome))
+    }
+
+    internal func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+        resumeOnce(.success(()))
+    }
+
+    internal func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+        resumeOnce(.failure(error))
+    }
+}
+#endif
 
 // `final class` + `NSLock`-guarded state + `nonisolated(unsafe)` is the same
 // `@unchecked Sendable` pattern used by `FakeStoreKitBridge` (v2.1) and
