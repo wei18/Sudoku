@@ -1,331 +1,264 @@
 # Sudoku v2 — Implementation Plan
 
-狀態：**DRAFT** — 等 v2.0 dispatch。
-最後更新：2026-05-21
-Total phases: **6**（v2.0–v2.5）；total steps: **24**。
+狀態：**IN PROGRESS** — v2.0–v2.4 code 全部 shipped；v2.5 進入 user-owned ops（TestFlight + ASC review）。
+最後更新：2026-05-25
+Total phases: **6**（v2.0–v2.5）；total steps: **24 原訂 + 5 後續 audit / polish**。
 
 This plan operationalizes [`docs/v2/design.md`](design.md) + [`docs/foundations.md §9`](../foundations.md#9-第三方-sdk-例外條款v2-起).
 
 ---
 
+## §Status snapshot
+
+| Phase | Scope | Status | PRs |
+|---|---|---|---|
+| v2.0 | Package + protocols + AdGate + Testing fakes | ✅ shipped | bootstrap series |
+| v2.1 | IAP impl (StoreKit 2) | ✅ shipped | #59 |
+| v2.2 | AdMob impl (banner + ATT + UMP) | ✅ shipped | #60, #73 |
+| v2.3 | Sudoku 整合 (Persistence / Composition / RouteFactory / Views / boot) | ✅ shipped | #71, #83, #84 |
+| v2.4 | Privacy + ASC ops | ✅ code shipped；ASC manual ops 轉 v2.5-readiness | #62, #107 |
+| v2.4★ | Audit polish (anchor registry / wall-clock throttle / Fake fan-out) | ✅ shipped | #97, #108, #109 |
+| v2.4★ | macOS conditional build (Noop fallback, ObjC v11 API) | ✅ shipped | #101, #102, #103, #106 |
+| v2.5 | TestFlight + ASC review | 🟡 in flight — user-owned | see [`v2.5-readiness.md`](v2.5-readiness.md) |
+
+Test count（AppMonetizationKit `@Test` macros）: **75** across 4 test targets / 13 files。
+
+---
+
 ## How to use
 
-- **TDD-ordered**. 每個 step 列紅燈測試先、再實作通過。
-- **One step = one PR**。除非 review 反饋要拆。
-- **Phase 內 sequential、phase 間有限度可平行**（v2.1 IAP 與 v2.2 AdMob 兩條完全獨立，protocol 都拿 v2.0 的；之後 v2.3 wiring 需等兩條都完成）。
-- **Spec drift 自動 sweep**：每個 phase 收尾前依 methodology.md §7 跑 TODO sweep，每條 match 必須 Resolved / §Backlog / Intentionally left。
+- **TDD-ordered**。每個 step 紅燈測試先、再實作通過。
+- **One step = one PR**（除非 review 要求拆）。
+- **Phase 內 sequential、phase 間有限度可平行**：v2.1 IAP 與 v2.2 AdMob 走獨立 protocol；v2.3 wiring 需兩條都完成。
+- **Spec drift sweep**：每 phase 收尾 grep TODO，每條 match 必須 Resolved / §Backlog / Intentionally left。
+- **Step 標記**：`[x] (#PR)` = shipped；`[~]` = partial / 跨 PR；`[ ]` = todo / user-owned。
 
 ---
 
-## §Phase v2.0 — AppMonetizationKit foundations
+## §Phase v2.0 — AppMonetizationKit foundations  ✅
 
-**Goal**：package skeleton + MonetizationCore protocols + Testing fakes + AdGate frequency logic（不接任何真實 SDK，純 protocol layer + 邏輯）。
+**Goal**：package skeleton + MonetizationCore protocols + Testing fakes + AdGate frequency logic（純 protocol layer + 邏輯，不接真實 SDK）。
 
-### v2.0.1 — Package skeleton + 4 sub-targets
+### v2.0.1 — Package skeleton + 4 sub-targets  `[x]`
 
-- NEW `Packages/AppMonetizationKit/Package.swift`：swift-tools 6.2, iOS 26 / macOS 26, 4 library products (MonetizationCore / AdsAdMob / IAPStoreKit2 / MonetizationTesting), 4 test targets
-- 每個 sub-target 內各放 1 個 placeholder type 讓 `swift build` 通過
-- 為什麼一次建 4 個：保留結構清晰；之後每個 phase 填內容比逐個新建乾淨
+- `Packages/AppMonetizationKit/Package.swift`：swift-tools 6.2、iOS 26 / macOS 26、4 library products（MonetizationCore / AdsAdMob / IAPStoreKit2 / MonetizationTesting）+ 4 test targets
+- 每 sub-target 1 個 placeholder 讓 `swift build` 通過
+- Tuist Project.swift 暫不動
 
-**Acceptance**：`cd Packages/AppMonetizationKit && swift build` 0 warnings。Tuist Project.swift 暫不更新（v2.3.2 wiring 時才加 dep）。
+### v2.0.2 — MonetizationCore: protocols + value types  `[x]`
 
-### v2.0.2 — MonetizationCore: protocols + value types
-
-- 紅燈先：`MonetizationCoreTests/ProtocolShapeTests.swift` 用 protocol witness pattern 驗證 `AdProvider` / `IAPClient` 形狀（無實作，只驗 protocol 簽名）
+- `MonetizationCoreTests/ProtocolShapeTests.swift` — protocol witness 驗 `AdProvider` / `IAPClient`
 - 落地：
-  - `MonetizationCore/AdProvider.swift`：`AdProvider` protocol + `AdBannerStatus` enum + `AdBannerHandle` struct
-  - `MonetizationCore/IAPClient.swift`：`IAPClient` protocol + `IAPProduct` / `IAPPurchaseResult` / `IAPPurchaseEvent`
-  - `MonetizationCore/AdPresentationAnchor.swift`：cross-platform anchor（iOS `UIWindow` / macOS `NSWindow` wrapper）
-- NoOp default 實作（Sendable + Equatable conformance 都要齊）
+  - `AdProvider.swift`（+ `AdBannerStatus` enum + `AdBannerHandle` struct）
+  - `IAPClient.swift`（+ `IAPProduct` / `IAPPurchaseResult` / `IAPPurchaseEvent`）
+  - `AdPresentationAnchor.swift`（iOS `UIWindow` / macOS `NSWindow` wrapper）
+  - **`NoopAdProvider.swift`** — default no-op，後續 macOS build 直接拿用（PR #101 引入此用途）
 
-**Acceptance**：`swift test --filter MonetizationCoreTests` 全綠；0 warnings；strict concurrency clean。
+### v2.0.3 — MonetizationTesting fakes  `[x]`
 
-### v2.0.3 — MonetizationTesting fakes
+- 落地 `FakeAdProvider` / `FakeIAPClient` actors，可 script 行為；Sendable + cross-actor 注入
 
-- 紅燈先：`MonetizationTestingTests/FakeShapesTests.swift` 驗 `FakeAdProvider.script(...)` API
-- 落地：
-  - `MonetizationTesting/FakeAdProvider.swift`：actor，可 script `bannerStatus` / `initialize`/`refreshBanner` 行為
-  - `MonetizationTesting/FakeIAPClient.swift`：actor，可 script products / purchase result / restore result
-- 用於後續 phase 跨模組單元測試 + Sudoku 整合 preview/test
+### v2.0.4 — AdGate + AdGateStateStore protocol  `[x]`
 
-**Acceptance**：`swift test --filter MonetizationTestingTests` 全綠；Fake 都是 Sendable + 可 cross-actor 注入。
+- `AdGate.swift`：`@MainActor` actor + `AdGateState` Codable struct + `AdGateStateStore` protocol
+- 注入 `clock: any Clock<Duration>` 與 `calendar: Calendar` 讓測試確定性
+- 覆蓋 grace / dismissed-today / next-day / purchased / UTC boundary
 
-### v2.0.4 — AdGate + AdGateStateStore protocol
+### v2.0.5 — MonetizationTesting 提供 `FakeAdGateStateStore`  `[x]`
 
-- 紅燈先：`MonetizationCoreTests/AdGateLogicTests.swift`：
-  - Day 0：`shouldShowBanner == false`（grace）
-  - Day 7：`shouldShowBanner == true`
-  - Day 7 + dismissed today：`shouldShowBanner == false`
-  - Day 8（新一天）：`shouldShowBanner == true`
-  - hasPurchasedRemoveAds == true：永久 false
-  - Edge：UTC vs local calendar boundary（用注入 `Calendar(identifier: .gregorian, timeZone: utc)` 統一）
-- 落地：
-  - `MonetizationCore/AdGate.swift`：`@MainActor actor AdGate` + `AdGateState` Codable struct + `AdGateStateStore` protocol
-  - 注入 `clock: any Clock<Duration>` 與 `calendar: Calendar` 讓測試確定性
-- 約 10 個 unit test，覆蓋所有狀態轉移
+- in-memory state + `script(...)` API
 
-**Acceptance**：10/10 AdGate tests 全綠；clock 注入讓所有 case 可在 1ms wall-clock 內驗完。
+### v2.0.6 — Anchor registry/resolver split (PR #108)  `[x]`
 
-### v2.0.5 — 整合：MonetizationTesting 提供 `FakeAdGateStateStore`
+- 把 `AdPresentationAnchor` 單一 struct 拆成 `AdPresentationAnchorRegistry` + `AdPresentationAnchor+Resolve`，讓多 window scene 與 fan-out 變乾淨
+- 此 step 為 plan 起跑後新增（origin: §97/108 audit），補登於此
 
-- 紅燈先：MonetizationTestingTests 加 `FakeAdGateStateStore` round-trip 測試
-- 落地：actor `FakeAdGateStateStore`；in-memory state + `script(...)` API
-
-**Acceptance**：Phase v2.0 close — 整個 package build + 35-40 tests 全綠。
-
-**Phase v2.0 收尾 TODO sweep**：grep `Packages/AppMonetizationKit/Sources/` 0 hits。
+**Phase v2.0 收尾**：sweep done；test suite green。
 
 ---
 
-## §Phase v2.1 — IAP impl (LiveStoreKit2IAPClient)
+## §Phase v2.1 — IAP impl (LiveStoreKit2IAPClient)  ✅
 
 **Goal**：StoreKit 2 live impl + Restore Purchases + transaction observer。
 
-### v2.1.1 — LiveStoreKit2IAPClient skeleton + availableProducts
+### v2.1.1 — StoreKitBridge isolation + skeleton + availableProducts  `[x] (#59)`
 
-- 紅燈先：`IAPStoreKit2Tests/AvailableProductsTests.swift` — mock `StoreKit.Product.products(for:)` 並驗 `IAPClient.availableProducts()` 正確 mapping 到 `IAPProduct`
+- 紅燈先：`IAPStoreKit2Tests/AvailableProductsTests.swift`，用 `FakeStoreKitBridge` 驗 mapping
 - 落地：
-  - `IAPStoreKit2/LiveStoreKit2IAPClient.swift`：actor，內部 stored `Set<Product>`，公開 mapping 到 `IAPProduct`
-  - `IAPStoreKit2/IAPProductMapper.swift`：`StoreKit.Product` → `MonetizationCore.IAPProduct` 純函數，可獨立測
+  - `StoreKitBridge.swift` protocol + `LiveStoreKitBridge.swift`（唯一 `import StoreKit` 面）— 與 AdMobBridge 對稱結構
+  - `IAPProductIDs.swift` 集中 product ID 常數
+  - `IAPProductMapper.swift` 純函數 mapping
+  - `LiveStoreKit2IAPClient.swift` actor，內部 stored set，public 拿 `IAPProduct`
 
-**Acceptance**：4-6 unit tests 全綠；不需要連 ASC sandbox。
+### v2.1.2 — Purchase flow + Restore + transaction observer  `[~] (#59 + #85)`
 
-### v2.1.2 — Purchase flow + Restore Purchases + transaction observer
+- 紅燈 cover：成功 / userCancelled / pending / failed / restore / `purchaseUpdates()` AsyncStream
+- `purchaseUpdates()` 對 `Transaction.updates` 的真實訂閱在 PR #85 才接齊（plan 原訂一次完成，實際分兩次）
+- StoreKit Configuration file 注入 dev sandbox 在 v2.4★/PR #107
 
-- 紅燈先：tests 覆蓋
-  - `purchase(.removeAds)` 成功路徑（mock returns success）
-  - userCancelled、pending、failed
-  - `restorePurchases` 拿到 previously-purchased 的 product
-  - `purchaseUpdates()` AsyncStream 收到外部 transaction（家長同意 / 退款 revoke）
-- 落地：
-  - `LiveStoreKit2IAPClient.purchase(_:)` 呼叫 `Product.purchase()`
-  - `restorePurchases()` 呼叫 `AppStore.sync()` + iterate `Transaction.currentEntitlements`
-  - 啟動時 spawn `Task.detached` 觀察 `Transaction.updates`，pipe 到 `purchaseUpdates` AsyncStream
-  - **StoreKit 2 testing tip**：用 `.storekit` configuration file（Xcode 內建 StoreKit Configuration）注入測試 product；單元測試層用 mock `Product`
-- ATT 不需要在這 phase 觸發（StoreKit 不需 ATT，只有 ad tracking 才需）
-
-**Acceptance**：12-15 unit tests 全綠；strict concurrency clean。
-
-**Phase v2.1 收尾 TODO sweep**。
+**Phase v2.1 收尾**：sweep done。
 
 ---
 
-## §Phase v2.2 — AdMob impl (LiveAdMobAdProvider)
+## §Phase v2.2 — AdMob impl (LiveAdMobAdProvider)  ✅
 
-**Goal**：接 Google Mobile Ads SDK，banner load + present + dismiss；ATT + UMP 整合。
+**Goal**：Google Mobile Ads banner load + present + dismiss；ATT + UMP 整合。foundations §9.1 隔離契約。
 
-⚠️ 本 phase 是 v2 第一次引入第三方 SPM dep，根據 foundations §9.1 隔離契約嚴格控制。
+### v2.2.1 — SPM dep + LiveAdMobAdProvider skeleton  `[x] (#60)`
 
-### v2.2.1 — 加 SPM dep + LiveAdMobAdProvider skeleton
-
-- `Packages/AppMonetizationKit/Package.swift`：`AdsAdMob` target 加 dep `.package(url: "https://github.com/googleads/swift-package-manager-google-mobile-ads", from: "<latest-stable>")`
-- 紅燈先：`AdsAdMobTests/AdProviderInitTests.swift` — 用 `FakeAdMobBridge` protocol 替代真實 SDK 呼叫；驗 `initialize()` 順序與 idempotency
+- `Package.swift` `AdsAdMob` target 加 `swift-package-manager-google-mobile-ads` 與 `swift-package-manager-google-user-messaging-platform`，**兩者皆 `.condition(.when(platforms: [.iOS]))`**（Google 沒提供 macOS slice — 詳 §v2.4★ macOS fallback）
 - 落地：
-  - `AdsAdMob/LiveAdMobAdProvider.swift`：actor，注入 `AdMobBridge` protocol（內部 default 是真實 `GADMobileAds.sharedInstance().start(completionHandler:)` wrapper）
-  - `AdsAdMob/AdMobBridge.swift`：protocol，包住所有 `GoogleMobileAds` 接觸面 — 唯一允許 `import GoogleMobileAds` 的檔
-  - 隔離 audit：`grep -r "import GoogleMobileAds" Packages/AppMonetizationKit/Sources/` 必須只有 `AdsAdMob/AdMobBridge.swift` + 內部具體 wrapper 一個檔
+  - `AdMobBridge.swift` protocol（唯一允許 `import GoogleMobileAds`）
+  - `LiveAdMobBridge.swift` 具體 wrapper（亦 import；兩檔合計即「唯一 import 面」）
+  - `LiveAdMobAdProvider.swift` actor，注入 bridge
+- 隔離 audit：`rg "import GoogleMobileAds" Packages/` 必須 = 2 檔（兩檔都在 `AdsAdMob/`）
 
-**Acceptance**：build 0 warnings；隔離 audit 通過；4-6 unit tests 全綠。
+### v2.2.2 — Banner load / refresh / handle status  `[x] (#60)`
 
-### v2.2.2 — Banner load / refresh / handle status
+- `FakeAdMobBridge` 驅動的 unit test
+- `bannerStatus` 由內部 `@MainActor` state machine 維護；UI 整合在 v2.3.4
 
-- 紅燈先：driven by `FakeAdMobBridge`，驗
-  - load 成功 → `bannerStatus == .loaded`
-  - load 失敗 → `.failed(reason)`
-  - refresh 後 status 重設
-- 落地：
-  - `LiveAdMobAdProvider.refreshBanner()` 呼叫 bridge 載入新 banner
-  - `bannerStatus` 由內部 `@MainActor` state machine 維護
-  - **不渲染 UI**：本 phase 只負責後端 load；UI 整合在 v2.3.4
+### v2.2.3 — ATTPresenter + UMPConsentPresenter  `[x] (#60)`
 
-**Acceptance**：8-10 unit tests 全綠。
+- `ATTPresenter.swift` 包 `ATTrackingManager.requestTrackingAuthorization`
+- `UMPConsentPresenter.swift` 包 UMP SDK（**v3 API**, see §Decisions）
+- 觸發順序與整合移到 v2.3.7 / `MonetizationBootCoordinator`
 
-### v2.2.3 — ATTPresenter + UMP consent
-
-- 紅燈先：`AdsAdMobTests/ATTPresenterTests.swift` — mock `AppTrackingTransparency.ATTrackingManager` 驗 request flow
-- 落地：
-  - `AdsAdMob/ATTPresenter.swift`：`requestIfNeeded()` 包住 `ATTrackingManager.requestTrackingAuthorization`
-  - `AdsAdMob/UMPConsentPresenter.swift`：包 UMP SDK（內建在 GoogleMobileAds），呼叫 `UMPConsentInformation.sharedInstance.requestConsentInfoUpdate`
-  - **觸發順序**（在 Sudoku App boot 處整合，v2.3.7）：UMP → ATT → AdMob init
-
-**Acceptance**：5-7 unit tests 全綠；隔離 audit 仍只有 1 個檔 `import GoogleMobileAds`（ATTPresenter 走 `import AppTrackingTransparency` 是 Apple 框架 OK）。
-
-**Phase v2.2 收尾 TODO sweep**。
+**Phase v2.2 收尾**：sweep done。
 
 ---
 
-## §Phase v2.3 — Sudoku v2 整合
+## §Phase v2.3 — Sudoku v2 整合  ✅
 
-**Goal**：把 AppMonetizationKit 接進 Sudoku App，banner 顯示 / IAP 入口 / Settings restore / boot order。同時 promote Wave 3 audit 的 RouteFactory refactor（因為 RootView.init 已要長到 8+ deps）。
+**Goal**：把 AppMonetizationKit 接進 Sudoku App，banner / IAP 入口 / Settings restore / boot order；同時 promote RouteFactory refactor（因 RootView.init deps 過載）。
 
-### v2.3.1 — Persistence: MonetizationStateStore (CloudKit Private)
+### v2.3.1 — Persistence: MonetizationStateStore (CloudKit Private)  `[x] (#71)`
 
-- 紅燈先：`PersistenceTests/MonetizationStateStoreTests.swift` — round-trip save/load 用 FakeCKGateway
-- 落地：
-  - `Packages/SudokuKit/Sources/Persistence/MonetizationStateStore.swift`：protocol
-  - `Persistence/Live/LiveMonetizationStateStore.swift`：actor，落 CloudKit Private 的新 record type `MonetizationState`（在 `com.wei18.sudoku.userZone`）
-  - record schema：`firstLaunchAt: Date`、`lastShownDate: Date?`、`dismissedDate: Date?`、`hasPurchasedRemoveAds: Bool`
-  - CloudKit Dashboard 不用手動建 record type（first write auto-creates）
+- `Persistence/MonetizationStateStore.swift` protocol
+- `Persistence/Live/LiveMonetizationStateStore.swift` actor，落新 record type `MonetizationState`（`userZone`）
+- Schema：`firstLaunchAt: Date`、`lastShownDate: Date?`、`dismissedDate: Date?`、`hasPurchasedRemoveAds: Bool`
 
-**Acceptance**：4-6 unit tests 全綠；persistence schema doc 更新 `docs/v1/design.md §How.2.X`。
+### v2.3.2 — AppComposition + Tuist wiring  `[x] (#71)`
 
-### v2.3.2 — AppComposition +3 deps（暫態，準備 RouteFactory）
+- `AppComposition` 加 stored `adProvider / iapClient / adGate` 等 dep
+- `Live.swift` 構造 `LiveAdMobAdProvider` + `LiveStoreKit2IAPClient` + `AdGate(store: LiveMonetizationStateStore(...))`
+- `Preview.swift` 用 `MonetizationTesting` fakes
+- `Project.swift` 加 `.package(product: "MonetizationCore" | "AdsAdMob" | "IAPStoreKit2")`
+- `Packages/SudokuKit/Package.swift` 加對 `AppMonetizationKit` 的 dep
 
-- 紅燈先：`AppCompositionTests/CompositionTests.swift` 加新 deps 驗證
-- 落地：
-  - `AppComposition` 加 `adProvider / iapClient / adGate` 三個 stored property
-  - `Live.swift` 構造 `LiveAdMobAdProvider` + `LiveStoreKit2IAPClient` + `AdGate(store: LiveMonetizationStateStore(...))`
-  - `Preview.swift` 用 `MonetizationTesting` fakes
-  - `Project.swift` Tuist manifest 加 `.package(product: "MonetizationCore")` + `"AdsAdMob"` + `"IAPStoreKit2"` to App target
-  - `Packages/SudokuKit/Package.swift` 加上 `AppComposition` target 對 `AppMonetizationKit` 的依賴
+### v2.3.3 — RouteFactory refactor  `[x] (#71)`
 
-**Acceptance**：build clean；tests 全綠。短期 RootView.init 會長到 8 個 deps，下一 step 修。
+- `SudokuUI/Navigation/RouteFactory.swift`：`RouteFactory` protocol + `LiveRouteFactory`
+- `RootView.init` 實際簽名：`(viewModel, routeFactory, adProvider?, adGate?, monetizationController?, toastController?)` — 6 params（4 optional 供 preview / test 注入），非原 plan 預估的 5 params 全 required
+- destination 改 `routeFactory.view(for: route)`
 
-### v2.3.3 — RouteFactory refactor（promoted from Wave 3 audit）
+### v2.3.4 — HomeView 加 BannerSlotView  `[x] (#83)`
 
-- 紅燈先：`SudokuUITests/RouteFactoryTests.swift` 驗每個 AppRoute → matching View+VM 構造
-- 落地：
-  - `SudokuUI/Navigation/RouteFactory.swift`：protocol `RouteFactory { func view(for: AppRoute) -> AnyView }` 與 `LiveRouteFactory` 落地實作（內部把 5 個 protocol deps 包進來，提供 5 個 destination View 構造）
-  - `AppComposition` 從 stored 5+ deps 改為 stored 1 `routeFactory: any RouteFactory`
-  - `RootView.init` 簽名收縮：`(viewModel: RootViewModel, routeFactory: any RouteFactory, adProvider: any AdProvider, iapClient: any IAPClient, adGate: AdGate)` — 從 8 收 到 5
-  - destination 改 `destination: { route in routeFactory.view(for: route) }`
+- `SudokuUI/Components/BannerSlotView.swift`，注入 `adProvider` + `adGate`
+- HomeView 4 mode cards 下方加 slot；close button → `adGate.recordBannerDismissed(now:)` 後 self-hide
 
-**Acceptance**：RootView.init 簽名 5 deps（不再爆增）；測試 all green；audit Wave 3 RouteFactory item 完成關閉。
+### v2.3.5 — BoardView 加 BannerSlotView（pause 隱藏）  `[x] (#83)`
 
-### v2.3.4 — HomeView 加 BannerSlotView
+- Grid 與 digit pad 之間加 slot；`if !viewModel.isPaused` 才顯示
+- GeometryReader 吸收 banner 高度
 
-- 紅燈先：`SudokuUITests/HomeViewBannerTests.swift` 驗 `BannerSlotView` 在 `adGate.shouldShowBanner == false` 時 `EmptyView()`，true 時顯示 `AdMobBannerView` wrapper
-- 落地：
-  - `SudokuUI/Components/BannerSlotView.swift`：SwiftUI view，注入 `adProvider` + `adGate`；右上 12pt 灰色 ✕ close button
-  - `HomeView.swift`：4 mode cards 下方加 `BannerSlotView()`
-  - close button 觸發 `adGate.recordBannerDismissed(now:)` 然後 self-hide
+### v2.3.6 — Settings: Remove Ads CTA + Restore Purchases  `[x] (#84)`
 
-**Acceptance**：4-6 unit tests 全綠；快照測試重做 HomeView baseline（with banner / without banner 兩個變體）。
+- `Settings/SettingsView.swift` 加 IAP section（Remove Ads / Restore）
+- HomeView 5th mode card「Remove Ads」（unpurchased 才出現）
 
-### v2.3.5 — BoardView 加 BannerSlotView（懸停期間隱藏）
+### v2.3.6.1 — MonetizationStateController + ToastController  `[x] (#84, #85)`
 
-- 紅燈先：`SudokuUITests/BoardViewBannerTests.swift` 驗 `pause / running` 兩態下 banner visibility
-- 落地：
-  - `BoardView.swift`：grid 與 digit pad 之間加 `BannerSlotView`，加條件 `if !viewModel.isPaused` 才顯示
-  - GeometryReader 重新計算 grid size 吸收 banner 高度
-- 快照：board with banner（new variant）；pause state with no banner（existing variant）
+- 新增 `SudokuUI/Components/MonetizationStateController.swift`（@Observable）集中 purchase / restore / revoke 狀態
+- 新增 `Components/ToastView.swift` + ToastController 作為跨 phase 共用 surface
+- **此 step plan 原本未列**，補登：把 IAP 結果 / banner 反饋的 UI 分散邏輯收斂到單一 controller
 
-**Acceptance**：4-5 unit tests 全綠；snapshot baseline +2 PNGs。
+### v2.3.7 — App boot order: UMP → ATT → AdMob init  `[x] (#84, #106)`
 
-### v2.3.6 — Settings: Remove Ads CTA + Restore Purchases
+- 實作改用 `AdsAdMob/MonetizationBootCoordinator.swift` + `MonetizationBootBridges`（由 `AppComposition.live()` 在 `bootMonetization()` 內呼叫）
+- 非 iOS 平台直接 early-return（PR #106）
+- 失敗 → log + 繼續，不阻擋 App 進入
 
-- 紅燈先：`SudokuUITests/SettingsIAPRowTests.swift` 驗 unpurchased / purchased 兩態 UI
-- 落地：
-  - `Settings/SettingsView.swift`：加新 Section
-    - Row 1: `Remove Ads — $2.99` button（unpurchased 才顯示；tap → `iapClient.purchase(.removeAds)`）
-    - Row 2: `Restore Purchases` button（tap → `iapClient.restorePurchases()`）
-  - 兩個 row 都帶 spinner state + result toast
-- HomeView 第 5 個 mode card 「Remove Ads」（unpurchased 才出現）— 與 Settings row 同行為，更顯眼
-
-**Acceptance**：6-8 unit tests 全綠；snapshot baseline 重做 SettingsView。
-
-### v2.3.7 — App boot order: UMP → ATT → AdMob init
-
-- 紅燈先：`AppCompositionTests/BootOrderTests.swift` 用 fake bridges 驗 3 步驟順序
-- 落地：
-  - `AppComposition.live()` 內 `bootMonetization()` 函式：
-    1. `await UMPConsentPresenter.requestIfNeeded()`
-    2. `await ATTPresenter.requestIfNeeded()`
-    3. `await adProvider.initialize()`
-  - 從 `SudokuApp.swift` 啟動點呼叫；在 HomeView appear 之前完成
-  - 失敗 → log + 繼續（不阻擋 App 進入）
-
-**Acceptance**：3-5 unit tests 全綠；real device 試 cold launch UMP prompt（v2.5）。
-
-**Phase v2.3 收尾 TODO sweep**。
+**Phase v2.3 收尾**：sweep done。
 
 ---
 
-## §Phase v2.4 — Privacy 改動 + ASC ops（user-owned）
+## §Phase v2.4 — Privacy 改動 + ASC ops  ✅ (code) / 🟡 (ASC manual)
 
-**Goal**：PrivacyInfo / privacy-policy.md / App Store nutrition labels / ASC IAP product 註冊。多數步驟是 spec + 後台操作，code 部分小。
+**Goal**：PrivacyInfo / privacy-policy / App Store nutrition labels / ASC IAP product。多數 ASC 後台操作已轉 [`v2.5-readiness.md`](v2.5-readiness.md)。
 
-### v2.4.1 — PrivacyInfo.xcprivacy 更新
+### v2.4.1 — PrivacyInfo.xcprivacy 更新  `[x] (#62)`
 
-- 紅燈先：`PrivacyManifestTests.swift` 驗 plist 內容
-- 落地：
-  - `NSPrivacyTracking`: `false` → `true`
-  - `NSPrivacyTrackingDomains`: 加 AdMob domains（per [Google docs](https://developers.google.com/admob/ios/privacy/manifest)）
-  - `NSPrivacyCollectedDataTypes`: 加 `NSPrivacyCollectedDataTypeOtherUsageData` + purpose `Third-party advertising`
-  - `NSPrivacyAccessedAPITypes`: 加 `NSPrivacyAccessedAPICategoryUserDefaults`（AdMob 內部用）
+- `NSPrivacyTracking = true`
+- `NSPrivacyTrackingDomains` 列出 AdMob domains
+- `NSPrivacyCollectedDataTypes` 加 `OtherUsageData` purpose `Third-party advertising`
+- `NSPrivacyAccessedAPITypes` 加 `CategoryUserDefaults`
 
-**Acceptance**：plist 解析 test 通過；real device build 時不會被 Apple privacy 連帶 reject（v2.5 驗）。
+### v2.4.2 — privacy-policy.md 加廣告與 IAP 章節  `[x] (#62)`
 
-### v2.4.2 — privacy-policy.md 加廣告與 IAP 章節
+- `docs/privacy-policy.md` §「廣告與 IAP」新增；雙語 source（en + zh-Hant），其他 5 locale 走 ai-translated-localization flow
 
-- 落地：
-  - `docs/privacy-policy.md` 新增 §「廣告與 IAP」section
-    - AdMob 收集 advertising identifier、可在 iOS Settings 關閉
-    - IAP 由 Apple 處理，不經過 Sudoku 後端
-  - 雙語（en + zh-Hant 為 source），其他 5 locale 用 ai-translated-localization skill flow 補
+### v2.4.3 — App Store nutrition labels  `[ ]` **(user-owned — see v2.5-readiness.md)**
 
-**Acceptance**：spec 改動入 git；可從 GitHub Pages 等地對外公開。
+### v2.4.4 — ASC 手動建立 IAP product  `[ ]` **(user-owned — see v2.5-readiness.md)**
 
-### v2.4.3 — App Store nutrition labels 更新（user-owned）
+### v2.4.5 — StoreKit Configuration scheme wiring + ASC App Privacy handoff  `[x] (#107)`
 
-- ASC App Privacy 頁更新：
-  - "Data Used to Track You": Yes（advertising / measurement）
-  - "Data Linked to You": No
-  - "Data Not Linked to You": Identifiers（advertising ID）, usage data
+- `Project.swift` 加 `RunActionOptions.storeKitConfigurationPath → App/Resources/Sudoku.storekit`，Scheme 經 `tuist generate` persist，免手動 Xcode 編輯
+- 同時把 ASC App Privacy 問卷對齊資料整理進 `v2.5-readiness.md`（無 ASC REST API，純 manual）
 
-**Acceptance**：ASC 後台改完，與 PrivacyInfo.xcprivacy 對齊。
-
-### v2.4.4 — ASC 手動建立 IAP product（user-owned）
-
-- ASC → My Apps → Sudoku → In-App Purchases → Create
-- Type: Non-Consumable
-- Reference Name: `Remove Ads`
-- Product ID: `com.wei18.sudoku.iap.remove_ads`
-- Price: $2.99 USD（Tier 3）
-- Localized name 7 locales（從 ai-translated-localization skill 流程）
-
-**Acceptance**：ASC 後台 product 為 `Ready to Submit`；StoreKit Configuration file 也同步本機 dev sandbox。
-
-**Phase v2.4 收尾**：spec + ops 對齊。
+**Phase v2.4 收尾**：code spec 對齊；ASC ops 由 user 在 v2.5 完成。
 
 ---
 
-## §Phase v2.5 — TestFlight + ship
+## §Phase v2.4★ — Audit polish & cross-platform build  ✅
 
-**Goal**：真機驗證 + ship to App Store。多數 user-owned ops，subagent 只能在前期幫 build。
+Plan 原訂未列、實際 ship 的後續工作整理於此，供 trace。
 
-### v2.5.1 — Real device sandbox IAP test（user-owned）
+### v2.4★.1 — Conditional iOS-only deps + NoopAdProvider for macOS  `[x] (#101)`
 
-- TestFlight 安裝
-- Sandbox Apple ID 試購 `Remove Ads`
-- 驗證購買後 banner 消失、Restore 也能在新裝置拿回購買狀態
-- 驗證 CloudKit `MonetizationState` 跨機 sync
+- AdMob/UMP dep 加 platform condition；macOS build 走 `NoopAdProvider`
 
-**Acceptance**：3 條場景通過。
+### v2.4★.2 — iOS xcodebuild compile via v11 ObjC AdMob/UMP API  `[x] (#102, #103)`
 
-### v2.5.2 — Real device AdMob test ad（user-owned）
+- 為相容當下 Xcode toolchain，AdMob/UMP wrapper 走 v11 ObjC API surface
 
-- 在 AdMob console 用 [test ad unit IDs](https://developers.google.com/admob/ios/test-ads)（**NOT production unit IDs**）
-- 跑 7 天 grace 邏輯：first install → banner 沒出現
-- 跑 dismissed-skip：手動跳過 grace（注入 fake clock 或修改 CloudKit record），點 ✕ 確認當天不再出現
-- 跑 1/day max：跨日後 banner 重新出現
+### v2.4★.3 — `bootMonetization()` non-iOS early-return  `[x] (#106)`
 
-**Acceptance**：3 條 banner 行為驗證通過；隔離 audit `grep import GoogleMobileAds` 仍只有 1 檔。
+### v2.4★.4 — Audit M+N polish  `[x] (#97)`
 
-### v2.5.3 — Submit to ASC review（user-owned）
+- wall-clock throttle、Fake fan-out、anchor registry 等 audit item 收斂
 
-- TestFlight build 升 production
-- App Privacy questionnaire 確認與 PrivacyInfo 對齊
-- Review notes 內附 demo Apple ID（含 sandbox 環境說明）
-- Submit
+### v2.4★.5 — AdMob v13 + UMP v3 upgrade  `[x] (#109)`
 
-**Acceptance**：Apple Review 通過、上架 production。
+- SDK 版本升級 + API 對齊
 
 ---
 
-## §Decisions（自 design.md v2 §Decisions 同步）
+## §Phase v2.5 — TestFlight + ship  🟡 (user-owned)
 
-詳見 [`docs/v2/design.md §Decisions`](design.md#decisions自-2026-05-20-brainstorm)。
+**Goal**：真機驗證 + ship to App Store。
+
+詳細 checklist 全部在 [`v2.5-readiness.md`](v2.5-readiness.md)；此處只列 phase 概要，避免雙處維護。
+
+- **v2.5.1** Sandbox IAP on real device — 購買 / 跨機 restore / CloudKit sync
+- **v2.5.2** Real-device AdMob test ads — 7-day grace / dismissed-skip / 1/day max；isolation audit `rg "import GoogleMobileAds" Packages/` = 2 檔
+- **v2.5.3** Submit to ASC review — Privacy questionnaire 對齊 PrivacyInfo / demo Apple ID / submit
+
+CI prerequisite：`ci_post_clone.sh` 從 Xcode Cloud `$CI_TEAM_ID` 寫 `Tuist/Signing.xcconfig`，user 不需手動配 env var。
+
+---
+
+## §Decisions（v2 開工後新增）
+
+承襲 [`docs/v2/design.md §Decisions`](design.md#decisions自-2026-05-20-brainstorm)，下列為 plan 執行期間新增決定：
+
+- **D-v2-01** AdMob SDK v13 / UMP v3（升級於 2026-05，PR #109）
+- **D-v2-02** AdMob/UMP wrapper 採 v11 ObjC API surface（toolchain 相容權衡，PR #102/#103）
+- **D-v2-03** macOS build 不引入 AdMob／改用 `NoopAdProvider`（Google 無 macOS slice，PR #101）
+- **D-v2-04** Anchor 模型由單一 struct 改為 registry + resolver（多 scene 支援，PR #108）
+- **D-v2-05** `purchaseUpdates()` 真實訂閱拆到 PR #85 與 toast surface 一起 ship（與 plan 原訂 v2.1.2 一次完成不同）
+- **D-v2-06** RootView.init 保留 4 個 optional dep slot 供 preview/test 注入，非「全 required 5 deps」（plan 原預估與 SwiftUI preview 體驗衝突）
 
 ---
 
@@ -335,6 +268,8 @@ This plan operationalizes [`docs/v2/design.md`](design.md) + [`docs/foundations.
 
 ---
 
-## 起跑
+## §下一動作
 
-派 Senior Developer subagent 從 **v2.0.1 Package skeleton** 起手，PROPOSAL → IMPL → review → merge → 下一 step。phase 間平行性：v2.1 IAP 與 v2.2 AdMob 互不阻擋，v2.3 Sudoku 整合需 v2.1 + v2.2 都完成。
+1. User 依 [`v2.5-readiness.md`](v2.5-readiness.md) pre-flight checklist 跑完 ASC IAP / AdMob console / sandbox tester 設定
+2. User 完成 v2.5.1（sandbox IAP）與 v2.5.2（real-device AdMob test ads）
+3. User 跑 v2.5.3 submit；submit 前由 subagent 跑最後一次 `rg "import GoogleMobileAds" Packages/` isolation audit
