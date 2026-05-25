@@ -62,6 +62,11 @@ struct MonetizationStateControllerUpdatesTests {
     @Test func revokedEvent_flipsFlagFalse_andPushesFailureToast() async {
         let (controller, iap, toast) = await make(purchased: true)
         await controller.bootstrap()
+        // Fix B (RCA 2026-05-25): listener opt-in is explicit in tests,
+        // matched by `finishUpdates()` so the for-await Task doesn't
+        // outlive the suite instance and starve the @MainActor.
+        controller.startListeningForLifetimeOfApp()
+        defer { Task { await iap.finishUpdates() } }
         #expect(controller.hasPurchasedRemoveAds == true)
 
         await iap.emit(.revoked(productId: removeAdsProductId))
@@ -76,6 +81,8 @@ struct MonetizationStateControllerUpdatesTests {
     @Test func purchasedEvent_flipsFlagTrue_andPushesSuccessToast() async {
         let (controller, iap, toast) = await make()
         await controller.bootstrap()
+        controller.startListeningForLifetimeOfApp()
+        defer { Task { await iap.finishUpdates() } }
         #expect(controller.hasPurchasedRemoveAds == false)
 
         await iap.emit(.purchased(productId: removeAdsProductId))
@@ -90,6 +97,8 @@ struct MonetizationStateControllerUpdatesTests {
     @Test func purchasedEvent_forUnrelatedProductId_ignored() async {
         let (controller, iap, toast) = await make()
         await controller.bootstrap()
+        controller.startListeningForLifetimeOfApp()
+        defer { Task { await iap.finishUpdates() } }
 
         await iap.emit(.purchased(productId: "com.wei18.sudoku.iap.other"))
 

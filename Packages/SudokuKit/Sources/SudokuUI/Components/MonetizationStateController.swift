@@ -17,9 +17,18 @@
 // v2.4.5 additions:
 //   - Optional `ToastController` injection. When present, purchase / restore
 //     results push a toast in addition to setting `latestMessage`.
-//   - `startListening()` subscribes to `iapClient.purchaseUpdates()` for the
-//     app's lifetime, handling out-of-band events (refunds, family-share
-//     revocations). Called by `bootstrap()`; cancelled on `deinit`.
+//   - `startListeningForLifetimeOfApp()` subscribes to
+//     `iapClient.purchaseUpdates()` for the app's lifetime, handling
+//     out-of-band events (refunds, family-share revocations). Called
+//     explicitly at app boot (alongside `bootstrap()`); cancelled on
+//     `deinit`.
+//
+// Fix B (RCA 2026-05-25): the listener subscription is split out of
+// `bootstrap()` so swift-testing suites that only need the one-shot read
+// don't leak a long-lived `for await` Task on the shared `@MainActor`,
+// which deadlocks the full test suite. Tests that DO exercise the
+// listener call `startListeningForLifetimeOfApp()` explicitly + tear
+// down via `FakeIAPClient.finishUpdates()`.
 //
 // Lifetime: one instance is constructed in AppComposition's preview/tests/live
 // path and re-used across HomeView and Settings so both surfaces observe the
@@ -84,9 +93,11 @@ public final class MonetizationStateController {
     /// repeatedly (Settings and HomeView both invoke it from `.task`); the
     /// store + IAPClient are responsible for their own caching.
     ///
-    /// v2.4.5: also kicks `startListening()` so the controller subscribes to
-    /// `iapClient.purchaseUpdates()` for the app's lifetime. Subsequent calls
-    /// re-arm the task (the old one is cancelled).
+    /// Fix B (RCA 2026-05-25): this method NO LONGER starts the
+    /// `purchaseUpdates()` listener. Production (`AppComposition.live`)
+    /// calls `startListeningForLifetimeOfApp()` once at boot, immediately
+    /// after `bootstrap()`. Tests that need the listener opt in
+    /// explicitly + tear down via `FakeIAPClient.finishUpdates()`.
     public func bootstrap() async {
         if let loaded = try? await stateStore.loadState() {
             hasPurchasedRemoveAds = loaded.hasPurchasedRemoveAds
@@ -101,13 +112,13 @@ public final class MonetizationStateController {
                 hasPurchasedRemoveAds = true
             }
         }
-        startListening()
     }
 
     /// Long-running subscriber for out-of-band purchase events (refunds,
-    /// family-share revocations, parental-approval grants). Safe to call
-    /// multiple times — any previous task is cancelled first.
-    public func startListening() {
+    /// family-share revocations, parental-approval grants). Call ONCE at
+    /// app boot from the composition root; tests opt in explicitly. Safe
+    /// to call multiple times — any previous task is cancelled first.
+    public func startListeningForLifetimeOfApp() {
         updatesTask?.cancel()
         let stream = iapClient.purchaseUpdates()
         updatesTask = Task { [weak self] in
