@@ -68,7 +68,7 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
                 score: Int(entry.score / 100)
             )
         }
-        // TODO(issue: TBD-around-player): centre the entries range on the
+        // TODO(issue: #140): centre the entries range on the
         // given player's rank — requires a two-step GKLeaderboard call
         // (`loadEntries(for: [player], ...)` to discover rank, then a
         // second `loadEntries(for:timeScope:range:)` with
