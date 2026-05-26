@@ -59,7 +59,20 @@ let productionTargets: [Target] = [
     ),
     .target(
         name: "SudokuKitTesting",
-        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", persistenceDep, gameCenterClientDep, telemetryDep],
+        // `PersistenceTesting` pulled in for `PuzzleFixtures` (consumed by
+        // `FakePuzzleProvider` in this target). PuzzleFixtures lives in
+        // PersistenceTesting after Stage 3 carve-out because PersistenceTests
+        // are its primary consumer; SudokuKitTesting reaches for it via the
+        // existing SudokuKit → PersistenceKit dep arrow (no cycle).
+        dependencies: [
+            sudokuEngineDep,
+            gameStateDep,
+            "PuzzleStore",
+            persistenceDep,
+            .product(name: "PersistenceTesting", package: "PersistenceKit"),
+            gameCenterClientDep,
+            telemetryDep,
+        ],
         swiftSettings: swiftSettings
     ),
     // Phase 9.1: production composition root. The App target is intentionally
@@ -81,6 +94,10 @@ let productionTargets: [Target] = [
             // factory does not reference them so dead-code elimination keeps
             // the cost bounded.
             "SudokuKitTesting",
+            // Stage 3: GameCenter fakes carved out of SudokuKitTesting into
+            // GameCenterTesting; `Preview.swift` consumes `FakeGameCenterClient`
+            // for the `.preview()` factory.
+            gameCenterTestingDep,
             // v2.3.2: monetization wiring. AppComposition.live builds
             // LiveAdMobAdProvider + LiveStoreKit2IAPClient + AdGate via
             // LiveMonetizationStateStore. Preview / tests use MonetizationTesting fakes.

@@ -7,6 +7,7 @@ import Testing
 @testable import SudokuUI
 
 import GameCenterClient
+import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 import SudokuKitTesting
 
 @MainActor

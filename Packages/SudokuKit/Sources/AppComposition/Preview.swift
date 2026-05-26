@@ -9,6 +9,7 @@ internal import Foundation
 internal import MonetizationCore
 internal import MonetizationTesting
 internal import SudokuKitTesting
+internal import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 internal import SudokuUI
 internal import Telemetry
 

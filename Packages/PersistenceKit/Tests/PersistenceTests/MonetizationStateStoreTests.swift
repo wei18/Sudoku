@@ -4,7 +4,7 @@
 import Foundation
 import Testing
 import MonetizationCore
-import SudokuKitTesting
+import PersistenceTesting
 @testable import Persistence
 
 @Suite("Persistence — MonetizationStateStore")

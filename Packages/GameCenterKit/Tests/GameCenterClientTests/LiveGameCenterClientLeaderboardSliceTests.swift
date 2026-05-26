@@ -11,7 +11,7 @@
 import Foundation
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import GameCenterTesting
 
 @Suite("LiveGameCenterClient — leaderboard slice wiring (issue #64)")
 struct LiveGameCenterClientLeaderboardSliceTests {

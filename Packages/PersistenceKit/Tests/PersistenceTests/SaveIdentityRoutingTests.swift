@@ -17,7 +17,8 @@ import GameState
 import SudokuEngine
 import Telemetry
 import Testing
-import SudokuKitTesting
+import PersistenceTesting
+import TelemetryTesting
 import TelemetryTesting
 @testable import Persistence
 
