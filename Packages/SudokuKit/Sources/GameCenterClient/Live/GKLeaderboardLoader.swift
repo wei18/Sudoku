@@ -50,7 +50,30 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
         case .globalAllTime, .friendsAllTime:
             timeScope = .allTime
         }
-        let range = NSRange(location: 1, length: max(1, limit))
+        // SCOPE NARROWING (issue #140): when `around != nil`, centre the
+        // slice on the LOCAL player's rank. GameKit's
+        // `loadEntries(for: [GKPlayer], timeScope:)` requires `GKPlayer`
+        // instances, but our `around` param is a teamPlayerID string and
+        // `GKPlayer.loadPlayers(forIdentifiers:)` only accepts
+        // gamePlayerIDs — so cheap conversion is not available. The
+        // realistic production use case (CompletionView) is "centre on
+        // local player", so `GKLocalPlayer.local` is the correct source
+        // here. If a future feature ever needs centring on a different
+        // player, file a follow-up issue.
+        let centerRank: Int?
+        if player != nil {
+            // `loadEntries(for: [GKPlayer], timeScope:)` returns
+            // `(localPlayerEntry: GKLeaderboard.Entry?, entries: [GKLeaderboard.Entry])`.
+            // The local-player entry is what we want for centring.
+            let (localPlayerEntry, _) = try await leaderboard.loadEntries(
+                for: [GKLocalPlayer.local],
+                timeScope: timeScope
+            )
+            centerRank = localPlayerEntry?.rank
+        } else {
+            centerRank = nil
+        }
+        let range = Self.makeRange(centeredOnRank: centerRank, limit: limit)
         let (_, entries, total) = try await leaderboard.loadEntries(
             for: playerScope,
             timeScope: timeScope,
@@ -68,17 +91,6 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
                 score: Int(entry.score / 100)
             )
         }
-        // TODO(issue: #140): centre the entries range on the
-        // given player's rank — requires a two-step GKLeaderboard call
-        // (`loadEntries(for: [player], ...)` to discover rank, then a
-        // second `loadEntries(for:timeScope:range:)` with
-        // `NSRange(location: max(1, rank - window), length: limit)`).
-        // Currently the param is accepted at the protocol seam but the
-        // range always starts at rank 1; this is a correctness gap (not
-        // a verification task) and must NOT be deferred to Phase 10.
-        // Tracked separately so this PR stays scoped to issue #64
-        // dead-code wiring.
-        _ = (player)
         return LeaderboardSlice(
             leaderboardId: leaderboardId,
             scope: scope,
@@ -90,5 +102,26 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
         _ = (leaderboardId, scope, player, limit)
         throw GameCenterError.notAuthenticated
         #endif
+    }
+
+    /// Compute the `NSRange` for the second `loadEntries` call.
+    ///
+    /// - When `centeredOnRank == nil` (no `around` player, or the local
+    ///   player isn't on the board for this scope), return top-N
+    ///   anchored at rank 1.
+    /// - Otherwise, centre a window of `limit` entries on the rank,
+    ///   clamping the start to 1. Window size per side is `limit / 2`
+    ///   rounded down (per issue #140 acceptance).
+    ///
+    /// `internal` so the GameCenterClientTests target can verify it
+    /// without standing up a fake `GKLeaderboard`.
+    internal static func makeRange(centeredOnRank rank: Int?, limit: Int) -> NSRange {
+        let length = max(1, limit)
+        guard let rank else {
+            return NSRange(location: 1, length: length)
+        }
+        let window = length / 2
+        let start = max(1, rank - window)
+        return NSRange(location: start, length: length)
     }
 }
