@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Generate Settings.bundle/Acknowledgements page from SwiftPM dep graph (license_plist.yml)."
+set -euo pipefail
+exec mise exec ubi:mono0926/LicensePlist -- license-plist "$@"

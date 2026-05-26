@@ -143,7 +143,7 @@ v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workfl
 - 升 Xcode 時 → 開一張集中更新所有 snapshot 基準圖的 PR。
 - Test 環境關閉 iCloud / Game Center 登入；所有 test 走 protocol fakes（§3）。
 - `ci_scripts/` 內任何工具優先透過 `mise` 啟用，避免 Xcode Cloud 預裝版本飄移。
-- **工具呼叫 SSOT — `mise [tasks.*]`（2026-05-26）**：lefthook / GitHub Actions / Xcode Cloud `ci_scripts/` 三邊呼叫同一支工具時，命令 body 一律抽到 `.mise.toml` 的 `[tasks."<group>:<verb>"]`（如 `lint:swift`、`lint:swift:strict`、`scan:secrets`、`scan:hygiene`、`gen:acknowledgements`），呼叫端只寫 `mise run <task>`。改 flag 只改一處；strict-vs-relaxed 變體用兩個 task name（如 `lint:swift` 本機 warn-only / `lint:swift:strict` PR CI 警告升 error）區分，避免 env-flag 黑魔法。
+- **工具呼叫 SSOT — `mise-tasks/` 檔案任務（2026-05-26）**：lefthook / GitHub Actions / Xcode Cloud `ci_scripts/` 三邊呼叫同一支工具時，命令 body 一律抽到 `mise-tasks/` 下的可執行 shell 檔（dir-nested 自動 colon-prefix：`mise-tasks/lint/swift` → task `lint:swift`），呼叫端只寫 `mise run <task>`。任務檔含 `#MISE description="..."` header + `set -euo pipefail`；改 flag 只改一處。Strict-vs-relaxed 變體用兩個 task name（如 `lint:swift` 本機 warn-only / `lint:swift:strict` PR CI 警告升 error）區分，避免 env-flag 黑魔法。File-based 取代先前的 `.mise.toml [tasks.*]` inline 寫法（理由：個別檔案可單獨 `chmod +x` 測試、syntax highlighting 較佳、多行 shell 不需 TOML triple-quote escape）。
 - **Acknowledgements 頁（App Store 第三方授權清單）**：由 LicensePlist 在 `ci_post_clone.sh` 跑 `mise run gen:acknowledgements`（task body = `mise exec ubi:mono0926/LicensePlist -- license-plist`）從 SwiftPM dep graph 自動產 `App/Resources/Settings.bundle/`（iOS 標準位置，顯示於 Settings.app → Sudoku → Acknowledgements）。Source of truth: 倉庫根 `license_plist.yml`；產出檔 `.gitignore`'d，每次 build 重生。**本機 dev 環境不自動重生**（`Project.swift` 用 `.glob` 容忍空匹配，App 仍能本地 build；Acknowledgements 頁僅 release surface）；若需本機驗證，手動跑 `mise run gen:acknowledgements`。
 
 ### 已知 race condition
@@ -329,7 +329,7 @@ xcbeautify = "1"
 
 實際 plugin 來源（`aqua:` vs `ubi:` vs 其它）於 plan.md 第一步驗證 mise 對 lefthook 的支援後鎖定（§7.11 open item）。
 
-**安裝 pre-commit**：採用 [`lefthook`](https://github.com/evilmartians/lefthook) 管理 Git hooks（YAML 設定、進 repo）。命令 body 一律走 `.mise.toml [tasks.*]` SSOT（見 §4），`lefthook.yml` 端僅引用 task 名稱：
+**安裝 pre-commit**：採用 [`lefthook`](https://github.com/evilmartians/lefthook) 管理 Git hooks（YAML 設定、進 repo）。命令 body 一律走 `mise-tasks/` 檔案任務 SSOT（見 §4），`lefthook.yml` 端僅引用 task 名稱：
 ```yaml
 pre-commit:
   parallel: false   # RCA H4：mise process-level cache lock 在 swiftlint+gitleaks 並行下會 deadlock

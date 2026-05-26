@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="SwiftLint (warnings fail; used by GitHub Actions PR CI). Pass changed files as args."
+set -euo pipefail
+exec mise exec swiftlint -- swiftlint lint --strict --quiet "$@"
