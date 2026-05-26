@@ -90,6 +90,7 @@ SudokuEngine  ←  GameState
 - **未抽出的範圍**：`PuzzleStore` / `Persistence` / `GameCenterClient` / `Telemetry` / `SudokuUI` / `SudokuKitTesting` / `AppComposition` 仍留在 `SudokuKit`。Telemetry-only 抽出的 cost/benefit 暫不划算，本次只做 prerequisite。
 - **依賴方向不變**：上方 §2 的 dep 圖仍然成立；差異只在 `SudokuEngine` 與 `GameState` 現在以 `.product(name:package:"SudokuCoreKit")` 形式被 SudokuKit 的其他 target 依賴。
 - **Package naming convention**：sibling local packages 以 `<Domain>Kit` 命名（產品名或功能域 + `Kit` 後綴）— 目前 `SudokuKit` / `SudokuCoreKit` / `AppMonetizationKit` 各自符合。未來抽出（例：`TelemetryKit`）沿用同模式。
+- **2026-05-26 Stage 2: TelemetryKit extracted**：`Telemetry` 從 `SudokuKit` 抽離到 `Packages/TelemetryKit/`，沿用 `<Domain>Kit` 命名。Telemetry 是純值類型 + protocol seam，零 Apple framework 依賴 — 抽出成 leaf package 後可跨 app reuse（觸發點：2nd app reuse, 2026-05-26 user 決定）。Telemetry 仍依賴 SudokuEngine + GameState（via SudokuCoreKit `.product()` refs），方向不變。TelemetryKit 含 `Telemetry` + `TelemetryTesting` 兩 product；後者 host 共用 test fixtures（FakeLogger / MetricPayloadFixtures / RecordingSink，從 `SudokuKitTesting/Telemetry/` 抽出），TelemetryTests 純 swap import，SudokuKit 的 PuzzleStore + Persistence 兩個 test target 改 import TelemetryTesting alongside SudokuKitTesting（仍需 FakeGenerator / FakePrivateCKGateway / PuzzleFixtures）。剩 `PuzzleStore` / `Persistence` / `GameCenterClient` / `SudokuUI` / `SudokuKitTesting` / `AppComposition` 仍在 SudokuKit。Stage 3（GameCenterKit + PersistenceKit）排隊中。
 
 ## §3 Testing 工具鏈
 

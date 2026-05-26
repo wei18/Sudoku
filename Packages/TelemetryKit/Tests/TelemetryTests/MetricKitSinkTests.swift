@@ -12,7 +12,7 @@
 import Foundation
 import Testing
 @testable import Telemetry
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("MetricKitSink — payload projection")
 struct MetricKitSinkTests {

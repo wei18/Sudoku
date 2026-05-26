@@ -18,6 +18,7 @@ import SudokuEngine
 import Telemetry
 import Testing
 import SudokuKitTesting
+import TelemetryTesting
 @testable import Persistence
 
 @Suite("Persistence — save identity routing (B2)")

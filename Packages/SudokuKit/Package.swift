@@ -20,11 +20,19 @@ let swiftSettings: [SwiftSetting] = [
 
 let sudokuEngineDep: Target.Dependency = .product(name: "SudokuEngine", package: "SudokuCoreKit")
 let gameStateDep: Target.Dependency = .product(name: "GameState", package: "SudokuCoreKit")
+// Telemetry extracted into sibling TelemetryKit package on 2026-05-26
+// (Stage 2 of the module split). See `docs/foundations.md §2`.
+let telemetryDep: Target.Dependency = .product(name: "Telemetry", package: "TelemetryKit")
+// TelemetryTesting — FakeLogger / RecordingSink / MetricPayloadFixtures.
+// Carved out of SudokuKitTesting/Telemetry/ on Stage 2 so test targets that
+// only need the Telemetry-shaped fixtures don't pay for the broader
+// SudokuKitTesting surface.
+let telemetryTestingDep: Target.Dependency = .product(name: "TelemetryTesting", package: "TelemetryKit")
 
 // MARK: - Production targets
 
 let productionTargets: [Target] = [
-    .target(name: "PuzzleStore", dependencies: [sudokuEngineDep, "Telemetry"], swiftSettings: swiftSettings),
+    .target(name: "PuzzleStore", dependencies: [sudokuEngineDep, telemetryDep], swiftSettings: swiftSettings),
     .target(
         name: "Persistence",
         dependencies: [
@@ -33,7 +41,7 @@ let productionTargets: [Target] = [
             // PersistenceProtocol surface is typed; the CK serialization
             // seam still encodes raw String to preserve wire format.
             sudokuEngineDep,
-            "Telemetry",
+            telemetryDep,
             // v2.3.1: re-exports `AdGateStateStore` via `MonetizationStateStore`
             // typealias; concrete `LiveMonetizationStateStore` lives here so
             // CloudKit Private wiring stays inside the Sudoku App layer.
@@ -43,20 +51,7 @@ let productionTargets: [Target] = [
     ),
     // M5 (issue #65): SudokuEngine added so GameCenterSink's
     // `leaderboardKind(forDifficulty:)` switch is exhaustive on `Difficulty`.
-    .target(name: "GameCenterClient", dependencies: [sudokuEngineDep, "Telemetry", "Persistence"], swiftSettings: swiftSettings),
-    // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
-    // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
-    // values; Telemetry provides the production adapter that maps those events
-    // onto `TelemetryEvent` and forwards through the fan-out facade. GameState
-    // does NOT import Telemetry (it stays on the protocol seam) so there is
-    // no cycle. Direction-of-dependency reasoning: GameState is "deeper"
-    // (no IO, pure logic) than Telemetry (Apple system imports), so this
-    // direction is correct per design.md §How.1.
-    // M5 (issue #65): SudokuEngine added so `TelemetryEvent` payloads carry
-    // typed `Mode` / `Difficulty` instead of bare `String` (callers no longer
-    // need to remember `.rawValue` conversion — typos at call sites now fail
-    // to compile rather than dropping silently at the GameCenter sink).
-    .target(name: "Telemetry", dependencies: [gameStateDep, sudokuEngineDep], swiftSettings: swiftSettings),
+    .target(name: "GameCenterClient", dependencies: [sudokuEngineDep, telemetryDep, "Persistence"], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
         dependencies: [
@@ -64,7 +59,7 @@ let productionTargets: [Target] = [
             "PuzzleStore",
             "Persistence",
             "GameCenterClient",
-            "Telemetry",
+            telemetryDep,
             // v2.3.3: RouteFactory holds AdProvider / IAPClient / AdGate
             // protocol deps so individual destination Views (v2.3.4-6) can
             // pull them at construction. SudokuUI does not depend on the
@@ -76,7 +71,7 @@ let productionTargets: [Target] = [
     ),
     .target(
         name: "SudokuKitTesting",
-        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
+        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", "Persistence", "GameCenterClient", telemetryDep],
         swiftSettings: swiftSettings
     ),
     // Phase 9.1: production composition root. The App target is intentionally
@@ -91,7 +86,7 @@ let productionTargets: [Target] = [
             "PuzzleStore",
             "Persistence",
             "GameCenterClient",
-            "Telemetry",
+            telemetryDep,
             "SudokuUI",
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
             // for the protocol fakes. Shipped in the binary; the `.live()`
@@ -137,10 +132,9 @@ let monetizationTestDeps: [Target.Dependency] = [
 ]
 
 let testTargets: [Target] = [
-    testTarget("PuzzleStore", dependencies: ["PuzzleStore"]),
-    testTarget("Persistence", dependencies: ["Persistence"] + monetizationTestDeps),
+    testTarget("PuzzleStore", dependencies: ["PuzzleStore", telemetryTestingDep]),
+    testTarget("Persistence", dependencies: ["Persistence", telemetryTestingDep] + monetizationTestDeps),
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
-    testTarget("Telemetry", dependencies: ["Telemetry"]),
     testTarget("SudokuUI", dependencies: ["SudokuUI"] + monetizationTestDeps),
     // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
     // `MonetizationBootCoordinator` directly with recording bridges.
@@ -185,7 +179,6 @@ let package = Package(
         .library(name: "PuzzleStore", targets: ["PuzzleStore"]),
         .library(name: "Persistence", targets: ["Persistence"]),
         .library(name: "GameCenterClient", targets: ["GameCenterClient"]),
-        .library(name: "Telemetry", targets: ["Telemetry"]),
         .library(name: "SudokuUI", targets: ["SudokuUI"]),
         .library(name: "SudokuKitTesting", targets: ["SudokuKitTesting"]),
         .library(name: "AppComposition", targets: ["AppComposition"]),
@@ -196,6 +189,11 @@ let package = Package(
         // sibling local package so a future Telemetry-only extraction is
         // unblocked. See `docs/foundations.md §2`.
         .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
+        // 2026-05-26 Stage 2 module split: Telemetry extracted into sibling
+        // TelemetryKit package so it can be reused across apps. Telemetry is
+        // pure value types + protocol seams, zero Apple framework imports —
+        // suitable as a leaf package. See `docs/foundations.md §2`.
+        .package(name: "TelemetryKit", path: "../TelemetryKit"),
         // v2.3.2: sibling local package providing MonetizationCore +
         // AdsAdMob (Google Mobile Ads bridge) + IAPStoreKit2 (StoreKit2 bridge)
         // + MonetizationTesting fakes. Lives one directory up under Packages/.

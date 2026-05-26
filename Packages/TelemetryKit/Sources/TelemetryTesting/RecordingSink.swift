@@ -1,7 +1,7 @@
 // RecordingSink — Telemetry test helper that records every event in order.
 //
-// Lives in SudokuKitTesting so multiple test targets (TelemetryTests,
-// GameStateTests, future PersistenceTests) can share the same spy.
+// Lives in TelemetryTesting so multiple test targets (TelemetryTests,
+// PersistenceTests, PuzzleStoreTests) can share the same spy.
 
 public import Telemetry
 

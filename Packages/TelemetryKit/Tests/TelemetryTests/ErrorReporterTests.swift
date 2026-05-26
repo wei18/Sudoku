@@ -12,7 +12,7 @@
 
 import Foundation
 import Testing
-import SudokuKitTesting
+import TelemetryTesting
 @testable import Telemetry
 
 @Suite("ErrorReporter — funnel + classify (M10 / issue #67)")
