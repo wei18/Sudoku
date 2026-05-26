@@ -3,7 +3,7 @@
 iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
 
 - 規格層：[`docs/`](docs/)、[`meetings/`](meetings/)、[`.claude/skills/`](.claude/skills/)。
-- 實作層：`App/` 與 `Packages/SudokuKit/`，將於 [`docs/plan.md`](docs/plan.md) Phase 1 起建立。
+- 實作層：`App/`（薄殼，只含 `@main` + DI composition root）與 `Packages/`（4 個本地 SPM package，見下）。
 
 > 2026-05-17 起，原本規劃的 sibling `Sudoku/` repo 已合併進本 repo。理由：作為 portfolio，單一可閱讀單元優於跨 repo 跳轉。
 
@@ -14,20 +14,41 @@ iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
 
 ## 閱讀順序
 
-1. [`docs/design.md`](docs/design.md) — 產品要做什麼（§What）與技術上怎麼做（§How）。
-2. [`docs/plan.md`](docs/plan.md) — 由 design 推導出來、依 TDD 順序排列的可勾選實作計畫。
-3. [`docs/methodology.md`](docs/methodology.md) — Claude agent 在本專案的應用模式，持續更新。
-4. [`meetings/`](meetings/) — 各次 session 的原始決策紀錄，是上述三份文件「為什麼長成這樣」的真相來源。
+1. [`docs/v1/design.md`](docs/v1/design.md) — v1 產品要做什麼（§What）與技術上怎麼做（§How）。
+2. [`docs/v2/design.md`](docs/v2/design.md) — v2 monetization layer（AdMob banner + Remove Ads IAP + UMP / ATT）。
+3. [`docs/foundations.md`](docs/foundations.md) — 跨版本的工程平台決策（Swift 6、模組化、testing、CI、Logger、Tracking、secrets）。
+4. [`docs/methodology.md`](docs/methodology.md) — Claude agent 在本專案的協作模式（含 §派發契約、Backlog 路由），持續更新。
+5. [`meetings/`](meetings/) — 各次 session 的原始決策紀錄，是上述文件「為什麼長成這樣」的真相來源。
+
+完整文件地圖見 [`docs/README.md`](docs/README.md)。
+
+## 模組結構
+
+```
+App/                              # 薄殼：@main + DI composition root
+Packages/
+├── SudokuCoreKit/                # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植 Android）
+├── TelemetryKit/                 # Logger + Tracking 抽象 + TelemetryTesting fixtures
+├── AppMonetizationKit/           # AdMob + IAP（third-party SDK 隔離，見 foundations §9）
+└── SudokuKit/                    # PuzzleStore / Persistence / GameCenterClient / SudokuUI / AppComposition
+```
+
+依賴方向（內 → 外，禁止反向）詳見 [`docs/foundations.md §2`](docs/foundations.md)。
 
 ## 狀態
 
-v1 程式碼層已完工（[`docs/plan.md`](docs/plan.md) Phase 0 至 Phase 9 已執行完畢）。剩下 Phase 10 為操作型工作，內容包含：
+- **v1** — 程式碼層完工並上架（[`docs/v1/plan.md`](docs/v1/plan.md) Phase 0–9 全部 ship）。
+- **v2.5** — Monetization layer 在 final sprint；AdMob banner 已 wire（test IDs），production IDs 待 v2.5.3 切換。Pre-flight 進度見 [`docs/v2/v2.5-readiness.md`](docs/v2/v2.5-readiness.md)。
 
-- App Store Connect 後台設定。
-- TestFlight 發佈。
-- 簽署與憑證。
+實作階段採 TDD（swift-testing + swift-snapshot-testing）。
 
-實作階段採 TDD。
+## 工具鏈（SSOT）
+
+- **mise** — 工具版本鎖（`.mise.toml`）+ 任務 SSOT（`mise-tasks/` file-based tasks；lefthook / GH Actions / Xcode Cloud 三邊同源呼叫 `mise run <task>`）
+- **lefthook** — pre-commit hooks（gitleaks、hygiene、swiftlint）
+- **Xcode Cloud** — v1 主 CI 軌；PR / Main / Release 三 workflow
+- **GitHub Actions** — Phase 1 advisory（`.github/workflows/lint.yml` 三 job：pr-metadata / docs-link-check / swift-lint）
+- **Tuist** — 從 `Project.swift` 產生 `App/Sudoku.xcodeproj`
 
 ## 安全姿態：公開 repo
 
