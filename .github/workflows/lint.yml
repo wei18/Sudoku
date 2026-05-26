@@ -1,24 +1,90 @@
-# Swift lint mirror — runs swiftlint + swiftformat on Swift files changed in
-# the PR, using the same tool versions pinned in `.mise.toml` (which also
-# drive `lefthook.yml` pre-commit and Xcode Cloud `ci_post_clone.sh`).
+# Consolidated lint workflow — 3 jobs:
+#   1. pr-metadata   — Conventional Commits PR title (ubuntu, no source)
+#   2. docs-link-check — lychee scan of docs/ + meetings/ (ubuntu, no source)
+#   3. swift-lint    — swiftlint + swiftformat on changed Swift files (macos)
 #
-# Phase 1 advisory: not yet a required status check.
+# Workflow-level path filter is omitted so the workflow always runs and each
+# job's own `if:` (or path-aware logic) decides whether to do work; this keeps
+# the required-status-check setup simple — one workflow name, three job
+# names — once branch protection lands (user-owned).
 
 name: Lint
 
 on:
   pull_request:
-    paths:
-      - "**/*.swift"
-      - ".mise.toml"
-      - ".swiftlint.yml"
-      - ".swiftformat"
-      - ".github/workflows/lint.yml"
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  pr-metadata:
+    name: Validate PR title (Conventional Commits)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Conventional Commits types accepted in this repo (matches recent
+          # merged commit history: feat, refactor, fix, docs, chore, ci, ...).
+          types: |
+            feat
+            fix
+            docs
+            chore
+            refactor
+            test
+            build
+            ci
+            perf
+            style
+            revert
+          # Scopes optional + unrestricted (e.g. `feat(monetization):`).
+          requireScope: false
+          # Subject lowercase, per recent commit style.
+          subjectPattern: ^[a-z].+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Subject should start with a
+            lowercase letter (e.g. "feat(scope): add foo bar").
+
+  docs-link-check:
+    name: Markdown link check (lychee)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List changed markdown files via gh api
+        id: changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          files=$(gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate \
+            --jq '.[] | select(.filename | startswith("docs/") or startswith("meetings/")) | select(.filename | endswith(".md")) | .filename' \
+            | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          if [ -z "$files" ]; then
+            echo "No relevant markdown files changed; lychee will be skipped."
+          else
+            echo "Changed markdown files: $files"
+          fi
+
+      - name: Check markdown links
+        if: steps.changed.outputs.files != ''
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --max-concurrency 4
+            ${{ steps.changed.outputs.files }}
+          fail: true
+
   swift-lint:
     name: SwiftLint + SwiftFormat (changed files)
     # macos-latest matches the dev/Xcode Cloud environment; ubuntu lacks the
@@ -26,13 +92,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Full history required so `git diff origin/<base>...HEAD` resolves
-          # the merge base; without this the changed-file list is empty.
-          fetch-depth: 0
-
-      - name: Fetch base branch
-        run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
 
       - name: Install mise + pinned tools
         uses: jdx/mise-action@v2
@@ -40,16 +99,30 @@ jobs:
           install: true
           cache: true
 
-      - name: SwiftLint on changed files
+      - name: List changed Swift files via gh api
+        id: changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          files=$(git diff --name-only --diff-filter=ACMRT \
-            "origin/${{ github.base_ref }}...HEAD" -- '*.swift')
+          files=$(gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate \
+            --jq '.[] | select(.filename | endswith(".swift")) | .filename' \
+            | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
           if [ -z "$files" ]; then
-            echo "No Swift files changed; skipping."
-            exit 0
+            echo "No Swift files changed; swift-lint will be skipped."
+          else
+            echo "Changed Swift files: $files"
           fi
-          echo "$files" | xargs mise exec swiftlint -- swiftlint lint --strict --quiet
+
+      - name: SwiftLint on changed files
+        if: steps.changed.outputs.files != ''
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          mise exec swiftlint -- swiftlint lint --strict --quiet ${{ steps.changed.outputs.files }}
 
       - name: SwiftFormat lint on changed files
         # Hard-fail since PR #149 landed the `.swiftformat` relaxed-baseline
@@ -58,12 +131,8 @@ jobs:
         # is to relax further (not fix the diff), update `.swiftformat`
         # in the same PR + flip this back to `continue-on-error: true`
         # temporarily until the next baseline lands.
+        if: steps.changed.outputs.files != ''
         run: |
           set -euo pipefail
-          files=$(git diff --name-only --diff-filter=ACMRT \
-            "origin/${{ github.base_ref }}...HEAD" -- '*.swift')
-          if [ -z "$files" ]; then
-            echo "No Swift files changed; skipping."
-            exit 0
-          fi
-          echo "$files" | xargs mise exec swiftformat -- swiftformat --lint
+          # shellcheck disable=SC2086
+          mise exec swiftformat -- swiftformat --lint ${{ steps.changed.outputs.files }}
