@@ -325,8 +325,9 @@ public struct AppComposition {
 - **Subscription / Pro tier**：v3+，需要有 pro feature 可賣
 - **Tip Jar**：考慮（calm brand-friendly），v2.1+
 - **Premium puzzle pack**：與 PuzzleOverride backlog 接合，v2.1+
-- **Android implementation**：與 docs/v1/design.md Android via Swift SDK backlog 接合
 - **ASCRegister IAP mode**：自動化 IAP product 註冊到 ASC（目前手動）
+
+> Cross-platform / Android backlog 在 [`docs/v1/design.md §不在 v1 範圍 → §平台與輸入`](../v1/design.md) canonical；本檔不另列 v2 entry。Engineering 預留事項見 [`docs/foundations.md §Backlog`](../foundations.md#backlog) 對應條目。
 
 ---
 
