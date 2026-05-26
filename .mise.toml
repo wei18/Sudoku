@@ -25,3 +25,34 @@ xcbeautify                      = "2"
 # (lowercase + hyphen), repo is `LicensePlist`. Without override, ubi looks
 # for `LicensePlist*` inside the tarball and fails to install.
 "ubi:mono0926/LicensePlist"     = { version = "3.27.9", exe = "license-plist" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tasks — single source of truth for tool invocations shared by lefthook,
+# GitHub Actions, and Xcode Cloud. Edit flags here; all consumers re-route
+# through `mise run <task>`. See docs/foundations.md §4 and §7.5.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[tasks."lint:swift"]
+description = "SwiftLint (warn-only; used by lefthook pre-commit). Pass changed files as args."
+run = "mise exec swiftlint -- swiftlint lint --quiet"
+
+[tasks."lint:swift:strict"]
+description = "SwiftLint (warnings fail; used by GitHub Actions PR CI). Pass changed files as args."
+run = "mise exec swiftlint -- swiftlint lint --strict --quiet"
+
+[tasks."scan:secrets"]
+description = "gitleaks pre-commit / pre-build secret scan over staged files."
+run = "mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact --verbose"
+
+[tasks."scan:hygiene"]
+description = "Repo hygiene: block secret-shaped files (.p8/.p12/.pem/.env) from ever entering history."
+run = """
+if git ls-files | grep -E '\\.(p8|p12|pem|env)$'; then
+  echo "Secret-shaped files tracked. Aborting." >&2
+  exit 1
+fi
+"""
+
+[tasks."gen:acknowledgements"]
+description = "Generate Settings.bundle/Acknowledgements page from SwiftPM dep graph (license_plist.yml)."
+run = "mise exec ubi:mono0926/LicensePlist -- license-plist"
