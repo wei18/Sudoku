@@ -126,9 +126,9 @@ internal final class LiveAdMobBridge: AdMobBridge {
                         // Drop the delegate retain so it (and the continuation
                         // capture chain) can deallocate.
                         self.inFlightDelegates.withLock { set in
-                            // Identity-based removal — Set<BannerLoadDelegate> uses
-                            // ObjectIdentifier hashing (final class default).
-                            set = set.filter { ObjectIdentifier($0) != ObjectIdentifier(result.delegate) }
+                            // Identity-based removal — `BannerLoadDelegate: NSObject` so `Set.remove(_:)`
+                            // uses NSObject identity hashing (`hash` + `isEqual:`).
+                            set.remove(result.delegate)
                         }
                         switch result.outcome {
                         case .success:

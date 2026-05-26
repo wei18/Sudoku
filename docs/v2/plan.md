@@ -108,10 +108,10 @@ Test count（AppMonetizationKit `@Test` macros）: **75** across 4 test targets 
 
 - `Package.swift` `AdsAdMob` target 加 `swift-package-manager-google-mobile-ads` 與 `swift-package-manager-google-user-messaging-platform`，**兩者皆 `.condition(.when(platforms: [.iOS]))`**（Google 沒提供 macOS slice — 詳 §v2.4★ macOS fallback）
 - 落地：
-  - `AdMobBridge.swift` protocol（唯一允許 `import GoogleMobileAds`）
-  - `LiveAdMobBridge.swift` 具體 wrapper（亦 import；兩檔合計即「唯一 import 面」）
+  - `AdMobBridge.swift` protocol（protocol-only，不 import SDK）
+  - `LiveAdMobBridge.swift` 具體 wrapper — 唯一 import site = `LiveAdMobBridge.swift`
   - `LiveAdMobAdProvider.swift` actor，注入 bridge
-- 隔離 audit：`rg "import GoogleMobileAds" Packages/` 必須 = 2 檔（兩檔都在 `AdsAdMob/`）
+- 隔離 audit：`rg '^(internal |private |public |@_implementationOnly |@preconcurrency )*import GoogleMobileAds' Packages/` 必須 = 1 檔（在 `AdsAdMob/LiveAdMobBridge.swift`）
 
 ### v2.2.2 — Banner load / refresh / handle status  `[x] (#60)`
 
@@ -242,7 +242,7 @@ Plan 原訂未列、實際 ship 的後續工作整理於此，供 trace。
 詳細 checklist 全部在 [`v2.5-readiness.md`](v2.5-readiness.md)；此處只列 phase 概要，避免雙處維護。
 
 - **v2.5.1** Sandbox IAP on real device — 購買 / 跨機 restore / CloudKit sync
-- **v2.5.2** Real-device AdMob test ads — 7-day grace / dismissed-skip / 1/day max；isolation audit `rg "import GoogleMobileAds" Packages/` = 2 檔
+- **v2.5.2** Real-device AdMob test ads — 7-day grace / dismissed-skip / 1/day max；isolation audit `rg '^(internal |private |public |@_implementationOnly |@preconcurrency )*import GoogleMobileAds' Packages/` = 1 檔
 - **v2.5.3** Submit to ASC review — Privacy questionnaire 對齊 PrivacyInfo / demo Apple ID / submit
 
 CI prerequisite：`ci_post_clone.sh` 從 Xcode Cloud `$CI_TEAM_ID` 寫 `Tuist/Signing.xcconfig`，user 不需手動配 env var。
@@ -272,4 +272,4 @@ CI prerequisite：`ci_post_clone.sh` 從 Xcode Cloud `$CI_TEAM_ID` 寫 `Tuist/Si
 
 1. User 依 [`v2.5-readiness.md`](v2.5-readiness.md) pre-flight checklist 跑完 ASC IAP / AdMob console / sandbox tester 設定
 2. User 完成 v2.5.1（sandbox IAP）與 v2.5.2（real-device AdMob test ads）
-3. User 跑 v2.5.3 submit；submit 前由 subagent 跑最後一次 `rg "import GoogleMobileAds" Packages/` isolation audit
+3. User 跑 v2.5.3 submit；submit 前由 subagent 跑最後一次 `rg '^(internal |private |public |@_implementationOnly |@preconcurrency )*import GoogleMobileAds' Packages/` isolation audit
