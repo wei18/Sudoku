@@ -7,7 +7,6 @@ import SudokuEngine
 import Telemetry
 import PersistenceTesting
 import TelemetryTesting
-import TelemetryTesting
 @testable import Persistence
 
 @Suite("Persistence — SavedGame CRUD")

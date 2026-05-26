@@ -19,7 +19,6 @@ import Telemetry
 import Testing
 import PersistenceTesting
 import TelemetryTesting
-import TelemetryTesting
 @testable import Persistence
 
 @Suite("Persistence — save identity routing (B2)")
