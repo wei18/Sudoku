@@ -31,4 +31,13 @@ struct GKLeaderboardLoaderRangeTests {
         #expect(range.location == 1)
         #expect(range.length == 8)
     }
+
+    /// CR PR #146 S2: lock the top-anchor boundary — rank=1 must produce
+    /// `(location: 1, length: limit)` without underflow, matching the
+    /// behaviour of `clampsToOneWhenRankNearTop` for the exact top entry.
+    @Test func locksTopAnchorWhenRankIsOne() {
+        let range = GKLeaderboardLoader.makeRange(centeredOnRank: 1, limit: 8)
+        #expect(range.location == 1)
+        #expect(range.length == 8)
+    }
 }

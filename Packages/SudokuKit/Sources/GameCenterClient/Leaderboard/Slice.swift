@@ -12,6 +12,15 @@
 internal import Foundation
 
 public protocol LeaderboardLoader: Sendable {
+    /// Fetch a contiguous slice of leaderboard entries.
+    ///
+    /// - Parameter player: When non-nil, the live `GKLeaderboardLoader` adapter
+    ///   centres the range on `GKLocalPlayer.local`'s rank — see issue #140.
+    ///   The teamPlayerID string is currently honoured ONLY as a "centre on
+    ///   local player" signal; non-local teamPlayerIDs are not supported in the
+    ///   live impl (the GameKit `loadEntries(for: [GKPlayer], …)` path requires
+    ///   `GKPlayer` instances, which can't be cheaply derived from teamPlayerID
+    ///   alone). Track non-local centring as a follow-up issue if needed.
     func loadSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
