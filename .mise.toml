@@ -25,4 +25,4 @@ xcbeautify                      = "2"
 # `exe = "license-plist"` override: tarball binary is `license-plist`
 # (lowercase + hyphen), repo is `LicensePlist`. Without override, ubi looks
 # for `LicensePlist*` inside the tarball and fails to install.
-"ubi:mono0926/LicensePlist"     = { version = "latest", exe = "license-plist" }
+"ubi:mono0926/LicensePlist"     = { version = "3.27.9", exe = "license-plist" }
