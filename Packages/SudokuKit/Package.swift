@@ -23,6 +23,11 @@ let gameStateDep: Target.Dependency = .product(name: "GameState", package: "Sudo
 // Telemetry extracted into sibling TelemetryKit package on 2026-05-26
 // (Stage 2 of the module split). See `docs/foundations.md §2`.
 let telemetryDep: Target.Dependency = .product(name: "Telemetry", package: "TelemetryKit")
+// TelemetryTesting — FakeLogger / RecordingSink / MetricPayloadFixtures.
+// Carved out of SudokuKitTesting/Telemetry/ on Stage 2 so test targets that
+// only need the Telemetry-shaped fixtures don't pay for the broader
+// SudokuKitTesting surface.
+let telemetryTestingDep: Target.Dependency = .product(name: "TelemetryTesting", package: "TelemetryKit")
 
 // MARK: - Production targets
 
@@ -127,8 +132,8 @@ let monetizationTestDeps: [Target.Dependency] = [
 ]
 
 let testTargets: [Target] = [
-    testTarget("PuzzleStore", dependencies: ["PuzzleStore"]),
-    testTarget("Persistence", dependencies: ["Persistence"] + monetizationTestDeps),
+    testTarget("PuzzleStore", dependencies: ["PuzzleStore", telemetryTestingDep]),
+    testTarget("Persistence", dependencies: ["Persistence", telemetryTestingDep] + monetizationTestDeps),
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
     testTarget("SudokuUI", dependencies: ["SudokuUI"] + monetizationTestDeps),
     // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
