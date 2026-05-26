@@ -43,7 +43,13 @@ let sudokuTarget = Target.target(
     resources: [
         "App/Assets.xcassets",
         "App/Resources/PrivacyInfo.xcprivacy",
-        "App/Resources/Localizable.xcstrings"
+        "App/Resources/Localizable.xcstrings",
+        // LicensePlist-generated Settings.bundle (App Store Acknowledgements
+        // page). Source of truth: `license_plist.yml`. Regenerated on every
+        // Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not committed
+        // (.gitignore'd). Glob pattern so Tuist doesn't require the directory
+        // to exist at `tuist generate` time on dev machines.
+        .glob(pattern: "App/Resources/Settings.bundle/**")
     ],
     entitlements: .file(path: "App/Sudoku.entitlements"),
     dependencies: [

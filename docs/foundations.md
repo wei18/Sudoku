@@ -136,6 +136,7 @@ v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workfl
 - 升 Xcode 時 → 開一張集中更新所有 snapshot 基準圖的 PR。
 - Test 環境關閉 iCloud / Game Center 登入；所有 test 走 protocol fakes（§3）。
 - `ci_scripts/` 內任何工具優先透過 `mise` 啟用，避免 Xcode Cloud 預裝版本飄移。
+- **Acknowledgements 頁（App Store 第三方授權清單）**：由 LicensePlist 在 `ci_post_clone.sh` 跑 `mise exec ubi:mono0926/LicensePlist -- license-plist` 從 SwiftPM dep graph 自動產 `App/Resources/Settings.bundle/`（iOS 標準位置，顯示於 Settings.app → Sudoku → Acknowledgements）。Source of truth: 倉庫根 `license_plist.yml`；產出檔 `.gitignore`'d，每次 build 重生。**本機 dev 環境不自動重生**（`Project.swift` 用 `.glob` 容忍空匹配，App 仍能本地 build；Acknowledgements 頁僅 release surface）；若需本機驗證，手動跑 `mise exec ubi:mono0926/LicensePlist -- license-plist`。
 
 ### 已知 race condition
 
