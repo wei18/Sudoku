@@ -16,3 +16,13 @@ xcbeautify                      = "2"
 "aqua:gitleaks/gitleaks"        = "8.30.1"   # foundations.md §7.5 requires ≥ 8.18
 "aqua:evilmartians/lefthook"    = "1"
 "aqua:tuist/tuist"              = "4"        # generates App/Sudoku.xcodeproj from Project.swift (Phase 1.4)
+
+# LicensePlist — generates Settings.bundle/Acknowledgements page from the
+# SwiftPM dep graph (per `license_plist.yml`). Invoked from Xcode Cloud
+# `ci_scripts/ci_post_clone.sh` (see docs/foundations.md §4). Generated
+# Settings.bundle is .gitignore'd; `license_plist.yml` is the source of truth.
+#
+# `exe = "license-plist"` override: tarball binary is `license-plist`
+# (lowercase + hyphen), repo is `LicensePlist`. Without override, ubi looks
+# for `LicensePlist*` inside the tarball and fails to install.
+"ubi:mono0926/LicensePlist"     = { version = "latest", exe = "license-plist" }

@@ -40,3 +40,8 @@ fi
 #      pre-step.
 mise exec -- tuist install
 mise exec -- tuist generate --no-open
+
+# 3.3) Generate Settings.bundle/Acknowledgements page from SwiftPM dep graph.
+#      Config: `license_plist.yml` (source of truth). Output is
+#      .gitignore'd — must run before xcodebuild bundles App/Resources.
+mise exec ubi:mono0926/LicensePlist -- license-plist
