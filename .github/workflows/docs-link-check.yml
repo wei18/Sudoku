@@ -1,0 +1,35 @@
+# Markdown link checker — scans docs/ and meetings/ for broken links.
+# Phase 1 advisory: not yet a required status check.
+#
+# If known-flaky external hosts (e.g. apple.com 403 on bots) trip the check,
+# add a `.lycheeignore` at repo root with one host/URL pattern per line.
+
+name: Docs Link Check
+
+on:
+  pull_request:
+    paths:
+      - "docs/**/*.md"
+      - "meetings/**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/docs-link-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lychee:
+    name: lychee
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --max-concurrency 4
+            'docs/**/*.md'
+            'meetings/**/*.md'
+          fail: true
