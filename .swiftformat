@@ -1,0 +1,66 @@
+# SwiftFormat config — Sudoku project
+#
+# Strategy: Option (b) — relax rules to match the existing codebase style
+# rather than mass-format 204 files (~3,624 LOC churn). Rules that are
+# *consistently* followed stay enabled; rules that the codebase has chosen
+# to violate en-masse are disabled below. Re-evaluation trigger documented
+# in `docs/foundations.md`.
+#
+# Pinned to swiftformat 0.54.6 via `.mise.toml`; swiftversion pin keeps
+# behaviour reproducible across minor upgrades.
+
+--swiftversion 6.2
+
+# --- Options ------------------------------------------------------------
+# `--ifdef no-indent` — preserve `#if/#else/#endif` at column 1 inside
+# function bodies. This is the codebase convention (see e.g.
+# AdsAdMob/UMPConsentPresenter.swift, GameCenterClient/Live/GKAuthDriver.swift)
+# and accounts for the bulk of the (indent) rule violations.
+--ifdef no-indent
+
+# --- Disabled rules -----------------------------------------------------
+# Disabled because the existing codebase violates them en-masse; enabling
+# would require touching 204/244 source files. Counts captured from
+# `swiftformat --lint Packages/ App/ --swiftversion 6.2` on 2026-05-26.
+#
+# rule                         violations  rationale
+# ---------------------------- ----------- ----------------------------------
+--disable redundantInternal              # 238  codebase prefers explicit `internal`
+--disable sortImports                    # 199  imports grouped by purpose, not alpha
+--disable hoistPatternLet                # 146  `case .x(let foo)` style is intentional
+--disable blankLinesAtStartOfScope       # 141  blank line after `{` used for readability
+--disable spaceAroundOperators           # 117  custom operator spacing tolerated
+--disable redundantReturn                #  93  explicit `return` kept in several spots
+--disable redundantSelf                  #  84  `self.` retained for clarity in closures
+--disable conditionalAssignment          #  76  imperative `if/else` style preferred
+--disable extensionAccessControl         #  68  access modifier on members, not extension
+--disable consecutiveSpaces              #  59  alignment tolerated
+--disable trailingCommas                 #  51  no trailing commas in collections
+--disable unusedArguments                #  47  `_ = arg` pattern intentional in protocols
+--disable numberFormatting               #  38  literal formatting left as authored
+--disable blankLinesAroundMark           #  34  MARK comment placement varies
+--disable wrapLoopBodies                 #  22  single-line loop bodies allowed
+--disable wrapMultilineStatementBraces   #  17  brace-on-same-line for multiline conds
+--disable opaqueGenericParameters        #  16  explicit `<T>` retained where clearer
+--disable redundantType                  #  12  explicit type annotation kept
+
+# Long-tail rules (< 10 violations each). Kept disabled rather than
+# auto-fixed to satisfy the option-(b) no-source-touch constraint. If any
+# of these gain traction with reviewers, re-enable individually and clean
+# up the handful of offending files in a targeted PR.
+--disable indent                         # 16 residual after `--ifdef no-indent`
+                                         #     (continuation-line + `where`-clause
+                                         #     style in Solver / Reconciler / tests)
+--disable blankLinesBetweenScopes        #   8
+--disable hoistAwait                     #   4
+--disable spaceAroundComments            #   3
+--disable redundantParens                #   3
+--disable redundantFileprivate           #   3
+--disable modifierOrder                  #   3
+--disable hoistTry                       #   3
+--disable andOperator                    #   3
+--disable trailingClosures               #   2
+--disable enumNamespaces                 #   2
+--disable blankLinesAtEndOfScope         #   2
+--disable preferKeyPath                  #   1
+--disable consecutiveBlankLines          #   1

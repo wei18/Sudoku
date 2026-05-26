@@ -336,6 +336,14 @@ pre-commit:
 
 Repo 內附 `.gitleaks.toml` 自訂規則：CloudKit Key ID 與 App Store Connect / APNs Key ID（兩者皆為 10-char alphanumeric 格式、同一條 regex 可同時覆蓋）等。基本規則沿用 gitleaks 內建 `default.toml`，**僅增不減**。
 
+#### §7.5.1 SwiftFormat `.swiftformat` — option (b) baseline (2026-05-26)
+
+加入 `swiftformat --lint` 到 `lefthook.yml` 時面臨選擇：(a) mass-format 204/244 既有檔案讓 default rules 通過（diff ≈ 3,624 LOC）、(b) 寫一份 `.swiftformat` config 放寬規則對齊現有 codebase、或 (c) 暫緩。**選 (b)** — 避開大規模 diff churn，同時讓 swiftformat 在 baseline 上即可啟用作為「未來 drift 防線」。
+
+`.swiftformat` 內容（repo root）關閉 18 條當下 codebase 違反量最大的規則（依序：`indent` 685 / `redundantInternal` 238 / `sortImports` 199 / `hoistPatternLet` 146 / `blankLinesAtStartOfScope` 141 / `spaceAroundOperators` 117 / `redundantReturn` 93 / `redundantSelf` 84 / `conditionalAssignment` 76 / `extensionAccessControl` 68 / 其餘長尾），以及 14 條長尾規則（每條 < 10 violations）。`--swiftversion 6.2` 釘住 parser 行為避免 minor upgrade 漂移。`--ifdef no-indent` 對齊既有的 `#if/#else` 對齊欄位 1 慣例（GameCenterClient / AdsAdMob 等）。
+
+**Re-evaluation trigger**：若 review nits 出現 ≥ 3 條跟「應該開 X 規則」相關（例：reviewer 反覆指出 `redundantSelf`），則回到選項 (a) 對該規則做一次 targeted format + 重新 enable。完整的 baseline 違規分佈見 `meetings/2026-05-26_swiftformat-option-b.impl-notes.md`。
+
 ### §7.6 PR CI 第二道防線
 
 本機 hook 可被 `git commit --no-verify` 繞過；Xcode Cloud PR CI 加一條 **post-clone** step（Xcode Cloud 提供三個 hook：`ci_post_clone.sh` / `ci_pre_xcodebuild.sh` / `ci_post_xcodebuild.sh`；secret scan 選最早的 `ci_post_clone.sh`，clone 完即執行、build 資源尚未消耗）：

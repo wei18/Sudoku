@@ -21,3 +21,10 @@ pre-commit:
     swiftlint:
       glob: "*.{swift}"
       run: mise exec swiftlint -- swiftlint lint --quiet {staged_files}
+    swiftformat:
+      # Report-only (`--lint`) — never mutates staged files. Rules relaxed
+      # via `.swiftformat` to match the existing codebase baseline
+      # (option b, see docs/foundations.md §Coding style). Remediation on
+      # failure: `mise exec swiftformat -- swiftformat <file>` then re-stage.
+      glob: "*.{swift}"
+      run: mise exec swiftformat -- swiftformat --lint {staged_files}
