@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="SwiftLint (warn-only; used by lefthook pre-commit). Pass changed files as args."
+set -euo pipefail
+exec mise exec swiftlint -- swiftlint lint --quiet "$@"

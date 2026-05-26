@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Repo hygiene: block secret-shaped files (.p8/.p12/.pem/.env) from ever entering history."
+set -euo pipefail
+if git ls-files | grep -E '\.(p8|p12|pem|env)$'; then
+  echo "Secret-shaped files tracked. Aborting." >&2
+  exit 1
+fi

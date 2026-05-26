@@ -25,3 +25,11 @@ xcbeautify                      = "2"
 # (lowercase + hyphen), repo is `LicensePlist`. Without override, ubi looks
 # for `LicensePlist*` inside the tarball and fails to install.
 "ubi:mono0926/LicensePlist"     = { version = "3.27.9", exe = "license-plist" }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tasks — single source of truth for tool invocations shared by lefthook,
+# GitHub Actions, and Xcode Cloud. Task bodies live as executable shell files
+# under `mise-tasks/` (dir-nested → colon-namespaced: `mise-tasks/lint/swift`
+# → task `lint:swift`). Edit flags in those files; all consumers re-route
+# through `mise run <task>`. See docs/foundations.md §4 and §7.5.
+# ─────────────────────────────────────────────────────────────────────────────

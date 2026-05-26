@@ -7,17 +7,18 @@ pre-commit:
   # observed empirically across multiple sessions. See
   # meetings/2026-05-25_swift-test-hang-rca.md §H4 + Prevention bullet 2.
   parallel: false
+  # All invocations route through `mise run <task>` (SSOT — task bodies live
+  # in `mise-tasks/` as file-based tasks). To change a flag, edit the matching
+  # script under `mise-tasks/`; lefthook, GH Actions, and Xcode Cloud all
+  # pick it up via `mise run`.
   commands:
     gitleaks:
-      run: mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact --verbose
+      run: mise run scan:secrets
     hygiene:
       # Repo hygiene: block secret-shaped files from ever entering history.
       # Folded in from plan.md §1.1 (no standalone shell script).
-      run: |
-        if git ls-files | grep -E '\.(p8|p12|pem|env)$'; then
-          echo "Secret-shaped files tracked. Aborting." >&2
-          exit 1
-        fi
+      run: mise run scan:hygiene
     swiftlint:
       glob: "*.{swift}"
-      run: mise exec swiftlint -- swiftlint lint --quiet {staged_files}
+      # Warn-only locally (strict variant runs in PR CI — see .mise.toml).
+      run: mise run lint:swift -- {staged_files}
