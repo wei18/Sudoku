@@ -8,8 +8,9 @@ pre-commit:
   # meetings/2026-05-25_swift-test-hang-rca.md §H4 + Prevention bullet 2.
   parallel: false
   # All invocations route through `mise run <task>` (SSOT — task bodies live
-  # in .mise.toml `[tasks.*]`). To change a flag, edit .mise.toml; lefthook,
-  # GH Actions, and Xcode Cloud all pick it up.
+  # in `mise-tasks/` as file-based tasks). To change a flag, edit the matching
+  # script under `mise-tasks/`; lefthook, GH Actions, and Xcode Cloud all
+  # pick it up via `mise run`.
   commands:
     gitleaks:
       run: mise run scan:secrets

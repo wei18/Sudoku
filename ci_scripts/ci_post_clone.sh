@@ -13,7 +13,7 @@ fi
 mise install
 
 # 2) Second-line secret scan — backstops a `git commit --no-verify` bypass.
-mise exec aqua:gitleaks/gitleaks -- gitleaks git --pre-commit --staged --redact
+mise run scan:secrets
 
 # 3) Repo-root setup for Tuist (cd once, then xcconfig + generate)
 cd "${CI_PRIMARY_REPOSITORY_PATH:-$(dirname "$0")/..}"
