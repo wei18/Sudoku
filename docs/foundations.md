@@ -82,7 +82,14 @@ SudokuEngine  ←  GameState
 - App target 極薄：所有可測邏輯都在 Package，App target 不需要被測試（也測不動）；SwiftUI preview 也直接從 Package 內跑。
 - 框架 import 受限：是真正能落實「核心邏輯可移植到 Android」（見 backlog 第 2 條）的前提。
 
+**演進（2026-05-26 module split）**：
 
+`SudokuEngine` + `GameState` 已從 `SudokuKit` 抽離到 sibling local package `Packages/SudokuCoreKit/`，原因是要解 `Telemetry → GameState/SudokuEngine` 在 package 層級的耦合（同 package 內的 target 即使沒有直接 import，也綁在同一個 `Package.resolved` / build graph 上，未來若想單獨抽出 Telemetry 會被卡住）。決策細節見 `meetings/2026-05-26_module-split-proposal.md`。
+
+- **抽出的範圍**：只動 `SudokuEngine`（純 Foundation）、`GameState`（→ SudokuEngine）兩個葉子 target；對應 test target 同步搬移。
+- **未抽出的範圍**：`PuzzleStore` / `Persistence` / `GameCenterClient` / `Telemetry` / `SudokuUI` / `SudokuKitTesting` / `AppComposition` 仍留在 `SudokuKit`。Telemetry-only 抽出的 cost/benefit 暫不划算，本次只做 prerequisite。
+- **依賴方向不變**：上方 §2 的 dep 圖仍然成立；差異只在 `SudokuEngine` 與 `GameState` 現在以 `.product(name:package:"SudokuCoreKit")` 形式被 SudokuKit 的其他 target 依賴。
+- **Package naming convention**：sibling local packages 以 `<Domain>Kit` 命名（產品名或功能域 + `Kit` 後綴）— 目前 `SudokuKit` / `SudokuCoreKit` / `AppMonetizationKit` 各自符合。未來抽出（例：`TelemetryKit`）沿用同模式。
 
 ## §3 Testing 工具鏈
 
