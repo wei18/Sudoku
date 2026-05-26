@@ -26,12 +26,14 @@ let swiftSettings: [SwiftSetting] = [
 
 let productionTargets: [Target] = [
     .target(name: "SudokuEngine", swiftSettings: swiftSettings),
+    .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
 ]
 
 // MARK: - Test targets
 
 let testTargets: [Target] = [
     .testTarget(name: "SudokuEngineTests", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
+    .testTarget(name: "GameStateTests", dependencies: ["GameState", "SudokuEngine"], swiftSettings: swiftSettings),
 ]
 
 // MARK: - Package
@@ -44,6 +46,7 @@ let package = Package(
     ],
     products: [
         .library(name: "SudokuEngine", targets: ["SudokuEngine"]),
+        .library(name: "GameState", targets: ["GameState"]),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
