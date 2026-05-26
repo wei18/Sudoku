@@ -1,6 +1,6 @@
 ---
 name: monetization-sdk-integration
-description: Use when adding, upgrading, or auditing any third-party monetization SDK (AdMob, UMP, StoreKit wrappers, RevenueCat, ironSource, etc.) to the Sudoku project. Codifies the foundations.md §9 "break-glass" exception process — when the no-third-party-SDK rule is allowed to bend, and the isolation contract that must hold for every accepted SDK (single-file protocol seam, conditional-compile gating, isolation audit grep).
+description: Invoke when adding, upgrading, or auditing any third-party monetization SDK in Sudoku (AdMob, UMP, StoreKit wrappers, RevenueCat, ironSource, etc.). Also invoke when reviewing PR diffs that touch `Packages/AppMonetizationKit/Sources/AdsAdMob/`, or when anyone proposes `import GoogleMobileAds` outside the existing live-bridge file.
 ---
 
 # Monetization SDK Integration
@@ -35,7 +35,7 @@ For every accepted SDK:
 ### File-layout invariant
 - Protocol file `<SdkName>Bridge.swift` defines the seam. Plain Swift; no SDK import.
 - Live impl file `Live<SdkName>Bridge.swift` is the ONLY file allowed to `import <SDKModule>`.
-- All other code uses `any <SdkName>Bridge` for DI. Test seam: `Fake<SdkName>Bridge` in `MonetizationTesting` target.
+- All other code uses `any <SdkName>Bridge` for DI. Test seam: `Fake<SdkName>Bridge` in the matching test target (e.g. `Tests/AdsAdMobTests/FakeAdMobBridge.swift`).
 
 Example for AdMob (currently shipped):
 - `Packages/AppMonetizationKit/Sources/AdsAdMob/AdMobBridge.swift` — protocol
@@ -83,7 +83,7 @@ Without `condition:`, macOS build fails on `swift build` because Google ships iO
 
 ### Test seam invariant
 
-`MonetizationTesting` target ships `Fake<SdkName>Bridge` (actor or class). All unit tests inject the fake; real SDK only loaded at runtime via DI in `AppComposition.live()`.
+Test target (e.g. `Tests/AdsAdMobTests/`) ships `Fake<SdkName>Bridge` (actor or class). All unit tests inject the fake; real SDK only loaded at runtime via DI in `AppComposition.live()`. The `Sources/MonetizationTesting/` target ships shared test scaffolding used across both `AdsAdMobTests` and `IAPStoreKit2Tests` (e.g. `FakeAdProvider`, `FakeIAPClient`); the per-SDK bridge fakes live in their test target.
 
 `Fake` must:
 - Be `Sendable` (Swift 6 actor or @unchecked Sendable + lock-guarded)
@@ -97,7 +97,7 @@ Without `condition:`, macOS build fails on `swift build` because Google ships iO
 - Audit broke briefly when migrator missed file boundary; recovered by re-running isolation audit
 - Documented in `meetings/2026-05-25_v2.5.2-admob-banner-wiring.impl-notes.md`
 
-### Production ID swap safety (PR #149 nit N1, 2026-05-26)
+### Production ID swap safety (AdMob banner wiring CR nit, 2026-05-26)
 - Release branch of `bannerAdUnitID` constant uses `fatalError("REPLACE_IN_v2.5.3: …")` rather than a placeholder string — prevents accidental Release build silently serving test creatives against production app ID
 - Paired-flip checklist in `v2.5-readiness.md §v2.5.3` ensures Info.plist `GADApplicationIdentifier` + bridge constant flip together
 

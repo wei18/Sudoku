@@ -52,7 +52,7 @@ Discrepancy resolution options:
 
 ## When the rule fired in this project
 
-**PR #126 incident (2026-05-24)**: commit message described a `LivePersistence` class→actor conversion. Reviewers later found the commit body was correct but the diff was missing key isolation annotations — Leader had amended the commit message after a partial revert, but the revert lost the actor isolation hunks. Caught in post-merge audit; required follow-up PR.
+**"Commit log claims work, diff doesn't show it" (general pattern)**: this class of mistake recurs when (a) `git amend` after partial revert loses hunks but keeps the original message, (b) force-push from a stale branch overwrites newer commits, (c) subagent returns a structured "I committed X" report but the commits never made it to the branch ref due to worktree wipe before push. Each failure mode is caught by the same single check: `git show --stat HEAD` vs. the commit body.
 
 **SudokuCoreKit subagent return (2026-05-26)**: subagent reported "1 commit a547d70 with all the changes"; Leader pushed `worktree-agent-XXX:feat/gh-actions-phase1` and discovered post-push that the wrong ref was pushed (worktree-agent ref was at main SHA; the actual feature commits were on a different local branch). Required force-push recovery from reflog.
 

@@ -72,7 +72,7 @@ Options:
 
 ## Integration with methodology.md
 
-This skill operationalizes `docs/methodology.md §派發契約 §9` Leader pre-flight. The pre-flight checklist explicitly lists "kill orphan procs" + "rebase WIP onto main" — this skill adds the conflict-detection step before those.
+This skill operationalizes `docs/methodology.md §派發契約` item 9 (Leader pre-flight). The pre-flight checklist explicitly lists "kill orphan procs" + "rebase WIP onto main" + "mise trust" — this skill adds the conflict-detection step before those.
 
 ## False-positive handling
 
