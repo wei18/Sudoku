@@ -7,7 +7,7 @@ import Testing
 @testable import SudokuUI
 
 import GameCenterClient
-import SudokuKitTesting
+import TelemetryTesting
 
 @MainActor
 @Suite("CompletionView — state snapshots + deep link")

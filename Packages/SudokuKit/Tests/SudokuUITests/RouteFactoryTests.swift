@@ -11,7 +11,7 @@ import MonetizationCore
 import MonetizationTesting
 import Persistence
 import PuzzleStore
-import SudokuKitTesting
+import TelemetryTesting
 import Telemetry
 @testable import SudokuUI
 

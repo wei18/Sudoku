@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import PuzzleStore
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("PuzzleStore live")
 struct PuzzleStoreLiveTests {

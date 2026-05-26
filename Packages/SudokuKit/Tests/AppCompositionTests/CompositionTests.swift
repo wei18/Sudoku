@@ -11,7 +11,7 @@ import Testing
 import GameCenterClient
 import MonetizationCore
 import Persistence
-import SudokuKitTesting
+import TelemetryTesting
 @testable import AppComposition
 
 @MainActor

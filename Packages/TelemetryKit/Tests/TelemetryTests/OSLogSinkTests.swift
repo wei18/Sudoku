@@ -1,7 +1,7 @@
 import SudokuEngine
 import Testing
 @testable import Telemetry
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("OSLogSink — privacy + level mapping")
 struct OSLogSinkTests {

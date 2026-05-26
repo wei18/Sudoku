@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("GameCenterClient — authentication")
 struct GameCenterClientAuthTests {

@@ -17,7 +17,7 @@ import MonetizationTesting
 import Persistence
 import PuzzleStore
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 import Telemetry
 
 @MainActor

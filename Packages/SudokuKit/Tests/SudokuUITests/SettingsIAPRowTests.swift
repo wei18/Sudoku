@@ -17,7 +17,7 @@ import Testing
 import MonetizationCore
 import MonetizationTesting
 import Persistence
-import SudokuKitTesting
+import TelemetryTesting
 @testable import SudokuUI
 
 @MainActor

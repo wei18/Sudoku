@@ -16,7 +16,7 @@
 import Foundation
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("GameCenterClient — LiveGameCenterClient deinit (B3)")
 struct LiveGameCenterClientDeinitTests {

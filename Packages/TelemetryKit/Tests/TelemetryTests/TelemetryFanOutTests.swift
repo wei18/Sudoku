@@ -1,6 +1,6 @@
 import Testing
 @testable import Telemetry
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("Telemetry — fan-out")
 struct TelemetryFanOutTests {

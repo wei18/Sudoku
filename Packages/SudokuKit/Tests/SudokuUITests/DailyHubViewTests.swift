@@ -8,7 +8,7 @@ import Testing
 
 import Persistence
 import PuzzleStore
-import SudokuKitTesting
+import TelemetryTesting
 
 @MainActor
 @Suite("DailyHubView — bootstrap + snapshots")

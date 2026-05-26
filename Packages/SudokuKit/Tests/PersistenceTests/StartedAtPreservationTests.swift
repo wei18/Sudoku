@@ -17,7 +17,7 @@ import GameState
 import SudokuEngine
 import Telemetry
 import Testing
-import SudokuKitTesting
+import TelemetryTesting
 @testable import Persistence
 
 @Suite("Persistence — startedAt preservation (B4)")

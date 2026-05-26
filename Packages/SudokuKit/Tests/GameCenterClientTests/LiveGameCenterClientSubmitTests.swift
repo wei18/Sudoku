@@ -10,7 +10,7 @@ import Foundation
 import SudokuEngine
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("LiveGameCenterClient — submitScore centisecond conversion")
 struct LiveGameCenterClientSubmitTests {

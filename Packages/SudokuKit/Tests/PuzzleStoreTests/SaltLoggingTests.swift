@@ -9,7 +9,7 @@ import Testing
 @testable import PuzzleStore
 import SudokuEngine
 import Telemetry
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("PuzzleStore — salt logging")
 struct PuzzleStoreSaltLoggingTests {

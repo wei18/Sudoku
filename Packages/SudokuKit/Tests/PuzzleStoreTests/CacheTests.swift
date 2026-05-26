@@ -7,7 +7,7 @@ import Foundation
 import Testing
 @testable import PuzzleStore
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("PuzzleStore — daily cache")
 struct PuzzleStoreCacheTests {

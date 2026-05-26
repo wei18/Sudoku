@@ -8,7 +8,7 @@ import Testing
 
 import PuzzleStore
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 
 @MainActor
 @Suite("PracticeHubView — shimmer + snapshots")

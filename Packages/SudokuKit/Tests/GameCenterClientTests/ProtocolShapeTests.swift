@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("GameCenterClient — protocol shape")
 struct GameCenterClientProtocolShapeTests {

@@ -15,7 +15,7 @@ import Testing
 import GameState
 import SudokuEngine
 import Telemetry
-import SudokuKitTesting
+import TelemetryTesting
 @testable import Persistence
 
 @Suite("Persistence — conflict wiring (issue #64)")

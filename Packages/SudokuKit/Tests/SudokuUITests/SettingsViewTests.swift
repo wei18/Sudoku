@@ -6,7 +6,7 @@ import Testing
 
 import Persistence
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 
 @MainActor
 @Suite("SettingsView — behavior")
