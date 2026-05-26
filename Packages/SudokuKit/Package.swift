@@ -28,37 +28,25 @@ let telemetryDep: Target.Dependency = .product(name: "Telemetry", package: "Tele
 // only need the Telemetry-shaped fixtures don't pay for the broader
 // SudokuKitTesting surface.
 let telemetryTestingDep: Target.Dependency = .product(name: "TelemetryTesting", package: "TelemetryKit")
+// Persistence + GameCenterClient extracted into sibling PersistenceKit /
+// GameCenterKit packages on 2026-05-26 (Stage 3 of the module split). See
+// `docs/foundations.md §2`. Their fixtures live in PersistenceTesting /
+// GameCenterTesting library products on the same sibling packages.
+let persistenceDep: Target.Dependency = .product(name: "Persistence", package: "PersistenceKit")
+let gameCenterClientDep: Target.Dependency = .product(name: "GameCenterClient", package: "GameCenterKit")
+let gameCenterTestingDep: Target.Dependency = .product(name: "GameCenterTesting", package: "GameCenterKit")
 
 // MARK: - Production targets
 
 let productionTargets: [Target] = [
     .target(name: "PuzzleStore", dependencies: [sudokuEngineDep, telemetryDep], swiftSettings: swiftSettings),
     .target(
-        name: "Persistence",
-        dependencies: [
-            gameStateDep,
-            // M5 (issue #65): pulls in `Mode` / `Difficulty` enums so the
-            // PersistenceProtocol surface is typed; the CK serialization
-            // seam still encodes raw String to preserve wire format.
-            sudokuEngineDep,
-            telemetryDep,
-            // v2.3.1: re-exports `AdGateStateStore` via `MonetizationStateStore`
-            // typealias; concrete `LiveMonetizationStateStore` lives here so
-            // CloudKit Private wiring stays inside the Sudoku App layer.
-            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
-        ],
-        swiftSettings: swiftSettings
-    ),
-    // M5 (issue #65): SudokuEngine added so GameCenterSink's
-    // `leaderboardKind(forDifficulty:)` switch is exhaustive on `Difficulty`.
-    .target(name: "GameCenterClient", dependencies: [sudokuEngineDep, telemetryDep, "Persistence"], swiftSettings: swiftSettings),
-    .target(
         name: "SudokuUI",
         dependencies: [
             gameStateDep,
             "PuzzleStore",
-            "Persistence",
-            "GameCenterClient",
+            persistenceDep,
+            gameCenterClientDep,
             telemetryDep,
             // v2.3.3: RouteFactory holds AdProvider / IAPClient / AdGate
             // protocol deps so individual destination Views (v2.3.4-6) can
@@ -71,7 +59,7 @@ let productionTargets: [Target] = [
     ),
     .target(
         name: "SudokuKitTesting",
-        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", "Persistence", "GameCenterClient", telemetryDep],
+        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", persistenceDep, gameCenterClientDep, telemetryDep],
         swiftSettings: swiftSettings
     ),
     // Phase 9.1: production composition root. The App target is intentionally
@@ -84,8 +72,8 @@ let productionTargets: [Target] = [
             sudokuEngineDep,
             gameStateDep,
             "PuzzleStore",
-            "Persistence",
-            "GameCenterClient",
+            persistenceDep,
+            gameCenterClientDep,
             telemetryDep,
             "SudokuUI",
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
@@ -133,14 +121,21 @@ let monetizationTestDeps: [Target.Dependency] = [
 
 let testTargets: [Target] = [
     testTarget("PuzzleStore", dependencies: ["PuzzleStore", telemetryTestingDep]),
-    testTarget("Persistence", dependencies: ["Persistence", telemetryTestingDep] + monetizationTestDeps),
-    testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
-    testTarget("SudokuUI", dependencies: ["SudokuUI"] + monetizationTestDeps),
+    testTarget(
+        "SudokuUI",
+        dependencies: ["SudokuUI", persistenceDep, gameCenterClientDep, gameCenterTestingDep] + monetizationTestDeps
+    ),
     // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
     // `MonetizationBootCoordinator` directly with recording bridges.
     testTarget(
         "AppComposition",
-        dependencies: ["AppComposition", .product(name: "AdsAdMob", package: "AppMonetizationKit")] + monetizationTestDeps
+        dependencies: [
+            "AppComposition",
+            persistenceDep,
+            gameCenterClientDep,
+            gameCenterTestingDep,
+            .product(name: "AdsAdMob", package: "AppMonetizationKit"),
+        ] + monetizationTestDeps
     ),
 ]
 
@@ -177,8 +172,6 @@ let package = Package(
     ],
     products: [
         .library(name: "PuzzleStore", targets: ["PuzzleStore"]),
-        .library(name: "Persistence", targets: ["Persistence"]),
-        .library(name: "GameCenterClient", targets: ["GameCenterClient"]),
         .library(name: "SudokuUI", targets: ["SudokuUI"]),
         .library(name: "SudokuKitTesting", targets: ["SudokuKitTesting"]),
         .library(name: "AppComposition", targets: ["AppComposition"]),
@@ -194,6 +187,12 @@ let package = Package(
         // pure value types + protocol seams, zero Apple framework imports —
         // suitable as a leaf package. See `docs/foundations.md §2`.
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
+        // 2026-05-26 Stage 3 module split: Persistence + GameCenterClient
+        // extracted into sibling local packages. PersistenceKit hosts the
+        // CloudKit Private-DB stack; GameCenterKit hosts the GameKit seam.
+        // See `docs/foundations.md §2`.
+        .package(name: "PersistenceKit", path: "../PersistenceKit"),
+        .package(name: "GameCenterKit", path: "../GameCenterKit"),
         // v2.3.2: sibling local package providing MonetizationCore +
         // AdsAdMob (Google Mobile Ads bridge) + IAPStoreKit2 (StoreKit2 bridge)
         // + MonetizationTesting fakes. Lives one directory up under Packages/.
