@@ -37,6 +37,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Telemetry", targets: ["Telemetry"]),
+        .library(name: "TelemetryTesting", targets: ["TelemetryTesting"]),
     ],
     dependencies: [
         .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
@@ -50,10 +51,23 @@ let package = Package(
             ],
             swiftSettings: swiftSettings
         ),
+        // TelemetryTesting — shared test fixtures (FakeLogger / RecordingSink /
+        // MetricPayloadFixtures). Carved out of SudokuKitTesting/Telemetry/
+        // so consumers (TelemetryTests + SudokuKit Persistence/PuzzleStore
+        // tests) can pull just the Telemetry-shaped helpers without inheriting
+        // SudokuKitTesting's wider surface (CK / GameCenter / PuzzleStore fakes).
+        .target(
+            name: "TelemetryTesting",
+            dependencies: [
+                "Telemetry",
+            ],
+            swiftSettings: swiftSettings
+        ),
         .testTarget(
             name: "TelemetryTests",
             dependencies: [
                 "Telemetry",
+                "TelemetryTesting",
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
                 .product(name: "GameState", package: "SudokuCoreKit"),
             ],
