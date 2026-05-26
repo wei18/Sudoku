@@ -1,5 +1,7 @@
 # swiftformat option (b): relax rules to current style + add to lefthook
 
+> **OBSOLETED 2026-05-26** — swiftformat 整套移除（user 決定 swiftlint 規則覆蓋已足夠；double-tool 維護成本不划算）。`.swiftformat`、`.mise.toml` pin、`lefthook.yml` hook、`lint.yml` step 全 removed in PR #159 addendum + #160. 本檔保留作為決策歷史；當前 lint 策略見 `docs/foundations.md §4` 與 `lefthook.yml`.
+
 ## Scope
 User chose option (b) over (a) mass-format (3,624 LOC churn, 204 files)
 and (c) defer. Goal: author `.swiftformat` so the existing codebase
