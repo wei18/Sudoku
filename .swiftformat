@@ -12,9 +12,11 @@
 --swiftversion 6.2
 
 # --- Options ------------------------------------------------------------
-# `--ifdef no-indent` — preserve `#if/#else/#endif` at column 1 inside
-# function bodies. This is the codebase convention (see e.g.
-# AdsAdMob/UMPConsentPresenter.swift, GameCenterClient/Live/GKAuthDriver.swift)
+# `--ifdef no-indent` — preserve `#if/#else/#endif` directives at their
+# authored column (column 1 at top-level imports, body-indent inside
+# scopes). This matches the codebase convention (see e.g.
+# AdsAdMob/UMPConsentPresenter.swift mixes both forms — top-level
+# `#if canImport(...)` at column 1 + inner directives indented to scope)
 # and accounts for the bulk of the (indent) rule violations.
 --ifdef no-indent
 

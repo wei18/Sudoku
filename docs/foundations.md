@@ -340,7 +340,7 @@ Repo 內附 `.gitleaks.toml` 自訂規則：CloudKit Key ID 與 App Store Connec
 
 加入 `swiftformat --lint` 到 `lefthook.yml` 時面臨選擇：(a) mass-format 204/244 既有檔案讓 default rules 通過（diff ≈ 3,624 LOC）、(b) 寫一份 `.swiftformat` config 放寬規則對齊現有 codebase、或 (c) 暫緩。**選 (b)** — 避開大規模 diff churn，同時讓 swiftformat 在 baseline 上即可啟用作為「未來 drift 防線」。
 
-`.swiftformat` 內容（repo root）關閉 18 條當下 codebase 違反量最大的規則（依序：`indent` 685 / `redundantInternal` 238 / `sortImports` 199 / `hoistPatternLet` 146 / `blankLinesAtStartOfScope` 141 / `spaceAroundOperators` 117 / `redundantReturn` 93 / `redundantSelf` 84 / `conditionalAssignment` 76 / `extensionAccessControl` 68 / 其餘長尾），以及 14 條長尾規則（每條 < 10 violations）。`--swiftversion 6.2` 釘住 parser 行為避免 minor upgrade 漂移。`--ifdef no-indent` 對齊既有的 `#if/#else` 對齊欄位 1 慣例（GameCenterClient / AdsAdMob 等）。
+`.swiftformat` 內容（repo root）關閉 18 條當下 codebase 違反量最大的規則（依序：`indent` 669 / `redundantInternal` 238 / `sortImports` 199 / `hoistPatternLet` 146 / `blankLinesAtStartOfScope` 141 / `spaceAroundOperators` 117 / `redundantReturn` 93 / `redundantSelf` 84 / `conditionalAssignment` 76 / `extensionAccessControl` 68 / 其餘長尾），以及 14 條長尾規則（每條 < 10 violations）。`--swiftversion 6.2` 釘住 parser 行為避免 minor upgrade 漂移；**若 `Package.swift` 的 `swift-tools-version` 上升，務必 lockstep 更新此 pin**。`--ifdef no-indent` 對齊既有的 `#if/#else` 慣例（保留作者寫的對齊欄位 — top-level 在欄位 1、body 內隨 scope 縮排）。
 
 **Re-evaluation trigger**：若 review nits 出現 ≥ 3 條跟「應該開 X 規則」相關（例：reviewer 反覆指出 `redundantSelf`），則回到選項 (a) 對該規則做一次 targeted format + 重新 enable。完整的 baseline 違規分佈見 `meetings/2026-05-26_swiftformat-option-b.impl-notes.md`。
 
