@@ -11,6 +11,8 @@ truth.
 
 | PR | Title | Notes |
 |----|-------|-------|
+| #144 | docs(backlog): consolidate Android entries — canonical at v1/design.md | 05-25 spillover, merged past midnight |
+| #145 | docs(backlog): cancel ASCRegister IAP mode (v2 has 1 IAP — ROI not there) | 05-25 spillover, merged past midnight |
 | #146 | feat(game-center): centre leaderboard slice on local player rank (closes #140) | issue-140 impl-notes |
 | #147 | ci(github-actions): Phase 1 advisory workflows (PR title lint / SwiftLint+SwiftFormat / docs link check) | superseded by #159 |
 | #148 | docs+cleanup: N2 paired-flip + N5 set.remove + N6 audit regex (PR #143) | AdMob nits |
