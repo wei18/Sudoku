@@ -26,15 +26,7 @@ internal import UIKit
 #if DEBUG
 private let bannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google test
 #else
-// v2.5.3 swap site: replace this with the production ad unit ID once
-// `GADApplicationIdentifier` in `App/Info.plist` is also swapped to the
-// production app ID. See `docs/v2/v2.5-readiness.md §v2.5.3` paired-flip
-// checklist. The `fatalError` is intentional — any Release build that
-// reaches this site before the v2.5.3 swap fails loudly at first ad load
-// rather than silently serving an empty/test placeholder.
-private var bannerAdUnitID: String {
-    fatalError("REPLACE_IN_v2.5.3: production AdMob banner ad unit ID not wired — see docs/v2/v2.5-readiness.md §v2.5.3")
-}
+private let bannerAdUnitID = "ca-app-pub-8986741979385138/3172412685"  // production
 #endif
 
 // MARK: - LiveAdMobBridge
