@@ -33,7 +33,8 @@ let productionTargets: [Target] = [
 
 let testTargets: [Target] = [
     .testTarget(name: "SudokuEngineTests", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
-    .testTarget(name: "GameStateTests", dependencies: ["GameState", "SudokuEngine"], swiftSettings: swiftSettings),
+    // SudokuEngine pulled in transitively via GameState — no need to list explicitly.
+    .testTarget(name: "GameStateTests", dependencies: ["GameState"], swiftSettings: swiftSettings),
 ]
 
 // MARK: - Package
