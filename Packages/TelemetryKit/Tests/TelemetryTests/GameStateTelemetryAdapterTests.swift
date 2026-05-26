@@ -2,7 +2,7 @@ import Testing
 @testable import Telemetry
 import GameState
 import SudokuEngine
-import SudokuKitTesting
+import TelemetryTesting
 
 @Suite("GameStateTelemetryAdapter — mapping")
 struct GameStateTelemetryAdapterTests {
