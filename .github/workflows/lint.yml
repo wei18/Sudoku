@@ -1,0 +1,70 @@
+# Swift lint mirror — runs swiftlint + swiftformat on Swift files changed in
+# the PR, using the same tool versions pinned in `.mise.toml` (which also
+# drive `lefthook.yml` pre-commit and Xcode Cloud `ci_post_clone.sh`).
+#
+# Phase 1 advisory: not yet a required status check.
+
+name: Lint
+
+on:
+  pull_request:
+    paths:
+      - "**/*.swift"
+      - ".mise.toml"
+      - ".swiftlint.yml"
+      - ".swiftformat"
+      - ".github/workflows/lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  swift-lint:
+    name: SwiftLint + SwiftFormat (changed files)
+    # macos-latest matches the dev/Xcode Cloud environment; ubuntu lacks the
+    # Swift toolchain by default and we want parity with local lefthook output.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history required so `git diff origin/<base>...HEAD` resolves
+          # the merge base; without this the changed-file list is empty.
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+
+      - name: Install mise + pinned tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: SwiftLint on changed files
+        run: |
+          set -euo pipefail
+          files=$(git diff --name-only --diff-filter=ACMRT \
+            "origin/${{ github.base_ref }}...HEAD" -- '*.swift')
+          if [ -z "$files" ]; then
+            echo "No Swift files changed; skipping."
+            exit 0
+          fi
+          echo "$files" | xargs mise exec swiftlint -- swiftlint lint --strict --quiet
+
+      - name: SwiftFormat lint on changed files
+        # Advisory only until the swiftformat baseline lands.
+        # Repo currently has ~204/244 files non-compliant with the pinned
+        # swiftformat ruleset (see meetings/2026-05-26_foundations-backlog-
+        # 3items.impl-notes.md). Once a mass-format PR lands OR `.swiftformat`
+        # config relaxes rules, flip this to a hard failure by removing
+        # `continue-on-error`.
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          files=$(git diff --name-only --diff-filter=ACMRT \
+            "origin/${{ github.base_ref }}...HEAD" -- '*.swift')
+          if [ -z "$files" ]; then
+            echo "No Swift files changed; skipping."
+            exit 0
+          fi
+          echo "$files" | xargs mise exec swiftformat -- swiftformat --lint
