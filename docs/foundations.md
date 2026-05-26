@@ -118,6 +118,8 @@ SudokuEngine  ←  GameState
 
 **決策**：v1 CI 全押 **Xcode Cloud**；GitHub Actions 暫不採用（見 backlog 第 6 條的啟用條件）。Repo 仍 host 在 GitHub。
 
+**Phase 1 GH Actions 補強（2026-05-26，advisory only）**：已加入 3 條非阻塞 workflow 補 XCC 未覆蓋的面向 — `pr-metadata.yml`（PR title Conventional Commits lint）、`lint.yml`（SwiftLint strict + SwiftFormat advisory，透過 `.mise.toml` 同版 pin）、`docs-link-check.yml`（`docs/` + `meetings/` lychee 連結檢查）。皆為 advisory（未 required）；branch protection 與 required status check 屬 Phase 3（user-owned）。Phase 2（PR 上的 review agent + meetings index 自動更新）待 GitHub App bot 身分就位再做。
+
 ### Workflow 配置
 
 v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workflow（題目改由 App 本機 deterministic 產生，無 server-side 投放需求 — 詳見 `docs/v1/design.md §How.4`）。
