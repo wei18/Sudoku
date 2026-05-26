@@ -11,20 +11,28 @@ let swiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("InternalImportsByDefault"),
 ]
 
+// MARK: - Shared dep shorthands
+//
+// SudokuEngine + GameState live in the sibling SudokuCoreKit package as of
+// the 2026-05-26 module split (see `docs/foundations.md §2`). Every target
+// that previously listed them as in-package string deps now pulls them via
+// `.product(name:package:)` from SudokuCoreKit.
+
+let sudokuEngineDep: Target.Dependency = .product(name: "SudokuEngine", package: "SudokuCoreKit")
+let gameStateDep: Target.Dependency = .product(name: "GameState", package: "SudokuCoreKit")
+
 // MARK: - Production targets
 
 let productionTargets: [Target] = [
-    .target(name: "SudokuEngine", swiftSettings: swiftSettings),
-    .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
-    .target(name: "PuzzleStore", dependencies: ["SudokuEngine", "Telemetry"], swiftSettings: swiftSettings),
+    .target(name: "PuzzleStore", dependencies: [sudokuEngineDep, "Telemetry"], swiftSettings: swiftSettings),
     .target(
         name: "Persistence",
         dependencies: [
-            "GameState",
+            gameStateDep,
             // M5 (issue #65): pulls in `Mode` / `Difficulty` enums so the
             // PersistenceProtocol surface is typed; the CK serialization
             // seam still encodes raw String to preserve wire format.
-            "SudokuEngine",
+            sudokuEngineDep,
             "Telemetry",
             // v2.3.1: re-exports `AdGateStateStore` via `MonetizationStateStore`
             // typealias; concrete `LiveMonetizationStateStore` lives here so
@@ -35,7 +43,7 @@ let productionTargets: [Target] = [
     ),
     // M5 (issue #65): SudokuEngine added so GameCenterSink's
     // `leaderboardKind(forDifficulty:)` switch is exhaustive on `Difficulty`.
-    .target(name: "GameCenterClient", dependencies: ["SudokuEngine", "Telemetry", "Persistence"], swiftSettings: swiftSettings),
+    .target(name: "GameCenterClient", dependencies: [sudokuEngineDep, "Telemetry", "Persistence"], swiftSettings: swiftSettings),
     // Telemetry depends on GameState ONLY to ship GameStateTelemetryAdapter:
     // GameState declares the local `GameStateTelemetry` seam + `GameStateEvent`
     // values; Telemetry provides the production adapter that maps those events
@@ -48,11 +56,11 @@ let productionTargets: [Target] = [
     // typed `Mode` / `Difficulty` instead of bare `String` (callers no longer
     // need to remember `.rawValue` conversion — typos at call sites now fail
     // to compile rather than dropping silently at the GameCenter sink).
-    .target(name: "Telemetry", dependencies: ["GameState", "SudokuEngine"], swiftSettings: swiftSettings),
+    .target(name: "Telemetry", dependencies: [gameStateDep, sudokuEngineDep], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
         dependencies: [
-            "GameState",
+            gameStateDep,
             "PuzzleStore",
             "Persistence",
             "GameCenterClient",
@@ -68,7 +76,7 @@ let productionTargets: [Target] = [
     ),
     .target(
         name: "SudokuKitTesting",
-        dependencies: ["SudokuEngine", "GameState", "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
+        dependencies: [sudokuEngineDep, gameStateDep, "PuzzleStore", "Persistence", "GameCenterClient", "Telemetry"],
         swiftSettings: swiftSettings
     ),
     // Phase 9.1: production composition root. The App target is intentionally
@@ -78,8 +86,8 @@ let productionTargets: [Target] = [
     .target(
         name: "AppComposition",
         dependencies: [
-            "SudokuEngine",
-            "GameState",
+            sudokuEngineDep,
+            gameStateDep,
             "PuzzleStore",
             "Persistence",
             "GameCenterClient",
@@ -129,8 +137,6 @@ let monetizationTestDeps: [Target.Dependency] = [
 ]
 
 let testTargets: [Target] = [
-    testTarget("SudokuEngine", dependencies: ["SudokuEngine"]),
-    testTarget("GameState", dependencies: ["GameState"]),
     testTarget("PuzzleStore", dependencies: ["PuzzleStore"]),
     testTarget("Persistence", dependencies: ["Persistence"] + monetizationTestDeps),
     testTarget("GameCenterClient", dependencies: ["GameCenterClient"]),
@@ -176,8 +182,6 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "SudokuEngine", targets: ["SudokuEngine"]),
-        .library(name: "GameState", targets: ["GameState"]),
         .library(name: "PuzzleStore", targets: ["PuzzleStore"]),
         .library(name: "Persistence", targets: ["Persistence"]),
         .library(name: "GameCenterClient", targets: ["GameCenterClient"]),
@@ -188,6 +192,10 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        // 2026-05-26 module split: SudokuEngine + GameState extracted into
+        // sibling local package so a future Telemetry-only extraction is
+        // unblocked. See `docs/foundations.md §2`.
+        .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
         // v2.3.2: sibling local package providing MonetizationCore +
         // AdsAdMob (Google Mobile Ads bridge) + IAPStoreKit2 (StoreKit2 bridge)
         // + MonetizationTesting fakes. Lives one directory up under Packages/.
