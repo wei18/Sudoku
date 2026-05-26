@@ -125,7 +125,7 @@ SudokuEngine  ←  GameState
 
 **決策**：v1 CI 全押 **Xcode Cloud**；GitHub Actions 暫不採用（見 backlog 第 6 條的啟用條件）。Repo 仍 host 在 GitHub。
 
-**Phase 1 GH Actions 補強（2026-05-26，advisory only）**：已加入 3 條非阻塞 workflow 補 XCC 未覆蓋的面向 — `pr-metadata.yml`（PR title Conventional Commits lint）、`lint.yml`（SwiftLint strict + SwiftFormat advisory，透過 `.mise.toml` 同版 pin）、`docs-link-check.yml`（`docs/` + `meetings/` lychee 連結檢查）。皆為 advisory（未 required）；branch protection 與 required status check 屬 Phase 3（user-owned）。Phase 2（PR 上的 review agent + meetings index 自動更新）待 GitHub App bot 身分就位再做。
+**Phase 1 GH Actions 補強（2026-05-26，advisory only）**：合併成單一 `.github/workflows/lint.yml`，內含 3 個 sibling jobs — `pr-metadata`（PR title Conventional Commits lint, ubuntu）、`docs-link-check`（`docs/` + `meetings/` lychee 連結檢查, ubuntu）、`swift-lint`（SwiftLint strict, ubuntu — swiftlint linux binary via mise；2026-05-26 user 決定移除 swiftformat 為 redundant）。三 job 透過 `gh api pulls/{n}/files` 拿改動檔案列表（不再用 `git diff` + fetch-depth 0）。皆為 advisory（未 required）；branch protection 與 required status check 屬 Phase 3（user-owned，issue #158）。Phase 2（PR 上的 review agent + meetings index 自動更新）待 GitHub App bot 身分就位再做（issue #156、blocked on #157）。
 
 ### Workflow 配置
 
@@ -346,13 +346,9 @@ pre-commit:
 
 Repo 內附 `.gitleaks.toml` 自訂規則：CloudKit Key ID 與 App Store Connect / APNs Key ID（兩者皆為 10-char alphanumeric 格式、同一條 regex 可同時覆蓋）等。基本規則沿用 gitleaks 內建 `default.toml`，**僅增不減**。
 
-#### §7.5.1 SwiftFormat `.swiftformat` — option (b) baseline (2026-05-26)
+#### §7.5.1 ~~SwiftFormat `.swiftformat` — option (b) baseline~~ (2026-05-26 obsoleted)
 
-加入 `swiftformat --lint` 到 `lefthook.yml` 時面臨選擇：(a) mass-format 204/244 既有檔案讓 default rules 通過（diff ≈ 3,624 LOC）、(b) 寫一份 `.swiftformat` config 放寬規則對齊現有 codebase、或 (c) 暫緩。**選 (b)** — 避開大規模 diff churn，同時讓 swiftformat 在 baseline 上即可啟用作為「未來 drift 防線」。
-
-`.swiftformat` 內容（repo root）關閉 18 條當下 codebase 違反量最大的規則（依序：`indent` 669 / `redundantInternal` 238 / `sortImports` 199 / `hoistPatternLet` 146 / `blankLinesAtStartOfScope` 141 / `spaceAroundOperators` 117 / `redundantReturn` 93 / `redundantSelf` 84 / `conditionalAssignment` 76 / `extensionAccessControl` 68 / 其餘長尾），以及 14 條長尾規則（每條 < 10 violations）。`--swiftversion 6.2` 釘住 parser 行為避免 minor upgrade 漂移；**若 `Package.swift` 的 `swift-tools-version` 上升，務必 lockstep 更新此 pin**。`--ifdef no-indent` 對齊既有的 `#if/#else` 慣例（保留作者寫的對齊欄位 — top-level 在欄位 1、body 內隨 scope 縮排）。
-
-**Re-evaluation trigger**：若 review nits 出現 ≥ 3 條跟「應該開 X 規則」相關（例：reviewer 反覆指出 `redundantSelf`），則回到選項 (a) 對該規則做一次 targeted format + 重新 enable。完整的 baseline 違規分佈見 `meetings/2026-05-26_swiftformat-option-b.impl-notes.md`。
+**SwiftFormat 整套移除（2026-05-26 user 決定）**：swiftlint 規則覆蓋面已足夠，再跑 swiftformat 是 redundant + double-tool 維護成本。移除範圍：`.swiftformat` 檔案、`.mise.toml` 的 swiftformat pin、`lefthook.yml` 的 swiftformat hook、`.github/workflows/lint.yml` 的 swiftformat step。歷史紀錄見 `meetings/2026-05-26_swiftformat-option-b.impl-notes.md`（保留作 archeology 用）。
 
 ### §7.6 PR CI 第二道防線
 
@@ -482,7 +478,7 @@ _討論過程中浮現、但本輪暫不處理的工具/套件/語言特性/CI/a
   - 接 `XcodeSelectiveTesting`（見 backlog 第 3 條）以模組相依關係挑 test target 跑
   - 用 `nektos/act` 本機重現非 build 類 job（見 backlog 第 5 條）
   - 起手點：上面任一痛感真實出現時，先寫單一 workflow 試水（2026-05-15）。
-- **swiftformat 加入 `lefthook.yml` pre-commit**（2026-05-23）：`.mise.toml` 已 pin `swiftformat@0.54.6` 且 Xcode Cloud `ci_post_clone.sh` 會 mise install 它，但 `lefthook.yml` pre-commit hook 只跑 `swiftlint` + `gitleaks`，沒跑 swiftformat。本地 commit format drift 通過 lint 但 review 時手動修。考慮加 `swiftformat --lint` 到 pre-commit（lint mode 只報錯不自動改）或 `--force` mode（自動 format 並重新 stage）。觸發點：format-related code review feedback 累積 3 條以上。
+- ~~**swiftformat 加入 `lefthook.yml` pre-commit**（2026-05-23）~~ — **CANCELLED 2026-05-26**: swiftformat 整套移除（user 決定 swiftlint 規則覆蓋已足夠；double-tool 維護成本不划算）。`.swiftformat` 檔、`.mise.toml` pin、`lefthook.yml` hook、`lint.yml` step 全 removed。
 - **抽 Telemetry / GameCenterClient / Persistence target 到獨立 Swift Package**（2026-05-23）：目前三者住在 `Packages/SudokuKit/Sources/`，跟 SudokuUI / AppComposition / SudokuEngine / PuzzleStore 同 package。Telemetry 是純值類型 + 協議（無 UI 依賴）、GameCenterClient 包 GameKit（iOS only）、Persistence 包 CloudKit（跨平台）— 三者都是 capability-isolated leaf module，按 `AppMonetizationKit` 的成功經驗（外掛 third-party SDK 隔離）可以各自獨立成 package：(a) build-time clarity（誰 import 誰一目了然），(b) 平台 conditional dep 更乾淨（GameCenter iOS-only 可獨立 `.condition(.when(platforms: [.iOS]))`），(c) 將來給其他 app 重用。代價：每個 package 一份 Package.swift + tests 結構 + tuist generate 更慢一點。觸發點：第二個 app 想 reuse 任一 target / 或 SudokuKit 編譯時間明顯變慢。
 - **XCC PR-CI 設為 required check + branch protection on `main`**（2026-05-23）：目前 Leader subagent 開 PR 後立刻 squash-merge，沒等 Xcode Cloud PR workflow 跑完。應改成：(a) PR open 觸發 XCC PR-CI（已有，見 §4 workflow 配置）；(b) GitHub branch protection rule on `main` 加 required status check = XCC `Sudoku | Default | Archive - iOS` 與 `Archive - macOS`；(c) Leader 流程改成 push → poll `gh pr checks <#>` → 全 green 才 merge。觸發點：(i) 第二人 collab 加入，或 (ii) 連續 3 次 XCC red 沒被本地 swift test 抓到。實作含：GH branch protection 設定（user-owned，ASC 帳號 needed）、Leader skill 更新「auto-merge」段加 wait-for-checks 步驟。
 - **採用 [`mono0926/LicensePlist`](https://github.com/mono0926/LicensePlist) 自動產生 acknowledgments 頁**（2026-05-23）：隨 v2 引入 AdMob + UMP 第三方 SDK，App Store 需要列出 license。LicensePlist 從 Package.resolved 掃描所有 SPM deps 自動產 Settings.bundle Acknowledgments 頁（iOS 標準位置）或 SwiftUI 直顯。透過 `mise` 或 brew 加入工具鏈，CI step 跑 `license-plist --output-path App/Resources/Acknowledgements` 並 commit 結果。觸發點：v2 ship 前的 Settings UI polish；或當第三方 SDK 數量 > 3 個。代價：tooling overhead 低（單 binary）+ 需要決定 Settings.bundle vs SwiftUI 內嵌路徑。

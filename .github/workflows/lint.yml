@@ -86,10 +86,11 @@ jobs:
           fail: true
 
   swift-lint:
-    name: SwiftLint + SwiftFormat (changed files)
-    # macos-latest matches the dev/Xcode Cloud environment; ubuntu lacks the
-    # Swift toolchain by default and we want parity with local lefthook output.
-    runs-on: macos-latest
+    name: SwiftLint (changed files)
+    # ubuntu-latest: swiftlint ships a linux x86_64 binary via mise (no Swift
+    # toolchain needed for lint-only). swiftformat removed 2026-05-26 (user
+    # decision: swiftlint coverage sufficient; swiftformat is redundant).
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -123,16 +124,3 @@ jobs:
           set -euo pipefail
           # shellcheck disable=SC2086
           mise exec swiftlint -- swiftlint lint --strict --quiet ${{ steps.changed.outputs.files }}
-
-      - name: SwiftFormat lint on changed files
-        # Hard-fail since PR #149 landed the `.swiftformat` relaxed-baseline
-        # config (option b) — 244/244 files now compliant. New drift fails CI.
-        # If a future change introduces broad violations and the right answer
-        # is to relax further (not fix the diff), update `.swiftformat`
-        # in the same PR + flip this back to `continue-on-error: true`
-        # temporarily until the next baseline lands.
-        if: steps.changed.outputs.files != ''
-        run: |
-          set -euo pipefail
-          # shellcheck disable=SC2086
-          mise exec swiftformat -- swiftformat --lint ${{ steps.changed.outputs.files }}
