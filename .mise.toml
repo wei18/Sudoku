@@ -16,3 +16,10 @@ xcbeautify                      = "2"
 "aqua:gitleaks/gitleaks"        = "8.30.1"   # foundations.md §7.5 requires ≥ 8.18
 "aqua:evilmartians/lefthook"    = "1"
 "aqua:tuist/tuist"              = "4"        # generates App/Sudoku.xcodeproj from Project.swift (Phase 1.4)
+# LicensePlist — generates Settings → Acknowledgements page from SwiftPM dep
+# graph. Invoked manually via `scripts/generate-acknowledgements.sh` after
+# SPM dep bumps (not in CI). Aqua does not currently register
+# mono0926/LicensePlist; using ubi backend (resolves from GitHub releases).
+# Pin to a major when Leader confirms via `mise install ubi:mono0926/LicensePlist`
+# what's published at install time. Backlog source: foundations.md §Backlog 2026-05-23.
+"ubi:mono0926/LicensePlist"     = "latest"

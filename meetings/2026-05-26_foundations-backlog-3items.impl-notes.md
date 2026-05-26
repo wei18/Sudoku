@@ -1,6 +1,6 @@
 # Impl Notes — foundations §Backlog 3 items (2026-05-26)
 
-Status: IN_PROGRESS
+Status: COMPLETE (with 2 of 3 items blocked on Leader pre-flight)
 Owner: Senior Developer (subagent)
 Dispatched by: Leader
 Started: 2026-05-26T00:00Z
@@ -29,10 +29,30 @@ Scope: 3 logically independent changesets dispatched in one subagent run.
 - **Item 3 LicensePlist mise registry** — Need to verify mise has a working backend (`aqua:mono0926/LicensePlist` or `ubi:mono0926/LicensePlist`). Will test both.
 - **Item 3 SwiftUI vs Settings.bundle** — Per spec, settled on SwiftUI display row in `SettingsView.swift` About section. Reason: the app already owns its Settings via SwiftUI Form; Settings.bundle is the older iOS pattern and would split L10n + theming.
 
+### Item 3 — sandbox-driven scope reduction (final)
+
+Original spec wanted full SwiftUI integration. Subagent sandbox blocked:
+- `mise install` (network) — cannot install license-plist binary
+- `chmod +x` (denied) — cannot mark script executable
+- Therefore `scripts/generate-acknowledgements.sh` cannot actually be exercised
+- Therefore `App/Resources/Acknowledgements/Acknowledgements.md` cannot be generated
+- Therefore bundling it in `Project.swift` would reference a missing file
+- Therefore adding a `SettingsView` row + new `AcknowledgementsView` would test against an empty/missing resource and fail snapshot tests
+
+Trade-off: ship only the foundational tooling (script + mise pin) plus a detailed integration plan doc at `meetings/2026-05-26_licenseplist-integration.md` covering exact follow-up steps. The follow-up PR can be authored in 1 dispatch once Leader does the install + chmod + run pre-flight.
+
+This deviates from the spec's "step 4 — Decide integration" + "step 5 — extend SettingsView" but the deviation is forced by sandbox restrictions, not preference. Recorded here so Leader has a clear handoff.
+
 ## 未決 (Open questions)
 
 - **Item 1 — Leader decision required (load-bearing, BLOCKS Item 1 commit)**: 3 paths:
   1. Accept mass-format: I do one mechanical commit (3,624 LOC, 204 files) + add hook in a 2nd commit. Review effort: skim only.
   2. Author `.swiftformat` config that disables `hoistPatternLet`, `redundantInternal`, `trailingCommas`, `indent`, `wrapMultilineStatementBraces`, `blankLinesAtStartOfScope`, `elseOnSameLine` (the rules driving today's violations) to make current code pass; add hook after. Smaller diff, but pins us to current style permanently — defeats the point of adopting swiftformat.
   3. Defer entirely; bump the foundations backlog trigger ("3+ format reviews") higher and revisit later.
-- **Item 3 — `MarkdownView` source choice** — If a `Text(LocalizedStringKey(markdown))` works (SwiftUI native), great. If the bundled markdown is too large or has unsupported syntax (LicensePlist often emits long Apache 2.0 license bodies), may need to fall back to scrollable `Text` wrapped in `ScrollView`. Default plan: render the bundled `.md` as `ScrollView { Text(...).textSelection(.enabled) }` inside a `NavigationStack`-pushed view.
+- **Item 3 — `MarkdownView` source choice** — If a `Text(LocalizedStringKey(markdown))` works (SwiftUI native), great. If the bundled markdown is too large or has unsupported syntax (LicensePlist often emits long Apache 2.0 license bodies), may need to fall back to scrollable `Text` wrapped in `ScrollView`. Default plan: render the bundled `.md` as `ScrollView { Text(...).textSelection(.enabled) }` inside a `NavigationStack`-pushed view. **Resolved**: documented in `meetings/2026-05-26_licenseplist-integration.md` as the follow-up PR template; uses `AttributedString(markdown:options:)` with `.inlineOnlyPreservingWhitespace` to preserve license-text whitespace.
+
+## Final delivery summary
+
+- **Item 1 (swiftformat hook)**: BLOCKED on Leader decision (3-path question above). Zero file changes. Baseline measured + recorded.
+- **Item 2 (module-split proposal)**: COMPLETE. Delivered `meetings/2026-05-26_module-split-proposal.md` (Defer-primary, Telemetry-only-optional verdict). Committed.
+- **Item 3 (LicensePlist)**: PARTIAL. Delivered `.mise.toml` entry + `scripts/generate-acknowledgements.sh` + `meetings/2026-05-26_licenseplist-integration.md` follow-up plan. SwiftUI integration deferred to follow-up PR (blocked on sandbox-denied `mise install` + `chmod`).
