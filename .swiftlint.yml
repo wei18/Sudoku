@@ -1,0 +1,64 @@
+# SwiftLint configuration for Sudoku.
+#
+# Adopted 2026-05-27 alongside Stage 3 module extraction (PR #176), which
+# exposed pre-existing legacy violations on `git mv`-moved files now lint-
+# checked as "changed files" by the strict CI task. Rules below are chosen
+# to keep CI green without rewriting domain-constrained code (GameKit API
+# surface, Apple's `Master` leaderboard tier, intentional abbreviations).
+#
+# Edit policy: when adding a new threshold or exemption here, add a short
+# WHY comment so future cleanup can revisit.
+
+excluded:
+  - "**/.build"
+  - "**/.swiftpm"
+
+disabled_rules:
+  # Apple's `Master` is a leaderboard difficulty tier (not a brand choice);
+  # we can't rename it without breaking the GameKit / ASC contract.
+  - inclusive_language
+  # Pre-existing legacy on a small number of files (Slice.swift,
+  # GKLeaderboardLoader.swift, LiveMonetizationStateStore.swift); the
+  # GameKit / CloudKit API surfaces require these param counts / body
+  # lengths. Re-evaluate when those surfaces shrink.
+  - function_parameter_count
+  - function_body_length
+  # Test fixtures and large value-type aggregates run long; the rule's
+  # 250-line default trips test classes with many @Test cases.
+  - type_body_length
+  # Codebase mixes styles; consistency churn not worth the noise.
+  - trailing_comma
+
+# line_length — bumped from default 120 to 160. Tests with long string
+# literals (snapshot expected outputs, leaderboard ID constants) routinely
+# trip the default; 160 covers all current call sites while still flagging
+# truly egregious lines.
+line_length:
+  warning: 160
+  error: 200
+  ignores_urls: true
+  ignores_comments: true
+
+identifier_name:
+  excluded:
+    # `id` is a Swift idiom (Identifiable, GameKit IDs); 2-char but ubiquitous.
+    - id
+    # Status-code style 2-letter enum case in RegionMapper.swift.
+    - ok
+    # Abbreviation for `gateway` in LiveMonetizationStateStore.swift.
+    - gw
+
+type_name:
+  # Default 40 trips on `LiveGameCenterClientLeaderboardSliceTests` (41
+  # chars). The class name describes Live + Type + spec deliberately.
+  max_length: 60
+
+large_tuple:
+  # Default 2 trips on a SinkTests fixture (3-tuple). Tests legitimately
+  # construct 3-element fixtures.
+  warning: 3
+  error: 4
+
+# trailing_comma — disabled. Codebase mixes both styles; consistency
+# concern is not worth the noise. Re-enable when codebase converges.
+# (Added to disabled_rules above)
