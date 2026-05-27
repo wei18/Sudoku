@@ -1,0 +1,105 @@
+{
+  "configurations" : [
+    {
+      "id" : "9766CF1F-5AAA-4A73-9983-757C9D41CC93",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "Sudoku",
+      "name" : "Sudoku"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuCoreKit",
+        "identifier" : "SudokuEngineTests",
+        "name" : "SudokuEngineTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuCoreKit",
+        "identifier" : "GameStateTests",
+        "name" : "GameStateTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/TelemetryKit",
+        "identifier" : "TelemetryTests",
+        "name" : "TelemetryTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/GameCenterKit",
+        "identifier" : "GameCenterClientTests",
+        "name" : "GameCenterClientTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/PersistenceKit",
+        "identifier" : "PersistenceTests",
+        "name" : "PersistenceTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/AppMonetizationKit",
+        "identifier" : "MonetizationCoreTests",
+        "name" : "MonetizationCoreTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/AppMonetizationKit",
+        "identifier" : "MonetizationTestingTests",
+        "name" : "MonetizationTestingTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/AppMonetizationKit",
+        "identifier" : "AdsAdMobTests",
+        "name" : "AdsAdMobTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuKit",
+        "identifier" : "PuzzleStoreTests",
+        "name" : "PuzzleStoreTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuKit",
+        "identifier" : "SudokuUITests",
+        "name" : "SudokuUITests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuKit",
+        "identifier" : "AppCompositionTests",
+        "name" : "AppCompositionTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/SudokuKit",
+        "identifier" : "ASCRegisterTests",
+        "name" : "ASCRegisterTests"
+      }
+    }
+  ],
+  "version" : 1
+}
