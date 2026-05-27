@@ -85,6 +85,7 @@ struct BoardViewTests {
 
     // MARK: - Snapshot matrix (12 PNGs)
 
+    #if canImport(AppKit)
     @Test func snapshotEmpty_iPhone_light() throws {
         let vm = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
@@ -248,6 +249,7 @@ struct BoardViewTests {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-dark-almostComplete")
         }
     }
+    #endif
 
     // MARK: - Keyboard behavior
 

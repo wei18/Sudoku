@@ -155,6 +155,7 @@ struct SettingsIAPRowTests {
 
     // MARK: - Snapshot baselines
 
+    #if canImport(AppKit)
     @Test func snapshotIPhoneLightUnpurchased() async {
         let (controller, _, _) = await makeController(
             products: [IAPProduct(
@@ -187,4 +188,5 @@ struct SettingsIAPRowTests {
             assertSnapshot(of: host, as: .image, named: "SettingsView-iPhone-light-purchased")
         }
     }
+    #endif
 }

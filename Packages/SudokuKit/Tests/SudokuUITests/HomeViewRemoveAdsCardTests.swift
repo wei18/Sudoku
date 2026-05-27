@@ -88,6 +88,7 @@ struct HomeViewRemoveAdsCardTests {
 
     // MARK: - Snapshot baseline
 
+    #if canImport(AppKit)
     @Test func snapshotIPhoneLightWithRemoveAdsCard() async {
         let (controller, _) = await makeController(
             purchased: false,
@@ -108,4 +109,5 @@ struct HomeViewRemoveAdsCardTests {
             assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light-with-remove-ads-card")
         }
     }
+    #endif
 }

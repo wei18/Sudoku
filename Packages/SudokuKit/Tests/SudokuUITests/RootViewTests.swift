@@ -88,6 +88,7 @@ struct RootViewTests {
         #expect(viewModel.authState == .unauthenticated)
     }
 
+    #if canImport(AppKit)
     @Test func snapshotEmptyStateIPhoneLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
@@ -123,4 +124,5 @@ struct RootViewTests {
             assertSnapshot(of: host, as: .image, named: "RootView-Mac-light-empty")
         }
     }
+    #endif
 }

@@ -23,6 +23,7 @@
 // `sizeClass` so iPhone fixtures get `.compact` and Mac fixtures stay
 // `.regular`.
 
+#if canImport(AppKit)
 import AppKit
 import Foundation
 import SnapshotTesting
@@ -74,3 +75,4 @@ func hostingView<V: SwiftUI.View>(
     host.layoutSubtreeIfNeeded()
     return host
 }
+#endif

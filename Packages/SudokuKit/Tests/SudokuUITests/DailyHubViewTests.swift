@@ -73,6 +73,7 @@ struct DailyHubViewTests {
 
     // MARK: - Snapshots
 
+    #if canImport(AppKit)
     @Test func snapshotUnfinishedIPhoneLight() async {
         let viewModel = await makeViewModel()
         await viewModel.bootstrap()
@@ -118,4 +119,5 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }
     }
+    #endif
 }

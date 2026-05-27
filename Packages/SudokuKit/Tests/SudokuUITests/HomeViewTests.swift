@@ -28,6 +28,7 @@ struct HomeViewTests {
         #expect(viewModel.path == [.settings])
     }
 
+    #if canImport(AppKit)
     @Test func snapshotIPhoneLight() {
         let host = hostingView(
             HomeView(viewModel: HomeViewModel()),
@@ -51,4 +52,5 @@ struct HomeViewTests {
             assertSnapshot(of: host, as: .image, named: "HomeView-Mac-light")
         }
     }
+    #endif
 }

@@ -51,6 +51,7 @@ struct ToastTests {
 
     // MARK: - Snapshot baselines
 
+    #if canImport(AppKit)
     @Test func snapshotSuccessLight() {
         let view = ToastView(toast: Toast(style: .success, message: "Ads removed"))
             .frame(width: 320, height: 80)
@@ -70,4 +71,5 @@ struct ToastTests {
             assertSnapshot(of: host, as: .image, named: "ToastView-failure-light")
         }
     }
+    #endif
 }

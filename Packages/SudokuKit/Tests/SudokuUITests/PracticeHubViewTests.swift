@@ -90,6 +90,7 @@ struct PracticeHubViewTests {
 
     // MARK: - Snapshots
 
+    #if canImport(AppKit)
     @Test func snapshotIdleIPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         let host = hostingView(
@@ -131,5 +132,6 @@ struct PracticeHubViewTests {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-drawn")
         }
     }
+    #endif
 }
 

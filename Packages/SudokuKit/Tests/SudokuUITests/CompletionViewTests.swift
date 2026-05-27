@@ -36,6 +36,7 @@ struct CompletionViewTests {
 
     // MARK: - Snapshots (3 PNGs)
 
+    #if canImport(AppKit)
     @Test func snapshot_authenticatedLoaded_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.loaded(Self.sampleSlice))
@@ -79,6 +80,7 @@ struct CompletionViewTests {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed")
         }
     }
+    #endif
 
     // MARK: - Behavior
 
