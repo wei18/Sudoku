@@ -33,7 +33,7 @@
       App ID + ad unit ID + paired-flip checklist.
     -->
     <key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-8986741979385138~8581337790</string>
+    <string>ca-app-pub-3940256099942544~1458002511</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>
