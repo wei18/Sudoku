@@ -1,5 +1,4 @@
 // swift-tools-version: 6.2
-// swiftlint:disable trailing_comma
 
 import PackageDescription
 

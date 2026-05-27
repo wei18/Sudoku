@@ -1,7 +1,5 @@
 // swift-tools-version: 6.2
 
-// swiftlint:disable trailing_comma
-
 import PackageDescription
 
 // MARK: - Shared settings (foundations.md §1: Swift 6 + complete concurrency)
@@ -80,5 +78,3 @@ let package = Package(
     ],
     swiftLanguageModes: [.v6]
 )
-
-// swiftlint:enable trailing_comma
