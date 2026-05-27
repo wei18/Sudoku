@@ -23,6 +23,16 @@
     <key>CFBundleVersion</key>
     <string>1</string>
     <!--
+      Encryption export compliance (Apple docs:
+      https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations).
+      Declared `false` because Sudoku uses no proprietary encryption and only
+      exempt uses of standard system encryption (HTTPS via URLSession, Keychain,
+      App Transport Security). Setting this here lets TestFlight upload skip
+      the "Export Compliance Information" question on every build.
+    -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <!--
       Google Mobile Ads SDK 13.x requires this key to be present at app launch
       (the SDK crashes early in `MobileAds.shared.start` if absent).
       v2.5.2 uses Google's universal TEST App ID so real-device verification
