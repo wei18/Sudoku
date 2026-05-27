@@ -106,7 +106,7 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
     /// `internal` (not private) so unit tests can assert the mapping without
     /// stubbing a full CKDatabase — the issue #64 reviewer requested live
     /// wiring proof for this seam.
-    static func translate(_ error: Error, recordName: String) -> Error {
+    static func translate(_ error: any Error, recordName: String) -> any Error {
         guard let ckError = error as? CKError else { return error }
         switch ckError.code {
         case .serverRecordChanged:
