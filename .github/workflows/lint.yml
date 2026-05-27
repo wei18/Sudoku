@@ -120,10 +120,10 @@ jobs:
 
       - name: SwiftLint on changed files
         if: steps.changed.outputs.files != ''
-        # Invocation routes through `mise run lint:swift:strict` — SSOT task
+        # Invocation routes through `mise run lint:swift_strict` — SSOT task
         # body in .mise.toml. Strict variant fails on warnings (vs lefthook's
         # warn-only `lint:swift`).
         run: |
           set -euo pipefail
           # shellcheck disable=SC2086
-          mise run lint:swift:strict -- ${{ steps.changed.outputs.files }}
+          mise run lint:swift_strict -- ${{ steps.changed.outputs.files }}

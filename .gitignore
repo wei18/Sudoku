@@ -48,3 +48,7 @@ NOTES.md.private
 # `ci_scripts/ci_post_clone.sh`; `license_plist.yml` is the source of truth).
 App/Resources/Settings.bundle/
 .claude/worktrees/
+
+# Sub-package Package.resolved — top-level SudokuKit pins everything; per-leaf-pkg resolveds are noise (Stage 2 precedent, TelemetryKit/SudokuCoreKit don't ship one)
+Packages/*/Package.resolved
+.claude/scheduled_tasks.lock
