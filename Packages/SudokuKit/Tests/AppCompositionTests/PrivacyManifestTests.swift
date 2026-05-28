@@ -13,26 +13,19 @@ import Testing
 @Suite("PrivacyInfo.xcprivacy — Phase 9.3")
 struct PrivacyManifestTests {
 
-    private static func manifestURL(_ filePath: StaticString = #filePath) -> URL {
-        // <repo>/Packages/SudokuKit/Tests/AppCompositionTests/<this file>
-        // → <repo>/App/Resources/PrivacyInfo.xcprivacy
-        let path = String(describing: filePath)
-        let testFile = URL(fileURLWithPath: path)
-        let repoRoot = testFile
-            .deletingLastPathComponent()  // AppCompositionTests
-            .deletingLastPathComponent()  // Tests
-            .deletingLastPathComponent()  // SudokuKit
-            .deletingLastPathComponent()  // Packages
-            .deletingLastPathComponent()  // <repo>
-        return repoRoot
-            .appendingPathComponent("App")
-            .appendingPathComponent("Resources")
-            .appendingPathComponent("PrivacyInfo.xcprivacy")
+    private static func manifestURL() throws -> URL {
+        // Bundle.module resolves the symlinked `Resources/PrivacyInfo.xcprivacy`
+        // declared in Package.swift testTarget resources. Works on Xcode Cloud
+        // where the source tree isn't on the test runner machine.
+        guard let url = Bundle.module.url(forResource: "PrivacyInfo", withExtension: "xcprivacy") else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        return url
     }
 
     @Test
     func manifestPresent() throws {
-        let url = Self.manifestURL()
+        let url = try Self.manifestURL()
         let data = try Data(contentsOf: url)
         let plist = try PropertyListSerialization.propertyList(
             from: data,
@@ -47,7 +40,7 @@ struct PrivacyManifestTests {
         // v2 (post #62): AdMob is the third-party tracker; the manifest
         // must declare tracking + the 8 AdMob domains + the OtherUsageData
         // collection mapped to ThirdPartyAdvertising.
-        let url = Self.manifestURL()
+        let url = try Self.manifestURL()
         let data = try Data(contentsOf: url)
         let plist = try PropertyListSerialization.propertyList(
             from: data,
@@ -73,7 +66,7 @@ struct PrivacyManifestTests {
     func requiredReasonsAPIsDeclared() throws {
         // v2 (post #62): AdMob reads UserDefaults internally per Google's
         // privacy manifest docs — declared with reason CA92.1.
-        let url = Self.manifestURL()
+        let url = try Self.manifestURL()
         let data = try Data(contentsOf: url)
         let plist = try PropertyListSerialization.propertyList(
             from: data,
