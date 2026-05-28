@@ -89,6 +89,12 @@ let project = Project(
             name: "Sudoku",
             shared: true,
             buildAction: .buildAction(targets: ["Sudoku"]),
+            // Wire all SPM-package test targets via an .xctestplan file
+            // (Tuist 4.194's TargetReference is string-only and cannot
+            // qualify targets across SPM package projects; the xctestplan
+            // JSON references them via `containerPath: container:Packages/<pkg>`
+            // which xcodebuild resolves through the workspace). See issue #184.
+            testAction: .testPlans(["App/Sudoku.xctestplan"]),
             runAction: .runAction(
                 configuration: "Debug",
                 executable: "Sudoku",

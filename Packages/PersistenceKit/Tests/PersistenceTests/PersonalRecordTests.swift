@@ -3,7 +3,7 @@
 import Foundation
 import Testing
 import SudokuEngine
-import SudokuKitTesting
+import PersistenceTesting
 @testable import Persistence
 
 @Suite("Persistence — PersonalRecord")

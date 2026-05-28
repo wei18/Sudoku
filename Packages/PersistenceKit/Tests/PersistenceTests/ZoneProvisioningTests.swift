@@ -1,7 +1,7 @@
 // ZoneProvisioningTests — §How.2 custom zone bring-up.
 
 import Testing
-import SudokuKitTesting
+import PersistenceTesting
 @testable import Persistence
 
 @Suite("Persistence — zone provisioning")

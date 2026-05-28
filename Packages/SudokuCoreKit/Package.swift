@@ -1,5 +1,4 @@
 // swift-tools-version: 6.2
-// swiftlint:disable trailing_comma
 
 import PackageDescription
 
@@ -52,5 +51,3 @@ let package = Package(
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )
-
-// swiftlint:enable trailing_comma

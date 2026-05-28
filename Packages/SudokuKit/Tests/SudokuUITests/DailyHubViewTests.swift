@@ -73,7 +73,8 @@ struct DailyHubViewTests {
 
     // MARK: - Snapshots
 
-    @Test func snapshotUnfinishedIPhoneLight() async {
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPhoneLight() async {
         let viewModel = await makeViewModel()
         await viewModel.bootstrap()
         let host = hostingView(
@@ -87,7 +88,7 @@ struct DailyHubViewTests {
         }
     }
 
-    @Test func snapshotEasyCompletedIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEasyCompletedIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId
         let viewModel = await makeViewModel(completedDailyIds: [easyId])
@@ -103,7 +104,7 @@ struct DailyHubViewTests {
         }
     }
 
-    @Test func snapshotAllCompletedIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let allIds = Set(envelopes.map(\.identity.puzzleId))
         let viewModel = await makeViewModel(completedDailyIds: allIds)
@@ -118,4 +119,5 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }
     }
+    #endif
 }

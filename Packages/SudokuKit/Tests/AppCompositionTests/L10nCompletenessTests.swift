@@ -14,24 +14,19 @@ struct L10nCompletenessTests {
         "en", "zh-Hant", "zh-Hans", "ja", "ko", "es", "th"
     ]
 
-    private static func catalogURL(_ filePath: StaticString = #filePath) -> URL {
-        let path = String(describing: filePath)
-        let testFile = URL(fileURLWithPath: path)
-        let repoRoot = testFile
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        return repoRoot
-            .appendingPathComponent("App")
-            .appendingPathComponent("Resources")
-            .appendingPathComponent("Localizable.xcstrings")
+    private static func catalogURL() throws -> URL {
+        // Bundle.module resolves symlinked `Resources/Localizable.xcstrings`
+        // (declared in Package.swift testTarget resources). Works on
+        // Xcode Cloud where the source tree isn't on the test runner.
+        guard let url = Bundle.module.url(forResource: "Localizable.xcstrings", withExtension: "json") else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        return url
     }
 
     @Test
     func all7LocalesPresent() throws {
-        let data = try Data(contentsOf: Self.catalogURL())
+        let data = try Data(contentsOf: try Self.catalogURL())
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let strings = json?["strings"] as? [String: [String: Any]] ?? [:]
         for (key, entry) in strings {
@@ -45,7 +40,7 @@ struct L10nCompletenessTests {
 
     @Test
     func noUntranslatedMarkers() throws {
-        let raw = try String(contentsOf: Self.catalogURL(), encoding: .utf8)
+        let raw = try String(contentsOf: try Self.catalogURL(), encoding: .utf8)
         #expect(!raw.contains("<TRANSLATE>"), "Catalog still contains <TRANSLATE> placeholders")
     }
 }

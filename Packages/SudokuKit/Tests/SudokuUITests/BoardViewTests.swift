@@ -85,19 +85,20 @@ struct BoardViewTests {
 
     // MARK: - Snapshot matrix (12 PNGs)
 
-    @Test func snapshotEmpty_iPhone_light() throws {
-        let vm = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_light() throws {
+        let viewModel = try makeViewModel(clues: Self.emptyClues)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-light-empty")
         }
     }
 
-    @Test func snapshotEmpty_iPhone_dark_ja() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_dark_ja() throws {
         // ja locale variant.
-        let vm = try makeViewModel(clues: Self.emptyClues)
+        let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(
-            BoardView(viewModel: vm),
+            BoardView(viewModel: viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .dark,
             locale: .init(identifier: "ja"),
@@ -108,25 +109,25 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotEmpty_Mac_light() throws {
-        let vm = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_light() throws {
+        let viewModel = try makeViewModel(clues: Self.emptyClues)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-light-empty")
         }
     }
 
-    @Test func snapshotEmpty_Mac_dark() throws {
-        let vm = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_dark() throws {
+        let viewModel = try makeViewModel(clues: Self.emptyClues)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-dark-empty")
         }
     }
 
-    @Test func snapshotInProgress_iPhone_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPhone_light() throws {
         // Player has entered a few digits, two of them collide.
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [
                 (row: 0, col: 2, digit: 4),
@@ -139,43 +140,43 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-light-inProgress")
         }
     }
 
-    @Test func snapshotInProgress_iPhone_dark() throws {
-        let vm = try makeViewModel(
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPhone_dark() throws {
+        let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
             errorCells: [(row: 4, col: 4)],
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-dark-inProgress")
         }
     }
 
-    @Test func snapshotInProgress_Mac_light() throws {
-        let vm = try makeViewModel(
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_Mac_light() throws {
+        let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
             errorCells: [(row: 4, col: 4)],
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-light-inProgress")
         }
     }
 
-    @Test func snapshotInProgress_Mac_dark_ko() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_Mac_dark_ko() throws {
         // ko locale variant.
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
             errorCells: [(row: 4, col: 4)],
@@ -183,7 +184,7 @@ struct BoardViewTests {
             elapsedSeconds: 201
         )
         let host = hostingView(
-            BoardView(viewModel: vm),
+            BoardView(viewModel: viewModel),
             size: SnapshotLayouts.mac,
             colorScheme: .dark,
             locale: .init(identifier: "ko"),
@@ -194,15 +195,15 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_iPhone_light_zhTW() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_iPhone_light_zhTW() throws {
         // zh-TW locale variant.
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
             elapsedSeconds: 555
         )
         let host = hostingView(
-            BoardView(viewModel: vm),
+            BoardView(viewModel: viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             locale: .init(identifier: "zh-Hant"),
@@ -213,89 +214,90 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_iPhone_dark() throws {
-        let vm = try makeViewModel(
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_iPhone_dark() throws {
+        let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
             elapsedSeconds: 555
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-dark-almostComplete")
         }
     }
 
-    @Test func snapshotAlmostComplete_Mac_light() throws {
-        let vm = try makeViewModel(
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_Mac_light() throws {
+        let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
             elapsedSeconds: 555
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-light-almostComplete")
         }
     }
 
-    @Test func snapshotAlmostComplete_Mac_dark() throws {
-        let vm = try makeViewModel(
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_Mac_dark() throws {
+        let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
             elapsedSeconds: 555
         )
-        let host = hostingView(BoardView(viewModel: vm), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-dark-almostComplete")
         }
     }
+    #endif
 
     // MARK: - Keyboard behavior
 
     @Test func keyboard_digitPlacesIntoSelectedCell() async throws {
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.emptyClues,
             selection: GridCoordinate(row: 4, column: 4)
         )
-        await vm.placeDigit(7)
-        #expect(vm.board.digit(atRow: 4, column: 4) == 7)
+        await viewModel.placeDigit(7)
+        #expect(viewModel.board.digit(atRow: 4, column: 4) == 7)
     }
 
     @Test func keyboard_zeroClearsSelectedCell() async throws {
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.emptyClues,
             userCells: [(row: 4, col: 4, digit: 7)],
             selection: GridCoordinate(row: 4, column: 4)
         )
-        await vm.placeDigit(nil)
-        #expect(vm.board.digit(atRow: 4, column: 4) == nil)
+        await viewModel.placeDigit(nil)
+        #expect(viewModel.board.digit(atRow: 4, column: 4) == nil)
     }
 
     @Test func keyboard_pencilToggleSwitchesMode() throws {
-        let vm = try makeViewModel(clues: Self.emptyClues)
-        #expect(vm.pencilMode == false)
-        vm.togglePencil()
-        #expect(vm.pencilMode == true)
-        vm.togglePencil()
-        #expect(vm.pencilMode == false)
+        let viewModel = try makeViewModel(clues: Self.emptyClues)
+        #expect(viewModel.pencilMode == false)
+        viewModel.togglePencil()
+        #expect(viewModel.pencilMode == true)
+        viewModel.togglePencil()
+        #expect(viewModel.pencilMode == false)
     }
 
     @Test func keyboard_arrowsMoveSelectionAndClamp() throws {
-        let vm = try makeViewModel(
+        let viewModel = try makeViewModel(
             clues: Self.emptyClues,
             selection: GridCoordinate(row: 0, column: 0)
         )
         // Up at top edge: clamps to row 0.
-        vm.moveSelection(rowDelta: -1, columnDelta: 0)
-        #expect(vm.selection == GridCoordinate(row: 0, column: 0))
+        viewModel.moveSelection(rowDelta: -1, columnDelta: 0)
+        #expect(viewModel.selection == GridCoordinate(row: 0, column: 0))
         // Right.
-        vm.moveSelection(rowDelta: 0, columnDelta: 1)
-        #expect(vm.selection == GridCoordinate(row: 0, column: 1))
+        viewModel.moveSelection(rowDelta: 0, columnDelta: 1)
+        #expect(viewModel.selection == GridCoordinate(row: 0, column: 1))
         // Down.
-        vm.moveSelection(rowDelta: 1, columnDelta: 0)
-        #expect(vm.selection == GridCoordinate(row: 1, column: 1))
+        viewModel.moveSelection(rowDelta: 1, columnDelta: 0)
+        #expect(viewModel.selection == GridCoordinate(row: 1, column: 1))
         // Right edge clamps.
-        vm.moveSelection(rowDelta: 0, columnDelta: 99)
-        #expect(vm.selection == GridCoordinate(row: 1, column: 8))
+        viewModel.moveSelection(rowDelta: 0, columnDelta: 99)
+        #expect(viewModel.selection == GridCoordinate(row: 1, column: 8))
     }
 
     // MARK: - Accessibility dump
@@ -306,7 +308,7 @@ struct BoardViewTests {
         // per §How.5.7.
         var emptyBoard = try Board(clues: Self.emptyClues)
         try emptyBoard.setDigit(5, atRow: 1, column: 2)  // user-entered
-        let vm = GameViewModel(
+        let viewModel = GameViewModel(
             identity: Self.identityEasy,
             board: try Board(clues: "5................................................................................"),
             status: .playing,
@@ -343,7 +345,7 @@ struct BoardViewTests {
             isError: false, isPencilNotes: true, noteMask: 0, side: 40
         ))
         #expect(emptyLabel.contains("Row 9") && emptyLabel.contains("Column 9") && emptyLabel.contains("Empty"))
-        _ = vm
+        _ = viewModel
     }
 
     // Helper — render a single cell and read its `.accessibilityLabel`

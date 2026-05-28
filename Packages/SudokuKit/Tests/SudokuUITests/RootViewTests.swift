@@ -12,6 +12,7 @@ import Testing
 @testable import SudokuUI
 
 import GameCenterClient
+import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 import MonetizationCore
 import MonetizationTesting
 import Persistence
@@ -88,7 +89,8 @@ struct RootViewTests {
         #expect(viewModel.authState == .unauthenticated)
     }
 
-    @Test func snapshotEmptyStateIPhoneLight() async {
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateIPhoneLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
@@ -106,7 +108,7 @@ struct RootViewTests {
         }
     }
 
-    @Test func snapshotEmptyStateMacLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
@@ -123,4 +125,5 @@ struct RootViewTests {
             assertSnapshot(of: host, as: .image, named: "RootView-Mac-light-empty")
         }
     }
+    #endif
 }

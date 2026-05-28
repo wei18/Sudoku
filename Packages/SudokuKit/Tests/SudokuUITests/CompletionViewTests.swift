@@ -7,6 +7,7 @@ import Testing
 @testable import SudokuUI
 
 import GameCenterClient
+import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 import SudokuKitTesting
 
 @MainActor
@@ -36,7 +37,8 @@ struct CompletionViewTests {
 
     // MARK: - Snapshots (3 PNGs)
 
-    @Test func snapshot_authenticatedLoaded_iPhoneLight() async {
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.loaded(Self.sampleSlice))
         let host = hostingView(
@@ -50,7 +52,7 @@ struct CompletionViewTests {
         }
     }
 
-    @Test func snapshot_unauthenticated_iPhoneLight_zhTW() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_unauthenticated_iPhoneLight_zhTW() async {
         // zh-TW locale variant for hero copy.
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.unauthenticated)
@@ -66,7 +68,7 @@ struct CompletionViewTests {
         }
     }
 
-    @Test func snapshot_fetchFailed_iPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_fetchFailed_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.failed("network offline"))
         let host = hostingView(
@@ -79,6 +81,7 @@ struct CompletionViewTests {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed")
         }
     }
+    #endif
 
     // MARK: - Behavior
 

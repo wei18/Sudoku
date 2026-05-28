@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Sudoku v2 privacy manifest (foundations.md §6, design.md §How.6.3 +
+         §How.8 monetization, docs/v2/plan.md §v2.4.1).
+
+         v2 stance: Sudoku App itself still does not run its own analytics,
+         CRM, or backend. Personal gameplay data still lives in the user's
+         own iCloud Private Database. Game Center submissions are still
+         mediated by Apple's GameKit.
+
+         What changed in v2: AdMob banner ads on Home / Board view, with
+         a 7-day grace period and 1-per-day cap. The Google Mobile Ads SDK
+         performs tracking on our behalf for ad personalization (subject
+         to ATT + UMP consent). We therefore declare:
+
+           - `NSPrivacyTracking = true`
+           - `NSPrivacyTrackingDomains` = AdMob ad-serving domains
+             (per https://developers.google.com/admob/ios/privacy/manifest,
+             snapshot 2026-05-21; review on Google SDK bumps)
+           - `NSPrivacyCollectedDataTypes` = one entry for
+             `OtherUsageData`, not linked, used for tracking,
+             purpose = Third-party advertising
+           - `NSPrivacyAccessedAPITypes` = UserDefaults (CA92.1),
+             which AdMob uses internally
+
+         The "Remove Ads" IAP is handled entirely by Apple StoreKit 2 and
+         does not introduce additional tracking domains or data collection.
+         -->
+    <key>NSPrivacyTracking</key>
+    <true/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array>
+        <string>googleadservices.com</string>
+        <string>googlesyndication.com</string>
+        <string>doubleclick.net</string>
+        <string>google-analytics.com</string>
+        <string>googletagmanager.com</string>
+        <string>googletagservices.com</string>
+        <string>2mdn.net</string>
+        <string>app-measurement.com</string>
+    </array>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherUsageData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

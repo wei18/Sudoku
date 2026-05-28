@@ -43,15 +43,23 @@ struct ToastTests {
 
     @Test func autoDismiss_firesAfterDuration() async throws {
         let controller = ToastController()
-        controller.show(Toast(style: .success, message: "pop", duration: .milliseconds(50)))
+        // Poll for auto-dismiss instead of one-shot wait. Single wall-clock
+        // sleep raced under parallel test load (XCC + local full-suite run);
+        // duration-then-poll is deterministic — we just need the dismiss
+        // Task to fire eventually, not at exactly t=duration.
+        controller.show(Toast(style: .success, message: "pop", duration: .milliseconds(200)))
         #expect(controller.current != nil)
-        try await Task.sleep(for: .milliseconds(200))
+        let deadline = Date().addingTimeInterval(5.0)
+        while controller.current != nil, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
         #expect(controller.current == nil)
     }
 
     // MARK: - Snapshot baselines
 
-    @Test func snapshotSuccessLight() {
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotSuccessLight() {
         let view = ToastView(toast: Toast(style: .success, message: "Ads removed"))
             .frame(width: 320, height: 80)
             .padding()
@@ -61,7 +69,7 @@ struct ToastTests {
         }
     }
 
-    @Test func snapshotFailureLight() {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailureLight() {
         let view = ToastView(toast: Toast(style: .failure, message: "Purchase failed"))
             .frame(width: 320, height: 80)
             .padding()
@@ -70,4 +78,5 @@ struct ToastTests {
             assertSnapshot(of: host, as: .image, named: "ToastView-failure-light")
         }
     }
+    #endif
 }

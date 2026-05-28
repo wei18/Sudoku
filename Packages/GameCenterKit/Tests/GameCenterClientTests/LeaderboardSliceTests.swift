@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import GameCenterClient
-import SudokuKitTesting
+import GameCenterTesting
 
 @Suite("GameCenterClient — leaderboard slice fetch")
 struct LeaderboardSliceTests {

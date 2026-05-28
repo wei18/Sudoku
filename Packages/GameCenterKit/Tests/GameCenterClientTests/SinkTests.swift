@@ -5,7 +5,7 @@ import Persistence
 import GameState
 import SudokuEngine
 import Telemetry
-import SudokuKitTesting
+import GameCenterTesting
 
 @Suite("GameCenterClient — sink")
 struct GameCenterSinkTests {

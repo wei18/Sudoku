@@ -23,6 +23,7 @@
 // `sizeClass` so iPhone fixtures get `.compact` and Mac fixtures stay
 // `.regular`.
 
+#if canImport(AppKit)
 import AppKit
 import Foundation
 import SnapshotTesting
@@ -40,6 +41,15 @@ enum SnapshotLayouts {
 /// subsequent runs diff. Flip to `.all` locally to force re-record.
 enum SnapshotMode {
     static let recordMode: SnapshotTestingConfiguration.Record = .missing
+}
+
+/// Environment detection for snapshot tests. Xcode Cloud's distributed
+/// test runner cannot reliably access baseline PNG resources, so snapshot
+/// tests are gated off there via `.enabled(if: !SnapshotEnv.isXcodeCloud)`.
+/// Set `CI_XCODE_CLOUD=1` in `ci_scripts/ci_pre_xcodebuild.sh` (or any
+/// Xcode Cloud lifecycle script) to activate the skip.
+enum SnapshotEnv {
+    static let isXcodeCloud = ProcessInfo.processInfo.environment["CI_XCODE_CLOUD"] != nil
 }
 
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot.
@@ -74,3 +84,4 @@ func hostingView<V: SwiftUI.View>(
     host.layoutSubtreeIfNeeded()
     return host
 }
+#endif
