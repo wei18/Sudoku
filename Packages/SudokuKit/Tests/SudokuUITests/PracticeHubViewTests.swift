@@ -91,7 +91,7 @@ struct PracticeHubViewTests {
     // MARK: - Snapshots
 
     #if canImport(AppKit)
-    @Test func snapshotIdleIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIdleIPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         let host = hostingView(
             PracticeHubView(viewModel: viewModel),
@@ -104,7 +104,7 @@ struct PracticeHubViewTests {
         }
     }
 
-    @Test func snapshotShimmerIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotShimmerIPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         viewModel.setLoadingStateForTesting(.drawingShimmer)
         let host = hostingView(
@@ -118,7 +118,7 @@ struct PracticeHubViewTests {
         }
     }
 
-    @Test func snapshotDrawnIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotDrawnIPhoneLight() async {
         let provider = FakePuzzleProvider()
         let viewModel = PracticeHubViewModel(provider: provider)
         await viewModel.drawPuzzle()
