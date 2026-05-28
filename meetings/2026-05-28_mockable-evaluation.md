@@ -119,3 +119,45 @@ Replacing 11 working fakes is meaningful churn (file moves, test rewrites, snaps
 - What's the measured build-time hit on this codebase? (would need to spike a single migration to know)
 
 These are answerable in a < 1-day spike when triggers warrant it.
+
+---
+
+## 2026-05-28 Addendum — implementation attempted, DEFER reaffirmed
+
+User overrode the initial DEFER verdict and asked for implementation. **4 dispatch attempts followed; none reached a commit.** Cumulative evidence reinforces — does NOT contradict — the original DEFER verdict.
+
+### Dispatch attempts + outcomes
+
+| # | Scope | Outcome |
+|---|-------|---------|
+| 1 | Full-scope WebFetch eval | Blocked on WebFetch permission (later worked around by using `gh api`) |
+| 2 | Stage 1 spike | **Useful findings**: Swift 6 strict concurrency Verified ✓ on Sendable protocol; build-time cost Measured ✓ (~30s one-time SwiftSyntax + 30% test-cycle overhead). **New blocker**: 6 of 11 fakes record `operations:[Op]` arrays + tests pattern-match captured args — Mockable's `verify(...).called(n)` can't expose captured arg values |
+| 3 | Full Path B re-dispatch | Paused before any commit — surfaced 3 more architectural blockers: `Preview.swift` (Release-build production) uses `FakeAdProvider` + `FakeAdGateStateStore`, but Mockable's `MOCKING` flag is `.debug`-only → Release wouldn't compile. `CompositionTests` has `type(of:).contains("FakeAdProvider")` string-identity check. `FakeShapesTests` tests fake-internal scripting that becomes degenerate under Mockable |
+| 4 | Scoped Path B + Preview refactor | Watchdog killed — stalled 600s+ no progress. Recoverable but signals task complexity exceeded subagent execution budget |
+
+### Leader inline re-inspection of FakeLeaderboardLoader (the previously-flagged "clean simple fake")
+
+Tests assert `let calls = await loader.calls; #expect(calls[0].around == "P50")`. **Same DSL gap**. The `operations`/`calls`-array pattern is not isolated to the "stateful 6" — it's the canonical pattern across most fakes in this codebase.
+
+### What "ADOPT" would look like, accurately
+
+Migrating fakes uniformly would require, per fake:
+- Mockable `@Mockable` on the protocol (adds Mockable + MOCKING gate to production target)
+- Sidecar `actor Captured { var calls: [Call]; ... }` to replace the deleted Fake's `calls` accumulator
+- Rewrite each test assertion site from `await fake.calls[0].around` to `await captured.calls[0].around`
+- For `Preview.swift` consumers: new hand-rolled `PreviewX` stub types (because MOCKING is debug-only)
+
+Net delta vs current state: **the hand-rolled fakes are simpler than the sidecar+mock combo would be**. Mockable's value proposition is "reduce boilerplate" — but the boilerplate here is the `calls` accumulator + helpers, which Mockable doesn't replace (you just rebuild it as a sidecar actor).
+
+### Final verdict: **DEFER reaffirmed** (stronger evidence than initial eval)
+
+Re-trigger conditions (revised):
+1. Mockable ships v1.0+ AND README documents Swift 6 `actor` isolation guarantee
+2. ≥ 3 hand-written fakes ADDED to the codebase where the protocol does NOT have an `operations`/`calls` recording pattern (i.e., pure request-response protocols Mockable's DSL fits cleanly)
+3. The codebase adopts another library that pulls Mockable transitively (consolidation, not addition)
+
+### Artifacts from this attempt
+- 4 worktree branches, all reverted clean: `feat/mockable-full-adoption`, `feat/mockable-stage-b`, etc.
+- Worktree `/Users/zw/GitHub/Wei18/Sudoku-mockable` will be removed at session close
+- Eval PR #193 stays as the source-of-truth doc
+- No production code touched on `main`
