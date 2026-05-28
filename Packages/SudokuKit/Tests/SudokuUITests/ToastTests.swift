@@ -43,11 +43,16 @@ struct ToastTests {
 
     @Test func autoDismiss_firesAfterDuration() async throws {
         let controller = ToastController()
-        // Bumped 50→200ms duration + 200→1000ms wait to absorb CI scheduling
-        // jitter (50ms wall-clock raced on Xcode Cloud iOS runner).
+        // Poll for auto-dismiss instead of one-shot wait. Single wall-clock
+        // sleep raced under parallel test load (XCC + local full-suite run);
+        // duration-then-poll is deterministic — we just need the dismiss
+        // Task to fire eventually, not at exactly t=duration.
         controller.show(Toast(style: .success, message: "pop", duration: .milliseconds(200)))
         #expect(controller.current != nil)
-        try await Task.sleep(for: .milliseconds(1000))
+        let deadline = Date().addingTimeInterval(5.0)
+        while controller.current != nil, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
         #expect(controller.current == nil)
     }
 
