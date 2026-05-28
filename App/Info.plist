@@ -50,6 +50,16 @@
     <true/>
     <key>NSGameKitFriendListUsageDescription</key>
     <string>Sudoku uses your friend list to show your friends’ best times on the daily leaderboard.</string>
+    <!--
+      Required by App Tracking Transparency. The AdMob / UMP consent flow
+      at app launch calls `ATTrackingManager.requestTrackingAuthorization`
+      (see `Packages/AppMonetizationKit/Sources/AdsAdMob/ATTPresenter.swift`).
+      Without this key the OS terminates the process at TCC with:
+      "This app has crashed because it attempted to access privacy-sensitive
+       data without a usage description."
+    -->
+    <key>NSUserTrackingUsageDescription</key>
+    <string>Sudoku uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>
