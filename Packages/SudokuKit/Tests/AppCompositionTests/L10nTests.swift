@@ -53,7 +53,10 @@ struct L10nTests {
         let strings = catalog["strings"] as? [String: Any] ?? [:]
         let errorKeys = strings.keys.filter { $0.hasPrefix("error.") }
         #expect(!errorKeys.isEmpty, "Error vocabulary should have seed entries")
-        let pattern = #"^error\.[a-zA-Z]+\.[a-z_]+\.(title|body|action)$"#
+        // <case> may be snake_case (older keys: `not_authenticated`,
+        // `icloud_unavailable`) OR lowerCamelCase (newer userFacing/* keys:
+        // `gameCenterUnauthenticated`, `iCloudSignedOut`). Both accepted.
+        let pattern = #"^error\.[a-zA-Z]+\.[a-zA-Z_]+\.(title|body|action)$"#
         let regex = try NSRegularExpression(pattern: pattern)
         for key in errorKeys {
             let range = NSRange(key.startIndex..<key.endIndex, in: key)
