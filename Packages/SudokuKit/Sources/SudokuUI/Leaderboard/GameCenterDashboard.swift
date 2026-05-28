@@ -11,13 +11,16 @@
 //     The public `GameCenterViewControllerState.leaderboards` case has no
 //     associated values, so this is the only path for the "open the full
 //     listing" entry point.
-//   - `leaderboardId != nil` → present `GKGameCenterViewController(
+//   - `leaderboardId != nil` (iOS) → present `GKGameCenterViewController(
 //     leaderboardID:playerScope:timeScope:)` modally on the active window.
-//     This is the only GameKit API that accepts a focused leaderboard ID.
+//     This is the only iOS GameKit API that accepts a focused leaderboard ID.
+//   - `leaderboardId != nil` (macOS) → macOS 26 deprecated
+//     `GKGameCenterViewController` and `GKGameCenterControllerDelegate`; the
+//     replacement `GKAccessPoint` state-trigger has no focused-ID variant,
+//     so macOS collapses to the generic leaderboards listing (issue #180).
 //
-// Both paths bottom out in Apple's UIKit/AppKit view controller, so we drop
-// the SwiftUI representable bridge entirely and reach the active
-// UIWindowScene / NSApplication.keyWindow directly.
+// The iOS path bottoms out in UIKit, so we drop the SwiftUI representable
+// bridge entirely and reach the active UIWindowScene directly.
 
 import Foundation
 
@@ -27,10 +30,6 @@ import GameKit
 
 #if canImport(UIKit)
 import UIKit
-#endif
-
-#if canImport(AppKit)
-import AppKit
 #endif
 
 public enum GameCenterDashboard {
@@ -54,6 +53,15 @@ public enum GameCenterDashboard {
     #if canImport(GameKit)
     @MainActor
     private static func presentFocusedDashboard(leaderboardId: String) {
+        // macOS 26 deprecated `GKGameCenterViewController` + its delegate
+        // protocol. The replacement `GKAccessPoint.shared.trigger(state:)`
+        // exposes only `.leaderboards` (no associated leaderboard-ID), so on
+        // macOS the focused-dashboard entry collapses to the generic listing.
+        // iOS has not deprecated the focused API — keep that path intact.
+        #if os(macOS)
+        _ = leaderboardId
+        GKAccessPoint.shared.trigger(state: .leaderboards) { /* dismissed */ }
+        #else
         let controller = GKGameCenterViewController(
             leaderboardID: leaderboardId,
             playerScope: .global,
@@ -65,11 +73,7 @@ public enum GameCenterDashboard {
         #if canImport(UIKit)
         guard let presenter = activeUIPresenter() else { return }
         presenter.present(controller, animated: true)
-        #elseif canImport(AppKit)
-        guard let presenter = NSApplication.shared.keyWindow?.contentViewController
-            ?? NSApplication.shared.mainWindow?.contentViewController
-        else { return }
-        presenter.presentAsSheet(controller)
+        #endif
         #endif
     }
     #endif
@@ -94,7 +98,10 @@ public enum GameCenterDashboard {
     #endif
 }
 
-#if canImport(GameKit)
+// Delegate proxy is iOS-only: macOS 26 deprecated `GKGameCenterControllerDelegate`
+// and the macOS focused-dashboard path now routes through `GKAccessPoint`
+// (see `presentFocusedDashboard` above), which has no delegate seam.
+#if canImport(GameKit) && !os(macOS)
 @MainActor
 private final class GameCenterDashboardDismissProxy: NSObject, @preconcurrency GKGameCenterControllerDelegate {
     static let shared = GameCenterDashboardDismissProxy()
@@ -102,8 +109,6 @@ private final class GameCenterDashboardDismissProxy: NSObject, @preconcurrency G
     func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
         #if canImport(UIKit)
         gameCenterViewController.dismiss(animated: true)
-        #elseif canImport(AppKit)
-        gameCenterViewController.dismiss(nil)
         #endif
     }
 }
