@@ -10,23 +10,21 @@ import Testing
 @Suite("Localizable.xcstrings — en + zh-Hant seed (Phase 9.4)")
 struct L10nTests {
 
-    private static func catalogURL(_ filePath: StaticString = #filePath) -> URL {
-        let path = String(describing: filePath)
-        let testFile = URL(fileURLWithPath: path)
-        let repoRoot = testFile
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        return repoRoot
-            .appendingPathComponent("App")
-            .appendingPathComponent("Resources")
-            .appendingPathComponent("Localizable.xcstrings")
+    private static func catalogURL() throws -> URL {
+        // Resolves to a symlink at `Resources/Localizable.xcstrings`
+        // pointing at `App/Resources/Localizable.xcstrings` (declared as a
+        // test target resource in `Package.swift`). Bundle.module finds it
+        // wherever the test bundle is installed — including Xcode Cloud's
+        // distributed Build/Test split where the source tree isn't on the
+        // test runner.
+        guard let url = Bundle.module.url(forResource: "Localizable.xcstrings", withExtension: "json") else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        return url
     }
 
     private static func decode() throws -> [String: Any] {
-        let data = try Data(contentsOf: catalogURL())
+        let data = try Data(contentsOf: try catalogURL())
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return json ?? [:]
     }
