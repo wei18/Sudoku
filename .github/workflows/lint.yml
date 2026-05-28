@@ -84,6 +84,11 @@ jobs:
             --max-concurrency 4
             ${{ steps.changed.outputs.files }}
           fail: true
+          # A markdown change with zero links is not a failure mode — lychee's
+          # default failIfEmpty=true blocks legit no-link doc edits (e.g.
+          # docs/methodology.md contains no URLs). Only real broken links
+          # should fail the job; absence of links should not.
+          failIfEmpty: false
 
   swift-lint:
     name: SwiftLint (changed files)
