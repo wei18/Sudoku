@@ -59,7 +59,7 @@ struct ToastTests {
     // MARK: - Snapshot baselines
 
     #if canImport(AppKit)
-    @Test func snapshotSuccessLight() {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotSuccessLight() {
         let view = ToastView(toast: Toast(style: .success, message: "Ads removed"))
             .frame(width: 320, height: 80)
             .padding()
@@ -69,7 +69,7 @@ struct ToastTests {
         }
     }
 
-    @Test func snapshotFailureLight() {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailureLight() {
         let view = ToastView(toast: Toast(style: .failure, message: "Purchase failed"))
             .frame(width: 320, height: 80)
             .padding()

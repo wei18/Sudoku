@@ -29,7 +29,7 @@ struct HomeViewTests {
     }
 
     #if canImport(AppKit)
-    @Test func snapshotIPhoneLight() {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() {
         let host = hostingView(
             HomeView(viewModel: HomeViewModel()),
             size: SnapshotLayouts.iPhone,
@@ -41,7 +41,7 @@ struct HomeViewTests {
         }
     }
 
-    @Test func snapshotMacLight() {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLight() {
         let host = hostingView(
             HomeView(viewModel: HomeViewModel()),
             size: SnapshotLayouts.mac,

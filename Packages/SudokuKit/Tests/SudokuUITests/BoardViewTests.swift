@@ -86,7 +86,7 @@ struct BoardViewTests {
     // MARK: - Snapshot matrix (12 PNGs)
 
     #if canImport(AppKit)
-    @Test func snapshotEmpty_iPhone_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -94,7 +94,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotEmpty_iPhone_dark_ja() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_dark_ja() throws {
         // ja locale variant.
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(
@@ -109,7 +109,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotEmpty_Mac_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -117,7 +117,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotEmpty_Mac_dark() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_dark() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -125,7 +125,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotInProgress_iPhone_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPhone_light() throws {
         // Player has entered a few digits, two of them collide.
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
@@ -146,7 +146,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotInProgress_iPhone_dark() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPhone_dark() throws {
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
@@ -160,7 +160,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotInProgress_Mac_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_Mac_light() throws {
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
@@ -174,7 +174,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotInProgress_Mac_dark_ko() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_Mac_dark_ko() throws {
         // ko locale variant.
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
@@ -195,7 +195,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_iPhone_light_zhTW() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_iPhone_light_zhTW() throws {
         // zh-TW locale variant.
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
@@ -214,7 +214,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_iPhone_dark() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_iPhone_dark() throws {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
@@ -226,7 +226,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_Mac_light() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_Mac_light() throws {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
@@ -238,7 +238,7 @@ struct BoardViewTests {
         }
     }
 
-    @Test func snapshotAlmostComplete_Mac_dark() throws {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_Mac_dark() throws {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),

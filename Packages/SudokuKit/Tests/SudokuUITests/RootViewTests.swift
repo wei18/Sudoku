@@ -89,7 +89,7 @@ struct RootViewTests {
     }
 
     #if canImport(AppKit)
-    @Test func snapshotEmptyStateIPhoneLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateIPhoneLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
@@ -107,7 +107,7 @@ struct RootViewTests {
         }
     }
 
-    @Test func snapshotEmptyStateMacLight() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()

@@ -43,6 +43,15 @@ enum SnapshotMode {
     static let recordMode: SnapshotTestingConfiguration.Record = .missing
 }
 
+/// Environment detection for snapshot tests. Xcode Cloud's distributed
+/// test runner cannot reliably access baseline PNG resources, so snapshot
+/// tests are gated off there via `.enabled(if: !SnapshotEnv.isXcodeCloud)`.
+/// Set `CI_XCODE_CLOUD=1` in `ci_scripts/ci_pre_xcodebuild.sh` (or any
+/// Xcode Cloud lifecycle script) to activate the skip.
+enum SnapshotEnv {
+    static let isXcodeCloud = ProcessInfo.processInfo.environment["CI_XCODE_CLOUD"] != nil
+}
+
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot.
 ///
 /// - Parameters:

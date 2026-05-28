@@ -156,7 +156,7 @@ struct SettingsIAPRowTests {
     // MARK: - Snapshot baselines
 
     #if canImport(AppKit)
-    @Test func snapshotIPhoneLightUnpurchased() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightUnpurchased() async {
         let (controller, _, _) = await makeController(
             products: [IAPProduct(
                 id: removeAdsProductId,
@@ -176,7 +176,7 @@ struct SettingsIAPRowTests {
         }
     }
 
-    @Test func snapshotIPhoneLightPurchased() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightPurchased() async {
         let (controller, _, _) = await makeController(purchased: true)
         await controller.bootstrap()
         let view = SettingsView(
