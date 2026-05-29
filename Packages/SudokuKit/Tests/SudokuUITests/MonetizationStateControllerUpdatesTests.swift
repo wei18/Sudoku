@@ -72,18 +72,19 @@ struct MonetizationStateControllerUpdatesTests {
         await iap.emit(.revoked(productId: removeAdsProductId))
 
         await waitFor { controller.hasPurchasedRemoveAds == false }
+        // Toast is populated by a separate MainActor hop after the flag flip —
+        // poll for it before asserting (fix #187). Without this, the assertion
+        // races the toast.show() Task and fails intermittently under parallel
+        // test load (XCC scheduling, surfaced once the scheme's testAction
+        // started exercising this suite in PR #185).
+        await waitFor { toast.current != nil }
         #expect(controller.hasPurchasedRemoveAds == false)
         #expect(controller.latestMessage == .failure(reason: "Purchase revoked"))
         #expect(toast.current?.style == .failure)
         #expect(toast.current?.message == "Purchase revoked")
     }
 
-    // Disabled 2026-05-28 — propagation race between `iap.emit(.purchased)`
-    // and `toast.current` observation under XCC parallel test load; never
-    // ran before PR #185 wired the scheme's testAction (issue #184).
-    // Tracked separately for proper test-deterministic fix.
-    @Test(.disabled("Pre-existing flake; tracked separately"))
-    func purchasedEvent_flipsFlagTrue_andPushesSuccessToast() async {
+    @Test func purchasedEvent_flipsFlagTrue_andPushesSuccessToast() async {
         let (controller, iap, toast) = await make()
         await controller.bootstrap()
         controller.startListeningForLifetimeOfApp()
@@ -93,6 +94,8 @@ struct MonetizationStateControllerUpdatesTests {
         await iap.emit(.purchased(productId: removeAdsProductId))
 
         await waitFor { controller.hasPurchasedRemoveAds == true }
+        // See revokedEvent test for the propagation-race rationale (#187).
+        await waitFor { toast.current != nil }
         #expect(controller.hasPurchasedRemoveAds == true)
         #expect(controller.latestMessage == .adsRemoved)
         #expect(toast.current?.style == .success)
