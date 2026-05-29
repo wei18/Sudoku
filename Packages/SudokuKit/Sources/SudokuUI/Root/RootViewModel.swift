@@ -43,6 +43,22 @@ public final class RootViewModel {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
 
+        // Issue #196: CloudKit zone + subscription provisioning. Must run
+        // before `latestInProgress()` below — fresh iCloud accounts otherwise
+        // hit zoneNotFound (CKError 26) on every read/write. Failures are
+        // funneled through `errorReporter`; bootstrap is idempotent, so a
+        // transient failure (e.g. no iCloud account) will retry next launch
+        // and must not block Root per design.md §How.5.1.
+        do {
+            try await persistence.bootstrap()
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "RootViewModel.bootstrap.persistence"
+            )
+        }
+
         do {
             self.authState = try await gameCenter.authenticate()
         } catch {

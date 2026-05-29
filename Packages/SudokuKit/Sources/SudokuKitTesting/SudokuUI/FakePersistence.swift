@@ -12,6 +12,7 @@ public import SudokuEngine
 public actor FakePersistence: PersistenceProtocol {
 
     public enum Operation: Sendable, Equatable, Hashable {
+        case bootstrap
         case latestInProgress
         case loadOrCreate(puzzleId: String)
         case save(puzzleId: String)
@@ -63,6 +64,19 @@ public actor FakePersistence: PersistenceProtocol {
     }
 
     // MARK: - PersistenceProtocol
+
+    public var bootstrapError: PersistenceError?
+
+    public func setBootstrapError(_ error: PersistenceError?) {
+        self.bootstrapError = error
+    }
+
+    public func bootstrap() async throws {
+        operations.append(.bootstrap)
+        if let error = bootstrapError {
+            throw error
+        }
+    }
 
     public func latestInProgress() async throws -> SavedGameSummary? {
         operations.append(.latestInProgress)

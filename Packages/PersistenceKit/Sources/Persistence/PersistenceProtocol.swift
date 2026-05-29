@@ -14,6 +14,14 @@ public import GameState
 public import SudokuEngine
 
 public protocol PersistenceProtocol: Sendable {
+    /// One-time CloudKit zone provisioning + subscription install. Issue #196:
+    /// must be called from `RootViewModel.bootstrap()` once per app launch
+    /// before any read/write — fresh iCloud accounts otherwise hit
+    /// "Zone Not Found" (CKError 26) on every operation. Implementations are
+    /// idempotent (safe to call multiple times; gateway no-ops after first
+    /// success).
+    func bootstrap() async throws
+
     /// Most-recently-modified `status == "inProgress"` SavedGame across all
     /// modes/difficulties. Used by RootViewModel to show "Resume".
     func latestInProgress() async throws -> SavedGameSummary?

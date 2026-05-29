@@ -41,6 +41,25 @@ private func makeTestRouteFactory() -> LiveRouteFactory {
 @Suite("RootView — bootstrap + snapshots")
 struct RootViewTests {
 
+    // Issue #196: regression — `RootViewModel.bootstrap()` must call
+    // `persistence.bootstrap()` exactly once so the CloudKit zone is
+    // provisioned before any read/write. Without this, fresh iCloud
+    // accounts hit "Zone Not Found" (CKError 26) on every operation.
+    @Test func bootstrapProvisionsPersistenceExactlyOnce() async {
+        let persistence = FakePersistence()
+        let viewModel = RootViewModel(
+            gameCenter: FakeGameCenterClient(),
+            persistence: persistence
+        )
+
+        await viewModel.bootstrap()
+        await viewModel.bootstrap()  // idempotent
+
+        let operations = await persistence.operations
+        let bootstrapCount = operations.filter { $0 == .bootstrap }.count
+        #expect(bootstrapCount == 1)
+    }
+
     @Test func bootstrapCallsAuthenticateExactlyOnce() async {
         let gameCenter = FakeGameCenterClient()
         let persistence = FakePersistence()
