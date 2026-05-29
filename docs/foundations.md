@@ -139,6 +139,17 @@ v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workfl
 | **Main CI** | merge 到 `main` | Build + Archive + **上傳 internal TestFlight**；**不重跑 test**（已由 PR CI 在 pre-merged 狀態驗證）|
 | **Release** | git tag `v*` | Build + 上傳 App Store Connect（手動送審）|
 
+### Scheme 結構：`Sudoku` vs `Sudoku-Workspace`
+
+`tuist generate` 會產出**兩個** scheme，職責互斥：
+
+| Scheme | 來源 | runAction `storeKitConfigurationPath` | testAction | 用途 |
+|---|---|---|---|---|
+| **`Sudoku`** | `Project.swift` 顯式宣告（schemes block）| ✅ wired 到 `App/Resources/Sudoku.storekit` | 透過 `.xctestplan` 包 SPM-package test targets（PR #185） | **日常 Run（Cmd+R）+ PR CI Tests** |
+| `Sudoku-Workspace` | Tuist auto-generated workspace scheme | ❌ 無 | 預設包全部 target | **不要日常 Run** — 點 Cmd+R 會炸 `product not found: com.wei18.sudoku.iap.remove_ads`（StoreKit testing mock 沒掛）|
+
+> **本機開發按 Cmd+R 前，先確認 Xcode 左上角 scheme picker 選的是 `Sudoku`，不是 `Sudoku-Workspace`。** 後者只用來在某些 CI 場景跑整包 test；它沒帶 `.storekit` mock 配置，sim 上 IAP product lookup 一定失敗。
+
 ### 環境鎖定
 
 - **Xcode 26.5**，與本機 `.mise.toml` 鎖同版。
@@ -485,6 +496,7 @@ _自 2026-05-26 起，新 backlog 項目改建 GitHub issue（label `backlog` + 
 | 2026-05-26 | ViewModel interaction tests (no new dep) | [#171](https://github.com/wei18/Sudoku/issues/171) | `testing` |
 | 2026-05-26 | Migrate `docs/` + `meetings/` to GitHub Wiki | [#172](https://github.com/wei18/Sudoku/issues/172) | `documentation` |
 | 2026-05-26 | Evaluate Kolos65/Mockable | [#173](https://github.com/wei18/Sudoku/issues/173) | `testing` |
+| 2026-05-29 | Extend ASC API tooling to drive IAP + app submission metadata (commit-trackable) | [#200](https://github.com/wei18/Sudoku/issues/200) | `tooling` |
 
 ### Resolved / cancelled / superseded（歷史紀錄）
 
