@@ -113,18 +113,17 @@ let productionTargets: [Target] = [
 // IS the shared testing helpers consumed by these test targets.)
 
 func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
-    // Snapshot baselines are read by pointfreeco/swift-snapshot-testing
-    // directly from the source tree via `#filePath`, so they don't need
-    // to be bundled — but SwiftPM's "unhandled file" detection still flags
-    // them. Exclude `__Snapshots__/` from the test target file scan to
-    // keep `swift test` warning-free.
+    // Generic helper for test targets without a `resources:` block.
+    // SudokuUITests + AppCompositionTests are carved out below because they
+    // need explicit `resources:` declarations (issue #188 — bundle snapshot
+    // baselines via Bundle.module so XCC's distributed test runner can find
+    // them at runtime).
     .testTarget(
         name: "\(name)Tests",
         dependencies: dependencies + [
             "SudokuKitTesting",
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ],
-        exclude: name == "SudokuUI" ? ["__Snapshots__"] : [],
         swiftSettings: swiftSettings
     )
 }
@@ -137,9 +136,27 @@ let monetizationTestDeps: [Target.Dependency] = [
 
 let testTargets: [Target] = [
     testTarget("PuzzleStore", dependencies: ["PuzzleStore", telemetryTestingDep]),
-    testTarget(
-        "SudokuUI",
-        dependencies: ["SudokuUI", persistenceDep, gameCenterClientDep, gameCenterTestingDep] + monetizationTestDeps
+    // SudokuUITests carved out of the `testTarget()` helper because it needs
+    // `__Snapshots__/` declared as a bundle resource. PR #185 wired the
+    // Sudoku scheme's testAction via .xctestplan, surfacing that
+    // pointfreeco/swift-snapshot-testing's default `#filePath`-walk fails on
+    // Xcode Cloud: the test runner is on a different machine than the build
+    // + source tree, so the PNG baselines under __Snapshots__/ aren't
+    // reachable. `.copy("__Snapshots__")` bundles them into the .xctest so
+    // `Bundle.module.resourceURL` resolves at runtime, anywhere (see
+    // SnapshotConfig.swift `SnapshotPaths` helper). Closes #188.
+    .testTarget(
+        name: "SudokuUITests",
+        dependencies: [
+            "SudokuUI",
+            "SudokuKitTesting",
+            persistenceDep,
+            gameCenterClientDep,
+            gameCenterTestingDep,
+            .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+        ] + monetizationTestDeps,
+        resources: [.copy("__Snapshots__")],
+        swiftSettings: swiftSettings
     ),
     // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
     // `MonetizationBootCoordinator` directly with recording bridges.

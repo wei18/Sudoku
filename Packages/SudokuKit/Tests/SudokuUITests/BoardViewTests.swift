@@ -109,11 +109,15 @@ struct BoardViewTests {
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_light() throws {
+    // Probe test for #188: gate removed. Uses `assertUISnapshot` so
+    // baselines resolve via `Bundle.module` on Xcode Cloud (where
+    // `#filePath`-walk fails) while keeping the default behavior locally.
+    // Remaining 29 snapshot tests stay gated until XCC turns green.
+    @Test func snapshotEmpty_Mac_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Board-Mac-light-empty")
+            assertUISnapshot(of: host, as: .image, named: "Board-Mac-light-empty")
         }
     }
 

@@ -28,6 +28,7 @@ import AppKit
 import Foundation
 import SnapshotTesting
 import SwiftUI
+import Testing
 
 enum SnapshotLayouts {
     /// iPhone 16 / 15 canonical compact size class.
@@ -44,12 +45,103 @@ enum SnapshotMode {
 }
 
 /// Environment detection for snapshot tests. Xcode Cloud's distributed
-/// test runner cannot reliably access baseline PNG resources, so snapshot
-/// tests are gated off there via `.enabled(if: !SnapshotEnv.isXcodeCloud)`.
+/// test runner cannot reliably access baseline PNG resources via the
+/// library's default `#filePath`-walk (the source tree isn't on the test
+/// machine). Issue #188 fixes that by bundling `__Snapshots__/` as a
+/// test-target resource and resolving via `Bundle.module` at runtime;
+/// see `SnapshotPaths.directory(forTestFile:)` and `assertUISnapshot(...)`.
 /// Set `CI_XCODE_CLOUD=1` in `ci_scripts/ci_pre_xcodebuild.sh` (or any
-/// Xcode Cloud lifecycle script) to activate the skip.
+/// Xcode Cloud lifecycle script) to activate the bundle-based lookup.
 enum SnapshotEnv {
     static let isXcodeCloud = ProcessInfo.processInfo.environment["CI_XCODE_CLOUD"] != nil
+}
+
+/// Resolves the per-test-class snapshot directory for swift-snapshot-testing.
+///
+/// On Xcode Cloud the test runner machine doesn't have the source tree, so
+/// the library's default `<filePath dir>/__Snapshots__/<fileName>` lookup
+/// returns a missing path. With `__Snapshots__/` declared as a test-target
+/// resource in `Package.swift`, `Bundle.module.resourceURL` exposes the
+/// bundled copy. We compute `<resourceURL>/__Snapshots__/<TestClass>` to
+/// match the library's appended-`fileName` convention.
+///
+/// Locally we return `nil` so the library's `#filePath`-walk default kicks
+/// in — preserving `--record` mode's ability to write baselines back into
+/// the source tree at `Tests/SudokuUITests/__Snapshots__/`.
+enum SnapshotPaths {
+    /// - Parameter filePath: pass `#filePath` from the calling test. Used
+    ///   to compute the per-test-class subdirectory (the file's base name
+    ///   sans `.swift`), matching swift-snapshot-testing's default layout.
+    /// - Returns: an absolute path string on Xcode Cloud, or `nil`
+    ///   locally (signalling the caller to omit `snapshotDirectory:` and
+    ///   let the library use its default).
+    static func directory(forTestFile filePath: StaticString = #filePath) -> String? {
+        guard SnapshotEnv.isXcodeCloud else { return nil }
+        guard let resourceURL = Bundle.module.resourceURL else { return nil }
+        let fileURL = URL(fileURLWithPath: "\(filePath)", isDirectory: false)
+        let testClass = fileURL.deletingPathExtension().lastPathComponent
+        return resourceURL
+            .appendingPathComponent("__Snapshots__", isDirectory: true)
+            .appendingPathComponent(testClass, isDirectory: true)
+            .path
+    }
+}
+
+/// Snapshot-assertion wrapper that redirects baseline lookups to
+/// `Bundle.module` on Xcode Cloud while preserving the default
+/// `#filePath`-walk locally (so `--record` mode still writes back to the
+/// source tree).
+///
+/// The public top-level `assertSnapshot(...)` does NOT expose
+/// `snapshotDirectory:` — only the lower-level `verifySnapshot(...)`
+/// does. We mirror what `assertSnapshot` itself does internally (see
+/// `swift-snapshot-testing` `AssertSnapshot.swift:110-142`): call
+/// `verifySnapshot(...)` with our redirected directory, then forward any
+/// failure through `recordIssue(...)`.
+///
+/// Call sites pass `#filePath` implicitly via the default argument, so
+/// switching `assertSnapshot(...)` → `assertUISnapshot(...)` is a
+/// one-token rename.
+@MainActor
+func assertUISnapshot<Value, Format>(
+    of value: @autoclosure () throws -> Value,
+    as snapshotting: Snapshotting<Value, Format>,
+    named name: String? = nil,
+    record: SnapshotTestingConfiguration.Record? = nil,
+    timeout: TimeInterval = 5,
+    fileID: StaticString = #fileID,
+    file filePath: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    let failure = verifySnapshot(
+        of: try value(),
+        as: snapshotting,
+        named: name,
+        record: record,
+        snapshotDirectory: SnapshotPaths.directory(forTestFile: filePath),
+        timeout: timeout,
+        fileID: fileID,
+        file: filePath,
+        testName: testName,
+        line: line,
+        column: column
+    )
+    guard let message = failure else { return }
+    // Mirror swift-snapshot-testing's internal `recordIssue` behavior for
+    // the swift-testing path (the library's `recordIssue` is `@_spi(Internals)`
+    // so not reachable from here without an `@_spi` import). All our tests
+    // are swift-testing — no XCTest path needed.
+    Issue.record(
+        Comment(rawValue: message),
+        sourceLocation: SourceLocation(
+            fileID: "\(fileID)",
+            filePath: "\(filePath)",
+            line: Int(line),
+            column: Int(column)
+        )
+    )
 }
 
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot.
