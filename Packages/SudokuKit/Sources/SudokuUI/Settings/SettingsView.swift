@@ -63,6 +63,14 @@ public struct SettingsView: View {
                 }
             }
         }
+        // `Form` on macOS inside NavigationSplitView's detail pane picks a
+        // per-row layout based on the content primitive (Button → pill,
+        // LabeledContent → 2-column preferences row, no pill background).
+        // `.formStyle(.grouped)` forces grouped/pill treatment uniformly so
+        // Purchases / About / Storage sections all render as full-width pill
+        // rows. iOS Form defaults to grouped in NavigationStack already, so
+        // this is a no-op on iPhone. (Issue #197.)
+        .formStyle(.grouped)
         .navigationTitle("Settings")
         .task { await viewModel.bootstrap() }
         .task {
