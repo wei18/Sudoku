@@ -87,6 +87,30 @@ enum SnapshotPaths {
     }
 }
 
+/// Cross-machine-tolerant image snapshot strategy.
+///
+/// Default `.image` (precision 1.0, perceptualPrecision 1.0) demands
+/// bit-exact pixel equality, which holds locally but fails on Xcode Cloud
+/// because the runner machine renders AppKit text/strokes with slightly
+/// different font hinting, AA thresholds, and ICC profile rounding from
+/// the dev Mac that recorded the baseline. Issue #188 probe (PR #199)
+/// confirmed the baseline is now correctly found on XCC; the residual
+/// failure is rendering drift.
+///
+/// Calibration:
+/// - `precision: 0.99` — at least 99% of pixels must match exactly
+/// - `perceptualPrecision: 0.98` — the remaining ≤1% can differ by up
+///   to ~2% in HSL perception space
+///
+/// Tune in this file (single source of truth) if cross-machine drift
+/// grows; do NOT pass overrides at call sites — a per-test threshold
+/// hides regressions from view-level changes that should fail every test.
+extension Snapshotting where Value == NSView, Format == NSImage {
+    static var tolerantImage: Snapshotting<NSView, NSImage> {
+        .image(precision: 0.99, perceptualPrecision: 0.98)
+    }
+}
+
 /// Snapshot-assertion wrapper that redirects baseline lookups to
 /// `Bundle.module` on Xcode Cloud while preserving the default
 /// `#filePath`-walk locally (so `--record` mode still writes back to the
