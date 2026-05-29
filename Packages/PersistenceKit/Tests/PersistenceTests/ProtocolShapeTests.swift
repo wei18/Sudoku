@@ -71,6 +71,7 @@ private func assertProtocolShape<T: PersistenceProtocol>(_ persistence: T) async
 /// Throwaway impl whose only purpose is to prove the protocol is satisfiable
 /// without depending on CloudKit at all.
 private struct DummyPersistence: PersistenceProtocol {
+    func bootstrap() async throws {}
     func latestInProgress() async throws -> SavedGameSummary? { nil }
     func loadOrCreate(
         puzzleId: String,

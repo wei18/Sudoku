@@ -150,6 +150,7 @@ private actor StubPersistence: PersistenceProtocol {
         )
     }
 
+    func bootstrap() async throws {}
     func latestInProgress() async throws -> SavedGameSummary? { nil }
     func loadOrCreate(puzzleId: String, mode: Mode, difficulty: Difficulty) async throws -> GameSessionSnapshot {
         throw PersistenceError.zoneNotProvisioned
