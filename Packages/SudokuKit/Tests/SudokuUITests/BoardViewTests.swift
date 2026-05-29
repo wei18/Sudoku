@@ -109,12 +109,14 @@ struct BoardViewTests {
         }
     }
 
-    // Probe test for #188: gate removed. Uses `assertUISnapshot` (Bundle.module
-    // baseline lookup on XCC) + `.tolerantImage` (cross-machine pixel-drift
-    // tolerance). Initial probe found the baseline correctly but failed pixel
-    // comparison — XCC's macOS runner and dev Mac render with subtle differences.
-    // Remaining 29 snapshot tests stay gated until this configuration goes green.
-    @Test func snapshotEmpty_Mac_light() throws {
+    // Probe for #188 was re-gated 2026-05-29 after 3 XCC rounds (1.0/1.0,
+    // 0.99/0.98, 0.95/0.95) all failed with cross-machine pixel drift.
+    // Decision: snapshot tests stay gated off on XCC for now — coverage
+    // continues via local `swift test` on dev Mac. The infrastructure
+    // (Bundle.module baseline lookup + `.tolerantImage` + `assertUISnapshot`)
+    // remains wired so any future re-engagement (e.g. text-tree strategy,
+    // XCC-recorded baselines) starts from a working base.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
