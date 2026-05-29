@@ -1,0 +1,3 @@
+[submodule ".claude/skills/superpowers"]
+	path = .claude/skills/superpowers
+	url = https://github.com/obra/superpowers.git
