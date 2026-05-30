@@ -98,6 +98,10 @@ internal struct LiveUMPBridge: UMPBridge {
     }
 
     internal func loadAndPresentConsentFormIfRequired() async throws {
+        return try await loadAndPresentIfRequired()
+    }
+
+    @MainActor func loadAndPresentIfRequired () async throws {
         #if canImport(UserMessagingPlatform)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             ConsentForm.loadAndPresentIfRequired(from: nil) { error in
