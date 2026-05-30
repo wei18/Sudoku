@@ -8,7 +8,7 @@
 // so `RootView.init` stays at two arguments (viewModel + routeFactory)
 // regardless of how many collaborators the destination views ultimately need.
 //
-// §設計決定: `view(for:) -> AnyView`
+// §設計決定: `view(for:path:) -> AnyView`
 //   AnyView pays a small SwiftUI diff cost (identity-via-AnyView erasure) but
 //   keeps the protocol non-generic so we can store it as `any RouteFactory`
 //   in `AppComposition` and `RootView`. The alternative — an associated-type
@@ -27,8 +27,24 @@ public import Telemetry
 // MARK: - RouteFactory
 
 public protocol RouteFactory: Sendable {
+    /// - Parameter path: optional binding to the host `NavigationStack`'s
+    ///   path so destination view-models that drive further pushes
+    ///   (`DailyHubViewModel`, `PracticeHubViewModel`) write into the same
+    ///   array the stack observes. `nil` falls back to a local stub array
+    ///   so tests / previews can call this without wiring a binding.
+    ///   Issue #197: prior signature dropped the binding entirely, leaving
+    ///   Daily / Practice cards as no-op taps on macOS detail-pane scope.
     @MainActor
-    func view(for route: AppRoute) -> AnyView
+    func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView
+}
+
+extension RouteFactory {
+    /// Test / preview convenience — call sites that don't need to drive a
+    /// real navigation stack can omit the binding.
+    @MainActor
+    public func view(for route: AppRoute) -> AnyView {
+        view(for: route, path: nil)
+    }
 }
 
 // MARK: - LiveRouteFactory
@@ -83,7 +99,7 @@ public struct LiveRouteFactory: RouteFactory {
     }
 
     @MainActor
-    public func view(for route: AppRoute) -> AnyView {
+    public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
         case .home:
             // `.home` is never pushed (root content renders HomeView). Keep
@@ -96,14 +112,15 @@ public struct LiveRouteFactory: RouteFactory {
                     viewModel: DailyHubViewModel(
                         provider: puzzleProvider,
                         persistence: persistence,
-                        errorReporter: errorReporter
+                        errorReporter: errorReporter,
+                        path: path
                     )
                 )
             )
         case .practice:
             return AnyView(
                 PracticeHubView(
-                    viewModel: PracticeHubViewModel(provider: puzzleProvider)
+                    viewModel: PracticeHubViewModel(provider: puzzleProvider, path: path)
                 )
             )
         case .board(let puzzleId):

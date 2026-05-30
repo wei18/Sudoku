@@ -53,7 +53,19 @@ public struct RootView: View {
             path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
             sidebar: { sidebarPlaceholder },
             content: { rootContent },
-            destination: { route in routeFactory.view(for: route) }
+            // Destination VMs (Daily/Practice) are intentionally re-constructed
+            // per push: state that must outlive the push lives in
+            // `RootViewModel.path` + Persistence, NOT in the destination VM. The
+            // path binding is threaded in so the VMs' navigation actions land in
+            // the same path the outer NavigationStack observes. (Issue #197/#199
+            // follow-up — without this, Daily/Practice taps were silently
+            // mutating disconnected internal paths.)
+            destination: { route in
+                routeFactory.view(
+                    for: route,
+                    path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
+                )
+            }
         )
         .task { await viewModel.bootstrap() }
         .toastOverlay(toastController)

@@ -66,7 +66,17 @@ public struct PracticeHubView: View {
             hintRow
 
             Button {
-                Task { await viewModel.drawPuzzle() }
+                // Single-tap: draw then push the board route. `playTapped`
+                // guards on `.drawn`, so a `.failed` draw leaves the user on
+                // the hub with the failure hint instead of pushing into a
+                // half-loaded board (see `hintRow` `.failed` branch for the
+                // visible affordance on draw failure). Issue #197: previously
+                // only `drawPuzzle` was called, leaving the puzzle id displayed
+                // inline with no affordance to navigate.
+                Task {
+                    await viewModel.drawPuzzle()
+                    viewModel.playTapped()
+                }
             } label: {
                 Label("Draw new puzzle", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)

@@ -41,25 +41,26 @@ public struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent {
-                    Text(viewModel.appVersion).foregroundStyle(.secondary)
-                } label: {
-                    Label("Version", systemImage: "info.circle")
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent {
-                    Text(generatorLabel).foregroundStyle(.secondary)
-                } label: {
-                    Label("Generator", systemImage: "gearshape")
-                        .foregroundStyle(.secondary)
-                }
+                // Issue #197: unify with Purchases section's HStack primitive
+                // so `.formStyle(.grouped)` on macOS renders all rows as
+                // full-width pills. `LabeledContent` lands on a 2-column
+                // preferences layout that bypasses the pill background.
+                AboutRow(systemImage: "info.circle", title: "Version", value: viewModel.appVersion)
+                AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
             }
 
             Section("Storage") {
                 Button(role: .destructive) {
                     showClearCacheConfirmation = true
                 } label: {
-                    Label("Clear cache", systemImage: "trash")
+                    // HStack + Spacer stretches the label content so the
+                    // grouped Form gives this row the same full-width pill
+                    // treatment as the Purchases section's button rows
+                    // (issue #197).
+                    HStack {
+                        Label("Clear cache", systemImage: "trash")
+                        Spacer()
+                    }
                 }
             }
         }
@@ -143,6 +144,29 @@ struct AdsRemovedRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ads removed. Active.")
+    }
+}
+
+/// Static About row matching the icon-left / label / spacer / value-right
+/// shape of `RemoveAdsRow` so `.formStyle(.grouped)` renders both sections
+/// with the same full-width pill background on macOS (issue #197).
+struct AboutRow: View {
+    let systemImage: String
+    let title: LocalizedStringKey
+    let value: String
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        HStack {
+            Image(systemName: systemImage)
+                .foregroundStyle(theme.accent.primary.resolved)
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 

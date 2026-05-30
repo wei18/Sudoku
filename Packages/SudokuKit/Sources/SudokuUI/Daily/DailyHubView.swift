@@ -117,6 +117,14 @@ struct DailyPuzzleCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // `.buttonStyle(.plain)` on macOS shrinks the hit area to the
+        // opaque rendered content (Text + Circle + MiniBoardStrip), so
+        // taps on the padding / glass-effect surround silently miss.
+        // `.contentShape(Rectangle())` makes the entire card frame
+        // tap-hittable. Must come BEFORE `.glassEffect(...)` so the glass
+        // material's own hit-test doesn't override us — mirrors HomeView's
+        // working ModeCard / RemoveAdsCard ordering (issue #15 / #197).
+        .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

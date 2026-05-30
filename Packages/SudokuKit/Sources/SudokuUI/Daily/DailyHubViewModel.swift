@@ -5,6 +5,7 @@
 // daily puzzleIds from Persistence; merges them into 3 `DailyCard` rows.
 
 public import Foundation
+public import SwiftUI
 public import PuzzleStore
 public import Persistence
 public import SudokuEngine
@@ -30,7 +31,30 @@ public enum DailyHubState: Sendable, Equatable {
 @Observable
 public final class DailyHubViewModel {
     public private(set) var state: DailyHubState = .idle
-    public var path: [AppRoute] = []
+
+    /// Private fallback storage used only when no external binding is
+    /// supplied (previews / unit tests). When `RouteFactory` hoists
+    /// `RootViewModel.path` and passes a `Binding` via `init(path:)`,
+    /// this stays empty and `path` reads/writes through `externalPath`
+    /// instead. Mirrors `HomeViewModel`'s pattern (issue #197).
+    private var localPath: [AppRoute] = []
+
+    @ObservationIgnored
+    private let externalPath: Binding<[AppRoute]>?
+
+    /// Single public view of the navigation path. Routes to the external
+    /// binding when one was injected; otherwise falls back to the local
+    /// stub array.
+    public var path: [AppRoute] {
+        get { externalPath?.wrappedValue ?? localPath }
+        set {
+            if let externalPath {
+                externalPath.wrappedValue = newValue
+            } else {
+                localPath = newValue
+            }
+        }
+    }
 
     private let provider: any PuzzleProviderProtocol
     private let persistence: any PersistenceProtocol
@@ -44,12 +68,14 @@ public final class DailyHubViewModel {
         provider: any PuzzleProviderProtocol,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        dateProvider: @escaping @Sendable () -> Date = { Date() }
+        dateProvider: @escaping @Sendable () -> Date = { Date() },
+        path: Binding<[AppRoute]>? = nil
     ) {
         self.provider = provider
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.dateProvider = dateProvider
+        self.externalPath = path
     }
 
     public func bootstrap() async {
