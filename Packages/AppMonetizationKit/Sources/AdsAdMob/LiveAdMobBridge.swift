@@ -125,7 +125,7 @@ internal final class LiveAdMobBridge: AdMobBridge {
                         guard let self else { return }
                         // Drop the delegate retain so it (and the continuation
                         // capture chain) can deallocate.
-                        self.inFlightDelegates.withLock { set in
+                        _ = self.inFlightDelegates.withLock { set in
                             // Identity-based removal — `BannerLoadDelegate: NSObject` so `Set.remove(_:)`
                             // uses NSObject identity hashing (`hash` + `isEqual:`).
                             set.remove(result.delegate)
@@ -138,7 +138,7 @@ internal final class LiveAdMobBridge: AdMobBridge {
                         }
                     }
                     delegateHolder.withLock { $0 = delegate }
-                    inFlightDelegates.withLock { $0.insert(delegate) }
+                    _ = inFlightDelegates.withLock { $0.insert(delegate) }
                     Task { @MainActor in
                         bannerView.delegate = delegate
                         bannerView.load(Request())
@@ -152,13 +152,13 @@ internal final class LiveAdMobBridge: AdMobBridge {
                 // we just need to drop the `BannerView` from `liveBanners`.
                 let delegate = delegateHolder.withLock { $0 }
                 delegate?.cancel()
-                self.liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+                _ = self.liveBanners.withLock { $0.removeValue(forKey: handle.id) }
             }
             setCachedStatus(.loaded(handle))
             return handle
         } catch {
             // Release the view we never got a successful load for.
-            liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+            _ = liveBanners.withLock { $0.removeValue(forKey: handle.id) }
             let reason = String(describing: error)
             setCachedStatus(.failed(reason: reason))
             throw AdMobBridgeError.loadFailed(reason: reason)
@@ -210,7 +210,7 @@ internal final class LiveAdMobBridge: AdMobBridge {
 internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecked Sendable {
     internal struct CompletionResult {
         let delegate: BannerLoadDelegate
-        let outcome: Result<Void, Error>
+        let outcome: Result<Void, any Error>
     }
 
     private let hasResumed = OSAllocatedUnfairLock<Bool>(initialState: false)
@@ -220,7 +220,7 @@ internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecke
         self.onComplete = onComplete
     }
 
-    private func resumeOnce(_ outcome: Result<Void, Error>) {
+    private func resumeOnce(_ outcome: Result<Void, any Error>) {
         let shouldFire = hasResumed.withLock { fired -> Bool in
             guard !fired else { return false }
             fired = true
@@ -234,7 +234,7 @@ internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecke
         resumeOnce(.success(()))
     }
 
-    internal func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+    internal func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: any Error) {
         resumeOnce(.failure(error))
     }
 
