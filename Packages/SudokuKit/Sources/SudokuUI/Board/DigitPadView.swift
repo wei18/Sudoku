@@ -2,16 +2,16 @@
 //
 // Per docs/designs/05-board.md. Two layouts:
 //
-//   • iPhone (compact size class): existing single-row 1×9 digit strip,
-//     control row above (undo / redo / Notes toggle), Erase button below.
+//   • iPhone (compact size class): unified secondary-action row
+//     (Undo / Redo / Notes / Erase, icon-only, 4 × 44pt) sits BETWEEN
+//     the board and the 1×9 digit strip (#210, 2026-05-30).
 //   • Mac (regular size class): vertical right rail — history row, Notes
 //     toggle (button-styled), 3×3 digit `Grid`, Erase row. The board
 //     itself is laid out by BoardView; this view just owns the controls.
 //
-// Buttons are ≥ 44 pt tall for touch / pointer comfort. The "pencil.slash"
-// icon was retired 2026-05-30 (board-mac-redesign): a single "pencil"
-// icon now carries the Notes-mode state via tint, matching iPad / Mac
-// keyboard-input conventions.
+// Buttons are ≥ 44 pt tall for touch / pointer comfort. A single "pencil"
+// icon carries the Notes-mode state via tint, matching iPad / Mac
+// keyboard-input conventions (board-mac-redesign, 2026-05-30).
 
 import SwiftUI
 
@@ -42,30 +42,28 @@ struct DigitPadView: View {
         VStack(spacing: 12) {
             compactControlRow
             digitRow
-            HStack {
-                Spacer()
-                Button(action: onErase) {
-                    Label("Erase", systemImage: "delete.left")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                Spacer()
-            }
         }
         .padding(.horizontal, 16)
     }
 
+    // Unified secondary-action row (#210): Undo · Redo · Notes · Erase,
+    // icon-only, distributed across the digit-strip width with 44pt minimum
+    // tap targets per HIG. Erase rightmost = right-thumb resting zone.
     private var compactControlRow: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 0) {
             Button(action: onUndo) {
                 Image(systemName: "arrow.uturn.backward")
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .frame(minWidth: 44, minHeight: 44)
             .disabled(!canUndo)
             .accessibilityLabel("Undo")
 
             Button(action: onRedo) {
                 Image(systemName: "arrow.uturn.forward")
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .frame(minWidth: 44, minHeight: 44)
             .disabled(!canRedo)
             .accessibilityLabel("Redo")
 
@@ -74,10 +72,19 @@ struct DigitPadView: View {
                     .foregroundStyle(pencilMode
                         ? theme.accent.primary.resolved
                         : theme.text.primary.resolved)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("Notes")
             .accessibilityValue(pencilMode ? "On" : "Off")
             .accessibilityAddTraits(.isToggle)
+
+            Button(action: onErase) {
+                Image(systemName: "delete.left")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel("Erase")
         }
         .font(.title2)
     }
