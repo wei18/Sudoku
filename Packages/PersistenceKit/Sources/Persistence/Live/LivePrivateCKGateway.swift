@@ -78,17 +78,28 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
     func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
         let (recordType, nsPredicate) = Self.translate(predicate)
         let query = CKQuery(recordType: recordType, predicate: nsPredicate)
-        let (matches, _) = try await database.records(matching: query, inZoneWith: zoneID)
-        var results: [RecordPayload] = []
-        for (_, result) in matches {
-            switch result {
-            case .success(let record):
-                results.append(Self.payload(from: record))
-            case .failure:
-                continue
+        do {
+            let (matches, _) = try await database.records(matching: query, inZoneWith: zoneID)
+            var results: [RecordPayload] = []
+            for (_, result) in matches {
+                switch result {
+                case .success(let record):
+                    results.append(Self.payload(from: record))
+                case .failure:
+                    continue
+                }
             }
+            return results
+        } catch let ckError as CKError where ckError.code == .unknownItem {
+            // CloudKit returns `.unknownItem` ("Did not find record type: …")
+            // when the schema hasn't been written to yet — happens on fresh
+            // containers + on Production until the schema is deployed via
+            // CloudKit Dashboard. Semantically equivalent to "no records of
+            // this type yet"; return empty so callers don't false-fail on
+            // pre-first-write reads. Mirrors `fetch(recordName:)`'s same
+            // `.unknownItem → nil` translation a few lines above.
+            return []
         }
-        return results
     }
 
     // MARK: - Error translation
