@@ -6,6 +6,7 @@
 // switch to ProgressView but the generator p95 is already < 300 ms.
 
 public import Foundation
+public import SwiftUI
 public import PuzzleStore
 public import SudokuEngine
 
@@ -24,17 +25,42 @@ public enum PracticeHubLoadingState: Sendable, Equatable {
 public final class PracticeHubViewModel {
     public var difficulty: Difficulty = .medium
     public private(set) var loadingState: PracticeHubLoadingState = .idle
-    public var path: [AppRoute] = []
+
+    /// Private fallback storage used only when no external binding is
+    /// supplied (previews / unit tests). When `RouteFactory` hoists
+    /// `RootViewModel.path` and passes a `Binding` via `init(path:)`,
+    /// this stays empty and `path` reads/writes through `externalPath`
+    /// instead. Mirrors `HomeViewModel`'s pattern (issue #197).
+    private var localPath: [AppRoute] = []
+
+    @ObservationIgnored
+    private let externalPath: Binding<[AppRoute]>?
+
+    /// Single public view of the navigation path. Routes to the external
+    /// binding when one was injected; otherwise falls back to the local
+    /// stub array.
+    public var path: [AppRoute] {
+        get { externalPath?.wrappedValue ?? localPath }
+        set {
+            if let externalPath {
+                externalPath.wrappedValue = newValue
+            } else {
+                localPath = newValue
+            }
+        }
+    }
 
     private let provider: any PuzzleProviderProtocol
     private let shimmerDelayNanos: UInt64
 
     public init(
         provider: any PuzzleProviderProtocol,
-        shimmerDelayNanos: UInt64 = 100_000_000  // 100 ms
+        shimmerDelayNanos: UInt64 = 100_000_000,  // 100 ms
+        path: Binding<[AppRoute]>? = nil
     ) {
         self.provider = provider
         self.shimmerDelayNanos = shimmerDelayNanos
+        self.externalPath = path
     }
 
     /// Internal flip used by the >100 ms shimmer task so tests can assert
