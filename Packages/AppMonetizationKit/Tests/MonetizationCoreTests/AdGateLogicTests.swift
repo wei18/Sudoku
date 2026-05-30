@@ -292,10 +292,15 @@ struct AdGateLogicTests {
         )
         await gate.recordBannerDismissed(now: days(10, after: firstLaunch))
 
-        // Drain any pending sink work.
-        await Task.yield()
-        // Some platforms need a brief hop for the detached `Task` above.
-        try? await Task.sleep(nanoseconds: 10_000_000)
+        // The `onPersistenceError` closure spawns a detached `Task` to record
+        // the error on the sink actor. The previous `yield` + 10ms sleep was
+        // not deterministic under XCC parallel test load (issue #206 — same
+        // shape as #187's toast-propagation race). Poll for completion up to
+        // 500ms so the detached Task always has time to land.
+        let deadline = ContinuousClock.now + .milliseconds(500)
+        while await sink.captured.isEmpty, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
 
         let captured = await sink.captured
         #expect(captured.count == 1)
@@ -361,3 +366,4 @@ struct AdGateLogicTests {
         #expect(await gate.shouldShowBanner(now: queryAt) == false)
     }
 }
+// swiftlint:enable identifier_name
