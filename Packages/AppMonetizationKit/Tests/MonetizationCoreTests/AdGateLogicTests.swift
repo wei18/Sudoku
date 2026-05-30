@@ -366,3 +366,4 @@ struct AdGateLogicTests {
         #expect(await gate.shouldShowBanner(now: queryAt) == false)
     }
 }
+// swiftlint:enable identifier_name
