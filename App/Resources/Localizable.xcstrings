@@ -189,13 +189,12 @@
         }
       }
     },
-    "Clear" : {
-      "extractionState" : "stale",
+    "Erase" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear"
+            "value" : "Erase"
           }
         },
         "es" : {
@@ -207,7 +206,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クリア"
+            "value" : "消去"
           }
         },
         "ko" : {
@@ -219,19 +218,19 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ล้าง"
+            "value" : "ลบ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除"
+            "value" : "擦除"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除"
+            "value" : "擦除"
           }
         }
       }
@@ -1882,19 +1881,18 @@
         }
       }
     },
-    "Pencil" : {
-      "extractionState" : "stale",
+    "Notes" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pencil"
+            "value" : "Notes"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lápiz"
+            "value" : "Notas"
           }
         },
         "ja" : {
@@ -1912,19 +1910,19 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ดินสอ"
+            "value" : "บันทึก"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "铅笔"
+            "value" : "笔记"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "鉛筆"
+            "value" : "筆記"
           }
         }
       }

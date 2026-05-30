@@ -10,6 +10,12 @@
 // Snapshot tests bypass the live session via `setStateForTesting(...)` so
 // they can render deterministic boards without spinning up generators.
 
+// swiftlint:disable file_length
+// 432 lines vs 400 limit. The class is cohesive (one in-flight game session,
+// all mutation handlers + state-machine + debounced save live together by
+// design). Splitting would push private state across files and hurt
+// readability. Tracked for proper refactor in a follow-up backlog issue.
+
 public import Foundation
 public import GameState
 public import Persistence
@@ -183,6 +189,34 @@ public final class GameViewModel {
             } catch {
                 assertionFailure("preview fixture wiring bug: \(error)")
             }
+            recomputeErrors()
+        }
+        scheduleSave()
+    }
+
+    /// Erase the currently-selected cell — clears digit AND notes in one
+    /// gesture. The digit clear participates in undo; the notes clear does
+    /// not (see meetings/2026-05-30_board-mac-redesign.impl-notes.md §偏離).
+    /// No-op if no cell is selected or the cell is a given.
+    public func eraseCell() async {
+        guard let selection else { return }
+        let index = Board.index(row: selection.row, column: selection.column)
+        if board.givenMask[index] { return }
+
+        if let session {
+            await runSession("eraseCell") {
+                try await session.clearDigit(row: selection.row, col: selection.column)
+                try await session.clearNotes(row: selection.row, col: selection.column)
+            }
+            await resyncFromSession()
+        } else {
+            // Preview / test path.
+            do {
+                try board.setDigit(nil, atRow: selection.row, column: selection.column)
+            } catch {
+                assertionFailure("preview fixture wiring bug: \(error)")
+            }
+            notes.clear(row: selection.row, col: selection.column)
             recomputeErrors()
         }
         scheduleSave()
@@ -402,3 +436,4 @@ public struct GridCoordinate: Sendable, Equatable, Hashable {
         self.column = column
     }
 }
+// swiftlint:enable file_length

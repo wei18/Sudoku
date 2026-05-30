@@ -27,6 +27,26 @@ public struct BoardView: View {
     }
 
     public var body: some View {
+        Group {
+            if sizeClass == .regular {
+                macLayout
+            } else {
+                compactLayout
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.surface.background.resolved)
+        .focusable()
+        .focused($keyboardFocus)
+        .onAppear { keyboardFocus = true }
+        .onKeyPress(phases: .down, action: handleKeyPress)
+        .background(undoRedoShortcuts)
+    }
+
+    // MARK: - Compact (iPhone) layout
+
+    private var compactLayout: some View {
         VStack(spacing: 16) {
             header
             boardWithOverlay
@@ -38,25 +58,52 @@ public struct BoardView: View {
             if !viewModel.isPaused, let adProvider, let adGate {
                 BannerSlotView(adProvider: adProvider, adGate: adGate)
             }
-            DigitPadView(
-                pencilMode: viewModel.pencilMode,
-                canUndo: viewModel.canUndo,
-                canRedo: viewModel.canRedo,
-                onDigit: { digit in Task { await placeOrToggle(digit) } },
-                onClear: { Task { await viewModel.placeDigit(nil) } },
-                onTogglePencil: { viewModel.togglePencil() },
-                onUndo: { Task { await viewModel.undo() } },
-                onRedo: { Task { await viewModel.redo() } }
-            )
+            digitPad
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.surface.background.resolved)
-        .focusable()
-        .focused($keyboardFocus)
-        .onAppear { keyboardFocus = true }
-        .onKeyPress(phases: .down, action: handleKeyPress)
-        .background(undoRedoShortcuts)
+    }
+
+    // MARK: - Mac (regular) 2-column layout
+    //
+    // Per docs/designs/05-board.md §b Mac wireframe (locked 2026-05-30):
+    //   - outer maxWidth 960 pt, centered
+    //   - left: 9×9 board (capped to ≤ 640 pt square)
+    //   - right: 260 pt control rail (history / Notes / 3×3 digit / Erase)
+    //   - 24 pt gap between board and rail
+    private var macLayout: some View {
+        VStack(spacing: 16) {
+            header
+            HStack(alignment: .top, spacing: 24) {
+                macBoardColumn
+                digitPad
+            }
+            // Pause-time banner suppression preserved on Mac too.
+            if !viewModel.isPaused, let adProvider, let adGate {
+                BannerSlotView(adProvider: adProvider, adGate: adGate)
+            }
+        }
+        .frame(maxWidth: 960)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 16)  // additive to outer .padding(16) → ≥ 32 pt
+    }
+
+    private var macBoardColumn: some View {
+        boardWithOverlay
+            .frame(maxWidth: 640, maxHeight: 640)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var digitPad: some View {
+        DigitPadView(
+            pencilMode: viewModel.pencilMode,
+            canUndo: viewModel.canUndo,
+            canRedo: viewModel.canRedo,
+            sizeClass: sizeClass,
+            onDigit: { digit in Task { await placeOrToggle(digit) } },
+            onErase: { Task { await viewModel.eraseCell() } },
+            onTogglePencil: { viewModel.togglePencil() },
+            onUndo: { Task { await viewModel.undo() } },
+            onRedo: { Task { await viewModel.redo() } }
+        )
     }
 
     // MARK: - Layout
@@ -80,7 +127,16 @@ public struct BoardView: View {
                     }
                 }
             } label: {
-                Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                if sizeClass == .regular {
+                    // Mac: icon + text label per board-mac-redesign wireframe.
+                    Label(
+                        viewModel.isPaused ? "Resume" : "Pause",
+                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
+                    )
+                } else {
+                    // iPhone: icon-only for header compactness.
+                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                }
             }
             .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
         }
