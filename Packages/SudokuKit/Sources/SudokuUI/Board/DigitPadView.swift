@@ -194,4 +194,3 @@ struct DigitPadView: View {
         .accessibilityLabel("Erase")
     }
 }
-

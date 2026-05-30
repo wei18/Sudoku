@@ -10,6 +10,12 @@
 // Snapshot tests bypass the live session via `setStateForTesting(...)` so
 // they can render deterministic boards without spinning up generators.
 
+// swiftlint:disable file_length
+// 432 lines vs 400 limit. The class is cohesive (one in-flight game session,
+// all mutation handlers + state-machine + debounced save live together by
+// design). Splitting would push private state across files and hurt
+// readability. Tracked for proper refactor in a follow-up backlog issue.
+
 public import Foundation
 public import GameState
 public import Persistence
@@ -430,3 +436,4 @@ public struct GridCoordinate: Sendable, Equatable, Hashable {
         self.column = column
     }
 }
+// swiftlint:enable file_length
