@@ -25,15 +25,19 @@ struct HomeViewBannerTests {
     private struct ScriptedRefreshError: Error {}
 
     /// Build an AdGate seeded so that `shouldShowBanner(now:)` returns the
-    /// requested boolean. We feed `now == Date()` from the slot, so:
-    ///   - `allow == false` → use a fresh grace-period firstLaunchAt (now).
+    /// requested boolean.
+    ///   - `allow == false` → seed `hasPurchasedRemoveAds = true` (rule #1).
+    ///     Cannot lean on grace-period denial because #212 zeroed
+    ///     `gracePeriodDays` for TestFlight visibility; purchase-driven
+    ///     denial is purely state-driven and stays robust whether grace
+    ///     returns to 7 or stays at 0.
     ///   - `allow == true`  → backdate firstLaunchAt 30 days; no dismiss today.
     private func makeAdGate(allow: Bool) -> AdGate {
-        let firstLaunch: Date = allow
-            ? Date().addingTimeInterval(-30 * 86_400)
-            : Date()
         let store = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: firstLaunch)
+            initial: AdGateState(
+                firstLaunchAt: Date().addingTimeInterval(-30 * 86_400),
+                hasPurchasedRemoveAds: !allow
+            )
         )
         return AdGate(store: store)
     }

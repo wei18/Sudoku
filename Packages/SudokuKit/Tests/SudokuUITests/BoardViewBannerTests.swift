@@ -1,3 +1,6 @@
+// swiftlint:disable identifier_name
+// `vm` is the file-local shorthand for `viewModel` in setup helpers below;
+// pre-existing convention scoped to this test file.
 // BoardViewBannerTests — v2.3.5 banner wiring on BoardView.
 //
 // Two behaviors:
@@ -43,11 +46,17 @@ struct BoardViewBannerTests {
     }
 
     private func makeAdGate(allow: Bool) -> AdGate {
-        let firstLaunch: Date = allow
-            ? Date().addingTimeInterval(-30 * 86_400)
-            : Date()
+        // `allow == true` → 30 days post-launch, not purchased.
+        // `allow == false` → purchased (rule #1 in `shouldShowBanner`); we
+        // can't lean on grace-period denial since #212 zeroed
+        // `gracePeriodDays` for TestFlight visibility. Purchase-driven
+        // denial is purely state-driven so this stays robust whether
+        // grace returns to 7 or stays at 0.
         let store = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: firstLaunch)
+            initial: AdGateState(
+                firstLaunchAt: Date().addingTimeInterval(-30 * 86_400),
+                hasPurchasedRemoveAds: !allow
+            )
         )
         return AdGate(store: store)
     }
@@ -78,3 +87,4 @@ struct BoardViewBannerTests {
         _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
     }
 }
+// swiftlint:enable identifier_name
