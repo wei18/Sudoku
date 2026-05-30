@@ -121,13 +121,19 @@ public actor AdGate {
 
     // MARK: Queries
 
+    /// First-launch grace period during which the banner is suppressed.
+    /// **Production target = 7 days** (per `docs/v2/design.md` rule #6).
+    /// Currently **0** for TestFlight / dogfood visibility — restore to 7
+    /// before the v2.5 App Store submission. See issue #212.
+    public static let gracePeriodDays: TimeInterval = 0
+
     public func shouldShowBanner(now: Date) async -> Bool {
         do {
             let state = try await currentState()
             // 1. Purchased → permanently suppressed.
             if state.hasPurchasedRemoveAds { return false }
-            // 2. Grace period (first 7 days from first launch).
-            let graceEnd = state.firstLaunchAt.addingTimeInterval(7 * 86_400)
+            // 2. Grace period from first launch (see `gracePeriodDays`).
+            let graceEnd = state.firstLaunchAt.addingTimeInterval(AdGate.gracePeriodDays * 86_400)
             if now < graceEnd { return false }
             // 3. Dismissed today → suppressed for the rest of the day.
             if let dismissed = state.dismissedDate,

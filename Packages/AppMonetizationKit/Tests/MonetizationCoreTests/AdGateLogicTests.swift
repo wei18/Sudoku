@@ -42,25 +42,34 @@ struct AdGateLogicTests {
 
     // MARK: Grace period
 
-    @Test func day0SuppressesDuringGrace() async {
+    // Grace-period boundary tests are disabled while `AdGate.gracePeriodDays`
+    // is 0 (TestFlight / dogfood banner visibility — see issue #212). When
+    // the constant is restored to 7 for the v2.5 App Store submission,
+    // re-enable these four tests as-is. They assert the 7-day grace
+    // boundary, which has no meaningful behavior at gracePeriodDays == 0.
+    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
+    func day0SuppressesDuringGrace() async {
         let (gate, _) = await freshGate()
         let shown = await gate.shouldShowBanner(now: firstLaunch)
         #expect(shown == false)
     }
 
-    @Test func day6StillInGrace() async {
+    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
+    func day6StillInGrace() async {
         let (gate, _) = await freshGate()
         let shown = await gate.shouldShowBanner(now: days(6, after: firstLaunch))
         #expect(shown == false)
     }
 
-    @Test func day7BoundaryReleasesGrace() async {
+    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
+    func day7BoundaryReleasesGrace() async {
         let (gate, _) = await freshGate()
         let shown = await gate.shouldShowBanner(now: days(7, after: firstLaunch))
         #expect(shown == true)
     }
 
-    @Test func justBeforeDay7BoundaryStillInGrace() async {
+    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
+    func justBeforeDay7BoundaryStillInGrace() async {
         let (gate, _) = await freshGate()
         // 6 days 23:59:59 — one second short of the 7-day boundary.
         let nearBoundary = firstLaunch.addingTimeInterval(7 * 86_400 - 1)
