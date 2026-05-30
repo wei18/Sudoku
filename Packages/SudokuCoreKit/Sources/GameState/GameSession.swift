@@ -187,6 +187,27 @@ public actor GameSession {
         // impl-notes §未決 (out of scope for the BLOCKER PR).
     }
 
+    /// Clear all pencil notes in (row, col). Fire-and-forget — NOT enrolled
+    /// in the undo stack. Used by the "Erase" cell affordance to wipe a
+    /// cell's notes alongside its digit; the digit clear participates in
+    /// undo via `clearDigit`, but adding notes to undo would require a
+    /// `Move.clearDigit` schema bump (SavedGame Codable migration). See
+    /// meetings/2026-05-30_board-mac-redesign.impl-notes.md §偏離.
+    public func clearNotes(row: Int, col: Int) async throws {
+        guard status == .playing else {
+            throw GameSessionError.invalidStateForAction(status: status)
+        }
+        guard (0..<Board.dimension).contains(row),
+              (0..<Board.dimension).contains(col) else {
+            throw GameSessionError.outOfRange
+        }
+        let index = Board.index(row: row, column: col)
+        if currentBoard.givenMask[index] {
+            throw GameSessionError.cellImmutable(row: row, col: col)
+        }
+        notes.clear(row: row, col: col)
+    }
+
     /// Toggle a pencil note (1...9) in a non-clue cell.
     public func toggleNote(row: Int, col: Int, digit: Int) async throws {
         guard status == .playing else {
