@@ -1,3 +1,6 @@
+// swiftlint:disable identifier_name
+// `vm` is the file-local shorthand for `viewModel` in setup helpers below;
+// pre-existing convention scoped to this test file.
 // BoardViewBannerTests — v2.3.5 banner wiring on BoardView.
 //
 // Two behaviors:
@@ -84,3 +87,4 @@ struct BoardViewBannerTests {
         _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
     }
 }
+// swiftlint:enable identifier_name
