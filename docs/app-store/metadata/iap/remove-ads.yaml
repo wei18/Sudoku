@@ -1,0 +1,103 @@
+# App Store Connect IAP metadata — Remove Ads
+#
+# Product ID: com.wei18.sudoku.iap.remove_ads
+# Apple ID:   6772925351
+# Type:       Non-Consumable (one-time purchase)
+# Price:      USD 2.99 tier
+# Family Sharing: enabled
+#
+# Per-locale IAP localization. ASC field limits:
+#   - name        : 30 chars
+#   - description : 45 chars
+#
+# Sources:
+#   - en, zh-Hant: author-written (already seeded in App/Resources/Sudoku.storekit)
+#   - ja, zh-Hans, es, th, ko: AI-translated per `ai-translated-localization`
+#     skill convention (no honorific particles in ja; no ครับ/ค่ะ in th;
+#     해요체 mid-formality in ko; neutral LATAM Spanish; zh-Hans is
+#     term-level translation not character-conversion).
+#
+# Future tooling (issue #200): this file is intended as the source-of-truth
+# config that an extended ASCRegister IAP-localization apply step consumes.
+# Until that ships, paste each locale block into ASC web UI manually.
+
+product_id: com.wei18.sudoku.iap.remove_ads
+reference_name: Remove Ads
+
+localizations:
+  en-US:
+    name: "Remove Ads"
+    description: "Permanently remove banner ads in Sudoku."
+
+  zh-Hant:
+    name: "移除廣告"
+    description: "永久移除 Sudoku 中的橫幅廣告。"
+
+  ja:
+    name: "広告を非表示"
+    description: "Sudokuのバナー広告を完全に非表示にします。"
+
+  zh-Hans:
+    name: "移除广告"
+    description: "永久移除 Sudoku 中的横幅广告。"
+
+  es-ES:
+    name: "Quitar anuncios"
+    description: "Quita los banners de anuncios de Sudoku para siempre."
+
+  th:
+    name: "ลบโฆษณา"
+    description: "ลบโฆษณาแบนเนอร์ใน Sudoku อย่างถาวร"
+
+  ko:
+    name: "광고 제거"
+    description: "Sudoku의 배너 광고를 영구히 제거해요."
+
+# ── App Review notes ──────────────────────────────────────────────────────
+# Visible to App Review team only. English convention; describe how to
+# trigger the purchase + what the reviewer should observe.
+review_notes: |
+  This is a non-consumable IAP that permanently removes banner ads in
+  the Sudoku app.
+
+  How to test:
+  1. Launch the app. A banner ad placeholder appears at the bottom of
+     the Home screen and inside Daily / Practice flows.
+  2. Tap the "Remove Ads" row on the Home screen (the 5th item, below
+     Settings) OR open Settings → Remove Ads row.
+  3. Confirm the StoreKit purchase sheet with a sandbox tester account.
+  4. After successful purchase, the banner ad disappears across all
+     screens. The "Remove Ads" row hides; a "Restore Purchases" row
+     remains in Settings for users restoring on a new device.
+
+  Edge cases handled:
+  - Purchase deferred / Ask to Buy: app shows "in-flight" indicator,
+    completes when Apple resolves the transaction.
+  - Restore on a new device: tap "Restore Purchases" in Settings;
+    the entitlement is re-applied automatically.
+  - Refund / family-share revocation: entitlement is removed and ads
+    return on the next app launch.
+
+  No external services other than Apple's StoreKit are involved in the
+  IAP flow.
+
+# ── Pricing schedule ─────────────────────────────────────────────────────
+# ASC requires explicit price tier selection. Tier may shift with Apple
+# price tier reforms; canonical value is what's saved in ASC.
+pricing:
+  tier: "USD 2.99"
+  family_sharing: true
+  cleared_for_sale: true
+  all_countries: true
+
+# ── Screenshot ───────────────────────────────────────────────────────────
+# App Review requires one Review Screenshot per IAP showing where the
+# product is offered in-app. User-owned: run the app, capture the Home
+# screen with the "Remove Ads" row visible (iPhone 6.5" — 1284 × 2778 or
+# 1242 × 2688 per current ASC spec). Save to:
+#   docs/app-store/metadata/iap/remove-ads/review-screenshot.png
+# (path is git-tracked once the file lands)
+screenshot:
+  required_size: "1290 × 2796 (iPhone 6.9") or 1242 × 2688 (iPhone 6.5")"
+  expected_path: docs/app-store/metadata/iap/remove-ads/review-screenshot.png
+  status: pending-user-capture
