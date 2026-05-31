@@ -14,9 +14,11 @@ import Testing
 struct PrivacyManifestTests {
 
     private static func manifestURL() throws -> URL {
-        // Bundle.module resolves the symlinked `Resources/PrivacyInfo.xcprivacy`
-        // declared in Package.swift testTarget resources. Works on Xcode Cloud
-        // where the source tree isn't on the test runner machine.
+        // Bundle.module resolves the literal copy at
+        // `Resources/PrivacyInfo.xcprivacy` (declared in Package.swift testTarget
+        // resources; kept in sync with the App target's source-of-truth
+        // manifest). Works on Xcode Cloud where the source tree isn't on the
+        // test runner machine.
         guard let url = Bundle.module.url(forResource: "PrivacyInfo", withExtension: "xcprivacy") else {
             throw CocoaError(.fileReadNoSuchFile)
         }

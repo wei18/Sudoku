@@ -15,8 +15,10 @@ struct L10nCompletenessTests {
     ]
 
     private static func catalogURL() throws -> URL {
-        // Bundle.module resolves symlinked `Resources/Localizable.xcstrings`
-        // (declared in Package.swift testTarget resources). Works on
+        // Bundle.module resolves the literal copy at
+        // `Resources/Localizable.xcstrings.json` (declared in Package.swift
+        // testTarget resources; kept in sync with the App target's
+        // source-of-truth catalog). Works on
         // Xcode Cloud where the source tree isn't on the test runner.
         guard let url = Bundle.module.url(forResource: "Localizable.xcstrings", withExtension: "json") else {
             throw CocoaError(.fileReadNoSuchFile)

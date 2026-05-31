@@ -167,7 +167,9 @@ let testTargets: [Target] = [
     // `#filePath`-walk to read Sudoku/Resources/* — that works locally but on
     // Xcode Cloud the test runner is on a different machine than the build
     // and source tree, so the files aren't there at runtime. Bundling the
-    // two source files as test resources via symlinks under Resources/ lets
+    // two source files as test resources (literal copies under Resources/,
+    // with `.xcstrings` renamed to `.json` so the xcstrings compiler skips
+    // them — see the `resources:` block below) lets
     // Bundle.module.url(forResource:) find them at runtime, anywhere.
     .testTarget(
         name: "AppCompositionTests",

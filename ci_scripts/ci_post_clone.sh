@@ -34,7 +34,7 @@ EOF
 fi
 
 # 3.2) Generate Xcode workspace via Tuist. Tuist symlinks
-#      Sudoku.xcworkspace/xcshareddata/swiftpm/Package.resolved →
+#      Game.xcworkspace/xcshareddata/swiftpm/Package.resolved →
 #      committed `.package.resolved` at repo root (#105), so xcodebuild's
 #      internal package resolution succeeds without a -resolvePackageDependencies
 #      pre-step.

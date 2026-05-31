@@ -3,7 +3,7 @@
 iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
 
 - 規格層：[`docs/`](docs/)、[`meetings/`](meetings/)、[`.claude/skills/`](.claude/skills/)。
-- 實作層：`App/`（薄殼，只含 `@main` + DI composition root）與 `Packages/`（4 個本地 SPM package，見下）。
+- 實作層：`Sudoku/`（薄殼，只含 `@main` + DI composition root）與 `Packages/`（4 個本地 SPM package，見下）。
 
 > 2026-05-17 起，原本規劃的 sibling `Sudoku/` repo 已合併進本 repo。理由：作為 portfolio，單一可閱讀單元優於跨 repo 跳轉。
 
@@ -25,7 +25,7 @@ iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
 ## 模組結構
 
 ```
-App/                              # 薄殼：@main + DI composition root
+Sudoku/                           # 薄殼：@main + DI composition root
 Packages/
 ├── SudokuCoreKit/                # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植 Android）
 ├── TelemetryKit/                 # Logger + Tracking 抽象 + TelemetryTesting fixtures
@@ -48,7 +48,7 @@ Packages/
 - **lefthook** — pre-commit hooks（gitleaks、hygiene、swiftlint）
 - **Xcode Cloud** — v1 主 CI 軌；PR / Main / Release 三 workflow
 - **GitHub Actions** — Phase 1 advisory（`.github/workflows/lint.yml` 三 job：pr-metadata / docs-link-check / swift-lint）
-- **Tuist** — 從 `Project.swift` 產生 `App/Sudoku.xcodeproj`
+- **Tuist** — 從 `Project.swift` 產生 `Game.xcodeproj`（Sudoku target + 未來 Minesweeper target 共 umbrella）
 
 ## 安全姿態：公開 repo
 
