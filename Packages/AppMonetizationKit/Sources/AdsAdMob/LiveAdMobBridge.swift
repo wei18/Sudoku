@@ -89,9 +89,10 @@ internal final class LiveAdMobBridge: AdMobBridge {
             return view
         }
 
-        // TODO(v2.5.x): dispose(handle:) accessor to clear liveBanners
-        // once the caller is done with the view. Current behavior intentionally
-        // retains the BannerView for the handle's lifetime (impl-notes D3).
+        // NOTE (#221): a future `dispose(handle:)` accessor will clear
+        // liveBanners once the caller is done with the view. Current behaviour
+        // intentionally retains the BannerView for the handle's lifetime
+        // (impl-notes D3).
         liveBanners.withLock { $0[handle.id] = bannerView }
 
         // Holder lets the cancellation handler reach the per-load delegate that
