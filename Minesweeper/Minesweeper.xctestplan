@@ -1,0 +1,28 @@
+{
+  "configurations" : [
+    {
+      "id" : "B8F2E1D0-1234-4567-89AB-CDEF01234567",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "Minesweeper",
+      "name" : "Minesweeper"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/MinesweeperCoreKit",
+        "identifier" : "MinesweeperEngineTests",
+        "name" : "MinesweeperEngineTests"
+      }
+    }
+  ],
+  "version" : 1
+}
