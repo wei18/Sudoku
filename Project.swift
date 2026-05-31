@@ -14,7 +14,8 @@ import ProjectDescription
 // foundations.md §1: Swift 6 language mode + complete concurrency checking.
 // foundations.md §2: App target is thin — depends on the local SwiftPM package
 // `Packages/SudokuKit` (entry product: `SudokuUI`). Real code lives in the package.
-// plan.md §1.4: bundle id `com.wei18.sudoku`, iOS 26 + macOS 26.
+// App targets: see per-target definitions below for bundle ids. Both
+// targets ship iOS 26 + macOS 26.
 
 let swiftSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",
@@ -71,6 +72,32 @@ let sudokuTarget = Target.target(
     settings: .settings(base: appTargetSettings)
 )
 
+// Minesweeper app target — PR D skeleton. Mirrors `sudokuTarget`'s shape with
+// per-app values: bundleId `com.wei18.minesweeper`, source/resource paths
+// under `Minesweeper/`, entitlements with the separate iCloud container
+// `iCloud.com.wei18.minesweeper`. Only depends on the local MinesweeperKit
+// products today — monetization wiring (banner / IAP) lands in follow-up.
+let minesweeperTarget = Target.target(
+    name: "Minesweeper",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .app,
+    bundleId: "com.wei18.minesweeper",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    infoPlist: .file(path: "Minesweeper/Info.plist"),
+    sources: ["Minesweeper/**/*.swift"],
+    resources: [
+        "Minesweeper/Assets.xcassets",
+        "Minesweeper/Resources/PrivacyInfo.xcprivacy",
+        "Minesweeper/Resources/Localizable.xcstrings",
+    ],
+    entitlements: .file(path: "Minesweeper/Minesweeper.entitlements"),
+    dependencies: [
+        .package(product: "MinesweeperUI"),
+        .package(product: "MinesweeperAppComposition"),
+    ],
+    settings: .settings(base: appTargetSettings)
+)
+
 let project = Project(
     name: "Game",
     options: .options(
@@ -80,6 +107,7 @@ let project = Project(
     packages: [
         .local(path: "Packages/SudokuKit"),
         .local(path: "Packages/AppMonetizationKit"),
+        .local(path: "Packages/MinesweeperKit"),
     ],
     settings: .settings(
         base: swiftSettings,
@@ -88,7 +116,7 @@ let project = Project(
             .release(name: "Release", xcconfig: "Tuist/Signing.xcconfig"),
         ]
     ),
-    targets: [sudokuTarget],
+    targets: [sudokuTarget, minesweeperTarget],
     schemes: [
         .scheme(
             name: "Sudoku",
@@ -106,6 +134,16 @@ let project = Project(
                 options: .options(
                     storeKitConfigurationPath: .relativeToManifest("Sudoku/Resources/Sudoku.storekit")
                 )
+            )
+        ),
+        .scheme(
+            name: "Minesweeper",
+            shared: true,
+            buildAction: .buildAction(targets: ["Minesweeper"]),
+            testAction: .testPlans(["Minesweeper/Minesweeper.xctestplan"]),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "Minesweeper"
             )
         ),
     ]
