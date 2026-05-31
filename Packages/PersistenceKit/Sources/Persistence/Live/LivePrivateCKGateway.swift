@@ -20,16 +20,18 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     private let container: CKContainer
     private let database: CKDatabase
+    private let config: PrivateCKConfig
     internal let zoneID: CKRecordZone.ID
 
     private var zoneProvisioned: Bool = false
     private var subscriptionInstalled: Bool = false
 
-    init(container: CKContainer = .default()) {
+    init(config: PrivateCKConfig, container: CKContainer = .default()) {
         self.container = container
         self.database = container.privateCloudDatabase
+        self.config = config
         self.zoneID = CKRecordZone.ID(
-            zoneName: PrivateCKConstants.zoneName,
+            zoneName: config.zoneName,
             ownerName: CKCurrentUserDefaultName
         )
     }
@@ -43,7 +45,7 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     func installSubscriptionIfNeeded() async throws {
         guard !subscriptionInstalled else { return }
-        let subscription = CKDatabaseSubscription(subscriptionID: PrivateCKConstants.subscriptionID)
+        let subscription = CKDatabaseSubscription(subscriptionID: config.subscriptionID)
         let notificationInfo = CKSubscription.NotificationInfo()
         notificationInfo.shouldSendContentAvailable = true
         subscription.notificationInfo = notificationInfo

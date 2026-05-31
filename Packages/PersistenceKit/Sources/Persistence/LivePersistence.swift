@@ -21,6 +21,10 @@ public actor LivePersistence: PersistenceProtocol {
 
     private let telemetry: Telemetry
     private let puzzleLoader: PuzzleLoader
+    // `nonisolated` so the `monetizationStateStore()` factory below can
+    // read it without hopping into the actor. Safe — `PrivateCKConfig` is
+    // an immutable `Sendable` value.
+    private nonisolated let ckConfig: PrivateCKConfig
 
     // Lazy: `CKContainer.default()` traps when invoked outside a properly
     // configured app bundle (entitlements + container id). Deferring
@@ -33,15 +37,17 @@ public actor LivePersistence: PersistenceProtocol {
 
     public init(
         telemetry: Telemetry,
+        ckConfig: PrivateCKConfig,
         puzzleLoader: @escaping PuzzleLoader
     ) {
         self.telemetry = telemetry
+        self.ckConfig = ckConfig
         self.puzzleLoader = puzzleLoader
     }
 
     private func gateway() -> LivePrivateCKGateway {
         if let existing = _gateway { return existing }
-        let gateway = LivePrivateCKGateway()
+        let gateway = LivePrivateCKGateway(config: ckConfig)
         _gateway = gateway
         return gateway
     }
@@ -138,14 +144,15 @@ public actor LivePersistence: PersistenceProtocol {
     /// `LiveMonetizationStateStore` whose own lazy provider does the
     /// CloudKit hop on first IO — symmetric to other store factories above.
     public nonisolated func monetizationStateStore() -> LiveMonetizationStateStore {
-        LiveMonetizationStateStore(
+        let config = ckConfig
+        return LiveMonetizationStateStore(
             gatewayProvider: {
                 // Fresh gateway per store — observationally identical to
                 // routing through actor `self.gateway()` (lazy CKContainer
                 // construction is the only state to share, and CK's
                 // identity-on-container guarantees idempotent zone /
                 // subscription install).
-                LivePrivateCKGateway()
+                LivePrivateCKGateway(config: config)
             }
         )
     }
