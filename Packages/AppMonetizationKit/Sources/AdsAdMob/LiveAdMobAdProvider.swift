@@ -18,8 +18,12 @@ public actor LiveAdMobAdProvider: AdProvider {
 
     /// Production init. Wires `LiveAdMobBridge` — the only path that touches
     /// the Google Mobile Ads SDK.
-    public init() {
-        self.bridge = LiveAdMobBridge()
+    ///
+    /// - Parameter bannerAdUnitID: AdMob banner unit ID. Per-app — chosen by
+    ///   `AppComposition.Live` so the package can host multiple apps in the
+    ///   same workspace without baking Sudoku-specific IDs into the binary.
+    public init(bannerAdUnitID: String) {
+        self.bridge = LiveAdMobBridge(bannerAdUnitID: bannerAdUnitID)
     }
 
     /// Test-only init. Inject a `FakeAdMobBridge` (in `AdsAdMobTests`) to drive

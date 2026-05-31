@@ -10,33 +10,6 @@ internal import GoogleMobileAds
 internal import UIKit
 #endif
 
-// MARK: - Ad unit IDs
-//
-// v2.5.2 ships with Google's universal TEST banner ad unit so real-device
-// verification cannot serve production creatives. v2.5.3 (user-owned, just
-// before ASC submission) swaps to the production ad unit ID. The
-// `GADApplicationIdentifier` in `App/Info.plist` follows the same DEBUG vs
-// production swap point — both flip together; see
-// `docs/v2/v2.5-readiness.md §v2.5.3`.
-//
-// `#if DEBUG` over Info.plist read: keeps the ID local to the one file that
-// already isolates Google SDK concerns (foundations.md §9.1), and matches the
-// "single grep target for the swap" property the readiness doc relies on.
-
-#if DEBUG
-private let bannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google test
-#else
-// v2.5.3 swap site: replace this with the production ad unit ID once
-// `GADApplicationIdentifier` in `App/Info.plist` is also swapped to the
-// production app ID. See `docs/v2/v2.5-readiness.md §v2.5.3` paired-flip
-// checklist. The `fatalError` is intentional — any Release build that
-// reaches this site before the v2.5.3 swap fails loudly at first ad load
-// rather than silently serving an empty/test placeholder.
-private var bannerAdUnitID: String {
-    fatalError("REPLACE_IN_v2.5.3: production AdMob banner ad unit ID not wired — see docs/v2/v2.5-readiness.md §v2.5.3")
-}
-#endif
-
 // MARK: - LiveAdMobBridge
 //
 // The single permitted `import GoogleMobileAds` site inside AdsAdMob — see
@@ -49,6 +22,14 @@ private var bannerAdUnitID: String {
 // neither knows nor cares — it only sees the `AdMobBridge` protocol surface.
 
 internal final class LiveAdMobBridge: AdMobBridge {
+    // AdMob banner ad unit ID. Per-app — `AppComposition.Live` selects the
+    // value (DEBUG: Google universal test unit; Release: the app's production
+    // unit from AdMob console) so this package can serve multiple apps in
+    // the same workspace without baking Sudoku-specific IDs into the binary.
+    // The `GADApplicationIdentifier` in each app's `Info.plist` follows the
+    // same DEBUG ↔ Release swap point.
+    private let bannerAdUnitID: String
+
     // `OSAllocatedUnfairLock` is the Swift 6 strict-concurrency-safe equivalent
     // of `NSLock` — its `withLock` overloads are `nonisolated` and callable
     // from async contexts, unlike `NSLock.lock()` which is restricted.
@@ -68,7 +49,9 @@ internal final class LiveAdMobBridge: AdMobBridge {
     private let inFlightDelegates = OSAllocatedUnfairLock<Set<BannerLoadDelegate>>(initialState: [])
     #endif
 
-    internal init() {}
+    internal init(bannerAdUnitID: String) {
+        self.bannerAdUnitID = bannerAdUnitID
+    }
 
     // MARK: AdMobBridge
 
@@ -106,9 +89,10 @@ internal final class LiveAdMobBridge: AdMobBridge {
             return view
         }
 
-        // TODO(v2.5.x): dispose(handle:) accessor to clear liveBanners
-        // once the caller is done with the view. Current behavior intentionally
-        // retains the BannerView for the handle's lifetime (impl-notes D3).
+        // NOTE (#221): a future `dispose(handle:)` accessor will clear
+        // liveBanners once the caller is done with the view. Current behaviour
+        // intentionally retains the BannerView for the handle's lifetime
+        // (impl-notes D3).
         liveBanners.withLock { $0[handle.id] = bannerView }
 
         // Holder lets the cancellation handler reach the per-load delegate that
