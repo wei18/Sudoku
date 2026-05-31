@@ -23,7 +23,8 @@ struct ZoneProvisioningTests {
         #expect(ops.filter { $0 == .modifyRecordZones }.count == 1)
     }
 
-    @Test func zoneNameConstantMatchesDesign() {
-        #expect(PrivateCKConstants.zoneName == "com.wei18.sudoku.userZone")
+    @Test func sudokuConfigMatchesDesign() {
+        #expect(PrivateCKConfig.sudoku.zoneName == "com.wei18.sudoku.userZone")
+        #expect(PrivateCKConfig.sudoku.subscriptionID == "com.wei18.sudoku.userZone.changes")
     }
 }

@@ -66,10 +66,38 @@ public protocol PrivateCKGateway: Sendable {
 
 // MARK: - Constants
 
+/// CloudKit record-type names — shared across apps that link this package.
+/// Each app keeps its own CKContainer (and thus its own physical database),
+/// so reusing these type names across containers does not collide. Only the
+/// per-app zone / subscription identifiers vary (see `PrivateCKConfig`).
 public enum PrivateCKConstants {
-    public static let zoneName = "com.wei18.sudoku.userZone"
-    public static let subscriptionID = "com.wei18.sudoku.userZone.changes"
     public static let savedGameRecordType = "SavedGame"
     public static let personalRecordRecordType = "PersonalRecord"
     public static let monetizationStateRecordType = "MonetizationState"
+}
+
+// MARK: - Config
+
+/// Per-app CloudKit identifiers. Passed in at `LivePersistence` /
+/// `LivePrivateCKGateway` construction so the package can be linked by
+/// multiple apps in the same workspace (Sudoku + Minesweeper) without
+/// the zone / subscription names colliding across their respective
+/// CKContainers.
+public struct PrivateCKConfig: Sendable, Equatable {
+    public let zoneName: String
+    public let subscriptionID: String
+
+    public init(zoneName: String, subscriptionID: String) {
+        self.zoneName = zoneName
+        self.subscriptionID = subscriptionID
+    }
+}
+
+extension PrivateCKConfig {
+    /// Identifiers used by the Sudoku app since v1.0. DO NOT reuse these in
+    /// another app — each app must own its zone / subscription namespace.
+    public static let sudoku = PrivateCKConfig(
+        zoneName: "com.wei18.sudoku.userZone",
+        subscriptionID: "com.wei18.sudoku.userZone.changes"
+    )
 }

@@ -47,6 +47,7 @@ extension AppComposition {
         // stored puzzleId (no Puzzle blob in CloudKit).
         let persistence = LivePersistence(
             telemetry: telemetry,
+            ckConfig: .sudoku,
             puzzleLoader: { puzzleId in
                 try await puzzleStore.puzzle(for: puzzleId)
             }
