@@ -14,7 +14,7 @@ swiftlint                       = "0.57"
 xcbeautify                      = "2"
 "aqua:gitleaks/gitleaks"        = "8.30.1"   # foundations.md §7.5 requires ≥ 8.18
 "aqua:evilmartians/lefthook"    = "1"
-"aqua:tuist/tuist"              = "4"        # generates App/Sudoku.xcodeproj from Project.swift (Phase 1.4)
+"aqua:tuist/tuist"              = "4"        # generates Game.xcodeproj from Project.swift (Phase 1.4)
 
 # LicensePlist — generates Settings.bundle/Acknowledgements page from the
 # SwiftPM dep graph (per `license_plist.yml`). Invoked from Xcode Cloud

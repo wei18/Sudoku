@@ -4,7 +4,7 @@
 // tracking: NSPrivacyTracking=true, 8 tracking domains, OtherUsageData
 // collection (Tracking=true, ThirdPartyAdvertising purpose), and the
 // UserDefaults Required Reason API (CA92.1). The manifest lives next to
-// the App target (`App/Resources/PrivacyInfo.xcprivacy`) — we navigate
+// the App target (`Sudoku/Resources/PrivacyInfo.xcprivacy`) — we navigate
 // up from the test source file's path to read it.
 
 import Foundation

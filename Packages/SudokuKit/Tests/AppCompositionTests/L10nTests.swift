@@ -12,7 +12,7 @@ struct L10nTests {
 
     private static func catalogURL() throws -> URL {
         // Resolves to a symlink at `Resources/Localizable.xcstrings`
-        // pointing at `App/Resources/Localizable.xcstrings` (declared as a
+        // pointing at `Sudoku/Resources/Localizable.xcstrings` (declared as a
         // test target resource in `Package.swift`). Bundle.module finds it
         // wherever the test bundle is installed — including Xcode Cloud's
         // distributed Build/Test split where the source tree isn't on the

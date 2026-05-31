@@ -1,10 +1,15 @@
 import ProjectDescription
 
-// MARK: - Sudoku App project (Phase 1.4)
+// MARK: - Game project (multi-target umbrella)
 //
-// Source of truth for `App/Sudoku.xcodeproj`. Regenerate after edits with:
+// Source of truth for `Game.xcodeproj` (generated at repo root). Regenerate
+// after edits with:
 //
 //     mise exec aqua:tuist/tuist -- tuist generate
+//
+// The project name is `Game` so a future second app (Minesweeper — see
+// `meetings/2026-05-31_minesweeper-rfc.md`) can join as a sibling target
+// under the same umbrella rather than guest in a project named after Sudoku.
 //
 // foundations.md §1: Swift 6 language mode + complete concurrency checking.
 // foundations.md §2: App target is thin — depends on the local SwiftPM package
@@ -38,20 +43,20 @@ let sudokuTarget = Target.target(
     product: .app,
     bundleId: "com.wei18.sudoku",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    infoPlist: .file(path: "App/Info.plist"),
-    sources: ["App/**/*.swift"],
+    infoPlist: .file(path: "Sudoku/Info.plist"),
+    sources: ["Sudoku/**/*.swift"],
     resources: [
-        "App/Assets.xcassets",
-        "App/Resources/PrivacyInfo.xcprivacy",
-        "App/Resources/Localizable.xcstrings",
+        "Sudoku/Assets.xcassets",
+        "Sudoku/Resources/PrivacyInfo.xcprivacy",
+        "Sudoku/Resources/Localizable.xcstrings",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `license_plist.yml`. Regenerated on every
         // Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not committed
         // (.gitignore'd). Glob pattern so Tuist doesn't require the directory
         // to exist at `tuist generate` time on dev machines.
-        .glob(pattern: "App/Resources/Settings.bundle/**")
+        .glob(pattern: "Sudoku/Resources/Settings.bundle/**")
     ],
-    entitlements: .file(path: "App/Sudoku.entitlements"),
+    entitlements: .file(path: "Sudoku/Sudoku.entitlements"),
     dependencies: [
         .package(product: "SudokuUI"),
         .package(product: "AppComposition"),
@@ -67,7 +72,7 @@ let sudokuTarget = Target.target(
 )
 
 let project = Project(
-    name: "Sudoku",
+    name: "Game",
     options: .options(
         defaultKnownRegions: ["en", "zh-Hant", "ja", "zh-Hans", "es", "th", "ko"],
         developmentRegion: "en"
@@ -94,12 +99,12 @@ let project = Project(
             // qualify targets across SPM package projects; the xctestplan
             // JSON references them via `containerPath: container:Packages/<pkg>`
             // which xcodebuild resolves through the workspace). See issue #184.
-            testAction: .testPlans(["App/Sudoku.xctestplan"]),
+            testAction: .testPlans(["Sudoku/Sudoku.xctestplan"]),
             runAction: .runAction(
                 configuration: "Debug",
                 executable: "Sudoku",
                 options: .options(
-                    storeKitConfigurationPath: .relativeToManifest("App/Resources/Sudoku.storekit")
+                    storeKitConfigurationPath: .relativeToManifest("Sudoku/Resources/Sudoku.storekit")
                 )
             )
         ),
