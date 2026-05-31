@@ -14,7 +14,8 @@ import ProjectDescription
 // foundations.md §1: Swift 6 language mode + complete concurrency checking.
 // foundations.md §2: App target is thin — depends on the local SwiftPM package
 // `Packages/SudokuKit` (entry product: `SudokuUI`). Real code lives in the package.
-// plan.md §1.4: bundle id `com.wei18.sudoku`, iOS 26 + macOS 26.
+// App targets: see per-target definitions below for bundle ids. Both
+// targets ship iOS 26 + macOS 26.
 
 let swiftSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",

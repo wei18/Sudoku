@@ -2,7 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Sudoku v2 privacy manifest (foundations.md §6, design.md §How.6.3 +
+    <!-- Minesweeper PR D: copied verbatim from Sudoku in anticipation of
+         identical AdMob wiring (see meetings/2026-05-31_minesweeper-rfc.md
+         §5.2). Flip to NSPrivacyTracking=false + empty arrays if Minesweeper's
+         monetization plan diverges from Sudoku's. Reuses the Sudoku manifest
+         body below.
+
+         Sudoku v2 privacy manifest (foundations.md §6, design.md §How.6.3 +
          §How.8 monetization, docs/v2/plan.md §v2.4.1).
 
          v2 stance: Sudoku App itself still does not run its own analytics,

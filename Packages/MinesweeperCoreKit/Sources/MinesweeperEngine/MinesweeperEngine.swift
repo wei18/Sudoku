@@ -1,5 +1,3 @@
-internal import Foundation
-
 // MARK: - MinesweeperEngine (skeleton)
 //
 // PR D placeholder — exists so `Project.swift`'s Minesweeper target links a
