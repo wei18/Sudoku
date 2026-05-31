@@ -5,7 +5,7 @@
 //   - LivePersistence(...) bound to a PuzzleStore puzzle loader
 //   - PuzzleStore() — default LivePuzzleGenerating
 //   - Telemetry(sinks: [OSLogSink, NoOpTrackingSink, MetricKitSink])
-//   - LiveAdMobAdProvider() / LiveStoreKit2IAPClient() (v2.3.2)
+//   - LiveAdMobAdProvider(bannerAdUnitID:) / LiveStoreKit2IAPClient(knownProductIds:) (v2.3.2)
 //   - AdGate(store: LivePersistence.monetizationStateStore()) (v2.3.2)
 //   - LiveRouteFactory composing all of the above (v2.3.3)
 
@@ -79,8 +79,32 @@ extension AppComposition {
         // gating. On macOS we wire the `NoopAdProvider` (status always
         // `.suppressed`, BannerSlotView collapses to EmptyView); on iOS we use
         // the live AdMob-backed provider as before.
+        //
+        // Sudoku-specific identifiers (banner ad unit + ASC product IDs) are
+        // declared here, NOT inside AppMonetizationKit, so the package can be
+        // linked by a second app (Minesweeper) without baking Sudoku IDs into
+        // its binary. See `meetings/2026-05-31_minesweeper-rfc.md` §5.2.
+        //
+        let sudokuRemoveAdsProductID = "com.wei18.sudoku.iap.remove_ads"
+
         #if os(iOS)
-        let adProvider: any AdProvider = LiveAdMobAdProvider()
+        // DEBUG vs Release swap for the banner ad unit ID: v2.5.2 ships with
+        // Google's universal TEST banner; v2.5.3 (user-owned, pre-ASC) swaps
+        // to Sudoku's production unit. The `GADApplicationIdentifier` in
+        // `App/Info.plist` follows the same swap. The `fatalError` is
+        // intentional and EAGER — any Release/iOS build constructed before
+        // v2.5.3 production wiring crashes at composition-root construction
+        // (immediately-invoked closure), surfacing the misconfiguration on
+        // first launch / smoke test rather than later at first ad impression.
+        // See `docs/v2/v2.5-readiness.md §v2.5.3` for the paired-flip checklist.
+        #if DEBUG
+        let sudokuBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google test
+        #else
+        let sudokuBannerAdUnitID: String = {
+            fatalError("REPLACE_IN_v2.5.3: production AdMob banner ad unit ID not wired — see docs/v2/v2.5-readiness.md §v2.5.3")
+        }()
+        #endif
+        let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: sudokuBannerAdUnitID)
         #else
         let adProvider: any AdProvider = NoopAdProvider()
         #endif
@@ -88,6 +112,7 @@ extension AppComposition {
         // refetch returns empty) through the same Telemetry channel so the
         // M3 placeholder substitution doesn't silently mask a backend issue.
         let iapClient: any IAPClient = LiveStoreKit2IAPClient(
+            knownProductIds: [sudokuRemoveAdsProductID],
             onCatalogDesync: { [telemetry] productId in
                 Task {
                     await telemetry.observe(

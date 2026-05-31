@@ -27,24 +27,31 @@ public actor LiveStoreKit2IAPClient: IAPClient {
     // MARK: Init
 
     /// Production initializer — wraps the real StoreKit 2 globals via
-    /// `LiveStoreKitBridge` and fetches the canonical `IAPProductIDs.all`
-    /// set on every `availableProducts()` call.
+    /// `LiveStoreKitBridge` and fetches the supplied product IDs on every
+    /// `availableProducts()` call.
     ///
-    /// - Parameter onCatalogDesync: Optional sink invoked with the purchased
-    ///   `productId` when a post-purchase product re-fetch returns empty.
-    ///   The host (`AppComposition`) wires this to `Telemetry.errorOccurred`
-    ///   so catalog instability is observable instead of silently shipping
-    ///   an empty `displayPrice` to the UI (M3).
+    /// - Parameters:
+    ///   - knownProductIds: ASC product IDs to fetch. Per-app — passed in by
+    ///     `AppComposition.Live` so the package can serve multiple apps
+    ///     (Sudoku + Minesweeper) in the same workspace without baking
+    ///     Sudoku-specific IDs into the binary.
+    ///   - onCatalogDesync: Optional sink invoked with the purchased
+    ///     `productId` when a post-purchase product re-fetch returns empty.
+    ///     The host (`AppComposition`) wires this to `Telemetry.errorOccurred`
+    ///     so catalog instability is observable instead of silently shipping
+    ///     an empty `displayPrice` to the UI (M3).
     public init(
+        knownProductIds: Set<String>,
         onCatalogDesync: (@Sendable (String) -> Void)? = nil
     ) {
         self.bridge = LiveStoreKitBridge()
-        self.knownProductIds = IAPProductIDs.all
+        self.knownProductIds = knownProductIds
         self.onCatalogDesync = onCatalogDesync
     }
 
-    /// Test-only initializer — injects a bridge fake and an explicit
-    /// product-ID set. `internal` so production callers never see it.
+    /// Test-only initializer — injects a bridge fake. `internal` so production
+    /// callers never see it. Production already accepts `knownProductIds` via
+    /// the public init; this overload only adds the bridge seam.
     internal init(
         bridge: any StoreKitBridge,
         knownProductIds: Set<String>,
