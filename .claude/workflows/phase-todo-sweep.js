@@ -32,7 +32,7 @@ if (!/^[A-Za-z0-9_./-]+$/.test(args.target) || args.target.includes('..')) {
 const target = args.target
 const phaseId = args.phaseId || null
 const draftIssues = args.draftIssues === true
-const repo = args.repo || '/Users/zw/GitHub/Wei18/Sudoku-spec'
+const repo = args.repo || '.'
 const today = args.date || null  // YYYY-MM-DD for issue Date header / Migrated footer; required if draftIssues=true
 
 if (draftIssues && !today) {

@@ -22,7 +22,7 @@ export const meta = {
 
 const baseBranch = (args && args.baseBranch) || 'main'
 const headRef = (args && args.headRef) || 'HEAD'
-const repo = (args && args.repo) || '/Users/zw/GitHub/Wei18/Sudoku-spec'
+const repo = (args && args.repo) || '.'
 
 // ── Phase 1: Collect ──────────────────────────────────────────────────────
 phase('Collect')

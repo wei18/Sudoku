@@ -99,16 +99,16 @@ const PREFLIGHT_SCHEMA = {
 }
 
 const preflight = await agent(
-  `You are running pre-dispatch preflight for a Developer subagent in repo /Users/zw/GitHub/Wei18/Sudoku-spec. ` +
+  `You are running pre-dispatch preflight for a Developer subagent in repo .. ` +
   `DETECT ONLY — do NOT auto-fix anything, do NOT run kill / rebase / push / fetch. Just observe and report.\n\n` +
   `Run these commands and report structured findings:\n` +
-  `  - git -C /Users/zw/GitHub/Wei18/Sudoku-spec status --porcelain\n` +
-  `  - git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-parse --abbrev-ref HEAD\n` +
-  `  - git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-list --count HEAD..origin/${baseBranch} 2>/dev/null || echo 0   # rebaseBehind\n` +
-  `  - git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-list --count @{u}..HEAD 2>/dev/null || echo 0                    # unpushedAhead\n` +
-  `  - git -C /Users/zw/GitHub/Wei18/Sudoku-spec worktree list\n` +
+  `  - git -C . status --porcelain\n` +
+  `  - git -C . rev-parse --abbrev-ref HEAD\n` +
+  `  - git -C . rev-list --count HEAD..origin/${baseBranch} 2>/dev/null || echo 0   # rebaseBehind\n` +
+  `  - git -C . rev-list --count @{u}..HEAD 2>/dev/null || echo 0                    # unpushedAhead\n` +
+  `  - git -C . worktree list\n` +
   `  - ps -ax -o pid=,command= | grep -E 'swift-test|swiftpm-testing-helper|mise exec' | grep -v grep || true\n` +
-  `  - mise -C /Users/zw/GitHub/Wei18/Sudoku-spec trust --show 2>&1 | head -5 || true   # best-effort trust check\n\n` +
+  `  - mise -C . trust --show 2>&1 | head -5 || true   # best-effort trust check\n\n` +
   `Return JSON matching the schema. Empty arrays / zeros are fine. Use miseTrustOK=null if you can't tell.`,
   { label: 'preflight:detect', schema: PREFLIGHT_SCHEMA }
 )
@@ -169,7 +169,7 @@ const STAMP_SCHEMA = {
 }
 
 const stamp = await agent(
-  `Create the file ${implNotesPath} (absolute path: /Users/zw/GitHub/Wei18/Sudoku-spec/${implNotesPath}) with the following content. ` +
+  `Create the file ${implNotesPath} (absolute path: ./${implNotesPath}) with the following content. ` +
   `If the file already exists, do NOT overwrite — set alreadyExisted=true and written=false and return.\n\n` +
   `Content:\n\n${skeleton}\n\nReturn JSON matching the schema.`,
   { label: 'stamp:impl-notes', schema: STAMP_SCHEMA }
