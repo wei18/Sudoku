@@ -1,6 +1,12 @@
 {
   "images" : [
     {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "any"
+        }
+      ],
       "filename" : "AppIcon-Light.png",
       "idiom" : "universal",
       "size" : "1024x1024"
