@@ -27,12 +27,18 @@ let swiftSettings: SettingsDictionary = [
     "CODE_SIGN_STYLE": "Automatic",
 ]
 
-// AppIcon: single `AppIcon.appiconset` with two universal 1024×1024 PNGs
-// (Light + Dark). Apple auto-adapts the 1024 master to both iOS and macOS
-// across every surface (Springboard, Dock, Finder, Spotlight). Tinted
-// appearance intentionally omitted (2026-06-01 user direction).
+// AppIcon: iOS uses `AppIcon.appiconset` (single 1024 universal with Light /
+// Dark / Tinted appearances — Apple compositor handles the squircle mask).
+// macOS uses a dedicated `AppIcon-macOS.appiconset` with the full 16…1024
+// size ladder. Restored 2026-06-02 — Xcode 26 / macOS Sequoia's asset
+// catalog editor still requires the explicit per-size ladder for AppKit,
+// no Single Size option for macOS. The earlier simplification (PR #225)
+// produced the "AppIcon has N unassigned children" warning on macOS even
+// after Tinted was added back. Sibling 16/32/…/512 PNGs are downscaled
+// from the 1024 master via `sips -Z` per `app-icon-rasterize` skill.
 let appTargetSettings: SettingsDictionary = swiftSettings.merging([
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]": "AppIcon-macOS",
 ]) { _, new in new }
 
 let sudokuTarget = Target.target(
