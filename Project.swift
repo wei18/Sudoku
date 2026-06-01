@@ -27,15 +27,12 @@ let swiftSettings: SettingsDictionary = [
     "CODE_SIGN_STYLE": "Automatic",
 ]
 
-// Per-platform AppIcon: iOS uses `AppIcon.appiconset` (single 1024 universal
-// with light / dark / tinted appearances), macOS uses a dedicated
-// `AppIcon-macOS.appiconset` with the full 16…1024 size ladder. Without the
-// SDK-scoped override, Xcode 26 emits the "AppIcon has N unassigned children"
-// archive warning because `idiom: universal` entries don't satisfy the macOS
-// AppKit icon ladder requirement.
+// AppIcon: single `AppIcon.appiconset` with two universal 1024×1024 PNGs
+// (Light + Dark). Apple auto-adapts the 1024 master to both iOS and macOS
+// across every surface (Springboard, Dock, Finder, Spotlight). Tinted
+// appearance intentionally omitted (2026-06-01 user direction).
 let appTargetSettings: SettingsDictionary = swiftSettings.merging([
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-    "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]": "AppIcon-macOS",
 ]) { _, new in new }
 
 let sudokuTarget = Target.target(
