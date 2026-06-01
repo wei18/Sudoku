@@ -1,11 +1,17 @@
-// RootView — app entry container.
+// RootView — Sudoku-specific app entry container.
 //
-// Owns the NavigationStackHost shape, mounts HomeView as the root content,
-// and renders the (optional) Resume pill at the top per design 01-root.md.
+// Thin wrapper over `GameShellUI.RootShellView` (PR X3 extraction). The
+// generic shell owns the NavigationStackHost shape + sidebar list rendering;
+// RootView keeps the Sudoku-specific bits: the ResumePill on top of the
+// root content, HomeView mount (with ad / monetization deps), themed
+// background, `.task { bootstrap() }`, and the toast overlay. Sidebar items
+// are declared inline as a `[SidebarItem<AppRoute>]` literal.
+//
 // Per plan.md v2.3.3 (Wave 3 audit close-out): all destination construction
-// moved to `RouteFactory`. RootView's init now only takes a `RootViewModel`
-// and a `routeFactory`; no protocol-dep leakage, so future feature growth
-// does not bloat this signature.
+// goes through `RouteFactory`. RootView's init still only takes a
+// `RootViewModel` and a `routeFactory` (+ monetization wiring for HomeView);
+// no protocol-dep leakage, so future feature growth does not bloat this
+// signature.
 
 public import MonetizationCore
 public import SwiftUI
@@ -50,26 +56,48 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        NavigationStackHost(
+        RootShellView(
             path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
-            sidebar: { sidebarPlaceholder },
-            content: { rootContent },
-            // Destination VMs (Daily/Practice) are intentionally re-constructed
-            // per push: state that must outlive the push lives in
-            // `RootViewModel.path` + Persistence, NOT in the destination VM. The
-            // path binding is threaded in so the VMs' navigation actions land in
-            // the same path the outer NavigationStack observes. (Issue #197/#199
-            // follow-up — without this, Daily/Practice taps were silently
-            // mutating disconnected internal paths.)
-            destination: { route in
-                routeFactory.view(
-                    for: route,
-                    path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
-                )
-            }
+            title: "Sudoku",
+            sidebarItems: sidebarItems,
+            routeFactory: routeFactory,
+            rootContent: { rootContent }
         )
         .task { await viewModel.bootstrap() }
         .toastOverlay(toastController)
+    }
+
+    // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push
+    // an `AppRoute`; Leaderboard is a side effect — it presents Apple's
+    // native Game Center dashboard modally (issue #49, 2026-05-20) rather
+    // than pushing onto the stack.
+    private var sidebarItems: [SidebarItem<AppRoute>] {
+        [
+            SidebarItem(
+                id: "daily",
+                titleKey: "Daily",
+                systemImage: "calendar",
+                onTap: { viewModel.path.append(.daily) }
+            ),
+            SidebarItem(
+                id: "practice",
+                titleKey: "Practice",
+                systemImage: "dice",
+                onTap: { viewModel.path.append(.practice) }
+            ),
+            SidebarItem(
+                id: "leaderboard",
+                titleKey: "Leaderboard",
+                systemImage: "trophy.fill",
+                onTap: { GameCenterDashboard.present() }
+            ),
+            SidebarItem(
+                id: "settings",
+                titleKey: "Settings",
+                systemImage: "gear",
+                onTap: { viewModel.path.append(.settings) }
+            ),
+        ]
     }
 
     @ViewBuilder
@@ -92,50 +120,6 @@ public struct RootView: View {
             )
         }
         .background(theme.surface.background.resolved)
-    }
-
-    @ViewBuilder
-    private var sidebarPlaceholder: some View {
-        // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push
-        // an `AppRoute`; Leaderboard is a side effect — it presents Apple's
-        // native Game Center dashboard modally (issue #49, 2026-05-20) rather
-        // than pushing onto the stack.
-        //
-        // 2026-05-23: switched away from value-based `NavigationLink(value:)`.
-        // The `.navigationDestination(for: AppRoute.self)` lives inside the
-        // detail pane's NavigationStack (see NavigationStackHost), which on
-        // macOS NavigationSplitView is a separate scope from the sidebar's
-        // List. SwiftUI's value-link lookup walks ancestors for a matching
-        // destination, and the cross-pane scope made the push fire
-        // inconsistently. Mirroring HomeView's pattern — direct
-        // `viewModel.path.append(...)` — keeps mutation inside the same
-        // scope as the destination registry, so the push is deterministic.
-        List {
-            sidebarRow("Daily", systemImage: "calendar") {
-                viewModel.path.append(.daily)
-            }
-            sidebarRow("Practice", systemImage: "dice") {
-                viewModel.path.append(.practice)
-            }
-            sidebarRow("Leaderboard", systemImage: "trophy.fill") {
-                GameCenterDashboard.present()
-            }
-            sidebarRow("Settings", systemImage: "gear") {
-                viewModel.path.append(.settings)
-            }
-        }
-        .navigationTitle("Sudoku")
-    }
-
-    private func sidebarRow(
-        _ title: LocalizedStringKey,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-        }
-        .buttonStyle(.plain)
     }
 }
 
