@@ -53,6 +53,10 @@ let productionTargets: [Target] = [
             // AdMob / StoreKit2 concrete-impl targets — those stay isolated
             // in AppComposition (foundations.md §9.1).
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // PR X1: NavigationStackHost lives here now. Will grow as more
+            // shell components extract (RootView, Settings shell, Daily /
+            // Practice hubs — Phase X PRs).
+            .product(name: "GameShellUI", package: "GameShellKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -252,6 +256,12 @@ let package = Package(
         // AdsAdMob (Google Mobile Ads bridge) + IAPStoreKit2 (StoreKit2 bridge)
         // + MonetizationTesting fakes. Lives one directory up under Packages/.
         .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
+        // PR X1 (2026-06-01): game-agnostic UI shell extracted into
+        // GameShellKit so MinesweeperKit + a future third game's Kit can
+        // host the same navigation / settings / hub shapes. SudokuKit only
+        // ships gameplay UI + Sudoku-specific composition.
+        // See `meetings/2026-06-01_minesweeper-dev-roadmap.md` Phase X.
+        .package(name: "GameShellKit", path: "../GameShellKit"),
     ],
     targets: productionTargets + testTargets + ascRegisterTargets,
     swiftLanguageModes: [.v6]
