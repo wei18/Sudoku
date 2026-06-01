@@ -29,24 +29,24 @@ struct GameViewModelLateCompletionTests {
     }
 
     @Test func dailyFromYesterday_isLate() throws {
-        let vm = try makeViewModel(puzzleId: "2026-05-31-easy", kind: .daily)
-        #expect(vm.isLateCompletion == true)
+        let viewModel = try makeViewModel(puzzleId: "2026-05-31-easy", kind: .daily)
+        #expect(viewModel.isLateCompletion == true)
     }
 
     @Test func dailyFromToday_isNotLate() throws {
-        let vm = try makeViewModel(puzzleId: "2026-06-01-easy", kind: .daily)
-        #expect(vm.isLateCompletion == false)
+        let viewModel = try makeViewModel(puzzleId: "2026-06-01-easy", kind: .daily)
+        #expect(viewModel.isLateCompletion == false)
     }
 
     @Test func dailyFromFuture_isNotLate() throws {
         // Defensive: should never happen, but a future-dated id must not
         // trip the "won't score" marker.
-        let vm = try makeViewModel(puzzleId: "2099-01-01-easy", kind: .daily)
-        #expect(vm.isLateCompletion == false)
+        let viewModel = try makeViewModel(puzzleId: "2099-01-01-easy", kind: .daily)
+        #expect(viewModel.isLateCompletion == false)
     }
 
     @Test func practice_isNeverLate() throws {
-        let vm = try makeViewModel(puzzleId: "practice-ABC-easy", kind: .practice)
-        #expect(vm.isLateCompletion == false)
+        let viewModel = try makeViewModel(puzzleId: "practice-ABC-easy", kind: .practice)
+        #expect(viewModel.isLateCompletion == false)
     }
 }
