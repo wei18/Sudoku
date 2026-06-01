@@ -42,6 +42,20 @@ public struct BoardView: View {
         .onAppear { keyboardFocus = true }
         .onKeyPress(phases: .down, action: handleKeyPress)
         .background(undoRedoShortcuts)
+        .task(id: viewModel.identity.puzzleId) {
+            // #227 elapsed-mirror ticker: `GameViewModel.elapsedSeconds` is
+            // only refreshed via `resyncFromSession()` after a mutation, so
+            // between user inputs the header label would stay frozen. Poll
+            // the session once per second while the game is live; cancel
+            // automatically when paused / finished or when the view goes
+            // away (`.task` lifecycle handles both).
+            while !Task.isCancelled {
+                if viewModel.status == .playing {
+                    await viewModel.refreshElapsed()
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
     }
 
     // MARK: - Compact (iPhone) layout

@@ -271,6 +271,41 @@ public final class GameViewModel {
         await resyncFromSession()
     }
 
+    /// Idempotent "boot the session into a state where mutations land".
+    /// Fixes #227: `BoardLoaderView` constructed a `GameSession` and left it
+    /// in `.idle`; every digit-pad tap then failed the `.playing` gate inside
+    /// the actor and was silently absorbed by `runSession`, so the user saw
+    /// a dead board + a frozen 0:00 timer.
+    ///
+    /// - `.idle`     → `session.start()`
+    /// - `.paused`   → `session.resume()`
+    /// - else        → no-op (already playing / finished)
+    public func startOrResume() async {
+        guard let session else { return }
+        let current = await session.status
+        switch current {
+        case .idle:
+            await runSession("startOrResume.start") { try await session.start() }
+        case .paused:
+            await runSession("startOrResume.resume") { try await session.resume() }
+        case .playing, .completed, .abandoned:
+            return
+        }
+        await resyncFromSession()
+    }
+
+    /// Refresh the observable `elapsedSeconds` mirror from the actor without
+    /// triggering a mutation. Driven by `BoardView`'s 1-Hz `.task` ticker so
+    /// the timer label advances between user inputs (without this, only
+    /// `resyncFromSession()` after a mutation would update it).
+    public func refreshElapsed() async {
+        guard let session else { return }
+        let next = await session.elapsedSeconds
+        if next != elapsedSeconds {
+            elapsedSeconds = next
+        }
+    }
+
     /// M10 (issue #67): unified session-call helper. Catches the throw,
     /// routes it through the error funnel, and absorbs locally so the
     /// VM can re-sync state instead of propagating up to SwiftUI (which

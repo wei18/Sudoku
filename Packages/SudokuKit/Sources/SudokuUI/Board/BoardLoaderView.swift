@@ -125,6 +125,11 @@ public struct BoardLoaderView: View {
                 errorReporter: errorReporter
             )
             state = .loaded(viewModel)
+            // #227: kick the session into `.playing` (idle → start, paused →
+            // resume). Without this, digit-pad taps fail the `.playing` gate
+            // inside `GameSession` and are silently absorbed by `runSession`,
+            // and `elapsedSeconds` stays at 0 because `runningSince` is nil.
+            await viewModel.startOrResume()
         } catch {
             // M10 (issue #67): typed bucket + funnel report. The view
             // displays the localized bucket copy; engineering OSLog / the
