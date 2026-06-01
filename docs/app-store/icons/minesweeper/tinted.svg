@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Minesweeper AppIcon Tinted variant — per design spec §6.
+       System multiplies the user's tint over white shapes; the near-black
+       background reads as the negative space (matches Sudoku's tinted-grid-dot
+       pattern for visual family consistency). Two distinct luminances —
+       mine at 100% white, flag fabric at 70% gray — survive any system tint
+       without merging into a single blob (spec §6 "Tinted survival strategy").
+       No rounded-corner clip: Apple's compositor applies the squircle. -->
+  <defs>
+    <polygon id="spike" points="200,-20 250,-8 250,8 200,20" />
+  </defs>
+  <!-- Near-black background, full bleed -->
+  <rect x="0" y="0" width="1024" height="1024" fill="#0A0A0A"/>
+  <!-- Mine + spikes — solid white. Flag pole + fuse spark merge into the
+       mine ink per spec, so they share the same white. -->
+  <g transform="translate(512 540)" fill="#FFFFFF">
+    <use href="#spike" transform="rotate(0)"/>
+    <use href="#spike" transform="rotate(45)"/>
+    <use href="#spike" transform="rotate(90)"/>
+    <use href="#spike" transform="rotate(135)"/>
+    <use href="#spike" transform="rotate(180)"/>
+    <use href="#spike" transform="rotate(225)"/>
+    <use href="#spike" transform="rotate(270)"/>
+    <use href="#spike" transform="rotate(315)"/>
+  </g>
+  <circle cx="512" cy="540" r="200" fill="#FFFFFF"/>
+  <!-- Flag pole — merges with mine (white) per spec -->
+  <rect x="814" y="600" width="12" height="200" fill="#FFFFFF"/>
+  <!-- Flag fabric — 70% luma gray. Under any tint, this renders at 70% of
+       the tint's luminance vs. the mine's 100%, preserving silhouette
+       separation regardless of tint hue. -->
+  <polygon points="820,600 820,700 720,650" fill="#B3B3B3"/>
+</svg>

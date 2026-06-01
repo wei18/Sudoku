@@ -55,24 +55,25 @@ This rule applies to both Light and Dark variants. There is no platform on which
 ## Procedure
 
 ```bash
-# 1. Designer writes SVG to /tmp (or anywhere). Each SVG must declare
-#    width="1024" height="1024" viewBox="0 0 1024 1024".
-ls -la /tmp/minesweeper-icon-light.svg /tmp/minesweeper-icon-dark.svg
+# 1. Designer writes SVG to ../tmp/ (project-scope scratch
+#    dir, NOT /tmp — see feedback-project-scope-auto-execute). Each SVG must
+#    declare width="1024" height="1024" viewBox="0 0 1024 1024".
+ls -la ../tmp/minesweeper-icon-light.svg ../tmp/minesweeper-icon-dark.svg
 
 # 2. Rasterize via QuickLook thumbnail generator.
 #    -t           thumbnail mode
 #    -s 1024      thumbnail size (square)
 #    -o <dir>     output directory (-o cannot rename the file, see step 3)
-qlmanage -t -s 1024 -o /tmp \
-  /tmp/minesweeper-icon-light.svg \
-  /tmp/minesweeper-icon-dark.svg
+qlmanage -t -s 1024 -o ../tmp \
+  ../tmp/minesweeper-icon-light.svg \
+  ../tmp/minesweeper-icon-dark.svg
 
 # 3. qlmanage's quirk: it APPENDS `.png` to the source filename instead of
 #    swapping the extension. So `light.svg` becomes `light.svg.png`. Rename
 #    directly into the asset catalog so the .svg.png artifact never lingers.
-mv /tmp/minesweeper-icon-light.svg.png \
+mv ../tmp/minesweeper-icon-light.svg.png \
    Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png
-mv /tmp/minesweeper-icon-dark.svg.png \
+mv ../tmp/minesweeper-icon-dark.svg.png \
    Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Dark.png
 
 # 4. Verify dimensions + format.
@@ -83,8 +84,8 @@ sips -g pixelWidth -g pixelHeight Minesweeper/Assets.xcassets/AppIcon.appiconset
 
 # 5. Commit the SVG source-of-truth alongside, under docs/app-store/icons/.
 mkdir -p docs/app-store/icons/<app>/
-cp /tmp/<app>-icon-light.svg docs/app-store/icons/<app>/light.svg
-cp /tmp/<app>-icon-dark.svg  docs/app-store/icons/<app>/dark.svg
+cp ../tmp/<app>-icon-light.svg docs/app-store/icons/<app>/light.svg
+cp ../tmp/<app>-icon-dark.svg  docs/app-store/icons/<app>/dark.svg
 ```
 
 ## Verify visually
