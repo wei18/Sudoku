@@ -92,6 +92,13 @@ let productionTargets: [Target] = [
             gameCenterClientDep,
             telemetryDep,
             "SudokuUI",
+            // PR X2: explicit GameShellUI dep so AppComposition can name
+            // `any RouteFactory<AppRoute>` (the protocol moved out of
+            // SudokuUI into GameShellUI). SudokuUI still re-exports the
+            // type via `public import GameShellUI`, but a transitive
+            // re-export does not satisfy Swift 6 module name resolution
+            // — AppComposition needs the dep at its target boundary.
+            .product(name: "GameShellUI", package: "GameShellKit"),
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
             // for the protocol fakes. Shipped in the binary; the `.live()`
             // factory does not reference them so dead-code elimination keeps
