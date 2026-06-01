@@ -28,6 +28,17 @@ let productionTargets: [Target] = [
     .target(name: "GameShellUI", swiftSettings: swiftSettings),
 ]
 
+// MARK: - Test targets
+//
+// `GameShellUITests` carries the X1 sentinel: a compile-only `@Test` that
+// instantiates `NavigationStackHost` with a non-Sudoku `Route` type. If a
+// future refactor accidentally re-couples the host to a specific Route, this
+// target stops compiling.
+
+let testTargets: [Target] = [
+    .testTarget(name: "GameShellUITests", dependencies: ["GameShellUI"], swiftSettings: swiftSettings),
+]
+
 // MARK: - Package
 
 let package = Package(
@@ -39,6 +50,6 @@ let package = Package(
     products: [
         .library(name: "GameShellUI", targets: ["GameShellUI"]),
     ],
-    targets: productionTargets,
+    targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )
