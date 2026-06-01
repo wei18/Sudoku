@@ -108,6 +108,7 @@ let project = Project(
         .local(path: "Packages/SudokuKit"),
         .local(path: "Packages/AppMonetizationKit"),
         .local(path: "Packages/MinesweeperKit"),
+        .local(path: "Packages/GameShellKit"),
     ],
     settings: .settings(
         base: swiftSettings,

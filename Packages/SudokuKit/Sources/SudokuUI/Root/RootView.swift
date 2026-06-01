@@ -9,6 +9,7 @@
 
 public import MonetizationCore
 public import SwiftUI
+internal import GameShellUI
 internal import Persistence
 internal import SudokuEngine
 
