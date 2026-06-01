@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <polygon id="spike" points="200,-20 250,-8 250,8 200,20" />
+    <g id="grid" stroke="#9BB87E" stroke-opacity="0.06" stroke-width="2" fill="none">
+      <line x1="0" y1="0" x2="1024" y2="0"/>
+      <line x1="0" y1="128" x2="1024" y2="128"/>
+      <line x1="0" y1="256" x2="1024" y2="256"/>
+      <line x1="0" y1="384" x2="1024" y2="384"/>
+      <line x1="0" y1="512" x2="1024" y2="512"/>
+      <line x1="0" y1="640" x2="1024" y2="640"/>
+      <line x1="0" y1="768" x2="1024" y2="768"/>
+      <line x1="0" y1="896" x2="1024" y2="896"/>
+      <line x1="0" y1="1024" x2="1024" y2="1024"/>
+      <line x1="0" y1="0" x2="0" y2="1024"/>
+      <line x1="128" y1="0" x2="128" y2="1024"/>
+      <line x1="256" y1="0" x2="256" y2="1024"/>
+      <line x1="384" y1="0" x2="384" y2="1024"/>
+      <line x1="512" y1="0" x2="512" y2="1024"/>
+      <line x1="640" y1="0" x2="640" y2="1024"/>
+      <line x1="768" y1="0" x2="768" y2="1024"/>
+      <line x1="896" y1="0" x2="896" y2="1024"/>
+      <line x1="1024" y1="0" x2="1024" y2="1024"/>
+    </g>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" fill="#15171A"/>
+  <use href="#grid"/>
+  <g transform="translate(512 540)" fill="#FAF8F3">
+    <use href="#spike" transform="rotate(0)"/>
+    <use href="#spike" transform="rotate(45)"/>
+    <use href="#spike" transform="rotate(90)"/>
+    <use href="#spike" transform="rotate(135)"/>
+    <use href="#spike" transform="rotate(180)"/>
+    <use href="#spike" transform="rotate(225)"/>
+    <use href="#spike" transform="rotate(270)"/>
+    <use href="#spike" transform="rotate(315)"/>
+    <circle cx="0" cy="0" r="200"/>
+  </g>
+  <ellipse cx="440" cy="470" rx="90" ry="60" fill="#1F2227" fill-opacity="0.3"/>
+  <path d="M 512 340 C 560 300, 620 290, 680 310" stroke="#6B5847" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <circle cx="680" cy="310" r="36" fill="#E6A857" fill-opacity="0.3"/>
+  <circle cx="680" cy="310" r="24" fill="#E6A857"/>
+  <polygon points="820,600 820,700 720,650" fill="#C8453A"/>
+  <rect x="814" y="600" width="12" height="200" fill="#FAF8F3" fill-opacity="0.8"/>
+</svg>
