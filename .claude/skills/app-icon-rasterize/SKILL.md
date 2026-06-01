@@ -20,6 +20,38 @@ This is the gap that bit the team on 2026-06-01 — Sudoku's first-pass icon pro
 - The SVG uses `<filter>` blurs, `<text>`, embedded fonts, or other features QuickLook's SVG generator may render unreliably. Re-author the SVG with flat shapes first.
 - The SVG already ships as PNG from the designer (e.g. Affinity / Figma export). Just commit the PNG.
 
+## SVG authoring contract — read BEFORE writing the SVG
+
+The designer's SVG **must NOT** bake rounded corners into the artwork. Apple's compositor applies the squircle mask at render time (iOS Springboard, macOS Dock, every preview surface). Baking corners produces a *double-mask* look — the icon shows up smaller than its peers with visible inner padding.
+
+Common mistakes that cause this:
+
+```xml
+<!-- WRONG — corners baked into the artwork via clipPath -->
+<defs>
+  <clipPath id="iconMask">
+    <rect width="1024" height="1024" rx="246" ry="246"/>
+  </clipPath>
+</defs>
+<g clip-path="url(#iconMask)">
+  <rect width="1024" height="1024" fill="#FAF8F3"/>
+  ...
+</g>
+
+<!-- ALSO WRONG — rx/ry directly on the background rect -->
+<rect width="1024" height="1024" rx="246" ry="246" fill="#FAF8F3"/>
+```
+
+```xml
+<!-- RIGHT — background fills 1024×1024 to the edges, no clip, no rx/ry -->
+<rect x="0" y="0" width="1024" height="1024" fill="#FAF8F3"/>
+<!-- artwork on top, also no clip -->
+```
+
+After rasterize, `sips -g hasAlpha …png` will still report `yes` because QuickLook writes 8-bit RGBA — but every pixel including the corners must be **opaque**. Quick check: open the PNG in Preview at 100%, hover the corners — Digital Color Meter should report the background color (e.g. `#FAF8F3`), not transparency.
+
+This rule applies to both Light and Dark variants. There is no platform on which the artwork should pre-apply its own squircle.
+
 ## Procedure
 
 ```bash

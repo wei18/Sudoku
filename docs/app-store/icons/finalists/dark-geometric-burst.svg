@@ -2,13 +2,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!-- Concept 09: Geometric Burst -->
   <!-- Deep navy bg (flat, per design-system "flat surfaces"); bright amber grid; 4-cell pinwheel sage/clay/lavender/amber asymmetric -->
-  <!-- 24% corner radius (246pt) for macOS native rendering; iOS will re-apply squircle on top -->
-  <defs>
-    <clipPath id="iconMask">
-      <rect width="1024" height="1024" rx="246" ry="246"/>
-    </clipPath>
-  </defs>
-  <g clip-path="url(#iconMask)">
+  <!-- NO rounded-corner clip (2026-06-01 user direction): Apple's compositor
+       applies the squircle mask at render time. See sibling light-difficulty-trio.svg
+       header for rationale. -->
+  <g>
     <rect width="1024" height="1024" fill="#2A3B5C"/>
     <!-- Pinwheel: 4 corner cells of the 3x3 with rotating palette -->
     <!-- top-left sage, top-right clay, bottom-left amber, bottom-right lavender -->
