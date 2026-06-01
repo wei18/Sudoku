@@ -27,11 +27,20 @@ let productionTargets: [Target] = [
         name: "MinesweeperUI",
         dependencies: [
             .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
+            .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
         ],
         swiftSettings: swiftSettings
     ),
     .target(
         name: "MinesweeperAppComposition",
+        dependencies: ["MinesweeperUI"],
+        swiftSettings: swiftSettings
+    ),
+]
+
+let testTargets: [Target] = [
+    .testTarget(
+        name: "MinesweeperUITests",
         dependencies: ["MinesweeperUI"],
         swiftSettings: swiftSettings
     ),
@@ -52,6 +61,6 @@ let package = Package(
     dependencies: [
         .package(path: "../MinesweeperCoreKit"),
     ],
-    targets: productionTargets,
+    targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )
