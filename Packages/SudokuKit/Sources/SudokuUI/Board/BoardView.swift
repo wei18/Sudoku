@@ -127,6 +127,17 @@ public struct BoardView: View {
             Text(LocalizedStringKey(viewModel.identity.difficulty.rawValue.capitalized))
                 .font(.headline)
                 .foregroundStyle(theme.text.primary.resolved)
+            // #228 option B: subtle marker when the user opens a past-day
+            // daily puzzle. `SubmitGuards` blocks the Game Center submission
+            // for these; this affordance lets the player know mid-game that
+            // the run won't score.
+            if viewModel.isLateCompletion {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .foregroundStyle(theme.text.secondary.resolved)
+                    .accessibilityLabel(
+                        Text("Late completion — won't score on leaderboard")
+                    )
+            }
             Spacer()
             Label(elapsedLabel, systemImage: "timer")
                 .monospacedDigit()
