@@ -20,6 +20,39 @@ This is the gap that bit the team on 2026-06-01 — Sudoku's first-pass icon pro
 - The SVG uses `<filter>` blurs, `<text>`, embedded fonts, or other features QuickLook's SVG generator may render unreliably. Re-author the SVG with flat shapes first.
 - The SVG already ships as PNG from the designer (e.g. Affinity / Figma export). Just commit the PNG.
 
+## macOS ladder reality check (2026-06-02)
+
+**Xcode 26 / macOS Sequoia still requires the explicit 16/32/128/256/512 ladder for macOS app icons.** "Single Size" is iOS-only. The Appearances Inspector for macOS targets does not expose a single-asset option. Without the ladder, Xcode emits "AppIcon has N unassigned children" on the macOS target because the universal idiom does not satisfy AppKit's expected slots.
+
+After producing the 1024 master:
+
+```bash
+SRC=Sudoku/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png
+DST=Sudoku/Assets.xcassets/AppIcon-macOS.appiconset
+mkdir -p "$DST"
+cp "$SRC"                                "$DST/icon_512x512@2x.png"   # 1024
+sips -Z 512 "$SRC" --out "$DST/icon_256x256@2x.png"  # 512
+sips -Z 512 "$SRC" --out "$DST/icon_512x512.png"     # 512
+sips -Z 256 "$SRC" --out "$DST/icon_128x128@2x.png"  # 256
+sips -Z 256 "$SRC" --out "$DST/icon_256x256.png"     # 256
+sips -Z 128 "$SRC" --out "$DST/icon_128x128.png"     # 128
+sips -Z 64  "$SRC" --out "$DST/icon_32x32@2x.png"    # 64
+sips -Z 32  "$SRC" --out "$DST/icon_32x32.png"       # 32
+sips -Z 32  "$SRC" --out "$DST/icon_16x16@2x.png"    # 32
+sips -Z 16  "$SRC" --out "$DST/icon_16x16.png"       # 16
+```
+
+`sips -Z <max>` resizes the longest dimension to `<max>` (Lanczos-equivalent quality). Each downscale is from the 1024 master, not the previous step.
+
+`Project.swift` needs the SDK-scoped override so iOS targets keep the universal `AppIcon` and macOS targets pick up the ladder:
+
+```swift
+let appTargetSettings: SettingsDictionary = swiftSettings.merging([
+    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=macosx*]": "AppIcon-macOS",
+]) { _, new in new }
+```
+
 ## SVG authoring contract — read BEFORE writing the SVG
 
 The designer's SVG **must NOT** bake rounded corners into the artwork. Apple's compositor applies the squircle mask at render time (iOS Springboard, macOS Dock, every preview surface). Baking corners produces a *double-mask* look — the icon shows up smaller than its peers with visible inner padding.
