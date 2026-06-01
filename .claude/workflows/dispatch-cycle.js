@@ -89,14 +89,14 @@ const PREFLIGHT_SCHEMA = {
 }
 
 const pre = await agent(
-  `Pre-dispatch preflight in /Users/zw/GitHub/Wei18/Sudoku-spec. DETECT ONLY — do NOT kill / rebase / push / fetch.\n\n` +
+  `Pre-dispatch preflight in .. DETECT ONLY — do NOT kill / rebase / push / fetch.\n\n` +
   `Run and report:\n` +
-  `  git -C /Users/zw/GitHub/Wei18/Sudoku-spec status --porcelain\n` +
-  `  git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-parse --abbrev-ref HEAD\n` +
-  `  git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-list --count HEAD..origin/${baseBranch} 2>/dev/null || echo 0\n` +
-  `  git -C /Users/zw/GitHub/Wei18/Sudoku-spec rev-list --count @{u}..HEAD 2>/dev/null || echo 0\n` +
+  `  git -C . status --porcelain\n` +
+  `  git -C . rev-parse --abbrev-ref HEAD\n` +
+  `  git -C . rev-list --count HEAD..origin/${baseBranch} 2>/dev/null || echo 0\n` +
+  `  git -C . rev-list --count @{u}..HEAD 2>/dev/null || echo 0\n` +
   `  ps -ax -o pid=,command= | grep -E 'swift-test|swiftpm-testing-helper|mise exec' | grep -v grep || true\n` +
-  `  mise -C /Users/zw/GitHub/Wei18/Sudoku-spec trust --show 2>&1 | head -5 || true\n\n` +
+  `  mise -C . trust --show 2>&1 | head -5 || true\n\n` +
   `Return JSON matching schema.`,
   { label: 'preflight', schema: PREFLIGHT_SCHEMA }
 )
@@ -145,7 +145,7 @@ ${task}
 `
 
 await agent(
-  `Create /Users/zw/GitHub/Wei18/Sudoku-spec/${implNotesPath} with this content (if it already exists, leave it alone — return either way):\n\n${skeleton}`,
+  `Create ./${implNotesPath} with this content (if it already exists, leave it alone — return either way):\n\n${skeleton}`,
   { label: 'stamp', schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' }, alreadyExisted: { type: 'boolean' } } } }
 )
 log(`impl-notes ready: ${implNotesPath}`)
@@ -244,7 +244,7 @@ while (round < maxRounds) {
 
   phase('Gate')
   // Delegate to cr-threshold-gate workflow — SSOT for CORE_MODULES + LOC_THRESHOLD + OR rule
-  const gateResult = await workflow('cr-threshold-gate', { baseBranch, headRef: 'HEAD', repo: '/Users/zw/GitHub/Wei18/Sudoku-spec' })
+  const gateResult = await workflow('cr-threshold-gate', { baseBranch, headRef: 'HEAD', repo: '.' })
   lastGate = { locChanged: gateResult.locChanged, changedFiles: gateResult.changedFiles }
   // Normalize to the shape the rest of this workflow expects
   const gateRaw = {
@@ -267,7 +267,7 @@ while (round < maxRounds) {
   if (gate.required && skipCR) {
     log(`CR BYPASSED by --skipCR with reason: ${skipCRReason}`)
     await agent(
-      `Append to /Users/zw/GitHub/Wei18/Sudoku-spec/${implNotesPath} under §偏離 spec:\n\n` +
+      `Append to ./${implNotesPath} under §偏離 spec:\n\n` +
       `- CR bypassed via dispatch-cycle skipCR flag. Reason: ${skipCRReason}. ` +
       `CR would have been triggered by: ${gate.triggers.join('; ')}. Acknowledged by Leader.\n`,
       { label: `audit:cr-bypass`, schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' } } } }
@@ -301,7 +301,7 @@ while (round < maxRounds) {
     `# Code Review: ${topic}`,
     ``,
     `## What to review`,
-    `Diff: \`git -C /Users/zw/GitHub/Wei18/Sudoku-spec diff origin/${baseBranch}...HEAD\``,
+    `Diff: \`git -C . diff origin/${baseBranch}...HEAD\``,
     `Triggered because: ${gate.triggers.join('; ')}`,
     ``,
     `## Developer's summary`,
@@ -335,7 +335,7 @@ while (round < maxRounds) {
         `- [ ] [${f.severity}] ${f.file}${f.line ? ':' + f.line : ''} — ${f.detail}${f.suggestion ? ` → ${f.suggestion}` : ''}`
       ).join('\n')
       await agent(
-        `Append to /Users/zw/GitHub/Wei18/Sudoku-spec/${implNotesPath} under §未決 (or create that section if missing):\n\n` +
+        `Append to ./${implNotesPath} under §未決 (or create that section if missing):\n\n` +
         `### CR nits (round ${round}, APPROVE_WITH_NITS — Leader to inline-apply)\n${nitLines}\n`,
         { label: `persist:nits`, schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' } } } }
       )
@@ -357,7 +357,7 @@ while (round < maxRounds) {
 
 // Round limit reached — mark impl-notes Status: PAUSED so it doesn't read as in-flight
 await agent(
-  `Edit /Users/zw/GitHub/Wei18/Sudoku-spec/${implNotesPath}:\n` +
+  `Edit ./${implNotesPath}:\n` +
   `  1. Replace the existing 'Status: ...' line near the top with: \`Status: PAUSED (round-limit: ${maxRounds})\`\n` +
   `  2. Append under §未決:\n\n` +
   `### Round-limit pause (after ${round} rounds)\n` +

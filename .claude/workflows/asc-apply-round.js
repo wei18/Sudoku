@@ -52,7 +52,7 @@ if (mode === 'apply' && args.confirmApply !== true) {
 }
 const roundNumber = args.roundNumber || null
 const date = args.date || null
-const repo = args.repo || '/Users/zw/GitHub/Wei18/Sudoku-spec'
+const repo = args.repo || '.'
 const packagePath = args.packagePath || 'Packages/SudokuKit'
 // Guard packagePath against shell metachars / traversal (interpolated into bash via agent prompts)
 if (!/^[A-Za-z0-9_./-]+$/.test(packagePath) || packagePath.includes('..')) {

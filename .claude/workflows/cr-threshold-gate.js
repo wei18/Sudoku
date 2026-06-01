@@ -19,7 +19,7 @@ export const meta = {
 
 const baseBranch = (args && args.baseBranch) || 'main'
 const headRef = (args && args.headRef) || 'HEAD'
-const repo = (args && args.repo) || '/Users/zw/GitHub/Wei18/Sudoku-spec'
+const repo = (args && args.repo) || '.'
 
 // SSOT: methodology.md §派發契約 item 8. Keep in sync with dispatch-prep.js (predictor) and methodology.md.
 // Updated after PR #176 (Stage 3) extracted PersistenceKit + GameCenterKit from SudokuKit.

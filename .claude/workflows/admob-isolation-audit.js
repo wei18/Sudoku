@@ -16,7 +16,7 @@ export const meta = {
   phases: [{ title: 'Scan' }],
 }
 
-const repo = (args && args.repo) || '/Users/zw/GitHub/Wei18/Sudoku-spec'
+const repo = (args && args.repo) || '.'
 const expectedFile = (args && args.expectedFile) || 'Packages/AppMonetizationKit/Sources/AdsAdMob/LiveAdMobBridge.swift'
 
 phase('Scan')
