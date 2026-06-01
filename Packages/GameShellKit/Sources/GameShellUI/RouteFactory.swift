@@ -29,6 +29,9 @@ public protocol RouteFactory<Route>: Sendable {
     ///   into the same array the stack observes. `nil` falls back to a
     ///   local stub array so tests / previews can call this without wiring
     ///   a binding.
+    ///   Issue #197 (Sudoku): prior signature dropped the binding entirely,
+    ///   leaving destination cards as no-op taps on macOS detail-pane scope.
+    ///   The optional-Binding shape is load-bearing — keep it.
     @MainActor
     func view(for route: Route, path: Binding<[Route]>?) -> AnyView
 }
