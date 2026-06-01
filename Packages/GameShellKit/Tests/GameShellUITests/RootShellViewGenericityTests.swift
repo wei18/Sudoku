@@ -16,22 +16,28 @@ import Testing
 // path; this fixture covers the "is it actually generic" property they
 // cannot.
 
+// `SentinelRoute` + `SentinelFactory` are at file scope (not nested under
+// the suite) so SwiftLint's `nesting` rule — "types nested at most 1 level
+// deep" — is satisfied. The factory's `typealias Route = SentinelRoute`
+// would otherwise sit at depth 2 (suite → factory → typealias) and trip
+// the rule.
+
+private enum SentinelRoute: Hashable {
+    case first
+    case second(payload: Int)
+}
+
+private struct SentinelFactory: RouteFactory {
+    typealias Route = SentinelRoute
+
+    @MainActor
+    func view(for route: SentinelRoute, path: Binding<[SentinelRoute]>?) -> AnyView {
+        AnyView(Text("destination"))
+    }
+}
+
 @Suite("GameShellUI — RootShellView stays generic")
 struct RootShellViewGenericityTests {
-    private enum SentinelRoute: Hashable {
-        case first
-        case second(payload: Int)
-    }
-
-    private struct SentinelFactory: RouteFactory {
-        typealias Route = SentinelRoute
-
-        @MainActor
-        func view(for route: SentinelRoute, path: Binding<[SentinelRoute]>?) -> AnyView {
-            AnyView(Text("destination"))
-        }
-    }
-
     @Test @MainActor func instantiatesWithNonSudokuRoute() {
         let shell = RootShellView<SentinelRoute, EmptyView>(
             path: .constant([.first]),
