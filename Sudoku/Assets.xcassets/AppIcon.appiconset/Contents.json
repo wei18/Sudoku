@@ -21,6 +21,17 @@
       "filename" : "AppIcon-Dark.png",
       "idiom" : "universal",
       "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "tinted"
+        }
+      ],
+      "filename" : "AppIcon-Tinted.png",
+      "idiom" : "universal",
+      "size" : "1024x1024"
     }
   ],
   "info" : {

@@ -4,13 +4,10 @@
        System renders foreground (white) in user's accent color over a
        near-black background. Reuses the original Concept 01 single-dot
        motif (deleted from concepts/ in #63) but designed monochrome. -->
-  <!-- 24% corner radius (246pt) matches the light + dark finalists. -->
-  <defs>
-    <clipPath id="iconMask">
-      <rect width="1024" height="1024" rx="246" ry="246"/>
-    </clipPath>
-  </defs>
-  <g clip-path="url(#iconMask)">
+  <!-- NO rounded-corner clip (2026-06-01 user direction): Apple's compositor
+       applies the squircle mask. See sibling light-difficulty-trio.svg
+       header for rationale. -->
+  <g>
     <!-- Near-black bg; system tinting reads this as the "negative space" -->
     <rect width="1024" height="1024" fill="#0A0A0A"/>
     <!-- Single accent cell (center-top), filled white -> tints to accent color -->
