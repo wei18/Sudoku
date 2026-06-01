@@ -208,3 +208,5 @@ public struct MinesweeperEngine: Sendable {
         neighborCoords(row: row, col: col).map { index(row: $0.row, col: $0.col) }
     }
 }
+
+// swiftlint:enable identifier_name

@@ -254,7 +254,7 @@ private func revealAllSafe(_ engine: inout MinesweeperEngine) throws {
     @Test func cascadeSkipsFlaggedCells() throws {
         var e = freshEngine(.beginner, seed: 7)
         try e.reveal(row: 0, col: 0)
-        var flagged: (Int, Int)? = nil
+        var flagged: (Int, Int)?
         for r in 0..<e.rows {
             for c in 0..<e.columns {
                 let cell = try e.cell(at: r, col: c)
@@ -525,3 +525,5 @@ private func revealAllSafe(_ engine: inout MinesweeperEngine) throws {
         #expect(decoded == moves)
     }
 }
+
+// swiftlint:enable identifier_name file_length
