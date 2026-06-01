@@ -1,21 +1,15 @@
-// RouteFactory — single seam mapping an `AppRoute` value onto a concrete
-// destination view (plan.md v2.3.3, promoted from Wave 3 architecture audit).
+// LiveRouteFactory — Sudoku's concrete `RouteFactory` (PR X2 split, 2026-06-01):
+// the game-agnostic protocol moved to `GameShellKit/Sources/GameShellUI/RouteFactory.swift`.
+// This file holds the Sudoku-specific implementation and its destination
+// wiring; the protocol's `associatedtype Route` is bound to `AppRoute` here.
 //
-// Why a seam: every time the App gained a new top-level dependency (Telemetry,
-// PuzzleProvider, then v2's AdProvider / IAPClient / AdGate) the `RootView`
-// constructor grew another parameter — by v2.3.2's interim wiring it would
-// have reached 8 deps. The factory absorbs all of those into a single object,
-// so `RootView.init` stays at two arguments (viewModel + routeFactory)
-// regardless of how many collaborators the destination views ultimately need.
-//
-// §設計決定: `view(for:path:) -> AnyView`
-//   AnyView pays a small SwiftUI diff cost (identity-via-AnyView erasure) but
-//   keeps the protocol non-generic so we can store it as `any RouteFactory`
-//   in `AppComposition` and `RootView`. The alternative — an associated-type
-//   `Destination: View` — would force `RootView` and `AppComposition` to be
-//   generic over the factory and propagate that generic through every test
-//   fixture. SwiftUI itself uses AnyView in its public navigationDestination
-//   API closures, so we are not breaking new ground.
+// Why the protocol seam exists: every time the App gained a new top-level
+// dependency (Telemetry, PuzzleProvider, then v2's AdProvider / IAPClient /
+// AdGate) the `RootView` constructor grew another parameter — by v2.3.2's
+// interim wiring it would have reached 8 deps. The factory absorbs all of
+// those into a single object, so `RootView.init` stays at two arguments
+// (viewModel + routeFactory) regardless of how many collaborators the
+// destination views ultimately need.
 
 public import SwiftUI
 public import MonetizationCore
@@ -23,29 +17,7 @@ public import GameCenterClient
 public import Persistence
 public import PuzzleStore
 public import Telemetry
-
-// MARK: - RouteFactory
-
-public protocol RouteFactory: Sendable {
-    /// - Parameter path: optional binding to the host `NavigationStack`'s
-    ///   path so destination view-models that drive further pushes
-    ///   (`DailyHubViewModel`, `PracticeHubViewModel`) write into the same
-    ///   array the stack observes. `nil` falls back to a local stub array
-    ///   so tests / previews can call this without wiring a binding.
-    ///   Issue #197: prior signature dropped the binding entirely, leaving
-    ///   Daily / Practice cards as no-op taps on macOS detail-pane scope.
-    @MainActor
-    func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView
-}
-
-extension RouteFactory {
-    /// Test / preview convenience — call sites that don't need to drive a
-    /// real navigation stack can omit the binding.
-    @MainActor
-    public func view(for route: AppRoute) -> AnyView {
-        view(for: route, path: nil)
-    }
-}
+public import GameShellUI
 
 // MARK: - LiveRouteFactory
 

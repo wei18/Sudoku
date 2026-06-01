@@ -9,7 +9,7 @@
 
 public import MonetizationCore
 public import SwiftUI
-internal import GameShellUI
+public import GameShellUI
 internal import Persistence
 internal import SudokuEngine
 
@@ -17,7 +17,7 @@ public struct RootView: View {
     @State private var viewModel: RootViewModel
     @Environment(\.theme) private var theme
 
-    private let routeFactory: any RouteFactory
+    private let routeFactory: any RouteFactory<AppRoute>
     // v2.3.4: forwarded to HomeView for its `BannerSlotView` mount. The
     // route factory already holds these privately for destination views;
     // HomeView is the root content (not a destination), so RootView still
@@ -35,7 +35,7 @@ public struct RootView: View {
 
     public init(
         viewModel: RootViewModel,
-        routeFactory: any RouteFactory,
+        routeFactory: any RouteFactory<AppRoute>,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         monetizationController: MonetizationStateController? = nil,

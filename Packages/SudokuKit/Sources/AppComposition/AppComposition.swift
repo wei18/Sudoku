@@ -21,6 +21,7 @@
 internal import AdsAdMob
 internal import Foundation
 public import GameCenterClient
+public import GameShellUI
 public import MonetizationCore
 public import Persistence
 public import PuzzleStore
@@ -30,7 +31,7 @@ public import Telemetry
 @MainActor
 public struct AppComposition {
     public let rootViewModel: RootViewModel
-    public let routeFactory: any RouteFactory
+    public let routeFactory: any RouteFactory<AppRoute>
     public let puzzleProvider: any PuzzleProviderProtocol
     public let persistence: any PersistenceProtocol
     public let gameCenter: any GameCenterClient
@@ -61,7 +62,7 @@ public struct AppComposition {
 
     public init(
         rootViewModel: RootViewModel,
-        routeFactory: any RouteFactory,
+        routeFactory: any RouteFactory<AppRoute>,
         puzzleProvider: any PuzzleProviderProtocol,
         persistence: any PersistenceProtocol,
         gameCenter: any GameCenterClient,
