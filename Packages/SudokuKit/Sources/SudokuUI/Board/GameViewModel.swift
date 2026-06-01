@@ -68,6 +68,10 @@ public final class GameViewModel {
     private let saveDebounceNanos: UInt64
     private var pendingSaveTask: Task<Void, Never>?
 
+    /// Injectable "now" — used by `isLateCompletion` to detect daily puzzles
+    /// from a past UTC day. Defaults to `Date()`; tests fast-forward.
+    private let clock: @Sendable () -> Date
+
     // MARK: - Init
 
     /// Live init — bind to a real `GameSession` + `Persistence`.
@@ -80,7 +84,8 @@ public final class GameViewModel {
         initialElapsedSeconds: Int = 0,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        saveDebounceNanos: UInt64 = 500_000_000
+        saveDebounceNanos: UInt64 = 500_000_000,
+        clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.identity = identity
         self.session = session
@@ -91,6 +96,7 @@ public final class GameViewModel {
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.saveDebounceNanos = saveDebounceNanos
+        self.clock = clock
     }
 
     /// Snapshot / preview init — no live `GameSession`, no persistence.
@@ -106,7 +112,8 @@ public final class GameViewModel {
         selection: GridCoordinate? = nil,
         pencilMode: Bool = false,
         canUndo: Bool = false,
-        canRedo: Bool = false
+        canRedo: Bool = false,
+        clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.identity = identity
         self.session = nil
@@ -122,6 +129,30 @@ public final class GameViewModel {
         self.pencilMode = pencilMode
         self.canUndo = canUndo
         self.canRedo = canRedo
+        self.clock = clock
+    }
+
+    // MARK: - Late-completion marker (issue #228 option B)
+
+    /// `true` iff this is a daily puzzle whose embedded UTC day is strictly
+    /// before today — i.e. completing it will NOT submit to the Game Center
+    /// leaderboard (per `SubmitGuards`). The board header surfaces this so
+    /// the user knows mid-game that the run won't score.
+    public var isLateCompletion: Bool {
+        guard identity.kind == .daily else { return false }
+        guard let day = Self.extractDailyDay(from: identity.puzzleId) else { return false }
+        return day < UTCDay.string(from: clock())
+    }
+
+    /// Pull the `YYYY-MM-DD` prefix from a daily puzzleId. Mirrors the
+    /// helper in `SavedGameStore` (issue #228 option E) and `SubmitGuards`.
+    private static func extractDailyDay(from puzzleId: String) -> String? {
+        let prefix = puzzleId.prefix(10)
+        guard prefix.count == 10,
+              prefix[prefix.index(prefix.startIndex, offsetBy: 4)] == "-",
+              prefix[prefix.index(prefix.startIndex, offsetBy: 7)] == "-"
+        else { return nil }
+        return String(prefix)
     }
 
     // MARK: - Test seam

@@ -65,7 +65,35 @@ internal actor SavedGameStore: Sendable {
             .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "inProgress")
         )
         let summaries = payloads.compactMap(SavedGameMapper.summary(from:))
-        return summaries.max { $0.lastModifiedAt < $1.lastModifiedAt }
+        // Issue #228 (option E): filter out stale daily saves whose embedded
+        // date is older than today (UTC). Practice saves never expire; today's
+        // daily is unaffected. Cleanup of the stale records themselves is a
+        // separate follow-up — this filter only hides them from the resume
+        // candidate set so newer non-stale saves are not masked.
+        let todayUTC = UTCDay.string(from: clock())
+        let eligible = summaries.filter { summary in
+            guard summary.mode == .daily else { return true }
+            guard let day = Self.extractDailyDay(from: summary.puzzleId) else { return true }
+            return day >= todayUTC
+        }
+        return eligible.max { $0.lastModifiedAt < $1.lastModifiedAt }
+    }
+
+    /// Pull the `YYYY-MM-DD` prefix from a daily puzzleId. Mirrors
+    /// `GameCenterClient/SubmitGuards.extractDailyDay` — duplicated rather
+    /// than re-exported because crossing the PersistenceKit ↔ GameCenterKit
+    /// dep boundary for a 5-line helper would invert the dep graph
+    /// (foundations.md §2 forbids upward arrows).
+    private static func extractDailyDay(from puzzleId: String) -> String? {
+        // Daily format: "YYYY-MM-DD-{difficulty}" (see PuzzleIdentity.daily).
+        // Anything else (practice ids, malformed) → nil → treat as non-stale.
+        let prefix = puzzleId.prefix(10)
+        guard prefix.count == 10,
+              prefix.allSatisfy({ $0.isASCII }),
+              prefix[prefix.index(prefix.startIndex, offsetBy: 4)] == "-",
+              prefix[prefix.index(prefix.startIndex, offsetBy: 7)] == "-"
+        else { return nil }
+        return String(prefix)
     }
 
     func loadOrCreate(
