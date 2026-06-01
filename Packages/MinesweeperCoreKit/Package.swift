@@ -25,12 +25,22 @@ let swiftSettings: [SwiftSetting] = [
 
 let productionTargets: [Target] = [
     .target(name: "MinesweeperEngine", swiftSettings: swiftSettings),
+    .target(
+        name: "MinesweeperGameState",
+        dependencies: ["MinesweeperEngine"],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Test targets
 
 let testTargets: [Target] = [
     .testTarget(name: "MinesweeperEngineTests", dependencies: ["MinesweeperEngine"], swiftSettings: swiftSettings),
+    .testTarget(
+        name: "MinesweeperGameStateTests",
+        dependencies: ["MinesweeperGameState"],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Package
@@ -43,6 +53,7 @@ let package = Package(
     ],
     products: [
         .library(name: "MinesweeperEngine", targets: ["MinesweeperEngine"]),
+        .library(name: "MinesweeperGameState", targets: ["MinesweeperGameState"]),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
