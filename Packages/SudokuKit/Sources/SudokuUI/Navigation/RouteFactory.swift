@@ -13,6 +13,7 @@
 
 public import SwiftUI
 public import MonetizationCore
+public import MonetizationUI
 public import GameCenterClient
 public import Persistence
 public import PuzzleStore

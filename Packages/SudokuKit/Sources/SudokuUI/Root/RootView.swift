@@ -14,6 +14,7 @@
 // signature.
 
 public import MonetizationCore
+public import MonetizationUI
 public import SwiftUI
 public import GameShellUI
 internal import Persistence
@@ -64,7 +65,11 @@ public struct RootView: View {
             rootContent: { rootContent }
         )
         .task { await viewModel.bootstrap() }
-        .toastOverlay(toastController)
+        .toastOverlay(
+            toastController,
+            successTint: theme.status.success.resolved,
+            failureTint: theme.status.error.resolved
+        )
     }
 
     // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push

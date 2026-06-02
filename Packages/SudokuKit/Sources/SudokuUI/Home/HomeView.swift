@@ -16,6 +16,7 @@
 // and the card disappears on the next observation pass.
 
 public import MonetizationCore
+public import MonetizationUI
 public import SwiftUI
 
 public struct HomeView: View {

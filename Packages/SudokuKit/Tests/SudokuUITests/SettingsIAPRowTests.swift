@@ -16,6 +16,7 @@ import Testing
 
 import MonetizationCore
 import MonetizationTesting
+import MonetizationUI
 import Persistence
 import SudokuKitTesting
 @testable import SudokuUI

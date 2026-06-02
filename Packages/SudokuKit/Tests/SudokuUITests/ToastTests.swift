@@ -11,6 +11,7 @@ import SnapshotTesting
 import SwiftUI
 import Testing
 
+import MonetizationUI
 @testable import SudokuUI
 
 @MainActor
@@ -59,10 +60,21 @@ struct ToastTests {
     // MARK: - Snapshot baselines
 
     #if canImport(AppKit)
+    /// MS monetization wire Phase 1: the moved `ToastView` is theme-agnostic
+    /// (no `@Environment(\.theme)` read). To preserve the historical snapshot
+    /// bytes, Sudoku tests pass `DefaultTheme().status.success/error.resolved`
+    /// at the call site — exactly what the old env-driven path resolved to.
+    private static let successTint: Color = DefaultTheme().status.success.resolved
+    private static let failureTint: Color = DefaultTheme().status.error.resolved
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotSuccessLight() {
-        let view = ToastView(toast: Toast(style: .success, message: "Ads removed"))
-            .frame(width: 320, height: 80)
-            .padding()
+        let view = ToastView(
+            toast: Toast(style: .success, message: "Ads removed"),
+            successTint: Self.successTint,
+            failureTint: Self.failureTint
+        )
+        .frame(width: 320, height: 80)
+        .padding()
         let host = hostingView(view, size: CGSize(width: 320, height: 120), colorScheme: .light)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "ToastView-success-light")
@@ -70,9 +82,13 @@ struct ToastTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailureLight() {
-        let view = ToastView(toast: Toast(style: .failure, message: "Purchase failed"))
-            .frame(width: 320, height: 80)
-            .padding()
+        let view = ToastView(
+            toast: Toast(style: .failure, message: "Purchase failed"),
+            successTint: Self.successTint,
+            failureTint: Self.failureTint
+        )
+        .frame(width: 320, height: 80)
+        .padding()
         let host = hostingView(view, size: CGSize(width: 320, height: 120), colorScheme: .light)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "ToastView-failure-light")

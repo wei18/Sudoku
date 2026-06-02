@@ -11,6 +11,7 @@
 // truth — toasts are transient and not reliably announced by VoiceOver.
 
 public import Foundation
+public import MonetizationUI
 public import Persistence
 public import SudokuEngine
 public import Telemetry

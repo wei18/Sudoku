@@ -14,6 +14,7 @@ internal import Foundation
 internal import GameCenterClient
 internal import IAPStoreKit2
 internal import MonetizationCore
+internal import MonetizationUI
 internal import Persistence
 internal import PuzzleStore
 internal import SudokuUI

@@ -53,6 +53,14 @@ let productionTargets: [Target] = [
             // AdMob / StoreKit2 concrete-impl targets — those stay isolated
             // in AppComposition (foundations.md §9.1).
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // MS monetization wire Phase 1 (2026-06-02): shared rows
+            // (`RemoveAdsRow` / `RestorePurchasesRow` / `AdsRemovedRow`)
+            // + `MonetizationStateController` + `ToastController` /
+            // `ToastView` live in MonetizationUI so Minesweeper can mount
+            // the same surfaces in Phase 3. SudokuUI consumes these from
+            // `SettingsView` + `RootView` + `RouteFactory` and resolves
+            // its theme tints at the call site via `tintColor:` params.
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
             // PR X1: NavigationStackHost lives here now. Will grow as more
             // shell components extract (RootView, Settings shell, Daily /
             // Practice hubs — Phase X PRs).
@@ -112,6 +120,7 @@ let productionTargets: [Target] = [
             // LiveAdMobAdProvider + LiveStoreKit2IAPClient + AdGate via
             // LiveMonetizationStateStore. Preview / tests use MonetizationTesting fakes.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
             .product(name: "AdsAdMob", package: "AppMonetizationKit"),
             .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
             .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
@@ -142,6 +151,10 @@ func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
 // Convenience dep set used by tests that need to construct AdGate / monetization fakes.
 let monetizationTestDeps: [Target.Dependency] = [
     .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+    // MS monetization wire Phase 1 (2026-06-02): tests reference
+    // `MonetizationStateController`, `ToastController`, `Toast`,
+    // `removeAdsProductId` (moved here from SudokuUI).
+    .product(name: "MonetizationUI", package: "AppMonetizationKit"),
     .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
 ]
 
