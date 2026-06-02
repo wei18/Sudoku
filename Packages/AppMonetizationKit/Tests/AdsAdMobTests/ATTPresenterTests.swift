@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name
-
 import Testing
 import Foundation
 import os
@@ -88,6 +86,7 @@ internal final class FakeATTBridge: ATTBridge, @unchecked Sendable {
     }
 
     internal func requestAuthorization() async -> ATTOutcome {
+        // swiftlint:disable:next identifier_name
         state.withLock { (s: inout FakeATTState) -> ATTOutcome in
             s.requestCallCount += 1
             s.current = s.postRequest

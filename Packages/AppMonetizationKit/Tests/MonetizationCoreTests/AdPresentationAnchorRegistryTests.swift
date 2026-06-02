@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name
-
 import Foundation
 import Testing
 @testable import MonetizationCore

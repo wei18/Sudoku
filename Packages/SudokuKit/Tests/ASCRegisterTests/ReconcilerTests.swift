@@ -1,11 +1,11 @@
 // ReconcilerTests — given fixture remote state (empty / partial / full),
 // assert the right ordered sequence of Actions emerges.
 
-// swiftlint:disable identifier_name trailing_comma
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister
+
+// swiftlint:disable identifier_name
 
 @Suite("Reconciler")
 internal struct ReconcilerTests {
@@ -208,3 +208,4 @@ internal struct ReconcilerTests {
         }
     }
 }
+// swiftlint:enable identifier_name

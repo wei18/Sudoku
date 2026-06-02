@@ -1,9 +1,9 @@
-// swiftlint:disable identifier_name trailing_comma
-
 import Foundation
 import Testing
 import MonetizationCore
 @testable import MonetizationTesting
+
+// swiftlint:disable identifier_name
 
 @Suite("FakeAdProvider — scripted behavior")
 struct FakeAdProviderTests {
@@ -164,3 +164,4 @@ struct FakeIAPClientTests {
         #expect(fake.purchaseUpdatesSubscriberCount == 0)
     }
 }
+// swiftlint:enable identifier_name

@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name
-
 import Foundation
 import os
 @testable import AdsAdMob
@@ -54,6 +52,7 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
 
     // MARK: AdMobBridge
 
+    // swiftlint:disable identifier_name
     internal func start() async throws {
         let err = state.withLock { (s: inout FakeAdMobBridgeState) -> (any Error)? in
             s.startCallCount += 1
@@ -72,6 +71,7 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
         setCachedStatus(.loaded(handle))
         return handle
     }
+    // swiftlint:enable identifier_name
 
     internal func currentBannerStatus() async -> AdBannerStatus {
         state.withLock { $0.cachedStatus }

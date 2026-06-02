@@ -10,10 +10,10 @@
 // produces a 64-byte raw IEEE P1363 R||S — exactly what JWT ES256 expects
 // (no DER unwrap needed). No external deps.
 
-// swiftlint:disable identifier_name
-
 import CryptoKit
 import Foundation
+
+// swiftlint:disable identifier_name
 
 internal struct JWT: Sendable {
 
@@ -122,3 +122,4 @@ internal struct JWT: Sendable {
         return Data(base64Encoded: t)
     }
 }
+// swiftlint:enable identifier_name

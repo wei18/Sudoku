@@ -11,8 +11,6 @@
 // Logging: every request body is printed in dry-run mode (`plan`). In
 // `apply` mode we print "POST /v1/... → 201" status lines only.
 
-// swiftlint:disable trailing_comma
-
 import CryptoKit
 import Foundation
 #if canImport(FoundationNetworking)
@@ -34,6 +32,7 @@ internal actor ASCClient {
 
     internal enum ClientError: Error, Sendable, Equatable {
         case httpStatus(code: Int, path: String, body: String)
+        // swiftlint:disable:next todo
         // TODO: remove if still unused after error refactor settles
         case missingResponseBody
         case decodeFailed(reason: String, path: String, status: Int, bodyExcerpt: String)

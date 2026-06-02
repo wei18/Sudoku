@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name
-
 import Testing
 import Foundation
 import os
@@ -112,6 +110,7 @@ internal final class FakeUMPBridge: UMPBridge, @unchecked Sendable {
 
     // MARK: UMPBridge
 
+    // swiftlint:disable identifier_name
     internal func requestConsentInfoUpdate() async throws {
         let err = state.withLock { (s: inout FakeUMPState) -> (any Error)? in
             s.requestInfoCallCount += 1
@@ -131,4 +130,5 @@ internal final class FakeUMPBridge: UMPBridge, @unchecked Sendable {
         }
         if let err { throw err }
     }
+    // swiftlint:enable identifier_name
 }
