@@ -3,7 +3,7 @@
 Last updated: 2026-05-21
 Applies to: Sudoku for iPhone and Mac, version 1.0 and later.
 
-> **v2 update (2026-05-21)**: starting with v2.0, Sudoku App displays Google AdMob banner ads on Home / Board view (after a 7-day grace period, capped at one shown ad per day), and offers a one-time "Remove Ads" In-App Purchase. The short version and §Data we collect sections below describe the v1 baseline; the new behaviour is documented in §廣告與 IAP (v2+) at the bottom of this document. Until v2 ships, the v1 baseline applies.
+> **v2 update (2026-05-21, revised 2026-06-02)**: starting with v2.0, Sudoku App displays Google AdMob banner ads on Home / Board view (shown from first launch, capped at one displayed ad per day with dismissed-that-day skip), and offers a one-time "Remove Ads" In-App Purchase. The short version and §Data we collect sections below describe the v1 baseline; the new behaviour is documented in §廣告與 IAP (v2+) at the bottom of this document. Until v2 ships, the v1 baseline applies.
 
 This is the public privacy policy for the Sudoku App developed by Wei (`@wei18` on GitHub). It mirrors the declarations in [`App/Resources/PrivacyInfo.xcprivacy`](../App/Resources/PrivacyInfo.xcprivacy). If the two ever disagree, the manifest is the source of truth and this document will be updated to match.
 
@@ -58,9 +58,9 @@ This section applies only to v2.0 and later. In v1 the App ships with no ads and
 
 ### 廣告 / Advertising
 
-從 v2 起，Sudoku App 在 Home 與 Board view 顯示由 Google AdMob 提供的橫幅廣告。第一週（7 天 grace period）內不顯示廣告，之後每天最多顯示一次；玩家在當天關閉廣告後，當天不再出現。購買「Remove Ads」一次性內購後，廣告永久關閉。
+從 v2 起，Sudoku App 在 Home 與 Board view 顯示由 Google AdMob 提供的橫幅廣告。從第一次啟動起即顯示，每天最多顯示一次；玩家在當天關閉廣告後，當天不再出現。購買「Remove Ads」一次性內購後，廣告永久關閉。
 
-Starting with v2, Sudoku App shows banner ads supplied by Google AdMob on the Home and Board views. Ads are suppressed during the first 7 days (grace period) and capped at one displayed ad per day thereafter; once you dismiss the day's ad, no further ads appear that day. Purchasing the one-time "Remove Ads" IAP turns ads off permanently.
+Starting with v2, Sudoku App shows banner ads supplied by Google AdMob on the Home and Board views. Ads appear from first launch, capped at one displayed ad per day; once you dismiss the day's ad, no further ads appear that day. Purchasing the one-time "Remove Ads" IAP turns ads off permanently.
 
 AdMob 在執行廣告投放時：
 

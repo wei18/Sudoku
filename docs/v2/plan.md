@@ -242,7 +242,7 @@ Plan 原訂未列、實際 ship 的後續工作整理於此，供 trace。
 詳細 checklist 全部在 [`v2.5-readiness.md`](v2.5-readiness.md)；此處只列 phase 概要，避免雙處維護。
 
 - **v2.5.1** Sandbox IAP on real device — 購買 / 跨機 restore / CloudKit sync
-- **v2.5.2** Real-device AdMob test ads — 7-day grace / dismissed-skip / 1/day max；isolation audit `rg '^(internal |private |public |@_implementationOnly |@preconcurrency )*import GoogleMobileAds' Packages/` = 1 檔
+- **v2.5.2** Real-device AdMob test ads — 1/day max + dismissed-skip（7-day grace 於 2026-06-02 廢除，gracePeriodDays = 0）；isolation audit `rg '^(internal |private |public |@_implementationOnly |@preconcurrency )*import GoogleMobileAds' Packages/` = 1 檔
 - **v2.5.3** Submit to ASC review — Privacy questionnaire 對齊 PrivacyInfo / demo Apple ID / submit
 
 CI prerequisite：`ci_post_clone.sh` 從 Xcode Cloud `$CI_TEAM_ID` 寫 `Tuist/Signing.xcconfig`，user 不需手動配 env var。

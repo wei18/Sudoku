@@ -53,7 +53,7 @@ public protocol AdGateStateStore: Sendable {
 //
 // Frequency arbiter. Logic (docs/v1/design.md §How.3, brief):
 //   1. `hasPurchasedRemoveAds == true` → false (highest precedence).
-//   2. `now < firstLaunchAt + 7 days` → false (grace period).
+//   2. (grace period removed 2026-06-02 — banner shows from first launch)
 //   3. `dismissedDate` is the same calendar day as `now` → false.
 //   4. Clock-tamper guard (docs/v1/design.md §How.3.1): if `lastSeenWallClock` is set
 //      and `now < lastSeenWallClock - 24h tolerance`, treat as a clock
@@ -121,10 +121,13 @@ public actor AdGate {
 
     // MARK: Queries
 
-    /// First-launch grace period during which the banner is suppressed.
-    /// **Production target = 7 days** (per `docs/v2/design.md` rule #6).
-    /// Currently **0** for TestFlight / dogfood visibility — restore to 7
-    /// before the v2.5 App Store submission. See issue #212.
+    /// First-launch grace period during which the banner would be suppressed.
+    /// **Spec change 2026-06-02 (closes #212): policy is now 0 — banner shows
+    /// from first launch, no onboarding grace.** Field retained as a
+    /// 0-valued knob to preserve the existing `shouldShowBanner` branch
+    /// + state machine; removing it would change `AdGate`'s public surface
+    /// for no benefit. If a future spec re-introduces a grace, just flip
+    /// the value (no other code change needed).
     public static let gracePeriodDays: TimeInterval = 0
 
     public func shouldShowBanner(now: Date) async -> Bool {
@@ -132,7 +135,9 @@ public actor AdGate {
             let state = try await currentState()
             // 1. Purchased → permanently suppressed.
             if state.hasPurchasedRemoveAds { return false }
-            // 2. Grace period from first launch (see `gracePeriodDays`).
+            // 2. Grace period from first launch — currently 0 per spec change
+            // 2026-06-02 (closes #212). Branch retained as a 0-valued knob so
+            // re-introducing a grace is a one-constant change.
             let graceEnd = state.firstLaunchAt.addingTimeInterval(AdGate.gracePeriodDays * 86_400)
             if now < graceEnd { return false }
             // 3. Dismissed today → suppressed for the rest of the day.
