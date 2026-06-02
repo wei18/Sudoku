@@ -39,8 +39,8 @@
     },
     "iap.remove_ads.description" : {
       "localizations" : {
-        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Permanently remove all banner and interstitial ads from the app. One-time purchase, shared with Family Sharing." } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "永久移除應用程式內的所有橫幅與插頁廣告。一次性購買，可透過「家人共享」共用。" } },
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Permanently remove all in-app ads. One-time purchase. Supports Family Sharing." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "永久移除 App 內所有廣告。單次購買，支援「家人共享」。" } },
         "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
