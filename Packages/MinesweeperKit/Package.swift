@@ -28,12 +28,21 @@ let productionTargets: [Target] = [
         dependencies: [
             .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
             .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
+            // Standard nav wire (2026-06-02): MinesweeperRoot wraps
+            // `RootShellView`, SettingsView wraps `SettingsShellView`. Both
+            // come from GameShellKit.
+            .product(name: "GameShellUI", package: "GameShellKit"),
         ],
         swiftSettings: swiftSettings
     ),
     .target(
         name: "MinesweeperAppComposition",
-        dependencies: ["MinesweeperUI"],
+        dependencies: [
+            "MinesweeperUI",
+            // LiveRouteFactory conforms to `RouteFactory<AppRoute>` from
+            // GameShellUI.
+            .product(name: "GameShellUI", package: "GameShellKit"),
+        ],
         swiftSettings: swiftSettings
     ),
 ]
@@ -41,7 +50,15 @@ let productionTargets: [Target] = [
 let testTargets: [Target] = [
     .testTarget(
         name: "MinesweeperUITests",
-        dependencies: ["MinesweeperUI"],
+        dependencies: [
+            "MinesweeperUI",
+            // Standard nav wire tests (2026-06-02 Track c.1) cover
+            // `LiveRouteFactory`'s route → view mapping. Co-located in the
+            // existing test target rather than spinning up a new one — the
+            // factory is a thin RouteFactory conformance, not enough surface
+            // to justify separate scoping.
+            "MinesweeperAppComposition",
+        ],
         swiftSettings: swiftSettings
     ),
 ]
@@ -60,6 +77,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../MinesweeperCoreKit"),
+        .package(name: "GameShellKit", path: "../GameShellKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
