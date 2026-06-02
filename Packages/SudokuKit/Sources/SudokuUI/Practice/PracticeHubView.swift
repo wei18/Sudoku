@@ -3,8 +3,17 @@
 // Per docs/designs/04-practice-hub.md. The "Draw new puzzle" CTA disables
 // itself during draws; sub-100 ms draws skip indicators (no flash), >100 ms
 // draws redact the puzzle-id hint (.redacted(reason: .placeholder)).
+//
+// PR U12: outer VStack(24) + padding(16) + frame + chrome triple + inline
+// "Difficulty" section header extracted into `GameShellUI.PracticeHubShellView`.
+// This view now produces the difficulty Picker (filter slot) and the
+// shimmer-aware `drawCard` (cta slot), and threads Sudoku theme colors
+// (background + header foreground) into the shell. `headerForeground`
+// preserves the previous `theme.text.primary.resolved` rendering →
+// byte-identical to pre-U12 snapshots.
 
 public import SwiftUI
+internal import GameShellUI
 internal import SudokuEngine
 
 public struct PracticeHubView: View {
@@ -16,37 +25,35 @@ public struct PracticeHubView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("Difficulty")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(theme.text.primary.resolved)
+        PracticeHubShellView(
+            title: "Practice",
+            backgroundColor: theme.surface.background.resolved,
+            filterHeader: "Difficulty",
+            headerForeground: theme.text.primary.resolved,
+            filter: { difficultyPicker },
+            cta: { drawCard }
+        )
+    }
 
-            Picker("Difficulty", selection: difficultyBinding) {
-                ForEach(Difficulty.allCases, id: \.self) { difficulty in
-                    Text(LocalizedStringKey(difficulty.rawValue.capitalized))
-                        .tag(difficulty)
-                }
+    @ViewBuilder
+    private var difficultyPicker: some View {
+        Picker("Difficulty", selection: difficultyBinding) {
+            ForEach(Difficulty.allCases, id: \.self) { difficulty in
+                Text(LocalizedStringKey(difficulty.rawValue.capitalized))
+                    .tag(difficulty)
             }
-            .pickerStyle(.segmented)
-            // The "Difficulty" `Text` above is the section heading; the
-            // Picker's own label would render again inline on macOS.
-            .labelsHidden()
-            // Tint the segmented control with the *selected* difficulty's
-            // token so the active chip reads as that difficulty's color.
-            // SwiftUI segmented Pickers don't expose per-segment tints,
-            // so this is the closest we can get without a custom control.
-            .tint(tint(for: viewModel.difficulty))
-            .padding(8)
-            .glassEffect(.regular, in: .rect(cornerRadius: 12))
-
-            drawCard
-
-            Spacer()
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(theme.surface.background.resolved)
-        .navigationTitle("Practice")
+        .pickerStyle(.segmented)
+        // The "Difficulty" `Text` above is the section heading; the
+        // Picker's own label would render again inline on macOS.
+        .labelsHidden()
+        // Tint the segmented control with the *selected* difficulty's
+        // token so the active chip reads as that difficulty's color.
+        // SwiftUI segmented Pickers don't expose per-segment tints,
+        // so this is the closest we can get without a custom control.
+        .tint(tint(for: viewModel.difficulty))
+        .padding(8)
+        .glassEffect(.regular, in: .rect(cornerRadius: 12))
     }
 
     private var difficultyBinding: Binding<Difficulty> {
