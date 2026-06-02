@@ -6,8 +6,6 @@
 // the expected strings and assert. If the production constants ever drift,
 // fix them in BOTH places — Leader will be alerted by this test failing.
 
-// swiftlint:disable trailing_comma
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister

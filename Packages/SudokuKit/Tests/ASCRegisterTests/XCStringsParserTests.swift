@@ -2,8 +2,6 @@
 // non-gc.*) plus `<TRANSLATE>` / empty placeholders; assert the parser
 // keeps only translated `gc.*` entries.
 
-// swiftlint:disable trailing_comma line_length non_optional_string_data_conversion
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister
@@ -95,6 +93,7 @@ internal struct XCStringsParserTests {
 
     @Test("Invalid JSON throws")
     internal func invalidJSON() throws {
+        // swiftlint:disable:next non_optional_string_data_conversion
         let data = try #require("not json".data(using: .utf8))
         #expect(throws: (any Error).self) {
             try XCStringsParser.parse(data: data)

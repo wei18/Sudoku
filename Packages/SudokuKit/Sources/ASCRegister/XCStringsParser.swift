@@ -19,8 +19,6 @@
 //
 // We treat `<TRANSLATE>` and empty string as "not yet translated" and omit.
 
-// swiftlint:disable identifier_name
-
 import Foundation
 
 internal struct XCStringsParser: Sendable {
@@ -52,6 +50,7 @@ internal struct XCStringsParser: Sendable {
             for (locale, locValue) in localizations {
                 guard let locDict = locValue as? [String: Any],
                       let unit = locDict["stringUnit"] as? [String: Any],
+                      // swiftlint:disable:next identifier_name
                       let s = unit["value"] as? String
                 else { continue }
                 if s.isEmpty || s == "<TRANSLATE>" { continue }

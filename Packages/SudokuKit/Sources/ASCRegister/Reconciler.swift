@@ -9,8 +9,6 @@
 // reference them, so the two phases are sequential. Within a phase,
 // order matches `Config.leaderboards` / `Config.achievements` (stable).
 
-// swiftlint:disable identifier_name trailing_comma
-
 import Foundation
 
 internal enum Action: Sendable, Equatable {
@@ -173,6 +171,7 @@ internal struct Reconciler: Sendable {
         remote: RemoteState
     ) -> [Action] {
         var out: [Action] = []
+        // swiftlint:disable:next identifier_name
         for lb in config.leaderboards {
             if let existingId = remote.leaderboards[lb.id] {
                 // We don't introspect attributes — treat existence as unchanged.

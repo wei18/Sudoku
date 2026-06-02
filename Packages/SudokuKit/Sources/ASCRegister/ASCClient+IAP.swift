@@ -20,8 +20,6 @@
 // mismatch as an ENTITY_ERROR which `asc-apply-round.js` will decode (per the
 // dispatch brief's "PATCH path verification deferred to runtime" decision).
 
-// swiftlint:disable trailing_comma
-
 import Foundation
 
 extension ASCClient {

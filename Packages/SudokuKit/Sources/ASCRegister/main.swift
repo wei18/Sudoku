@@ -14,9 +14,9 @@
 // No external deps — `swift-argument-parser` is deliberately avoided per
 // dispatch constraints. The argv parser below is intentionally simple.
 
-// swiftlint:disable identifier_name cyclomatic_complexity function_body_length for_where file_length
-
 import Foundation
+
+// swiftlint:disable identifier_name cyclomatic_complexity for_where file_length
 
 // Top-level entry point. `main.swift` is special: it runs as the program's
 // entry, so we can't use `@main` here (the two are mutually exclusive).
@@ -501,3 +501,5 @@ internal enum CLIError: Error, CustomStringConvertible {
 // MARK: - Top-level entry
 
 await ASCRegisterCLI.run()
+
+// swiftlint:enable identifier_name cyclomatic_complexity for_where file_length

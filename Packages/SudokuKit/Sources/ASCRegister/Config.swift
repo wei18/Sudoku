@@ -10,8 +10,6 @@
 // you MUST change it in the production target — and bump the leaderboard
 // `.v1` suffix per §How.4.5 if the generator version changed.
 
-// swiftlint:disable orphaned_doc_comment trailing_comma
-
 import Foundation
 
 internal enum Config {

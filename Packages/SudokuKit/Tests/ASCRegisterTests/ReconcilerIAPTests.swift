@@ -8,8 +8,6 @@
 //   - root attribute drift → updateIAP
 //   - missing IAP product  → no actions (no createIAP; Phase 1.a skips)
 
-// swiftlint:disable identifier_name trailing_comma
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister
@@ -231,12 +229,14 @@ internal struct ReconcilerIAPTests {
             remote: remote
         )
         let locales = actions.compactMap { action -> String? in
+            // swiftlint:disable identifier_name
             switch action {
             case .createIAPLocalization(_, _, let l, _, _): return l
             case .updateIAPLocalization(_, let l, _, _): return l
             case .iapLocalizationUnchanged(_, let l): return l
             default: return nil
             }
+            // swiftlint:enable identifier_name
         }
         #expect(Set(locales) == ["en-US"])
     }
