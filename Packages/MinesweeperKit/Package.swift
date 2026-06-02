@@ -42,6 +42,11 @@ let productionTargets: [Target] = [
             // LiveRouteFactory conforms to `RouteFactory<AppRoute>` from
             // GameShellUI.
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // Telemetry + ErrorReporter seam (2026-06-02 parity audit). Mirror
+            // Sudoku's AppComposition shape — `.live()` constructs OSLog-backed
+            // Telemetry + LiveErrorReporter; `.preview()` wires empty-sinks +
+            // NoopErrorReporter. View-level usage is intentionally deferred.
+            .product(name: "Telemetry", package: "TelemetryKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -58,6 +63,10 @@ let testTargets: [Target] = [
             // factory is a thin RouteFactory conformance, not enough surface
             // to justify separate scoping.
             "MinesweeperAppComposition",
+            // 2026-06-02 telemetry-wire tests construct `.preview()` +
+            // `.live()` factories and exercise `observe(_:)` / `report(_:)`
+            // smoke calls — direct `import Telemetry` needed.
+            .product(name: "Telemetry", package: "TelemetryKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -78,6 +87,7 @@ let package = Package(
     dependencies: [
         .package(path: "../MinesweeperCoreKit"),
         .package(name: "GameShellKit", path: "../GameShellKit"),
+        .package(name: "TelemetryKit", path: "../TelemetryKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
