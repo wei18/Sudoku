@@ -4,9 +4,9 @@
 // same `"YYYY-MM-DD"` string interpreted in UTC. Prior to this extraction
 // the same Calendar+TimeZone+DateComponents block was duplicated across
 // `PuzzleStore.PuzzleIdentity`, `SubmitGuards`, `AchievementEvaluator`
-// and `SavedGameStore`, each carrying its own
-// `// swiftlint:disable force_unwrapping` for the `TimeZone(identifier:
-// "UTC")!` lookup. Co-located here in SudokuEngine — the deepest leaf —
+// and `SavedGameStore`, each carrying its own scoped
+// force_unwrapping disable for the `TimeZone(identifier: "UTC")!`
+// lookup. Co-located here in SudokuEngine — the deepest leaf —
 // so every caller (PuzzleStore / GameCenterClient / Persistence) can
 // reach it through its existing dependency chain.
 

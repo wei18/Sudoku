@@ -1,8 +1,8 @@
-// swiftlint:disable identifier_name trailing_comma
-
 import Foundation
 import Testing
 @testable import MonetizationCore
+
+// swiftlint:disable identifier_name
 
 // Compile-time helper — refuses to compile if the type loses Sendable.
 private func assertSendable<T: Sendable>(_ value: T) {}
@@ -161,3 +161,4 @@ struct ProtocolShapeTests {
         assertSendable(anchor)
     }
 }
+// swiftlint:enable identifier_name

@@ -1,5 +1,3 @@
-// swiftlint:disable identifier_name
-
 import Testing
 @testable import IAPStoreKit2
 
