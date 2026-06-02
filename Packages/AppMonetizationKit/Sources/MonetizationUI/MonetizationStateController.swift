@@ -42,9 +42,10 @@ internal import SwiftUI
 /// `IAPStoreKit2.IAPProductIDs.removeAds` (kept duplicated rather than
 /// re-exported because that constant is `internal` to IAPStoreKit2 — the
 /// App Store Connect product ID is the shared contract).
-// TODO(MS Phase 3): parameterize this — re-shape MonetizationStateController to
-// take productId via init so Minesweeper can wire `com.wei18.minesweeper.iap.remove_ads`
-// (see meetings/2026-06-02_minesweeper-monetization-wire-proposal.md §Phase 3).
+///
+/// MS Phase 3 (see `meetings/2026-06-02_minesweeper-monetization-wire-proposal.md`)
+/// will re-shape `MonetizationStateController` to take `productId` via init so
+/// Minesweeper can wire `com.wei18.minesweeper.iap.remove_ads`.
 public let removeAdsProductId: String = "com.wei18.sudoku.iap.remove_ads"
 
 @MainActor
