@@ -11,6 +11,8 @@
 // Logging: every request body is printed in dry-run mode (`plan`). In
 // `apply` mode we print "POST /v1/... → 201" status lines only.
 
+// swiftlint:disable file_length
+
 import CryptoKit
 import Foundation
 #if canImport(FoundationNetworking)
@@ -217,6 +219,23 @@ internal actor ASCClient {
         return try APIResource.decodeCollection(from: data, path: path, status: status)
     }
 
+    /// GET a JSON:API collection and also surface `included[]` side-loads
+    /// plus each primary resource's relationship pointers. Used when a
+    /// single request fans out via `?include=…` (proposal §3.1) — saves the
+    /// N+1 GET that listing related resources by relationship URL would
+    /// require, and works around endpoints where the dedicated relationship
+    /// URL 404s (e.g. `/v1/inAppPurchases/{id}/inAppPurchaseLocalizations`
+    /// returns PATH_ERROR despite being documented).
+    internal func getCollectionWithIncluded(
+        path: String
+    ) async throws -> APICollectionWithIncluded {
+        let (data, status) = try await send(method: "GET", path: path, body: nil)
+        guard (200..<300).contains(status) else {
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
+        }
+        return try APICollectionWithIncluded.decode(from: data, path: path, status: status)
+    }
+
     internal func mutate(method: String, path: String, body: [String: Any]) async throws -> APIResource {
         let bodyData = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         if mode == .plan {
@@ -304,6 +323,93 @@ internal struct APIResource: Sendable, Equatable {
     }
 
     private static func fromDict(
+        _ dict: [String: Any],
+        path: String,
+        status: Int,
+        data: Data
+    ) throws -> APIResource {
+        guard let id = dict["id"] as? String,
+              let type = dict["type"] as? String
+        else {
+            throw ASCClient.ClientError.decodeFailed(
+                reason: "missing id/type",
+                path: path,
+                status: status,
+                bodyExcerpt: truncateBody(data)
+            )
+        }
+        var attrs: [String: String] = [:]
+        if let raw = dict["attributes"] as? [String: Any] {
+            for (key, value) in raw {
+                if let str = value as? String {
+                    attrs[key] = str
+                } else if let num = value as? NSNumber {
+                    attrs[key] = num.stringValue
+                }
+            }
+        }
+        return APIResource(id: id, type: type, attributes: attrs)
+    }
+}
+
+/// A JSON:API GET response carrying both the primary `data[]` collection
+/// and the sideloaded `included[]` collection, plus a parsed map of each
+/// primary resource's relationship pointers. Allows callers to fan a
+/// single GET into multiple related collections without a second request.
+internal struct APICollectionWithIncluded: Sendable, Equatable {
+    internal let data: [APIResource]
+    internal let included: [APIResource]
+    /// `primaryResourceId → (relationshipName → [includedResourceId])`.
+    /// Empty for resources with no relationship pointers in the response.
+    internal let relationships: [String: [String: [String]]]
+
+    internal static func decode(
+        from data: Data,
+        path: String,
+        status: Int
+    ) throws -> APICollectionWithIncluded {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let arr = json["data"] as? [[String: Any]]
+        else {
+            throw ASCClient.ClientError.decodeFailed(
+                reason: "missing data array",
+                path: path,
+                status: status,
+                bodyExcerpt: truncateBody(data)
+            )
+        }
+        let primary = try arr.map {
+            try APIResource.fromDictPublic($0, path: path, status: status, data: data)
+        }
+        let includedArr = (json["included"] as? [[String: Any]]) ?? []
+        let included = try includedArr.map {
+            try APIResource.fromDictPublic($0, path: path, status: status, data: data)
+        }
+        var rels: [String: [String: [String]]] = [:]
+        for (raw, parsed) in zip(arr, primary) {
+            guard let relsDict = raw["relationships"] as? [String: Any] else { continue }
+            var perResource: [String: [String]] = [:]
+            for (name, value) in relsDict {
+                guard let payload = value as? [String: Any] else { continue }
+                if let dataArr = payload["data"] as? [[String: Any]] {
+                    perResource[name] = dataArr.compactMap { $0["id"] as? String }
+                } else if let dataObj = payload["data"] as? [String: Any],
+                          let id = dataObj["id"] as? String {
+                    perResource[name] = [id]
+                }
+            }
+            if !perResource.isEmpty {
+                rels[parsed.id] = perResource
+            }
+        }
+        return APICollectionWithIncluded(data: primary, included: included, relationships: rels)
+    }
+}
+
+extension APIResource {
+    /// Same parser as the private `fromDict`, exposed for the
+    /// `APICollectionWithIncluded` decoder. Kept internal-only.
+    internal static func fromDictPublic(
         _ dict: [String: Any],
         path: String,
         status: Int,

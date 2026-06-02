@@ -340,15 +340,21 @@ internal enum ASCRegisterCLI {
             mode: mode
         )
 
-        // 1. Snapshot remote IAP state for every configured product.
+        // 1. Snapshot remote IAP state for every configured product. One
+        // GET pulls IAPs + their localizations via `?include=` (proposal
+        // §3.1); we then index by productId for Config matching and re-
+        // attach each localization to its parent IAP using the response's
+        // relationship pointers.
         var remote = RemoteState()
-        let remoteIAPs = try await client.listIAPs(appId: appId)
-        // Index ASC results by productId so we can match against Config.iaps.
+        let bundle = try await client.listIAPs(appId: appId)
         let byProductId = Dictionary(
-            uniqueKeysWithValues: remoteIAPs.compactMap { resource -> (String, APIResource)? in
+            uniqueKeysWithValues: bundle.data.compactMap { resource -> (String, APIResource)? in
                 guard let pid = resource.attributes["productId"] else { return nil }
                 return (pid, resource)
             }
+        )
+        let includedById = Dictionary(
+            uniqueKeysWithValues: bundle.included.map { ($0.id, $0) }
         )
         for product in Config.iaps {
             guard let resource = byProductId[product.productId] else {
@@ -373,10 +379,14 @@ internal enum ASCRegisterCLI {
                 familyShareable: familyShareable
             )
 
-            // Pull per-locale snapshot for diff in the reconciler.
-            let locs = try await client.listIAPLocalizations(iapId: resource.id)
-            for loc in locs {
-                guard let locale = loc.attributes["locale"] else { continue }
+            // Re-attach side-loaded localizations to this IAP via the
+            // relationship pointer map.
+            let locIds = bundle.relationships[resource.id]?["inAppPurchaseLocalizations"] ?? []
+            for locId in locIds {
+                guard let loc = includedById[locId],
+                      loc.type == "inAppPurchaseLocalizations",
+                      let locale = loc.attributes["locale"]
+                else { continue }
                 let key = RemoteState.LocalizationKey(
                     vendorId: product.productId, locale: locale
                 )
@@ -394,8 +404,22 @@ internal enum ASCRegisterCLI {
             strings: strings,
             remote: remote
         )
-        print("Plan: \(actions.count) action(s)")
-        for action in actions {
+        // Filter to IAP-scoped actions only — `runIAPRemote` snapshots IAP
+        // state but leaves remote.leaderboards / remote.achievements empty,
+        // so the Reconciler emits noisy GC CREATE actions that must NOT
+        // execute under `iap apply` (they'd 409 against existing ASC
+        // catalog or worse, create duplicates).
+        let iapActions = actions.filter { action in
+            switch action {
+            case .updateIAP, .iapUnchanged,
+                 .createIAPLocalization, .updateIAPLocalization, .iapLocalizationUnchanged:
+                return true
+            default:
+                return false
+            }
+        }
+        print("Plan: \(iapActions.count) IAP action(s) (filtered from \(actions.count) total — GC noise dropped)")
+        for action in iapActions {
             print("  \(describe(action))")
         }
         if mode == .apply {
@@ -403,7 +427,7 @@ internal enum ASCRegisterCLI {
             // localizationId / existingId threaded through actions at plan
             // time). detailId is unused for IAP; appId currently unused too
             // (kept for parity with GC execute signature).
-            for action in actions {
+            for action in iapActions {
                 try await execute(action, client: client, detailId: "", appId: appId)
             }
             print("Applied.")

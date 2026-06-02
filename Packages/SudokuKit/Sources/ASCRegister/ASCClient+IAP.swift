@@ -26,42 +26,44 @@ extension ASCClient {
 
     // MARK: - Read IAP by productId under an app
 
-    /// GET the single IAP matching `productId` under the given app, with
-    /// localizations side-loaded. Returns nil if ASC has no IAP with that
-    /// product id (the caller treats this as "product not yet created in
-    /// ASC web UI" — Phase 1.a never creates products).
+    /// GET all IAPs under the app, with their localizations side-loaded
+    /// in a single request via `?include=inAppPurchaseLocalizations`
+    /// (proposal §3.1). The returned `APICollectionWithIncluded` carries
+    /// both the IAP primary resources and the localization side-load,
+    /// plus a relationship map so the caller can re-attach each
+    /// localization to its parent IAP without a follow-up GET.
     ///
-    /// Uses the `inAppPurchasesV2` filter endpoint (see proposal §3.1).
-    /// We don't side-load price schedules in Phase 1.a — pricing lives in
-    /// the future 1.b implementation.
-    internal func listIAPs(appId: String) async throws -> [APIResource] {
-        // The filter narrows server-side to a single result for our use
-        // case, but we use the collection decoder so missing-product is a
-        // simple empty array rather than a 404.
+    /// We side-load instead of issuing a per-IAP
+    /// `GET /v1/inAppPurchases/{id}/inAppPurchaseLocalizations` because
+    /// that relationship URL responds 404 / PATH_ERROR (the relationship
+    /// name is not exposed under the legacy `inAppPurchases` path; the
+    /// resource lives under `inAppPurchasesV2` and the only reliable read
+    /// path is via the parent collection's `include`).
+    ///
+    /// Price schedules are intentionally not side-loaded — pricing is
+    /// Phase 1.b.
+    internal func listIAPs(appId: String) async throws -> APICollectionWithIncluded {
         let path = "/v1/apps/\(appId)/inAppPurchasesV2"
-            + "?fields[inAppPurchases]=name,productId,reviewNote,familySharable,state,inAppPurchaseType"
-        return try await getCollection(path: path)
-    }
-
-    /// GET all localizations attached to an existing IAP. Returns the
-    /// `inAppPurchaseLocalizations` collection.
-    internal func listIAPLocalizations(iapId: String) async throws -> [APIResource] {
-        try await getCollection(
-            path: "/v1/inAppPurchases/\(iapId)/inAppPurchaseLocalizations"
-                + "?fields[inAppPurchaseLocalizations]=locale,name,description,state"
-        )
+            + "?include=inAppPurchaseLocalizations"
+            + "&fields[inAppPurchases]=name,productId,reviewNote,familySharable,state,inAppPurchaseType,inAppPurchaseLocalizations"
+            + "&fields[inAppPurchaseLocalizations]=locale,name,description,state"
+        return try await getCollectionWithIncluded(path: path)
     }
 
     // MARK: - PATCH IAP root attributes
 
-    /// PATCH the `inAppPurchases` resource with the Phase 1.a fields
-    /// (`name`, `reviewNote`, `familySharable`; ASC's v2 IAP root resource
-    /// uses `name` for what we call the internal reference label — distinct
-    /// from the per-locale localization `name`). The exact path
-    /// shape (`/v1/inAppPurchases/{id}` vs `/v1/inAppPurchasesV2/{id}`) is
-    /// unverified for v2 products at the time of writing; first live apply
-    /// will surface any mismatch via `asc-apply-round.js`'s ENTITY_ERROR
-    /// loop (proposal §3.5 open question 1).
+    /// PATCH the v2 IAP root resource with Phase 1.a fields (`name`,
+    /// `reviewNote`, `familySharable`).
+    ///
+    /// Verified against aaronsky/asc-swift Entities/InAppPurchaseV2UpdateRequest.swift
+    /// + Paths/PathsV2InAppPurchasesWithID.swift on 2026-06-02:
+    /// - Path is `/v2/inAppPurchases/{id}` (V2 is in path **prefix**, not
+    ///   resource name).
+    /// - JSON:API `data.type` is `"inAppPurchases"` (lowercase plural,
+    ///   NOT `inAppPurchasesV2`).
+    /// - Earlier attempts failed: `/v1/inAppPurchases/{id}` → 403
+    ///   FORBIDDEN_ERROR (GET-only); `/v1/inAppPurchasesV2/{id}` → 404
+    ///   NOT_FOUND (no such resource).
     internal func updateIAP(
         iapId: String,
         config: IAPProduct
@@ -79,7 +81,7 @@ extension ASCClient {
         ]
         return try await mutate(
             method: "PATCH",
-            path: "/v1/inAppPurchases/\(iapId)",
+            path: "/v2/inAppPurchases/\(iapId)",
             body: body
         )
     }
