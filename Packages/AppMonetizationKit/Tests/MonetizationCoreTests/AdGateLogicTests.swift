@@ -42,39 +42,18 @@ struct AdGateLogicTests {
 
     // MARK: Grace period
 
-    // Grace-period boundary tests are disabled while `AdGate.gracePeriodDays`
-    // is 0 (TestFlight / dogfood banner visibility — see issue #212). When
-    // the constant is restored to 7 for the v2.5 App Store submission,
-    // re-enable these four tests as-is. They assert the 7-day grace
-    // boundary, which has no meaningful behavior at gracePeriodDays == 0.
-    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
-    func day0SuppressesDuringGrace() async {
+    // Grace-period boundary tests REMOVED 2026-06-02 (closes #212): spec
+    // changed to "banner always shows from first launch" (gracePeriodDays = 0).
+    // The four day0 / day6 / day7-boundary / justBeforeDay7-boundary tests
+    // covered the 7-day grace, which is no longer policy. Adding a single
+    // smoke test below proves the always-show behavior; re-introduce
+    // boundary tests if a future spec brings the grace back.
+
+    @Test
+    func bannerAlwaysVisibleAfterFirstLaunch() async {
         let (gate, _) = await freshGate()
         let shown = await gate.shouldShowBanner(now: firstLaunch)
-        #expect(shown == false)
-    }
-
-    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
-    func day6StillInGrace() async {
-        let (gate, _) = await freshGate()
-        let shown = await gate.shouldShowBanner(now: days(6, after: firstLaunch))
-        #expect(shown == false)
-    }
-
-    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
-    func day7BoundaryReleasesGrace() async {
-        let (gate, _) = await freshGate()
-        let shown = await gate.shouldShowBanner(now: days(7, after: firstLaunch))
         #expect(shown == true)
-    }
-
-    @Test(.disabled("AdGate.gracePeriodDays = 0 — restore to 7 + re-enable per #212"))
-    func justBeforeDay7BoundaryStillInGrace() async {
-        let (gate, _) = await freshGate()
-        // 6 days 23:59:59 — one second short of the 7-day boundary.
-        let nearBoundary = firstLaunch.addingTimeInterval(7 * 86_400 - 1)
-        let shown = await gate.shouldShowBanner(now: nearBoundary)
-        #expect(shown == false)
     }
 
     // MARK: Dismissed-today rule

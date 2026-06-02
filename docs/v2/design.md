@@ -18,8 +18,8 @@
 | 3 | **IAP = Remove Ads only**（one-time non-consumable，$2.99 USD） | 與 AdMob 配套；不引入 subscription / pro features 複雜度 |
 | 4 | **Package = `AppMonetizationKit`** | App-prefix 表示可裝任何 App target；非個人品牌 |
 | 5 | **Apple-only impl，protocol 中性** | iOS / macOS first；Android via Swift SDK 是 docs/v1/design.md §不在 v1 範圍 backlog，未來再說 |
-| 6 | **廣告頻率：7-day grace + 1/day max + dismissed-that-day skip** | calm brand 不打擾、初體驗保護期、用戶 close 後當天不再煩 |
-| 7 | **Frequency state = CloudKit Private `MonetizationState` record** | 跨 iCloud 帳號 sync；換新 iPhone 不重置 7-day grace |
+| 6 | **廣告頻率：1/day max + dismissed-that-day skip**（2026-06-02 砍掉原 7-day grace） | calm brand 不打擾、用戶 close 後當天不再煩；grace 改為 0 是 v2.5 送審前最後一次 spec 調整 |
+| 7 | **Frequency state = CloudKit Private `MonetizationState` record** | 跨 iCloud 帳號 sync；持久化 `firstLaunchAt` 仍保留以利日後重新引入 grace、跨設備 dismissed-today 同步 |
 | 8 | **廣告插入點 = Home / Board view 內 banner** | 非 interstitial；持續存在但不全螢幕打斷；與 calm brand 相容 |
 
 ### v2 不做的
@@ -78,7 +78,7 @@ public enum AdBannerStatus: Sendable, Equatable {
     case loading
     case loaded(AdBannerHandle)
     case failed(reason: String)
-    case suppressed  // user purchased Remove Ads OR within 7-day grace OR dismissed today
+    case suppressed  // user purchased Remove Ads OR dismissed today
 }
 
 public struct AdBannerHandle: Sendable, Equatable {
@@ -127,7 +127,7 @@ public actor AdGate {
     public func shouldShowBanner(now: Date = .now) async -> Bool {
         // Suppressed if:
         // 1. User purchased Remove Ads (check IAPClient state)
-        // 2. firstLaunchAt + 7 days > now (grace period)
+        // 2. (grace period removed 2026-06-02; banner shows from first launch)
         // 3. dismissedDate == today (calendar-local)
         // 4. lastSeenWallClock indicates clock moved backwards (anti-tamper;
         //    see §How.3.1 below)
@@ -162,7 +162,7 @@ public struct AdGateState: Sendable, Codable, Equatable {
 
 #### §How.3.1 系統時鐘倒撥防護（anti-tamper）
 
-玩家若手動把 system clock 撥到 `firstLaunchAt` 之前（甚至 1970），會永遠停留在 7-day grace、bypass 廣告。我們在 `AdGateState` 紀錄 `lastSeenWallClock`：每次 `shouldShowBanner(now:)` 觀察到比歷史最大值更新的 `now` 就 monotonic-advance 並保存。若 `now < lastSeenWallClock - 24h tolerance`，視為 clock 倒撥，回傳 `false`（不爆音、不告警 — 玩家「自我作弊以多看廣告」非威脅模型，只是不讓 grace 重置）。
+玩家若手動把 system clock 撥回，理論上可以「重置 dismissed-today」狀態以看更多廣告（相反方向的 self-DoS，不是威脅模型）。`AdGateState` 仍保留 `lastSeenWallClock` 並 monotonic-advance 設計，作為 dismissed-today 跨日邏輯的穩定性護欄。（2026-06-02 grace period 廢除後，此節 wall-clock 監控的主要動機從 grace 防 bypass 改為 dismissed-today 穩定性；行為一致，rationale 微調。）
 
 容差 24h 是為了正常情境（DST、跨時區回到較早時區、NTP 微調）不誤判。Tolerance 內的小幅倒撥仍視為「同一時刻」，照常 evaluate 其他規則。
 
@@ -309,7 +309,7 @@ public struct AppComposition {
 | IAP = Remove Ads only（$2.99）| brainstorm Q3 |
 | Package = AppMonetizationKit | brainstorm Q4 |
 | Apple-only impl | brainstorm Q5 |
-| 廣告頻率：7-day grace + 1/day + dismissed-skip | brainstorm Q6 |
+| 廣告頻率：1/day + dismissed-skip（7-day grace 廢除於 2026-06-02） | brainstorm Q6 |
 | Frequency state = CloudKit Private MonetizationState | brainstorm Q7 |
 | Banner（非 interstitial）| brainstorm Q8 |
 | Sudoku v2 整合改動 += AppComposition 加 3 deps + Home/Board banner slot + Settings Restore + ATT/UMP 整合 + PrivacyInfo + Privacy Policy + App Store nutrition labels | 本文件 |
