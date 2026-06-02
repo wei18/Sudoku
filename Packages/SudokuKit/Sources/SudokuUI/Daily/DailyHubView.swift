@@ -2,87 +2,72 @@
 //
 // Per docs/designs/03-daily-hub.md. Failure path `exhausted` surfaces as
 // an Alert per docs/v1/design.md §How.6.3.
+//
+// PR U12: chrome + responsive grid + state-switch scaffold extracted into
+// `GameShellUI.DailyHubShellView`. This view now produces the
+// game-specific `DailyCard` items + failure overlay + Sudoku theme colors
+// and hands them to the generic shell. `.task` and the `.exhausted`
+// `.alert` stay on the caller (matches X4 / SettingsShellView precedent:
+// shells own no side-effect modifiers).
 
 public import SwiftUI
+internal import GameShellUI
 internal import SudokuEngine
 
 public struct DailyHubView: View {
     @Bindable private var viewModel: DailyHubViewModel
     @Environment(\.theme) private var theme
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     public init(viewModel: DailyHubViewModel) {
         self.viewModel = viewModel
     }
 
     public var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(theme.surface.background.resolved)
-            .navigationTitle("Daily")
-            .task { await viewModel.bootstrap() }
-            .alert(
-                "Couldn't generate today's puzzle",
-                isPresented: Binding(
-                    get: { viewModel.state == .exhausted },
-                    set: { _ in }
-                ),
-                actions: {
-                    Button("Try another difficulty", role: .cancel) {}
-                },
-                message: {
-                    Text("Try a different difficulty, or come back tomorrow.")
+        DailyHubShellView(
+            title: "Daily",
+            backgroundColor: theme.surface.background.resolved,
+            state: liftedState,
+            card: { card in DailyPuzzleCard(card: card) },
+            failure: { reason in
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(theme.status.warning.resolved)
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundStyle(theme.text.secondary.resolved)
                 }
-            )
+            },
+            onItemTap: { card in viewModel.cardTapped(card) }
+        )
+        .task { await viewModel.bootstrap() }
+        .alert(
+            "Couldn't generate today's puzzle",
+            isPresented: Binding(
+                get: { viewModel.state == .exhausted },
+                set: { _ in }
+            ),
+            actions: {
+                Button("Try another difficulty", role: .cancel) {}
+            },
+            message: {
+                Text("Try a different difficulty, or come back tomorrow.")
+            }
+        )
     }
 
-    @ViewBuilder
-    private var content: some View {
+    /// Translates Sudoku's `DailyHubState` (with `.exhausted`) into the
+    /// generic `HubLoadState<DailyCard>` shell input. `.exhausted` maps to
+    /// `.empty` per the shell's documented semantic — the surfacing alert
+    /// stays driven off `viewModel.state == .exhausted` directly so the
+    /// Sudoku-specific prose is unchanged.
+    private var liftedState: HubLoadState<DailyCard> {
         switch viewModel.state {
-        case .idle, .loading:
-            ProgressView().controlSize(.large)
-        case .loaded(let cards):
-            cardList(cards)
-        case .exhausted:
-            // Alert handles the surfacing; show empty grid behind it.
-            Color.clear
-        case .failed(let reason):
-            VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(theme.status.warning.resolved)
-                Text(reason)
-                    .font(.caption)
-                    .foregroundStyle(theme.text.secondary.resolved)
-            }
+        case .idle: return .idle
+        case .loading: return .loading
+        case .loaded(let cards): return .loaded(cards)
+        case .exhausted: return .empty
+        case .failed(let reason): return .failed(reason)
         }
-    }
-
-    @ViewBuilder
-    private func cardList(_ cards: [DailyCard]) -> some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(cards) { card in
-                    Button {
-                        viewModel.cardTapped(card)
-                    } label: {
-                        DailyPuzzleCard(card: card)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(16)
-        }
-    }
-
-    private var columns: [GridItem] {
-        if sizeClass == .regular {
-            return [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ]
-        }
-        return [GridItem(.flexible())]
     }
 }
 
