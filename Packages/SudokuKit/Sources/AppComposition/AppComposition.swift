@@ -26,6 +26,7 @@ public import MonetizationCore
 public import Persistence
 public import PuzzleStore
 public import SudokuUI
+public import SwiftUI
 public import Telemetry
 
 @MainActor
@@ -59,6 +60,30 @@ public struct AppComposition {
     // MonetizationStateController pushes success / failure toasts on purchase
     // and restore (and on out-of-band `purchaseUpdates()` events).
     public let toastController: ToastController
+
+    // MARK: - Root view accessor (#244)
+
+    /// Composed root view ready to mount in `@main`'s `WindowGroup`. Wires
+    /// `RootView` with this bag's deps and attaches the v2.3.7 monetization
+    /// boot `.task`. Mirrors the shape `MinesweeperAppComposition.rootView`
+    /// uses in PR #242 — `SudokuApp.body` now reads as one expression.
+    public var rootView: some View {
+        RootView(
+            viewModel: rootViewModel,
+            routeFactory: routeFactory,
+            adProvider: adProvider,
+            adGate: adGate,
+            monetizationController: monetizationController,
+            toastController: toastController
+        )
+        .task {
+            // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent
+            // with the first frame. `BannerSlotView` is honest about
+            // deferred state (shows `.failed` if AdMob has not yet
+            // initialized) so this never blocks UI rendering.
+            await bootMonetization()
+        }
+    }
 
     public init(
         rootViewModel: RootViewModel,
