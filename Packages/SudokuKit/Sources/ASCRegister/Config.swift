@@ -85,6 +85,32 @@ internal enum Config {
         achievements.reduce(0) { $0 + $1.points }
     }
 
+    // MARK: - In-App Purchases (issue #200, Phase 1.a)
+
+    /// v2.5 IAP products driven by ASCRegister. Phase 1.a only mutates
+    /// metadata on EXISTING products in ASC (localizations + reviewNote +
+    /// familyShareable); it does NOT create products and does NOT manage
+    /// pricing (pricing = Phase 1.b, separate PR).
+    ///
+    /// `productId` must equal the StoreKit2 product identifier shipped in
+    /// the App binary (`Packages/AppMonetizationKit/Sources/IAPStoreKit2/`).
+    internal static let iaps: [IAPProduct] = [
+        IAPProduct(
+            productId: "com.wei18.sudoku.iap.remove_ads",
+            referenceName: "Remove Ads v1",
+            familyShareable: true,
+            reviewNote: """
+                This non-consumable IAP removes banner and interstitial ads \
+                app-wide. Test by purchasing in Settings → Pro → Remove Ads. \
+                After purchase, ads should not appear anywhere in the app.
+                """
+        )
+    ]
+
+    internal static var allIAPProductIds: [String] {
+        iaps.map(\.productId)
+    }
+
     // MARK: - Locale code mapping (issue #31)
 
     /// Map an xcstrings locale code (the App's source-of-truth, e.g. `"en"`,
@@ -213,4 +239,29 @@ internal struct AchievementConfig: Sendable, Equatable {
             return 1 // boolean: 0 or 100
         }
     }
+}
+
+/// One ASC in-app purchase product. Phase 1.a fields only (no pricing).
+internal struct IAPProduct: Sendable, Equatable {
+    /// Bundle-id-rooted product identifier (e.g.
+    /// `"com.wei18.sudoku.iap.remove_ads"`). Must equal the StoreKit2
+    /// constant in `IAPStoreKit2`.
+    internal let productId: String
+    /// Internal reference name (visible only in ASC; not localized).
+    internal let referenceName: String
+    /// `familySharable` attribute on the ASC `inAppPurchases` resource.
+    internal let familyShareable: Bool
+    /// `reviewNote` attribute on the ASC `inAppPurchases` resource — guides
+    /// App Review during IAP screening.
+    internal let reviewNote: String
+
+    /// Short identifier stripped of the `"com.wei18.sudoku.iap."` prefix,
+    /// used to derive xcstrings keys (`iap.<shortId>.name` /
+    /// `iap.<shortId>.description`).
+    internal var shortId: String {
+        productId.replacingOccurrences(of: "com.wei18.sudoku.iap.", with: "")
+    }
+
+    internal var nameKey: String { "iap.\(shortId).name" }
+    internal var descriptionKey: String { "iap.\(shortId).description" }
 }

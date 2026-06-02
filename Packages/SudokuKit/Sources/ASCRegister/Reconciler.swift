@@ -46,6 +46,27 @@ internal enum Action: Sendable, Equatable {
         unearnedDescription: String
     )
     case achievementLocalizationUnchanged(achievementVendorId: String, locale: String)
+
+    // IAP-level (Phase 1.a — PATCH only; we never CREATE IAP products,
+    // the user already created them in ASC web UI per issue #200).
+    case updateIAP(existingId: String, IAPProduct)
+    case iapUnchanged(productId: String, id: String)
+
+    // IAP localization
+    case createIAPLocalization(
+        iapId: String,
+        iapProductId: String,
+        locale: String,
+        name: String,
+        description: String
+    )
+    case updateIAPLocalization(
+        localizationId: String,
+        locale: String,
+        name: String,
+        description: String
+    )
+    case iapLocalizationUnchanged(iapProductId: String, locale: String)
 }
 
 /// Observed remote state — what's already in ASC. Indexed by vendor ID
@@ -60,21 +81,67 @@ internal struct RemoteState: Sendable, Equatable {
     /// (achievementVendorId, locale) → existing localization resource id
     internal var achievementLocalizations: [LocalizationKey: String]
 
+    /// productId → existing ASC `inAppPurchases` id (Phase 1.a, issue #200).
+    internal var iaps: [String: IAPRemoteAttributes]
+    /// (iapProductId, ascLocale) → existing localization id + current attrs.
+    internal var iapLocalizations: [LocalizationKey: IAPLocalizationRemoteAttributes]
+
     internal init(
         leaderboards: [String: String] = [:],
         leaderboardLocalizations: [LocalizationKey: String] = [:],
         achievements: [String: String] = [:],
-        achievementLocalizations: [LocalizationKey: String] = [:]
+        achievementLocalizations: [LocalizationKey: String] = [:],
+        iaps: [String: IAPRemoteAttributes] = [:],
+        iapLocalizations: [LocalizationKey: IAPLocalizationRemoteAttributes] = [:]
     ) {
         self.leaderboards = leaderboards
         self.leaderboardLocalizations = leaderboardLocalizations
         self.achievements = achievements
         self.achievementLocalizations = achievementLocalizations
+        self.iaps = iaps
+        self.iapLocalizations = iapLocalizations
     }
 
     internal struct LocalizationKey: Sendable, Hashable {
         internal let vendorId: String
         internal let locale: String
+    }
+
+    /// Snapshot of the mutable root-attribute subset on an ASC
+    /// `inAppPurchases` resource — enough to decide `updateIAP` vs
+    /// `iapUnchanged` without re-fetching. `name` here is the ASC
+    /// `referenceName` (internal label), distinct from the per-locale
+    /// localization `name`.
+    internal struct IAPRemoteAttributes: Sendable, Equatable {
+        internal let id: String
+        internal let referenceName: String?
+        internal let reviewNote: String?
+        internal let familyShareable: Bool?
+
+        internal init(
+            id: String,
+            referenceName: String? = nil,
+            reviewNote: String? = nil,
+            familyShareable: Bool? = nil
+        ) {
+            self.id = id
+            self.referenceName = referenceName
+            self.reviewNote = reviewNote
+            self.familyShareable = familyShareable
+        }
+    }
+
+    /// Snapshot of an ASC `inAppPurchaseLocalizations` resource for diffing.
+    internal struct IAPLocalizationRemoteAttributes: Sendable, Equatable {
+        internal let id: String
+        internal let name: String?
+        internal let description: String?
+
+        internal init(id: String, name: String? = nil, description: String? = nil) {
+            self.id = id
+            self.name = name
+            self.description = description
+        }
     }
 }
 
@@ -94,6 +161,7 @@ internal struct Reconciler: Sendable {
         var actions: [Action] = []
         actions.append(contentsOf: planLeaderboards(config: config, strings: strings, remote: remote))
         actions.append(contentsOf: planAchievements(config: config, strings: strings, remote: remote))
+        actions.append(contentsOf: planIAPs(config: config, strings: strings, remote: remote))
         return actions
     }
 
@@ -194,6 +262,87 @@ internal struct Reconciler: Sendable {
         }
         return out
     }
+
+    // MARK: - IAPs (Phase 1.a, issue #200)
+
+    /// Plan IAP root-attribute + per-locale mutations. Phase 1.a does NOT
+    /// create IAP products: if the product is absent from `remote.iaps`
+    /// the reconciler emits nothing for it (apply-time error surfaces the
+    /// gap via ASC `IAP_NOT_FOUND` — caller already created it in ASC web
+    /// UI per issue #200 §"Phase 1 assumes the IAP product itself already
+    /// exists").
+    private static func planIAPs(
+        config: ConfigSnapshot,
+        strings: XCStringsParser.LocalizedKeys,
+        remote: RemoteState
+    ) -> [Action] {
+        var out: [Action] = []
+        for product in config.iaps {
+            guard let existing = remote.iaps[product.productId] else {
+                // No-op: product missing on ASC. `apply` will surface this
+                // when it tries to PATCH and 404s. We intentionally do not
+                // emit a Create action — Phase 1.a is metadata-only.
+                continue
+            }
+
+            if iapRootDrift(product: product, remote: existing) {
+                out.append(.updateIAP(existingId: existing.id, product))
+            } else {
+                out.append(.iapUnchanged(productId: product.productId, id: existing.id))
+            }
+
+            for locale in targetLocales {
+                guard let name = XCStringsParser.iapName(
+                    in: strings, locale: locale, shortId: product.shortId
+                ),
+                let description = XCStringsParser.iapDescription(
+                    in: strings, locale: locale, shortId: product.shortId
+                ) else { continue }
+
+                let ascLocale = Config.ascLocaleCode(for: locale)
+                let key = RemoteState.LocalizationKey(
+                    vendorId: product.productId, locale: ascLocale
+                )
+                if let remoteLoc = remote.iapLocalizations[key] {
+                    if remoteLoc.name == name && remoteLoc.description == description {
+                        out.append(.iapLocalizationUnchanged(
+                            iapProductId: product.productId, locale: ascLocale
+                        ))
+                    } else {
+                        out.append(.updateIAPLocalization(
+                            localizationId: remoteLoc.id,
+                            locale: ascLocale,
+                            name: name,
+                            description: description
+                        ))
+                    }
+                } else {
+                    out.append(.createIAPLocalization(
+                        iapId: existing.id,
+                        iapProductId: product.productId,
+                        locale: ascLocale,
+                        name: name,
+                        description: description
+                    ))
+                }
+            }
+        }
+        return out
+    }
+
+    /// True if any of the three Phase 1.a root attributes
+    /// (`referenceName`, `reviewNote`, `familyShareable`) on the remote
+    /// resource diverges from the local config. A `nil` remote field is
+    /// treated as drift (forces an initial PATCH).
+    private static func iapRootDrift(
+        product: IAPProduct,
+        remote: RemoteState.IAPRemoteAttributes
+    ) -> Bool {
+        if remote.referenceName != product.referenceName { return true }
+        if remote.reviewNote != product.reviewNote { return true }
+        if remote.familyShareable != product.familyShareable { return true }
+        return false
+    }
 }
 
 /// Injection seam so tests can pass synthetic configs without touching
@@ -201,8 +350,23 @@ internal struct Reconciler: Sendable {
 internal struct ConfigSnapshot: Sendable, Equatable {
     internal let leaderboards: [LeaderboardConfig]
     internal let achievements: [AchievementConfig]
+    internal let iaps: [IAPProduct]
+
+    internal init(
+        leaderboards: [LeaderboardConfig],
+        achievements: [AchievementConfig],
+        iaps: [IAPProduct] = []
+    ) {
+        self.leaderboards = leaderboards
+        self.achievements = achievements
+        self.iaps = iaps
+    }
 
     internal static var live: ConfigSnapshot {
-        ConfigSnapshot(leaderboards: Config.leaderboards, achievements: Config.achievements)
+        ConfigSnapshot(
+            leaderboards: Config.leaderboards,
+            achievements: Config.achievements,
+            iaps: Config.iaps
+        )
     }
 }

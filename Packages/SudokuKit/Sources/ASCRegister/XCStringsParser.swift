@@ -42,7 +42,10 @@ internal struct XCStringsParser: Sendable {
         }
         var out: LocalizedKeys = [:]
         for (key, value) in strings {
-            guard key.hasPrefix("gc.") else { continue }
+            // Keep both Game Center (`gc.*`) and IAP (`iap.*`) prefixes — IAP
+            // localizations share the same xcstrings catalog shape but live
+            // under their own namespace (issue #200, Phase 1.a).
+            guard key.hasPrefix("gc.") || key.hasPrefix("iap.") else { continue }
             guard let entry = value as? [String: Any],
                   let localizations = entry["localizations"] as? [String: Any]
             else { continue }
@@ -98,5 +101,23 @@ internal struct XCStringsParser: Sendable {
         shortId: String
     ) -> String? {
         data[locale]?["gc.achievement.\(shortId).unearnedDescription"]
+    }
+
+    /// `iap.<shortId>.name` — ASC `inAppPurchaseLocalizations.name`.
+    internal static func iapName(
+        in data: LocalizedKeys,
+        locale: String,
+        shortId: String
+    ) -> String? {
+        data[locale]?["iap.\(shortId).name"]
+    }
+
+    /// `iap.<shortId>.description` — ASC `inAppPurchaseLocalizations.description`.
+    internal static func iapDescription(
+        in data: LocalizedKeys,
+        locale: String,
+        shortId: String
+    ) -> String? {
+        data[locale]?["iap.\(shortId).description"]
     }
 }

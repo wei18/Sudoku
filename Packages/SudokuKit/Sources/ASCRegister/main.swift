@@ -14,7 +14,7 @@
 // No external deps — `swift-argument-parser` is deliberately avoided per
 // dispatch constraints. The argv parser below is intentionally simple.
 
-// swiftlint:disable identifier_name cyclomatic_complexity function_body_length for_where
+// swiftlint:disable identifier_name cyclomatic_complexity function_body_length for_where file_length
 
 import Foundation
 
@@ -41,6 +41,19 @@ internal enum ASCRegisterCLI {
                 try await runRemote(args: rest, mode: .apply)
             case "inspect":
                 try await runInspect(args: rest)
+            case "iap":
+                // `iap` is a nested subcommand (mirrors `leaderboard` /
+                // `achievement` naming; issue #200 Phase 1.a).
+                let subSub = rest.first ?? ""
+                let rest2 = Array(rest.dropFirst())
+                switch subSub {
+                case "plan":  try await runIAPRemote(args: rest2, mode: .plan)
+                case "apply": try await runIAPRemote(args: rest2, mode: .apply)
+                default:
+                    FileHandle.standardError.write(Data("Unknown iap subcommand: \(subSub)\n".utf8))
+                    printUsage()
+                    exit(2)
+                }
             case "-h", "--help", "help":
                 printUsage()
             default:
@@ -174,7 +187,12 @@ internal enum ASCRegisterCLI {
         }
     }
 
-    private static func execute(_ action: Action, client: ASCClient, detailId: String) async throws {
+    private static func execute(
+        _ action: Action,
+        client: ASCClient,
+        detailId: String,
+        appId: String = ""
+    ) async throws {
         switch action {
         case .createLeaderboard(let cfg):
             let startDate = LeaderboardConfig.nextRecurrenceStartDateUTC()
@@ -227,6 +245,22 @@ internal enum ASCRegisterCLI {
             )
         case .achievementLocalizationUnchanged:
             break
+        case .updateIAP(let id, let product):
+            _ = try await client.updateIAP(iapId: id, config: product)
+        case .iapUnchanged:
+            break
+        case .createIAPLocalization(let iapId, _, let locale, let name, let description):
+            // `iapId` is threaded through from RemoteState at plan time —
+            // no per-action GET, no reliance on the defaulted `appId`.
+            _ = try await client.createIAPLocalization(
+                iapId: iapId, locale: locale, name: name, description: description
+            )
+        case .updateIAPLocalization(let locId, _, let name, let description):
+            _ = try await client.updateIAPLocalization(
+                localizationId: locId, name: name, description: description
+            )
+        case .iapLocalizationUnchanged:
+            break
         }
     }
 
@@ -244,6 +278,11 @@ internal enum ASCRegisterCLI {
         case .createAchievementLocalization(let v, let l, _, _, _): return "CREATE achievement-loc \(v) [\(l)]"
         case .updateAchievementLocalization(_, let l, _, _, _): return "UPDATE achievement-loc [\(l)]"
         case .achievementLocalizationUnchanged(let v, let l): return "OK     achievement-loc \(v) [\(l)]"
+        case .updateIAP(_, let p): return "UPDATE iap \(p.productId)"
+        case .iapUnchanged(let p, _): return "OK     iap \(p)"
+        case .createIAPLocalization(_, let p, let l, _, _): return "CREATE iap-loc \(p) [\(l)]"
+        case .updateIAPLocalization(_, let l, _, _): return "UPDATE iap-loc [\(l)]"
+        case .iapLocalizationUnchanged(let p, let l): return "OK     iap-loc \(p) [\(l)]"
         }
     }
 
@@ -257,6 +296,10 @@ internal enum ASCRegisterCLI {
             keys.append(ach.descriptionKey)
             keys.append(ach.unearnedDescriptionKey)
         }
+        for iap in Config.iaps {
+            keys.append(iap.nameKey)
+            keys.append(iap.descriptionKey)
+        }
         return keys
     }
 
@@ -267,7 +310,104 @@ internal enum ASCRegisterCLI {
           ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
+          ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
         """)
+    }
+
+    // MARK: - iap plan / apply
+
+    /// Phase 1.a (issue #200) — drives only the IAP slice of the
+    /// reconciler. Does not touch leaderboards or achievements, so we
+    /// skip the GC RemoteState snapshot work and submit a snapshot with
+    /// just the IAP products populated.
+    private static func runIAPRemote(args: [String], mode: ASCClient.Mode) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let appId = try opts.required("app-id")
+        let xcstringsPath = try opts.required("xcstrings")
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+        let strings = try XCStringsParser.parse(fileURL: URL(fileURLWithPath: xcstringsPath))
+
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: mode
+        )
+
+        // 1. Snapshot remote IAP state for every configured product.
+        var remote = RemoteState()
+        let remoteIAPs = try await client.listIAPs(appId: appId)
+        // Index ASC results by productId so we can match against Config.iaps.
+        let byProductId = Dictionary(
+            uniqueKeysWithValues: remoteIAPs.compactMap { resource -> (String, APIResource)? in
+                guard let pid = resource.attributes["productId"] else { return nil }
+                return (pid, resource)
+            }
+        )
+        for product in Config.iaps {
+            guard let resource = byProductId[product.productId] else {
+                // Product not in ASC. Reconciler will skip it; surfaces as
+                // empty plan + apply-time 404 if user tries to PATCH.
+                FileHandle.standardError.write(Data(
+                    "warn: IAP \(product.productId) not found in ASC; create it in the web UI first\n".utf8
+                ))
+                continue
+            }
+            let familyShareable: Bool? = resource.attributes["familySharable"].flatMap { value in
+                switch value {
+                case "true", "1": return true
+                case "false", "0": return false
+                default: return nil
+                }
+            }
+            remote.iaps[product.productId] = RemoteState.IAPRemoteAttributes(
+                id: resource.id,
+                referenceName: resource.attributes["name"],
+                reviewNote: resource.attributes["reviewNote"],
+                familyShareable: familyShareable
+            )
+
+            // Pull per-locale snapshot for diff in the reconciler.
+            let locs = try await client.listIAPLocalizations(iapId: resource.id)
+            for loc in locs {
+                guard let locale = loc.attributes["locale"] else { continue }
+                let key = RemoteState.LocalizationKey(
+                    vendorId: product.productId, locale: locale
+                )
+                remote.iapLocalizations[key] = RemoteState.IAPLocalizationRemoteAttributes(
+                    id: loc.id,
+                    name: loc.attributes["name"],
+                    description: loc.attributes["description"]
+                )
+            }
+        }
+
+        // 2. Plan + (optionally) execute.
+        let actions = Reconciler.plan(
+            config: .live,
+            strings: strings,
+            remote: remote
+        )
+        print("Plan: \(actions.count) action(s)")
+        for action in actions {
+            print("  \(describe(action))")
+        }
+        if mode == .apply {
+            // IAP execute paths self-contain their ASC ids (iapId /
+            // localizationId / existingId threaded through actions at plan
+            // time). detailId is unused for IAP; appId currently unused too
+            // (kept for parity with GC execute signature).
+            for action in actions {
+                try await execute(action, client: client, detailId: "", appId: appId)
+            }
+            print("Applied.")
+        }
     }
 
     // MARK: - inspect
