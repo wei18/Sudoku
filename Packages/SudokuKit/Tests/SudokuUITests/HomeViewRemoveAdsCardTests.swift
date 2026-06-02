@@ -13,6 +13,7 @@ import Testing
 
 import MonetizationCore
 import MonetizationTesting
+import MonetizationUI
 @testable import SudokuUI
 
 @MainActor

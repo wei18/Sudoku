@@ -23,6 +23,7 @@ internal import Foundation
 public import GameCenterClient
 public import GameShellUI
 public import MonetizationCore
+public import MonetizationUI
 public import Persistence
 public import PuzzleStore
 public import SudokuUI

@@ -6,9 +6,11 @@
 // is the visual surface, mounted as an overlay above `RootView`.
 //
 // Layout: small pill, bottom-center, 24pt from the screen bottom, 16pt
-// internal horizontal padding / 10pt vertical. Tint follows the theme's
-// `status.success` / `status.error` tokens. Auto-dismiss via a `Task`
-// timer keyed off `Toast.duration`.
+// internal horizontal padding / 10pt vertical. Tint is DI'd via the
+// `successTint` / `failureTint` init params so this module stays free of
+// any Sudoku-specific `Theme` dependency (Phase 1 of the MS monetization
+// wire — see `meetings/2026-06-02_minesweeper-monetization-wire-proposal.md`).
+// Auto-dismiss via a `Task` timer keyed off `Toast.duration`.
 
 public import Foundation
 public import SwiftUI
@@ -77,10 +79,17 @@ public final class ToastController {
 
 public struct ToastView: View {
     private let toast: Toast
-    @Environment(\.theme) private var theme
+    private let successTint: Color
+    private let failureTint: Color
 
-    public init(toast: Toast) {
+    public init(
+        toast: Toast,
+        successTint: Color,
+        failureTint: Color
+    ) {
         self.toast = toast
+        self.successTint = successTint
+        self.failureTint = failureTint
     }
 
     public var body: some View {
@@ -108,8 +117,8 @@ public struct ToastView: View {
 
     private var background: Color {
         switch toast.style {
-        case .success: theme.status.success.resolved
-        case .failure: theme.status.error.resolved
+        case .success: successTint
+        case .failure: failureTint
         }
     }
 }
@@ -118,15 +127,25 @@ public struct ToastView: View {
 
 public extension View {
     /// Mounts a bottom-center toast overlay driven by `controller.current`.
-    /// Use once at the root of a scene (e.g. `RootView`).
+    /// Use once at the root of a scene (e.g. `RootView`). `successTint` and
+    /// `failureTint` are DI'd by the host (Sudoku reads `theme.status.success`
+    /// / `theme.status.error`; Minesweeper passes its own palette in Phase 3).
     @MainActor
-    func toastOverlay(_ controller: ToastController?) -> some View {
+    func toastOverlay(
+        _ controller: ToastController?,
+        successTint: Color,
+        failureTint: Color
+    ) -> some View {
         overlay(alignment: .bottom) {
             if let controller, let toast = controller.current {
-                ToastView(toast: toast)
-                    .padding(.bottom, 24)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .id(toast.message + String(describing: toast.style))
+                ToastView(
+                    toast: toast,
+                    successTint: successTint,
+                    failureTint: failureTint
+                )
+                .padding(.bottom, 24)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .id(toast.message + String(describing: toast.style))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: controller?.current)

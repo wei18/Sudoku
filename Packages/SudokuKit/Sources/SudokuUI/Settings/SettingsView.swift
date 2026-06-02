@@ -11,13 +11,23 @@
 // `RootView`) instead of orphan `Label` rows in the Form. `latestMessage`
 // on the controller stays as the VoiceOver source of truth; the visual
 // surface is the toast overlay.
+//
+// MS monetization wire Phase 1 (2026-06-02): the IAP rows
+// (`RemoveAdsRow` / `AdsRemovedRow` / `RestorePurchasesRow`) moved to the
+// shared `MonetizationUI` target in `AppMonetizationKit`. SettingsView now
+// resolves `theme.accent.primary.resolved` and passes it as `tintColor:`
+// at each row's init site — the shared rows have no `@Environment(\.theme)`
+// dep of their own so Minesweeper can mount the same rows under a different
+// palette in Phase 3.
 
 public import GameShellUI
+public import MonetizationUI
 public import SwiftUI
 
 public struct SettingsView: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
+    @Environment(\.theme) private var theme
     @State private var showClearCacheConfirmation = false
 
     public init(
@@ -33,11 +43,17 @@ public struct SettingsView: View {
             if let controller = monetizationController {
                 Section("Purchases") {
                     if controller.hasPurchasedRemoveAds {
-                        AdsRemovedRow()
+                        AdsRemovedRow(tintColor: theme.accent.primary.resolved)
                     } else {
-                        RemoveAdsRow(controller: controller)
+                        RemoveAdsRow(
+                            controller: controller,
+                            tintColor: theme.accent.primary.resolved
+                        )
                     }
-                    RestorePurchasesRow(controller: controller)
+                    RestorePurchasesRow(
+                        controller: controller,
+                        tintColor: theme.accent.primary.resolved
+                    )
                 }
             }
 
@@ -93,55 +109,10 @@ public struct SettingsView: View {
 
 // MARK: - Rows
 
-struct RemoveAdsRow: View {
-    @Bindable var controller: MonetizationStateController
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Button {
-            Task { await controller.purchaseRemoveAds() }
-        } label: {
-            HStack {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(theme.accent.primary.resolved)
-                Text("Remove Ads")
-                Spacer()
-                Group {
-                    if controller.purchaseInFlight {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text(controller.removeAdsDisplayPrice)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(minWidth: 60, alignment: .trailing)
-            }
-        }
-        .disabled(controller.purchaseInFlight)
-        .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
-    }
-}
-
-struct AdsRemovedRow: View {
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        HStack {
-            Label("Ads Removed", systemImage: "checkmark.seal.fill")
-                .foregroundStyle(theme.accent.primary.resolved)
-            Spacer()
-            Text("Active")
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ads removed. Active.")
-    }
-}
-
 /// Static About row matching the icon-left / label / spacer / value-right
-/// shape of `RemoveAdsRow` so `.formStyle(.grouped)` renders both sections
-/// with the same full-width pill background on macOS (issue #197).
+/// shape of `RemoveAdsRow` (now in MonetizationUI) so `.formStyle(.grouped)`
+/// renders both sections with the same full-width pill background on macOS
+/// (issue #197).
 struct AboutRow: View {
     let systemImage: String
     let title: LocalizedStringKey
@@ -159,35 +130,5 @@ struct AboutRow: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct RestorePurchasesRow: View {
-    @Bindable var controller: MonetizationStateController
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Button {
-            Task { await controller.restorePurchases() }
-        } label: {
-            HStack {
-                Image(systemName: "arrow.clockwise")
-                    .foregroundStyle(theme.accent.primary.resolved)
-                Text("Restore Purchases")
-                Spacer()
-                Group {
-                    if controller.restoreInFlight {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .frame(minWidth: 60, alignment: .trailing)
-            }
-        }
-        .disabled(controller.restoreInFlight)
     }
 }

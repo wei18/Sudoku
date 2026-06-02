@@ -17,9 +17,20 @@ let swiftSettings: [SwiftSetting] = [
 //   AdsAdMob           → MonetizationCore (+ GoogleMobileAds, added in v2.2)
 //   IAPStoreKit2       → MonetizationCore (+ StoreKit, Apple framework)
 //   MonetizationTesting → MonetizationCore
+//   MonetizationUI     → MonetizationCore (+ SwiftUI). Hosts the shared
+//                       `MonetizationStateController`, `ToastController` /
+//                       `ToastView`, and Settings IAP rows extracted from
+//                       SudokuUI in the MS monetization wire Phase 1
+//                       (2026-06-02). Theme decoupled via `tintColor: Color`
+//                       init params — no Theme protocol dep here.
 
 let productionTargets: [Target] = [
     .target(name: "MonetizationCore", swiftSettings: swiftSettings),
+    .target(
+        name: "MonetizationUI",
+        dependencies: ["MonetizationCore"],
+        swiftSettings: swiftSettings
+    ),
     .target(
         name: "AdsAdMob",
         dependencies: [
@@ -73,6 +84,11 @@ let testTargets: [Target] = [
         dependencies: ["MonetizationTesting"],
         swiftSettings: swiftSettings
     ),
+    .testTarget(
+        name: "MonetizationUITests",
+        dependencies: ["MonetizationUI", "MonetizationTesting"],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Package
@@ -85,6 +101,7 @@ let package = Package(
     ],
     products: [
         .library(name: "MonetizationCore", targets: ["MonetizationCore"]),
+        .library(name: "MonetizationUI", targets: ["MonetizationUI"]),
         .library(name: "AdsAdMob", targets: ["AdsAdMob"]),
         .library(name: "IAPStoreKit2", targets: ["IAPStoreKit2"]),
         .library(name: "MonetizationTesting", targets: ["MonetizationTesting"]),
