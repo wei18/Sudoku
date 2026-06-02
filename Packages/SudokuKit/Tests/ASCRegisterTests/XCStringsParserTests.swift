@@ -2,8 +2,6 @@
 // non-gc.*) plus `<TRANSLATE>` / empty placeholders; assert the parser
 // keeps only translated `gc.*` entries.
 
-// swiftlint:disable trailing_comma line_length non_optional_string_data_conversion
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister
@@ -74,8 +72,28 @@ internal struct XCStringsParserTests {
         #expect(XCStringsParser.leaderboardTitle(in: parsed, locale: "ja", difficulty: "medium") == nil)
     }
 
+    @Test("gc.* and iap.* coexist without cross-contamination across lookup helpers")
+    internal func gcAndIAPCoexistence() throws {
+        let parsed: XCStringsParser.LocalizedKeys = [
+            "en": [
+                "gc.leaderboard.easy.daily.title": "Daily Easy",
+                "iap.remove_ads.name": "Remove Ads",
+                "iap.remove_ads.description": "Removes all ads.",
+            ],
+        ]
+        // GC lookup returns GC value; IAP lookup returns IAP value;
+        // neither leaks into the other helper's namespace.
+        #expect(XCStringsParser.leaderboardTitle(in: parsed, locale: "en", difficulty: "easy") == "Daily Easy")
+        #expect(XCStringsParser.iapName(in: parsed, locale: "en", shortId: "remove_ads") == "Remove Ads")
+        #expect(XCStringsParser.iapDescription(in: parsed, locale: "en", shortId: "remove_ads") == "Removes all ads.")
+        // Negative cross-checks: an IAP shortId must not match a GC helper, and vice versa.
+        #expect(XCStringsParser.leaderboardTitle(in: parsed, locale: "en", difficulty: "remove_ads") == nil)
+        #expect(XCStringsParser.iapName(in: parsed, locale: "en", shortId: "easy") == nil)
+    }
+
     @Test("Invalid JSON throws")
     internal func invalidJSON() throws {
+        // swiftlint:disable:next non_optional_string_data_conversion
         let data = try #require("not json".data(using: .utf8))
         #expect(throws: (any Error).self) {
             try XCStringsParser.parse(data: data)

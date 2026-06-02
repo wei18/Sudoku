@@ -217,7 +217,10 @@ let ascRegisterTargets: [Target] = [
         name: "ASCRegister",
         dependencies: [],
         path: "Sources/ASCRegister",
-        resources: [.copy("Strings/gc-strings.xcstrings.patch")],
+        resources: [
+            .copy("Strings/gc-strings.xcstrings.patch"),
+            .copy("Strings/iap-strings.xcstrings.patch"),
+        ],
         swiftSettings: swiftSettings
     ),
     .testTarget(

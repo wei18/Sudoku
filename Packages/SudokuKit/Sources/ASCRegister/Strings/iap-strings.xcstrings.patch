@@ -1,0 +1,52 @@
+// iap-strings.xcstrings.patch — proposed merge fragment for
+// App/Resources/Localizable.xcstrings (issue #200, Phase 1.a).
+//
+// MANUAL MERGE INSTRUCTIONS:
+//   1. Open App/Resources/Localizable.xcstrings.
+//   2. Copy each top-level entry from the `strings` object below into the
+//      existing file's `strings` object (alphabetic order is preserved by
+//      Xcode on save — no need to sort).
+//   3. Do NOT touch `sourceLanguage` / `version`.
+//   4. After merge: run `ASCRegister validate --xcstrings <path>` — it will
+//      confirm en + zh-Hant coverage for every gc.* and iap.* key.
+//
+// Locale coverage in this fragment:
+//   - en      → filled (source language; product-appropriate marketing copy)
+//   - zh-Hant → filled (user-facing review-ready translation)
+//   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
+//     translation-agent flow (foundations.md §L10n).
+//
+// Total: 2 keys × 7 locales = 14 string units. 2 × 2 = 4 filled,
+// 2 × 5 = 10 marked <TRANSLATE>.
+//
+// File extension `.xcstrings.patch` mirrors gc-strings.xcstrings.patch
+// precedent — Xcode will NOT try to parse this as a string catalog. The
+// JSON body below (from the opening `{` to the matching closing `}`) is
+// valid JSON; the C-style header comments above are stripped.
+
+{
+  "strings" : {
+    "iap.remove_ads.name" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Remove Ads" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "移除廣告" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "iap.remove_ads.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Permanently remove all banner and interstitial ads from the app. One-time purchase, shared with Family Sharing." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "永久移除應用程式內的所有橫幅與插頁廣告。一次性購買，可透過「家人共享」共用。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    }
+  }
+}

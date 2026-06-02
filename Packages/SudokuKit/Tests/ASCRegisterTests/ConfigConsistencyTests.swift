@@ -6,8 +6,6 @@
 // the expected strings and assert. If the production constants ever drift,
 // fix them in BOTH places — Leader will be alerted by this test failing.
 
-// swiftlint:disable trailing_comma
-
 internal import Foundation
 internal import Testing
 @testable import ASCRegister
@@ -103,5 +101,17 @@ internal struct ConfigConsistencyTests {
         for board in Config.leaderboards {
             #expect(board.recurrenceDuration == "PT24H")
         }
+    }
+
+    // MARK: - IAP (issue #200, Phase 1.a)
+
+    @Test("Remove-ads IAP productId is byte-equal to the StoreKit2 canonical identifier")
+    internal func iapProductId() {
+        // Hard-coded here (mirrors GC tests pattern) so this file stays
+        // import-light; IAPStoreKit2 is not imported. If the StoreKit2
+        // constant ever drifts, fix BOTH places — this test will fail first.
+        #expect(Config.iaps.count == 1)
+        #expect(Config.iaps[0].productId == "com.wei18.sudoku.iap.remove_ads")
+        #expect(Config.allIAPProductIds == ["com.wei18.sudoku.iap.remove_ads"])
     }
 }
