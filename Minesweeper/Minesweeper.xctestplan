@@ -22,6 +22,20 @@
         "identifier" : "MinesweeperEngineTests",
         "name" : "MinesweeperEngineTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/MinesweeperCoreKit",
+        "identifier" : "MinesweeperGameStateTests",
+        "name" : "MinesweeperGameStateTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/MinesweeperKit",
+        "identifier" : "MinesweeperUITests",
+        "name" : "MinesweeperUITests"
+      }
     }
   ],
   "version" : 1
