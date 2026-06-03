@@ -213,6 +213,13 @@ let testTargets: [Target] = [
             // read it as the literal catalog source.
             .copy("Resources/Localizable.xcstrings.json"),
             .copy("Resources/PrivacyInfo.xcprivacy"),
+            // App target's Info.plist, renamed to AppInfo.plist because
+            // SPM bans `Info.plist` as a top-level bundle resource. Read
+            // raw via PropertyListSerialization in the AdMob-key smoke
+            // test so XCC (where the source tree isn't on the test
+            // runner) can still verify the keys. Kept in sync manually
+            // with Sudoku/Info.plist — same precedent as PrivacyInfo.xcprivacy.
+            .copy("Resources/AppInfo.plist"),
         ],
         swiftSettings: swiftSettings
     ),

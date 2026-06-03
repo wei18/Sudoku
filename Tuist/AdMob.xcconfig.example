@@ -1,0 +1,36 @@
+// AdMob configuration — template.
+//
+// COPY this file to `Tuist/AdMob.xcconfig` (gitignored) and fill in the
+// real values for whichever app you're building. The real file must NEVER
+// be committed.
+//
+// On a fresh clone:
+//   cp Tuist/AdMob.xcconfig.example Tuist/AdMob.xcconfig
+//   # then edit Tuist/AdMob.xcconfig and replace the values below with
+//   # the production IDs for the app you're building (or leave the test
+//   # values for sandbox/debug verification).
+//   mise exec -- tuist generate
+//
+// Real production IDs are NOT documented here — they live in the project's
+// private memory (`admob-production-ids` for Sudoku, `minesweeper-admob-ids`
+// for Minesweeper). Ask the project owner if you need them.
+//
+// For CI (Xcode Cloud): no manual setup needed. The following env vars
+// must be defined in ASC → Xcode Cloud → Workflow → Environment Variables
+// (marked Secret), one set per workflow / app:
+//
+//   SUDOKU_ADMOB_APP_ID
+//   SUDOKU_ADMOB_BANNER_UNIT_ID
+//   MINESWEEPER_ADMOB_APP_ID
+//   MINESWEEPER_ADMOB_BANNER_UNIT_ID
+//
+// `ci_scripts/ci_post_clone.sh` reads them and writes `Tuist/AdMob.xcconfig`
+// before `tuist generate` runs, selecting the right values per workflow.
+//
+// The values below are Google's UNIVERSAL TEST IDs (publicly documented —
+// safe for sandbox / debug verification). They will NOT serve real
+// production creatives. See:
+// https://developers.google.com/admob/ios/test-ads#sample_ad_units
+
+ADMOB_APP_ID = ca-app-pub-3940256099942544~1458002511
+ADMOB_BANNER_UNIT_ID = ca-app-pub-3940256099942544/2934735716

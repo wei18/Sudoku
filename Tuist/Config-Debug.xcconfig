@@ -1,0 +1,9 @@
+// Debug config wrapper — Tuist points the Debug configuration at this file.
+// We `#include` the gitignored secret xcconfigs so a single Tuist xcconfig
+// arg can carry both (Tuist 4 takes one file per configuration).
+//
+// Both included files are gitignored; their *.example templates are
+// committed. See Tuist/Signing.xcconfig.example + Tuist/AdMob.xcconfig.example.
+
+#include? "Signing.xcconfig"
+#include? "AdMob.xcconfig"

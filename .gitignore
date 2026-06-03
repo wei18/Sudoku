@@ -7,11 +7,22 @@
 .env
 .env.*
 !.env.example
-secrets/
+# secrets/ — deny everything (PEMs, API keys, .env files) EXCEPT committed
+# templates (*.example) and the optional top-level README.md. See PR1 of the
+# AdMob secret-injection migration for the rationale + file inventory.
+secrets/**
+!secrets/*.example
+!secrets/README.md
 
 # Apple Developer signing — DEVELOPMENT_TEAM lives in this gitignored xcconfig.
 # Template (committed): Tuist/Signing.xcconfig.example
 Tuist/Signing.xcconfig
+
+# AdMob App ID + banner unit ID — referenced from both apps' Info.plist via
+# $(ADMOB_APP_ID) / $(ADMOB_BANNER_UNIT_ID). Generated locally from
+# .example; generated in CI from XCC env vars by ci_post_clone.sh.
+# Template (committed): Tuist/AdMob.xcconfig.example
+Tuist/AdMob.xcconfig
 
 # Xcode / build
 DerivedData/

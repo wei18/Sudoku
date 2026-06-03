@@ -90,22 +90,26 @@ extension AppComposition {
         let sudokuRemoveAdsProductID = "com.wei18.sudoku.iap.remove_ads"
 
         #if os(iOS)
-        // DEBUG vs Release swap for the banner ad unit ID: v2.5.2 ships with
-        // Google's universal TEST banner; v2.5.3 (user-owned, pre-ASC) swaps
-        // to Sudoku's production unit. The `GADApplicationIdentifier` in
-        // `App/Info.plist` follows the same swap. The `fatalError` is
-        // intentional and EAGER — any Release/iOS build constructed before
-        // v2.5.3 production wiring crashes at composition-root construction
-        // (immediately-invoked closure), surfacing the misconfiguration on
-        // first launch / smoke test rather than later at first ad impression.
-        // See `docs/v2/v2.5-readiness.md §v2.5.3` for the paired-flip checklist.
-        #if DEBUG
-        let sudokuBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google test
-        #else
-        let sudokuBannerAdUnitID: String = {
-            fatalError("REPLACE_IN_v2.5.3: production AdMob banner ad unit ID not wired — see docs/v2/v2.5-readiness.md §v2.5.3")
-        }()
-        #endif
+        // Banner ad unit ID via Info.plist `GADBannerUnitID` key, substituted
+        // at build time from `Tuist/AdMob.xcconfig` (gitignored; .example
+        // committed). XCC writes the xcconfig from per-workflow env vars;
+        // local builds use the .example sandbox values. Replaces the old
+        // DEBUG-vs-Release fatalError gate with smoke-test (key presence —
+        // `AppCompositionTests/InfoPlistAdMobKeysTests`) + runtime guard
+        // below (catches missing-key + empty + unresolved-`$()` token
+        // before AdMob SDK init).
+        guard
+            let sudokuBannerAdUnitID = Bundle.main
+                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
+            !sudokuBannerAdUnitID.isEmpty,
+            !sudokuBannerAdUnitID.hasPrefix("$(")
+        else {
+            preconditionFailure(
+                "GADBannerUnitID missing or unresolved — check"
+                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
+                    + " vars are set for Release builds."
+            )
+        }
         let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: sudokuBannerAdUnitID)
         #else
         let adProvider: any AdProvider = NoopAdProvider()

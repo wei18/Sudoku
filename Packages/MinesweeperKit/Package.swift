@@ -92,6 +92,16 @@ let testTargets: [Target] = [
             // smoke calls — direct `import Telemetry` needed.
             .product(name: "Telemetry", package: "TelemetryKit"),
         ],
+        resources: [
+            // App target's Info.plist, renamed to AppInfo.plist because
+            // SPM bans `Info.plist` as a top-level bundle resource. Read
+            // raw via PropertyListSerialization in the AdMob-key smoke
+            // test so XCC (where the source tree isn't on the test
+            // runner) can still verify the keys. Kept in sync manually
+            // with Minesweeper/Info.plist — same precedent as Sudoku's
+            // AppCompositionTests/Resources/PrivacyInfo.xcprivacy.
+            .copy("Resources/AppInfo.plist"),
+        ],
         swiftSettings: swiftSettings
     ),
 ]
