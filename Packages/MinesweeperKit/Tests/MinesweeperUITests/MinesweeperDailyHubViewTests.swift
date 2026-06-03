@@ -1,8 +1,8 @@
-// MinesweeperDailyHubViewTests — compile + smoke coverage for the U12
-// Daily hub stub. Verifies the view instantiates with a binding and that
-// the placeholder `MinesweeperDailyCard` shape exposes the difficulty +
-// seed the shell needs for routing. Pure-data tests; no snapshot infra
-// (deferred per X1-X4 precedent for MS UI).
+// MinesweeperDailyHubViewTests — coverage for the #290 date-seeded Daily hub.
+//
+// Verifies the view + VM instantiate, the live provider yields a deterministic
+// trio, completion ids mark cards, and a card tap pushes the daily `.board`
+// route. Mirrors the shape of SudokuUI's DailyHubViewModel tests.
 
 import Foundation
 import SwiftUI
@@ -13,29 +13,92 @@ import MinesweeperEngine
 @MainActor
 @Suite struct MinesweeperDailyHubViewTests {
 
-    @Test func instantiatesWithBinding() {
-        var path: [AppRoute] = []
-        let binding = Binding<[AppRoute]>(
-            get: { path },
-            set: { path = $0 }
+    @Test func instantiatesWithViewModel() {
+        let view = MinesweeperDailyHubView(
+            viewModel: MinesweeperDailyHubViewModel(path: .constant([]))
         )
-        let view = MinesweeperDailyHubView(path: binding)
         _ = view
     }
 
-    @Test func dailyCardCarriesDifficultyAndSeed() {
-        let card = MinesweeperDailyCard(difficulty: .expert, seed: 42)
-        #expect(card.difficulty == .expert)
-        #expect(card.seed == 42)
-        #expect(card.id == "expert-42")
-    }
-
-    @Test func instantiatesWithFixedDateForDeterministicPreview() {
-        // Same calendar day always produces the same stub cards (the seed
-        // map is a pure function of `ordinality(of: .day, in: .year, for:)`).
-        // Compile-only check — proves the date-injection seam exists.
+    @Test func liveProviderYieldsTrioInDifficultyOrder() {
         let date = Date(timeIntervalSince1970: 1_700_000_000)
-        let view = MinesweeperDailyHubView(path: .constant([]), date: date)
-        _ = view
+        let trio = LiveMinesweeperDailyProvider().dailyTrio(date: date)
+        #expect(trio.count == 3)
+        #expect(trio.map(\.difficulty) == [.beginner, .intermediate, .expert])
+        // Seeds match the engine's daily derivation.
+        #expect(trio[0].seed == MinesweeperDaily.seed(date: date, difficulty: .beginner))
+        #expect(trio[0].puzzleId == MinesweeperDaily.puzzleId(date: date, difficulty: .beginner))
     }
+
+    @Test func bootstrapLoadsThreeCardsAllUncompletedWithoutPersistence() async {
+        let viewModel = MinesweeperDailyHubViewModel(
+            path: .constant([]),
+            dateProvider: { Date(timeIntervalSince1970: 1_700_000_000) }
+        )
+        await viewModel.bootstrap()
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected .loaded, got \(viewModel.state)")
+            return
+        }
+        #expect(cards.count == 3)
+        #expect(cards.allSatisfy { !$0.isCompleted })
+    }
+
+    @Test func mergeMarksCompletedCardsFromCompletedIds() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let trio = LiveMinesweeperDailyProvider().dailyTrio(date: date)
+        let completedId = MinesweeperDaily.puzzleId(date: date, difficulty: .intermediate)
+        let cards = MinesweeperDailyHubViewModel.mergeCards(trio: trio, completed: [completedId])
+        let intermediate = cards.first { $0.difficulty == .intermediate }
+        #expect(intermediate?.isCompleted == true)
+        #expect(cards.filter(\.isCompleted).count == 1)
+    }
+
+    @Test func mergeWithEmptyCompletedMarksNothing() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let trio = LiveMinesweeperDailyProvider().dailyTrio(date: date)
+        let cards = MinesweeperDailyHubViewModel.mergeCards(trio: trio, completed: [])
+        #expect(cards.allSatisfy { !$0.isCompleted })
+    }
+
+    @Test func cardTapPushesDailyBoardRoute() async {
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let viewModel = MinesweeperDailyHubViewModel(path: binding, dateProvider: { date })
+        await viewModel.bootstrap()
+        guard case .loaded(let cards) = viewModel.state, let first = cards.first else {
+            Issue.record("expected loaded cards")
+            return
+        }
+        viewModel.cardTapped(first)
+        #expect(path == [.board(difficulty: first.difficulty, seed: first.seed)])
+    }
+
+    @Test func bootstrapIsIdempotent() async {
+        let counter = Counter()
+        let counting = CountingProvider(onFetch: { counter.increment() })
+        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]), provider: counting)
+        await viewModel.bootstrap()
+        await viewModel.bootstrap()
+        #expect(counter.value == 1)
+    }
+}
+
+// MARK: - Fakes
+
+private struct CountingProvider: MinesweeperDailyProviding {
+    let onFetch: @Sendable () -> Void
+    func dailyTrio(date: Date) -> [MinesweeperDailyEntry] {
+        onFetch()
+        return LiveMinesweeperDailyProvider().dailyTrio(date: date)
+    }
+}
+
+/// Tiny thread-safe counter for the idempotency assertion.
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func increment() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
 }

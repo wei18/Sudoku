@@ -1,115 +1,132 @@
-// MinesweeperDailyHubView — Standard-tier Daily hub stub (PR U12).
+// MinesweeperDailyHubView — date-seeded Daily hub (#290).
 //
-// Wraps `GameShellUI.DailyHubShellView` with a placeholder data set so the
-// shell renders a 1-or-3-column grid of three "today's boards" — mirroring
-// Sudoku's Daily product per `feedback/minesweeper-mirrors-sudoku.md`. This
-// stub proves the generic shell composes against a second consumer in-PR
-// (the whole point of `feedback/reusable-targets-over-duplication.md`). It
-// is intentionally shallow:
-//   - No PuzzleProvider, no Persistence, no completion overlay. Real
-//     "date-seeded board" generation + persisted completion land in a
-//     follow-up MS Daily feature PR.
-//   - The three cards are derived from the current calendar day (so the
-//     content varies day-to-day in preview) but the underlying seed is
-//     used as a display value only, not handed to the engine.
-//   - Sidebar wiring into `MinesweeperRoot` is deferred — this view exists
-//     to compile + render in `#Preview`.
+// Real daily content, replacing the PR U12 placeholder. Mirrors Sudoku's
+// `DailyHubView`: produces the game-specific `MinesweeperDailyCard` items +
+// MS theme colors and hands them to the generic `GameShellUI.DailyHubShellView`.
+// `.task { bootstrap() }` stays on the caller (shells own no side-effect
+// modifiers — X4 / SettingsShellView precedent).
+//
+// The daily trio = one date-seeded board per difficulty (beginner /
+// intermediate / expert), the same three boards for everyone on a given UTC
+// day, rolling over at UTC midnight. Tapping a card pushes `.board(...)` with
+// the daily seed. Completed cards show a checkmark (driven off
+// `PersistenceProtocol.fetchCompletedDailyIds`; parity-only until MS daily
+// save-flow lands).
 
 public import SwiftUI
 internal import GameShellUI
-public import MinesweeperEngine
-
-public struct MinesweeperDailyCard: Hashable, Sendable, Identifiable {
-    public let difficulty: Difficulty
-    public let seed: UInt64
-
-    public var id: String { "\(difficulty.rawValue)-\(seed)" }
-
-    public init(difficulty: Difficulty, seed: UInt64) {
-        self.difficulty = difficulty
-        self.seed = seed
-    }
-}
+internal import MinesweeperEngine
 
 public struct MinesweeperDailyHubView: View {
-    @Binding private var path: [AppRoute]
-    private let date: Date
+    @Bindable private var viewModel: MinesweeperDailyHubViewModel
+    @Environment(\.theme) private var theme
 
-    public init(path: Binding<[AppRoute]>, date: Date = Date()) {
-        self._path = path
-        self.date = date
+    public init(viewModel: MinesweeperDailyHubViewModel) {
+        self.viewModel = viewModel
     }
 
     public var body: some View {
         DailyHubShellView(
             title: "Daily",
-            backgroundColor: .clear,
-            state: HubLoadState<MinesweeperDailyCard>.loaded(cards),
-            card: { card in
-                MinesweeperDailyCardView(card: card)
-            },
+            backgroundColor: theme.surface.background.resolved,
+            state: liftedState,
+            card: { card in MinesweeperDailyCardView(card: card) },
             failure: { reason in
-                Text(reason)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(theme.status.warning.resolved)
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                }
             },
-            onItemTap: { card in
-                path.append(.board(difficulty: card.difficulty, seed: card.seed))
-            }
+            onItemTap: { card in viewModel.cardTapped(card) }
         )
+        .task { await viewModel.bootstrap() }
     }
 
-    /// Three deterministic stub cards derived from the calendar day. Real
-    /// date-seeded generation is a follow-up; this just proves the shell
-    /// renders against a non-Sudoku Item type.
-    private var cards: [MinesweeperDailyCard] {
-        let day = Calendar(identifier: .gregorian)
-            .ordinality(of: .day, in: .year, for: date) ?? 1
-        let dayBase = UInt64(day)
-        return [
-            MinesweeperDailyCard(difficulty: .beginner, seed: dayBase &* 31),
-            MinesweeperDailyCard(difficulty: .intermediate, seed: dayBase &* 131),
-            MinesweeperDailyCard(difficulty: .expert, seed: dayBase &* 313),
-        ]
+    /// Translates the MS daily state into the generic shell input. MS has no
+    /// `.exhausted` / `.failed` path (generation is pure + non-throwing), so
+    /// only idle / loading / loaded are reachable.
+    private var liftedState: HubLoadState<MinesweeperDailyCard> {
+        switch viewModel.state {
+        case .idle: return .idle
+        case .loading: return .loading
+        case .loaded(let cards): return .loaded(cards)
+        }
     }
 }
 
 private struct MinesweeperDailyCardView: View {
     let card: MinesweeperDailyCard
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "square.grid.3x3.fill")
+                Circle()
+                    .fill(difficultyTint)
+                    .frame(width: 10, height: 10)
                     .accessibilityHidden(true)
                 Text(displayName(card.difficulty))
                     .font(.title3.weight(.medium))
+                    .foregroundStyle(difficultyTint)
                 Spacer()
+                if card.isCompleted {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(theme.status.success.resolved)
+                        .font(.callout)
+                        .accessibilityLabel("Completed")
+                } else {
+                    Text("—")
+                        .font(.callout)
+                        .foregroundStyle(theme.text.tertiary.resolved)
+                }
             }
-            Text("Seed #\(card.seed)")
+            Text(boardSummary(card.difficulty))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.text.secondary.resolved)
                 .accessibilityHidden(true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // `.contentShape(Rectangle())` BEFORE `.glassEffect(...)` so the whole
+        // card frame (incl. padding) is tap-hittable on macOS — mirrors
+        // Sudoku's DailyPuzzleCard / HomeView card ordering (issue #15 / #197).
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }
 
-    private func displayName(_ level: Difficulty) -> String {
+    /// Map `Difficulty` to a `difficulty.*` theme token. Exhaustive — adding a
+    /// case forces this to update (mirrors Sudoku's `difficultyTint`).
+    private var difficultyTint: Color {
+        switch card.difficulty {
+        case .beginner: return theme.difficulty.easy.resolved
+        case .intermediate: return theme.difficulty.medium.resolved
+        case .expert: return theme.difficulty.hard.resolved
+        }
+    }
+
+    private func displayName(_ level: Difficulty) -> LocalizedStringKey {
         switch level {
         case .beginner: return "Beginner"
         case .intermediate: return "Intermediate"
         case .expert: return "Expert"
         }
     }
+
+    private func boardSummary(_ level: Difficulty) -> String {
+        "\(level.rows) × \(level.columns) · \(level.mineCount) mines"
+    }
 }
 
 #Preview("MinesweeperDailyHub") {
     NavigationStack {
-        MinesweeperDailyHubView(path: .constant([]))
+        MinesweeperDailyHubView(
+            viewModel: MinesweeperDailyHubViewModel(path: .constant([]))
+        )
     }
+    .environment(\.theme, MinesweeperTheme())
 }

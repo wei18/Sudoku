@@ -67,10 +67,20 @@ public struct LiveRouteFactory: RouteFactory {
             // pushed from the Home "New Game" card / sidebar (#288 / #289).
             return AnyView(NewGameView(path: path ?? .constant([])))
         case .daily:
-            // Was unreachable (no AppRoute case). Now resolved here so the
-            // Home "Daily" card / sidebar reaches it. The hub shows
-            // date-seeded placeholder cards until the Daily MODEL lands (#290).
-            return AnyView(MinesweeperDailyHubView(path: path ?? .constant([])))
+            // #290: date-seeded daily trio + completion overlay. The hub VM
+            // pulls the three boards from `LiveMinesweeperDailyProvider`
+            // (pure, deterministic per UTC day) and marks completed cards via
+            // `PersistenceProtocol.fetchCompletedDailyIds` (parity-only until
+            // MS daily save-flow lands — returns [] today).
+            return AnyView(
+                MinesweeperDailyHubView(
+                    viewModel: MinesweeperDailyHubViewModel(
+                        path: path ?? .constant([]),
+                        provider: LiveMinesweeperDailyProvider(),
+                        persistence: persistence
+                    )
+                )
+            )
         case .practice:
             // Was unreachable (no AppRoute case). Now reachable from Home.
             return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
