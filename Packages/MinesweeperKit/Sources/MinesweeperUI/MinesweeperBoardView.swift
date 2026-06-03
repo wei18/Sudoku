@@ -223,6 +223,13 @@ enum InteractionMode: Hashable {
 // MARK: - Cell button
 
 struct MinesweeperCellButton: View {
+    // #278 Tier-1 Phase 2b: read the injected theme + MS cell tokens. The board
+    // is mounted under the `\.theme` + `\.minesweeperCell` injection at
+    // `MinesweeperAppComposition.rootView`; every cell resolves tokens here
+    // rather than reaching for raw SwiftUI primitives.
+    @Environment(\.theme) private var theme
+    @Environment(\.minesweeperCell) private var tokens
+
     let cell: Cell
     /// Side length in points, derived from the board GeometryReader.
     let side: CGFloat
@@ -271,10 +278,13 @@ struct MinesweeperCellButton: View {
         switch cell.state {
         case .hidden, .flagged:
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color.secondary.opacity(0.25))
+                .fill(tokens.covered.resolved)
         case .revealed:
             RoundedRectangle(cornerRadius: 4)
-                .fill(cell.isMine ? Color.red.opacity(0.6) : Color.secondary.opacity(0.08))
+                // A revealed mine is the detonated cell in Tier-0 (no
+                // separate "other mine" branch yet), so it gets the bold
+                // mineHit red; revealed-safe cells get the revealed bg.
+                .fill(cell.isMine ? tokens.mineHit.resolved : tokens.revealed.resolved)
         }
     }
 
@@ -286,7 +296,7 @@ struct MinesweeperCellButton: View {
         case .flagged:
             Image(systemName: "flag.fill")
                 .font(.system(size: glyphSize))
-                .foregroundStyle(.orange)
+                .foregroundStyle(theme.status.warning.resolved)
         case .revealed:
             if cell.isMine {
                 Image(systemName: "burst.fill")
@@ -308,16 +318,9 @@ struct MinesweeperCellButton: View {
     private var glyphSize: CGFloat { side * 0.55 }
 
     private func numberColor(_ count: Int) -> Color {
-        switch count {
-        case 1: return .blue
-        case 2: return .green
-        case 3: return .red
-        case 4: return .purple
-        case 5: return .brown
-        case 6: return .teal
-        case 7: return .black
-        default: return .gray
-        }
+        // #278 Tier-1 Phase 2b: MS-flavoured 1–8 palette from the injected
+        // cell tokens (was system .blue/.green/.red/...).
+        tokens.number(count).resolved
     }
 
     private var accessibilityLabel: String {

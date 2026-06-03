@@ -97,6 +97,10 @@ let testTargets: [Target] = [
             // `.live()` factories and exercise `observe(_:)` / `report(_:)`
             // smoke calls — direct `import Telemetry` needed.
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // #278 Tier-1 Phase 2b: MS snapshot harness. Mirrors SudokuKit's
+            // SudokuUITests snapshot dep — themed board baselines are the
+            // Designer's visual-verification surface.
+            .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because
@@ -107,6 +111,10 @@ let testTargets: [Target] = [
             // with Minesweeper/Info.plist — same precedent as Sudoku's
             // AppCompositionTests/Resources/PrivacyInfo.xcprivacy.
             .copy("Resources/AppInfo.plist"),
+            // #278 Tier-1 Phase 2b: bundle the snapshot baselines so Xcode
+            // Cloud's distributed test runner resolves them via Bundle.module
+            // (same fix as SudokuUITests — see SnapshotConfig `SnapshotPaths`).
+            .copy("__Snapshots__"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -130,6 +138,9 @@ let package = Package(
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
         .package(name: "PersistenceKit", path: "../PersistenceKit"),
         .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
+        // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
+        // Same version pin as SudokuKit/Package.swift.
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
