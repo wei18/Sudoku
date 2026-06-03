@@ -151,13 +151,20 @@ public struct MinesweeperBoardView: View {
             let availH = geo.size.height - spacing * CGFloat(rows - 1)
             let fitted = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
             let cellSide = max(Self.minCellSide, fitted)
-            // When the fitted side is at/above the floor the board fits the
-            // offered rect and the ScrollView is inert. When clamped, content
-            // exceeds the rect and the ScrollView scrolls.
-            ScrollView([.horizontal, .vertical]) {
+            // Fits (side at/above floor): center the floored grid in the
+            // offered rect — mirrors Sudoku BoardView's centered frame and
+            // avoids the top-leading drift a ScrollView would impose (#278 CR).
+            // Clamped (below floor, e.g. Expert on iPhone): the board exceeds
+            // the rect, so scroll both axes instead of shrinking.
+            if fitted >= Self.minCellSide {
                 gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+            } else {
+                ScrollView([.horizontal, .vertical]) {
+                    gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
         }
         // Reserve a square-ish slot; the GR fills whatever it is offered.
         .aspectRatio(boardAspectRatio, contentMode: .fit)
@@ -240,11 +247,14 @@ struct MinesweeperCellButton: View {
         }
         .buttonStyle(.plain)
         // Platform-gated flag accelerator. On iOS we use long-press; on macOS
-        // we use the context menu (right-click). Stacking both on iOS would
-        // cause a single long-press to fire both handlers and double-toggle.
+        // we use the context menu (right-click). The long-press only acts in
+        // `.reveal` mode: in `.flag` mode the tap already flags, and the
+        // button's touch-up tap + the long-press would both fire onToggleFlag,
+        // netting a no-op (#278 CR). In `.flag` mode the accelerator is
+        // redundant, so we make it inert there.
         #if os(iOS)
         .onLongPressGesture(minimumDuration: 0.35) {
-            onToggleFlag()
+            if mode == .reveal { onToggleFlag() }
         }
         #elseif os(macOS)
         .contextMenu {
