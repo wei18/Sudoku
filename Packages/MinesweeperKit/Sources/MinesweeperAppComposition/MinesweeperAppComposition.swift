@@ -85,5 +85,14 @@ public struct MinesweeperAppComposition {
             routeFactory: routeFactory,
             toastController: toastController
         )
+        // #278 Tier-1 Phase 2b: inject Minesweeper's concrete palette at the
+        // composition root. GameShellUI's `\.theme` default is a palette-neutral
+        // fallback (NOT any app's brand), so every mounted MS view resolves the
+        // slate-blue / blueprint-paper tokens here. Mirrors Sudoku's
+        // `AppComposition.rootView` (`.environment(\.theme, DefaultTheme())`).
+        .environment(\.theme, MinesweeperTheme())
+        // Board-cell tokens are MS-shaped, so they ride their own `\.minesweeperCell`
+        // env key (out of the generic `Theme`, same split as `\.sudokuCell`).
+        .environment(\.minesweeperCell, MinesweeperTheme().cell)
     }
 }
