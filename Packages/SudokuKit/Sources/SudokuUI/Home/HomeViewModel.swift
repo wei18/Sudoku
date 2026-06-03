@@ -6,7 +6,7 @@
 
 public import Foundation
 public import SwiftUI
-public import GameShellUI
+import GameShellUI
 
 public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Identifiable {
     case daily
