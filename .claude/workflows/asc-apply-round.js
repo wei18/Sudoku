@@ -53,7 +53,7 @@ if (mode === 'apply' && args.confirmApply !== true) {
 const roundNumber = args.roundNumber || null
 const date = args.date || null
 const repo = args.repo || '.'
-const packagePath = args.packagePath || 'Packages/SudokuKit'
+const packagePath = args.packagePath || 'Packages/ASCRegisterKit'
 // Guard packagePath against shell metachars / traversal (interpolated into bash via agent prompts)
 if (!/^[A-Za-z0-9_./-]+$/.test(packagePath) || packagePath.includes('..')) {
   throw new Error(`asc-apply-round: packagePath "${packagePath}" contains forbidden characters or '..' (allowed: A-Za-z0-9_./-)`)
@@ -223,7 +223,7 @@ const proposal = await agent(
   `## Raw output (credentials redacted, truncated)\n\`\`\`\n${scrubbedStdout}\n\`\`\`\n\n` +
   `## ENTITY_ERROR(s) + known recipe\n${JSON.stringify(recipes, null, 2)}\n\n` +
   `## Your task\n` +
-  `For each ENTITY_ERROR, propose a concrete patch. If a known recipe exists, USE IT as starting point but VERIFY against the current code (read Packages/SudokuKit/Sources/ASCRegister/Config.swift / ASCClient.swift / Strings/*.xcstrings as needed). If no recipe, propose based on the error message + field.\n\n` +
+  `For each ENTITY_ERROR, propose a concrete patch. If a known recipe exists, USE IT as starting point but VERIFY against the current code (read Packages/ASCRegisterKit/Sources/ASCRegister/Config.swift / ASCClient.swift / Strings/*.xcstrings as needed). If no recipe, propose based on the error message + field.\n\n` +
   `For each proposal:\n` +
   `  - fixDescription: 2-4 sentences, name the file:line and the exact change\n` +
   `  - targetFiles: list of file paths to edit\n` +

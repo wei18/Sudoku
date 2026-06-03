@@ -63,7 +63,7 @@ Cross-reference the taxonomy above. If user-owned → respond "this is user step
 
 - **`docs/v2/v2.5-readiness.md`** — current ship checklist; user-owned items as `- [ ]`
 - **`docs/v2/plan.md` §v2.5** — phase summary; defers to readiness doc for detail
-- **`tools/ASCRegister/`** (project source: `Packages/SudokuKit/Sources/ASCRegister/`) — existing CLI
+- **`tools/ASCRegister/`** (project source: `Packages/ASCRegisterKit/Sources/ASCRegister/`) — existing CLI
 - **`docs/app-store/metadata/README.md`** — yaml schema for future ASCRegister app-metadata mode
 - **`docs/foundations.md §Backlog`** — ASC API ops backlog entries
 - **`docs/v2/design.md §Backlog`** — CANCELLED ASC ops (e.g. IAP mode)
