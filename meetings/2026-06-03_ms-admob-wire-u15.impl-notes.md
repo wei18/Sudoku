@@ -40,7 +40,7 @@ Sudoku BoardView mounts `BannerSlotView` between grid and digit pad, suppressed 
 ## D5 — Info.plist GADApplicationIdentifier swap
 
 Mirror Sudoku's pattern: ship the **TEST App ID** verbatim in plist (Google universal test app ID), since the production swap is a paired flip at TestFlight build time. **Wait** — dispatch explicitly says "user approved wiring them now since MS Phase 3 monetization just landed". So I should ship MS production App ID directly:
-- `ca-app-pub-8986741979385138~3575413966`
+- see memory `minesweeper-admob-ids` (held out of repo per build-time-secret-injection)
 
 But the LiveAdMobBridge banner unit ID is still wrapped in `#if DEBUG` swap. So DEBUG builds connect to MS production App ID + Google test banner unit — same shape Sudoku will arrive at on v2.5.3. OK.
 
