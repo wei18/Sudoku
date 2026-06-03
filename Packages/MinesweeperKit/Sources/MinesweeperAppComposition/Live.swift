@@ -100,7 +100,11 @@ extension MinesweeperAppComposition {
         // un-pre-flighted Release build from silently serving real creatives
         // against the production AdMob console.
         let minesweeperBannerAdUnitID: String = {
-            fatalError("REPLACE_IN_MS_V1: production AdMob banner ad unit ID not wired — see project memory `minesweeper-admob-ids` for the MS production id, paired with the v1 release checklist")
+            fatalError(
+                "REPLACE_IN_MS_V1: production AdMob banner ad unit ID not wired"
+                + " — see project memory `minesweeper-admob-ids` for the MS"
+                + " production id, paired with the v1 release checklist"
+            )
         }()
         #endif
         let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: minesweeperBannerAdUnitID)
