@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minesweeper — App Flow Prototype</title>
+<style>
+  :root {
+    /* iOS semantic colors (Light Mode) */
+    --label:            #000000;
+    --secondary-label:  #3c3c4399;   /* secondaryLabel 60% */
+    --tertiary-label:   #3c3c434d;
+    --system-bg:        #ffffff;
+    --grouped-bg:       #f2f2f7;     /* systemGroupedBackground */
+    --secondary-grouped:#ffffff;
+    --separator:        #c6c6c8;
+    --tint:             #007AFF;      /* accentColor — MS uses system default */
+    --fill-quaternary:  #74748014;
+
+    /* MS-ACTUAL board palette (raw SwiftUI primitives, NO theme tokens) */
+    --ms-covered:       #8e8e93;     /* Color.secondary @ ~25% over white */
+    --ms-covered-fill:  rgba(142,142,147,0.25);
+    --ms-revealed-fill: rgba(142,142,147,0.08);
+    --ms-mine:          rgba(255,59,48,0.60);  /* Color.red.opacity(0.6) */
+    --ms-flag:          #FF9500;     /* .orange */
+    /* system number colors 1..8 */
+    --n1:#007AFF; --n2:#34C759; --n3:#FF3B30; --n4:#AF52DE;
+    --n5:#A2845E; --n6:#30B0C7; --n7:#000000; --n8:#8E8E93;
+
+    --destructive:      #FF3B30;
+    --green:            #34C759;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #e9e9ec;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+    color: #1d1d1f;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    position: sticky; top: 0; z-index: 200;
+    display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    flex-wrap: wrap;
+    padding: 18px 32px;
+    background: #ffffffee;
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid #d2d2d7;
+  }
+  .header-left h1 { font-size: 22px; margin: 0; font-weight: 700; }
+  .header-left .meta { font-size: 12px; color: #86868b; margin-top: 4px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #515154; }
+
+  .layout { display: flex; align-items: flex-start; }
+
+  /* ---------- Canvas ---------- */
+  .canvas {
+    position: relative;
+    min-width: max-content;
+    padding: 40px;
+    flex: 1;
+  }
+  .arrows-layer {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 10;
+  }
+  .flow { margin-bottom: 70px; }
+  .flow-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; color: #1d1d1f; }
+  .flow-sub { font-size: 13px; color: #86868b; margin: 0 0 22px; max-width: 760px; line-height: 1.5; }
+  .flow-frames { display: flex; gap: 90px; align-items: flex-start; flex-wrap: nowrap; }
+
+  /* ---------- Phone frame ---------- */
+  .phone { width: 320px; flex-shrink: 0; }
+  .phone-shell {
+    position: relative; width: 320px; height: 694px;
+    background: var(--system-bg);
+    border-radius: 40px;
+    box-shadow: 0 0 0 4px #1d1d1f, 0 24px 48px rgba(0,0,0,0.16);
+    overflow: hidden;
+  }
+  .dynamic-island {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 102px; height: 30px; background: #000; border-radius: 16px; z-index: 100;
+  }
+  .status-bar {
+    position: relative; height: 46px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px 0; font-size: 14px; font-weight: 600; color: var(--label);
+  }
+  .status-icons { display: flex; align-items: center; gap: 5px; }
+  .home-indicator {
+    position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 5px; background: #1d1d1f; border-radius: 3px; opacity: .85;
+  }
+  .phone-label { text-align: center; margin-top: 12px; font-size: 13px; color: #515154; font-weight: 600; }
+  .phone-src { text-align: center; margin-top: 2px; font-size: 11px; color: #9b9ba0; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  /* ---------- iOS nav chrome inside frames ---------- */
+  .screen { position: absolute; top: 46px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
+  .navbar-inline {
+    height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    position: relative; border-bottom: .5px solid var(--separator);
+    font-size: 16px; font-weight: 600; color: var(--label);
+  }
+  .navbar-inline .nav-left, .navbar-inline .nav-right {
+    position: absolute; top: 0; height: 44px; display: flex; align-items: center; gap: 4px;
+    font-size: 16px; color: var(--tint); font-weight: 400;
+  }
+  .navbar-inline .nav-left { left: 14px; }
+  .navbar-inline .nav-right { right: 14px; font-weight: 500; }
+  .navbar-large { padding: 6px 16px 8px; flex-shrink: 0; }
+  .navbar-large .large-title { font-size: 30px; font-weight: 700; color: var(--label); }
+
+  .content { flex: 1; overflow: hidden; position: relative; }
+
+  /* ---------- New Game screen ---------- */
+  .ng-wrap { padding: 36px 18px 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .ng-title { font-size: 30px; font-weight: 600; color: var(--label); }
+  .segmented {
+    display: flex; width: 100%; background: var(--fill-quaternary);
+    border-radius: 9px; padding: 2px;
+  }
+  .segmented .seg {
+    flex: 1; text-align: center; font-size: 13px; padding: 7px 4px; border-radius: 7px;
+    color: var(--label); font-weight: 500; white-space: nowrap;
+  }
+  .segmented .seg.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
+  .ng-summary { font-size: 14px; color: var(--secondary-label); }
+  .btn-prominent {
+    width: 100%; background: var(--tint); color: #fff; font-size: 16px; font-weight: 600;
+    border-radius: 11px; padding: 13px; text-align: center;
+  }
+
+  /* ---------- Board screen ---------- */
+  .board-wrap { padding: 12px 12px 0; display: flex; flex-direction: column; height: 100%; }
+  .status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; color: var(--label); margin-bottom: 10px;
+  }
+  .status-row .stat { display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .status-row .status-text { font-size: 16px; font-weight: 600; }
+  .status-row svg { width: 14px; height: 14px; }
+
+  /* mode toggle (segmented) — KEY new affordance */
+  .mode-toggle {
+    display: flex; width: 100%; background: var(--fill-quaternary);
+    border-radius: 9px; padding: 2px; margin-bottom: 12px;
+    position: relative;
+  }
+  .mode-toggle .seg {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    font-size: 13px; padding: 7px 4px; border-radius: 7px; font-weight: 500; color: var(--label);
+  }
+  .mode-toggle .seg.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
+  .mode-toggle .seg svg { width: 14px; height: 14px; }
+  .mode-callout {
+    position: absolute; top: -10px; right: -8px; background: var(--tint); color: #fff;
+    font-size: 9px; font-weight: 700; padding: 3px 7px; border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,122,255,.4); white-space: nowrap;
+  }
+
+  .board-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; }
+  .grid { display: grid; gap: 2px; }
+  .cell {
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-family: ui-rounded, "SF Pro Rounded", -apple-system, sans-serif;
+  }
+  .cell.covered { background: var(--ms-covered-fill); }
+  .cell.revealed { background: var(--ms-revealed-fill); }
+  .cell.mine     { background: var(--ms-mine); color: #fff; }
+  .cell.flag svg { fill: var(--ms-flag); }
+  .cell.mine svg { fill: #fff; }
+
+  /* terminal overlay */
+  .terminal-overlay {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(248,248,250,0.92); backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 20px 24px; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+  }
+  .terminal-overlay .t-title { font-size: 20px; font-weight: 600; color: var(--label); }
+  .terminal-overlay .t-sub { font-size: 13px; color: var(--secondary-label); margin-top: 6px; }
+
+  /* banner slot */
+  .banner {
+    height: 50px; margin-top: 10px; border-radius: 8px; background: rgba(118,118,128,0.12);
+    display: flex; align-items: center; justify-content: center; position: relative;
+    font-size: 11px; color: var(--secondary-label);
+  }
+  .banner .dismiss { position: absolute; top: 5px; right: 6px; }
+  .banner .dismiss svg { width: 13px; height: 13px; fill: rgba(60,60,67,.4); }
+
+  /* scroll hint for Expert */
+  .scroll-hint {
+    position: absolute; bottom: 6px; right: 6px; font-size: 9px; color: var(--secondary-label);
+    background: #fff; border: .5px solid var(--separator); border-radius: 6px; padding: 3px 6px;
+  }
+
+  /* ---------- Settings (grouped Form) ---------- */
+  .form { background: var(--grouped-bg); height: 100%; overflow: hidden; padding-top: 8px; }
+  .section-header { font-size: 13px; color: var(--secondary-label); text-transform: uppercase; padding: 14px 16px 6px; letter-spacing: .3px; }
+  .group { background: var(--secondary-grouped); border-top: .5px solid var(--separator); border-bottom: .5px solid var(--separator); }
+  .row { min-height: 44px; display: flex; align-items: center; padding: 0 16px; font-size: 16px; color: var(--label); border-bottom: .5px solid var(--separator); }
+  .row:last-child { border-bottom: none; }
+  .row .leading-icon { width: 22px; margin-right: 10px; display: flex; align-items: center; }
+  .row .leading-icon svg { width: 20px; height: 20px; }
+  .row .value { margin-left: auto; color: var(--secondary-label); }
+  .row.destructive { color: var(--destructive); }
+  .row.destructive .leading-icon svg { fill: var(--destructive); }
+  .row.tinted .leading-icon svg { fill: var(--tint); }
+
+  /* confirmation dialog (action sheet) */
+  .dimmer { position: absolute; inset: 0; background: rgba(0,0,0,.28); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; gap: 8px; }
+  .sheet-group { background: rgba(248,248,248,.92); backdrop-filter: blur(20px); border-radius: 14px; overflow: hidden; }
+  .sheet-title { text-align: center; padding: 14px 16px 6px; font-size: 13px; color: var(--secondary-label); font-weight: 600; }
+  .sheet-msg { text-align: center; padding: 0 16px 12px; font-size: 12px; color: var(--secondary-label); line-height: 1.4; }
+  .sheet-btn { text-align: center; padding: 15px; font-size: 18px; color: var(--tint); border-top: .5px solid var(--separator); }
+  .sheet-btn.destructive { color: var(--destructive); }
+  .sheet-cancel { background: #fff; border-radius: 14px; text-align: center; padding: 16px; font-size: 18px; font-weight: 600; color: var(--tint); }
+
+  .badge-actual { display: inline-block; background: #fff3cd; color: #8a6400; border: 1px solid #f3d27a; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 2px 7px; vertical-align: middle; }
+
+  /* ---------- Tokens panel ---------- */
+  .tokens-panel {
+    width: 360px; flex-shrink: 0; position: sticky; top: 73px;
+    align-self: flex-start; max-height: calc(100vh - 73px); overflow-y: auto;
+    background: #fff; border-left: 1px solid #d2d2d7; padding: 22px 22px 60px;
+  }
+  .tokens-panel h2 { font-size: 18px; margin: 0 0 4px; }
+  .tokens-panel .panel-note { font-size: 11px; color: #86868b; margin: 0 0 18px; }
+  .tokens-panel section { margin-bottom: 26px; }
+  .tokens-panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .4px; color: #86868b; margin: 0 0 12px; }
+  .callout {
+    background: #fff8e6; border: 1px solid #f0d590; border-radius: 10px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.55; color: #6b5300; margin-bottom: 24px;
+  }
+  .callout strong { color: #5a4500; }
+  .callout code { background: #f3e2b0; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .color-grid { display: flex; flex-direction: column; gap: 9px; }
+  .color-swatch { display: flex; align-items: center; gap: 11px; }
+  .color-swatch .swatch { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+  .swatch-meta { line-height: 1.35; }
+  .swatch-name { font-size: 12px; font-weight: 600; }
+  .swatch-hex { font-size: 11px; color: #86868b; font-family: ui-monospace, Menlo, monospace; }
+  .swatch-swiftui { font-size: 11px; color: #007AFF; font-family: ui-monospace, Menlo, monospace; }
+
+  .type-sample { margin-bottom: 12px; }
+  .type-meta { font-size: 11px; color: #86868b; font-family: ui-monospace, Menlo, monospace; margin-top: 1px; }
+
+  .scale-row { display: flex; align-items: flex-end; gap: 7px; flex-wrap: wrap; }
+  .scale-box { background: #007AFF; border-radius: 3px; }
+  .scale-box span { display:block; font-size:9px; color:#86868b; text-align:center; margin-top:3px; }
+  .scale-item { text-align:center; }
+
+  .radius-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .radius-box { width: 46px; height: 46px; background: #d7e8ff; box-shadow: inset 0 0 0 1.5px #007AFF; }
+  .radius-box + span { }
+  .radius-item { text-align: center; font-size: 10px; color: #86868b; }
+
+  .comp { margin-bottom: 16px; }
+  .comp-label { font-size: 12px; font-weight: 600; margin-bottom: 7px; }
+  .comp-dim { font-size: 11px; color: #86868b; margin-top: 6px; }
+  .mini-segmented { display: flex; background: var(--fill-quaternary); border-radius: 8px; padding: 2px; }
+  .mini-segmented .seg { flex:1; text-align:center; font-size:11px; padding:6px 4px; border-radius:6px; font-weight:500; }
+  .mini-segmented .seg.active { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .mini-btn { background: var(--tint); color:#fff; font-size:13px; font-weight:600; border-radius:10px; padding:10px; text-align:center; }
+  .mini-row { display:flex; align-items:center; min-height:40px; padding:0 12px; background:#fff; border:.5px solid var(--separator); border-radius:8px; font-size:14px; }
+  .mini-cells { display:flex; gap:2px; }
+  .mini-cell { width:26px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; }
+
+  @media print {
+    body { background: #fff; }
+    .header { position: static; }
+    .tokens-panel { position: static; max-height: none; }
+    .phone-shell { box-shadow: 0 0 0 2px #1d1d1f; }
+    @page { size: A3 landscape; margin: 8mm; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <h1>Minesweeper — App Flow Prototype</h1>
+    <div class="meta">Reflects CURRENT app (Standard tier) · derived from MinesweeperKit source · Generated 2026-06-03</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#007AFF" stroke-width="2"/><path d="M32 1 L38 5 L32 9 z" fill="#007AFF"/></svg>
+      <span>push (path.append)</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="6" y1="5" x2="38" y2="5" stroke="#C7C7CC" stroke-width="2"/><path d="M6 1 L0 5 L6 9 z" fill="#C7C7CC"/></svg>
+      <span>pop / back (path.removeAll)</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#FF9500" stroke-width="2" stroke-dasharray="5 3"/><path d="M32 1 L38 5 L32 9 z" fill="#FF9500"/></svg>
+      <span>confirmation dialog</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/></svg>
+      <span>same-screen state</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<main class="canvas">
+
+  <!-- ============ FLOW 1: NEW GAME ============ -->
+  <section class="flow">
+    <h2 class="flow-title">New Game (root)</h2>
+    <p class="flow-sub">Root content of <code>MinesweeperRoot</code> → <code>GameShellUI.RootShellView</code> → <code>NewGameView</code>. A segmented difficulty Picker (real dims from <code>Difficulty.swift</code>) + a <code>.borderedProminent</code> Start button that does <code>path.append(.board(difficulty, seed))</code> with a fresh random <code>UInt64</code> seed per tap. Sidebar (regular size class) holds the two Standard-tier entries: New Game / Settings.</p>
+    <div class="flow-frames">
+
+      <!-- F01 New Game Beginner -->
+      <div class="phone" id="F01">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="16" height="11" viewBox="0 0 16 11"><path d="M8 2.2c2 0 3.8.8 5.1 2.1l1.1-1.1A9 9 0 0 0 8 .4 9 9 0 0 0 1.8 3.2l1.1 1.1A7.2 7.2 0 0 1 8 2.2z" fill="#000"/><path d="M8 5.4c1.1 0 2.1.4 2.9 1.2l1.1-1.1A5.6 5.6 0 0 0 8 3.9a5.6 5.6 0 0 0-4 1.6l1.1 1.1A4 4 0 0 1 8 5.4z" fill="#000"/><circle cx="8" cy="9" r="1.4" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/><rect x="22.5" y="4" width="1.6" height="4" rx=".8" fill="#000" fill-opacity=".4"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span>Minesweeper</span>
+            </div>
+            <div class="content">
+              <div class="ng-wrap">
+                <div class="ng-title">New Game</div>
+                <div class="segmented">
+                  <div class="seg active">Beginner</div>
+                  <div class="seg">Intermediate</div>
+                  <div class="seg">Expert</div>
+                </div>
+                <div class="ng-summary">9 × 9 · 10 mines</div>
+                <div class="btn-prominent">Start</div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F01 — New Game (Beginner)</div>
+        <div class="phone-src">NewGameView.swift</div>
+      </div>
+
+      <!-- F02 New Game Intermediate -->
+      <div class="phone" id="F02">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span>Minesweeper</span>
+            </div>
+            <div class="content">
+              <div class="ng-wrap">
+                <div class="ng-title">New Game</div>
+                <div class="segmented">
+                  <div class="seg">Beginner</div>
+                  <div class="seg active">Intermediate</div>
+                  <div class="seg">Expert</div>
+                </div>
+                <div class="ng-summary">16 × 16 · 40 mines</div>
+                <div class="btn-prominent">Start</div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F02 — New Game (Intermediate / Expert)</div>
+        <div class="phone-src">NewGameView.swift · Picker state</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ FLOW 2: BOARD ============ -->
+  <section class="flow">
+    <h2 class="flow-title">Board</h2>
+    <p class="flow-sub"><code>MinesweeperBoardView</code> (wrapped by <code>LiveRouteFactory</code> with a "New Game" toolbar button). Layout top→bottom: status bar (flag count / status / elapsed, 1 Hz <code>TimelineView</code>), the <strong>Reveal/Flag mode toggle</strong> (segmented Picker — the key Tier-0 #3 affordance), a <code>GeometryReader</code>-scaled grid (32 pt cell floor; Expert 16×30 clamps to the floor and scrolls both axes), a win/lose <code>.regularMaterial</code> overlay, and the banner slot (suppressed during terminal states). Cell glyphs use raw SwiftUI primitives — no theme tokens.</p>
+    <div class="flow-frames">
+
+      <!-- F03 Board Reveal mode -->
+      <div class="phone" id="F03">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span class="nav-right">
+                <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#007AFF" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/></svg>
+                New Game
+              </span>
+            </div>
+            <div class="content">
+              <div class="board-wrap">
+                <div class="status-row">
+                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 7</span>
+                  <span class="status-text">Playing</span>
+                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 38</span>
+                </div>
+                <div class="mode-toggle">
+                  <span class="mode-callout">Tier-0 #3 · Reveal/Flag toggle</span>
+                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
+                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
+                </div>
+                <div class="board-area">
+                  <div class="grid" id="grid-f03"></div>
+                </div>
+                <div class="banner">
+                  Ad loaded
+                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F03 — Board (Reveal mode, mid-game)</div>
+        <div class="phone-src">MinesweeperBoardView.swift</div>
+      </div>
+
+      <!-- F04 Board Flag mode -->
+      <div class="phone" id="F04">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span class="nav-right">New Game</span>
+            </div>
+            <div class="content">
+              <div class="board-wrap">
+                <div class="status-row">
+                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 5</span>
+                  <span class="status-text">Playing</span>
+                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 51</span>
+                </div>
+                <div class="mode-toggle">
+                  <span class="mode-callout">Flag mode active → tap flags</span>
+                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
+                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
+                </div>
+                <div class="board-area">
+                  <div class="grid" id="grid-f04"></div>
+                </div>
+                <div class="banner">
+                  Ad loaded
+                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F04 — Board (Flag mode)</div>
+        <div class="phone-src">MinesweeperBoardView.swift · interactionMode</div>
+      </div>
+
+      <!-- F05 Board Expert scroll -->
+      <div class="phone" id="F05">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span class="nav-right">New Game</span>
+            </div>
+            <div class="content">
+              <div class="board-wrap">
+                <div class="status-row">
+                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 99</span>
+                  <span class="status-text">Playing</span>
+                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 12</span>
+                </div>
+                <div class="mode-toggle">
+                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
+                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
+                </div>
+                <div class="board-area" style="overflow:hidden; align-items:flex-start; justify-content:flex-start;">
+                  <div class="grid" id="grid-f05" style="margin:-2px 0 0 -2px;"></div>
+                  <div class="scroll-hint">16×30 · cells at 32 pt floor → scrolls ↔ ↕</div>
+                </div>
+                <div class="banner">
+                  Ad loaded
+                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F05 — Board (Expert 16×30, scrolling)</div>
+        <div class="phone-src">MinesweeperBoardView.swift · minCellSide floor + ScrollView</div>
+      </div>
+
+      <!-- F06 Win -->
+      <div class="phone" id="F06">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span class="nav-right">New Game</span>
+            </div>
+            <div class="content">
+              <div class="board-wrap">
+                <div class="status-row">
+                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 0</span>
+                  <span class="status-text">You won</span>
+                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 84</span>
+                </div>
+                <div class="mode-toggle">
+                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
+                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
+                </div>
+                <div class="board-area">
+                  <div class="grid" id="grid-f06"></div>
+                  <div class="terminal-overlay">
+                    <div class="t-title">You won</div>
+                    <div class="t-sub">Elapsed: 84s</div>
+                  </div>
+                </div>
+                <!-- banner suppressed in terminal state -->
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F06 — Board (Win overlay)</div>
+        <div class="phone-src">MinesweeperBoardView.swift · terminalOverlay (.won)</div>
+      </div>
+
+      <!-- F07 Lose -->
+      <div class="phone" id="F07">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span class="nav-right">New Game</span>
+            </div>
+            <div class="content">
+              <div class="board-wrap">
+                <div class="status-row">
+                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 3</span>
+                  <span class="status-text">Boom</span>
+                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 22</span>
+                </div>
+                <div class="mode-toggle">
+                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
+                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
+                </div>
+                <div class="board-area">
+                  <div class="grid" id="grid-f07"></div>
+                  <div class="terminal-overlay">
+                    <div class="t-title">Boom — you hit a mine</div>
+                    <div class="t-sub">Elapsed: 22s</div>
+                  </div>
+                </div>
+                <!-- banner suppressed in terminal state -->
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F07 — Board (Lose overlay)</div>
+        <div class="phone-src">MinesweeperBoardView.swift · terminalOverlay (.lost)</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ FLOW 3: SETTINGS ============ -->
+  <section class="flow">
+    <h2 class="flow-title">Settings</h2>
+    <p class="flow-sub"><code>SettingsView</code> → <code>GameShellUI.SettingsShellView</code> (grouped Form). Three sections: <strong>Purchases</strong> (shared <code>MonetizationUI</code> Remove Ads / Restore rows — shown only when a controller is wired), <strong>About</strong> (shared <code>SettingsAboutVersionRow</code>, version from <code>Bundle.main</code>), <strong>Storage</strong> (shared <code>SettingsStorageSection</code> "Clear cache" → confirmation dialog → real <code>PersistenceProtocol</code> call, parity-only no-op until MS save-flow lands). All tints are <code>.accentColor</code> — MS has no theme.</p>
+    <div class="flow-frames">
+
+      <!-- F08 Settings -->
+      <div class="phone" id="F08">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span>Settings</span>
+            </div>
+            <div class="content">
+              <div class="form">
+                <div class="section-header">Purchases</div>
+                <div class="group">
+                  <div class="row tinted">
+                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" fill="none" stroke="#007AFF" stroke-width="1.6"/></svg></span>
+                    Remove Ads
+                    <span class="value" style="color:var(--tint)">$2.99</span>
+                  </div>
+                  <div class="row tinted">
+                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2.3 5.6" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M4 20v-4h4" fill="none" stroke="#007AFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    Restore Purchases
+                  </div>
+                </div>
+
+                <div class="section-header">About</div>
+                <div class="group">
+                  <div class="row tinted">
+                    <span class="leading-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M12 11v5" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="#007AFF"/></svg></span>
+                    Version
+                    <span class="value">1.0.0</span>
+                  </div>
+                </div>
+
+                <div class="section-header">Storage</div>
+                <div class="group">
+                  <div class="row destructive">
+                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="#FF3B30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    Clear cache
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F08 — Settings</div>
+        <div class="phone-src">SettingsView.swift + SettingsAboutStorage.swift</div>
+      </div>
+
+      <!-- F09 Clear cache confirmation -->
+      <div class="phone" id="F09">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
+          </span></div>
+          <div class="screen">
+            <div class="navbar-inline">
+              <span class="nav-left">
+                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Minesweeper
+              </span>
+              <span>Settings</span>
+            </div>
+            <div class="content">
+              <div class="form">
+                <div class="section-header">Storage</div>
+                <div class="group">
+                  <div class="row destructive">
+                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="#FF3B30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    Clear cache
+                  </div>
+                </div>
+              </div>
+              <div class="dimmer">
+                <div class="sheet-group">
+                  <div class="sheet-title">Reset session cache</div>
+                  <div class="sheet-msg">Generated puzzles will be re-derived next play. Saved games are not affected.</div>
+                  <div class="sheet-btn destructive">Clear cache</div>
+                </div>
+                <div class="sheet-cancel">Cancel</div>
+              </div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">F09 — Clear cache confirmation</div>
+        <div class="phone-src">SettingsStorageSection.swift · .confirmationDialog</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ ARROWS ============ -->
+  <svg class="arrows-layer" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#007AFF"/></marker>
+      <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#C7C7CC"/></marker>
+      <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#FF9500"/></marker>
+    </defs>
+
+    <!-- F01 -> F02 : same-screen state (Picker selection) -->
+    <path d="M370 410 C 400 410, 420 410, 450 410" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
+    <text x="410" y="400" font-size="11" fill="#8E8E93" text-anchor="middle">pick difficulty</text>
+
+    <!-- F02 (New Game) -> F03 (Board): push. Goes from F02 down to next flow row.
+         F02 right edge ~ x=770, center y ~ 410. F03 is in next flow, left edge ~ x=40, top ~ 880. -->
+    <path d="M768 470 C 900 470, 900 700, 820 700" fill="none" stroke="#007AFF" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <text x="905" y="585" font-size="11" fill="#007AFF" text-anchor="middle">tap "Start"</text>
+    <text x="905" y="600" font-size="11" fill="#007AFF" text-anchor="middle">path.append(.board)</text>
+
+    <!-- F03 -> F04 : same-screen state (mode toggle) -->
+    <path d="M362 1180 C 392 1180, 412 1180, 442 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
+    <text x="402" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">toggle Flag</text>
+
+    <!-- F04 -> F05 same-screen (difficulty produces Expert board) — informational dashed gray -->
+    <path d="M772 1180 C 802 1180, 822 1180, 852 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
+    <text x="812" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">Expert</text>
+
+    <!-- F05 -> F06 same-screen (win) -->
+    <path d="M1182 1180 C 1212 1180, 1232 1180, 1262 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
+    <text x="1222" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">solve → won</text>
+
+    <!-- F06 -> F07 same-screen (lose) -->
+    <path d="M1592 1180 C 1622 1180, 1642 1180, 1672 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
+    <text x="1632" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">hit mine → lost</text>
+
+    <!-- Board "New Game" toolbar -> back to F01 (pop). From F03 navbar right toward F01 top. -->
+    <path d="M300 880 C 200 820, 120 760, 120 660" fill="none" stroke="#C7C7CC" stroke-width="2" marker-end="url(#arrow-gray)"/>
+    <text x="150" y="800" font-size="11" fill="#9b9ba0" text-anchor="start">toolbar "New Game"</text>
+    <text x="150" y="815" font-size="11" fill="#9b9ba0" text-anchor="start">path.removeAll()</text>
+
+    <!-- Sidebar/Settings entry -> F08 (push). From F01 area down to Settings flow row. -->
+    <path d="M40 470 C -20 470, -20 1760, 40 1760" fill="none" stroke="#007AFF" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <text x="-8" y="1115" font-size="11" fill="#007AFF" text-anchor="middle" transform="rotate(-90 -8 1115)">sidebar "Settings" · path.append(.settings)</text>
+
+    <!-- F08 -> F09 confirmation dialog -->
+    <path d="M362 1900 C 392 1900, 412 1900, 442 1900" fill="none" stroke="#FF9500" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow-orange)"/>
+    <text x="402" y="1890" font-size="11" fill="#FF9500" text-anchor="middle">tap "Clear cache"</text>
+  </svg>
+
+</main>
+
+<!-- ============ TOKENS PANEL ============ -->
+<aside class="tokens-panel">
+  <h2>Design System</h2>
+  <p class="panel-note">As actually rendered by MinesweeperKit — raw SwiftUI primitives.</p>
+
+  <div class="callout">
+    <strong>⚠ No theme system yet.</strong> Minesweeper does <strong>not</strong> have design tokens. Every color below is a raw SwiftUI primitive read straight from the source — covered cells are <code>Color.secondary.opacity(0.25)</code>, mines <code>Color.red.opacity(0.6)</code>, flags <code>.orange</code>, numbers are the system 1–8 palette, and all chrome tints are <code>.accentColor</code> (system blue). It is <em>not</em> painted in Sudoku's sage palette. Theme extraction is pending — tracked as <strong>#278 Tier-1 theme extraction</strong> (per <code>MinesweeperBannerSlotView</code> impl-notes D1, reuse blocked on lifting the theme env out of SudokuUI).
+  </div>
+
+  <section>
+    <h3>Colors — board (MS actual)</h3>
+    <div class="color-grid">
+      <div class="color-swatch"><div class="swatch" style="background:#cfcfd2"></div><div class="swatch-meta"><div class="swatch-name">Covered cell</div><div class="swatch-hex">secondary @ 25%</div><div class="swatch-swiftui">Color.secondary.opacity(0.25)</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:#f3f3f4"></div><div class="swatch-meta"><div class="swatch-name">Revealed cell</div><div class="swatch-hex">secondary @ 8%</div><div class="swatch-swiftui">Color.secondary.opacity(0.08)</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--ms-mine)"></div><div class="swatch-meta"><div class="swatch-name">Mine fill</div><div class="swatch-hex">red @ 60%</div><div class="swatch-swiftui">Color.red.opacity(0.6)</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--ms-flag)"></div><div class="swatch-meta"><div class="swatch-name">Flag glyph</div><div class="swatch-hex">#FF9500</div><div class="swatch-swiftui">.orange</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Colors — number glyphs (system)</h3>
+    <div class="color-grid">
+      <div class="color-swatch"><div class="swatch" style="background:var(--n1)"></div><div class="swatch-meta"><div class="swatch-name">1</div><div class="swatch-swiftui">.blue</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n2)"></div><div class="swatch-meta"><div class="swatch-name">2</div><div class="swatch-swiftui">.green</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n3)"></div><div class="swatch-meta"><div class="swatch-name">3</div><div class="swatch-swiftui">.red</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n4)"></div><div class="swatch-meta"><div class="swatch-name">4</div><div class="swatch-swiftui">.purple</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n5)"></div><div class="swatch-meta"><div class="swatch-name">5</div><div class="swatch-swiftui">.brown</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n6)"></div><div class="swatch-meta"><div class="swatch-name">6</div><div class="swatch-swiftui">.teal</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n7)"></div><div class="swatch-meta"><div class="swatch-name">7</div><div class="swatch-swiftui">.black</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--n8)"></div><div class="swatch-meta"><div class="swatch-name">8</div><div class="swatch-swiftui">.gray</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Colors — chrome (semantic)</h3>
+    <div class="color-grid">
+      <div class="color-swatch"><div class="swatch" style="background:var(--tint)"></div><div class="swatch-meta"><div class="swatch-name">Tint (all controls)</div><div class="swatch-hex">#007AFF</div><div class="swatch-swiftui">.accentColor (no theme)</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--destructive)"></div><div class="swatch-meta"><div class="swatch-name">Destructive</div><div class="swatch-hex">#FF3B30</div><div class="swatch-swiftui">role: .destructive</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--green)"></div><div class="swatch-meta"><div class="swatch-name">Toast success</div><div class="swatch-hex">#34C759</div><div class="swatch-swiftui">.green</div></div></div>
+      <div class="color-swatch"><div class="swatch" style="background:var(--grouped-bg)"></div><div class="swatch-meta"><div class="swatch-name">Grouped bg</div><div class="swatch-hex">#F2F2F7</div><div class="swatch-swiftui">systemGroupedBackground</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Typography</h3>
+    <div class="type-sample"><div style="font-size:30px;font-weight:600;">New Game</div><div class="type-meta">largeTitle.weight(.semibold) · NewGameView title</div></div>
+    <div class="type-sample"><div style="font-size:22px;font-weight:600;">You won</div><div class="type-meta">.title2.weight(.semibold) · terminal overlay</div></div>
+    <div class="type-sample"><div style="font-size:17px;font-weight:600;">Playing</div><div class="type-meta">.headline · status text / Start label</div></div>
+    <div class="type-sample"><div style="font-size:15px;">16 × 16 · 40 mines</div><div class="type-meta">.subheadline · board summary / status bar</div></div>
+    <div class="type-sample"><div style="font-size:12px;color:#86868b;">Ad loaded</div><div class="type-meta">.caption2 · banner status</div></div>
+    <div class="type-sample"><div style="font-size:18px;font-weight:600;font-family:ui-rounded;">1 2 3</div><div class="type-meta">system(size: side*0.55, .semibold, design:.rounded) · cell numbers</div></div>
+  </section>
+
+  <section>
+    <h3>Spacing</h3>
+    <div class="scale-row">
+      <div class="scale-item"><div class="scale-box" style="width:2px;height:24px;"></div><span>2</span></div>
+      <div class="scale-item"><div class="scale-box" style="width:8px;height:24px;"></div><span>8</span></div>
+      <div class="scale-item"><div class="scale-box" style="width:12px;height:24px;"></div><span>12</span></div>
+      <div class="scale-item"><div class="scale-box" style="width:16px;height:24px;"></div><span>16</span></div>
+      <div class="scale-item"><div class="scale-box" style="width:24px;height:24px;"></div><span>24</span></div>
+      <div class="scale-item"><div class="scale-box" style="width:40px;height:24px;"></div><span>40</span></div>
+    </div>
+    <p class="comp-dim">2 pt = cell gap · 12 pt = board VStack spacing · 24 pt = NewGame VStack · 40 pt = NewGame top padding · 32 pt = min cell side floor.</p>
+  </section>
+
+  <section>
+    <h3>Corner radius</h3>
+    <div class="radius-row">
+      <div class="radius-item"><div class="radius-box" style="border-radius:4px;"></div>4 · cell</div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:8px;"></div>8 · banner</div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:11px;"></div>~11 · button</div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:16px;"></div>16 · overlay</div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Components</h3>
+
+    <div class="comp">
+      <div class="comp-label">Reveal/Flag mode toggle (Tier-0 #3 — key affordance)</div>
+      <div class="mini-segmented">
+        <div class="seg active">Reveal</div>
+        <div class="seg">Flag</div>
+      </div>
+      <div class="comp-dim">Picker(.segmented) · routes which action a cell tap fires. Long-press (iOS) / right-click (macOS) always flag as accelerators.</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Difficulty Picker</div>
+      <div class="mini-segmented">
+        <div class="seg active">Beginner</div>
+        <div class="seg">Interm.</div>
+        <div class="seg">Expert</div>
+      </div>
+      <div class="comp-dim">9×9/10 · 16×16/40 · 16×30/99 (Difficulty.swift).</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Start button (.borderedProminent)</div>
+      <div class="mini-btn">Start</div>
+      <div class="comp-dim">maxWidth ∞ · vertical pad 12 pt · tint .accentColor.</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Cells</div>
+      <div class="mini-cells">
+        <div class="mini-cell" style="background:var(--ms-covered-fill);"></div>
+        <div class="mini-cell" style="background:var(--ms-revealed-fill);color:var(--n1);">1</div>
+        <div class="mini-cell" style="background:var(--ms-revealed-fill);color:var(--n3);">3</div>
+        <div class="mini-cell" style="background:var(--ms-covered-fill);"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#FF9500"/></svg></div>
+        <div class="mini-cell mine" style="background:var(--ms-mine);"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="#fff"/></svg></div>
+      </div>
+      <div class="comp-dim">covered · revealed-number · flag (flag.fill) · mine (burst.fill, white-on-red). RoundedRectangle r=4. side ≥ 32 pt.</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Banner slot</div>
+      <div class="mini-row" style="height:40px;justify-content:center;color:#86868b;font-size:11px;">Ad loaded</div>
+      <div class="comp-dim">50 pt visible / 0 pt collapsed · .regularMaterial r=8 · dismiss x · suppressed in terminal states.</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Settings row (grouped Form)</div>
+      <div class="mini-row">Version <span style="margin-left:auto;color:#86868b;">1.0.0</span></div>
+      <div class="comp-dim">min 44 pt · shared SettingsAboutVersionRow / RemoveAdsRow / RestorePurchasesRow.</div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-label">Confirmation dialog</div>
+      <div class="mini-row" style="justify-content:center;color:var(--destructive);">Clear cache</div>
+      <div class="comp-dim">.confirmationDialog · destructive + cancel · wired to PersistenceProtocol (no-op until save-flow lands).</div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Navigation graph (live)</h3>
+    <p class="comp-dim" style="line-height:1.6;">
+      <code>AppRoute</code> = <code>.board(difficulty,seed)</code> · <code>.settings</code> only.<br>
+      • NewGame → Board: <code>path.append(.board)</code><br>
+      • Sidebar "Settings" → Settings: <code>path.append(.settings)</code><br>
+      • Board toolbar "New Game" → root: <code>path.removeAll()</code><br>
+      • Sidebar "New Game" → root: <code>path.removeAll()</code>
+    </p>
+    <p class="comp-dim" style="line-height:1.6;margin-top:8px;">
+      <strong>Not wired (excluded):</strong> <code>MinesweeperDailyHubView</code> &amp; <code>MinesweeperPracticeHubView</code> exist in source but have <em>no</em> <code>AppRoute</code> case and are unreachable in the live app (deferred until MS product surface is designed). Persistence / Daily / Practice / Leaderboard are out of Standard-tier scope.
+    </p>
+  </section>
+</aside>
+
+</div>
+
+<script>
+  // Build cell grids procedurally so each board frame stays light. MS-actual
+  // palette only — covered / revealed-number / flag / mine. No theme.
+  const NUM = ['','#007AFF','#34C759','#FF3B30','#AF52DE','#A2845E','#30B0C7','#000000','#8E8E93'];
+  const FLAG = '<svg width="60%" height="60%" viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#FF9500"/></svg>';
+  const MINE = '<svg width="55%" height="55%" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="#fff"/></svg>';
+
+  // type codes: 0 covered, n>0 revealed number, -1 revealed empty,
+  //             'F' flag, 'M' mine
+  function buildGrid(id, rows, cols, side, data) {
+    const g = document.getElementById(id);
+    if (!g) return;
+    g.style.gridTemplateColumns = `repeat(${cols}, ${side}px)`;
+    g.style.gridTemplateRows = `repeat(${rows}, ${side}px)`;
+    for (let i = 0; i < rows * cols; i++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      c.style.width = side + 'px'; c.style.height = side + 'px';
+      c.style.fontSize = Math.round(side * 0.55) + 'px';
+      const v = data ? data[i] : 0;
+      if (v === 'F') { c.classList.add('covered','flag'); c.innerHTML = FLAG; }
+      else if (v === 'M') { c.classList.add('mine'); c.innerHTML = MINE; }
+      else if (v === -1) { c.classList.add('revealed'); }
+      else if (typeof v === 'number' && v > 0) { c.classList.add('revealed'); c.textContent = v; c.style.color = NUM[v]; }
+      else { c.classList.add('covered'); }
+      g.appendChild(c);
+    }
+  }
+
+  // deterministic-ish 9x9 mid-game layout
+  function beginnerData(seed) {
+    // a curated 9x9 (81) board: mix of covered, revealed numbers/empties, a flag
+    const d = new Array(81).fill(0);
+    // reveal a connected empty region top-left with number borders
+    const reveal = {
+      0:-1,1:-1,2:1,9:-1,10:-1,11:1,18:1,19:1,20:2,
+      3:-1,4:-1,12:-1,13:-1,5:1,14:2,
+      36:-1,37:1,45:1,46:2,
+    };
+    Object.entries(reveal).forEach(([k,v]) => d[+k] = v === -1 ? -1 : v);
+    if (seed === 'win') {
+      // fully cleared except flags on all mines (simulate win): mostly revealed
+      for (let i=0;i<81;i++) d[i] = (i%7===0)?'F':((i%3===0)?-1:((i%3===1)?1:2));
+    } else if (seed === 'lose') {
+      d[40] = 'M'; d[22]='F'; d[13]=2; d[31]=3; d[49]=1; d[58]=-1;
+    } else if (seed === 'flag') {
+      d[20]='F'; d[2]='F'; d[44]='F'; d[60]='F'; d[12]=1; d[30]=2; d[48]=3;
+    }
+    return d;
+  }
+
+  buildGrid('grid-f03', 9, 9, 28, beginnerData('reveal'));
+  buildGrid('grid-f04', 9, 9, 28, beginnerData('flag'));
+  buildGrid('grid-f06', 9, 9, 28, beginnerData('win'));
+  buildGrid('grid-f07', 9, 9, 28, beginnerData('lose'));
+
+  // Expert 16x30 at the 32pt floor — only a window is visible (frame clips),
+  // demonstrating the scroll. We render the full grid but the container clips.
+  (function expert() {
+    const rows = 16, cols = 30, side = 32;
+    const d = new Array(rows*cols).fill(0);
+    for (let i=0;i<rows*cols;i++) {
+      const r = (i*7+3) % 11;
+      d[i] = r===0 ? 'F' : (r<3 ? -1 : (r<6 ? (r-2) : 0));
+    }
+    buildGrid('grid-f05', rows, cols, side, d);
+  })();
+</script>
+
+</body>
+</html>
