@@ -18,7 +18,6 @@ public import SwiftUI
 
 public protocol Theme: Sendable {
     var surface: SurfaceTokens { get }
-    var cell: CellTokens { get }
     var text: TextTokens { get }
     var accent: AccentTokens { get }
     var status: StatusTokens { get }
@@ -64,34 +63,6 @@ public struct SurfaceTokens: Sendable, Equatable, Hashable {
         self.primary = primary
         self.elevated = elevated
         self.placeholder = placeholder
-    }
-}
-
-public struct CellTokens: Sendable, Equatable, Hashable {
-    public let base: ThemeColor
-    public let prefilled: ThemeColor
-    public let userFilled: ThemeColor
-    public let highlighted: ThemeColor
-    public let selected: ThemeColor
-    public let error: ThemeColor
-    public let errorBorder: ThemeColor
-
-    public init(
-        base: ThemeColor,
-        prefilled: ThemeColor,
-        userFilled: ThemeColor,
-        highlighted: ThemeColor,
-        selected: ThemeColor,
-        error: ThemeColor,
-        errorBorder: ThemeColor
-    ) {
-        self.base = base
-        self.prefilled = prefilled
-        self.userFilled = userFilled
-        self.highlighted = highlighted
-        self.selected = selected
-        self.error = error
-        self.errorBorder = errorBorder
     }
 }
 
@@ -246,16 +217,6 @@ public struct NeutralTheme: Theme {
         primary: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
         elevated: ThemeColor(light: 0xFFFFFF, dark: 0x3A3A3C),
         placeholder: ThemeColor(light: 0xE5E5EA, dark: 0x2C2C2E)
-    )
-
-    public let cell = CellTokens(
-        base: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
-        prefilled: ThemeColor(light: 0xE5E5EA, dark: 0x3A3A3C),
-        userFilled: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
-        highlighted: ThemeColor(light: 0xE5E5EA, dark: 0x3A3A3C),
-        selected: ThemeColor(light: 0xD1D1D6, dark: 0x48484A),
-        error: ThemeColor(light: 0xF2D7D5, dark: 0x4A2724),
-        errorBorder: ThemeColor(light: 0xD0021B, dark: 0xFF453A)
     )
 
     public let text = TextTokens(

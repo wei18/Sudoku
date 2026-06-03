@@ -19,6 +19,7 @@ struct BoardCellView: View {
     let side: CGFloat
 
     @Environment(\.theme) private var theme
+    @Environment(\.sudokuCell) private var cell
 
     var body: some View {
         ZStack {
@@ -26,7 +27,7 @@ struct BoardCellView: View {
             content
             if isError {
                 ErrorTriangle()
-                    .fill(theme.cell.errorBorder.resolved)
+                    .fill(cell.errorBorder.resolved)
                     .frame(width: side * 0.18, height: side * 0.18)
                     .padding(2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -58,13 +59,13 @@ struct BoardCellView: View {
     @ViewBuilder
     private var background: some View {
         if isError {
-            theme.cell.error.resolved
+            cell.error.resolved
         } else if isSelected {
-            theme.cell.selected.resolved
+            cell.selected.resolved
         } else if isGiven {
-            theme.cell.prefilled.resolved
+            cell.prefilled.resolved
         } else {
-            theme.cell.base.resolved
+            cell.base.resolved
         }
     }
 

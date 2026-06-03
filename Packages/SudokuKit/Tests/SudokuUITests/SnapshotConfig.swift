@@ -204,6 +204,10 @@ func hostingView<V: SwiftUI.View>(
         // inject it explicitly here (mirroring AppComposition's root
         // injection) so baselines stay byte-identical.
         .environment(\.theme, DefaultTheme())
+        // #278 Tier-1 Phase 2a: cell tokens moved to SudokuUI's `\.sudokuCell`
+        // env key (out of the generic `Theme`). Inject the concrete palette
+        // here, mirroring the live root, so baselines stay byte-identical.
+        .environment(\.sudokuCell, DefaultTheme().cell)
         .environment(\.horizontalSizeClass, Optional(sizeClass))
         .environment(\.locale, locale ?? .current)
         .preferredColorScheme(colorScheme)
