@@ -1,0 +1,62 @@
+locale: es-ES
+name: "Buscaminas — Clásico"
+subtitle: "Lógica limpia en iPhone y Mac"
+promotional_text: |
+  El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. Sin seguimiento salvo el banner opcional, que quitas con una compra.
+description: |
+  Buscaminas, hecho para pensar, no para el ruido.
+
+  Las reglas que ya conoces: descubre celdas, lee los números, marca las minas y limpia el tablero sin pisar ninguna. Tres dificultades clásicas: Principiante (9×9, 10 minas), Intermedio (16×16, 40 minas) y Experto (16×30, 99 minas).
+
+  El primer toque siempre es seguro
+
+  Las minas se colocan después de tu primera revelación, así que tu toque inicial —y las celdas a su alrededor— nunca pueden ser una mina. Se acabó perder en la primera jugada. Cada tablero queda determinado por su dificultad y su semilla, así que un tablero se desarrolla igual cada vez que lo repites.
+
+  Qué incluye
+
+  • Tres dificultades clásicas: Principiante, Intermedio, Experto.
+  • Seguridad en el primer toque: la jugada inicial nunca pierde.
+  • Toca para revelar, mantén pulsado para marcar (clic derecho o control-clic en Mac).
+  • Un conjunto diario de tableros al que volver.
+  • Continúa cuando quieras: guardado automático.
+
+  Realmente multiplataforma
+
+  Una sola base de código, dos plataformas. La versión de Mac es una app de Mac SwiftUI de verdad, no iPad en Mac ni Catalyst. Cambiar el tamaño de la ventana y marcar con clic derecho funcionan como esperan los usuarios de Mac. Retoma la partida en el dispositivo que tengas cerca.
+
+  Privacidad, en palabras claras
+
+  Sin analítica propia. Sin CRM. Sin servidor propio. Tus datos están en tu propia base de datos privada de iCloud: visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google, y puedes quitar el banner para siempre con una sola compra dentro de la app.
+
+  Quitar anuncios
+
+  Una compra única, no consumible, quita el banner en todas partes, para siempre. Compartir en Familia incluido.
+
+  Siete idiomas
+
+  Inglés, chino tradicional, japonés, chino simplificado, español, tailandés y coreano.
+
+  Accesibilidad
+
+  Dynamic Type, VoiceOver, modo claro y oscuro.
+
+  Requiere iOS 26 o macOS 26.
+keywords: "buscaminas,minas,logica,puzzle,clasico,mente,sin conexion,ipad,mac,bandera,numero"
+whats_new: |
+  Versión 1.0 — primer lanzamiento público.
+
+  • Buscaminas clásico con tres dificultades: Principiante, Intermedio, Experto.
+  • Seguridad en el primer toque: la jugada inicial nunca es una mina.
+  • Toca para revelar, mantén pulsado para marcar; clic derecho en Mac.
+  • Sincronización entre dispositivos con tu propia base de datos privada de iCloud.
+  • Quitar anuncios: una compra única que elimina el banner para siempre.
+  • Siete idiomas: inglés, chino tradicional, japonés, chino simplificado, español, tailandés, coreano.
+  • Versión nativa de Mac, no Catalyst.
+
+  Gracias por probarlo. Las incidencias y sugerencias son bienvenidas en el enlace de soporte.
+marketing_url: null
+support_url: "https://github.com/wei18/Minesweeper/issues"
+privacy_policy_url: "https://github.com/wei18/Minesweeper/blob/main/docs/privacy-policy.md"
+primary_category: "Games > Puzzle"
+secondary_category: "Games > Board"
+age_rating: "4+"

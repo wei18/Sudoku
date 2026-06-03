@@ -1,0 +1,85 @@
+# App Store Connect IAP metadata — Minesweeper Remove Ads
+#
+# Product ID: com.wei18.minesweeper.iap.remove_ads
+# Apple ID:   TBD (assigned when the MS app record is created in ASC)
+# Type:       Non-Consumable (one-time purchase)
+# Price:      USD 2.99 tier (mirrors Sudoku)
+# Family Sharing: enabled
+#
+# Mirrors docs/app-store/metadata/iap/remove-ads.yaml (the Sudoku IAP).
+# Same ASC field limits: name ≤ 30, description ≤ 45.
+#
+# Sources:
+#   - en, zh-Hant: author-written.
+#   - ja, zh-Hans, es, th, ko: AI-translated per `ai-translated-localization`
+#     (no honorific particles in ja; no ครับ/ค่ะ in th; 해요체 in ko;
+#     neutral LATAM Spanish; zh-Hans term-level translation).
+#
+# Config link: `Config.iaps` in ASCRegister already carries the MS product
+# (`com.wei18.minesweeper.iap.remove_ads`); the localization name/description
+# strings come from `Minesweeper/Resources/Localizable.xcstrings` keys
+# `iap.minesweeper.remove_ads.name` / `.description` (see IAPProduct.shortId
+# mapping). This YAML is the human-readable source-of-truth for the same copy.
+
+product_id: com.wei18.minesweeper.iap.remove_ads
+reference_name: Remove Ads
+
+localizations:
+  en-US:
+    name: "Remove Ads"
+    description: "Permanently remove banner ads in Minesweeper."
+
+  zh-Hant:
+    name: "移除廣告"
+    description: "永久移除踩地雷中的橫幅廣告。"
+
+  ja:
+    name: "広告を非表示"
+    description: "マインスイーパのバナー広告を完全に非表示にします。"
+
+  zh-Hans:
+    name: "移除广告"
+    description: "永久移除扫雷中的横幅广告。"
+
+  es-ES:
+    name: "Quitar anuncios"
+    description: "Quita los banners de Buscaminas para siempre."
+
+  th:
+    name: "ลบโฆษณา"
+    description: "ลบโฆษณาแบนเนอร์ในเก็บกู้ระเบิดอย่างถาวร"
+
+  ko:
+    name: "광고 제거"
+    description: "지뢰찾기의 배너 광고를 영구히 제거해요."
+
+# ── App Review notes ──────────────────────────────────────────────────────
+review_notes: |
+  This is a non-consumable IAP that permanently removes banner ads in the
+  Minesweeper app.
+
+  How to test:
+  1. Launch the app. A banner ad placeholder appears at the bottom of the
+     game surface.
+  2. Open Settings → Remove Ads.
+  3. Confirm the StoreKit purchase sheet with a sandbox tester account.
+  4. After successful purchase, the banner disappears across all screens. A
+     "Restore Purchases" row remains in Settings for new-device restore.
+
+  No external services other than Apple's StoreKit are involved.
+
+# ── Pricing schedule ─────────────────────────────────────────────────────
+pricing:
+  tier: "USD 2.99"
+  family_sharing: true
+  cleared_for_sale: true
+  all_countries: true
+
+# ── Screenshot ───────────────────────────────────────────────────────────
+# App Review requires one Review Screenshot per IAP showing where the product
+# is offered in-app. User-owned: run the app, capture Settings with the
+# "Remove Ads" row visible. Save to the path below (git-tracked once it lands).
+screenshot:
+  required_size: "1290 × 2796 (iPhone 6.9\") or 1242 × 2688 (iPhone 6.5\")"
+  expected_path: docs/app-store/metadata/minesweeper/iap/remove-ads/review-screenshot.png
+  status: pending-built-app
