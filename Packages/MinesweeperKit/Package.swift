@@ -32,6 +32,9 @@ let productionTargets: [Target] = [
             // `RootShellView`, SettingsView wraps `SettingsShellView`. Both
             // come from GameShellKit.
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // MS monetization wire Phase 3 (2026-06-03): SettingsView mounts
+            // the shared `RemoveAdsRow` / `AdsRemovedRow` / `RestorePurchasesRow`.
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -47,6 +50,21 @@ let productionTargets: [Target] = [
             // Telemetry + LiveErrorReporter; `.preview()` wires empty-sinks +
             // NoopErrorReporter. View-level usage is intentionally deferred.
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // MS monetization wire Phase 3 (2026-06-03). NOTE: no AdsAdMob —
+            // U15 deferred; `.live()` uses `NoopAdProvider` from MonetizationCore.
+            .product(name: "Persistence", package: "PersistenceKit"),
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
+            .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
+            // `.preview()` wires `FakeIAPClient` / `FakeAdGateStateStore` /
+            // `FakeAdProvider` so SwiftUI Previews stay zero-IO. Production
+            // bag uses Live variants only — but the tier-1 helpers from
+            // MonetizationTesting are reused for both `.preview()` and the
+            // `MinesweeperAppCompositionTests` shape-coverage suite, matching
+            // Sudoku's pattern (Preview.swift + AppCompositionTests). The
+            // type leaks into the production target but never instantiates
+            // outside `.preview()` — same precedent set by SudokuKit Preview.
+            .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -88,6 +106,8 @@ let package = Package(
         .package(path: "../MinesweeperCoreKit"),
         .package(name: "GameShellKit", path: "../GameShellKit"),
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
+        .package(name: "PersistenceKit", path: "../PersistenceKit"),
+        .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

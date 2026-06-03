@@ -43,9 +43,10 @@ internal import SwiftUI
 /// re-exported because that constant is `internal` to IAPStoreKit2 — the
 /// App Store Connect product ID is the shared contract).
 ///
-/// MS Phase 3 (see `meetings/2026-06-02_minesweeper-monetization-wire-proposal.md`)
-/// will re-shape `MonetizationStateController` to take `productId` via init so
-/// Minesweeper can wire `com.wei18.minesweeper.iap.remove_ads`.
+/// Retained as Sudoku's default after MS Phase 3 landed (2026-06-03) —
+/// `MonetizationStateController.init` now takes a `productId:` param
+/// defaulting to this constant so Sudoku call sites stay byte-identical
+/// while Minesweeper passes `minesweeperRemoveAdsProductId`.
 public let removeAdsProductId: String = "com.wei18.sudoku.iap.remove_ads"
 
 @MainActor
@@ -74,19 +75,28 @@ public final class MonetizationStateController {
     private let toastController: ToastController?
     @ObservationIgnored
     private var updatesTask: Task<Void, Never>?
+    /// ASC product ID this controller drives. Defaults to Sudoku's
+    /// `removeAdsProductId` so existing call sites stay byte-identical.
+    /// Minesweeper's composition root passes
+    /// `com.wei18.minesweeper.iap.remove_ads` instead — see
+    /// MinesweeperAppComposition.Live.
+    @ObservationIgnored
+    private let productId: String
 
     public init(
         iapClient: any IAPClient,
         stateStore: any AdGateStateStore,
         adGate: AdGate,
         toastController: ToastController? = nil,
-        initialPurchased: Bool = false
+        initialPurchased: Bool = false,
+        productId: String = removeAdsProductId
     ) {
         self.iapClient = iapClient
         self.stateStore = stateStore
         self.adGate = adGate
         self.toastController = toastController
         self.hasPurchasedRemoveAds = initialPurchased
+        self.productId = productId
     }
 
     deinit {
@@ -123,7 +133,7 @@ public final class MonetizationStateController {
             // Stay in sync with the App Store side too — a restored entitlement
             // that hasn't yet been written back to MonetizationState shows up
             // here as `isPurchased = true` and should flip the local flag.
-            if let removeAds = products.first(where: { $0.id == removeAdsProductId }),
+            if let removeAds = products.first(where: { $0.id == productId }),
                removeAds.isPurchased {
                 hasPurchasedRemoveAds = true
             }
@@ -147,13 +157,13 @@ public final class MonetizationStateController {
 
     private func handle(_ event: IAPPurchaseEvent) async {
         switch event {
-        case .purchased(let productId):
-            guard productId == removeAdsProductId else { return }
+        case .purchased(let eventProductId):
+            guard eventProductId == productId else { return }
             await markPurchased()
             latestMessage = .adsRemoved
             toastController?.show(Toast(style: .success, message: "Ads removed"))
-        case .revoked(let productId):
-            guard productId == removeAdsProductId else { return }
+        case .revoked(let eventProductId):
+            guard eventProductId == productId else { return }
             hasPurchasedRemoveAds = false
             latestMessage = .failure(reason: "Purchase revoked")
             toastController?.show(Toast(style: .failure, message: "Purchase revoked"))
@@ -163,7 +173,7 @@ public final class MonetizationStateController {
     /// Resolved Remove Ads display price. Falls back to `"$2.99"` (the
     /// spec'd default) when the App Store lookup has not yet completed.
     public var removeAdsDisplayPrice: String {
-        availableProducts.first(where: { $0.id == removeAdsProductId })?.displayPrice ?? "$2.99"
+        availableProducts.first(where: { $0.id == productId })?.displayPrice ?? "$2.99"
     }
 
     /// Tap handler for "Remove Ads" buttons (Settings row + HomeView 5th card).
@@ -172,7 +182,7 @@ public final class MonetizationStateController {
         purchaseInFlight = true
         defer { purchaseInFlight = false }
         do {
-            let result = try await iapClient.purchase(removeAdsProductId)
+            let result = try await iapClient.purchase(productId)
             switch result {
             case .success:
                 await markPurchased()
@@ -202,7 +212,7 @@ public final class MonetizationStateController {
         defer { restoreInFlight = false }
         do {
             let restored = try await iapClient.restorePurchases()
-            if restored.contains(where: { $0.id == removeAdsProductId && $0.isPurchased }) {
+            if restored.contains(where: { $0.id == productId && $0.isPurchased }) {
                 await markPurchased()
             }
             availableProducts = restored
