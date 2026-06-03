@@ -11,6 +11,7 @@
 import Testing
 @testable import MinesweeperAppComposition
 import MonetizationCore
+import MonetizationTesting
 import Telemetry
 
 @MainActor
@@ -83,5 +84,25 @@ import Telemetry
         let bag = MinesweeperAppComposition.preview()
         #expect(bag.monetizationController.removeAdsDisplayPrice == "$2.99")
         #expect(minesweeperRemoveAdsProductId == "com.wei18.minesweeper.iap.remove_ads")
+    }
+
+    @Test func monetizationControllerReadsMSProductDisplayPrice() async throws {
+        // Proves the controller is wired to `minesweeperRemoveAdsProductId`:
+        // seed a product under that id with a price that differs from the
+        // "$2.99" empty-catalog fallback, bootstrap, and assert the real price
+        // surfaces. If the controller were constructed with Sudoku's productId,
+        // the lookup would miss and fall back — failing this test.
+        let bag = MinesweeperAppComposition.preview()
+        let fake = try #require(bag.iapClient as? FakeIAPClient)
+        await fake.setProducts([
+            IAPProduct(
+                id: minesweeperRemoveAdsProductId,
+                displayName: "Remove Ads",
+                displayPrice: "$4.99",
+                isPurchased: false
+            )
+        ])
+        await bag.monetizationController.bootstrap()
+        #expect(bag.monetizationController.removeAdsDisplayPrice == "$4.99")
     }
 }
