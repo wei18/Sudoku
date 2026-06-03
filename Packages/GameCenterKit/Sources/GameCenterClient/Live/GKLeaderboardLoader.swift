@@ -22,7 +22,7 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
     public func loadSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice {
         #if canImport(GameKit)
@@ -50,18 +50,17 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
         case .globalAllTime, .friendsAllTime:
             timeScope = .allTime
         }
-        // SCOPE NARROWING (issue #140): when `around != nil`, centre the
-        // slice on the LOCAL player's rank. GameKit's
+        // Local-player centring (issue #140): when `aroundLocalPlayer` is
+        // true, centre the slice on `GKLocalPlayer.local`'s rank. Only the
+        // local player is supported — GameKit's
         // `loadEntries(for: [GKPlayer], timeScope:)` requires `GKPlayer`
-        // instances, but our `around` param is a teamPlayerID string and
-        // `GKPlayer.loadPlayers(forIdentifiers:)` only accepts
-        // gamePlayerIDs — so cheap conversion is not available. The
-        // realistic production use case (CompletionView) is "centre on
-        // local player", so `GKLocalPlayer.local` is the correct source
-        // here. If a future feature ever needs centring on a different
-        // player, file a follow-up issue.
+        // instances, and there's no public mapping from a leaderboard
+        // entry's `teamPlayerID` back to a `GKPlayer`. The realistic
+        // production use case (CompletionView) is "centre on local
+        // player", which this covers. Arbitrary-player centring is
+        // deferred to a friends-leaderboard feature (#150).
         let centerRank: Int?
-        if player != nil {
+        if aroundLocalPlayer {
             // `loadEntries(for: [GKPlayer], timeScope:)` returns
             // `(localPlayerEntry: GKLeaderboard.Entry?, entries: [GKLeaderboard.Entry])`.
             // The local-player entry is what we want for centring.
@@ -99,15 +98,15 @@ public struct GKLeaderboardLoader: LeaderboardLoader {
             fetchedAt: Date()
         )
         #else
-        _ = (leaderboardId, scope, player, limit)
+        _ = (leaderboardId, scope, aroundLocalPlayer, limit)
         throw GameCenterError.notAuthenticated
         #endif
     }
 
     /// Compute the `NSRange` for the second `loadEntries` call.
     ///
-    /// - When `centeredOnRank == nil` (no `around` player, or the local
-    ///   player isn't on the board for this scope), return top-N
+    /// - When `centeredOnRank == nil` (`aroundLocalPlayer` was false, or the
+    ///   local player isn't on the board for this scope), return top-N
     ///   anchored at rank 1.
     /// - Otherwise, centre a window of `limit` entries on the rank,
     ///   clamping the start to 1. Window size per side is `limit / 2`

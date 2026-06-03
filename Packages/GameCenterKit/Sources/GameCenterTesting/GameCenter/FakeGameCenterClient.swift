@@ -14,7 +14,7 @@ public enum FakeGameCenterOperation: Sendable, Equatable, Hashable {
     case authenticate
     case submitScore(puzzleId: String, elapsedSeconds: Int, leaderboardKind: LeaderboardKind)
     case reportAchievement(achievementId: String, percentComplete: Double)
-    case fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, limit: Int)
+    case fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, aroundLocalPlayer: Bool, limit: Int)
     case friendsAuthorizationStatus
     case requestFriendsAuthorization
 }
@@ -126,15 +126,15 @@ public actor FakeGameCenterClient: GameCenterClient {
     public func fetchLeaderboardSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice {
         operations.append(.fetchLeaderboardSlice(
             leaderboardId: leaderboardId,
             scope: scope,
+            aroundLocalPlayer: aroundLocalPlayer,
             limit: limit
         ))
-        _ = player
         return leaderboardSlice
     }
 
