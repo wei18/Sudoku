@@ -1,15 +1,15 @@
 # Sudoku-spec
 
-iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
+iPhone 與 Mac 雙平台 puzzle App。主交付為 Sudoku；Minesweeper 為驗證共用架構（`GameShellKit`）可複用性的第二款 App，除玩法畫面外鏡像 Sudoku。同一個 repo 同時容納兩層內容：
 
 - 規格層：[`docs/`](docs/)、[`meetings/`](meetings/)、[`.claude/skills/`](.claude/skills/)。
-- 實作層：`Sudoku/`（薄殼，只含 `@main` + DI composition root）與 `Packages/`（4 個本地 SPM package，見下）。
+- 實作層：`Sudoku/` 與 `Minesweeper/`（兩個薄殼 App target，各含 `@main` + DI composition root）與 `Packages/`（9 個本地 SPM package，見下）。
 
 > 2026-05-17 起，原本規劃的 sibling `Sudoku/` repo 已合併進本 repo。理由：作為 portfolio，單一可閱讀單元優於跨 repo 跳轉。
 
 ## 雙重交付目標
 
-1. 上架一款可玩的 Sudoku App（iOS 與 macOS）。
+1. 上架可玩的 Sudoku App（iOS 與 macOS），並以 Minesweeper 驗證共用架構可複用至第二款 App。
 2. 留下一份「如何把 Claude agent 應用到實際 iOS 專案」的可重現紀錄。
 
 ## 閱讀順序
@@ -26,19 +26,26 @@ iPhone 與 Mac 雙平台 Sudoku App。同一個 repo 同時容納兩層內容：
 
 ```
 Sudoku/                           # 薄殼：@main + DI composition root
+Minesweeper/                      # 薄殼：@main + DI composition root（鏡像 Sudoku）
 Packages/
 ├── SudokuCoreKit/                # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植 Android）
+├── MinesweeperCoreKit/           # 純 Swift 核心：MinesweeperEngine + MinesweeperGameState（leaf）
 ├── TelemetryKit/                 # Logger + Tracking 抽象 + TelemetryTesting fixtures
-├── AppMonetizationKit/           # AdMob + IAP（third-party SDK 隔離，見 foundations §9）
-└── SudokuKit/                    # PuzzleStore / Persistence / GameCenterClient / SudokuUI / AppComposition
+├── PersistenceKit/               # CloudKit Persistence + PersistenceTesting
+├── GameCenterKit/                # GameCenterClient + GameCenterTesting
+├── GameShellKit/                 # GameShellUI：兩款 App 共用的導覽殼（RootShellView / RouteFactory）
+├── AppMonetizationKit/           # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（third-party SDK 隔離，見 foundations §9）
+├── SudokuKit/                    # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
+└── MinesweeperKit/               # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition
 ```
 
-依賴方向（內 → 外，禁止反向）詳見 [`docs/foundations.md §2`](docs/foundations.md)。
+依賴方向（內 → 外，禁止反向）詳見 [`docs/foundations.md §2`](docs/foundations.md)。`GameShellKit` 是兩款 App 共用的 UI 殼，避免 Minesweeper 複製 Sudoku 導覽碼。
 
 ## 狀態
 
-- **v1** — 程式碼層完工並上架（[`docs/v1/plan.md`](docs/v1/plan.md) Phase 0–9 全部 ship）。
-- **v2.5** — Monetization layer 在 final sprint；AdMob banner 已 wire（test IDs），production IDs 待 v2.5.3 切換。Pre-flight 進度見 [`docs/v2/v2.5-readiness.md`](docs/v2/v2.5-readiness.md)。
+- **Sudoku v1** — 程式碼層完工並上架（[`docs/v1/plan.md`](docs/v1/plan.md) Phase 0–9 全部 ship）。
+- **Sudoku v2.5** — Monetization layer 在 final sprint；AdMob banner 已 wire（test IDs），production IDs 改採 build-time xcconfig 注入（見 skill `build-time-secret-injection`），v2.5.3 上架前切換。Pre-flight 進度見 [`docs/v2/v2.5-readiness.md`](docs/v2/v2.5-readiness.md)。
+- **Minesweeper v1** — 鏡像 Sudoku 的第二款 App，monetization stack（AdMob + Remove Ads IAP）已接入，gameplay 畫面開發中。
 
 實作階段採 TDD（swift-testing + swift-snapshot-testing）。
 
@@ -48,7 +55,7 @@ Packages/
 - **lefthook** — pre-commit hooks（gitleaks、hygiene、swiftlint）
 - **Xcode Cloud** — v1 主 CI 軌；PR / Main / Release 三 workflow
 - **GitHub Actions** — Phase 1 advisory（`.github/workflows/lint.yml` 三 job：pr-metadata / docs-link-check / swift-lint）
-- **Tuist** — 從 `Project.swift` 產生 `Game.xcodeproj`（Sudoku target + 未來 Minesweeper target 共 umbrella）
+- **Tuist** — 從 `Project.swift` 產生 `Game.xcodeproj`（Sudoku + Minesweeper 兩 target 共 `Game` umbrella）
 
 ## 安全姿態：公開 repo
 
