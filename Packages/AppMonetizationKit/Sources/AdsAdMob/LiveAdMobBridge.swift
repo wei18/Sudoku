@@ -89,10 +89,6 @@ internal final class LiveAdMobBridge: AdMobBridge {
             return view
         }
 
-        // NOTE (#221): a future `dispose(handle:)` accessor will clear
-        // liveBanners once the caller is done with the view. Current behaviour
-        // intentionally retains the BannerView for the handle's lifetime
-        // (impl-notes D3).
         liveBanners.withLock { $0[handle.id] = bannerView }
 
         // Holder lets the cancellation handler reach the per-load delegate that
@@ -154,6 +150,22 @@ internal final class LiveAdMobBridge: AdMobBridge {
 
     internal func currentBannerStatus() async -> AdBannerStatus {
         state.withLock { $0 }
+    }
+
+    internal func dispose(handle: AdBannerHandle) async {
+        #if canImport(GoogleMobileAds)
+        // Drop the strong retain held in `liveBanners`. `removeValue` returns
+        // the view (if present) so the only remaining reference is local —
+        // tear it down on the main actor, then let it deallocate. Unknown /
+        // already-disposed handles return nil and no-op.
+        let bannerView = liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+        guard let bannerView else { return }
+        await MainActor.run {
+            bannerView.delegate = nil
+            bannerView.removeFromSuperview()
+        }
+        #endif
+        // Non-iOS / SDK-absent builds retain no per-handle state — no-op.
     }
 
     // MARK: - Internal helpers

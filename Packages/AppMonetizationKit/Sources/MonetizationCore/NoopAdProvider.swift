@@ -37,4 +37,8 @@ public actor NoopAdProvider: AdProvider {
     public func refreshBanner() async throws {
         // no-op: status stays `.suppressed` regardless of refresh requests.
     }
+
+    public func dispose(handle: AdBannerHandle) async {
+        // no-op: this provider holds no per-handle view state to release.
+    }
 }

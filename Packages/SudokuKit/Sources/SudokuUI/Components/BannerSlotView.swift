@@ -55,6 +55,13 @@ public struct BannerSlotView: View {
             }
         }
         .task { await resolveGateAndLoad() }
+        .onDisappear {
+            // Release the live banner's `GADBannerView` when the slot goes away
+            // so the provider doesn't retain it for the handle's lifetime
+            // (#221). No-op unless we hold a loaded handle.
+            guard case let .loaded(handle) = status else { return }
+            Task { await adProvider.dispose(handle: handle) }
+        }
     }
 
     // MARK: - Banner

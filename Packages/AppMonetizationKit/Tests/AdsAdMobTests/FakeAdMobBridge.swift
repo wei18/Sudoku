@@ -17,6 +17,7 @@ internal struct FakeAdMobBridgeState: Sendable {
     var cachedStatus: AdBannerStatus = .notInitialized
     var startCallCount: Int = 0
     var loadCallCount: Int = 0
+    var disposedHandles: [AdBannerHandle] = []
 }
 
 internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
@@ -50,6 +51,10 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
         state.withLock { $0.loadCallCount }
     }
 
+    internal var disposedHandles: [AdBannerHandle] {
+        state.withLock { $0.disposedHandles }
+    }
+
     // MARK: AdMobBridge
 
     // swiftlint:disable identifier_name
@@ -75,5 +80,9 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
 
     internal func currentBannerStatus() async -> AdBannerStatus {
         state.withLock { $0.cachedStatus }
+    }
+
+    internal func dispose(handle: AdBannerHandle) async {
+        state.withLock { $0.disposedHandles.append(handle) }
     }
 }

@@ -49,6 +49,15 @@ struct FakeAdProviderTests {
             try await fake.initialize()
         }
     }
+
+    @Test func disposeRecordsHandlesInOrder() async {
+        let h1 = AdBannerHandle()
+        let h2 = AdBannerHandle()
+        let fake = FakeAdProvider()
+        await fake.dispose(handle: h1)
+        await fake.dispose(handle: h2)
+        #expect(await fake.disposedHandles == [h1, h2])
+    }
 }
 
 @Suite("FakeIAPClient — scripted behavior")

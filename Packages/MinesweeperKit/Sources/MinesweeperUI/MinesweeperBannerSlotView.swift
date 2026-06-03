@@ -44,6 +44,13 @@ internal struct MinesweeperBannerSlotView: View {
             }
         }
         .task { await resolveGateAndLoad() }
+        .onDisappear {
+            // Mirror of Sudoku's slot — release the live banner's
+            // `GADBannerView` on disappear so it isn't retained for the
+            // handle's lifetime (#221). No-op unless a loaded handle is held.
+            guard case let .loaded(handle) = status else { return }
+            Task { await adProvider.dispose(handle: handle) }
+        }
     }
 
     private var banner: some View {

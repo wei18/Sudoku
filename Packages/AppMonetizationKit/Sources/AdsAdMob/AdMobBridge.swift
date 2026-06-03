@@ -31,6 +31,12 @@ internal protocol AdMobBridge: Sendable {
     /// Last cached banner status. Pull-based; callers use `loadBanner()` for
     /// fresh state and this getter for repeat reads without re-firing a load.
     func currentBannerStatus() async -> AdBannerStatus
+
+    /// Release the `GADBannerView` retained for `handle`. Idempotent — an
+    /// unknown or already-disposed handle is a no-op. The live bridge tears the
+    /// view down on the main actor (`UIView` subclass); fakes just drop their
+    /// bookkeeping (#221).
+    func dispose(handle: AdBannerHandle) async
 }
 
 // MARK: - AdMobBridgeError
