@@ -152,7 +152,8 @@ extension MinesweeperAppComposition {
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
             adProvider: adProvider,
-            adGate: adGate
+            adGate: adGate,
+            persistence: persistence
         )
 
         return MinesweeperAppComposition(
@@ -199,7 +200,8 @@ extension MinesweeperAppComposition {
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
             adProvider: adProvider,
-            adGate: adGate
+            adGate: adGate,
+            persistence: persistence
         )
 
         return MinesweeperAppComposition(

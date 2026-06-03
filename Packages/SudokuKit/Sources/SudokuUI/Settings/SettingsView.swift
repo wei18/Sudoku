@@ -28,7 +28,6 @@ public struct SettingsView: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
     @Environment(\.theme) private var theme
-    @State private var showClearCacheConfirmation = false
 
     public init(
         viewModel: SettingsViewModel,
@@ -62,42 +61,25 @@ public struct SettingsView: View {
                 // so `.formStyle(.grouped)` on macOS renders all rows as
                 // full-width pills. `LabeledContent` lands on a 2-column
                 // preferences layout that bypasses the pill background.
-                AboutRow(systemImage: "info.circle", title: "Version", value: viewModel.appVersion)
+                //
+                // #277: the Version row is now the shared
+                // `GameShellUI.SettingsAboutVersionRow`. The Generator row is
+                // Sudoku-only (Minesweeper has no generator) and stays here.
+                SettingsAboutVersionRow(
+                    version: viewModel.appVersion,
+                    tintColor: theme.accent.primary.resolved
+                )
                 AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
             }
 
-            Section("Storage") {
-                Button(role: .destructive) {
-                    showClearCacheConfirmation = true
-                } label: {
-                    // HStack + Spacer stretches the label content so the
-                    // grouped Form gives this row the same full-width pill
-                    // treatment as the Purchases section's button rows
-                    // (issue #197).
-                    HStack {
-                        Label("Clear cache", systemImage: "trash")
-                        Spacer()
-                    }
-                }
-            }
+            // #277: shared Storage section. Wires the existing VM clearCache.
+            SettingsStorageSection(clearCache: { await viewModel.clearCache() })
         }
         .task { await viewModel.bootstrap() }
         .task {
             if let controller = monetizationController {
                 await controller.bootstrap()
             }
-        }
-        .confirmationDialog(
-            "Reset session cache",
-            isPresented: $showClearCacheConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Clear cache", role: .destructive) {
-                Task { await viewModel.clearCache() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Generated puzzles will be re-derived next play. Saved games are not affected.")
         }
     }
 
