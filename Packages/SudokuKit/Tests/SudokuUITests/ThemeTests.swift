@@ -4,6 +4,7 @@
 // in DefaultTheme must be reflected here AND requires snapshot rebaselining
 // (plan 8.11).
 
+import GameShellUI  // #278 Tier-1 Phase 1: `Theme` protocol moved here.
 import Testing
 @testable import SudokuUI
 

@@ -77,6 +77,12 @@ public struct AppComposition {
             monetizationController: monetizationController,
             toastController: toastController
         )
+        // #278 Tier-1 Phase 1: the `@Environment(\.theme)` key moved to
+        // GameShellUI, whose neutral fallback default is intentionally NOT
+        // Sudoku's palette. Inject Sudoku's concrete `DefaultTheme` here at
+        // the composition root so every mounted view resolves the sage /
+        // warm-paper tokens exactly as before (zero visual change).
+        .environment(\.theme, DefaultTheme())
         .task {
             // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent
             // with the first frame. `BannerSlotView` is honest about

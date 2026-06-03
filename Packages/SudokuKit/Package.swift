@@ -177,6 +177,12 @@ let testTargets: [Target] = [
             persistenceDep,
             gameCenterClientDep,
             gameCenterTestingDep,
+            // #278 Tier-1 Phase 1: ThemeTests names the bare `Theme` protocol,
+            // which moved to GameShellUI. A transitive re-export through
+            // SudokuUI does not satisfy Swift 6 module name resolution for a
+            // direct `import GameShellUI` — same reason AppComposition needs
+            // the explicit dep at its boundary.
+            .product(name: "GameShellUI", package: "GameShellKit"),
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ] + monetizationTestDeps,
         resources: [.copy("__Snapshots__")],

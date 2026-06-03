@@ -28,6 +28,7 @@ import AppKit
 import Foundation
 import SnapshotTesting
 import SwiftUI
+@testable import SudokuUI
 import Testing
 
 enum SnapshotLayouts {
@@ -197,6 +198,12 @@ func hostingView<V: SwiftUI.View>(
     sizeClass: UserInterfaceSizeClass = .compact
 ) -> NSView {
     let wrapped = view
+        // #278 Tier-1 Phase 1: the `@Environment(\.theme)` key moved to
+        // GameShellUI with a palette-neutral default. Snapshot fixtures
+        // previously relied on that default being Sudoku's `DefaultTheme`;
+        // inject it explicitly here (mirroring AppComposition's root
+        // injection) so baselines stay byte-identical.
+        .environment(\.theme, DefaultTheme())
         .environment(\.horizontalSizeClass, Optional(sizeClass))
         .environment(\.locale, locale ?? .current)
         .preferredColorScheme(colorScheme)

@@ -1,9 +1,18 @@
-// DefaultTheme — v1 ships exactly one Theme.
+// DefaultTheme — Sudoku's concrete `Theme` palette (the sage / warm-paper
+// design system). The generic `Theme` protocol + token value types + the
+// `@Environment(\.theme)` key moved to GameShellUI (#278 Tier-1 Phase 1);
+// this file keeps Sudoku's CONCRETE values and conforms to that protocol.
+//
+// `public import GameShellUI` re-exports `Theme` + the token bundles through
+// SudokuUI's public surface (same pattern as `RouteFactory.swift`), so
+// SudokuUI views + `@testable import SudokuUI` tests keep resolving the
+// theme types without an extra import.
 //
 // All hex values come from docs/designs/design-system.md §Color tokens.
 // Changing any value here will churn snapshot baselines — coordinate with
 // the snapshot baseline lock step (plan 8.11).
 
+public import GameShellUI
 internal import SwiftUI
 
 public struct DefaultTheme: Theme {

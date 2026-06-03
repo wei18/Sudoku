@@ -1,9 +1,16 @@
-// Theme — design-system token bundle.
+// Theme — game-agnostic design-system token machinery.
 //
-// Per docs/v1/design.md §How.5.4 and docs/designs/design-system.md §Theming.
-// Views consume tokens via `@Environment(\.theme)`. A `Theme` exposes
-// `ThemeColor` pairs (light, dark) for every visual token; concrete SwiftUI
-// `Color` resolution happens at the call site via `Color(light:dark:)`.
+// Extracted into GameShellUI (#278 Tier-1 Phase 1, 2026-06-03) so every
+// game's Kit shares the same theming contract. This file owns the GENERIC
+// machinery only: the `Theme` protocol, the token value bundles, the
+// `Color` hex/light-dark helpers, and the `@Environment(\.theme)` key.
+// Each app ships its OWN concrete palette conforming to `Theme` (Sudoku's
+// `DefaultTheme` stays in SudokuUI; Minesweeper adds its own in Phase 2).
+//
+// Per docs/designs/design-system.md §Theming. Views consume tokens via
+// `@Environment(\.theme)`. A `Theme` exposes `ThemeColor` pairs (light,
+// dark) for every visual token; concrete SwiftUI `Color` resolution happens
+// at the call site via `Color(light:dark:)`.
 //
 // All tokens are `Sendable` for cross-actor passing.
 
@@ -222,10 +229,70 @@ private extension Color {
 }
 #endif
 
+// MARK: - Neutral fallback theme
+
+/// A palette-neutral `Theme` used only as the `@Environment(\.theme)`
+/// default value. GameShellUI cannot know any specific app's palette, so
+/// this deliberately ships grayscale / system-derived placeholders — NOT
+/// any app's brand colors. Every app injects its own concrete theme at its
+/// root (`.environment(\.theme, ...)`); this fallback exists purely so the
+/// environment key is well-formed and previews of un-injected subtrees
+/// render something legible rather than crashing.
+public struct NeutralTheme: Theme {
+    public init() {}
+
+    public let surface = SurfaceTokens(
+        background: ThemeColor(light: 0xF2F2F2, dark: 0x1C1C1E),
+        primary: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
+        elevated: ThemeColor(light: 0xFFFFFF, dark: 0x3A3A3C),
+        placeholder: ThemeColor(light: 0xE5E5EA, dark: 0x2C2C2E)
+    )
+
+    public let cell = CellTokens(
+        base: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
+        prefilled: ThemeColor(light: 0xE5E5EA, dark: 0x3A3A3C),
+        userFilled: ThemeColor(light: 0xFFFFFF, dark: 0x2C2C2E),
+        highlighted: ThemeColor(light: 0xE5E5EA, dark: 0x3A3A3C),
+        selected: ThemeColor(light: 0xD1D1D6, dark: 0x48484A),
+        error: ThemeColor(light: 0xF2D7D5, dark: 0x4A2724),
+        errorBorder: ThemeColor(light: 0xD0021B, dark: 0xFF453A)
+    )
+
+    public let text = TextTokens(
+        primary: ThemeColor(light: 0x1C1C1E, dark: 0xF2F2F7),
+        secondary: ThemeColor(light: 0x636366, dark: 0xAEAEB2),
+        tertiary: ThemeColor(light: 0x8E8E93, dark: 0x7C7C80),
+        given: ThemeColor(light: 0x1C1C1E, dark: 0xF2F2F7),
+        user: ThemeColor(light: 0x636366, dark: 0xAEAEB2),
+        errorDigit: ThemeColor(light: 0xD0021B, dark: 0xFF453A)
+    )
+
+    public let accent = AccentTokens(
+        primary: ThemeColor(light: 0x636366, dark: 0xAEAEB2),
+        muted: ThemeColor(light: 0xD1D1D6, dark: 0x48484A)
+    )
+
+    public let status = StatusTokens(
+        success: ThemeColor(light: 0x34C759, dark: 0x30D158),
+        warning: ThemeColor(light: 0xFF9500, dark: 0xFF9F0A),
+        error: ThemeColor(light: 0xD0021B, dark: 0xFF453A)
+    )
+
+    public let difficulty = DifficultyTokens(
+        easy: ThemeColor(light: 0x8E8E93, dark: 0xAEAEB2),
+        medium: ThemeColor(light: 0x636366, dark: 0x8E8E93),
+        hard: ThemeColor(light: 0x48484A, dark: 0x636366)
+    )
+
+    public let spacing = SpacingTokens()
+}
+
 // MARK: - Environment key
 
 private struct ThemeKey: EnvironmentKey {
-    static let defaultValue: any Theme = DefaultTheme()
+    // Palette-neutral default. Apps MUST inject their own concrete theme at
+    // their root; this fallback never carries app brand colors.
+    static let defaultValue: any Theme = NeutralTheme()
 }
 
 public extension EnvironmentValues {
