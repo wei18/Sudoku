@@ -65,6 +65,13 @@ let productionTargets: [Target] = [
             // shell components extract (RootView, Settings shell, Daily /
             // Practice hubs — Phase X PRs).
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
+            // impossible-state / programmer-error catches (fails tests +
+            // purple-warns in #Preview, non-fatal in release). Deliberate
+            // restricted-import allowance — treated like a logger, NOT a
+            // replacement for ErrorReporter (which routes expected runtime
+            // failures to telemetry). See foundations.md §3.
+            .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -247,6 +254,12 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        // #178: swift-issue-reporting (`IssueReporting`). Already resolved as a
+        // transitive dep of swift-snapshot-testing (1.9.0); promoted to a
+        // direct dep so production UI targets can `import IssueReporting` for
+        // invariant reporting. `from: "1.9.0"` matches the resolved revision —
+        // no Package.resolved churn beyond the new direct-dep entry.
+        .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.9.0"),
         // 2026-05-26 module split: SudokuEngine + GameState extracted into
         // sibling local package so a future Telemetry-only extraction is
         // unblocked. See `docs/foundations.md §2`.

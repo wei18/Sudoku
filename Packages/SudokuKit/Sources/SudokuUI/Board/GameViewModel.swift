@@ -17,6 +17,7 @@
 // readability. Tracked for proper refactor in a follow-up backlog issue.
 
 public import Foundation
+import IssueReporting
 public import GameState
 public import Persistence
 public import PuzzleStore
@@ -218,7 +219,7 @@ public final class GameViewModel {
             do {
                 try board.setDigit(digit, atRow: coord.row, column: coord.column)
             } catch {
-                assertionFailure("preview fixture wiring bug: \(error)")
+                reportIssue("preview fixture wiring bug: \(error)")
             }
             recomputeErrors()
         }
@@ -245,7 +246,7 @@ public final class GameViewModel {
             do {
                 try board.setDigit(nil, atRow: selection.row, column: selection.column)
             } catch {
-                assertionFailure("preview fixture wiring bug: \(error)")
+                reportIssue("preview fixture wiring bug: \(error)")
             }
             notes.clear(row: selection.row, col: selection.column)
             recomputeErrors()

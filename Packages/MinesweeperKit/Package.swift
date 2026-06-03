@@ -38,6 +38,11 @@ let productionTargets: [Target] = [
             // U15 (2026-06-03): MinesweeperBannerSlotView + MinesweeperBoardView
             // touch `AdProvider` / `AdGate` directly.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // #178: invariant-reporting tool — mirrors SudokuUI. `reportIssue(_:)`
+            // surfaces impossible-state catches (fails tests, purple-warns in
+            // #Preview, non-fatal in release). Deliberate restricted-import
+            // allowance, not a replacement for ErrorReporter. See foundations.md §3.
+            .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -141,6 +146,10 @@ let package = Package(
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        // #178: swift-issue-reporting (`IssueReporting`) for invariant reporting
+        // in MinesweeperUI. Transitive via swift-snapshot-testing (1.9.0);
+        // promoted to direct dep. `from: "1.9.0"` matches resolved — no churn.
+        .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.9.0"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
