@@ -5,14 +5,16 @@
 //   - `Telemetry` — fan-out facade (OSLog + NoOp tracking in `.live()`).
 //   - `ErrorReporter` — unified swallowed-error funnel.
 //
-// Sudoku's bag additionally holds PersistenceProtocol, MonetizationCore,
-// GameCenter, monetization controllers, and a toast surface; none of those
-// have a Minesweeper product definition yet. Follow-up issues will grow this
-// bag as each subsystem is designed.
+// MS monetization wire Phase 3 (2026-06-03) adds:
+//   - `persistence` — `LivePersistence(ckConfig: .minesweeper, ...)`
+//   - `iapClient` — `LiveStoreKit2IAPClient(knownProductIds: [...remove_ads])`
+//   - `adProvider` — `NoopAdProvider` on all platforms this round
+//     (LiveAdMobBridge wire deferred to U15)
+//   - `adGate` + `monetizationStateStore` — same shape as Sudoku
+//   - `monetizationController` — MS productId via parameterized init
+//   - `toastController` — shared toast surface (RootView wire pending U15)
 //
-// Phase 2 scope (parity-audit telemetry wire): the seam exists on the bag,
-// but no MinesweeperUI view consumes it yet. View-level adoption (e.g.
-// GameViewModel emitting `.errorOccurred`) lands in a follow-up.
+// GameCenter remains unwired — no MS Game Center surface designed yet.
 //
 // Public surface:
 //
@@ -25,21 +27,53 @@ public import SwiftUI
 public import GameShellUI
 public import MinesweeperUI
 public import Telemetry
+public import Persistence
+public import MonetizationCore
+public import MonetizationUI
+
+/// ASC product ID for Minesweeper's "Remove Ads" non-consumable. Mirrors
+/// `removeAdsProductId` (Sudoku) — distinct here so the two apps' ASC
+/// catalogs never collide. Held as a `public let` so future MS tests can
+/// import the same symbol the way Sudoku tests import `removeAdsProductId`.
+public let minesweeperRemoveAdsProductId: String = "com.wei18.minesweeper.iap.remove_ads"
 
 @MainActor
 public struct MinesweeperAppComposition {
     public let routeFactory: any RouteFactory<AppRoute>
     public let telemetry: Telemetry
     public let errorReporter: any ErrorReporter
+    // MS monetization wire Phase 3 (2026-06-03). Order matches Sudoku's
+    // `AppComposition` for grep parity.
+    public let persistence: any PersistenceProtocol
+    public let adProvider: any AdProvider
+    public let iapClient: any IAPClient
+    public let adGate: AdGate
+    public let monetizationStateStore: any AdGateStateStore
+    public let monetizationController: MonetizationStateController
+    public let toastController: ToastController
 
     public init(
         routeFactory: any RouteFactory<AppRoute>,
         telemetry: Telemetry,
-        errorReporter: any ErrorReporter
+        errorReporter: any ErrorReporter,
+        persistence: any PersistenceProtocol,
+        adProvider: any AdProvider,
+        iapClient: any IAPClient,
+        adGate: AdGate,
+        monetizationStateStore: any AdGateStateStore,
+        monetizationController: MonetizationStateController,
+        toastController: ToastController
     ) {
         self.routeFactory = routeFactory
         self.telemetry = telemetry
         self.errorReporter = errorReporter
+        self.persistence = persistence
+        self.adProvider = adProvider
+        self.iapClient = iapClient
+        self.adGate = adGate
+        self.monetizationStateStore = monetizationStateStore
+        self.monetizationController = monetizationController
+        self.toastController = toastController
     }
 
     /// Convenience accessor — constructs the top-level `MinesweeperRoot` view

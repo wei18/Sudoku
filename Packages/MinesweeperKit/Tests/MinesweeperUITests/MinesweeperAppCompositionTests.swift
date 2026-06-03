@@ -1,9 +1,12 @@
 // MinesweeperAppCompositionTests — sentinel coverage for the `.live()` and
-// `.preview()` factories added in the 2026-06-02 parity-audit telemetry wire.
+// `.preview()` factories.
 //
-// Coverage is shape-only: the factories construct, the bag's `telemetry` +
-// `errorReporter` fields are populated, and `observe(_:)` / `report(_:...)`
-// round-trip without crashing. View-level emission isn't wired yet.
+// 2026-06-02 (Track A): Telemetry + ErrorReporter seam; shape-only coverage.
+// 2026-06-03 (Phase 3): MS monetization wire fields — persistence, IAP,
+// AdGate, MonetizationStateController, ToastController.
+//
+// Shape coverage is appropriate here: the bag is a struct of DI handles;
+// behavior tests for each component live in the component's own test target.
 
 import Testing
 @testable import MinesweeperAppComposition
@@ -17,6 +20,13 @@ import Telemetry
         _ = bag.routeFactory
         _ = bag.telemetry
         _ = bag.errorReporter
+        _ = bag.persistence
+        _ = bag.adProvider
+        _ = bag.iapClient
+        _ = bag.adGate
+        _ = bag.monetizationStateStore
+        _ = bag.monetizationController
+        _ = bag.toastController
     }
 
     @Test func previewFactoryConstructs() {
@@ -24,6 +34,13 @@ import Telemetry
         _ = bag.routeFactory
         _ = bag.telemetry
         _ = bag.errorReporter
+        _ = bag.persistence
+        _ = bag.adProvider
+        _ = bag.iapClient
+        _ = bag.adGate
+        _ = bag.monetizationStateStore
+        _ = bag.monetizationController
+        _ = bag.toastController
     }
 
     @Test func previewTelemetrySmokeObserve() async {
@@ -43,5 +60,14 @@ import Telemetry
             underlying: DummyError(),
             source: "test"
         )
+    }
+
+    @Test func monetizationControllerUsesMSProductId() {
+        // Sanity: the parameterised `productId` flows through. Fallback
+        // display price = "$2.99" because availableProducts is empty before
+        // `bootstrap()` runs.
+        let bag = MinesweeperAppComposition.preview()
+        #expect(bag.monetizationController.removeAdsDisplayPrice == "$2.99")
+        #expect(minesweeperRemoveAdsProductId == "com.wei18.minesweeper.iap.remove_ads")
     }
 }
