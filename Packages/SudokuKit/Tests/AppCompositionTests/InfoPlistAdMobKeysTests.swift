@@ -29,6 +29,13 @@ struct InfoPlistAdMobKeysTests {
         // name as a top-level bundle resource. Contents are the App
         // target's Info.plist verbatim — see Package.swift testTarget
         // resources block.
+        //
+        // Drift risk (issue #267, accepted): this copy can fall out of sync
+        // if a future PR adds an Info.plist key without mirroring it here —
+        // the smoke test would pass against a stale plist. Accepted because
+        // this test only guards the two AdMob keys, which are not plausibly
+        // deleted by accident. Escalate to a byte-for-byte sync sentinel
+        // only if a real drift incident occurs.
         guard let url = Bundle.module.url(forResource: "AppInfo", withExtension: "plist") else {
             throw CocoaError(.fileReadNoSuchFile)
         }
