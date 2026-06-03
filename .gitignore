@@ -10,7 +10,7 @@
 # secrets/ — deny everything (PEMs, API keys, .env files) EXCEPT committed
 # templates (*.example) and the optional top-level README.md. See PR1 of the
 # AdMob secret-injection migration for the rationale + file inventory.
-secrets/*
+secrets/**
 !secrets/*.example
 !secrets/README.md
 

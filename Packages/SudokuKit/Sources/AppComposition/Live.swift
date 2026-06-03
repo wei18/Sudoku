@@ -90,19 +90,14 @@ extension AppComposition {
         let sudokuRemoveAdsProductID = "com.wei18.sudoku.iap.remove_ads"
 
         #if os(iOS)
-        // Banner ad unit ID is supplied via Info.plist key `GADBannerUnitID`,
-        // substituted at build time from `Tuist/AdMob.xcconfig` (gitignored;
-        // .example template committed). XCC writes the xcconfig from a
-        // per-workflow env var so Release builds get the production unit
-        // and Debug/sandbox builds get Google's universal test unit.
-        // Replaces the old DEBUG-vs-Release fatalError gate; the smoke
-        // test in `AppCompositionTests/InfoPlistAdMobKeysTests.swift`
-        // catches missing-key misconfig pre-archive.
-        // Banner ad unit ID + safety net: catches both missing-key
-        // (substitution / xcconfig wiring broken) and unresolved-token
-        // (xcconfig missing or env var unset → literal `$()` embedded).
-        // Smoke tests in InfoPlistAdMobKeysTests cover key presence at
-        // test time; this guards both at app launch before AdMob SDK init.
+        // Banner ad unit ID via Info.plist `GADBannerUnitID` key, substituted
+        // at build time from `Tuist/AdMob.xcconfig` (gitignored; .example
+        // committed). XCC writes the xcconfig from per-workflow env vars;
+        // local builds use the .example sandbox values. Replaces the old
+        // DEBUG-vs-Release fatalError gate with smoke-test (key presence —
+        // `AppCompositionTests/InfoPlistAdMobKeysTests`) + runtime guard
+        // below (catches missing-key + empty + unresolved-`$()` token
+        // before AdMob SDK init).
         guard
             let sudokuBannerAdUnitID = Bundle.main
                 .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
