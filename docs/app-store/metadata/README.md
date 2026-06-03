@@ -1,22 +1,43 @@
 # App Store metadata
 
-Per-locale App Store Connect (ASC) listing copy for Sudoku v1.0.
+Per-locale App Store Connect (ASC) listing copy for the project's apps.
 
-## Files
+## Per-app structure (multi-app, since 2026-06-04)
+
+The repo now ships two apps (Sudoku, Minesweeper). The directory layout is
+**asymmetric on purpose**:
 
 ```
 metadata/
-├── README.md           — this file
-├── en/listing.yaml     — English (US) — SOURCE
-├── zh-Hant/listing.yaml — Traditional Chinese (Taiwan) — SOURCE
-├── ja/listing.yaml     — Japanese — AI-translated
-├── zh-Hans/listing.yaml — Simplified Chinese — AI-translated
-├── es/listing.yaml     — Spanish (neutral Latin American) — AI-translated
-├── th/listing.yaml     — Thai — AI-translated
-└── ko/listing.yaml     — Korean (해요체) — AI-translated
+├── README.md            — this file
+├── <locale>/listing.yaml — Sudoku listings (SUDOKU-IMPLICIT, the original tree)
+├── iap/remove-ads.yaml   — Sudoku Remove Ads IAP (SUDOKU-IMPLICIT)
+└── minesweeper/          — Minesweeper listings (per-app subtree)
+    ├── <locale>/listing.yaml
+    └── iap/remove-ads.yaml
 ```
 
-`en` and `zh-Hant` are author-written sources. The other five are AI-translated derivatives per the `ai-translated-localization` skill convention, with locale-specific etiquette already applied (no honorific particles in ja, no ครับ/ค่ะ in th, 해요체 mid-formality in ko, neutral LATAM Spanish, term-level conversion not character-conversion for zh-Hans).
+**Why asymmetric (decision 2026-06-04, #236):** the Sudoku files at the
+top level are the original single-app tree, already referenced by path from
+`v2.5-readiness.md`, the `asc-ops-handoff` skill, `ASCRegister` future-mode
+notes, and the IAP `remove-ads.yaml`. Symmetrising now (moving Sudoku into a
+`sudoku/` subdir) is a churny rename for zero functional gain this round.
+Adding a `minesweeper/` subtree is the minimal, reversible mirror. A future
+symmetrisation to `{sudoku,minesweeper}/` is a known, cheap follow-up — do it
+when a third app lands or when the ASCRegister `metadata` mode (see plan in
+`meetings/2026-06-04_asc-app-metadata-api-plan.md`) needs a uniform per-app
+glob.
+
+When the `metadata` mode ships, it should take an `--app <sudoku|minesweeper>`
+flag (or derive the subtree from `--app-id`) and read the matching tree.
+
+## Files (Sudoku, top level)
+
+```
+<locale>/listing.yaml — en (SOURCE) · zh-Hant (SOURCE) · ja · zh-Hans · es · th · ko
+```
+
+`en` and `zh-Hant` are author-written sources. The other five are AI-translated derivatives per the `ai-translated-localization` skill convention, with locale-specific etiquette already applied (no honorific particles in ja, no ครับ/ค่ะ in th, 해요체 mid-formality in ko, neutral LATAM Spanish, term-level conversion not character-conversion for zh-Hans). The Minesweeper subtree follows the same source/translation tiering.
 
 ## Field reference (per Apple ASC limits)
 

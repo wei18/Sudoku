@@ -1,0 +1,62 @@
+locale: en-US
+name: "Minesweeper — Classic"
+subtitle: "Clean logic for iPhone and Mac"
+promotional_text: |
+  The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. No tracking beyond the optional banner — remove it with one purchase.
+description: |
+  Minesweeper, made for thinking — not for noise.
+
+  The rules you already know: reveal cells, read the numbers, flag the mines, and clear the board without setting one off. Three classic difficulties — Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), and Expert (16×30, 99 mines).
+
+  The first tap is always safe
+
+  Mines are placed after your first reveal, so your opening tap — and the cells around it — can never be a mine. No more losing on move one. Every board is fully determined by its difficulty and seed, so a board plays out the same way each time you replay it.
+
+  What's inside
+
+  • Three classic difficulties — Beginner, Intermediate, Expert.
+  • First-click safety — the opening tap can never lose.
+  • Tap to reveal, long-press to flag (right-click or control-click on Mac).
+  • A daily set of boards to return to.
+  • Resume any time — saves are automatic.
+
+  Truly cross-platform
+
+  One codebase, two platforms. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst. Window resizing and right-click flagging work the way Mac users expect. Pick up where you left off on whichever device is near.
+
+  Privacy, in plain words
+
+  No first-party analytics. No CRM. No backend of our own. Your data lives in your own iCloud Private Database — visible to you, not to us. The only third-party SDK is Google's banner-ad library, and you can remove the banner permanently with a single in-app purchase.
+
+  Remove Ads
+
+  A one-time, non-consumable purchase removes the banner everywhere, forever. Family Sharing included.
+
+  Seven languages
+
+  English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, and Korean.
+
+  Accessibility
+
+  Dynamic Type, VoiceOver, light and dark mode.
+
+  Requires iOS 26 or macOS 26.
+keywords: "minesweeper,mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board"
+whats_new: |
+  Version 1.0 — first public release.
+
+  • Classic Minesweeper with three difficulties: Beginner, Intermediate, Expert.
+  • First-click safety — the opening tap is never a mine.
+  • Tap to reveal, long-press to flag; right-click flagging on Mac.
+  • Cross-device sync via your own iCloud Private Database.
+  • Remove Ads: a one-time purchase that removes the banner forever.
+  • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
+  • Mac native build, not Catalyst.
+
+  Thank you for trying it. Issues and feature requests are welcome at the support link.
+marketing_url: null
+support_url: "https://github.com/wei18/Minesweeper/issues"
+privacy_policy_url: "https://github.com/wei18/Minesweeper/blob/main/docs/privacy-policy.md"
+primary_category: "Games > Puzzle"
+secondary_category: "Games > Board"
+age_rating: "4+"
