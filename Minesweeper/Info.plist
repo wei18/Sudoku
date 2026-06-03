@@ -29,9 +29,7 @@
       (the SDK crashes early in `MobileAds.shared.start` if absent).
       Currently set to Google's UNIVERSAL TEST App ID — mirrors Sudoku's
       Info.plist convention (defer production-ID swap to v1 release per
-      project memory `admob-production-ids` / `minesweeper-admob-ids`).
-      The MS production App ID `ca-app-pub-8986741979385138~3575413966`
-      will replace this value at v1 release time.
+      project memory `minesweeper-admob-ids`).
       Per-ad-unit IDs in `Packages/MinesweeperKit/Sources/MinesweeperAppComposition/Live.swift`
       remain DEBUG-gated (Google universal test banner in DEBUG, MS production
       banner unit in Release) so debug builds never accidentally serve real
