@@ -1,0 +1,13 @@
+// Release config wrapper — Tuist points the Release configuration at this
+// file. We `#include` the gitignored secret xcconfigs so a single Tuist
+// xcconfig arg can carry both.
+//
+// `#include?` (with `?`) is the Apple xcconfig optional-include syntax —
+// the build still succeeds if the file is absent. We use it so a fresh
+// clone (or CI before ci_post_clone.sh has run) doesn't break Tuist
+// generation. The Info.plist substitution then leaves the literal
+// `$(ADMOB_APP_ID)` string in place, which the smoke test catches
+// pre-archive.
+
+#include? "Signing.xcconfig"
+#include? "AdMob.xcconfig"

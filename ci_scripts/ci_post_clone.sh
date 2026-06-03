@@ -33,6 +33,43 @@ EOF
     fi
 fi
 
+# 3.1b) AdMob.xcconfig from per-workflow Secret env vars (ASC → Xcode Cloud
+#       → Workflow → Environment Variables). One workflow per app so each
+#       picks up the right App ID + banner unit ID for its target.
+#       Template: Tuist/AdMob.xcconfig.example (committed). Real file is
+#       gitignored. The Info.plist `GADApplicationIdentifier` /
+#       `GADBannerUnitID` substitutions resolve from these values.
+if [[ ! -f "Tuist/AdMob.xcconfig" ]]; then
+    # Detect which app this workflow targets via $CI_PRODUCT (Xcode Cloud
+    # built-in: scheme name). Fall back to $CI_XCODE_SCHEME if needed.
+    SCHEME="${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}"
+    case "${SCHEME}" in
+        Sudoku)
+            APP_ID_VAR="SUDOKU_ADMOB_APP_ID"
+            BANNER_VAR="SUDOKU_ADMOB_BANNER_UNIT_ID"
+            ;;
+        Minesweeper)
+            APP_ID_VAR="MINESWEEPER_ADMOB_APP_ID"
+            BANNER_VAR="MINESWEEPER_ADMOB_BANNER_UNIT_ID"
+            ;;
+        *)
+            echo "ERROR: cannot determine AdMob env-var prefix — CI_PRODUCT/CI_XCODE_SCHEME='${SCHEME}' (expected Sudoku or Minesweeper)"
+            exit 1
+            ;;
+    esac
+    APP_ID="${!APP_ID_VAR:-}"
+    BANNER="${!BANNER_VAR:-}"
+    if [[ -z "${APP_ID}" || -z "${BANNER}" ]]; then
+        echo "ERROR: ${APP_ID_VAR} and/or ${BANNER_VAR} not set in Xcode Cloud Workflow env vars; cannot generate AdMob.xcconfig"
+        exit 1
+    fi
+    cat > "Tuist/AdMob.xcconfig" <<EOF
+ADMOB_APP_ID = ${APP_ID}
+ADMOB_BANNER_UNIT_ID = ${BANNER}
+EOF
+    echo "Wrote Tuist/AdMob.xcconfig from ${APP_ID_VAR} + ${BANNER_VAR}"
+fi
+
 # 3.2) Generate Xcode workspace via Tuist. Tuist symlinks
 #      Game.xcworkspace/xcshareddata/swiftpm/Package.resolved →
 #      committed `.package.resolved` at repo root (#105), so xcodebuild's

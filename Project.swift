@@ -113,11 +113,18 @@ let project = Project(
         .local(path: "Packages/MinesweeperKit"),
         .local(path: "Packages/GameShellKit"),
     ],
+    // Per-config xcconfigs. Each wrapper `#include?`s two gitignored leaf
+    // xcconfigs:
+    //   - Tuist/Signing.xcconfig — DEVELOPMENT_TEAM (XCC: $CI_TEAM_ID).
+    //   - Tuist/AdMob.xcconfig — ADMOB_APP_ID + ADMOB_BANNER_UNIT_ID
+    //     (XCC: per-app env vars, see ci_post_clone.sh).
+    // The wrappers are committed (no secrets); their templates live at
+    // Tuist/Signing.xcconfig.example + Tuist/AdMob.xcconfig.example.
     settings: .settings(
         base: swiftSettings,
         configurations: [
-            .debug(name: "Debug", xcconfig: "Tuist/Signing.xcconfig"),
-            .release(name: "Release", xcconfig: "Tuist/Signing.xcconfig"),
+            .debug(name: "Debug", xcconfig: "Tuist/Config-Debug.xcconfig"),
+            .release(name: "Release", xcconfig: "Tuist/Config-Release.xcconfig"),
         ]
     ),
     targets: [sudokuTarget, minesweeperTarget],

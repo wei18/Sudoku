@@ -91,22 +91,31 @@ extension MinesweeperAppComposition {
         // accidentally serves production creatives. Release builds use MS's
         // production banner unit registered with the AdMob console.
         #if os(iOS)
-        #if DEBUG
-        let minesweeperBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google universal test
-        #else
-        // Mirrors Sudoku's REPLACE_IN_v2.5.3 fatalError gate: production Release
-        // builds crash at composition root until the real banner unit id is
-        // explicitly wired in (v1 release checklist). Prevents an
-        // un-pre-flighted Release build from silently serving real creatives
-        // against the production AdMob console.
-        let minesweeperBannerAdUnitID: String = {
-            fatalError(
-                "REPLACE_IN_MS_V1: production AdMob banner ad unit ID not wired"
-                + " — see project memory `minesweeper-admob-ids` for the MS"
-                + " production id, paired with the v1 release checklist"
+        // Banner ad unit ID is supplied via Info.plist key `GADBannerUnitID`,
+        // substituted at build time from `Tuist/AdMob.xcconfig` (gitignored;
+        // .example template committed). XCC writes the xcconfig from a
+        // per-workflow env var so Release builds get MS's production unit
+        // and Debug/sandbox builds get Google's universal test unit.
+        // Replaces the old DEBUG-vs-Release fatalError gate; the smoke
+        // test in `MinesweeperUITests/InfoPlistAdMobKeysTests.swift`
+        // catches missing-key misconfig pre-archive.
+        // Banner ad unit ID + safety net: catches both missing-key
+        // (substitution / xcconfig wiring broken) and unresolved-token
+        // (xcconfig missing or env var unset → literal `$()` embedded).
+        // Smoke tests in InfoPlistAdMobKeysTests cover key presence at
+        // test time; this guards both at app launch before AdMob SDK init.
+        guard
+            let minesweeperBannerAdUnitID = Bundle.main
+                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
+            !minesweeperBannerAdUnitID.isEmpty,
+            !minesweeperBannerAdUnitID.hasPrefix("$(")
+        else {
+            preconditionFailure(
+                "GADBannerUnitID missing or unresolved — check"
+                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
+                    + " vars are set for Release builds."
             )
-        }()
-        #endif
+        }
         let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: minesweeperBannerAdUnitID)
         #else
         let adProvider: any AdProvider = NoopAdProvider()
