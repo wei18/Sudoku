@@ -92,6 +92,12 @@ let minesweeperTarget = Target.target(
         "Minesweeper/Assets.xcassets",
         "Minesweeper/Resources/PrivacyInfo.xcprivacy",
         "Minesweeper/Resources/Localizable.xcstrings",
+        // LicensePlist-generated Settings.bundle (App Store Acknowledgements
+        // page). Source of truth: `license_plist.minesweeper.yml`. Regenerated
+        // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
+        // committed (.gitignore'd). Glob pattern so Tuist doesn't require the
+        // directory to exist at `tuist generate` time on dev machines.
+        .glob(pattern: "Minesweeper/Resources/Settings.bundle/**"),
     ],
     entitlements: .file(path: "Minesweeper/Minesweeper.entitlements"),
     dependencies: [
