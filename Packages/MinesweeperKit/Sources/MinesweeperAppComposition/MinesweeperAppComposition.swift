@@ -12,7 +12,8 @@
 //     macOS (wired in U15 2026-06-03)
 //   - `adGate` + `monetizationStateStore` — same shape as Sudoku
 //   - `monetizationController` — MS productId via parameterized init
-//   - `toastController` — shared toast surface (RootView wire pending U15)
+//   - `toastController` — shared toast surface (wired to MinesweeperRoot
+//     via `.toastOverlay` since U15 / PR #263)
 //
 // GameCenter remains unwired — no MS Game Center surface designed yet.
 //

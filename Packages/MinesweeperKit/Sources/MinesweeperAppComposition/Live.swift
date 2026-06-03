@@ -26,7 +26,7 @@
 //             ...)` — the parameterized init shipped with this PR so the
 //             same controller drives MS's ASC product instead of Sudoku's.
 //   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`
-//     MinesweeperRoot (U15 follow-up).
+//     (wired in U15 / PR #263; surfaced through `composition.rootView`).
 //
 // `.preview()` wires fakes from MonetizationTesting + `LivePersistence` with
 // .minesweeper config (IO is lazy — safe in Previews per its docstring).
