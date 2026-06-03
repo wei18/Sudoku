@@ -112,6 +112,10 @@ let project = Project(
         .local(path: "Packages/AppMonetizationKit"),
         .local(path: "Packages/MinesweeperKit"),
         .local(path: "Packages/GameShellKit"),
+        // macOS-only ASC API dev CLI (issue #254). Surfaced here so it's
+        // discoverable in the generated workspace; no app target depends on
+        // it (it's tooling, not part of either app binary).
+        .local(path: "Packages/ASCRegisterKit"),
     ],
     // Per-config xcconfigs. Each wrapper `#include?`s two gitignored leaf
     // xcconfigs:

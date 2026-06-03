@@ -26,7 +26,7 @@ for the rationale.
 
 ```bash
 source secrets/.env
-swift run --package-path Packages/SudokuKit ASCRegister iap plan \
+swift run --package-path Packages/ASCRegisterKit ASCRegister iap plan \
   --key   secrets/ASCAPI_AuthKey_${ASC_API_KEY_ID}.p8 \
   --key-id "$ASC_API_KEY_ID" \
   --issuer "$ASC_API_ISSUER" \
