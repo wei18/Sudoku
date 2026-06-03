@@ -18,6 +18,13 @@ public protocol AdProvider: Sendable {
     /// Force a fresh banner load. Used after the user dismisses the current
     /// banner and the gate re-opens (e.g. next calendar day).
     func refreshBanner() async throws
+
+    /// Release the resources backing a previously loaded banner handle. The UI
+    /// layer calls this when the `BannerSlotView` disappears so the live
+    /// provider can drop its retained `GADBannerView` instead of holding it for
+    /// the handle's lifetime (#221). No-op for providers that hold no per-handle
+    /// state, and safe to call with an unknown / already-disposed handle.
+    func dispose(handle: AdBannerHandle) async
 }
 
 // MARK: - AdBannerStatus

@@ -71,4 +71,15 @@ public actor LiveAdMobAdProvider: AdProvider {
             throw error
         }
     }
+
+    public func dispose(handle: AdBannerHandle) async {
+        // Forward to the bridge for the real `GADBannerView` teardown (#221).
+        // If the disposed handle is the one currently surfaced as `.loaded`,
+        // drop the status back to `.notInitialized` so a stale handle isn't
+        // reported after its view is gone.
+        await bridge.dispose(handle: handle)
+        if case .loaded(handle) = lastKnownStatus {
+            lastKnownStatus = .notInitialized
+        }
+    }
 }

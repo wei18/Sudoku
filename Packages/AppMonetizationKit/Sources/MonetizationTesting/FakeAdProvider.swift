@@ -28,6 +28,8 @@ public actor FakeAdProvider: AdProvider {
     private var cursor: Int = 0
     public private(set) var initializeCallCount: Int = 0
     public private(set) var refreshCallCount: Int = 0
+    /// Handles passed to `dispose(handle:)`, in call order, for test assertions.
+    public private(set) var disposedHandles: [AdBannerHandle] = []
 
     public init(scripted: ScriptedAdProviderState = ScriptedAdProviderState()) {
         self.scripted = scripted
@@ -60,5 +62,9 @@ public actor FakeAdProvider: AdProvider {
         if cursor + 1 < scripted.statusSequence.count {
             cursor += 1
         }
+    }
+
+    public func dispose(handle: AdBannerHandle) async {
+        disposedHandles.append(handle)
     }
 }
