@@ -100,4 +100,14 @@ extension PrivateCKConfig {
         zoneName: "com.wei18.sudoku.userZone",
         subscriptionID: "com.wei18.sudoku.userZone.changes"
     )
+
+    /// Identifiers used by the Minesweeper app. Distinct from `.sudoku` so
+    /// the two apps' zone / subscription namespaces never collide. The
+    /// CKContainer itself (`iCloud.com.wei18.minesweeper`) is resolved by
+    /// `CKContainer.default()` from the Minesweeper App target's
+    /// entitlements — not encoded here.
+    public static let minesweeper = PrivateCKConfig(
+        zoneName: "com.wei18.minesweeper.userZone",
+        subscriptionID: "com.wei18.minesweeper.userZone.changes"
+    )
 }
