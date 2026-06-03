@@ -225,32 +225,6 @@ let testTargets: [Target] = [
     ),
 ]
 
-// MARK: - ASCRegister CLI (additive tool target; not part of the App binary)
-//
-// Bootstraps Game Center achievements + leaderboards in App Store Connect
-// via the ASC API. Pure Foundation + CryptoKit — no external deps. Lives in
-// the SudokuKit package so it can share consistency tests with the
-// production GameCenterClient IDs.
-
-let ascRegisterTargets: [Target] = [
-    .executableTarget(
-        name: "ASCRegister",
-        dependencies: [],
-        path: "Sources/ASCRegister",
-        resources: [
-            .copy("Strings/gc-strings.xcstrings.patch"),
-            .copy("Strings/iap-strings.xcstrings.patch"),
-        ],
-        swiftSettings: swiftSettings
-    ),
-    .testTarget(
-        name: "ASCRegisterTests",
-        dependencies: ["ASCRegister"],
-        path: "Tests/ASCRegisterTests",
-        swiftSettings: swiftSettings
-    ),
-]
-
 // MARK: - Package
 
 let package = Package(
@@ -293,6 +267,6 @@ let package = Package(
         // See `meetings/2026-06-01_minesweeper-dev-roadmap.md` Phase X.
         .package(name: "GameShellKit", path: "../GameShellKit"),
     ],
-    targets: productionTargets + testTargets + ascRegisterTargets,
+    targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )
