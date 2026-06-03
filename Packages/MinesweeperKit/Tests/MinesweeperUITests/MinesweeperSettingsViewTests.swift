@@ -1,9 +1,12 @@
 // MinesweeperSettingsViewTests — sentinel coverage for the MS SettingsView.
 //
-// 2026-06-03 (MS monetization wire Phase 3): SettingsView is no longer the
-// "Coming soon" placeholder — it renders Purchases rows when a
-// `MonetizationStateController` is injected. These tests confirm both code
-// paths construct without crashing.
+// 2026-06-03 (MS monetization wire Phase 3): SettingsView renders Purchases
+// rows when a `MonetizationStateController` is injected. These tests confirm
+// both code paths construct without crashing.
+//
+// #277: SettingsView now also mounts the shared
+// `GameShellUI.SettingsAboutVersionRow` / `SettingsStorageSection` (the
+// "Coming soon" stub is gone). Construction stays the same via defaults.
 //
 // No snapshot infra this round (defer per Track A precedent).
 
@@ -17,7 +20,9 @@ import MonetizationUI
 @Suite struct MinesweeperSettingsViewTests {
 
     @Test func settingsViewConstructsWithoutController() {
-        // No monetization controller → "Coming soon" placeholder branch.
+        // No monetization controller → Purchases section omitted; About +
+        // Storage shared sections still render (defaults: version "1.0.0",
+        // no-op clearCache).
         let view = SettingsView()
         _ = view.body
     }

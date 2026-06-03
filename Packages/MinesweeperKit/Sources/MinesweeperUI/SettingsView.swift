@@ -9,16 +9,31 @@
 // passes a `MonetizationStateController` constructed against the MS ASC
 // productId. Tint is `.accentColor` — MS has no theme tokens yet.
 //
-// About / Storage rows are deferred to a follow-up; not in scope here.
+// #277: drops the "Coming soon" stub. About(Version) + Storage(Clear cache)
+// now reuse the shared `GameShellUI.SettingsAboutVersionRow` /
+// `SettingsStorageSection` — the same building blocks Sudoku adopts. The host
+// (LiveRouteFactory) supplies the version string (Bundle.main) and an async
+// clear-cache closure wired to MS persistence via `PersistenceProtocol`.
+// Clear-cache is parity-only until MS save-flow lands (latestInProgress()
+// returns nil today), but it IS wired to the real protocol method, not a
+// fake button. Tint is `.accentColor` — MS has no theme.
 
 public import SwiftUI
 public import MonetizationUI
 internal import GameShellUI
 
 public struct SettingsView: View {
+    private let version: String
+    private let clearCache: @MainActor () async -> Void
     private let monetizationController: MonetizationStateController?
 
-    public init(monetizationController: MonetizationStateController? = nil) {
+    public init(
+        version: String = "1.0.0",
+        clearCache: @escaping @MainActor () async -> Void = {},
+        monetizationController: MonetizationStateController? = nil
+    ) {
+        self.version = version
+        self.clearCache = clearCache
         self.monetizationController = monetizationController
     }
 
@@ -39,12 +54,13 @@ public struct SettingsView: View {
                         tintColor: .accentColor
                     )
                 }
-            } else {
-                Section {
-                    Text("Coming soon")
-                        .foregroundStyle(.secondary)
-                }
             }
+
+            Section("About") {
+                SettingsAboutVersionRow(version: version, tintColor: .accentColor)
+            }
+
+            SettingsStorageSection(clearCache: clearCache)
         }
         .task {
             if let controller = monetizationController {

@@ -9,6 +9,14 @@
 // `MonetizationStateController` through so SettingsView can mount the
 // shared `MonetizationUI` Purchases rows.
 //
+// #277: factory also threads `persistence` so the shared
+// `SettingsStorageSection` "Clear cache" action wires to the same
+// `PersistenceProtocol.latestInProgress()` → `deleteAbandoned(recordName:)`
+// shape Sudoku's `SettingsViewModel` uses. Parity-only until MS save-flow
+// lands (`latestInProgress()` returns nil today → the delete is a safe
+// no-op), but it IS the real protocol method, not a fake button. Version is
+// read from `Bundle.main` (CFBundleShortVersionString) at the callsite.
+//
 // The board destination is wrapped with a "New Game" toolbar Button that
 // pops back to the picker (`popToNewGame` → `path.removeAll()`). Wrapping at
 // this site (instead of editing `MinesweeperBoardView`) keeps the merged MVP
@@ -19,11 +27,19 @@ public import GameShellUI
 public import MinesweeperUI
 public import MonetizationCore
 public import MonetizationUI
+public import Persistence
+
+internal import Foundation
 
 public struct LiveRouteFactory: RouteFactory {
     public typealias Route = AppRoute
 
     private let monetizationController: MonetizationStateController?
+    // #277: threaded so the SettingsView "Clear cache" action can delete the
+    // active in-progress saved game via `PersistenceProtocol`. Optional so the
+    // existing nil-persistence callsites (previews) keep compiling — when nil,
+    // SettingsView gets an empty clear-cache closure.
+    private let persistence: (any PersistenceProtocol)?
     // U15 (2026-06-03): threaded into `MinesweeperBoardView` so it can mount
     // a `BannerSlotView` mirror below the grid. Optional so the existing
     // Phase 3 callsite (no monetization) keeps compiling; production wires
@@ -34,11 +50,13 @@ public struct LiveRouteFactory: RouteFactory {
     public init(
         monetizationController: MonetizationStateController? = nil,
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        persistence: (any PersistenceProtocol)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
         self.adGate = adGate
+        self.persistence = persistence
     }
 
     @MainActor
@@ -65,7 +83,35 @@ public struct LiveRouteFactory: RouteFactory {
                     }
             )
         case .settings:
-            return AnyView(SettingsView(monetizationController: monetizationController))
+            let version = (Bundle.main
+                .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+                ?? "1.0.0"
+            let persistence = self.persistence
+            return AnyView(
+                SettingsView(
+                    version: version,
+                    clearCache: { await Self.clearCache(persistence: persistence) },
+                    monetizationController: monetizationController
+                )
+            )
+        }
+    }
+
+    /// Deletes the active in-progress saved game, mirroring Sudoku's
+    /// `SettingsViewModel.clearCache()`. Parity-only until MS save-flow lands:
+    /// `latestInProgress()` returns nil today so this is a safe no-op, but it
+    /// exercises the real `PersistenceProtocol` path, not a fake button.
+    /// Errors are swallowed — MS has no error funnel wired into Settings yet
+    /// (a follow-up matching Sudoku's `errorReporter` thread can add one).
+    @MainActor
+    private static func clearCache(persistence: (any PersistenceProtocol)?) async {
+        guard let persistence else { return }
+        do {
+            if let candidate = try await persistence.latestInProgress() {
+                try await persistence.deleteAbandoned(recordName: candidate.recordName)
+            }
+        } catch {
+            // No-op: see doc comment. MS Settings has no error surface yet.
         }
     }
 
