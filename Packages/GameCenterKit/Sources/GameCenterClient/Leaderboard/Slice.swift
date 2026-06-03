@@ -14,17 +14,18 @@ internal import Foundation
 public protocol LeaderboardLoader: Sendable {
     /// Fetch a contiguous slice of leaderboard entries.
     ///
-    /// - Parameter player: When non-nil, the live `GKLeaderboardLoader` adapter
-    ///   centres the range on `GKLocalPlayer.local`'s rank — see issue #140.
-    ///   The teamPlayerID string is currently honoured ONLY as a "centre on
-    ///   local player" signal; non-local teamPlayerIDs are not supported in the
-    ///   live impl (the GameKit `loadEntries(for: [GKPlayer], …)` path requires
-    ///   `GKPlayer` instances, which can't be cheaply derived from teamPlayerID
-    ///   alone). Track non-local centring as a follow-up issue if needed.
+    /// - Parameter aroundLocalPlayer: When `true`, the live `GKLeaderboardLoader`
+    ///   adapter centres the range on `GKLocalPlayer.local`'s rank (issue #140);
+    ///   when `false` it returns the top-of-board window. Only the local player
+    ///   can be centred — true centring on an arbitrary player isn't reachable
+    ///   via public GameKit API (leaderboard entries expose `teamPlayerID`, but
+    ///   `GKPlayer.loadPlayers(forIdentifiers:)` takes `gamePlayerID`, with no
+    ///   public mapping between them). Defer arbitrary-player centring to a
+    ///   friends-leaderboard feature (its scope hands back `GKPlayer` directly).
     func loadSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice
 }
@@ -40,7 +41,7 @@ public enum LeaderboardSliceService {
         requestFriendsAuthorization: @Sendable () async throws -> FriendsAuthStatus,
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice {
         if scope == .friendsAllTime {
@@ -59,7 +60,7 @@ public enum LeaderboardSliceService {
         return try await loader.loadSlice(
             leaderboardId: leaderboardId,
             scope: scope,
-            around: player,
+            aroundLocalPlayer: aroundLocalPlayer,
             limit: limit
         )
     }

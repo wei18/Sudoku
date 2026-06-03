@@ -31,7 +31,7 @@ struct LeaderboardSliceTests {
             requestFriendsAuthorization: { .notDetermined },
             leaderboardId: "lb",
             scope: .globalAllTime,
-            around: nil,
+            aroundLocalPlayer: false,
             limit: 10
         )
         #expect(slice.entries.count == 10)
@@ -41,7 +41,7 @@ struct LeaderboardSliceTests {
         #expect(calls[0].scope == .globalAllTime)
     }
 
-    @Test func aroundPlayerPassesPlayerThrough() async throws {
+    @Test func aroundLocalPlayerFlagPassesThrough() async throws {
         let loader = FakeLeaderboardLoader()
         _ = try await LeaderboardSliceService.fetch(
             loader: loader,
@@ -49,11 +49,11 @@ struct LeaderboardSliceTests {
             requestFriendsAuthorization: { .authorized },
             leaderboardId: "lb",
             scope: .globalToday,
-            around: "P50",
+            aroundLocalPlayer: true,
             limit: 10
         )
         let calls = await loader.calls
-        #expect(calls[0].around == "P50")
+        #expect(calls[0].aroundLocalPlayer == true)
     }
 
     @Test func friendsDeniedThrowsAccessError() async throws {
@@ -65,7 +65,7 @@ struct LeaderboardSliceTests {
                 requestFriendsAuthorization: { .denied },
                 leaderboardId: "lb",
                 scope: .friendsAllTime,
-                around: nil,
+                aroundLocalPlayer: false,
                 limit: 10
             )
         }
@@ -82,7 +82,7 @@ struct LeaderboardSliceTests {
                 requestFriendsAuthorization: { .restricted },
                 leaderboardId: "lb",
                 scope: .friendsAllTime,
-                around: nil,
+                aroundLocalPlayer: false,
                 limit: 10
             )
         }
@@ -100,7 +100,7 @@ struct LeaderboardSliceTests {
             },
             leaderboardId: "lb",
             scope: .friendsAllTime,
-            around: nil,
+            aroundLocalPlayer: false,
             limit: 10
         )
         #expect(await requestCount.count == 1)
@@ -120,7 +120,7 @@ struct LeaderboardSliceTests {
             },
             leaderboardId: "lb",
             scope: .globalAllTime,
-            around: nil,
+            aroundLocalPlayer: false,
             limit: 10
         )
         #expect(await requestCount.count == 0)

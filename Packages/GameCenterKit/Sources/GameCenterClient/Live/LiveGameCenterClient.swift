@@ -170,7 +170,7 @@ public actor LiveGameCenterClient: GameCenterClient {
     public func fetchLeaderboardSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice {
         // Per §How.3.5: delegate the friends-auth precondition + load to
@@ -188,7 +188,7 @@ public actor LiveGameCenterClient: GameCenterClient {
             },
             leaderboardId: leaderboardId,
             scope: scope,
-            around: player,
+            aroundLocalPlayer: aroundLocalPlayer,
             limit: limit
         )
     }

@@ -69,7 +69,7 @@ public final class CompletionViewModel {
             let slice = try await gameCenter.fetchLeaderboardSlice(
                 leaderboardId: leaderboardId,
                 scope: .globalAllTime,
-                around: nil,
+                aroundLocalPlayer: false,
                 limit: 3
             )
             state = .loaded(slice)

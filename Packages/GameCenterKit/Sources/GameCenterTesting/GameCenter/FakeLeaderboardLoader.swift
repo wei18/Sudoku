@@ -10,7 +10,7 @@ public actor FakeLeaderboardLoader: LeaderboardLoader {
     public struct Call: Sendable, Equatable {
         public let leaderboardId: String
         public let scope: LeaderboardScope
-        public let around: String?
+        public let aroundLocalPlayer: Bool
         public let limit: Int
     }
 
@@ -31,10 +31,10 @@ public actor FakeLeaderboardLoader: LeaderboardLoader {
     public func loadSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice {
-        calls.append(Call(leaderboardId: leaderboardId, scope: scope, around: player, limit: limit))
+        calls.append(Call(leaderboardId: leaderboardId, scope: scope, aroundLocalPlayer: aroundLocalPlayer, limit: limit))
         return scriptedSlice
     }
 }

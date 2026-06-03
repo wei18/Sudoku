@@ -48,7 +48,7 @@ struct LiveGameCenterClientLeaderboardSliceTests {
         let result = try await client.fetchLeaderboardSlice(
             leaderboardId: "lb",
             scope: .globalAllTime,
-            around: nil,
+            aroundLocalPlayer: false,
             limit: 5
         )
 
@@ -72,7 +72,7 @@ struct LiveGameCenterClientLeaderboardSliceTests {
             _ = try await client.fetchLeaderboardSlice(
                 leaderboardId: "lb",
                 scope: .friendsAllTime,
-                around: nil,
+                aroundLocalPlayer: false,
                 limit: 5
             )
         }
@@ -90,13 +90,13 @@ struct LiveGameCenterClientLeaderboardSliceTests {
         let result = try await client.fetchLeaderboardSlice(
             leaderboardId: "lb",
             scope: .globalToday,
-            around: "P50",
+            aroundLocalPlayer: true,
             limit: 3
         )
         #expect(result.scope == .globalToday)
         let calls = await loader.calls
         #expect(calls.count == 1)
-        #expect(calls[0].around == "P50")
+        #expect(calls[0].aroundLocalPlayer == true)
         #expect(calls[0].scope == .globalToday)
     }
 }

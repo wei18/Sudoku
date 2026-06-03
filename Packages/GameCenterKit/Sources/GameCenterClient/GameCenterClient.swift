@@ -45,13 +45,15 @@ public protocol GameCenterClient: Sendable {
     /// Report a single achievement's progress percent (0...100).
     func reportAchievement(_ achievement: AchievementProgress) async throws
 
-    /// Fetch a leaderboard slice in the given scope. `around` lets the
-    /// caller request a window centered on a specific player; pass nil
-    /// for `globalAllTime`/`globalToday` "top of the world" requests.
+    /// Fetch a leaderboard slice in the given scope. Set `aroundLocalPlayer`
+    /// to `true` to request a window centred on the local player's rank;
+    /// leave it `false` for "top of the world" requests. Only the local
+    /// player can be centred (see `LeaderboardLoader.loadSlice`); centring on
+    /// an arbitrary player is deferred to a friends-leaderboard feature.
     func fetchLeaderboardSlice(
         leaderboardId: String,
         scope: LeaderboardScope,
-        around player: String?,
+        aroundLocalPlayer: Bool,
         limit: Int
     ) async throws -> LeaderboardSlice
 
