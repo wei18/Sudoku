@@ -15,14 +15,24 @@
 
 public import SwiftUI
 public import GameShellUI
+public import MonetizationUI
 
 public struct MinesweeperRoot: View {
     @State private var path: [AppRoute] = []
 
     private let routeFactory: any RouteFactory<AppRoute>
+    // U15 (2026-06-03): mounts `.toastOverlay(...)` at the Root so purchase /
+    // restore results land on a single shared bottom overlay (mirrors
+    // SudokuUI.RootView). Optional so the existing one-argument init keeps
+    // compiling for previews.
+    private let toastController: ToastController?
 
-    public init(routeFactory: any RouteFactory<AppRoute>) {
+    public init(
+        routeFactory: any RouteFactory<AppRoute>,
+        toastController: ToastController? = nil
+    ) {
         self.routeFactory = routeFactory
+        self.toastController = toastController
     }
 
     public var body: some View {
@@ -34,6 +44,14 @@ public struct MinesweeperRoot: View {
             rootContent: {
                 NewGameView(path: $path)
             }
+        )
+        // MS uses SwiftUI primitive tints until MS theme tokens land. Sudoku
+        // reads `theme.status.success/error` via SudokuUI's theme env; MS
+        // mirrors the call shape without the theme dep.
+        .toastOverlay(
+            toastController,
+            successTint: .green,
+            failureTint: .red
         )
     }
 

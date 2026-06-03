@@ -8,8 +8,8 @@
 // MS monetization wire Phase 3 (2026-06-03) adds:
 //   - `persistence` — `LivePersistence(ckConfig: .minesweeper, ...)`
 //   - `iapClient` — `LiveStoreKit2IAPClient(knownProductIds: [...remove_ads])`
-//   - `adProvider` — `NoopAdProvider` on all platforms this round
-//     (LiveAdMobBridge wire deferred to U15)
+//   - `adProvider` — `LiveAdMobAdProvider` on iOS / `NoopAdProvider` on
+//     macOS (wired in U15 2026-06-03)
 //   - `adGate` + `monetizationStateStore` — same shape as Sudoku
 //   - `monetizationController` — MS productId via parameterized init
 //   - `toastController` — shared toast surface (RootView wire pending U15)
@@ -80,6 +80,9 @@ public struct MinesweeperAppComposition {
     /// bound to this composition's `routeFactory`. The App target just calls
     /// `composition.rootView` inside its `WindowGroup`.
     public var rootView: some View {
-        MinesweeperRoot(routeFactory: routeFactory)
+        MinesweeperRoot(
+            routeFactory: routeFactory,
+            toastController: toastController
+        )
     }
 }

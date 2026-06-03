@@ -24,6 +24,29 @@
     <string>1</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <!--
+      Google Mobile Ads SDK 13.x requires this key to be present at app launch
+      (the SDK crashes early in `MobileAds.shared.start` if absent).
+      Currently set to Google's UNIVERSAL TEST App ID — mirrors Sudoku's
+      Info.plist convention (defer production-ID swap to v1 release per
+      project memory `admob-production-ids` / `minesweeper-admob-ids`).
+      The MS production App ID `ca-app-pub-8986741979385138~3575413966`
+      will replace this value at v1 release time.
+      Per-ad-unit IDs in `Packages/MinesweeperKit/Sources/MinesweeperAppComposition/Live.swift`
+      remain DEBUG-gated (Google universal test banner in DEBUG, MS production
+      banner unit in Release) so debug builds never accidentally serve real
+      creatives via debug devices.
+    -->
+    <key>GADApplicationIdentifier</key>
+    <string>ca-app-pub-3940256099942544~1458002511</string>
+    <!--
+      Required by App Tracking Transparency. The AdMob / UMP consent flow at
+      app launch calls `ATTrackingManager.requestTrackingAuthorization` (see
+      `Packages/AppMonetizationKit/Sources/AdsAdMob/ATTPresenter.swift`).
+      Without this key the OS terminates the process at TCC.
+    -->
+    <key>NSUserTrackingUsageDescription</key>
+    <string>Minesweeper uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>

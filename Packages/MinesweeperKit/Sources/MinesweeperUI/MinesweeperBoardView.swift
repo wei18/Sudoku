@@ -9,18 +9,37 @@
 
 public import SwiftUI
 public import MinesweeperEngine
+public import MonetizationCore
 internal import MinesweeperGameState
 
 public struct MinesweeperBoardView: View {
 
     @State private var viewModel: MinesweeperGameViewModel
+    // U15 (2026-06-03): banner slot wiring. Optional so the merged MVP `init`
+    // shapes (used by `#Preview` + tests) keep compiling without monetization.
+    // Production callsites wire both via `LiveRouteFactory`.
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
 
-    public init(viewModel: MinesweeperGameViewModel) {
+    public init(
+        viewModel: MinesweeperGameViewModel,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
+    ) {
         self._viewModel = State(initialValue: viewModel)
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
-    public init(difficulty: Difficulty = .beginner, seed: UInt64 = 0) {
+    public init(
+        difficulty: Difficulty = .beginner,
+        seed: UInt64 = 0,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
+    ) {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(difficulty: difficulty, seed: seed))
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     public var body: some View {
@@ -32,6 +51,14 @@ public struct MinesweeperBoardView: View {
                         terminalOverlay
                     }
                 }
+            // Banner sits between the grid and the bottom edge. Mirrors
+            // Sudoku's BoardView slot pattern. Suppressed during terminal
+            // states (win / lose) — showing an ad on top of the "Boom" or
+            // "You won" overlay contradicts the moment's tone, same way
+            // Sudoku suppresses banners during pause.
+            if !viewModel.isTerminal, let adProvider, let adGate {
+                MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
+            }
         }
         .padding()
         .task {
