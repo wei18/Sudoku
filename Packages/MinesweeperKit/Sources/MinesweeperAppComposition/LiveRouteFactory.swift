@@ -62,6 +62,18 @@ public struct LiveRouteFactory: RouteFactory {
     @MainActor
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
+        case .newGame:
+            // Difficulty picker — was the old root content; now a destination
+            // pushed from the Home "New Game" card / sidebar (#288 / #289).
+            return AnyView(NewGameView(path: path ?? .constant([])))
+        case .daily:
+            // Was unreachable (no AppRoute case). Now resolved here so the
+            // Home "Daily" card / sidebar reaches it. The hub shows
+            // date-seeded placeholder cards until the Daily MODEL lands (#290).
+            return AnyView(MinesweeperDailyHubView(path: path ?? .constant([])))
+        case .practice:
+            // Was unreachable (no AppRoute case). Now reachable from Home.
+            return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
         case .board(let difficulty, let seed):
             return AnyView(
                 MinesweeperBoardView(

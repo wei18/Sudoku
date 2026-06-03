@@ -4,21 +4,23 @@
 // generic shell owns the NavigationStackHost shape + sidebar rendering;
 // MinesweeperRoot supplies:
 //   - The path (`[AppRoute]`) state.
-//   - The sidebar items (New Game / Settings).
-//   - The root content (`NewGameView`).
+//   - The sidebar items (New Game / Daily / Practice / Leaderboard / Settings).
+//   - The root content (`MinesweeperHomeView`).
 //   - A `RouteFactory<AppRoute>` for destination resolution.
 //
-// Mirrors the shape of `SudokuKit.RootView` but is radically simpler —
-// Sudoku threads a RootViewModel + monetization + toast surfaces; Minesweeper
-// just holds local navigation state. Persistence / monetization / Daily /
-// Practice are deferred until the product surface is designed.
+// Mirrors the shape of `SudokuKit.RootView` — Home is the root content; the
+// sidebar mirrors the Home mode cards. #288 / #289 (2026-06-04) swapped the
+// root content from the bare `NewGameView` to the Home mode-card surface and
+// made the Daily / Practice hubs reachable.
 
 public import SwiftUI
 public import GameShellUI
+public import MonetizationCore
 public import MonetizationUI
 
 public struct MinesweeperRoot: View {
     @State private var path: [AppRoute] = []
+    @Environment(\.theme) private var theme
 
     private let routeFactory: any RouteFactory<AppRoute>
     // U15 (2026-06-03): mounts `.toastOverlay(...)` at the Root so purchase /
@@ -26,13 +28,26 @@ public struct MinesweeperRoot: View {
     // SudokuUI.RootView). Optional so the existing one-argument init keeps
     // compiling for previews.
     private let toastController: ToastController?
+    // #288 / #289: forwarded to `MinesweeperHomeView` for its banner slot +
+    // Remove Ads card. Home is the root content (not a destination), so the
+    // route factory can't thread these for it — Root passes them directly,
+    // mirroring `SudokuUI.RootView`.
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
+    private let monetizationController: MonetizationStateController?
 
     public init(
         routeFactory: any RouteFactory<AppRoute>,
-        toastController: ToastController? = nil
+        toastController: ToastController? = nil,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil,
+        monetizationController: MonetizationStateController? = nil
     ) {
         self.routeFactory = routeFactory
         self.toastController = toastController
+        self.adProvider = adProvider
+        self.adGate = adGate
+        self.monetizationController = monetizationController
     }
 
     public var body: some View {
@@ -42,22 +57,24 @@ public struct MinesweeperRoot: View {
             sidebarItems: sidebarItems,
             routeFactory: routeFactory,
             rootContent: {
-                NewGameView(path: $path)
+                MinesweeperHomeView(
+                    viewModel: MinesweeperHomeViewModel(path: $path),
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    monetizationController: monetizationController
+                )
             }
         )
-        // MS uses SwiftUI primitive tints until MS theme tokens land. Sudoku
-        // reads `theme.status.success/error` via SudokuUI's theme env; MS
-        // mirrors the call shape without the theme dep.
         .toastOverlay(
             toastController,
-            successTint: .green,
-            failureTint: .red
+            successTint: theme.status.success.resolved,
+            failureTint: theme.status.error.resolved
         )
     }
 
-    // Sidebar mirrors the two Standard-tier entries. New Game pops back to
-    // root (root content is NewGameView, so an empty path == picker visible).
-    // Settings pushes its placeholder destination.
+    // Sidebar mirrors the Home mode cards. New Game / Daily / Practice /
+    // Settings push an `AppRoute`; Leaderboard is a no-op stub until MS Game
+    // Center lands (#291) — present in the list for parity but inert.
     //
     // §設計決定: same as Sudoku's RootView — direct `path.append` / mutation
     // inside the onTap closure (not `NavigationLink(value:)`) so the mutation
@@ -69,8 +86,20 @@ public struct MinesweeperRoot: View {
             SidebarItem(
                 id: "newGame",
                 titleKey: "New Game",
-                systemImage: "play.circle",
-                onTap: { path.removeAll() }
+                systemImage: "plus.circle",
+                onTap: { path.append(.newGame) }
+            ),
+            SidebarItem(
+                id: "daily",
+                titleKey: "Daily",
+                systemImage: "calendar",
+                onTap: { path.append(.daily) }
+            ),
+            SidebarItem(
+                id: "practice",
+                titleKey: "Practice",
+                systemImage: "dice",
+                onTap: { path.append(.practice) }
             ),
             SidebarItem(
                 id: "settings",
@@ -90,8 +119,14 @@ private struct PreviewRouteFactory: RouteFactory {
 
     func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
+        case .newGame:
+            return AnyView(NewGameView(path: path ?? .constant([])))
         case .board(let difficulty, let seed):
             return AnyView(Text("Preview board: \(String(describing: difficulty)) seed=\(seed)"))
+        case .daily:
+            return AnyView(MinesweeperDailyHubView(path: path ?? .constant([])))
+        case .practice:
+            return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
         case .settings:
             return AnyView(Text("Preview settings"))
         }
@@ -100,4 +135,5 @@ private struct PreviewRouteFactory: RouteFactory {
 
 #Preview {
     MinesweeperRoot(routeFactory: PreviewRouteFactory())
+        .environment(\.theme, MinesweeperTheme())
 }
