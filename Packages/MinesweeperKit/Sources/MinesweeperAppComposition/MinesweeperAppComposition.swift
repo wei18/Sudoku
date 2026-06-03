@@ -83,7 +83,13 @@ public struct MinesweeperAppComposition {
     public var rootView: some View {
         MinesweeperRoot(
             routeFactory: routeFactory,
-            toastController: toastController
+            toastController: toastController,
+            // #288 / #289: Home is the root content and mounts the banner slot
+            // + Remove Ads card directly (it's not a RouteFactory destination),
+            // so Root threads these in — mirrors `SudokuKit.AppComposition`.
+            adProvider: adProvider,
+            adGate: adGate,
+            monetizationController: monetizationController
         )
         // #278 Tier-1 Phase 2b: inject Minesweeper's concrete palette at the
         // composition root. GameShellUI's `\.theme` default is a palette-neutral
