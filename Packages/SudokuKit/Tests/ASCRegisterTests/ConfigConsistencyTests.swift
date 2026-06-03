@@ -105,13 +105,27 @@ internal struct ConfigConsistencyTests {
 
     // MARK: - IAP (issue #200, Phase 1.a)
 
-    @Test("Remove-ads IAP productId is byte-equal to the StoreKit2 canonical identifier")
+    @Test("Remove-ads IAP productIds are byte-equal to the StoreKit2 canonical identifiers (Sudoku + Minesweeper)")
     internal func iapProductId() {
         // Hard-coded here (mirrors GC tests pattern) so this file stays
         // import-light; IAPStoreKit2 is not imported. If the StoreKit2
         // constant ever drifts, fix BOTH places — this test will fail first.
-        #expect(Config.iaps.count == 1)
+        #expect(Config.iaps.count == 2)
         #expect(Config.iaps[0].productId == "com.wei18.sudoku.iap.remove_ads")
-        #expect(Config.allIAPProductIds == ["com.wei18.sudoku.iap.remove_ads"])
+        #expect(Config.iaps[1].productId == "com.wei18.minesweeper.iap.remove_ads")
+        #expect(Config.allIAPProductIds == [
+            "com.wei18.sudoku.iap.remove_ads",
+            "com.wei18.minesweeper.iap.remove_ads"
+        ])
+    }
+
+    @Test("IAPProduct.shortId resolves to spec'd xcstrings key prefix for both apps")
+    internal func iapShortIdNamespace() {
+        // Sudoku: legacy short prefix (no app namespace)
+        #expect(Config.iaps[0].shortId == "remove_ads")
+        #expect(Config.iaps[0].nameKey == "iap.remove_ads.name")
+        // Minesweeper: namespaced under app shortname
+        #expect(Config.iaps[1].shortId == "minesweeper.remove_ads")
+        #expect(Config.iaps[1].nameKey == "iap.minesweeper.remove_ads.name")
     }
 }

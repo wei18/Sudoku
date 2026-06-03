@@ -83,7 +83,7 @@ internal enum Config {
         achievements.reduce(0) { $0 + $1.points }
     }
 
-    // MARK: - In-App Purchases (issue #200, Phase 1.a)
+    // MARK: - In-App Purchases (issue #200, Phase 1.a + MS Phase 2)
 
     /// v2.5 IAP products driven by ASCRegister. Phase 1.a only mutates
     /// metadata on EXISTING products in ASC (localizations + reviewNote +
@@ -92,6 +92,15 @@ internal enum Config {
     ///
     /// `productId` must equal the StoreKit2 product identifier shipped in
     /// the App binary (`Packages/AppMonetizationKit/Sources/IAPStoreKit2/`).
+    ///
+    /// **Multi-app design (MS Phase 2):** both Sudoku and Minesweeper
+    /// remove-ads products coexist in this single list. ASCRegister is
+    /// invoked once per ASC app via `--app-id <id>`; the IAP reconciler
+    /// looks each `Config.iaps` entry up on the targeted app and silently
+    /// no-ops on the ones not found (e.g. running against the Sudoku app
+    /// skips the Minesweeper product, and vice versa). This avoids the
+    /// ceremony of a per-app config struct for only two products. If a
+    /// third app or 10+ products land, revisit a per-app split.
     internal static let iaps: [IAPProduct] = [
         IAPProduct(
             productId: "com.wei18.sudoku.iap.remove_ads",
@@ -101,6 +110,16 @@ internal enum Config {
                 This non-consumable IAP removes banner and interstitial ads \
                 app-wide. Test by purchasing in Settings → Pro → Remove Ads. \
                 After purchase, ads should not appear anywhere in the app.
+                """
+        ),
+        IAPProduct(
+            productId: "com.wei18.minesweeper.iap.remove_ads",
+            referenceName: "Remove Ads v1",
+            familyShareable: true,
+            reviewNote: """
+                This non-consumable IAP removes banner ads app-wide. Test \
+                by purchasing in Settings → Pro → Remove Ads. After \
+                purchase, ads should not appear anywhere in the app.
                 """
         )
     ]
@@ -253,11 +272,28 @@ internal struct IAPProduct: Sendable, Equatable {
     /// App Review during IAP screening.
     internal let reviewNote: String
 
-    /// Short identifier stripped of the `"com.wei18.sudoku.iap."` prefix,
-    /// used to derive xcstrings keys (`iap.<shortId>.name` /
-    /// `iap.<shortId>.description`).
+    /// Short identifier used to derive xcstrings keys
+    /// (`iap.<shortId>.name` / `iap.<shortId>.description`).
+    ///
+    /// Two namespaces are supported (MS Phase 2):
+    ///   - Sudoku products (`com.wei18.sudoku.iap.<x>`) → `<x>`
+    ///     (preserves the shipped Sudoku key shape e.g. `iap.remove_ads.name`).
+    ///   - Other-app products (`com.wei18.<app>.iap.<x>`) → `<app>.<x>`
+    ///     (e.g. MS → `minesweeper.remove_ads`, yielding the spec'd key
+    ///     `iap.minesweeper.remove_ads.name`).
+    /// Anything not matching either pattern returns the productId unchanged
+    /// — the resulting xcstrings lookup will simply miss and the locale
+    /// be skipped, surfacing the gap rather than silently corrupting a key.
     internal var shortId: String {
-        productId.replacingOccurrences(of: "com.wei18.sudoku.iap.", with: "")
+        let sudokuPrefix = "com.wei18.sudoku.iap."
+        if productId.hasPrefix(sudokuPrefix) {
+            return String(productId.dropFirst(sudokuPrefix.count))
+        }
+        let vendorPrefix = "com.wei18."
+        guard productId.hasPrefix(vendorPrefix) else { return productId }
+        let trimmed = String(productId.dropFirst(vendorPrefix.count))
+        // Collapse the `.iap.` infix to a single dot, leaving `<app>.<x>`.
+        return trimmed.replacingOccurrences(of: ".iap.", with: ".")
     }
 
     internal var nameKey: String { "iap.\(shortId).name" }
