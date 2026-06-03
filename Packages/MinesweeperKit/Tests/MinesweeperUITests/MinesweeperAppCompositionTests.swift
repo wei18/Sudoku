@@ -10,6 +10,7 @@
 
 import Testing
 @testable import MinesweeperAppComposition
+import MonetizationCore
 import Telemetry
 
 @MainActor
@@ -60,6 +61,19 @@ import Telemetry
             underlying: DummyError(),
             source: "test"
         )
+    }
+
+    @Test func liveAdProviderIsLiveOnIOSNoopOnMac() {
+        // U15 (2026-06-03): `.live()` swaps `NoopAdProvider` for the real
+        // `LiveAdMobAdProvider` on iOS. macOS keeps Noop since the Google
+        // Mobile Ads SDK ships an iOS-only xcframework.
+        let bag = MinesweeperAppComposition.live()
+        let providerType = String(describing: type(of: bag.adProvider))
+        #if os(iOS)
+        #expect(providerType.contains("LiveAdMobAdProvider"))
+        #else
+        #expect(providerType.contains("NoopAdProvider"))
+        #endif
     }
 
     @Test func monetizationControllerUsesMSProductId() {

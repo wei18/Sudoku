@@ -35,6 +35,9 @@ let productionTargets: [Target] = [
             // MS monetization wire Phase 3 (2026-06-03): SettingsView mounts
             // the shared `RemoveAdsRow` / `AdsRemovedRow` / `RestorePurchasesRow`.
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
+            // U15 (2026-06-03): MinesweeperBannerSlotView + MinesweeperBoardView
+            // touch `AdProvider` / `AdGate` directly.
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -50,12 +53,15 @@ let productionTargets: [Target] = [
             // Telemetry + LiveErrorReporter; `.preview()` wires empty-sinks +
             // NoopErrorReporter. View-level usage is intentionally deferred.
             .product(name: "Telemetry", package: "TelemetryKit"),
-            // MS monetization wire Phase 3 (2026-06-03). NOTE: no AdsAdMob —
-            // U15 deferred; `.live()` uses `NoopAdProvider` from MonetizationCore.
+            // MS monetization wire Phase 3 + U15 (2026-06-03). AdsAdMob wires
+            // `LiveAdMobAdProvider` on iOS; on macOS `.live()` falls back to
+            // `NoopAdProvider` from MonetizationCore (the AdMob SDK ships an
+            // iOS-only xcframework).
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
             .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
+            .product(name: "AdsAdMob", package: "AppMonetizationKit"),
             // `.preview()` wires `FakeIAPClient` / `FakeAdGateStateStore` /
             // `FakeAdProvider` so SwiftUI Previews stay zero-IO. Production
             // bag uses Live variants only — but the tier-1 helpers from

@@ -15,20 +15,23 @@
 //     PR #257 so the MS zone / subscription IDs never collide with Sudoku.
 //   - `LiveStoreKit2IAPClient(knownProductIds: [...])` — MS Remove Ads SKU
 //     from PR #258.
-//   - `NoopAdProvider` on ALL platforms this round — `LiveAdMobAdProvider`
-//     wire deferred to U15 (per dispatch §Out of scope). BoardView banner
-//     and AdMob bridge initialization come with U15.
+//   - `LiveAdMobAdProvider` on iOS (DEBUG = Google universal test banner,
+//     Release = fatalError gate per Sudoku precedent until v1 release
+//     checklist swaps in MS production banner id from project memory
+//     `minesweeper-admob-ids`); `NoopAdProvider` on macOS (AdMob SDK is
+//     iOS-only). Wired in U15 (2026-06-03).
 //   - `AdGate(store: persistence.monetizationStateStore(),
 //             onPersistenceError: telemetry funnel)`.
 //   - `MonetizationStateController(productId: minesweeperRemoveAdsProductId,
 //             ...)` — the parameterized init shipped with this PR so the
 //             same controller drives MS's ASC product instead of Sudoku's.
-//   - `ToastController()` — instantiated but not yet mounted on
+//   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`
 //     MinesweeperRoot (U15 follow-up).
 //
 // `.preview()` wires fakes from MonetizationTesting + `LivePersistence` with
 // .minesweeper config (IO is lazy — safe in Previews per its docstring).
 
+internal import AdsAdMob
 internal import Foundation
 internal import IAPStoreKit2
 internal import MonetizationCore
@@ -78,11 +81,32 @@ extension MinesweeperAppComposition {
             }
         )
 
-        // AdProvider: NoopAdProvider on ALL platforms this round. The live
-        // AdMob wire is deferred to U15 (banner + bridge work). NoopAdProvider
-        // returns `.suppressed` so BannerSlotView collapses to EmptyView once
-        // MS mounts one.
+        // AdProvider: live AdMob on iOS, Noop on macOS (AdMob SDK ships an
+        // iOS-only xcframework — see AppMonetizationKit/Package.swift gating).
+        // Mirrors Sudoku's `Live.swift` shape exactly. MS-specific identifiers
+        // live here (banner ad unit), NOT inside AppMonetizationKit, so the
+        // package can be linked by Sudoku without baking MS IDs into its
+        // binary (and vice-versa). The DEBUG-gate keeps debug builds on
+        // Google's universal test banner so real-device verification never
+        // accidentally serves production creatives. Release builds use MS's
+        // production banner unit registered with the AdMob console.
+        #if os(iOS)
+        #if DEBUG
+        let minesweeperBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"  // Google universal test
+        #else
+        // Mirrors Sudoku's REPLACE_IN_v2.5.3 fatalError gate: production Release
+        // builds crash at composition root until the real banner unit id is
+        // explicitly wired in (v1 release checklist). Prevents an
+        // un-pre-flighted Release build from silently serving real creatives
+        // against the production AdMob console.
+        let minesweeperBannerAdUnitID: String = {
+            fatalError("REPLACE_IN_MS_V1: production AdMob banner ad unit ID not wired — see project memory `minesweeper-admob-ids` for the MS production id, paired with the v1 release checklist")
+        }()
+        #endif
+        let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: minesweeperBannerAdUnitID)
+        #else
         let adProvider: any AdProvider = NoopAdProvider()
+        #endif
 
         // IAP client. Telemetry-funnels catalog desync into the same channel
         // Sudoku uses so the M3 placeholder substitution doesn't silently
@@ -116,7 +140,9 @@ extension MinesweeperAppComposition {
         monetizationController.startListeningForLifetimeOfApp()
 
         let routeFactory = LiveRouteFactory(
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            adProvider: adProvider,
+            adGate: adGate
         )
 
         return MinesweeperAppComposition(
@@ -166,7 +192,9 @@ extension MinesweeperAppComposition {
         )
 
         let routeFactory = LiveRouteFactory(
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            adProvider: adProvider,
+            adGate: adGate
         )
 
         return MinesweeperAppComposition(

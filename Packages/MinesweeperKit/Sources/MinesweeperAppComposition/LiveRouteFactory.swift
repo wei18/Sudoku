@@ -17,15 +17,28 @@
 public import SwiftUI
 public import GameShellUI
 public import MinesweeperUI
+public import MonetizationCore
 public import MonetizationUI
 
 public struct LiveRouteFactory: RouteFactory {
     public typealias Route = AppRoute
 
     private let monetizationController: MonetizationStateController?
+    // U15 (2026-06-03): threaded into `MinesweeperBoardView` so it can mount
+    // a `BannerSlotView` mirror below the grid. Optional so the existing
+    // Phase 3 callsite (no monetization) keeps compiling; production wires
+    // both, previews pass nil.
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
 
-    public init(monetizationController: MonetizationStateController? = nil) {
+    public init(
+        monetizationController: MonetizationStateController? = nil,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
+    ) {
         self.monetizationController = monetizationController
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     @MainActor
@@ -33,7 +46,12 @@ public struct LiveRouteFactory: RouteFactory {
         switch route {
         case .board(let difficulty, let seed):
             return AnyView(
-                MinesweeperBoardView(difficulty: difficulty, seed: seed)
+                MinesweeperBoardView(
+                    difficulty: difficulty,
+                    seed: seed,
+                    adProvider: adProvider,
+                    adGate: adGate
+                )
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
                             Button("New Game", systemImage: "plus.circle") {
