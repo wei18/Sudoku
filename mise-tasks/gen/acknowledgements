@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
-#MISE description="Generate Settings.bundle/Acknowledgements page from SwiftPM dep graph (license_plist.yml)."
+#MISE description="Generate Settings.bundle/Acknowledgements pages for both apps (license_plist*.yml)."
 set -euo pipefail
-exec mise exec ubi:mono0926/LicensePlist -- license-plist "$@"
+
+# Pass-through mode: when args are supplied (e.g. CI invokes with an explicit
+# `--config-path <app>.yml` to generate only the app being built), forward them
+# verbatim to license-plist.
+if [[ $# -gt 0 ]]; then
+    exec mise exec ubi:mono0926/LicensePlist -- license-plist "$@"
+fi
+
+# Default (no-args) mode — local dev: regenerate BOTH apps' Acknowledgements.
+# Idempotent (`force: true` in each config overwrites stale entries).
+echo "==> Sudoku acknowledgements (license_plist.yml)"
+mise exec ubi:mono0926/LicensePlist -- license-plist --config-path license_plist.yml
+
+echo "==> Minesweeper acknowledgements (license_plist.minesweeper.yml)"
+mise exec ubi:mono0926/LicensePlist -- license-plist --config-path license_plist.minesweeper.yml
