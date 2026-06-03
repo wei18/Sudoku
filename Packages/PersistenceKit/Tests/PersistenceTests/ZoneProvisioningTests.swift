@@ -27,4 +27,12 @@ struct ZoneProvisioningTests {
         #expect(PrivateCKConfig.sudoku.zoneName == "com.wei18.sudoku.userZone")
         #expect(PrivateCKConfig.sudoku.subscriptionID == "com.wei18.sudoku.userZone.changes")
     }
+
+    @Test func minesweeperConfigUsesDistinctNamespace() {
+        #expect(PrivateCKConfig.minesweeper.zoneName == "com.wei18.minesweeper.userZone")
+        #expect(PrivateCKConfig.minesweeper.subscriptionID == "com.wei18.minesweeper.userZone.changes")
+        // No namespace collision with Sudoku — each app owns its own.
+        #expect(PrivateCKConfig.minesweeper.zoneName != PrivateCKConfig.sudoku.zoneName)
+        #expect(PrivateCKConfig.minesweeper.subscriptionID != PrivateCKConfig.sudoku.subscriptionID)
+    }
 }
