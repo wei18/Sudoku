@@ -7,6 +7,7 @@
 //
 // MVP scope: no telemetry, no undo, no persistence (per dispatch spec).
 
+import IssueReporting
 public import MinesweeperEngine
 public import MinesweeperGameState
 public import Observation
@@ -81,7 +82,9 @@ public final class MinesweeperGameViewModel {
         } catch {
             // MVP: out-of-bounds shouldn't happen from a well-formed grid view.
             // Swallow — the ViewModel state stays consistent with the last
-            // successful snapshot.
+            // successful snapshot. #178: surface the invariant violation in
+            // test / #Preview (non-fatal in release).
+            reportIssue("reveal out-of-bounds from well-formed grid: \(error)")
         }
     }
 
@@ -89,7 +92,8 @@ public final class MinesweeperGameViewModel {
         do {
             snapshot = try await session.toggleFlag(row: row, col: col)
         } catch {
-            // See `reveal`.
+            // See `reveal`. #178: surface the invariant violation.
+            reportIssue("toggleFlag out-of-bounds from well-formed grid: \(error)")
         }
     }
 }

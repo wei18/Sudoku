@@ -112,6 +112,10 @@ SudokuEngine  ←  GameState
 4. **CloudKit / Game Center 測試替身**：`PuzzleStore`、`Persistence`、`GameCenterClient` 各定義一個 protocol；production 用具體實作，測試用 fake / stub。**單元測試不碰真實網路、CI 不跑 CloudKit/GC integration test**。真實互動只在開發機手動驗證。
 5. **測試命名**：以「被測類型」分檔，如 `SudokuEngineTests/BoardTests.swift`；以 swift-testing `@Suite` 聚合相關 case。
 6. **Snapshot 圖檔位置**：預設 `__Snapshots__/` 在 test 檔旁，**進 git**，方便 PR 審查時看視覺 diff。
+7. **錯誤分流：`ErrorReporter` vs `reportIssue`（#178）**：兩條互補路徑，依「失敗是否可預期」分流——
+   - **可預期的執行期失敗**（網路 / CloudKit / catalog lookup 等外部資源錯誤）→ `ErrorReporter`（issue #67）+ telemetry。屬正常運行範疇，**不可** fail test。
+   - **不可能狀態 / 違反不變量**（well-formed grid 卻 out-of-bounds、preview fixture 接線錯誤等 programmer error）→ `reportIssue(_:)`（`pointfreeco/xctest-dynamic-overlay` 的 `IssueReporting`）。在 swift-testing 下會 `Issue.record`（**fail test**）、在 `#Preview` 紫色警告、release 預設 non-fatal（可配置 fatal/log/noop）。取代先前 `assertionFailure` / `fatalError` / 靜默 swallow 的分裂處理。
+   - `IssueReporting` 在 `SudokuUI` / `MinesweeperUI` 為刻意放行的 restricted-import（視同 logger 類工具，見 §2.4 import 受限原則）。
 
 **測試金字塔（v1）**：
 
