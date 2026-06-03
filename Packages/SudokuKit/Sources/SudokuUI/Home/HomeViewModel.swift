@@ -6,6 +6,7 @@
 
 public import Foundation
 public import SwiftUI
+import GameShellUI
 
 public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Identifiable {
     case daily
@@ -19,31 +20,20 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
 @MainActor
 @Observable
 public final class HomeViewModel {
-    /// Private fallback storage used only when no external binding is
-    /// supplied (previews / unit tests). When `RootView` hoists its own
-    /// `[AppRoute]` and passes a `Binding` via `init(path:)`, this stays
-    /// empty and `path` reads/writes through `externalPath` instead.
-    private var localPath: [AppRoute] = []
+    /// Navigation path store (issue #240): routes through an injected
+    /// `Binding<[AppRoute]>` when `RootView` hoists its own array via
+    /// `init(path:)`, otherwise a local stub (previews / unit tests).
+    private var routePath: RoutePath<AppRoute>
 
-    @ObservationIgnored
-    private let externalPath: Binding<[AppRoute]>?
-
-    /// Single public view of the navigation path. Routes to the external
-    /// binding when one was injected; otherwise falls back to the local
-    /// stub array. Callers do not need to know which mode is active.
+    /// Single public view of the navigation path. Callers do not need to know
+    /// which mode (injected binding / local stub) is active.
     public var path: [AppRoute] {
-        get { externalPath?.wrappedValue ?? localPath }
-        set {
-            if let externalPath {
-                externalPath.wrappedValue = newValue
-            } else {
-                localPath = newValue
-            }
-        }
+        get { routePath.effectivePath }
+        set { routePath.effectivePath = newValue }
     }
 
     public init(path: Binding<[AppRoute]>? = nil) {
-        self.externalPath = path
+        self.routePath = RoutePath(path)
     }
 
     public func select(_ mode: HomeMode) {
