@@ -6,6 +6,7 @@
 
 public import Foundation
 public import SwiftUI
+public import GameShellUI
 public import PuzzleStore
 public import Persistence
 public import SudokuEngine
@@ -32,28 +33,17 @@ public enum DailyHubState: Sendable, Equatable {
 public final class DailyHubViewModel {
     public private(set) var state: DailyHubState = .idle
 
-    /// Private fallback storage used only when no external binding is
-    /// supplied (previews / unit tests). When `RouteFactory` hoists
-    /// `RootViewModel.path` and passes a `Binding` via `init(path:)`,
-    /// this stays empty and `path` reads/writes through `externalPath`
-    /// instead. Mirrors `HomeViewModel`'s pattern (issue #197).
-    private var localPath: [AppRoute] = []
+    /// Navigation path store (issue #240): routes through an injected
+    /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`
+    /// via `init(path:)`, otherwise a local stub (previews / unit tests).
+    /// Mirrors `HomeViewModel`'s pattern (issue #197).
+    private var routePath: RoutePath<AppRoute>
 
-    @ObservationIgnored
-    private let externalPath: Binding<[AppRoute]>?
-
-    /// Single public view of the navigation path. Routes to the external
-    /// binding when one was injected; otherwise falls back to the local
-    /// stub array.
+    /// Single public view of the navigation path. Callers do not need to know
+    /// which mode (injected binding / local stub) is active.
     public var path: [AppRoute] {
-        get { externalPath?.wrappedValue ?? localPath }
-        set {
-            if let externalPath {
-                externalPath.wrappedValue = newValue
-            } else {
-                localPath = newValue
-            }
-        }
+        get { routePath.effectivePath }
+        set { routePath.effectivePath = newValue }
     }
 
     private let provider: any PuzzleProviderProtocol
@@ -75,7 +65,7 @@ public final class DailyHubViewModel {
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.dateProvider = dateProvider
-        self.externalPath = path
+        self.routePath = RoutePath(path)
     }
 
     public func bootstrap() async {
