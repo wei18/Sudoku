@@ -2,730 +2,986 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Minesweeper — App Flow Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minesweeper — TARGET App Flow (mirror-Sudoku)</title>
 <style>
   :root {
-    /* iOS semantic colors (Light Mode) */
-    --label:            #000000;
-    --secondary-label:  #3c3c4399;   /* secondaryLabel 60% */
-    --tertiary-label:   #3c3c434d;
-    --system-bg:        #ffffff;
-    --grouped-bg:       #f2f2f7;     /* systemGroupedBackground */
-    --secondary-grouped:#ffffff;
-    --separator:        #c6c6c8;
-    --tint:             #007AFF;      /* accentColor — MS uses system default */
-    --fill-quaternary:  #74748014;
+    /* ============================================================
+       PROPOSED MS THEME — NOT YET IMPLEMENTED.
+       Mirrors Sudoku's DefaultTheme.swift token STRUCTURE
+       (surface / cell / text / accent / status / difficulty),
+       but with a distinct Minesweeper identity:
+       slate-blueprint blue + signal-orange flag + mine-red.
+       A sibling to Sudoku's sage / warm-paper, not a clone.
+       ============================================================ */
 
-    /* MS-ACTUAL board palette (raw SwiftUI primitives, NO theme tokens) */
-    --ms-covered:       #8e8e93;     /* Color.secondary @ ~25% over white */
-    --ms-covered-fill:  rgba(142,142,147,0.25);
-    --ms-revealed-fill: rgba(142,142,147,0.08);
-    --ms-mine:          rgba(255,59,48,0.60);  /* Color.red.opacity(0.6) */
-    --ms-flag:          #FF9500;     /* .orange */
-    /* system number colors 1..8 */
-    --n1:#007AFF; --n2:#34C759; --n3:#FF3B30; --n4:#AF52DE;
-    --n5:#A2845E; --n6:#30B0C7; --n7:#000000; --n8:#8E8E93;
+    /* ── Surface (cool blueprint paper) ── */
+    --surface-bg:          #F4F6F8;  --surface-bg-dark:      #14171B;
+    --surface-primary:     #FFFFFF;  --surface-primary-dark: #1C2026;
+    --surface-elevated:    #FFFFFF;  --surface-elevated-dark:#242A32;
+    --surface-placeholder: #E6EAEE;  --surface-placeholder-dark:#272D35;
 
-    --destructive:      #FF3B30;
-    --green:            #34C759;
+    /* ── Cell (board) ── */
+    --cell-covered:       #D6DEE6;   --cell-covered-dark:   #2B333D;
+    --cell-revealed:      #FFFFFF;   --cell-revealed-dark:  #1C2026;
+    --cell-flagged:       #FBEBD8;   --cell-flagged-dark:   #3A2E1C;
+    --cell-mine:          #FBE3E1;   --cell-mine-dark:      #4A2724;
+    --cell-mine-hit:      #C8362B;   --cell-mine-hit-dark:  #E66258;
+
+    /* ── Text ── */
+    --text-primary:    #1A1E24;  --text-primary-dark:   #EEF1F4;
+    --text-secondary:  #545B63;  --text-secondary-dark: #A4ACB4;
+    --text-tertiary:   #868D95;  --text-tertiary-dark:  #767D85;
+
+    /* ── Accent (slate blue) ── */
+    --accent-primary: #3E6B8C;  --accent-primary-dark: #7FAFCF;
+    --accent-muted:   #D5E2EC;  --accent-muted-dark:   #2C4356;
+
+    /* ── Status ── */
+    --status-success: #1B7A3E;  --status-success-dark: #4BC579;
+    --status-flag:    #D9822B;  --status-flag-dark:    #E8A560; /* warning / flag */
+    --status-error:   #C8362B;  --status-error-dark:   #E66258; /* mine / boom */
+
+    /* ── Difficulty ── */
+    --diff-beginner:     #3E6B8C;  --diff-beginner-dark:     #7FAFCF;
+    --diff-intermediate: #C97D5F;  --diff-intermediate-dark: #D89A82;
+    --diff-expert:       #B23A48;  --diff-expert-dark:       #D96B77;
+
+    /* number colours 1..8 (board count glyphs, MS-flavoured) */
+    --n1:#3E6B8C; --n2:#1B7A3E; --n3:#C8362B; --n4:#5C4B9E;
+    --n5:#A2845E; --n6:#2E8C9E; --n7:#1A1E24; --n8:#868D95;
+
+    /* spacing (4pt grid, mirrors SpacingTokens) */
+    --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px; --sp-xl:32px;
+
+    /* arrow palette (mockup chrome, not app tokens) */
+    --arrow-push:  #3E6B8C;
+    --arrow-modal: #D9822B;
+    --arrow-back:  #C7C7CC;
+    --arrow-state: #8E8E93;
   }
 
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    background: #e9e9ec;
+    background: #e7ebef;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
-    color: #1d1d1f;
+    color: var(--text-primary);
   }
 
-  /* ---------- Header ---------- */
+  /* ── TARGET banner ── */
+  .target-banner {
+    background: repeating-linear-gradient(45deg,#FFF4D6,#FFF4D6 14px,#FBEBC0 14px,#FBEBC0 28px);
+    border-bottom: 1px solid #E8C766;
+    padding: 12px 40px; font-size: 13px; color: #6b5300; line-height: 1.5;
+  }
+  .target-banner strong { color: #5a4500; }
+  .target-banner .pill { display:inline-block; background:#8a6400; color:#fff; font-size:11px; font-weight:700; border-radius:6px; padding:2px 8px; margin-right:8px; letter-spacing:.3px; }
+
+  /* ── Header strip ── */
   .header {
-    position: sticky; top: 0; z-index: 200;
-    display: flex; justify-content: space-between; align-items: center; gap: 24px;
-    flex-wrap: wrap;
-    padding: 18px 32px;
-    background: #ffffffee;
-    backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid #d2d2d7;
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+    padding: 18px 40px;
+    background: rgba(244,246,248,0.93);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #d7dde3;
   }
-  .header-left h1 { font-size: 22px; margin: 0; font-weight: 700; }
-  .header-left .meta { font-size: 12px; color: #86868b; margin-top: 4px; }
-  .legend { display: flex; gap: 18px; flex-wrap: wrap; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #515154; }
+  .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .header .meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .header .meta code { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
 
-  .layout { display: flex; align-items: flex-start; }
+  /* ── Canvas ── */
+  .canvas { position: relative; min-width: max-content; padding: 44px 40px 90px; }
+  .arrows-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
 
-  /* ---------- Canvas ---------- */
-  .canvas {
-    position: relative;
-    min-width: max-content;
-    padding: 40px;
-    flex: 1;
-  }
-  .arrows-layer {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none; z-index: 10;
-  }
-  .flow { margin-bottom: 70px; }
-  .flow-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; color: #1d1d1f; }
-  .flow-sub { font-size: 13px; color: #86868b; margin: 0 0 22px; max-width: 760px; line-height: 1.5; }
-  .flow-frames { display: flex; gap: 90px; align-items: flex-start; flex-wrap: nowrap; }
+  .flow { margin-bottom: 76px; }
+  .flow-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .flow-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 22px; max-width: 820px; line-height: 1.55; }
+  .flow-sub code { font-family:"SF Mono",ui-monospace,monospace; font-size:12px; background:rgba(62,107,140,0.08); padding:1px 5px; border-radius:4px; }
+  .flow-frames { display: flex; gap: 96px; align-items: flex-start; flex-wrap: wrap; row-gap: 56px; }
 
-  /* ---------- Phone frame ---------- */
+  /* status chips on flow titles */
+  .chip { font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; letter-spacing:.3px; }
+  .chip.target  { background:#FFF1CF; color:#8a6400; border:1px solid #f0d590; }
+  .chip.shipped { background:#DAF2E2; color:#1B6A38; border:1px solid #9bd3ad; }
+
+  /* ── iPhone frame ── */
   .phone { width: 320px; flex-shrink: 0; }
   .phone-shell {
     position: relative; width: 320px; height: 694px;
-    background: var(--system-bg);
+    background: var(--surface-bg);
     border-radius: 40px;
-    box-shadow: 0 0 0 4px #1d1d1f, 0 24px 48px rgba(0,0,0,0.16);
+    box-shadow: 0 0 0 4px #1d1d1f, 0 24px 50px rgba(0,0,0,0.18);
     overflow: hidden;
   }
+  .phone-shell.dark { background: var(--surface-bg-dark); }
   .dynamic-island {
     position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
     width: 102px; height: 30px; background: #000; border-radius: 16px; z-index: 100;
   }
   .status-bar {
-    position: relative; height: 46px;
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 24px 0; font-size: 14px; font-weight: 600; color: var(--label);
+    position: relative; height: 46px; display: flex; justify-content: space-between;
+    align-items: flex-end; padding: 0 24px 4px; font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
   }
-  .status-icons { display: flex; align-items: center; gap: 5px; }
+  .dark .status-bar { color: var(--text-primary-dark); }
+  .status-icons { display:flex; align-items:center; gap:5px; font-size:12px; }
   .home-indicator {
     position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
-    width: 110px; height: 5px; background: #1d1d1f; border-radius: 3px; opacity: .85;
+    width: 108px; height: 5px; background: var(--text-primary); opacity: .55; border-radius: 3px;
   }
-  .phone-label { text-align: center; margin-top: 12px; font-size: 13px; color: #515154; font-weight: 600; }
-  .phone-src { text-align: center; margin-top: 2px; font-size: 11px; color: #9b9ba0; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .dark .home-indicator { background: var(--text-primary-dark); }
+  .screen { padding: 0 16px; height: calc(694px - 46px - 22px); overflow: hidden; position: relative; }
+  .phone-label { text-align: center; margin-top: 12px; font-size: 13px; color: var(--text-secondary); font-weight: 600; max-width: 360px; }
+  .phone-source { text-align: center; font-size: 11px; color: var(--text-tertiary); font-family: "SF Mono", ui-monospace, monospace; margin-top: 2px; }
+  .built-tag { display:inline-block; font-size:10px; font-weight:700; border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .built-tag.t { background:#FFF1CF; color:#8a6400; }
+  .built-tag.s { background:#DAF2E2; color:#1B6A38; }
 
-  /* ---------- iOS nav chrome inside frames ---------- */
-  .screen { position: absolute; top: 46px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
-  .navbar-inline {
-    height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    position: relative; border-bottom: .5px solid var(--separator);
-    font-size: 16px; font-weight: 600; color: var(--label);
-  }
-  .navbar-inline .nav-left, .navbar-inline .nav-right {
-    position: absolute; top: 0; height: 44px; display: flex; align-items: center; gap: 4px;
-    font-size: 16px; color: var(--tint); font-weight: 400;
-  }
-  .navbar-inline .nav-left { left: 14px; }
-  .navbar-inline .nav-right { right: 14px; font-weight: 500; }
-  .navbar-large { padding: 6px 16px 8px; flex-shrink: 0; }
-  .navbar-large .large-title { font-size: 30px; font-weight: 700; color: var(--label); }
+  /* ── nav chrome ── */
+  .navbar-lg { padding: 6px 4px 14px; }
+  .navbar-lg .title { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+  .dark .navbar-lg .title { color: var(--text-primary-dark); }
+  .navbar-inline { display: flex; align-items: center; gap: 8px; padding: 6px 0 12px; font-size: 16px; font-weight: 600; }
+  .dark .navbar-inline { color: var(--text-primary-dark); }
+  .navbar-inline .chev { color: var(--accent-primary); font-weight: 600; }
 
-  .content { flex: 1; overflow: hidden; position: relative; }
+  /* ── Cards ── */
+  .card {
+    background: var(--surface-primary);
+    border: 1px solid rgba(62,107,140,0.16);
+    border-radius: 16px; padding: 14px;
+    box-shadow: 0 1px 3px rgba(20,30,40,0.05);
+  }
+  .dark .card { background: var(--surface-primary-dark); border-color: rgba(255,255,255,0.07); }
+  .mode-card { display: flex; align-items: center; gap: 12px; min-height: 58px; margin-bottom: 12px; }
+  .mode-icon { width: 34px; height: 34px; display: grid; place-items: center; color: var(--accent-primary); }
+  .dark .mode-icon { color: var(--accent-primary-dark); }
+  .mode-icon svg { width: 26px; height: 26px; }
+  .mode-text { flex: 1; }
+  .mode-title { font-size: 18px; font-weight: 500; color: var(--text-primary); }
+  .dark .mode-title { color: var(--text-primary-dark); }
+  .mode-sub { font-size: 12px; color: var(--text-secondary); }
+  .dark .mode-sub { color: var(--text-secondary-dark); }
+  .chev-right { color: var(--text-tertiary); font-size: 16px; }
+  .price { margin-left:auto; color: var(--diff-intermediate); font-weight: 600; font-size: 15px; }
 
-  /* ---------- New Game screen ---------- */
-  .ng-wrap { padding: 36px 18px 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
-  .ng-title { font-size: 30px; font-weight: 600; color: var(--label); }
-  .segmented {
-    display: flex; width: 100%; background: var(--fill-quaternary);
-    border-radius: 9px; padding: 2px;
+  .resume-pill {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface-primary); border-radius: 14px; padding: 12px;
+    border: 1px solid rgba(62,107,140,0.16); margin-bottom: 14px;
   }
-  .segmented .seg {
-    flex: 1; text-align: center; font-size: 13px; padding: 7px 4px; border-radius: 7px;
-    color: var(--label); font-weight: 500; white-space: nowrap;
+  .resume-pill .ico { color: var(--accent-primary); }
+  .resume-pill .t1 { font-size: 15px; font-weight: 500; }
+  .resume-pill .t2 { font-size: 12px; color: var(--text-secondary); }
+
+  /* banner slot 50pt */
+  .banner-slot {
+    height: 50px; background: var(--surface-placeholder); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text-tertiary); position: relative; margin-top: 12px;
   }
-  .segmented .seg.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
-  .ng-summary { font-size: 14px; color: var(--secondary-label); }
+  .dark .banner-slot { background: var(--surface-placeholder-dark); }
+  .banner-slot .x { position:absolute; top:4px; right:6px; color: var(--accent-primary); opacity:.6; font-size:12px; }
+
+  /* daily cards */
+  .daily-card { margin-bottom: 14px; }
+  .daily-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .daily-diff { font-size: 18px; font-weight: 500; }
+  .daily-state { margin-left: auto; font-size: 15px; }
+  .mini-grid { display:grid; grid-template-columns: repeat(9,1fr); gap:2px; }
+  .mini-grid span { aspect-ratio:1; border-radius:2px; background: var(--cell-covered); }
+  .dark .mini-grid span { background: var(--cell-covered-dark); }
+  .mini-grid span.rv { background: var(--cell-revealed); box-shadow: inset 0 0 0 .5px rgba(62,107,140,.2); }
+  .dark .mini-grid span.rv { background: var(--cell-revealed-dark); }
+  .mini-grid span.fl { background: var(--cell-flagged); }
+  .dark .mini-grid span.fl { background: var(--cell-flagged-dark); }
+
+  /* segmented control */
+  .section-label { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 4px 2px 8px; }
+  .dark .section-label { color: var(--text-primary-dark); }
+  .segmented { display: flex; background: rgba(62,107,140,0.10); border-radius: 9px; padding: 2px; margin-bottom: 18px; }
+  .segmented .seg { flex: 1; text-align: center; font-size: 13px; font-weight: 500; padding: 7px 2px; border-radius: 7px; color: var(--text-secondary); white-space:nowrap; }
+  .segmented .seg.active { background: #fff; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.14); }
+  .dark .segmented .seg.active { background: #3a4350; color: var(--text-primary-dark); }
+
   .btn-prominent {
-    width: 100%; background: var(--tint); color: #fff; font-size: 16px; font-weight: 600;
-    border-radius: 11px; padding: 13px; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--accent-primary); color: #fff; font-weight: 600; font-size: 16px;
+    padding: 13px; border-radius: 12px; margin-top: 12px;
   }
+  .btn-bordered {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1.5px solid var(--accent-primary); color: var(--accent-primary);
+    font-weight: 600; font-size: 15px; padding: 11px; border-radius: 12px;
+  }
+  .dark .btn-bordered { border-color: var(--accent-primary-dark); color: var(--accent-primary-dark); }
 
-  /* ---------- Board screen ---------- */
-  .board-wrap { padding: 12px 12px 0; display: flex; flex-direction: column; height: 100%; }
-  .status-row {
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 14px; color: var(--label); margin-bottom: 10px;
-  }
-  .status-row .stat { display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
-  .status-row .status-text { font-size: 16px; font-weight: 600; }
-  .status-row svg { width: 14px; height: 14px; }
+  /* board status bar */
+  .board-header { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 15px; }
+  .board-header .stat { display:flex; align-items:center; gap:4px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .dark .board-header .stat { color: var(--text-primary-dark); }
+  .board-header .stat svg { width:15px; height:15px; }
+  .board-header .status-text { margin: 0 auto; font-weight: 600; font-size: 16px; }
+  .board-header .flag-ct svg { fill: var(--status-flag); }
 
-  /* mode toggle (segmented) — KEY new affordance */
-  .mode-toggle {
-    display: flex; width: 100%; background: var(--fill-quaternary);
-    border-radius: 9px; padding: 2px; margin-bottom: 12px;
-    position: relative;
-  }
-  .mode-toggle .seg {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-    font-size: 13px; padding: 7px 4px; border-radius: 7px; font-weight: 500; color: var(--label);
-  }
-  .mode-toggle .seg.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
-  .mode-toggle .seg svg { width: 14px; height: 14px; }
-  .mode-callout {
-    position: absolute; top: -10px; right: -8px; background: var(--tint); color: #fff;
-    font-size: 9px; font-weight: 700; padding: 3px 7px; border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,122,255,.4); white-space: nowrap;
-  }
+  /* mode toggle */
+  .mode-toggle { display: flex; background: rgba(62,107,140,0.10); border-radius: 9px; padding: 2px; margin-bottom: 12px; position: relative; }
+  .mode-toggle .seg { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; font-size:13px; padding:7px 4px; border-radius:7px; font-weight:500; color: var(--text-secondary); }
+  .mode-toggle .seg svg { width:15px; height:15px; }
+  .mode-toggle .seg.active { background:#fff; color: var(--text-primary); box-shadow:0 1px 3px rgba(0,0,0,.14); }
+  .dark .mode-toggle .seg.active { background:#3a4350; color: var(--text-primary-dark); }
 
-  .board-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; }
+  /* MS board grid */
+  .board-area { display:flex; align-items:center; justify-content:center; position:relative; }
   .grid { display: grid; gap: 2px; }
   .cell {
-    border-radius: 4px; display: flex; align-items: center; justify-content: center;
-    font-weight: 600; font-family: ui-rounded, "SF Pro Rounded", -apple-system, sans-serif;
+    border-radius: 4px; display: grid; place-items: center;
+    font-weight: 700; font-size: 14px;
+    font-family: ui-rounded, "SF Pro Rounded", -apple-system, sans-serif;
+    background: var(--cell-covered);
   }
-  .cell.covered { background: var(--ms-covered-fill); }
-  .cell.revealed { background: var(--ms-revealed-fill); }
-  .cell.mine     { background: var(--ms-mine); color: #fff; }
-  .cell.flag svg { fill: var(--ms-flag); }
-  .cell.mine svg { fill: #fff; }
+  .dark .cell { background: var(--cell-covered-dark); }
+  .cell.rv { background: var(--cell-revealed); box-shadow: inset 0 0 0 .5px rgba(62,107,140,.22); }
+  .dark .cell.rv { background: var(--cell-revealed-dark); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.07); }
+  .cell.fl { background: var(--cell-flagged); }
+  .dark .cell.fl { background: var(--cell-flagged-dark); }
+  .cell.fl svg { fill: var(--status-flag); width:60%; height:60%; }
+  .cell.mine { background: var(--cell-mine); }
+  .dark .cell.mine { background: var(--cell-mine-dark); }
+  .cell.mine.hit { background: var(--cell-mine-hit); }
+  .cell.mine svg { fill: var(--status-error); width:58%; height:58%; }
+  .cell.mine.hit svg { fill:#fff; }
 
   /* terminal overlay */
   .terminal-overlay {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: rgba(248,248,250,0.92); backdrop-filter: blur(8px);
-    border-radius: 16px; padding: 20px 24px; text-align: center;
+    background: rgba(248,250,252,0.90); backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 18px 22px; text-align: center;
     box-shadow: 0 8px 30px rgba(0,0,0,.18);
   }
-  .terminal-overlay .t-title { font-size: 20px; font-weight: 600; color: var(--label); }
-  .terminal-overlay .t-sub { font-size: 13px; color: var(--secondary-label); margin-top: 6px; }
+  .dark .terminal-overlay { background: rgba(28,32,38,0.90); }
+  .terminal-overlay .t-title { font-size: 19px; font-weight: 600; color: var(--text-primary); }
+  .dark .terminal-overlay .t-title { color: var(--text-primary-dark); }
+  .terminal-overlay .t-sub { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
+  .terminal-overlay.win .t-title { color: var(--status-success); }
+  .terminal-overlay.lose .t-title { color: var(--status-error); }
 
-  /* banner slot */
-  .banner {
-    height: 50px; margin-top: 10px; border-radius: 8px; background: rgba(118,118,128,0.12);
-    display: flex; align-items: center; justify-content: center; position: relative;
-    font-size: 11px; color: var(--secondary-label);
+  .scroll-hint { position:absolute; bottom:4px; right:4px; font-size:9px; color: var(--text-secondary); background:#fff; border:.5px solid rgba(62,107,140,.3); border-radius:6px; padding:3px 6px; }
+  .dark .scroll-hint { background:#242a32; }
+
+  /* completion hero */
+  .hero { text-align: center; padding: 22px; border-radius: 20px; background: var(--surface-primary); border: 1px solid rgba(62,107,140,0.16); margin-bottom: 18px; }
+  .dark .hero { background: var(--surface-primary-dark); border-color: rgba(255,255,255,0.07); }
+  .hero .chk svg { width: 56px; height: 56px; }
+  .hero .solved { font-size: 28px; font-weight: 600; margin-top: 6px; color: var(--text-primary); }
+  .dark .hero .solved { color: var(--text-primary-dark); }
+  .hero .time { font-size: 17px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .lb-row { display: flex; align-items: center; padding: 6px 8px; font-size: 14px; }
+  .lb-row .rank { width: 26px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-right: 10px; }
+  .lb-row .nm { flex: 1; color: var(--text-primary); }
+  .dark .lb-row .nm { color: var(--text-primary-dark); }
+  .lb-row .sc { font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+  /* settings form */
+  .form-bg { background: var(--surface-bg); margin: 0 -16px; padding: 8px 16px; height:100%; }
+  .dark .form-bg { background: var(--surface-bg-dark); }
+  .form-section-h { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin: 16px 4px 6px; }
+  .form-group { background: var(--surface-primary); border-radius: 12px; overflow: hidden; border: 1px solid rgba(62,107,140,0.13); }
+  .dark .form-group { background: var(--surface-primary-dark); border-color: rgba(255,255,255,0.07); }
+  .form-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 15px; color: var(--text-primary); }
+  .dark .form-row { color: var(--text-primary-dark); }
+  .form-row + .form-row { border-top: 0.5px solid rgba(62,107,140,0.18); }
+  .dark .form-row + .form-row { border-top-color: rgba(255,255,255,0.08); }
+  .form-row .ico { color: var(--accent-primary); width: 22px; display: grid; place-items: center; }
+  .form-row .ico svg { width: 20px; height: 20px; }
+  .form-row .val { margin-left: auto; color: var(--text-secondary); }
+  .form-row .price-r { margin-left: auto; color: var(--accent-primary); font-weight: 600; }
+  .form-row.destructive { color: var(--status-error); }
+  .form-row.destructive .ico { color: var(--status-error); }
+
+  /* confirmation dialog */
+  .dimmer { position:absolute; inset:0; background: rgba(0,0,0,.28); display:flex; flex-direction:column; justify-content:flex-end; padding:8px; gap:8px; }
+  .sheet-group { background: rgba(248,248,248,.94); backdrop-filter: blur(20px); border-radius:14px; overflow:hidden; }
+  .sheet-title { text-align:center; padding:14px 16px 4px; font-size:13px; color:#6b6b70; font-weight:600; }
+  .sheet-msg { text-align:center; padding:0 16px 12px; font-size:12px; color:#6b6b70; line-height:1.4; }
+  .sheet-btn { text-align:center; padding:14px; font-size:18px; color:#007AFF; border-top:.5px solid rgba(0,0,0,.12); }
+  .sheet-btn.destructive { color: var(--status-error); }
+  .sheet-cancel { background:#fff; border-radius:14px; text-align:center; padding:15px; font-size:18px; font-weight:600; color:#007AFF; }
+
+  /* GC modal */
+  .gc-sheet { background:#fff; border-radius:14px; height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .gc-nav { padding:12px 14px; border-bottom:1px solid #e8e8ec; display:flex; align-items:center; justify-content:space-between; }
+  .gc-nav .gc-title { font-weight:600; font-size:16px; color:#000; }
+  .gc-nav .done { color:#007AFF; font-size:15px; }
+  .gc-seg { display:flex; padding:8px 12px; gap:8px; }
+  .gc-seg span { font-size:12px; color:#8e8e93; }
+  .gc-seg span.on { color:#000; font-weight:600; }
+  .gc-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-bottom:.5px solid #efeff2; font-size:14px; color:#000; }
+  .gc-row .gc-rank { width:20px; font-weight:600; color:#8e8e93; }
+  .gc-row .gc-av { width:28px; height:28px; border-radius:50%; background: linear-gradient(135deg,#7FAFCF,#3E6B8C); }
+  .gc-system-note { font-size:11px; color:#8e8e93; padding:8px 14px; }
+
+  /* ============ macOS window frames ============ */
+  .mac { width: 760px; flex-shrink: 0; }
+  .mac-window {
+    width: 760px; height: 510px; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.10), 0 30px 70px rgba(0,0,0,0.28);
+    background: var(--surface-bg); display:flex; flex-direction:column;
   }
-  .banner .dismiss { position: absolute; top: 5px; right: 6px; }
-  .banner .dismiss svg { width: 13px; height: 13px; fill: rgba(60,60,67,.4); }
-
-  /* scroll hint for Expert */
-  .scroll-hint {
-    position: absolute; bottom: 6px; right: 6px; font-size: 9px; color: var(--secondary-label);
-    background: #fff; border: .5px solid var(--separator); border-radius: 6px; padding: 3px 6px;
+  .mac-window.dark { background: var(--surface-bg-dark); }
+  .mac-titlebar {
+    height: 38px; flex-shrink:0; display:flex; align-items:center; gap:8px;
+    padding: 0 14px; background: rgba(236,240,244,0.95);
+    border-bottom: 1px solid #d4dae0;
   }
+  .dark .mac-titlebar { background: rgba(30,35,42,0.95); border-bottom-color:#30363f; }
+  .traffic { width:12px; height:12px; border-radius:50%; }
+  .traffic.r { background:#FF5F57; } .traffic.y { background:#FEBC2E; } .traffic.g { background:#28C840; }
+  .mac-title { margin-left: 10px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .dark .mac-title { color: var(--text-secondary-dark); }
+  .mac-body { flex:1; display:flex; min-height:0; }
 
-  /* ---------- Settings (grouped Form) ---------- */
-  .form { background: var(--grouped-bg); height: 100%; overflow: hidden; padding-top: 8px; }
-  .section-header { font-size: 13px; color: var(--secondary-label); text-transform: uppercase; padding: 14px 16px 6px; letter-spacing: .3px; }
-  .group { background: var(--secondary-grouped); border-top: .5px solid var(--separator); border-bottom: .5px solid var(--separator); }
-  .row { min-height: 44px; display: flex; align-items: center; padding: 0 16px; font-size: 16px; color: var(--label); border-bottom: .5px solid var(--separator); }
-  .row:last-child { border-bottom: none; }
-  .row .leading-icon { width: 22px; margin-right: 10px; display: flex; align-items: center; }
-  .row .leading-icon svg { width: 20px; height: 20px; }
-  .row .value { margin-left: auto; color: var(--secondary-label); }
-  .row.destructive { color: var(--destructive); }
-  .row.destructive .leading-icon svg { fill: var(--destructive); }
-  .row.tinted .leading-icon svg { fill: var(--tint); }
-
-  /* confirmation dialog (action sheet) */
-  .dimmer { position: absolute; inset: 0; background: rgba(0,0,0,.28); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; gap: 8px; }
-  .sheet-group { background: rgba(248,248,248,.92); backdrop-filter: blur(20px); border-radius: 14px; overflow: hidden; }
-  .sheet-title { text-align: center; padding: 14px 16px 6px; font-size: 13px; color: var(--secondary-label); font-weight: 600; }
-  .sheet-msg { text-align: center; padding: 0 16px 12px; font-size: 12px; color: var(--secondary-label); line-height: 1.4; }
-  .sheet-btn { text-align: center; padding: 15px; font-size: 18px; color: var(--tint); border-top: .5px solid var(--separator); }
-  .sheet-btn.destructive { color: var(--destructive); }
-  .sheet-cancel { background: #fff; border-radius: 14px; text-align: center; padding: 16px; font-size: 18px; font-weight: 600; color: var(--tint); }
-
-  .badge-actual { display: inline-block; background: #fff3cd; color: #8a6400; border: 1px solid #f3d27a; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 2px 7px; vertical-align: middle; }
-
-  /* ---------- Tokens panel ---------- */
-  .tokens-panel {
-    width: 360px; flex-shrink: 0; position: sticky; top: 73px;
-    align-self: flex-start; max-height: calc(100vh - 73px); overflow-y: auto;
-    background: #fff; border-left: 1px solid #d2d2d7; padding: 22px 22px 60px;
+  /* mac split: sidebar + detail */
+  .mac-sidebar {
+    width: 210px; flex-shrink:0; background: rgba(244,246,248,0.6);
+    border-right: 1px solid #dbe1e7; padding: 12px 10px; overflow:hidden;
   }
-  .tokens-panel h2 { font-size: 18px; margin: 0 0 4px; }
-  .tokens-panel .panel-note { font-size: 11px; color: #86868b; margin: 0 0 18px; }
-  .tokens-panel section { margin-bottom: 26px; }
-  .tokens-panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .4px; color: #86868b; margin: 0 0 12px; }
-  .callout {
-    background: #fff8e6; border: 1px solid #f0d590; border-radius: 10px; padding: 12px 14px;
-    font-size: 12px; line-height: 1.55; color: #6b5300; margin-bottom: 24px;
-  }
-  .callout strong { color: #5a4500; }
-  .callout code { background: #f3e2b0; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
-  .color-grid { display: flex; flex-direction: column; gap: 9px; }
-  .color-swatch { display: flex; align-items: center; gap: 11px; }
-  .color-swatch .swatch { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
-  .swatch-meta { line-height: 1.35; }
-  .swatch-name { font-size: 12px; font-weight: 600; }
-  .swatch-hex { font-size: 11px; color: #86868b; font-family: ui-monospace, Menlo, monospace; }
-  .swatch-swiftui { font-size: 11px; color: #007AFF; font-family: ui-monospace, Menlo, monospace; }
+  .dark .mac-sidebar { background: rgba(20,23,27,0.6); border-right-color:#2a3038; }
+  .mac-sidebar .sb-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing:.4px; color: var(--text-tertiary); padding: 4px 8px 8px; }
+  .sb-row { display:flex; align-items:center; gap:10px; padding: 9px 10px; border-radius: 8px; font-size: 14px; color: var(--text-primary); margin-bottom: 2px; }
+  .dark .sb-row { color: var(--text-primary-dark); }
+  .sb-row svg { width:18px; height:18px; color: var(--accent-primary); }
+  .dark .sb-row svg { color: var(--accent-primary-dark); }
+  .sb-row.active { background: var(--accent-muted); }
+  .dark .sb-row.active { background: var(--accent-muted-dark); }
+  .sb-row.commerce { margin-top: auto; }
+  .mac-detail { flex:1; padding: 22px 26px; overflow:hidden; position:relative; }
+  .mac-detail-title { font-size: 26px; font-weight: 700; margin-bottom: 16px; color: var(--text-primary); }
+  .dark .mac-detail-title { color: var(--text-primary-dark); }
 
+  /* mac board 2-column: capped board + 260pt rail */
+  .mac-board-layout { display:flex; gap: 24px; height:100%; align-items:flex-start; }
+  .mac-board-main { flex:1; display:flex; flex-direction:column; align-items:center; }
+  .mac-rail { width: 240px; flex-shrink:0; }
+  .mac-rail .rail-card { background: var(--surface-primary); border:1px solid rgba(62,107,140,0.14); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .dark .mac-rail .rail-card { background: var(--surface-primary-dark); border-color: rgba(255,255,255,0.07); }
+  .rail-h { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; color: var(--text-secondary); margin-bottom:8px; }
+
+  /* mac grouped form */
+  .mac-form { max-width: 520px; }
+
+  /* ── Tokens panel ── */
+  .tokens-panel { background: #fff; border-top: 2px solid #d7dde3; padding: 40px; }
+  .tokens-panel h2 { font-size: 24px; margin: 0 0 8px; }
+  .tokens-panel .tp-sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 18px; max-width: 900px; line-height:1.55; }
+  .tp-callout { background:#FFF8E6; border:1px solid #F0D590; border-radius:10px; padding:12px 16px; font-size:13px; color:#6b5300; max-width:900px; margin-bottom:28px; line-height:1.55; }
+  .tp-callout strong { color:#5a4500; }
+  .tp-callout code { background:#f3e2b0; padding:1px 5px; border-radius:4px; font-family:"SF Mono",ui-monospace,monospace; font-size:11px; }
+  .tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 32px; }
+  .tp-section h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 0 0 14px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  .sw-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .sw-meta { font-size: 12px; line-height: 1.35; }
+  .sw-name { font-weight: 600; }
+  .sw-hex { color: var(--text-secondary); font-family: "SF Mono", ui-monospace, monospace; }
+  .sw-token { color: var(--text-tertiary); font-family: "SF Mono", ui-monospace, monospace; }
+  .pair { display:flex; border-radius:7px; overflow:hidden; width:34px; height:34px; flex-shrink:0; border:1px solid rgba(0,0,0,0.08); }
+  .pair span { flex:1; }
   .type-sample { margin-bottom: 12px; }
-  .type-meta { font-size: 11px; color: #86868b; font-family: ui-monospace, Menlo, monospace; margin-top: 1px; }
-
-  .scale-row { display: flex; align-items: flex-end; gap: 7px; flex-wrap: wrap; }
-  .scale-box { background: #007AFF; border-radius: 3px; }
-  .scale-box span { display:block; font-size:9px; color:#86868b; text-align:center; margin-top:3px; }
-  .scale-item { text-align:center; }
-
-  .radius-row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .radius-box { width: 46px; height: 46px; background: #d7e8ff; box-shadow: inset 0 0 0 1.5px #007AFF; }
-  .radius-box + span { }
-  .radius-item { text-align: center; font-size: 10px; color: #86868b; }
-
+  .type-meta { font-size: 11px; color: var(--text-tertiary); font-family: "SF Mono", ui-monospace, monospace; }
+  .sp-bars { display: flex; align-items: flex-end; gap: 10px; }
+  .sp-bar { background: var(--accent-primary); border-radius: 3px; width: 22px; }
+  .sp-bar-wrap { text-align: center; font-size: 10px; color: var(--text-secondary); }
+  .radius-row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .radius-box { width: 50px; height: 50px; background: var(--accent-muted); border: 1px solid var(--accent-primary); }
+  .radius-wrap { text-align: center; font-size: 10px; color: var(--text-secondary); }
   .comp { margin-bottom: 16px; }
-  .comp-label { font-size: 12px; font-weight: 600; margin-bottom: 7px; }
-  .comp-dim { font-size: 11px; color: #86868b; margin-top: 6px; }
-  .mini-segmented { display: flex; background: var(--fill-quaternary); border-radius: 8px; padding: 2px; }
-  .mini-segmented .seg { flex:1; text-align:center; font-size:11px; padding:6px 4px; border-radius:6px; font-weight:500; }
-  .mini-segmented .seg.active { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); }
-  .mini-btn { background: var(--tint); color:#fff; font-size:13px; font-weight:600; border-radius:10px; padding:10px; text-align:center; }
-  .mini-row { display:flex; align-items:center; min-height:40px; padding:0 12px; background:#fff; border:.5px solid var(--separator); border-radius:8px; font-size:14px; }
-  .mini-cells { display:flex; gap:2px; }
-  .mini-cell { width:26px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; }
+  .comp .comp-name { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .comp .comp-note { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; line-height:1.4; }
+  .num-swatch { display:flex; gap:6px; flex-wrap:wrap; }
+  .num-swatch .n { width:28px; height:28px; border-radius:5px; display:grid; place-items:center; font-weight:700; background: var(--cell-revealed); box-shadow: inset 0 0 0 .5px rgba(62,107,140,.25); }
 
   @media print {
-    body { background: #fff; }
+    body { background: white; }
     .header { position: static; }
-    .tokens-panel { position: static; max-height: none; }
+    .canvas { padding: 20px; }
     .phone-shell { box-shadow: 0 0 0 2px #1d1d1f; }
-    @page { size: A3 landscape; margin: 8mm; }
+    .mac-window { box-shadow: 0 0 0 1px #999; }
+    @page { size: A1 landscape; margin: 8mm; }
   }
 </style>
 </head>
 <body>
 
+<div class="target-banner">
+  <span class="pill">TARGET / ASPIRATIONAL</span>
+  This board depicts what Minesweeper <strong>should become</strong> once it mirrors Sudoku — <strong>not the current shipped app.</strong>
+  Today MS ships only New Game → Board + Settings. Screens tagged
+  <span class="built-tag t">NOT YET BUILT</span> are the mirror-Sudoku build-out target;
+  <span class="built-tag s">SHIPPED</span> exists today (Board Tier-0, Settings shared sections). The theme tokens shown are a <strong>PROPOSAL</strong> — MS has no theme implemented yet.
+</div>
+
 <header class="header">
   <div class="header-left">
-    <h1>Minesweeper — App Flow Prototype</h1>
-    <div class="meta">Reflects CURRENT app (Standard tier) · derived from MinesweeperKit source · Generated 2026-06-03</div>
+    <h1>Minesweeper — TARGET App Flow</h1>
+    <div class="meta">Aspirational mirror-Sudoku design · Generated 2026-06-03 · structure mirrors <code>SudokuUI/</code> · gameplay mirrors <code>MinesweeperBoardView.swift</code></div>
   </div>
   <div class="legend">
-    <div class="legend-item">
-      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#007AFF" stroke-width="2"/><path d="M32 1 L38 5 L32 9 z" fill="#007AFF"/></svg>
-      <span>push (path.append)</span>
-    </div>
-    <div class="legend-item">
-      <svg width="38" height="10"><line x1="6" y1="5" x2="38" y2="5" stroke="#C7C7CC" stroke-width="2"/><path d="M6 1 L0 5 L6 9 z" fill="#C7C7CC"/></svg>
-      <span>pop / back (path.removeAll)</span>
-    </div>
-    <div class="legend-item">
-      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#FF9500" stroke-width="2" stroke-dasharray="5 3"/><path d="M32 1 L38 5 L32 9 z" fill="#FF9500"/></svg>
-      <span>confirmation dialog</span>
-    </div>
-    <div class="legend-item">
-      <svg width="38" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/></svg>
-      <span>same-screen state</span>
-    </div>
+    <div class="legend-item"><svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#3E6B8C" stroke-width="2"/><path d="M32 1 L38 5 L32 9 z" fill="#3E6B8C"/></svg><span>push (path.append AppRoute)</span></div>
+    <div class="legend-item"><svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#D9822B" stroke-width="2" stroke-dasharray="5 3"/><path d="M32 1 L38 5 L32 9 z" fill="#D9822B"/></svg><span>modal (Game Center / dialog)</span></div>
+    <div class="legend-item"><svg width="38" height="10"><line x1="6" y1="5" x2="38" y2="5" stroke="#C7C7CC" stroke-width="2"/><path d="M6 1 L0 5 L6 9 z" fill="#C7C7CC"/></svg><span>overlay / dismiss</span></div>
+    <div class="legend-item"><svg width="38" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/></svg><span>same-screen state / platform variant</span></div>
   </div>
 </header>
 
-<div class="layout">
 <main class="canvas">
 
-  <!-- ============ FLOW 1: NEW GAME ============ -->
-  <section class="flow">
-    <h2 class="flow-title">New Game (root)</h2>
-    <p class="flow-sub">Root content of <code>MinesweeperRoot</code> → <code>GameShellUI.RootShellView</code> → <code>NewGameView</code>. A segmented difficulty Picker (real dims from <code>Difficulty.swift</code>) + a <code>.borderedProminent</code> Start button that does <code>path.append(.board(difficulty, seed))</code> with a fresh random <code>UInt64</code> seed per tap. Sidebar (regular size class) holds the two Standard-tier entries: New Game / Settings.</p>
+  <!-- ============ ENTRY & HOME ============ -->
+  <section class="flow" id="flow-home">
+    <h2 class="flow-title">Entry &amp; Home <span class="chip target">TARGET · not yet built</span></h2>
+    <p class="flow-sub">
+      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> The MS root would wrap <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (New Game · Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>HomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>Today MS has none of this — only a bare <code>NewGameView</code> as root.</em>
+    </p>
     <div class="flow-frames">
 
-      <!-- F01 New Game Beginner -->
-      <div class="phone" id="F01">
+      <!-- M01 Root + Resume pill (iPhone) -->
+      <div class="phone" id="M01">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="16" height="11" viewBox="0 0 16 11"><path d="M8 2.2c2 0 3.8.8 5.1 2.1l1.1-1.1A9 9 0 0 0 8 .4 9 9 0 0 0 1.8 3.2l1.1 1.1A7.2 7.2 0 0 1 8 2.2z" fill="#000"/><path d="M8 5.4c1.1 0 2.1.4 2.9 1.2l1.1-1.1A5.6 5.6 0 0 0 8 3.9a5.6 5.6 0 0 0-4 1.6l1.1 1.1A4 4 0 0 1 8 5.4z" fill="#000"/><circle cx="8" cy="9" r="1.4" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/><rect x="22.5" y="4" width="1.6" height="4" rx=".8" fill="#000" fill-opacity=".4"/></svg>
-          </span></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span>Minesweeper</span>
+            <div class="navbar-lg"><div class="title">Minesweeper</div></div>
+            <div class="resume-pill">
+              <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" stroke-width="1.8"/><path d="M4 20v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div class="mode-text"><div class="t1">Resume Intermediate</div><div class="t2">2:08 · 12 mines left</div></div>
+              <span class="chev-right">›</span>
             </div>
-            <div class="content">
-              <div class="ng-wrap">
-                <div class="ng-title">New Game</div>
-                <div class="segmented">
-                  <div class="seg active">Beginner</div>
-                  <div class="seg">Intermediate</div>
-                  <div class="seg">Expert</div>
-                </div>
-                <div class="ng-summary">9 × 9 · 10 mines</div>
-                <div class="btn-prominent">Start</div>
-              </div>
+            <div style="font-size:11px;color:var(--text-tertiary);text-align:center;margin:6px 0 14px;border:1px dashed #cdd6de;border-radius:10px;padding:8px;">
+              macOS / iPad-regular: NavigationSplitView shows a sidebar<br>(New Game · Daily · Practice · Leaderboard · Settings). See M03.
             </div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">New Game</div><div class="mode-sub">Pick a difficulty</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F01 — New Game (Beginner)</div>
-        <div class="phone-src">NewGameView.swift</div>
+        <div class="phone-label">M01 — Root container + Resume pill <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">MinesweeperRoot · RootShellView · ResumePill</div>
       </div>
 
-      <!-- F02 New Game Intermediate -->
-      <div class="phone" id="F02">
+      <!-- M02 HomeView (iPhone) -->
+      <div class="phone" id="M02">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span>Minesweeper</span>
-            </div>
-            <div class="content">
-              <div class="ng-wrap">
-                <div class="ng-title">New Game</div>
-                <div class="segmented">
-                  <div class="seg">Beginner</div>
-                  <div class="seg active">Intermediate</div>
-                  <div class="seg">Expert</div>
-                </div>
-                <div class="ng-summary">16 × 16 · 40 mines</div>
-                <div class="btn-prominent">Start</div>
-              </div>
-            </div>
+            <div class="navbar-lg"><div class="title">Minesweeper</div></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">New Game</div><div class="mode-sub">Pick a difficulty</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg></div><div class="mode-text"><div class="mode-title">Practice</div><div class="mode-sub">All difficulties</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">Leaderboard</div><div class="mode-sub">Game Center · best times</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">Settings</div><div class="mode-sub">Purchases · about</div></div><span class="chev-right">›</span></div>
+            <div class="card mode-card" style="margin-bottom:0;"><div class="mode-icon" style="color:var(--diff-intermediate)"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.4 6.3H21l-5.2 4 2 6.4L12 16l-5.8 3.7 2-6.4-5.2-4h6.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="mode-text"><div class="mode-title">Remove Ads</div><div class="mode-sub">One-time purchase</div></div><span class="price">$2.99</span></div>
+            <div class="banner-slot"><span class="x">⊗</span>Banner loads here (when ads on)</div>
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F02 — New Game (Intermediate / Expert)</div>
-        <div class="phone-src">NewGameView.swift · Picker state</div>
+        <div class="phone-label">M02 — Home (5 mode cards + Remove Ads + banner) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView</div>
+      </div>
+
+      <!-- M03 Home on macOS (NavigationSplitView) -->
+      <div class="mac" id="M03">
+        <div class="mac-window">
+          <div class="mac-titlebar"><span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span><span class="mac-title">Minesweeper</span></div>
+          <div class="mac-body">
+            <div class="mac-sidebar" style="display:flex; flex-direction:column;">
+              <div class="sb-title">Minesweeper</div>
+              <div class="sb-row active"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Settings</div>
+              <div class="sb-row commerce" style="color:var(--diff-intermediate)"><svg viewBox="0 0 24 24" fill="none" style="color:var(--diff-intermediate)"><path d="M12 3l2.4 6.3H21l-5.2 4 2 6.4L12 16l-5.8 3.7 2-6.4-5.2-4h6.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Remove Ads · $2.99</div>
+            </div>
+            <div class="mac-detail">
+              <div class="mac-detail-title">New Game</div>
+              <div style="display:flex; flex-direction:column; align-items:center; gap:20px; padding-top:24px;">
+                <div class="segmented" style="max-width:420px; width:100%;"><div class="seg active">Beginner</div><div class="seg">Intermediate</div><div class="seg">Expert</div></div>
+                <div style="font-size:14px;color:var(--text-secondary)">9 × 9 · 10 mines</div>
+                <div class="btn-prominent" style="max-width:280px; width:100%; margin-top:4px;">Start</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">M03 — macOS Home (NavigationSplitView sidebar + detail) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">RootShellView · NavigationSplitView · sidebar</div>
       </div>
 
     </div>
   </section>
 
-  <!-- ============ FLOW 2: BOARD ============ -->
-  <section class="flow">
-    <h2 class="flow-title">Board</h2>
-    <p class="flow-sub"><code>MinesweeperBoardView</code> (wrapped by <code>LiveRouteFactory</code> with a "New Game" toolbar button). Layout top→bottom: status bar (flag count / status / elapsed, 1 Hz <code>TimelineView</code>), the <strong>Reveal/Flag mode toggle</strong> (segmented Picker — the key Tier-0 #3 affordance), a <code>GeometryReader</code>-scaled grid (32 pt cell floor; Expert 16×30 clamps to the floor and scrolls both axes), a win/lose <code>.regularMaterial</code> overlay, and the banner slot (suppressed during terminal states). Cell glyphs use raw SwiftUI primitives — no theme tokens.</p>
+  <!-- ============ DAILY ============ -->
+  <section class="flow" id="flow-daily">
+    <h2 class="flow-title">Daily <span class="chip target">TARGET · exists in source but unreachable</span></h2>
+    <p class="flow-sub">
+      <b>Mirror of Sudoku's <code>DailyHubView</code>.</b> <code>MinesweeperDailyHubView</code> <em>already exists</em> (wraps <code>DailyHubShellView</code> with three date-seeded cards — one per difficulty) but is <b>not wired into any navigation surface</b>, so a player can't reach it today. The target adds sidebar / Home-card entry, a difficulty colour-dot + completion checkmark, and a decorative mini-board strip per card.
+    </p>
     <div class="flow-frames">
 
-      <!-- F03 Board Reveal mode -->
-      <div class="phone" id="F03">
+      <!-- M04 Daily hub iPhone -->
+      <div class="phone" id="M04">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span class="nav-right">
-                <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#007AFF" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/></svg>
-                New Game
-              </span>
+            <div class="navbar-inline"><span class="chev">‹</span> Daily</div>
+            <div class="card daily-card">
+              <div class="daily-head"><span class="dot" style="background:var(--diff-beginner)"></span><span class="daily-diff" style="color:var(--diff-beginner)">Beginner</span><span class="daily-state" style="color:var(--status-success)">✓</span></div>
+              <div class="mini-grid" data-seed="1"></div>
             </div>
-            <div class="content">
-              <div class="board-wrap">
-                <div class="status-row">
-                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 7</span>
-                  <span class="status-text">Playing</span>
-                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 38</span>
-                </div>
-                <div class="mode-toggle">
-                  <span class="mode-callout">Tier-0 #3 · Reveal/Flag toggle</span>
-                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
-                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
-                </div>
-                <div class="board-area">
-                  <div class="grid" id="grid-f03"></div>
-                </div>
-                <div class="banner">
-                  Ad loaded
-                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
-                </div>
-              </div>
+            <div class="card daily-card">
+              <div class="daily-head"><span class="dot" style="background:var(--diff-intermediate)"></span><span class="daily-diff" style="color:var(--diff-intermediate)">Intermediate</span><span class="daily-state" style="color:var(--text-tertiary)">—</span></div>
+              <div class="mini-grid" data-seed="2"></div>
+            </div>
+            <div class="card daily-card">
+              <div class="daily-head"><span class="dot" style="background:var(--diff-expert)"></span><span class="daily-diff" style="color:var(--diff-expert)">Expert</span><span class="daily-state" style="color:var(--text-tertiary)">—</span></div>
+              <div class="mini-grid" data-seed="3"></div>
             </div>
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F03 — Board (Reveal mode, mid-game)</div>
-        <div class="phone-src">MinesweeperBoardView.swift</div>
+        <div class="phone-label">M04 — Daily hub (3 date-seeded boards) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">MinesweeperDailyHubView · DailyHubShellView</div>
       </div>
 
-      <!-- F04 Board Flag mode -->
-      <div class="phone" id="F04">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
-          <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span class="nav-right">New Game</span>
+      <!-- M05 Daily hub macOS (3-col grid in detail) -->
+      <div class="mac" id="M05">
+        <div class="mac-window">
+          <div class="mac-titlebar"><span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span><span class="mac-title">Minesweeper — Daily</span></div>
+          <div class="mac-body">
+            <div class="mac-sidebar">
+              <div class="sb-title">Minesweeper</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
+              <div class="sb-row active"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Settings</div>
             </div>
-            <div class="content">
-              <div class="board-wrap">
-                <div class="status-row">
-                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 5</span>
-                  <span class="status-text">Playing</span>
-                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 51</span>
-                </div>
-                <div class="mode-toggle">
-                  <span class="mode-callout">Flag mode active → tap flags</span>
-                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
-                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
-                </div>
-                <div class="board-area">
-                  <div class="grid" id="grid-f04"></div>
-                </div>
-                <div class="banner">
-                  Ad loaded
-                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
-                </div>
+            <div class="mac-detail">
+              <div class="mac-detail-title">Daily</div>
+              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+                <div class="card"><div class="daily-head"><span class="dot" style="background:var(--diff-beginner)"></span><span class="daily-diff" style="color:var(--diff-beginner);font-size:16px">Beginner</span><span class="daily-state" style="color:var(--status-success)">✓</span></div><div class="mini-grid" data-seed="4" style="margin-top:8px"></div></div>
+                <div class="card"><div class="daily-head"><span class="dot" style="background:var(--diff-intermediate)"></span><span class="daily-diff" style="color:var(--diff-intermediate);font-size:16px">Intermediate</span><span class="daily-state" style="color:var(--text-tertiary)">—</span></div><div class="mini-grid" data-seed="5" style="margin-top:8px"></div></div>
+                <div class="card"><div class="daily-head"><span class="dot" style="background:var(--diff-expert)"></span><span class="daily-diff" style="color:var(--diff-expert);font-size:16px">Expert</span><span class="daily-state" style="color:var(--text-tertiary)">—</span></div><div class="mini-grid" data-seed="6" style="margin-top:8px"></div></div>
               </div>
             </div>
           </div>
-          <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F04 — Board (Flag mode)</div>
-        <div class="phone-src">MinesweeperBoardView.swift · interactionMode</div>
-      </div>
-
-      <!-- F05 Board Expert scroll -->
-      <div class="phone" id="F05">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
-          <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span class="nav-right">New Game</span>
-            </div>
-            <div class="content">
-              <div class="board-wrap">
-                <div class="status-row">
-                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 99</span>
-                  <span class="status-text">Playing</span>
-                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 12</span>
-                </div>
-                <div class="mode-toggle">
-                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
-                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
-                </div>
-                <div class="board-area" style="overflow:hidden; align-items:flex-start; justify-content:flex-start;">
-                  <div class="grid" id="grid-f05" style="margin:-2px 0 0 -2px;"></div>
-                  <div class="scroll-hint">16×30 · cells at 32 pt floor → scrolls ↔ ↕</div>
-                </div>
-                <div class="banner">
-                  Ad loaded
-                  <span class="dismiss"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" /><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2"/></svg></span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label">F05 — Board (Expert 16×30, scrolling)</div>
-        <div class="phone-src">MinesweeperBoardView.swift · minCellSide floor + ScrollView</div>
-      </div>
-
-      <!-- F06 Win -->
-      <div class="phone" id="F06">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
-          <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span class="nav-right">New Game</span>
-            </div>
-            <div class="content">
-              <div class="board-wrap">
-                <div class="status-row">
-                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 0</span>
-                  <span class="status-text">You won</span>
-                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 84</span>
-                </div>
-                <div class="mode-toggle">
-                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
-                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
-                </div>
-                <div class="board-area">
-                  <div class="grid" id="grid-f06"></div>
-                  <div class="terminal-overlay">
-                    <div class="t-title">You won</div>
-                    <div class="t-sub">Elapsed: 84s</div>
-                  </div>
-                </div>
-                <!-- banner suppressed in terminal state -->
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label">F06 — Board (Win overlay)</div>
-        <div class="phone-src">MinesweeperBoardView.swift · terminalOverlay (.won)</div>
-      </div>
-
-      <!-- F07 Lose -->
-      <div class="phone" id="F07">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
-          <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span class="nav-right">New Game</span>
-            </div>
-            <div class="content">
-              <div class="board-wrap">
-                <div class="status-row">
-                  <span class="stat"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5" fill="#FF9500"/></svg> 3</span>
-                  <span class="status-text">Boom</span>
-                  <span class="stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#000" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M9 2h6" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg> 22</span>
-                </div>
-                <div class="mode-toggle">
-                  <div class="seg active"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0 0V3.5a1.5 1.5 0 0 1 3 0V11m0-1V5a1.5 1.5 0 0 1 3 0v8c0 4-2 7-6 7s-6-3-6-7v-2a1.5 1.5 0 0 1 3 0z" fill="none" stroke="#000" stroke-width="1.5"/></svg> Reveal</div>
-                  <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#000"/></svg> Flag</div>
-                </div>
-                <div class="board-area">
-                  <div class="grid" id="grid-f07"></div>
-                  <div class="terminal-overlay">
-                    <div class="t-title">Boom — you hit a mine</div>
-                    <div class="t-sub">Elapsed: 22s</div>
-                  </div>
-                </div>
-                <!-- banner suppressed in terminal state -->
-              </div>
-            </div>
-          </div>
-          <div class="home-indicator"></div>
-        </div>
-        <div class="phone-label">F07 — Board (Lose overlay)</div>
-        <div class="phone-src">MinesweeperBoardView.swift · terminalOverlay (.lost)</div>
+        <div class="phone-label">M05 — macOS Daily (3-column grid in detail) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">DailyHubShellView · LazyVGrid (regular = 3 col)</div>
       </div>
 
     </div>
   </section>
 
-  <!-- ============ FLOW 3: SETTINGS ============ -->
-  <section class="flow">
-    <h2 class="flow-title">Settings</h2>
-    <p class="flow-sub"><code>SettingsView</code> → <code>GameShellUI.SettingsShellView</code> (grouped Form). Three sections: <strong>Purchases</strong> (shared <code>MonetizationUI</code> Remove Ads / Restore rows — shown only when a controller is wired), <strong>About</strong> (shared <code>SettingsAboutVersionRow</code>, version from <code>Bundle.main</code>), <strong>Storage</strong> (shared <code>SettingsStorageSection</code> "Clear cache" → confirmation dialog → real <code>PersistenceProtocol</code> call, parity-only no-op until MS save-flow lands). All tints are <code>.accentColor</code> — MS has no theme.</p>
+  <!-- ============ PRACTICE ============ -->
+  <section class="flow" id="flow-practice">
+    <h2 class="flow-title">Practice <span class="chip target">TARGET · exists in source but unreachable</span></h2>
+    <p class="flow-sub">
+      <b>Mirror of Sudoku's <code>PracticeHubView</code>.</b> <code>MinesweeperPracticeHubView</code> <em>already exists</em> (wraps <code>PracticeHubShellView</code> with a segmented difficulty <code>Picker</code> + a <code>.borderedProminent</code> Start card that does <code>path.append(.board(difficulty, seed))</code>) — but, like Daily, is <b>not wired into navigation</b>. Difficulties are the real <code>Difficulty.swift</code> presets: Beginner 9×9·10, Intermediate 16×16·40, Expert 16×30·99.
+    </p>
     <div class="flow-frames">
 
-      <!-- F08 Settings -->
-      <div class="phone" id="F08">
+      <!-- M06 Practice hub iPhone -->
+      <div class="phone" id="M06">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span>Settings</span>
-            </div>
-            <div class="content">
-              <div class="form">
-                <div class="section-header">Purchases</div>
-                <div class="group">
-                  <div class="row tinted">
-                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" fill="none" stroke="#007AFF" stroke-width="1.6"/></svg></span>
-                    Remove Ads
-                    <span class="value" style="color:var(--tint)">$2.99</span>
-                  </div>
-                  <div class="row tinted">
-                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2.3 5.6" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M4 20v-4h4" fill="none" stroke="#007AFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    Restore Purchases
-                  </div>
-                </div>
-
-                <div class="section-header">About</div>
-                <div class="group">
-                  <div class="row tinted">
-                    <span class="leading-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#007AFF" stroke-width="1.6"/><path d="M12 11v5" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="#007AFF"/></svg></span>
-                    Version
-                    <span class="value">1.0.0</span>
-                  </div>
-                </div>
-
-                <div class="section-header">Storage</div>
-                <div class="group">
-                  <div class="row destructive">
-                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="#FF3B30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    Clear cache
-                  </div>
-                </div>
-              </div>
+            <div class="navbar-inline"><span class="chev">‹</span> Practice</div>
+            <div class="section-label">Difficulty</div>
+            <div class="segmented"><div class="seg">Beginner</div><div class="seg active">Intermediate</div><div class="seg">Expert</div></div>
+            <div class="card" style="padding:16px;">
+              <div style="font-size:16px;font-weight:600;margin-bottom:12px;">Ready to play</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">16 × 16 · 40 mines</div>
+              <div class="btn-prominent"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 4l14 8-14 8z"/></svg> Start</div>
             </div>
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F08 — Settings</div>
-        <div class="phone-src">SettingsView.swift + SettingsAboutStorage.swift</div>
+        <div class="phone-label">M06 — Practice hub (picker + Start) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">MinesweeperPracticeHubView · segmented Picker</div>
       </div>
 
-      <!-- F09 Clear cache confirmation -->
-      <div class="phone" id="F09">
-        <div class="phone-shell">
-          <div class="dynamic-island"></div>
-          <div class="status-bar"><span>9:41</span><span class="status-icons">
-            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="#000"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#000"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#000"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#000"/></svg>
-            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="1" width="21" height="10" rx="2.5" fill="none" stroke="#000" stroke-opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.2" fill="#000"/></svg>
-          </span></div>
-          <div class="screen">
-            <div class="navbar-inline">
-              <span class="nav-left">
-                <svg width="11" height="18" viewBox="0 0 11 18"><path d="M9.5 1L1.5 9l8 8" fill="none" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Minesweeper
-              </span>
-              <span>Settings</span>
+      <!-- M07 Practice macOS -->
+      <div class="mac" id="M07">
+        <div class="mac-window">
+          <div class="mac-titlebar"><span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span><span class="mac-title">Minesweeper — Practice</span></div>
+          <div class="mac-body">
+            <div class="mac-sidebar">
+              <div class="sb-title">Minesweeper</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
+              <div class="sb-row active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Settings</div>
             </div>
-            <div class="content">
-              <div class="form">
-                <div class="section-header">Storage</div>
-                <div class="group">
-                  <div class="row destructive">
-                    <span class="leading-icon"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="#FF3B30" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    Clear cache
-                  </div>
+            <div class="mac-detail">
+              <div class="mac-detail-title">Practice</div>
+              <div style="max-width:440px;">
+                <div class="section-label">Difficulty</div>
+                <div class="segmented"><div class="seg">Beginner</div><div class="seg">Intermediate</div><div class="seg active">Expert</div></div>
+                <div class="card" style="padding:18px;">
+                  <div style="font-size:17px;font-weight:600;margin-bottom:12px;">Ready to play</div>
+                  <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">16 × 30 · 99 mines</div>
+                  <div class="btn-prominent" style="margin-top:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 4l14 8-14 8z"/></svg> Start</div>
                 </div>
               </div>
-              <div class="dimmer">
-                <div class="sheet-group">
-                  <div class="sheet-title">Reset session cache</div>
-                  <div class="sheet-msg">Generated puzzles will be re-derived next play. Saved games are not affected.</div>
-                  <div class="sheet-btn destructive">Clear cache</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">M07 — macOS Practice (detail column) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">PracticeHubShellView · filter + cta slots</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ BOARD (the one MS-specific screen) ============ -->
+  <section class="flow" id="flow-board">
+    <h2 class="flow-title">Board — gameplay (the one MS-specific screen) <span class="chip shipped">SHIPPED (Tier-0) · re-themed</span></h2>
+    <p class="flow-sub">
+      <b>This is the only screen that does NOT mirror Sudoku</b> — it is genuine Minesweeper, and it already ships. <code>MinesweeperBoardView</code>: status bar (flag count / status / 1 Hz elapsed timer), the <b>Reveal/Flag mode toggle</b> (segmented Picker, Tier-0 #3), a <code>GeometryReader</code>-scaled grid (32 pt cell floor; Expert 16×30 clamps to the floor and scrolls both axes), a win/lose <code>.regularMaterial</code> overlay, and a banner slot (suppressed in terminal states). Shown here re-rendered with the <b>proposed MS theme</b> (today it uses raw SwiftUI primitives, no tokens).
+    </p>
+    <div class="flow-frames">
+
+      <!-- M08 Board loader -->
+      <div class="phone" id="M08">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen" style="display:grid;place-items:center;">
+            <div style="text-align:center;color:var(--text-secondary);">
+              <div style="font-size:30px;">◌</div>
+              <div style="font-size:12px;margin-top:8px;">Generating board…</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M08 — Board loader (seed → engine) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">LiveRouteFactory · board route</div>
+      </div>
+
+      <!-- M09 Board Reveal mode -->
+      <div class="phone" id="M09">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="board-header">
+              <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 7</span>
+              <span class="status-text">Playing</span>
+              <span class="stat"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> 0:38</span>
+            </div>
+            <div class="mode-toggle">
+              <div class="seg active"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div>
+              <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div>
+            </div>
+            <div class="board-area"><div class="grid" id="grid-m09"></div></div>
+            <div class="banner-slot"><span class="x">⊗</span>Banner loads here (when ads on)</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M09 — Board (Reveal mode, mid-game) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">MinesweeperBoardView · interactionMode = .reveal</div>
+      </div>
+
+      <!-- M10 Board Flag mode -->
+      <div class="phone" id="M10">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="board-header">
+              <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 5</span>
+              <span class="status-text">Playing</span>
+              <span class="stat"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> 0:51</span>
+            </div>
+            <div class="mode-toggle">
+              <div class="seg"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div>
+              <div class="seg active"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div>
+            </div>
+            <div class="board-area"><div class="grid" id="grid-m10"></div></div>
+            <div class="banner-slot"><span class="x">⊗</span>Banner loads here (when ads on)</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M10 — Board (Flag mode) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">MinesweeperBoardView · interactionMode = .flag</div>
+      </div>
+
+      <!-- M11 Board Expert scroll -->
+      <div class="phone" id="M11">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="board-header">
+              <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 99</span>
+              <span class="status-text">Playing</span>
+              <span class="stat"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> 0:12</span>
+            </div>
+            <div class="mode-toggle">
+              <div class="seg active"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div>
+              <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div>
+            </div>
+            <div class="board-area" style="overflow:hidden; align-items:flex-start; justify-content:flex-start;">
+              <div class="grid" id="grid-m11" style="margin:-2px 0 0 -2px;"></div>
+              <div class="scroll-hint">16×30 · 32 pt floor → scrolls ↔ ↕</div>
+            </div>
+            <div class="banner-slot"><span class="x">⊗</span>Banner loads here (when ads on)</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M11 — Board (Expert 16×30, scrolling) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">MinesweeperBoardView · minCellSide floor + ScrollView</div>
+      </div>
+
+      <!-- M12 Lose -->
+      <div class="phone" id="M12">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="board-header">
+              <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 3</span>
+              <span class="status-text" style="color:var(--status-error)">Boom</span>
+              <span class="stat"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> 0:22</span>
+            </div>
+            <div class="mode-toggle">
+              <div class="seg active"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div>
+              <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div>
+            </div>
+            <div class="board-area">
+              <div class="grid" id="grid-m12"></div>
+              <div class="terminal-overlay lose"><div class="t-title">Boom — you hit a mine</div><div class="t-sub">Elapsed 0:22 · tap New Game</div></div>
+            </div>
+            <!-- banner suppressed in terminal state -->
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M12 — Board (Lose overlay) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">MinesweeperBoardView · terminalOverlay (.lost)</div>
+      </div>
+
+      <!-- M13 Board macOS (2-col + rail) -->
+      <div class="mac" id="M13">
+        <div class="mac-window">
+          <div class="mac-titlebar"><span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span><span class="mac-title">Minesweeper — Intermediate</span></div>
+          <div class="mac-body" style="padding:20px 24px;">
+            <div class="mac-board-layout">
+              <div class="mac-board-main">
+                <div class="board-area" style="margin-top:8px;"><div class="grid" id="grid-m13"></div></div>
+              </div>
+              <div class="mac-rail">
+                <div class="rail-card">
+                  <div class="rail-h">Status</div>
+                  <div style="display:flex; justify-content:space-between; font-size:14px;">
+                    <span class="stat flag-ct" style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:var(--status-flag);"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 5</span>
+                    <span style="font-weight:600;">Playing</span>
+                    <span class="stat" style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px;"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> 1:34</span>
+                  </div>
                 </div>
-                <div class="sheet-cancel">Cancel</div>
+                <div class="rail-card">
+                  <div class="rail-h">Mode</div>
+                  <div class="mode-toggle" style="margin-bottom:0;">
+                    <div class="seg active"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div>
+                    <div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div>
+                  </div>
+                </div>
+                <div class="rail-card">
+                  <div class="rail-h">Game</div>
+                  <div class="btn-bordered" style="padding:9px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
+                </div>
+                <div class="banner-slot" style="margin-top:0;"><span class="x">⊗</span>Banner (when ads on)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">M13 — macOS Board (centered grid + 260 pt control rail) <span class="built-tag s">SHIPPED (mac layout target)</span></div>
+        <div class="phone-source">MinesweeperBoardView.macLayout · 2-column rail (mirrors BoardView.macLayout)</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ COMPLETION + LEADERBOARD ============ -->
+  <section class="flow" id="flow-end">
+    <h2 class="flow-title">Completion &amp; Leaderboard <span class="chip target">TARGET · not yet built</span></h2>
+    <p class="flow-sub">
+      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a win, the board would push a <code>CompletionView</code>: a "Cleared!" hero with elapsed time + best-time, plus a leaderboard slice. "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Today MS shows only an inline win/lose overlay with no completion screen, no best-time, no Game Center.</em>
+    </p>
+    <div class="flow-frames">
+
+      <!-- M14 Completion -->
+      <div class="phone" id="M14">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div style="height:8px;"></div>
+            <div class="hero">
+              <div class="chk"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="var(--status-success)"/><path d="M7 12l3.5 3.5L17 9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div class="solved">Cleared!</div>
+              <div class="time">Intermediate · 1:48</div>
+              <div style="font-size:13px;color:var(--status-success);margin-top:6px;font-weight:600;">New best time ✦</div>
+            </div>
+            <div class="section-label" style="text-transform:none;font-size:15px;">Leaderboard · Intermediate</div>
+            <div class="lb-row"><span class="rank">1.</span><span class="nm">Renji</span><span class="sc">1:31</span></div>
+            <div class="lb-row"><span class="rank">2.</span><span class="nm">You</span><span class="sc">1:48</span></div>
+            <div class="lb-row"><span class="rank">3.</span><span class="nm">Priya</span><span class="sc">2:07</span></div>
+            <div class="btn-bordered" style="margin-top:16px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> View full leaderboard</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M14 — Completion (hero + best-time + slice) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">CompletionView · .loaded(slice)</div>
+      </div>
+
+      <!-- M15 Game Center modal -->
+      <div class="phone" id="M15">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen" style="padding:8px 10px;">
+            <div class="gc-sheet">
+              <div class="gc-nav"><span class="gc-title">Game Center</span><span class="done">Done</span></div>
+              <div class="gc-system-note">Apple-provided UI — presented modally, not an AppRoute push (mirror #49)</div>
+              <div class="gc-seg"><span>Beginner</span><span class="on">Intermediate</span><span>Expert</span></div>
+              <div class="gc-row"><span class="gc-rank">1</span><div class="gc-av"></div><span class="nm" style="flex:1">Renji</span><span>1:31</span></div>
+              <div class="gc-row"><span class="gc-rank">2</span><div class="gc-av"></div><span class="nm" style="flex:1">You</span><span>1:48</span></div>
+              <div class="gc-row"><span class="gc-rank">3</span><div class="gc-av"></div><span class="nm" style="flex:1">Priya</span><span>2:07</span></div>
+              <div class="gc-row"><span class="gc-rank">4</span><div class="gc-av"></div><span class="nm" style="flex:1">Tom</span><span>2:35</span></div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M15 — Game Center dashboard (modal) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-source">GameCenterDashboard.present() · per-difficulty board</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="flow" id="flow-settings">
+    <h2 class="flow-title">Settings <span class="chip shipped">SHIPPED (shared sections)</span></h2>
+    <p class="flow-sub">
+      <b>Mirror of Sudoku's <code>SettingsView</code> — already shipped via the shared <code>GameShellUI.SettingsAboutStorage</code>.</b> A native grouped Form: <b>Purchases</b> (Remove Ads / Restore via shared <code>MonetizationUI</code> rows), <b>About</b> (Version from <code>Bundle.main</code>), <b>Storage</b> (Clear cache → confirmation dialog → <code>PersistenceProtocol</code>). All tints use <code>.accentColor</code> today; under the proposed theme they would resolve to <code>accent.primary</code>.
+    </p>
+    <div class="flow-frames">
+
+      <!-- M16 Settings iPhone -->
+      <div class="phone" id="M16">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline"><span class="chev">‹</span> Settings</div>
+            <div class="form-bg">
+              <div class="form-section-h">Purchases</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" stroke="currentColor" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Remove Ads <span class="price-r">$2.99</span></div>
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" stroke-width="1.6"/><path d="M4 20v-4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Restore Purchases</div>
+              </div>
+              <div class="form-section-h">About</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg></span> Version <span class="val">1.0.0</span></div>
+              </div>
+              <div class="form-section-h">Storage</div>
+              <div class="form-group">
+                <div class="form-row destructive"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Clear cache</div>
               </div>
             </div>
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">F09 — Clear cache confirmation</div>
-        <div class="phone-src">SettingsStorageSection.swift · .confirmationDialog</div>
+        <div class="phone-label">M16 — Settings (Purchases / About / Storage) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">SettingsView · SettingsAboutStorage · MonetizationUI</div>
+      </div>
+
+      <!-- M17 Clear cache confirmation -->
+      <div class="phone" id="M17">
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline"><span class="chev">‹</span> Settings</div>
+            <div class="form-bg">
+              <div class="form-section-h">Storage</div>
+              <div class="form-group">
+                <div class="form-row destructive"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Clear cache</div>
+              </div>
+            </div>
+            <div class="dimmer">
+              <div class="sheet-group">
+                <div class="sheet-title">Reset session cache</div>
+                <div class="sheet-msg">Generated boards will be re-derived next play. Saved games are not affected.</div>
+                <div class="sheet-btn destructive">Clear cache</div>
+              </div>
+              <div class="sheet-cancel">Cancel</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">M17 — Clear cache confirmation <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">SettingsStorageSection · .confirmationDialog</div>
+      </div>
+
+      <!-- M18 Settings macOS grouped Form -->
+      <div class="mac" id="M18">
+        <div class="mac-window">
+          <div class="mac-titlebar"><span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span><span class="mac-title">Minesweeper — Settings</span></div>
+          <div class="mac-body">
+            <div class="mac-sidebar">
+              <div class="sb-title">Minesweeper</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
+              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
+              <div class="sb-row active"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Settings</div>
+            </div>
+            <div class="mac-detail">
+              <div class="mac-detail-title">Settings</div>
+              <div class="mac-form">
+                <div class="form-section-h">Purchases</div>
+                <div class="form-group">
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" stroke="currentColor" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Remove Ads <span class="price-r">$2.99</span></div>
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" stroke-width="1.6"/><path d="M4 20v-4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Restore Purchases</div>
+                </div>
+                <div class="form-section-h">About</div>
+                <div class="form-group">
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg></span> Version <span class="val">1.0.0</span></div>
+                </div>
+                <div class="form-section-h">Storage</div>
+                <div class="form-group">
+                  <div class="form-row destructive"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Clear cache</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label">M18 — macOS Settings (grouped Form in detail) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">SettingsShellView · grouped Form</div>
       </div>
 
     </div>
@@ -734,272 +990,296 @@
   <!-- ============ ARROWS ============ -->
   <svg class="arrows-layer" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#007AFF"/></marker>
-      <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#C7C7CC"/></marker>
-      <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#FF9500"/></marker>
+      <marker id="m-push" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3E6B8C"/></marker>
+      <marker id="m-modal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#D9822B"/></marker>
+      <marker id="m-back" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#C7C7CC"/></marker>
     </defs>
-
-    <!-- F01 -> F02 : same-screen state (Picker selection) -->
-    <path d="M370 410 C 400 410, 420 410, 450 410" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
-    <text x="410" y="400" font-size="11" fill="#8E8E93" text-anchor="middle">pick difficulty</text>
-
-    <!-- F02 (New Game) -> F03 (Board): push. Goes from F02 down to next flow row.
-         F02 right edge ~ x=770, center y ~ 410. F03 is in next flow, left edge ~ x=40, top ~ 880. -->
-    <path d="M768 470 C 900 470, 900 700, 820 700" fill="none" stroke="#007AFF" stroke-width="2" marker-end="url(#arrow-blue)"/>
-    <text x="905" y="585" font-size="11" fill="#007AFF" text-anchor="middle">tap "Start"</text>
-    <text x="905" y="600" font-size="11" fill="#007AFF" text-anchor="middle">path.append(.board)</text>
-
-    <!-- F03 -> F04 : same-screen state (mode toggle) -->
-    <path d="M362 1180 C 392 1180, 412 1180, 442 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
-    <text x="402" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">toggle Flag</text>
-
-    <!-- F04 -> F05 same-screen (difficulty produces Expert board) — informational dashed gray -->
-    <path d="M772 1180 C 802 1180, 822 1180, 852 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
-    <text x="812" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">Expert</text>
-
-    <!-- F05 -> F06 same-screen (win) -->
-    <path d="M1182 1180 C 1212 1180, 1232 1180, 1262 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
-    <text x="1222" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">solve → won</text>
-
-    <!-- F06 -> F07 same-screen (lose) -->
-    <path d="M1592 1180 C 1622 1180, 1642 1180, 1672 1180" fill="none" stroke="#8E8E93" stroke-width="2" stroke-dasharray="2 2"/>
-    <text x="1632" y="1170" font-size="11" fill="#8E8E93" text-anchor="middle">hit mine → lost</text>
-
-    <!-- Board "New Game" toolbar -> back to F01 (pop). From F03 navbar right toward F01 top. -->
-    <path d="M300 880 C 200 820, 120 760, 120 660" fill="none" stroke="#C7C7CC" stroke-width="2" marker-end="url(#arrow-gray)"/>
-    <text x="150" y="800" font-size="11" fill="#9b9ba0" text-anchor="start">toolbar "New Game"</text>
-    <text x="150" y="815" font-size="11" fill="#9b9ba0" text-anchor="start">path.removeAll()</text>
-
-    <!-- Sidebar/Settings entry -> F08 (push). From F01 area down to Settings flow row. -->
-    <path d="M40 470 C -20 470, -20 1760, 40 1760" fill="none" stroke="#007AFF" stroke-width="2" marker-end="url(#arrow-blue)"/>
-    <text x="-8" y="1115" font-size="11" fill="#007AFF" text-anchor="middle" transform="rotate(-90 -8 1115)">sidebar "Settings" · path.append(.settings)</text>
-
-    <!-- F08 -> F09 confirmation dialog -->
-    <path d="M362 1900 C 392 1900, 412 1900, 442 1900" fill="none" stroke="#FF9500" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow-orange)"/>
-    <text x="402" y="1890" font-size="11" fill="#FF9500" text-anchor="middle">tap "Clear cache"</text>
   </svg>
 
 </main>
 
 <!-- ============ TOKENS PANEL ============ -->
 <aside class="tokens-panel">
-  <h2>Design System</h2>
-  <p class="panel-note">As actually rendered by MinesweeperKit — raw SwiftUI primitives.</p>
-
-  <div class="callout">
-    <strong>⚠ No theme system yet.</strong> Minesweeper does <strong>not</strong> have design tokens. Every color below is a raw SwiftUI primitive read straight from the source — covered cells are <code>Color.secondary.opacity(0.25)</code>, mines <code>Color.red.opacity(0.6)</code>, flags <code>.orange</code>, numbers are the system 1–8 palette, and all chrome tints are <code>.accentColor</code> (system blue). It is <em>not</em> painted in Sudoku's sage palette. Theme extraction is pending — tracked as <strong>#278 Tier-1 theme extraction</strong> (per <code>MinesweeperBannerSlotView</code> impl-notes D1, reuse blocked on lifting the theme env out of SudokuUI).
+  <h2>Design System — PROPOSED MS theme <span class="chip target" style="font-size:12px; vertical-align:middle;">NOT YET IMPLEMENTED</span></h2>
+  <p class="tp-sub">
+    This is a <b>proposal</b>. Today Minesweeper has <b>no theme</b> — the board uses raw SwiftUI primitives (<code>Color.secondary</code>, <code>.orange</code>, <code>.red</code>) and every other tint is <code>.accentColor</code>. The token set below mirrors the <em>structure</em> of Sudoku's <code>DefaultTheme.swift</code> (surface / cell / text / accent / status / difficulty, each a light/dark pair) so MS could adopt an identical <code>Theme</code> protocol — but with a distinct identity palette: <b>slate-blueprint blue + signal-orange flag + mine-red</b>, a sibling to Sudoku's sage / warm-paper rather than a clone.
+  </p>
+  <div class="tp-callout">
+    <strong>To adopt this:</strong> add a <code>MinesweeperTheme: Theme</code> (or lift the shared <code>Theme</code> protocol into <code>GameShellKit</code>), inject via <code>@Environment(\.theme)</code> exactly as SudokuUI does, and replace the board's hard-coded primitives with <code>theme.cell.*</code> / <code>theme.status.*</code>. Each swatch below shows light · dark.
   </div>
 
-  <section>
-    <h3>Colors — board (MS actual)</h3>
-    <div class="color-grid">
-      <div class="color-swatch"><div class="swatch" style="background:#cfcfd2"></div><div class="swatch-meta"><div class="swatch-name">Covered cell</div><div class="swatch-hex">secondary @ 25%</div><div class="swatch-swiftui">Color.secondary.opacity(0.25)</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:#f3f3f4"></div><div class="swatch-meta"><div class="swatch-name">Revealed cell</div><div class="swatch-hex">secondary @ 8%</div><div class="swatch-swiftui">Color.secondary.opacity(0.08)</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--ms-mine)"></div><div class="swatch-meta"><div class="swatch-name">Mine fill</div><div class="swatch-hex">red @ 60%</div><div class="swatch-swiftui">Color.red.opacity(0.6)</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--ms-flag)"></div><div class="swatch-meta"><div class="swatch-name">Flag glyph</div><div class="swatch-hex">#FF9500</div><div class="swatch-swiftui">.orange</div></div></div>
+  <div class="tp-grid">
+
+    <div class="tp-section">
+      <h3>Accent &amp; Status</h3>
+      <div class="sw-row"><div class="pair"><span style="background:#3E6B8C"></span><span style="background:#7FAFCF"></span></div><div class="sw-meta"><div class="sw-name">Accent / primary (slate)</div><div class="sw-hex">#3E6B8C · #7FAFCF</div><div class="sw-token">accent.primary</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#D5E2EC"></span><span style="background:#2C4356"></span></div><div class="sw-meta"><div class="sw-name">Accent / muted</div><div class="sw-hex">#D5E2EC · #2C4356</div><div class="sw-token">accent.muted</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#1B7A3E"></span><span style="background:#4BC579"></span></div><div class="sw-meta"><div class="sw-name">Status / success (cleared)</div><div class="sw-hex">#1B7A3E · #4BC579</div><div class="sw-token">status.success</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#D9822B"></span><span style="background:#E8A560"></span></div><div class="sw-meta"><div class="sw-name">Status / flag (signal-orange)</div><div class="sw-hex">#D9822B · #E8A560</div><div class="sw-token">status.warning</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#C8362B"></span><span style="background:#E66258"></span></div><div class="sw-meta"><div class="sw-name">Status / error (mine · boom)</div><div class="sw-hex">#C8362B · #E66258</div><div class="sw-token">status.error</div></div></div>
     </div>
-  </section>
 
-  <section>
-    <h3>Colors — number glyphs (system)</h3>
-    <div class="color-grid">
-      <div class="color-swatch"><div class="swatch" style="background:var(--n1)"></div><div class="swatch-meta"><div class="swatch-name">1</div><div class="swatch-swiftui">.blue</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n2)"></div><div class="swatch-meta"><div class="swatch-name">2</div><div class="swatch-swiftui">.green</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n3)"></div><div class="swatch-meta"><div class="swatch-name">3</div><div class="swatch-swiftui">.red</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n4)"></div><div class="swatch-meta"><div class="swatch-name">4</div><div class="swatch-swiftui">.purple</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n5)"></div><div class="swatch-meta"><div class="swatch-name">5</div><div class="swatch-swiftui">.brown</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n6)"></div><div class="swatch-meta"><div class="swatch-name">6</div><div class="swatch-swiftui">.teal</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n7)"></div><div class="swatch-meta"><div class="swatch-name">7</div><div class="swatch-swiftui">.black</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--n8)"></div><div class="swatch-meta"><div class="swatch-name">8</div><div class="swatch-swiftui">.gray</div></div></div>
+    <div class="tp-section">
+      <h3>Difficulty</h3>
+      <div class="sw-row"><div class="pair"><span style="background:#3E6B8C"></span><span style="background:#7FAFCF"></span></div><div class="sw-meta"><div class="sw-name">Beginner (9×9 · 10)</div><div class="sw-hex">#3E6B8C · #7FAFCF</div><div class="sw-token">difficulty.easy</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#C97D5F"></span><span style="background:#D89A82"></span></div><div class="sw-meta"><div class="sw-name">Intermediate (16×16 · 40)</div><div class="sw-hex">#C97D5F · #D89A82</div><div class="sw-token">difficulty.medium</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#B23A48"></span><span style="background:#D96B77"></span></div><div class="sw-meta"><div class="sw-name">Expert (16×30 · 99)</div><div class="sw-hex">#B23A48 · #D96B77</div><div class="sw-token">difficulty.hard</div></div></div>
+      <p class="comp-note">Three buckets map 1:1 onto <code>Difficulty.swift</code>. Difficulty signaling + the Remove-Ads commerce cue (intermediate), not a general CTA palette.</p>
     </div>
-  </section>
 
-  <section>
-    <h3>Colors — chrome (semantic)</h3>
-    <div class="color-grid">
-      <div class="color-swatch"><div class="swatch" style="background:var(--tint)"></div><div class="swatch-meta"><div class="swatch-name">Tint (all controls)</div><div class="swatch-hex">#007AFF</div><div class="swatch-swiftui">.accentColor (no theme)</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--destructive)"></div><div class="swatch-meta"><div class="swatch-name">Destructive</div><div class="swatch-hex">#FF3B30</div><div class="swatch-swiftui">role: .destructive</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--green)"></div><div class="swatch-meta"><div class="swatch-name">Toast success</div><div class="swatch-hex">#34C759</div><div class="swatch-swiftui">.green</div></div></div>
-      <div class="color-swatch"><div class="swatch" style="background:var(--grouped-bg)"></div><div class="swatch-meta"><div class="swatch-name">Grouped bg</div><div class="swatch-hex">#F2F2F7</div><div class="swatch-swiftui">systemGroupedBackground</div></div></div>
+    <div class="tp-section">
+      <h3>Surface</h3>
+      <div class="sw-row"><div class="pair"><span style="background:#F4F6F8"></span><span style="background:#14171B"></span></div><div class="sw-meta"><div class="sw-name">Background (blueprint paper)</div><div class="sw-hex">#F4F6F8 · #14171B</div><div class="sw-token">surface.background</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#FFFFFF"></span><span style="background:#1C2026"></span></div><div class="sw-meta"><div class="sw-name">Primary</div><div class="sw-hex">#FFFFFF · #1C2026</div><div class="sw-token">surface.primary</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#FFFFFF"></span><span style="background:#242A32"></span></div><div class="sw-meta"><div class="sw-name">Elevated</div><div class="sw-hex">#FFFFFF · #242A32</div><div class="sw-token">surface.elevated</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#E6EAEE"></span><span style="background:#272D35"></span></div><div class="sw-meta"><div class="sw-name">Placeholder (banner)</div><div class="sw-hex">#E6EAEE · #272D35</div><div class="sw-token">surface.placeholder</div></div></div>
     </div>
-  </section>
 
-  <section>
-    <h3>Typography</h3>
-    <div class="type-sample"><div style="font-size:30px;font-weight:600;">New Game</div><div class="type-meta">largeTitle.weight(.semibold) · NewGameView title</div></div>
-    <div class="type-sample"><div style="font-size:22px;font-weight:600;">You won</div><div class="type-meta">.title2.weight(.semibold) · terminal overlay</div></div>
-    <div class="type-sample"><div style="font-size:17px;font-weight:600;">Playing</div><div class="type-meta">.headline · status text / Start label</div></div>
-    <div class="type-sample"><div style="font-size:15px;">16 × 16 · 40 mines</div><div class="type-meta">.subheadline · board summary / status bar</div></div>
-    <div class="type-sample"><div style="font-size:12px;color:#86868b;">Ad loaded</div><div class="type-meta">.caption2 · banner status</div></div>
-    <div class="type-sample"><div style="font-size:18px;font-weight:600;font-family:ui-rounded;">1 2 3</div><div class="type-meta">system(size: side*0.55, .semibold, design:.rounded) · cell numbers</div></div>
-  </section>
-
-  <section>
-    <h3>Spacing</h3>
-    <div class="scale-row">
-      <div class="scale-item"><div class="scale-box" style="width:2px;height:24px;"></div><span>2</span></div>
-      <div class="scale-item"><div class="scale-box" style="width:8px;height:24px;"></div><span>8</span></div>
-      <div class="scale-item"><div class="scale-box" style="width:12px;height:24px;"></div><span>12</span></div>
-      <div class="scale-item"><div class="scale-box" style="width:16px;height:24px;"></div><span>16</span></div>
-      <div class="scale-item"><div class="scale-box" style="width:24px;height:24px;"></div><span>24</span></div>
-      <div class="scale-item"><div class="scale-box" style="width:40px;height:24px;"></div><span>40</span></div>
+    <div class="tp-section">
+      <h3>Cell (board)</h3>
+      <div class="sw-row"><div class="pair"><span style="background:#D6DEE6"></span><span style="background:#2B333D"></span></div><div class="sw-meta"><div class="sw-name">Covered</div><div class="sw-hex">#D6DEE6 · #2B333D</div><div class="sw-token">cell.covered</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#FFFFFF"></span><span style="background:#1C2026"></span></div><div class="sw-meta"><div class="sw-name">Revealed (base)</div><div class="sw-hex">#FFFFFF · #1C2026</div><div class="sw-token">cell.base</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#FBEBD8"></span><span style="background:#3A2E1C"></span></div><div class="sw-meta"><div class="sw-name">Flagged</div><div class="sw-hex">#FBEBD8 · #3A2E1C</div><div class="sw-token">cell.highlighted</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#FBE3E1"></span><span style="background:#4A2724"></span></div><div class="sw-meta"><div class="sw-name">Mine (revealed)</div><div class="sw-hex">#FBE3E1 · #4A2724</div><div class="sw-token">cell.error</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#C8362B"></span><span style="background:#E66258"></span></div><div class="sw-meta"><div class="sw-name">Mine hit (detonated)</div><div class="sw-hex">#C8362B · #E66258</div><div class="sw-token">cell.errorBorder</div></div></div>
     </div>
-    <p class="comp-dim">2 pt = cell gap · 12 pt = board VStack spacing · 24 pt = NewGame VStack · 40 pt = NewGame top padding · 32 pt = min cell side floor.</p>
-  </section>
 
-  <section>
-    <h3>Corner radius</h3>
-    <div class="radius-row">
-      <div class="radius-item"><div class="radius-box" style="border-radius:4px;"></div>4 · cell</div>
-      <div class="radius-item"><div class="radius-box" style="border-radius:8px;"></div>8 · banner</div>
-      <div class="radius-item"><div class="radius-box" style="border-radius:11px;"></div>~11 · button</div>
-      <div class="radius-item"><div class="radius-box" style="border-radius:16px;"></div>16 · overlay</div>
+    <div class="tp-section">
+      <h3>Text</h3>
+      <div class="sw-row"><div class="pair"><span style="background:#1A1E24"></span><span style="background:#EEF1F4"></span></div><div class="sw-meta"><div class="sw-name">Primary</div><div class="sw-hex">#1A1E24 · #EEF1F4</div><div class="sw-token">text.primary</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#545B63"></span><span style="background:#A4ACB4"></span></div><div class="sw-meta"><div class="sw-name">Secondary</div><div class="sw-hex">#545B63 · #A4ACB4</div><div class="sw-token">text.secondary</div></div></div>
+      <div class="sw-row"><div class="pair"><span style="background:#868D95"></span><span style="background:#767D85"></span></div><div class="sw-meta"><div class="sw-name">Tertiary</div><div class="sw-hex">#868D95 · #767D85</div><div class="sw-token">text.tertiary</div></div></div>
     </div>
-  </section>
 
-  <section>
-    <h3>Components</h3>
-
-    <div class="comp">
-      <div class="comp-label">Reveal/Flag mode toggle (Tier-0 #3 — key affordance)</div>
-      <div class="mini-segmented">
-        <div class="seg active">Reveal</div>
-        <div class="seg">Flag</div>
+    <div class="tp-section">
+      <h3>Board count glyphs (1–8)</h3>
+      <p class="comp-note" style="margin-top:0;">Adjacent-mine counts. Classic-Minesweeper-inspired but theme-aligned. <code>.system(rounded)</code>, size = cell × 0.55.</p>
+      <div class="num-swatch">
+        <span class="n" style="color:var(--n1)">1</span><span class="n" style="color:var(--n2)">2</span><span class="n" style="color:var(--n3)">3</span><span class="n" style="color:var(--n4)">4</span>
+        <span class="n" style="color:var(--n5)">5</span><span class="n" style="color:var(--n6)">6</span><span class="n" style="color:var(--n7)">7</span><span class="n" style="color:var(--n8)">8</span>
       </div>
-      <div class="comp-dim">Picker(.segmented) · routes which action a cell tap fires. Long-press (iOS) / right-click (macOS) always flag as accelerators.</div>
     </div>
 
-    <div class="comp">
-      <div class="comp-label">Difficulty Picker</div>
-      <div class="mini-segmented">
-        <div class="seg active">Beginner</div>
-        <div class="seg">Interm.</div>
-        <div class="seg">Expert</div>
+    <div class="tp-section">
+      <h3>Typography</h3>
+      <p class="comp-note" style="margin-top:0;">SwiftUI Dynamic Type (system SF Pro). Board glyphs use <code>.rounded</code>.</p>
+      <div class="type-sample"><div style="font-size:28px;font-weight:600;">Cleared!</div><div class="type-meta">.largeTitle.semibold — Completion hero</div></div>
+      <div class="type-sample"><div style="font-size:22px;font-weight:500;">Daily</div><div class="type-meta">.title3.medium — card titles</div></div>
+      <div class="type-sample"><div style="font-size:17px;font-weight:600;">Playing</div><div class="type-meta">.headline — board status / section headers</div></div>
+      <div class="type-sample"><div style="font-size:17px;">Resume Intermediate</div><div class="type-meta">.body — pill / row labels</div></div>
+      <div class="type-sample"><div style="font-size:16px;">Start</div><div class="type-meta">.callout — CTA / price</div></div>
+      <div class="type-sample"><div style="font-size:12px;color:var(--text-secondary);">16 × 16 · 40 mines</div><div class="type-meta">.caption — subtitles / hints</div></div>
+      <div class="type-sample"><div style="font-family:ui-rounded,sans-serif;font-size:22px;font-weight:700;"><span style="color:var(--n1)">1</span> <span style="color:var(--n2)">2</span> <span style="color:var(--n3)">3</span></div><div class="type-meta">.system(rounded) — board count glyphs</div></div>
+    </div>
+
+    <div class="tp-section">
+      <h3>Spacing — 4pt grid</h3>
+      <p class="comp-note" style="margin-top:0;">Mirrors <code>SpacingTokens</code> (<code>@ScaledMetric</code> in production).</p>
+      <div class="sp-bars">
+        <div class="sp-bar-wrap"><div class="sp-bar" style="height:4px"></div>4<br>xs</div>
+        <div class="sp-bar-wrap"><div class="sp-bar" style="height:8px"></div>8<br>sm</div>
+        <div class="sp-bar-wrap"><div class="sp-bar" style="height:16px"></div>16<br>md</div>
+        <div class="sp-bar-wrap"><div class="sp-bar" style="height:24px"></div>24<br>lg</div>
+        <div class="sp-bar-wrap"><div class="sp-bar" style="height:32px"></div>32<br>xl</div>
       </div>
-      <div class="comp-dim">9×9/10 · 16×16/40 · 16×30/99 (Difficulty.swift).</div>
+      <p class="comp-note">Board cell floor = 32 pt (Expert clamps + scrolls).</p>
     </div>
 
-    <div class="comp">
-      <div class="comp-label">Start button (.borderedProminent)</div>
-      <div class="mini-btn">Start</div>
-      <div class="comp-dim">maxWidth ∞ · vertical pad 12 pt · tint .accentColor.</div>
-    </div>
-
-    <div class="comp">
-      <div class="comp-label">Cells</div>
-      <div class="mini-cells">
-        <div class="mini-cell" style="background:var(--ms-covered-fill);"></div>
-        <div class="mini-cell" style="background:var(--ms-revealed-fill);color:var(--n1);">1</div>
-        <div class="mini-cell" style="background:var(--ms-revealed-fill);color:var(--n3);">3</div>
-        <div class="mini-cell" style="background:var(--ms-covered-fill);"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#FF9500"/></svg></div>
-        <div class="mini-cell mine" style="background:var(--ms-mine);"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="#fff"/></svg></div>
+    <div class="tp-section">
+      <h3>Corner radius</h3>
+      <div class="radius-row">
+        <div class="radius-wrap"><div class="radius-box" style="border-radius:4px"></div>4<br>cell</div>
+        <div class="radius-wrap"><div class="radius-box" style="border-radius:8px"></div>8<br>banner</div>
+        <div class="radius-wrap"><div class="radius-box" style="border-radius:12px"></div>12<br>picker / btn</div>
+        <div class="radius-wrap"><div class="radius-box" style="border-radius:16px"></div>16<br>cards</div>
+        <div class="radius-wrap"><div class="radius-box" style="border-radius:20px"></div>20<br>hero</div>
       </div>
-      <div class="comp-dim">covered · revealed-number · flag (flag.fill) · mine (burst.fill, white-on-red). RoundedRectangle r=4. side ≥ 32 pt.</div>
     </div>
 
-    <div class="comp">
-      <div class="comp-label">Banner slot</div>
-      <div class="mini-row" style="height:40px;justify-content:center;color:#86868b;font-size:11px;">Ad loaded</div>
-      <div class="comp-dim">50 pt visible / 0 pt collapsed · .regularMaterial r=8 · dismiss x · suppressed in terminal states.</div>
+    <div class="tp-section">
+      <h3>Components</h3>
+      <div class="comp">
+        <div class="comp-name">ModeCard / glass card</div>
+        <div class="card mode-card" style="margin:0;"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title" style="font-size:16px;">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
+        <div class="comp-note">minHeight 72 · radius 16 · <code>.glassEffect(.regular)</code> · mirrors Sudoku ModeCard</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Reveal / Flag mode toggle (MS-specific)</div>
+        <div class="mode-toggle" style="margin:0;"><div class="seg active"><svg viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg> Reveal</div><div class="seg"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg> Flag</div></div>
+        <div class="comp-note">.pickerStyle(.segmented) — Tier-0 #3. The one control with no Sudoku equivalent.</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Prominent button</div>
+        <div class="btn-prominent" style="margin:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 4l14 8-14 8z"/></svg> Start</div>
+        <div class="comp-note">.borderedProminent · .controlSize(.large) · tint = accent.primary</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Board cell states</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <div class="cell" style="width:34px;height:34px;">&nbsp;</div>
+          <div class="cell rv" style="width:34px;height:34px;color:var(--n1)">1</div>
+          <div class="cell rv" style="width:34px;height:34px;color:var(--n3)">3</div>
+          <div class="cell fl" style="width:34px;height:34px;"><svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg></div>
+          <div class="cell mine" style="width:34px;height:34px;"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.6"/></svg></div>
+          <div class="cell mine hit" style="width:34px;height:34px;"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        </div>
+        <div class="comp-note">covered · revealed+count · flagged · mine (revealed) · mine hit (detonated). Flag/mine glyphs dual-encode for colour-blind safety.</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Terminal overlay (win / lose)</div>
+        <div class="comp-note">.regularMaterial card · win = status.success title, lose = status.error title. Banner suppressed beneath.</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Banner slot (50pt)</div>
+        <div class="banner-slot" style="margin:0;"><span class="x">⊗</span>Banner loads here (when ads on)</div>
+        <div class="comp-note">collapses to 0pt when AdGate says no · honest placeholder</div>
+      </div>
+      <div class="comp">
+        <div class="comp-name">Form row (grouped) · GC modal · confirmation dialog</div>
+        <div class="form-group" style="margin-bottom:6px;"><div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" stroke="currentColor" stroke-width="1.6"/></svg></span> Remove Ads <span class="price-r">$2.99</span></div></div>
+        <div class="comp-note">SettingsShellView grouped Form · Game Center dashboard presented modally (mirror #49) · .confirmationDialog for Clear cache</div>
+      </div>
     </div>
 
-    <div class="comp">
-      <div class="comp-label">Settings row (grouped Form)</div>
-      <div class="mini-row">Version <span style="margin-left:auto;color:#86868b;">1.0.0</span></div>
-      <div class="comp-dim">min 44 pt · shared SettingsAboutVersionRow / RemoveAdsRow / RestorePurchasesRow.</div>
-    </div>
-
-    <div class="comp">
-      <div class="comp-label">Confirmation dialog</div>
-      <div class="mini-row" style="justify-content:center;color:var(--destructive);">Clear cache</div>
-      <div class="comp-dim">.confirmationDialog · destructive + cancel · wired to PersistenceProtocol (no-op until save-flow lands).</div>
-    </div>
-  </section>
-
-  <section>
-    <h3>Navigation graph (live)</h3>
-    <p class="comp-dim" style="line-height:1.6;">
-      <code>AppRoute</code> = <code>.board(difficulty,seed)</code> · <code>.settings</code> only.<br>
-      • NewGame → Board: <code>path.append(.board)</code><br>
-      • Sidebar "Settings" → Settings: <code>path.append(.settings)</code><br>
-      • Board toolbar "New Game" → root: <code>path.removeAll()</code><br>
-      • Sidebar "New Game" → root: <code>path.removeAll()</code>
-    </p>
-    <p class="comp-dim" style="line-height:1.6;margin-top:8px;">
-      <strong>Not wired (excluded):</strong> <code>MinesweeperDailyHubView</code> &amp; <code>MinesweeperPracticeHubView</code> exist in source but have <em>no</em> <code>AppRoute</code> case and are unreachable in the live app (deferred until MS product surface is designed). Persistence / Daily / Practice / Leaderboard are out of Standard-tier scope.
-    </p>
-  </section>
+  </div>
 </aside>
 
-</div>
-
 <script>
-  // Build cell grids procedurally so each board frame stays light. MS-actual
-  // palette only — covered / revealed-number / flag / mine. No theme.
-  const NUM = ['','#007AFF','#34C759','#FF3B30','#AF52DE','#A2845E','#30B0C7','#000000','#8E8E93'];
-  const FLAG = '<svg width="60%" height="60%" viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6" fill="#FF9500"/></svg>';
-  const MINE = '<svg width="55%" height="55%" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="#fff"/></svg>';
+  // ---- Fill MS boards (covered / revealed+count / flagged / mine) ----
+  (function () {
+    const numColors = ['','#3E6B8C','#1B7A3E','#C8362B','#5C4B9E','#A2845E','#2E8C9E','#1A1E24','#868D95'];
+    function mineSVG(){ return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.6"/></svg>'; }
+    function flagSVG(){ return '<svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h11l-2.5 3.5L17 11H6"/></svg>'; }
 
-  // type codes: 0 covered, n>0 revealed number, -1 revealed empty,
-  //             'F' flag, 'M' mine
-  function buildGrid(id, rows, cols, side, data) {
-    const g = document.getElementById(id);
-    if (!g) return;
-    g.style.gridTemplateColumns = `repeat(${cols}, ${side}px)`;
-    g.style.gridTemplateRows = `repeat(${rows}, ${side}px)`;
-    for (let i = 0; i < rows * cols; i++) {
-      const c = document.createElement('div');
-      c.className = 'cell';
-      c.style.width = side + 'px'; c.style.height = side + 'px';
-      c.style.fontSize = Math.round(side * 0.55) + 'px';
-      const v = data ? data[i] : 0;
-      if (v === 'F') { c.classList.add('covered','flag'); c.innerHTML = FLAG; }
-      else if (v === 'M') { c.classList.add('mine'); c.innerHTML = MINE; }
-      else if (v === -1) { c.classList.add('revealed'); }
-      else if (typeof v === 'number' && v > 0) { c.classList.add('revealed'); c.textContent = v; c.style.color = NUM[v]; }
-      else { c.classList.add('covered'); }
-      g.appendChild(c);
+    function buildBoard(id, opts) {
+      const g = document.getElementById(id); if (!g) return;
+      const cols = opts.cols, rows = opts.rows, side = opts.side;
+      g.style.gridTemplateColumns = 'repeat(' + cols + ', ' + side + 'px)';
+      g.style.gridTemplateRows = 'repeat(' + rows + ', ' + side + 'px)';
+      const n = cols * rows;
+      const flagAt = new Set(opts.flags || []);
+      const mineAt = new Set(opts.mines || []);
+      const hit = opts.hit;
+      const fs = Math.max(9, Math.round(side * 0.55));
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        let cls = 'cell';
+        c.style.fontSize = fs + 'px';
+        const r = Math.floor(i / cols), col = i % cols;
+        const revealed = ((r * 7 + col * 3 + (r * col)) % 5) < 3;
+        if (mineAt.has(i)) { cls += ' mine'; if (i === hit) cls += ' hit'; c.innerHTML = mineSVG(); }
+        else if (flagAt.has(i)) { cls += ' fl'; c.innerHTML = flagSVG(); }
+        else if (revealed) {
+          cls += ' rv';
+          const count = ((i * 13 + 7) % 9);
+          if (count >= 1 && count <= 8) { c.textContent = count; c.style.color = numColors[count]; }
+        }
+        c.className = cls;
+        g.appendChild(c);
+      }
     }
-  }
 
-  // deterministic-ish 9x9 mid-game layout
-  function beginnerData(seed) {
-    // a curated 9x9 (81) board: mix of covered, revealed numbers/empties, a flag
-    const d = new Array(81).fill(0);
-    // reveal a connected empty region top-left with number borders
-    const reveal = {
-      0:-1,1:-1,2:1,9:-1,10:-1,11:1,18:1,19:1,20:2,
-      3:-1,4:-1,12:-1,13:-1,5:1,14:2,
-      36:-1,37:1,45:1,46:2,
-    };
-    Object.entries(reveal).forEach(([k,v]) => d[+k] = v === -1 ? -1 : v);
-    if (seed === 'win') {
-      // fully cleared except flags on all mines (simulate win): mostly revealed
-      for (let i=0;i<81;i++) d[i] = (i%7===0)?'F':((i%3===0)?-1:((i%3===1)?1:2));
-    } else if (seed === 'lose') {
-      d[40] = 'M'; d[22]='F'; d[13]=2; d[31]=3; d[49]=1; d[58]=-1;
-    } else if (seed === 'flag') {
-      d[20]='F'; d[2]='F'; d[44]='F'; d[60]='F'; d[12]=1; d[30]=2; d[48]=3;
-    }
-    return d;
-  }
+    buildBoard('grid-m09', {cols:9, rows:9, side:28, flags:[10,34,57]});
+    buildBoard('grid-m10', {cols:9, rows:9, side:28, flags:[10,34,57,22]});
+    buildBoard('grid-m11', {cols:30, rows:16, side:18, flags:[40,120,300]});
+    buildBoard('grid-m12', {cols:9, rows:9, side:28, flags:[10], mines:[40,12,77], hit:40});
+    buildBoard('grid-m13', {cols:16, rows:16, side:24, flags:[34,90,150,12,200]});
 
-  buildGrid('grid-f03', 9, 9, 28, beginnerData('reveal'));
-  buildGrid('grid-f04', 9, 9, 28, beginnerData('flag'));
-  buildGrid('grid-f06', 9, 9, 28, beginnerData('win'));
-  buildGrid('grid-f07', 9, 9, 28, beginnerData('lose'));
-
-  // Expert 16x30 at the 32pt floor — only a window is visible (frame clips),
-  // demonstrating the scroll. We render the full grid but the container clips.
-  (function expert() {
-    const rows = 16, cols = 30, side = 32;
-    const d = new Array(rows*cols).fill(0);
-    for (let i=0;i<rows*cols;i++) {
-      const r = (i*7+3) % 11;
-      d[i] = r===0 ? 'F' : (r<3 ? -1 : (r<6 ? (r-2) : 0));
-    }
-    buildGrid('grid-f05', rows, cols, side, d);
+    document.querySelectorAll('.mini-grid').forEach(function(el){
+      const seed = parseInt(el.getAttribute('data-seed') || '1', 10);
+      for (let i = 0; i < 27; i++) {
+        const s = document.createElement('span');
+        const v = (i * (seed + 3) + seed) % 6;
+        if (v === 0) s.className = 'fl';
+        else if (v < 3) s.className = 'rv';
+        el.appendChild(s);
+      }
+    });
   })();
+
+  // ---- Navigation arrows ----
+  window.addEventListener('load', drawArrows);
+  window.addEventListener('resize', drawArrows);
+  function drawArrows() {
+    const svg = document.querySelector('.arrows-layer');
+    const canvas = document.querySelector('.canvas');
+    if (!svg || !canvas) return;
+    [...svg.querySelectorAll('path,text')].forEach(n => n.remove());
+    const cRect = canvas.getBoundingClientRect();
+    const ox = -cRect.left, oy = -cRect.top;
+    function shellOf(id){ const p = document.getElementById(id); if(!p) return null; return p.querySelector('.phone-shell') || p.querySelector('.mac-window'); }
+    function rectOf(id){ const s = shellOf(id); if(!s) return null; const r = s.getBoundingClientRect(); return {l:r.left+ox,t:r.top+oy,r:r.right+ox,b:r.bottom+oy,w:r.width,h:r.height,cy:r.top+oy+r.height/2,cx:r.left+ox+r.width/2}; }
+
+    function edge(from, to, opts) {
+      opts = opts || {};
+      const a = rectOf(from), b = rectOf(to);
+      if (!a || !b) return;
+      const ns = 'http://www.w3.org/2000/svg';
+      const p = document.createElementNS(ns, 'path');
+      let d, lx, ly;
+      if (opts.route === 'down') {
+        const x1 = a.cx, y1 = a.b, x2 = b.cx, y2 = b.t - 8;
+        const my = (y1 + y2) / 2;
+        d = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2;
+        lx = (x1 + x2) / 2; ly = my - 6;
+      } else if (opts.route === 'up') {
+        const x1 = a.cx, y1 = a.t, x2 = b.cx, y2 = b.b + 8;
+        const my = (y1 + y2) / 2;
+        d = 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2;
+        lx = (x1 + x2) / 2; ly = my - 6;
+      } else {
+        const y = opts.y || ((a.cy + b.cy) / 2);
+        const x1 = a.r, x2 = b.l - 8;
+        const dx = Math.max(30, (x2 - x1) / 2);
+        d = 'M ' + x1 + ' ' + y + ' C ' + (x1 + dx) + ' ' + y + ', ' + (x2 - dx) + ' ' + y + ', ' + x2 + ' ' + y;
+        lx = (x1 + x2) / 2; ly = y - 8;
+      }
+      const color = opts.kind === 'modal' ? '#D9822B' : (opts.kind === 'back' ? '#C7C7CC' : (opts.kind === 'state' ? '#8E8E93' : '#3E6B8C'));
+      const marker = opts.kind === 'modal' ? 'url(#m-modal)' : (opts.kind === 'back' ? 'url(#m-back)' : 'url(#m-push)');
+      p.setAttribute('d', d);
+      p.setAttribute('fill', 'none');
+      p.setAttribute('stroke', color);
+      p.setAttribute('stroke-width', '2');
+      if (opts.kind === 'modal') p.setAttribute('stroke-dasharray', '5 3');
+      if (opts.kind === 'state') p.setAttribute('stroke-dasharray', '2 2');
+      if (opts.kind !== 'state') p.setAttribute('marker-end', marker);
+      svg.appendChild(p);
+      if (opts.label) {
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', lx); t.setAttribute('y', ly);
+        t.setAttribute('font-size', '11'); t.setAttribute('fill', color);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('font-family', '-apple-system, sans-serif');
+        t.textContent = opts.label;
+        svg.appendChild(t);
+      }
+    }
+
+    // Home flow
+    edge('M01','M02',{kind:'state', label:'(same Home)'});
+    edge('M02','M03',{kind:'state', label:'macOS layout'});
+    // Home -> Daily / Practice / Settings / Leaderboard
+    edge('M02','M04',{route:'down', label:'tap Daily — push .daily'});
+    edge('M02','M06',{route:'down', label:'tap Practice — push .practice'});
+    edge('M02','M16',{route:'down', label:'tap Settings — push .settings'});
+    edge('M02','M15',{route:'up', kind:'modal', label:'tap Leaderboard — GC modal'});
+    // Daily / Practice -> Board
+    edge('M04','M08',{route:'down', label:'tap board — push .board'});
+    edge('M06','M08',{label:'Start — push .board'});
+    // Board internal
+    edge('M08','M09',{label:'.loaded'});
+    edge('M09','M10',{kind:'state', label:'toggle Flag'});
+    edge('M10','M11',{kind:'state', label:'Expert'});
+    edge('M11','M12',{kind:'state', label:'hit mine → lost'});
+    edge('M12','M13',{kind:'state', label:'macOS layout'});
+    // Board -> Completion (win)
+    edge('M09','M14',{route:'down', label:'cleared — push .completion'});
+    // Completion -> Game Center
+    edge('M14','M15',{label:'View full — GC modal', kind:'modal'});
+    // Settings internal
+    edge('M16','M17',{kind:'modal', label:'Clear cache dialog'});
+    edge('M17','M18',{kind:'state', label:'macOS layout'});
+  }
 </script>
 
 </body>
