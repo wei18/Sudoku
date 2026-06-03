@@ -58,6 +58,12 @@ let productionTargets: [Target] = [
             // `NoopAdProvider` from MonetizationCore (the AdMob SDK ships an
             // iOS-only xcframework).
             .product(name: "Persistence", package: "PersistenceKit"),
+            // #261: `.preview()` wires `FakePersistence` (zero-IO) instead of
+            // `LivePersistence` so any future Preview path that calls
+            // bootstrap()/latestInProgress() stays trap-free. Production target
+            // intentionally deps the Testing product — same pattern as Sudoku's
+            // AppComposition (its FakePersistence ships via SudokuKitTesting).
+            .product(name: "PersistenceTesting", package: "PersistenceKit"),
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
             .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),

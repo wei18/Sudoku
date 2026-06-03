@@ -28,8 +28,9 @@
 //   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`
 //     (wired in U15 / PR #263; surfaced through `composition.rootView`).
 //
-// `.preview()` wires fakes from MonetizationTesting + `LivePersistence` with
-// .minesweeper config (IO is lazy — safe in Previews per its docstring).
+// `.preview()` wires fakes from MonetizationTesting + `FakePersistence`
+// (PersistenceTesting, zero-IO — #261) so no Preview path can trap on a real
+// CloudKit gateway. Mirrors Sudoku's AppComposition Preview.
 
 internal import AdsAdMob
 internal import Foundation
@@ -38,6 +39,7 @@ internal import MonetizationCore
 internal import MonetizationTesting
 internal import MonetizationUI
 internal import Persistence
+internal import PersistenceTesting
 internal import Telemetry
 
 extension MinesweeperAppComposition {
@@ -168,19 +170,14 @@ extension MinesweeperAppComposition {
     }
 
     /// Preview / test wiring. Empty-sinks `Telemetry`, fake IAP / AdGate
-    /// store / AdProvider, and `LivePersistence` with `.minesweeper`
-    /// config (IO is lazy — safe in zero-IO previews per its docstring).
+    /// store / AdProvider, and `FakePersistence` (zero-IO — #261). Mirrors
+    /// Sudoku's `AppComposition` Preview, which also wires a fake persistence
+    /// so no Preview path can trap on a real CloudKit gateway.
     public static func preview() -> MinesweeperAppComposition {
         let telemetry = Telemetry(sinks: [])
         let errorReporter: any ErrorReporter = NoopErrorReporter()
 
-        let persistence = LivePersistence(
-            telemetry: telemetry,
-            ckConfig: .minesweeper,
-            puzzleLoader: { _ in
-                throw MinesweeperLivePuzzleLoaderUnavailable()
-            }
-        )
+        let persistence = FakePersistence()
 
         let adProvider: any AdProvider = FakeAdProvider()
         let iapClient: any IAPClient = FakeIAPClient()
@@ -220,7 +217,7 @@ extension MinesweeperAppComposition {
     }
 }
 
-/// Sentinel thrown by the `.live()` / `.preview()` puzzle loader stub. MS
+/// Sentinel thrown by the `.live()` puzzle loader stub. MS
 /// has no PuzzleProvider yet; the loader closure only ever fires if
 /// `SavedGameStore.fetch(...)` walks a saved record back through it, which
 /// can't happen until MS save-flow lands (separate dispatch).
