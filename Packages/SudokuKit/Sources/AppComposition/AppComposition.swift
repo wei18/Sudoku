@@ -83,6 +83,11 @@ public struct AppComposition {
         // the composition root so every mounted view resolves the sage /
         // warm-paper tokens exactly as before (zero visual change).
         .environment(\.theme, DefaultTheme())
+        // #278 Tier-1 Phase 2a: cell tokens are Sudoku-shaped and were pulled
+        // out of the generic `Theme` protocol into SudokuUI's `\.sudokuCell`
+        // env key. Inject the same concrete cell palette here so board cells
+        // render byte-identically. (Minesweeper injects its own in Phase 2b.)
+        .environment(\.sudokuCell, DefaultTheme().cell)
         .task {
             // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent
             // with the first frame. `BannerSlotView` is honest about
