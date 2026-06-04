@@ -62,7 +62,7 @@ struct MinesweeperGameCenterSubmitTests {
             return nil
         }
         #expect(submits.count == 1)
-        #expect(submits.first?.0 == MinesweeperLeaderboardID.beginnerBestTime)
+        #expect(submits.first?.0 == MinesweeperLeaderboardID.easyDaily)
         // Score is the won snapshot's elapsed seconds (frozen at win).
         #expect(submits.first?.1 == vm.elapsedSeconds)
     }
@@ -83,7 +83,7 @@ struct MinesweeperGameCenterSubmitTests {
             if case let .submitRawScore(id, _) = op { return id }
             return nil
         }
-        #expect(ids == [MinesweeperLeaderboardID.intermediateBestTime])
+        #expect(ids == [MinesweeperLeaderboardID.mediumDaily])
     }
 
     @Test func noGameCenterClientSubmitsNothing() async {
@@ -147,16 +147,27 @@ struct MinesweeperGameCenterSubmitTests {
         #expect(submitted == false)
     }
 
-    @Test func leaderboardIdSchemeIsVersionSuffixed() {
-        #expect(MinesweeperLeaderboardID.beginnerBestTime
-                == "com.wei18.minesweeper.leaderboard.beginner.besttime.v1")
-        #expect(MinesweeperLeaderboardID.intermediateBestTime
-                == "com.wei18.minesweeper.leaderboard.intermediate.besttime.v1")
-        #expect(MinesweeperLeaderboardID.expertBestTime
-                == "com.wei18.minesweeper.leaderboard.expert.besttime.v1")
-        #expect(MinesweeperLeaderboardID.allBestTime.count == 3)
-        #expect(MinesweeperLeaderboardID.bestTime(for: .expert)
-                == MinesweeperLeaderboardID.expertBestTime)
+    @Test func leaderboardIdSchemeMirrorsSudokuDaily() {
+        // Recurring-daily shape, `.v1`-suffixed, easy/medium/hard segments —
+        // byte-equal to ASCRegister Config.leaderboards(for: .minesweeper).
+        #expect(MinesweeperLeaderboardID.easyDaily
+                == "com.wei18.minesweeper.leaderboard.easy.daily.v1")
+        #expect(MinesweeperLeaderboardID.mediumDaily
+                == "com.wei18.minesweeper.leaderboard.medium.daily.v1")
+        #expect(MinesweeperLeaderboardID.hardDaily
+                == "com.wei18.minesweeper.leaderboard.hard.daily.v1")
+        #expect(MinesweeperLeaderboardID.allDaily.count == 3)
+    }
+
+    @Test func difficultyMapsToSudokuMirroringSegment() {
+        // MS engine difficulty (beginner/intermediate/expert) → Sudoku id
+        // segment (easy/medium/hard).
+        #expect(MinesweeperLeaderboardID.daily(for: .beginner)
+                == MinesweeperLeaderboardID.easyDaily)
+        #expect(MinesweeperLeaderboardID.daily(for: .intermediate)
+                == MinesweeperLeaderboardID.mediumDaily)
+        #expect(MinesweeperLeaderboardID.daily(for: .expert)
+                == MinesweeperLeaderboardID.hardDaily)
     }
 }
 

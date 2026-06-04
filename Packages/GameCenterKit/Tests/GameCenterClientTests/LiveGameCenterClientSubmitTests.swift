@@ -92,13 +92,13 @@ struct LiveGameCenterClientSubmitTests {
         let spy = SubmitSpy()
         let client = makeClient(spy: spy)
         try await client.submitScore(
-            leaderboardId: "com.wei18.minesweeper.leaderboard.beginner.besttime.v1",
+            leaderboardId: "com.wei18.minesweeper.leaderboard.easy.daily.v1",
             elapsedSeconds: 251
         )
         let calls = await spy.calls
         #expect(calls.count == 1)
         #expect(calls.first?.centiseconds == 25_100)
         #expect(calls.first?.leaderboardId
-                == "com.wei18.minesweeper.leaderboard.beginner.besttime.v1")
+                == "com.wei18.minesweeper.leaderboard.easy.daily.v1")
     }
 }

@@ -24,7 +24,7 @@ import GameCenterTesting
 struct MinesweeperCompletionViewModelTests {
 
     private static let sampleSlice = LeaderboardSlice(
-        leaderboardId: MinesweeperLeaderboardID.beginnerBestTime,
+        leaderboardId: MinesweeperLeaderboardID.easyDaily,
         scope: .globalAllTime,
         entries: [
             LeaderboardEntry(rank: 1, player: PlayerSummary(teamPlayerId: "P1", displayName: "alice"), score: 41),
@@ -43,7 +43,7 @@ struct MinesweeperCompletionViewModelTests {
         MinesweeperCompletionViewModel(
             didWin: didWin,
             elapsedSeconds: elapsedSeconds,
-            leaderboardId: MinesweeperLeaderboardID.beginnerBestTime,
+            leaderboardId: MinesweeperLeaderboardID.easyDaily,
             gameCenter: gameCenter
         )
     }
@@ -79,7 +79,7 @@ struct MinesweeperCompletionViewModelTests {
         }
         #expect(fetches.count == 1)
         #expect(fetches.first?.0 == true)
-        #expect(fetches.first?.1 == MinesweeperLeaderboardID.beginnerBestTime)
+        #expect(fetches.first?.1 == MinesweeperLeaderboardID.easyDaily)
     }
 
     @Test func didWinAndElapsedAreExposedForHero() {
