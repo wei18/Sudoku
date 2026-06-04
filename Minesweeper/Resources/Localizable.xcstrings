@@ -1,98 +1,236 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "iap.minesweeper.remove_ads.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove all in-app ads forever. Family Sharing."
+  "sourceLanguage": "en",
+  "strings": {
+    "gc.minesweeper.leaderboard.easy.daily.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daily Beginner"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日初級"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "th" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "永久移除 App 內所有廣告。支援「家人共享」。"
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         }
       }
     },
-    "iap.minesweeper.remove_ads.name" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove Ads"
+    "gc.minesweeper.leaderboard.hard.daily.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daily Expert"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日高級"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "th" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移除廣告"
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        }
+      }
+    },
+    "gc.minesweeper.leaderboard.medium.daily.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daily Intermediate"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日中級"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        }
+      }
+    },
+    "iap.minesweeper.remove_ads.description": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove all in-app ads forever. Family Sharing."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久移除 App 內所有廣告。支援「家人共享」。"
+          }
+        }
+      }
+    },
+    "iap.minesweeper.remove_ads.name": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Ads"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "<TRANSLATE>"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除廣告"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
