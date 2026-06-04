@@ -309,6 +309,8 @@ public struct MinesweeperBoardView: View {
                     ForEach(0..<cols, id: \.self) { col in
                         MinesweeperCellButton(
                             cell: viewModel.cell(row: row, col: col),
+                            row: row,
+                            column: col,
                             side: cellSide,
                             mode: interactionMode,
                             // #298 #7: on a loss, surface every mine. The detonated

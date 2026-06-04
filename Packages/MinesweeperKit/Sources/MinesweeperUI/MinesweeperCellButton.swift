@@ -28,6 +28,10 @@ struct MinesweeperCellButton: View {
     @Environment(\.minesweeperCell) private var tokens
 
     let cell: Cell
+    /// #298 #10: zero-based grid coordinates, surfaced (1-based) in the
+    /// VoiceOver label so VO users can locate the cell.
+    let row: Int
+    let column: Int
     /// Side length in points, derived from the board GeometryReader.
     let side: CGFloat
     /// Current tap mode — drives the button's primary action.
@@ -79,7 +83,24 @@ struct MinesweeperCellButton: View {
             }
         }
         #endif
+        // #298 #10: VoiceOver. Mirror Sudoku's BoardCellView AX — collapse the
+        // ZStack into one element, a "Row R, Column C, <state>" label, the
+        // button trait, and a named Flag/Unflag action so VO users can flag
+        // without the long-press / right-click accelerators (which VO can't
+        // reach). The flag action is omitted on revealed cells (nothing to
+        // flag) and once the game is terminal (board is frozen).
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: flagActionName) {
+            if cell.state != .revealed, !revealMines { onToggleFlag() }
+        }
+    }
+
+    /// VoiceOver action title for the flag toggle (mirrors the macOS context
+    /// menu wording).
+    private var flagActionName: Text {
+        Text(cell.state == .flagged ? "Unflag" : "Flag")
     }
 
     @ViewBuilder
@@ -156,6 +177,15 @@ struct MinesweeperCellButton: View {
     }
 
     private var accessibilityLabel: String {
+        // #298 #10: "Row R, Column C, <state>" — mirrors Sudoku BoardCellView
+        // §How.5.7. Coordinates are 1-based for VO; state defers to the
+        // lost-mine surfacing first.
+        let location = "Row \(row + 1), Column \(column + 1)"
+        return "\(location), \(stateDescription)"
+    }
+
+    private var stateDescription: String {
+        if showsLostMine { return "Mine" }
         switch cell.state {
         case .hidden:   return "Hidden"
         case .flagged:  return "Flagged"
