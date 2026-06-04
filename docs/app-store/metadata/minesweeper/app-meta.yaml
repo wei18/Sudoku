@@ -15,7 +15,7 @@
 
 app: minesweeper
 bundle_id: com.wei18.minesweeper
-# apple_id: TBD — Minesweeper not yet created in ASC (no numeric App ID yet).
+apple_id: "6775733519"   # MS ASC app id (secrets ASC_APP_ID_MINESWEEPER + memory asc-api-credentials)
 
 # --- Categories (ASC App Information) -------------------------------------
 # ASC takes a primary + optional secondary category, each with up to two
