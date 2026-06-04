@@ -98,6 +98,6 @@ pricing:
 #   docs/app-store/metadata/iap/remove-ads/review-screenshot.png
 # (path is git-tracked once the file lands)
 screenshot:
-  required_size: "1290 × 2796 (iPhone 6.9") or 1242 × 2688 (iPhone 6.5")"
+  required_size: '1290 × 2796 (iPhone 6.9") or 1242 × 2688 (iPhone 6.5")'
   expected_path: docs/app-store/metadata/iap/remove-ads/review-screenshot.png
   status: pending-user-capture
