@@ -8,7 +8,8 @@
 //      Xcode on save — no need to sort).
 //   3. Do NOT touch `sourceLanguage` / `version`.
 //   4. After merge: run `ASCRegister validate --xcstrings <path>`. It will
-//      confirm en + zh-Hant coverage for all 27 gc.* keys.
+//      confirm en + zh-Hant coverage for the Sudoku gc.* keys (27); pass
+//      `--app minesweeper` to validate the 3 MS leaderboard title keys too.
 //
 // Locale coverage in this fragment:
 //   - en      → filled (source language, per docs/v1/design.md §How.3.1 / §How.3.2)
@@ -22,8 +23,8 @@
 // above are stripped from the JSON object below — everything from the
 // opening `{` to the matching closing `}` is valid JSON.
 //
-// Total: 27 keys × 7 locales = 189 string units. 27 × 2 = 54 filled,
-// 27 × 5 = 135 marked <TRANSLATE>.
+// Total: 30 keys × 7 locales = 210 string units (27 Sudoku gc.* + 3 MS
+// gc.minesweeper.leaderboard.*). 30 × 2 = 60 filled, 30 × 5 = 150 <TRANSLATE>.
 
 {
   "strings" : {
@@ -53,6 +54,40 @@
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Hard" } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日困難" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.minesweeper.leaderboard.easy.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Beginner" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日初級" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.minesweeper.leaderboard.medium.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Intermediate" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日中級" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.minesweeper.leaderboard.hard.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Expert" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日高級" } },
         "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },

@@ -184,7 +184,7 @@ internal struct Reconciler: Sendable {
 
             for locale in targetLocales {
                 guard let title = XCStringsParser.leaderboardTitle(
-                    in: strings, locale: locale, difficulty: lb.difficulty
+                    in: strings, locale: locale, key: lb.titleKey
                 ) else { continue }
                 // ASC requires its own locale codes (issue #31, #37).
                 // xcstrings uses the bare form (`"en"`, `"zh-Hant"`); map
@@ -362,8 +362,16 @@ internal struct ConfigSnapshot: Sendable, Equatable {
     }
 
     internal static var live: ConfigSnapshot {
+        live(for: .sudoku)
+    }
+
+    /// App-scoped live snapshot (#310 `--app` precedent). Only the leaderboard
+    /// set varies by app; achievements are Sudoku-only for v1, and IAPs already
+    /// coexist multi-app via productId match — both carried unchanged so a
+    /// single Reconciler pass still drives every resource type.
+    internal static func live(for app: Config.GCApp) -> ConfigSnapshot {
         ConfigSnapshot(
-            leaderboards: Config.leaderboards,
+            leaderboards: Config.leaderboards(for: app),
             achievements: Config.achievements,
             iaps: Config.iaps
         )
