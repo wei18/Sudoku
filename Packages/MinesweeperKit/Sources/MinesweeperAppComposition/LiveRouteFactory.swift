@@ -103,7 +103,11 @@ public struct LiveRouteFactory: RouteFactory {
                     adProvider: adProvider,
                     adGate: adGate,
                     gameCenter: gameCenter,
-                    errorReporter: errorReporter
+                    errorReporter: errorReporter,
+                    // #292: the Completion overlay's "New Game" CTA pops the
+                    // stack back to the difficulty picker — same target as the
+                    // in-play toolbar button below.
+                    onNewGame: { Self.popToNewGame(path: path) }
                 )
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
