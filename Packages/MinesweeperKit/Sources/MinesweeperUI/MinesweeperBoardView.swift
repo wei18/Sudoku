@@ -123,13 +123,31 @@ public struct MinesweeperBoardView: View {
                 completionViewModel = nil
             }
         }
-        .task {
+        // #298 #9: single elapsed-mirror ticker, replacing the prior
+        // TimelineView-nested-`.task` 1 Hz hack (which re-fired a fresh `.task`
+        // on every timeline tick — swiftui-interaction-footguns: .task re-fire).
+        // Mirrors Sudoku BoardView: one `.task(id:)` owning a `while
+        // !Task.isCancelled { sleep }` loop, cancelled automatically on
+        // disappear. Keyed on the VM's identity so Retry (which swaps the VM in
+        // place at the same seed) restarts the loop with a fresh clock.
+        .task(id: ObjectIdentifier(viewModel)) {
+            // Pull once immediately so the first frame isn't stale. The very
+            // first snapshot could already be terminal (e.g. a board restored
+            // into a finished state); `.onChange` only fires on a transition,
+            // so seed the completion VM here too.
             await viewModel.refresh()
-            // The very first snapshot could already be terminal (e.g. a board
-            // restored into a finished state); `.onChange` only fires on a
-            // transition, so seed the VM here too.
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
+            }
+            // Then poll once per second while the game is live. The elapsed
+            // label re-renders because `refresh()` republishes the @Observable
+            // snapshot. Stop polling once terminal (the clock is frozen) but
+            // keep the task alive so cancellation stays tied to the view.
+            while !Task.isCancelled {
+                if viewModel.status == .playing {
+                    await viewModel.refresh()
+                }
+                try? await Task.sleep(for: .seconds(1))
             }
         }
     }
@@ -208,24 +226,21 @@ public struct MinesweeperBoardView: View {
     // MARK: - Status bar
 
     private var statusBar: some View {
-        // TimelineView ticks at 1 Hz so the elapsed-seconds counter visibly
-        // ticks during `.playing`. The `.task` inside re-fires on each tick
-        // because the timeline context changes, pulling a fresh snapshot
-        // from the actor (which also refreshes flag/status displays).
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
-            HStack {
-                Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
-                    .monospacedDigit()
-                Spacer()
-                Text(statusText)
-                    .font(.headline)
-                Spacer()
-                Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
-                    .monospacedDigit()
-            }
-            .font(.subheadline)
-            .task { await viewModel.refresh() }
+        // #298 #9: plain HStack — the elapsed/flag/status fields are read
+        // straight off the @Observable view model, which republishes when the
+        // ticker loop (`.task(id:)` on the body) refreshes the snapshot each
+        // second. No TimelineView, no nested `.task`.
+        HStack {
+            Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
+                .monospacedDigit()
+            Spacer()
+            Text(statusText)
+                .font(.headline)
+            Spacer()
+            Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
+                .monospacedDigit()
         }
+        .font(.subheadline)
     }
 
     private var statusText: String {
