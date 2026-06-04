@@ -2,7 +2,7 @@ locale: en-US
 name: "Sudoku — Daily & Practice"
 subtitle: "Calm logic for iPhone and Mac"
 promotional_text: |
-  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. No ads, no tracking, no accounts beyond your own iCloud.
+  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. No tracking — just an optional banner you remove with one purchase.
 description: |
   Sudoku, made for thinking — not for noise.
 
@@ -26,7 +26,11 @@ description: |
 
   Privacy, in plain words
 
-  No personal data is collected. No third-party analytics or advertising SDKs are embedded. Your saves live in your own iCloud Private Database — visible to you, not to us. Game Center submissions go to Apple. That's the whole list.
+  No personal data is collected. No first-party analytics, no tracking. Your saves live in your own iCloud Private Database — visible to you, not to us. Game Center submissions go to Apple. The only third-party SDK is Google's banner-ad library, and you can remove the banner permanently with a single in-app purchase.
+
+  Remove Ads
+
+  A one-time, non-consumable purchase removes the banner everywhere, forever. Family Sharing included.
 
   Seven languages
 
@@ -37,19 +41,19 @@ description: |
   Dynamic Type, full VoiceOver coverage, light and dark mode, sage-and-warm-paper visuals tuned for long sessions.
 
   Requires iOS 26 or macOS 26.
-keywords: "sudoku,daily,puzzle,logic,brain,number,offline,ipad,mac,no ads,pencil,notes"
+keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,killer,solver,board,classic"
 whats_new: |
-  Version 1.0 — first public release.
+  Version 2.3.5
 
   • Daily mode: three new puzzles at UTC 00:00 every day, with their own recurring leaderboards.
   • Practice mode: random boards by difficulty, no clock and no scores.
   • Cross-device sync: saves and statistics flow between iPhone and Mac via your iCloud Private Database.
   • Game Center: three daily leaderboards and eight achievements (500 points total).
-  • Seven languages on day one: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
+  • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
   • Mac native build, not Catalyst — full keyboard support and menu bar items.
-  • No ads, no tracking, no third-party SDKs.
+  • No tracking. An optional banner you can remove with a one-time Remove Ads purchase.
 
-  Thank you for trying it. Issues and feature requests are welcome at the support link.
+  Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null
 support_url: "https://github.com/wei18/Sudoku/issues"
 privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"

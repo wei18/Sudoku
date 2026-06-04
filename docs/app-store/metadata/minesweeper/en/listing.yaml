@@ -1,6 +1,6 @@
 locale: en-US
 name: "Minesweeper — Classic"
-subtitle: "Clean logic for iPhone and Mac"
+subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |
   The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. No tracking beyond the optional banner — remove it with one purchase.
 description: |
@@ -17,12 +17,11 @@ description: |
   • Three classic difficulties — Beginner, Intermediate, Expert.
   • First-click safety — the opening tap can never lose.
   • Tap to reveal, long-press to flag (right-click or control-click on Mac).
-  • A daily set of boards to return to.
-  • Resume any time — saves are automatic.
+  • A daily set of boards to play.
 
   Truly cross-platform
 
-  One codebase, two platforms. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst. Window resizing and right-click flagging work the way Mac users expect. Pick up where you left off on whichever device is near.
+  One codebase, two platforms. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst. Window resizing and right-click flagging work the way Mac users expect. Play on whichever device is near.
 
   Privacy, in plain words
 
@@ -41,19 +40,18 @@ description: |
   Dynamic Type, VoiceOver, light and dark mode.
 
   Requires iOS 26 or macOS 26.
-keywords: "minesweeper,mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board"
+keywords: "mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board,bomb,sweeper,mine sweeper,sapper"
 whats_new: |
-  Version 1.0 — first public release.
+  Version 2.3.5
 
   • Classic Minesweeper with three difficulties: Beginner, Intermediate, Expert.
   • First-click safety — the opening tap is never a mine.
   • Tap to reveal, long-press to flag; right-click flagging on Mac.
-  • Cross-device sync via your own iCloud Private Database.
   • Remove Ads: a one-time purchase that removes the banner forever.
   • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
   • Mac native build, not Catalyst.
 
-  Thank you for trying it. Issues and feature requests are welcome at the support link.
+  Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null
 support_url: "https://github.com/wei18/Sudoku/issues"
 privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"
