@@ -61,22 +61,22 @@
     <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
     <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 11:42</div>
+  <div class="stamp">2026-06-04 · 12:40</div>
 </header>
 
 <!-- ====== EPIC ====== -->
-<h2>Minesweeper → 鏡像 Sudoku 建置 &nbsp;<span class="muted" style="font-weight:400">epic #293</span></h2>
+<h2>Minesweeper → 鏡像 Sudoku 建置 &nbsp;<span class="muted" style="font-weight:400">epic #293 · ✓ 收官</span></h2>
 <div class="epic">
-  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px">已完成 5 / 6</strong><span class="muted" style="font-size:12px">theme · Home+hubs · Daily · Leaderboard · Completion &nbsp;→&nbsp; 收尾（最後一棒，進行中）</span></div>
-  <div class="bar"><i style="width:88%"></i></div>
-  <div class="barmeta"><span>收尾在望</span><span>88%</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px;color:#4BC579">已完成 6 / 6 — epic 收官 🎉</strong><span class="muted" style="font-size:12px">MS 在玩法畫面以外全面鏡像 Sudoku，套上 slate-blue theme</span></div>
+  <div class="bar"><i style="width:100%"></i></div>
+  <div class="barmeta"><span>核心建置完成；剩非核心 snapshot / auth / clear-cache 尾巴</span><span>100%</span></div>
   <div class="steps">
     <div class="step done"><span class="ic">✓</span><div><b>Theme 系統</b> <span class="id">#278 T1</span><span class="sub">抽到 GameShellUI；棋盤套上 slate-blue</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Home + 可達 hubs</b> <span class="id">#288/#289</span><span class="sub">mode-card 入口；Daily/Practice 可導航</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Daily 模型</b> <span class="id">#290</span><span class="sub">日期種子三盤，每 UTC-day 決定性</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">submit-on-win · GC dashboard · Home 卡啟用</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Completion 畫面</b> <span class="id">#292</span><span class="sub">結果 hero + best-time + leaderboard slice + CTAs</span></div></div>
-    <div class="step now"><span class="ic">●</span><div><b>遊戲畫面收尾</b> <span class="id">#298</span><span class="sub">進行中 — Mac 側欄 · 翻全雷 · VoiceOver · 對比 · 間距</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>遊戲畫面收尾</b> <span class="id">#298</span><span class="sub">Mac 側欄 · 翻全雷 · VoiceOver · raised-tile 對比</span></div></div>
   </div>
 </div>
 
@@ -84,10 +84,10 @@
 <h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
 
-  <div class="ev run"><div class="ref">#298<small>進行中</small></div><div class="body">
-    <b>遊戲畫面收尾（最後一棒）— 已派發</b>
-    <p>MS build-out 最後一塊：Mac 側欄佈局（#6）、loss 翻開全部地雷（#7）、VoiceOver row/col + flag action（#10）、mine 圖示與對比（#8）、<code>.task</code> 輪詢迴圈整理（#9）、spacing tokens（#11）。全在 board 檔，依優先序序列做、超量先推已完成子集。</p>
-    <div class="meta">Developer 在 worktree 進行中 → CR + Designer → merge。完成即 MS 鏡像 Sudoku 收官。</div>
+  <div class="ev ok"><div class="ref">#298<small>已 merge · PR 314 + 55f4dc2</small></div><div class="body">
+    <b>遊戲畫面收尾（最後一棒）— MS build-out 收官</b>
+    <p>Mac 側欄佈局（置中 600pt 棋盤 + 260pt 側欄，鏡像 Sudoku macLayout）、loss 翻開全部地雷（<code>mine</code> vs <code>mineHit</code> token）、VoiceOver row/col + flag action、<code>.task(id:)</code> ticker 取代 TimelineView hack、mine 圖示 <code>xmark.octagon.fill</code>。再由 Leader 本地補上 covered-cell <b>raised-tile 立體感</b>（頂部柔光 + 細邊，解掉 #278 critique 的 flat 缺口）+ 重錄 snapshot baseline。</p>
+    <div class="meta"><span class="v">Designer Aligned + CR 通過（含小瑕）</span> — Mac 側欄不動 compact Tier-0、翻全雷僅 loss 觸發無洩漏、<code>.task(id:)</code> 無 re-fire、零 Sudoku 改動。compact spacing literal 刻意保留（layout 常數）。Follow-up：snapshot 覆蓋 #303/#308/#315。</div>
   </div></div>
 
   <div class="ev ok"><div class="ref">#292<small>已 merge · PR 314</small></div><div class="body">
@@ -150,11 +150,11 @@
 <h2>待辦 backlog</h2>
 <div class="cols">
   <div class="card">
-    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">MS build-out — 剩餘</div>
-    <div class="row"><span class="iss">#298</span><span class="t">遊戲畫面 Tier-2 + Mac 側欄 <span class="muted">進行中</span></span></div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">MS build-out 尾巴 <span style="font-weight:400">(epic ✓ 收官)</span></div>
     <div class="row"><span class="iss">#303</span><span class="t">Home snapshot 覆蓋</span></div>
     <div class="row"><span class="iss">#308</span><span class="t">Daily hub snapshot 覆蓋</span></div>
     <div class="row"><span class="iss">#315</span><span class="t">Completion snapshot 覆蓋</span></div>
+    <div class="row"><span class="iss">#313</span><span class="t">launch-time GC auth</span></div>
     <div class="row"><span class="iss">#297</span><span class="t">revealed-state snapshot seam</span></div>
     <div class="row"><span class="iss">#284</span><span class="t">clear-cache 回饋（待 save-flow）</span></div>
     <div class="muted" style="font-size:11px;letter-spacing:.04em;margin:14px 0 6px">已核准 · 暫存</div>
