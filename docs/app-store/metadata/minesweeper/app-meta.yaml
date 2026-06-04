@@ -20,11 +20,13 @@ apple_id: "6775733519"   # MS ASC app id (secrets ASC_APP_ID_MINESWEEPER + memor
 # --- Categories (ASC App Information) -------------------------------------
 # ASC takes a primary + optional secondary category, each with up to two
 # sub-categories. Minesweeper is a Game; sub-categories refine the genre.
+# ASC forbids the same genre as both primary AND secondary, so secondary is
+# left empty — a Games app is Primary=Games + up to 2 subcategories.
 primary_category: "Games"
 primary_first_sub_category: "Board"
 primary_second_sub_category: "Puzzle"
-secondary_category: "Games"
-secondary_first_sub_category: "Strategy"
+secondary_category: null
+secondary_first_sub_category: null
 secondary_second_sub_category: null
 
 # --- Copyright (ASC App Information) --------------------------------------
