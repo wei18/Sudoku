@@ -61,7 +61,7 @@
     <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
     <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 12:40</div>
+  <div class="stamp">2026-06-04 · 15:35</div>
 </header>
 
 <!-- ====== EPIC ====== -->
@@ -83,6 +83,25 @@
 <!-- ====== ACTIVITY LOG ====== -->
 <h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
+
+  <div class="ev run"><div class="ref">#287 P2<small>進行中</small></div><div class="body">
+    <b>RemindersKit Phase 2 — primer + Sudoku U1 wiring</b>
+    <p>Chunk 1（GameShellUI 的 permission-priming primer sheet + denied explainer + `ReminderPermissionModel`，copy 注入式）已完成 + push（CR 中）。Chunk 2（Sudoku U1 wiring）+ Chunk 3（telemetry events）因 session limit 中斷未 commit → chunk 1 merge 後在 main 上重派，並一併做 #321 時間選擇器（Q4 已定＝使用者可調）。</p>
+    <div class="meta">設計目標：`reminders-flow.prototype.html`（CR：Minor-drift，已修 9am 文案）。Phase 2 完成後 Sudoku 即有「每日謎題就緒」提醒。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">#287 P1<small>已 merge · PR 318</small></div><div class="body">
+    <b>RemindersKit foundation — 本地通知提醒的共用 target</b>
+    <p>新 leaf package：值型別 + 2 protocol seam（`NotificationAuthorizing`/`ReminderScheduler`）+ Live（UNUserNotificationCenter，限 Live 檔）+ Noop/Fake + 12 tests。非-Sendable 的 UNUserNotificationCenter 以 per-call computed property 處理（無 @unchecked）。平台 floor iOS 26/macOS 26（你定）。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — UserNotifications 限 Live、race-free Sendable。CaptureGuardKit #286：研究確認截圖變黑 secure-layer trick 2026 可行（需實機 P4 spike），等你跑。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">#310<small>已 merge · PR 320 + live 驗證</small></div><div class="body">
+    <b>ASCRegister `metadata` subcommand — 上架 metadata 經 ASC API</b>
+    <p>讀 listing.yaml/app-meta.yaml → ASC API（appInfo/version localizations + category）。`plan` 嚴格唯讀、`apply` 已實作但 user-owned 未跑。**Leader 從 main 跑了 live `plan` 對兩個真實 ASC app**（read-only GET）——§7 prereq 全解（category token、attribute 名稱），兩 app 各 15-action diff。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span>。修正 app-id：Sudoku=6771248206、MS=6775733519（皆 live 確認；舊的 6772925351 是錯值已丟；#309 漏的 MS id 補上）。App Store readiness umbrella #236 + #309 metadata 欄位（email/phone/name 已定）+ #311 截圖 + #322 locale 映射(apply 前) + #321 提醒時間選擇器。</p>
+    <div class="meta">🔒 待你授權才動：`metadata apply`（上傳）、locale 映射 #322、leaderboard ID 註冊、TestFlight/submit #132、#286 P4 實機 spike。</div>
+  </div></div>
 
   <div class="ev ok"><div class="ref">#298<small>已 merge · PR 314 + 55f4dc2</small></div><div class="body">
     <b>遊戲畫面收尾（最後一棒）— MS build-out 收官</b>
