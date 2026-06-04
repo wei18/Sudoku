@@ -37,8 +37,8 @@ copyright: "2026 Wei18"
 review_information:
   first_name: "Wei18"       # git user.name (single handle)
   last_name: "Wei18"        # ASC needs both fields; single handle => same value
-  email_address: "11254896+wei18@users.noreply.github.com"  # FLAG: GitHub noreply does NOT receive mail — replace with a monitored inbox before submission (Apple emails the review contact)
-  phone_number: null  # secret — ASC review contact held in secrets/.env, injected at apply time (never committed)
+  email_address: null  # secret — Apple emails this contact; held in secrets/.env (ASC_REVIEW_EMAIL), injected at apply time (never committed)
+  phone_number: null  # secret — ASC review contact held in secrets/.env (ASC_REVIEW_PHONE), injected at apply time (never committed)
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
   # Notes pasted into ASC "Review Information → Notes". The canonical, full
