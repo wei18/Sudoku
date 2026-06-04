@@ -61,7 +61,7 @@
     <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
     <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 15:35</div>
+  <div class="stamp">2026-06-04 · 16:55</div>
 </header>
 
 <!-- ====== EPIC ====== -->
@@ -84,10 +84,28 @@
 <h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
 
-  <div class="ev run"><div class="ref">#287 P2<small>進行中</small></div><div class="body">
-    <b>RemindersKit Phase 2 — primer + Sudoku U1 wiring</b>
-    <p>Chunk 1（GameShellUI 的 permission-priming primer sheet + denied explainer + `ReminderPermissionModel`，copy 注入式）已完成 + push（CR 中）。Chunk 2（Sudoku U1 wiring）+ Chunk 3（telemetry events）因 session limit 中斷未 commit → chunk 1 merge 後在 main 上重派，並一併做 #321 時間選擇器（Q4 已定＝使用者可調）。</p>
-    <div class="meta">設計目標：`reminders-flow.prototype.html`（CR：Minor-drift，已修 9am 文案）。Phase 2 完成後 Sudoku 即有「每日謎題就緒」提醒。</div>
+  <div class="ev run"><div class="ref">#291 MS<small>進行中</small></div><div class="body">
+    <b>Minesweeper 每難度每日排行榜（鏡像 Sudoku）</b>
+    <p>更正：ASCRegister <b>本來就用 ASC API 建排行榜</b>（`createLeaderboard` POST），不是手動後台——Leader 先前誤導已修正並記入 memory。MS 比照 Sudoku 做 easy/medium/hard 三個 recurring 每日榜（`com.wei18.minesweeper.leaderboard.{…}.daily.v1`）：GC config 改 app-aware + 程式端從單一榜改成依難度送分。</p>
+    <div class="meta">你定＝鏡像 Sudoku（非單一最佳時間榜）。`apply`（經 API 真正建立）仍待你授權。IAP 是唯一手動建立的例外（#200）。</div>
+  </div></div>
+
+  <div class="ev dec"><div class="ref">#286<small>已 merge · PR 326 · RFC 核准</small></div><div class="body">
+    <b>CaptureGuardKit RFC — 只擋遊戲盤的截取變黑</b>
+    <p>按你給的文章重設計，並依你決策收斂：<b>只擋遊戲盤</b>（secure-layer reparent 限該 view，不動整窗）+ <b>兩機制併用</b>（secure-layer 真變黑 + snapshotView override 擋 app-switcher）。錄影走 `UIScreen.isCaptured`。私有層全鎖在單一 `SecureSurfaceBlackout`，kill-switch 預設 OFF，找不到層則退化可見 + telemetry。</p>
+    <div class="meta">設計定稿，未寫 source。Phase 1/2 agent 可做（CI/Sim 綠），Phase 3 實機 spike 驗證真變黑 → 翻 default-ON（user-owned）。第二台相機不在範圍（你：顯而易見不用提）。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">#287 P2<small>已 merge · PR 323+325</small></div><div class="body">
+    <b>RemindersKit Phase 2 完成 — primer + Sudoku 接線 + telemetry</b>
+    <p>Chunk 1（GameShellUI primer sheet/denied explainer，copy 注入）+ Chunk 2（Sudoku 每日完成畫面出 primer、排每日就緒提醒、`UNUserNotificationCenterDelegate` 前景/點擊路由、`ReminderSettingsStore` 預設 9am ＝ #321 接點）+ Chunk 3（6 個 telemetry events，payload `kind:String` 不污染 TelemetryKit）。session-limit stall 後 chunk 1 救回單獨 merge、chunk 2+3 重派。</p>
+    <div class="meta"><span class="v">兩個 CR 皆 APPROVE</span>。SudokuKit 176 / TelemetryKit 29 / RemindersKit 12 / GameShellKit 13 全綠、零 snapshot 重錄。注意：`.completion` route 目前 pre-existing-dormant（尚無 solve→completion 導航），接線「就緒待命」正確、非接錯。Backlog：抽 `PuzzleIdentity.isDaily`。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">#322<small>已 merge · PR 324</small></div><div class="body">
+    <b>ASC locale-code 映射（apply 前置）</b>
+    <p>repo 語系碼 → ASC 語系碼於 `loadListings` 接縫映射。查 Apple 官方來源更正：韓文＝`ko`（非 ko-KR）、泰文＝`th`（非 th-TH）、西語＝`es-ES`——issue 標題寫錯。未知碼 fail-loud（`unknownLocale` throw）。與 #31 的 GC 映射刻意分離。</p>
+    <div class="meta"><span class="v">CR APPROVE</span>，11 tests。順帶修 2 個既有 appleId 測試失敗（寫死舊值 6772925351/nil → 6771248206/6775733519），ASCRegisterKit 80/80 綠。</div>
   </div></div>
 
   <div class="ev ok"><div class="ref">#287 P1<small>已 merge · PR 318</small></div><div class="body">
