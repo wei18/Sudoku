@@ -61,21 +61,21 @@
     <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
     <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 10:50</div>
+  <div class="stamp">2026-06-04 · 11:10</div>
 </header>
 
 <!-- ====== EPIC ====== -->
 <h2>Minesweeper → 鏡像 Sudoku 建置 &nbsp;<span class="muted" style="font-weight:400">epic #293</span></h2>
 <div class="epic">
-  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px">已完成 3 / 6</strong><span class="muted" style="font-size:12px">theme · Home+hubs · Daily &nbsp;→&nbsp; Leaderboard（審查中）· Completion · 收尾</span></div>
-  <div class="bar"><i style="width:52%"></i></div>
-  <div class="barmeta"><span>地基 + 內容陸續落地</span><span>52%</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px">已完成 4 / 6</strong><span class="muted" style="font-size:12px">theme · Home+hubs · Daily · Leaderboard &nbsp;→&nbsp; Completion（進行中）· 收尾</span></div>
+  <div class="bar"><i style="width:70%"></i></div>
+  <div class="barmeta"><span>地基 + 內容陸續落地</span><span>70%</span></div>
   <div class="steps">
     <div class="step done"><span class="ic">✓</span><div><b>Theme 系統</b> <span class="id">#278 T1</span><span class="sub">抽到 GameShellUI；棋盤套上 slate-blue</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Home + 可達 hubs</b> <span class="id">#288/#289</span><span class="sub">mode-card 入口；Daily/Practice 可導航</span></div></div>
     <div class="step done"><span class="ic">✓</span><div><b>Daily 模型</b> <span class="id">#290</span><span class="sub">日期種子三盤，每 UTC-day 決定性</span></div></div>
-    <div class="step now"><span class="ic">●</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">審查中 — GC 接線 + 勝利時提交</span></div></div>
-    <div class="step next"><span class="ic">○</span><div><b>Completion 畫面</b> <span class="id">#292</span><span class="sub">鏡像 CompletionView</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">submit-on-win · GC dashboard · Home 卡啟用</span></div></div>
+    <div class="step now"><span class="ic">●</span><div><b>Completion 畫面</b> <span class="id">#292</span><span class="sub">進行中 — 結果 + best-time + leaderboard slice</span></div></div>
     <div class="step next"><span class="ic">○</span><div><b>遊戲畫面收尾</b> <span class="id">#298</span><span class="sub">Mac 側欄 · 勝負 · VoiceOver · 間距</span></div></div>
   </div>
 </div>
@@ -84,10 +84,16 @@
 <h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
 
-  <div class="ev run"><div class="ref">#291<small>審查中</small></div><div class="body">
-    <b>Leaderboard / Game Center — 已派發</b>
-    <p>把 <code>GameCenterClient</code> 接進 MS composition、做一個 GC dashboard modal（鏡像 Sudoku #49 的 side-effect — 不是 AppRoute）、啟用 Home 的「Leaderboard」卡（目前是 disabled「Coming soon」stub），並在棋盤勝利時提交最佳時間。MS 已有 GC entitlement；ASC leaderboard-ID 註冊屬另外的 user-owned 步驟。</p>
-    <div class="meta">Developer 在 worktree 進行中 → 下一步：CR → merge → 更新本面板。</div>
+  <div class="ev run"><div class="ref">#292<small>進行中</small></div><div class="body">
+    <b>Completion 畫面 — 已派發</b>
+    <p>把棋盤現有的陽春 <code>terminalOverlay</code> 換成真正的 themed Completion 畫面：勝負結果 hero + elapsed/best-time + Game Center leaderboard slice（GC #291 已就位）+ CTAs（New Game / Retry / View leaderboard）。鏡像 Sudoku 的 CompletionView。</p>
+    <div class="meta">Developer 在 worktree 進行中 → CR + Designer 對照 prototype → merge。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">#291<small>已 merge · PR 312</small></div><div class="body">
+    <b>Game Center leaderboard + 勝利時提交</b>
+    <p>把 <code>GameCenterClient</code> 接進 MS、做 GC dashboard modal（#49 side-effect，非 AppRoute）、啟用 Home 的 Leaderboard 卡、棋盤勝利時提交最佳時間（每 difficulty 一個 <code>.v1</code> leaderboard）。在共用 <code>GameCenterKit</code> 加了 game-agnostic 的 <code>submitScore(leaderboardId:elapsedSeconds:)</code>，Sudoku 的 typed 方法 delegate 過去。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — Sudoku 提交行為不變（3 個 Sudoku test 仍斷言精確 ID+分數）、MS submit 已 latch + 非阻塞、card 是 modal side-effect（nav-invariant 已測）。3 個 MS leaderboard ID 的 ASC 註冊屬 user-owned。Follow-up：launch-time GC auth #313。</div>
   </div></div>
 
   <div class="ev ok"><div class="ref">#290<small>已 merge · PR 307</small></div><div class="body">
@@ -150,7 +156,14 @@
     <div class="row"><span class="iss">#287</span><span class="t">RemindersKit <span class="pill parked">parked</span></span></div>
   </div>
   <div class="card">
-    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">工程 · follow-ups</div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">App Store 上架 readiness <span style="font-weight:400">#236 umbrella</span></div>
+    <div class="row"><span class="iss">#309</span><span class="t">補齊 metadata 欄位（copyright / 次分類 / review_info）</span></div>
+    <div class="row"><span class="iss">#310</span><span class="t">ASCRegister metadata subcommand（ASC API）</span></div>
+    <div class="row"><span class="iss">#311</span><span class="t">截圖由 snapshot PNG symlink 提供</span></div>
+    <div class="row"><span class="iss">#306</span><span class="t">Sudoku v2.5 whats_new 文案</span></div>
+
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin:14px 0 6px">工程 · follow-ups</div>
+    <div class="row"><span class="iss">#313</span><span class="t">MS launch-time GC auth handshake</span></div>
     <div class="row"><span class="iss">#305</span><span class="t">抽共用 UTCDay → TimeKit leaf</span></div>
     <div class="row"><span class="iss">#306</span><span class="t">更新 Sudoku v2.5 whats_new 文案</span></div>
     <div class="row"><span class="iss">#276</span><span class="t">banner dispose 改 gate-close 觸發</span></div>
