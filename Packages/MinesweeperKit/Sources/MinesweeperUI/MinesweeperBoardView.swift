@@ -22,6 +22,14 @@ public import Telemetry
 
 public struct MinesweeperBoardView: View {
 
+    @Environment(\.theme) private var theme
+    // #298 #6 (Tier-1 leftover): drive the Mac 2-column side-rail layout. On
+    // iPad/Mac (regular width) the board + a control rail sit side-by-side,
+    // mirroring Sudoku's BoardView.macLayout; iPhone (compact) keeps the
+    // vertical stack. swiftui-interaction-footguns: read `horizontalSizeClass`,
+    // which is `.regular` on Mac, not a hardcoded `#if os(macOS)`.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
     // engine semantics — it only routes which action a cell tap fires. Mirrors
@@ -85,17 +93,14 @@ public struct MinesweeperBoardView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
-            statusBar
-            modeToggle
-            boardGrid
-            // Banner sits between the grid and the bottom edge. Mirrors
-            // Sudoku's BoardView slot pattern. Suppressed during terminal
-            // states (win / lose) — showing an ad on top of the Completion
-            // surface contradicts the moment's tone, same way Sudoku
-            // suppresses banners during pause.
-            if !viewModel.isTerminal, let adProvider, let adGate {
-                MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
+        // #298 #6: compact (iPhone) keeps the vertical stack; regular (iPad /
+        // Mac) splits into a 2-column board + control rail, mirroring Sudoku's
+        // BoardView.macLayout.
+        Group {
+            if sizeClass == .regular {
+                macLayout
+            } else {
+                compactLayout
             }
         }
         .padding()
@@ -126,6 +131,77 @@ public struct MinesweeperBoardView: View {
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
             }
+        }
+    }
+
+    // MARK: - Compact (iPhone) layout
+
+    private var compactLayout: some View {
+        // Spacing literal preserved verbatim (12) from the pre-#298 VStack so the
+        // recorded iPhone covered-board snapshots don't churn. The theme spacing
+        // scale (#298 #11) is applied to the NEW Mac layout below; migrating the
+        // compact literal would re-record baselines and is deferred to #11.
+        VStack(spacing: 12) {
+            statusBar
+            modeToggle
+            boardGrid
+            bannerSlot
+        }
+    }
+
+    // MARK: - Mac (regular) 2-column layout (#298 #6)
+    //
+    // Mirrors Sudoku's BoardView.macLayout (locked 2026-05-30): outer maxWidth
+    // capped + centered, board on the left capped to a square, a ~260 pt control
+    // rail on the right. MS's rail carries the status bar + the Reveal/Flag mode
+    // toggle (MS has no digit pad), keeping the iPhone grid out of the wide Mac
+    // detail pane (#298 critique: the board currently renders the iPhone stack
+    // in the Mac detail).
+    private var macLayout: some View {
+        VStack(spacing: theme.spacing.medium) {
+            HStack(alignment: .top, spacing: theme.spacing.large) {
+                macBoardColumn
+                controlRail
+            }
+            bannerSlot
+        }
+        .frame(maxWidth: Self.macOuterMaxWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, theme.spacing.medium)
+    }
+
+    private static let macOuterMaxWidth: CGFloat = 900
+    private static let macBoardMaxSide: CGFloat = 600
+    private static let macRailWidth: CGFloat = 260
+
+    private var macBoardColumn: some View {
+        boardGrid
+            .frame(maxWidth: Self.macBoardMaxSide, maxHeight: Self.macBoardMaxSide)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    // The Mac control rail: status read-out + the Reveal/Flag toggle, stacked
+    // vertically in a fixed-width column. The toggle keeps `.segmented` styling
+    // (same control as iPhone) — only the placement changes.
+    private var controlRail: some View {
+        VStack(spacing: theme.spacing.medium) {
+            statusBar
+            modeToggle
+            Spacer(minLength: 0)
+        }
+        .frame(width: Self.macRailWidth)
+    }
+
+    // MARK: - Banner slot
+    //
+    // Banner sits between the grid and the bottom edge. Mirrors Sudoku's
+    // BoardView slot pattern. Suppressed during terminal states (win / lose) —
+    // showing an ad on top of the Completion surface contradicts the moment's
+    // tone, same way Sudoku suppresses banners during pause.
+    @ViewBuilder
+    private var bannerSlot: some View {
+        if !viewModel.isTerminal, let adProvider, let adGate {
+            MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
         }
     }
 
