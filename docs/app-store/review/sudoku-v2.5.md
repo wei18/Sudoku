@@ -5,7 +5,7 @@
 > This file is the source of truth; diff the live ASC page against it after
 > upload. Refs #236.
 
-- **App**: Sudoku (`com.wei18.sudoku`, Apple ID `6772925351`)
+- **App**: Sudoku (`com.wei18.sudoku`, Apple ID `6771248206`)
 - **Version**: 2.5 (monetization-enabled round)
 - **Platforms**: iOS 26+, macOS 26+ (universal, true SwiftUI Mac app — not Catalyst)
 - **Sign-in**: none required (no demo account)
