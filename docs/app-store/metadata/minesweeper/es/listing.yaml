@@ -2,7 +2,7 @@ locale: es-ES
 name: "Buscaminas — Clásico"
 subtitle: "Lógica limpia en iPhone y Mac"
 promotional_text: |
-  El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. Sin rastreo salvo el banner opcional, que quitas con una compra.
+  El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. Sin seguimiento salvo el banner opcional, que quitas con una compra.
 description: |
   Buscaminas, hecho para pensar, no para el ruido.
 
@@ -17,12 +17,11 @@ description: |
   • Tres dificultades clásicas: Principiante, Intermedio, Experto.
   • Seguridad en el primer toque: la jugada inicial nunca pierde.
   • Toca para revelar, mantén pulsado para marcar (clic derecho o control-clic en Mac).
-  • Un conjunto diario de tableros al que volver.
-  • Continúa cuando quieras: guardado automático.
+  • Un conjunto diario de tableros para jugar.
 
   Realmente multiplataforma
 
-  Una sola base de código, dos plataformas. La versión de Mac es una app de Mac SwiftUI de verdad, no iPad en Mac ni Catalyst. Cambiar el tamaño de la ventana y marcar con clic derecho funcionan como esperan los usuarios de Mac. Retoma la partida en el dispositivo que tengas cerca.
+  Una sola base de código, dos plataformas. La versión de Mac es una app de Mac SwiftUI de verdad, no iPad en Mac ni Catalyst. Cambiar el tamaño de la ventana y marcar con clic derecho funcionan como esperan los usuarios de Mac. Juega en el dispositivo que tengas cerca.
 
   Privacidad, en palabras claras
 
@@ -41,19 +40,18 @@ description: |
   Dynamic Type, VoiceOver, modo claro y oscuro.
 
   Requiere iOS 26 o macOS 26.
-keywords: "buscaminas,minas,logica,puzzle,clasico,mente,sin conexion,ipad,mac,bandera,numero"
+keywords: "minas,logica,puzle,clasico,mente,sin conexion,ipad,mac,bandera,numero,bomba,campo minado,buscamin"
 whats_new: |
-  Versión 1.0 — primer lanzamiento público.
+  Versión 2.3.5
 
   • Buscaminas clásico con tres dificultades: Principiante, Intermedio, Experto.
   • Seguridad en el primer toque: la jugada inicial nunca es una mina.
   • Toca para revelar, mantén pulsado para marcar; clic derecho en Mac.
-  • Sincronización entre dispositivos con tu propia base de datos privada de iCloud.
   • Quitar anuncios: una compra única que elimina el banner para siempre.
   • Siete idiomas: inglés, chino tradicional, japonés, chino simplificado, español, tailandés, coreano.
   • Versión nativa de Mac, no Catalyst.
 
-  Gracias por probarlo. Las incidencias y sugerencias son bienvenidas en el enlace de soporte.
+  Gracias por jugar. Las incidencias y sugerencias son bienvenidas en el enlace de soporte.
 marketing_url: null
 support_url: "https://github.com/wei18/Sudoku/issues"
 privacy_policy_url: "https://github.com/wei18/Sudoku/blob/main/docs/privacy-policy.md"
