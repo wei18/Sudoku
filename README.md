@@ -1,64 +1,114 @@
+English | [繁體中文](README.zh-Hant.md)
+
 # Sudoku-spec
 
-iPhone 與 Mac 雙平台 puzzle App。主交付為 Sudoku；Minesweeper 為驗證共用架構（`GameShellKit`）可複用性的第二款 App，除玩法畫面外鏡像 Sudoku。同一個 repo 同時容納兩層內容：
+Two calm, privacy-respecting, cross-platform logic games — built in a single monorepo that doubles as a portfolio of (a) clean, modular **Swift 6** architecture and (b) a documented **human + Claude-agent engineering workflow**.
 
-- 規格層：[`docs/`](docs/)、[`meetings/`](meetings/)、[`.claude/skills/`](.claude/skills/)。
-- 實作層：`Sudoku/` 與 `Minesweeper/`（兩個薄殼 App target，各含 `@main` + DI composition root）與 `Packages/`（9 個本地 SPM package，見下）。
+- **Sudoku** is the primary, shipping app.
+- **Minesweeper** is a second app that exists to prove the shared `GameShellKit` architecture composes a new game — it mirrors Sudoku in every layer except the gameplay screen.
 
-> 2026-05-17 起，原本規劃的 sibling `Sudoku/` repo 已合併進本 repo。理由：作為 portfolio，單一可閱讀單元優於跨 repo 跳轉。
+Both run on **iPhone and Mac** from one codebase, sync through the player's own iCloud, and keep a deliberately small footprint: no first-party analytics, no accounts beyond iCloud, no tracking — with ads limited to a single, removable banner in the monetized builds.
 
-## 雙重交付目標
+> This repo has been **public since its first commit**. Every architectural decision, every review cycle, and the full collaboration methodology are readable in `docs/`, `meetings/`, and `.claude/skills/`. That openness is part of the point.
 
-1. 上架可玩的 Sudoku App（iOS 與 macOS），並以 Minesweeper 驗證共用架構可複用至第二款 App。
-2. 留下一份「如何把 Claude agent 應用到實際 iOS 專案」的可重現紀錄。
+---
 
-## 閱讀順序
+## The two apps
 
-1. [`docs/v1/design.md`](docs/v1/design.md) — v1 產品要做什麼（§What）與技術上怎麼做（§How）。
-2. [`docs/v2/design.md`](docs/v2/design.md) — v2 monetization layer（AdMob banner + Remove Ads IAP + UMP / ATT）。
-3. [`docs/foundations.md`](docs/foundations.md) — 跨版本的工程平台決策（Swift 6、模組化、testing、CI、Logger、Tracking、secrets）。
-4. [`docs/methodology.md`](docs/methodology.md) — Claude agent 在本專案的協作模式（含 §派發契約、Backlog 路由），持續更新。
-5. [`meetings/`](meetings/) — 各次 session 的原始決策紀錄，是上述文件「為什麼長成這樣」的真相來源。
+| | **Sudoku** (primary) | **Minesweeper** (second app) |
+|---|---|---|
+| One-liner | Daily & Practice logic for iPhone and Mac | The classic, made calm — for iPhone and Mac |
+| Status | Codebase feature-complete and shipped; v2.5 monetization layer in its final sprint | Mirrors Sudoku's shell; monetization stack wired; gameplay screen in development |
+| Modes | Daily (3 puzzles/day, global, leaderboard-ranked) + Practice (random, unranked) | Beginner / Intermediate / Expert, first-tap-safe |
+| Cross-device | iCloud Private DB sync of saves + records | Same sync shape, separate iCloud container |
+| Platforms | iOS 26 / macOS 26, real SwiftUI Mac app (not Catalyst) | Same |
 
-完整文件地圖見 [`docs/README.md`](docs/README.md)。
+**Ethos (both apps).** No personal data is collected. No third-party analytics SDKs are embedded. Saves live in the player's own iCloud Private Database; Game Center submissions go to Apple. In the monetized builds the *only* third-party SDK is Google's banner-ad library, isolated to a single module — and the banner can be removed permanently with a one-time, non-consumable In-App Purchase.
 
-## 模組結構
+---
+
+## Why this repo is interesting
+
+This is not a tutorial project. It is a real, public iOS codebase that carries two distinct stories side by side:
+
+1. **A clean modular Swift 6 architecture** that was deliberately split so a *second* game could reuse the first's shell.
+2. **A reproducible record of applying Claude agents to a shipping iOS project** — a Leader/Developer state-machine methodology, with the original decision logs preserved.
+
+---
+
+## Architecture
+
+The codebase is two thin app shells over a set of local Swift Package Manager packages. Each app target holds only `@main`, Info.plist / entitlements / assets, and a DI composition root; all screens, logic, and storage live in packages.
 
 ```
-Sudoku/                           # 薄殼：@main + DI composition root
-Minesweeper/                      # 薄殼：@main + DI composition root（鏡像 Sudoku）
+Sudoku/                      # thin shell: @main + DI composition root
+Minesweeper/                 # thin shell: @main + DI composition root (mirrors Sudoku)
 Packages/
-├── SudokuCoreKit/                # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植 Android）
-├── MinesweeperCoreKit/           # 純 Swift 核心：MinesweeperEngine + MinesweeperGameState（leaf）
-├── TelemetryKit/                 # Logger + Tracking 抽象 + TelemetryTesting fixtures
-├── PersistenceKit/               # CloudKit Persistence + PersistenceTesting
-├── GameCenterKit/                # GameCenterClient + GameCenterTesting
-├── GameShellKit/                 # GameShellUI：兩款 App 共用的導覽殼（RootShellView / RouteFactory）
-├── AppMonetizationKit/           # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（third-party SDK 隔離，見 foundations §9）
-├── SudokuKit/                    # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
-└── MinesweeperKit/               # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition
+├── SudokuCoreKit/           # pure-Swift core: SudokuEngine + GameState (leaf, portable)
+├── MinesweeperCoreKit/      # pure-Swift core: MinesweeperEngine + MinesweeperGameState (leaf)
+├── TelemetryKit/            # Logger + Tracking abstraction + TelemetryTesting fixtures
+├── PersistenceKit/          # CloudKit persistence + PersistenceTesting
+├── GameCenterKit/           # GameCenterClient + GameCenterTesting
+├── RemindersKit/            # shared local-notification reminders (UserNotifications isolated to Live)
+├── GameShellKit/            # GameShellUI — the navigation/settings shell both apps share
+├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2 (third-party SDK isolation)
+├── SudokuKit/               # Sudoku-specific: PuzzleStore / SudokuUI / AppComposition
+├── MinesweeperKit/          # Minesweeper-specific: MinesweeperUI / MinesweeperAppComposition
+└── ASCRegisterKit/          # macOS-only dev CLI for App Store Connect ops (not in either app binary)
 ```
 
-依賴方向（內 → 外，禁止反向）詳見 [`docs/foundations.md §2`](docs/foundations.md)。`GameShellKit` 是兩款 App 共用的 UI 殼，避免 Minesweeper 複製 Sudoku 導覽碼。
+**Dependencies point inward only** (leaf cores ← shared kits ← per-app kits ← app target; reverse imports are forbidden — see [`docs/foundations.md §2`](docs/foundations.md)). A few principles hold the shape together:
 
-## 狀態
+- **Portable leaf cores.** `SudokuCoreKit` and `MinesweeperCoreKit` import only Foundation — no Apple frameworks — so the puzzle/engine math could be lifted to another front-end (an Android port is an explicit backlog item).
+- **Restricted framework imports.** CloudKit lives only in `PersistenceKit`, GameKit only in `GameCenterKit`, UserNotifications only in `RemindersKit`'s Live files, and the Google Mobile Ads SDK only in `AppMonetizationKit/AdsAdMob`. Everything above consumes protocol seams, which keeps the UI and logic layers unit-testable and preview-able.
+- **A shared shell, not copy-paste.** When Minesweeper needed the same navigation, settings, hub, toast, and banner-slot surfaces, those were extracted into `GameShellKit` (`GameShellUI`) rather than duplicated. The second app reuses the shell and ships *only* its gameplay UI and the bits that genuinely differ — which is exactly why "Minesweeper mirrors Sudoku except the board" is a true statement, not a slogan.
+- **Game-prefixed targets.** Where two games need the same domain target (each game has its own `GameState`), names are game-prefixed (`MinesweeperEngine`, `MinesweeperGameState`, `MinesweeperUI`) so the generated Xcode workspace has no module-name collisions; genuinely shared targets are named by *function* (`GameShellUI`).
 
-- **Sudoku v1** — 程式碼層完工並上架（[`docs/v1/plan.md`](docs/v1/plan.md) Phase 0–9 全部 ship）。
-- **Sudoku v2.5** — Monetization layer 在 final sprint；AdMob banner 已 wire（test IDs），production IDs 改採 build-time xcconfig 注入（見 skill `build-time-secret-injection`），v2.5.3 上架前切換。Pre-flight 進度見 [`docs/v2/v2.5-readiness.md`](docs/v2/v2.5-readiness.md)。
-- **Minesweeper v1** — 鏡像 Sudoku 的第二款 App，monetization stack（AdMob + Remove Ads IAP）已接入，gameplay 畫面開發中。
+---
 
-實作階段採 TDD（swift-testing + swift-snapshot-testing）。
+## The AI-collaboration angle
 
-## 工具鏈（SSOT）
+The repo is also a working record of running Claude agents on a real iOS project. Three layers sit alongside the code:
 
-- **mise** — 工具版本鎖（`.mise.toml`）+ 任務 SSOT（`mise-tasks/` file-based tasks；lefthook / GH Actions / Xcode Cloud 三邊同源呼叫 `mise run <task>`）
-- **lefthook** — pre-commit hooks（gitleaks、hygiene、swiftlint）
-- **Xcode Cloud** — v1 主 CI 軌；PR / Main / Release 三 workflow
-- **GitHub Actions** — Phase 1 advisory（`.github/workflows/lint.yml` 三 job：pr-metadata / docs-link-check / swift-lint）
-- **Tuist** — 從 `Project.swift` 產生 `Game.xcodeproj`（Sudoku + Minesweeper 兩 target 共 `Game` umbrella）
+- **`docs/`** — the spec layer. Product and technical design (`v1/`, `v2/`), the cross-version engineering foundations, and the methodology itself.
+- **`meetings/`** — the raw, dated decision logs. These are the source of truth for *why* the docs look the way they do, including review rounds, rejected alternatives, and root-cause analyses.
+- **`.claude/skills/`** — project-specific, reusable agent skills distilled from patterns that recurred (for example, the build-time secret-injection pattern for AdMob identifiers).
 
-## 安全姿態：公開 repo
+The collaboration model is a **Leader / Developer state machine**, defined in [`docs/methodology.md`](docs/methodology.md):
 
-本 repo 自第一個 commit 起即為公開 spec repo，不含任何 secret、PII 或可識別玩家資料。任何 commit 歷史均不得包含上述內容；違規一律視為已洩露，並依 [`docs/foundations.md §7.3`](docs/foundations.md) SOP 處置。
+- The **Leader** (the coordinating session) understands intent, writes and reviews documents, decomposes work, and dispatches tasks — but does not write implementation code.
+- **Developer / Reviewer / Designer / Architect** sub-agents implement, review, and design against a precise dispatch contract (scope, docs to read, skills to invoke, return format, verification criteria), with their output gated by the Leader before anything reaches the user.
 
-本 repo 遵循 [`docs/foundations.md §7`](docs/foundations.md) 全套規範，包含 gitleaks pre-commit hook、Xcode Cloud `ci_post_clone.sh` secret scan、GitHub secret scanning alerts，以及 `.gitignore` 黑名單。
+Work advances through explicit states — `GOAL_RECEIVED → PROPOSAL → RFC → USER_APPROVED → IMPL → CLOSED` — with a code-review step inserted whenever a change is large or touches sensitive modules. The methodology document also captures the recurring **patterns** and **anti-patterns** observed across phases, which is the part most directly reusable on another project.
+
+---
+
+## Repo map & reading order
+
+1. [`docs/v1/design.md`](docs/v1/design.md) — what v1 does (§What) and how it's built (§How).
+2. [`docs/v2/design.md`](docs/v2/design.md) — the v2 monetization layer (AdMob banner + Remove-Ads IAP + UMP / ATT).
+3. [`docs/foundations.md`](docs/foundations.md) — cross-version engineering platform decisions (Swift 6, modularization, testing, CI, Logger, secrets).
+4. [`docs/methodology.md`](docs/methodology.md) — the Claude-agent collaboration model, dispatch contract, and backlog routing.
+5. [`meetings/`](meetings/) — the original per-session decision records behind everything above.
+
+The full documentation map lives in [`docs/README.md`](docs/README.md); reusable agent skills live in [`.claude/skills/`](.claude/skills/).
+
+> The sibling `Sudoku/` repo originally planned as a separate codebase was merged into this repo on 2026-05-17 — for a portfolio, a single readable unit beats jumping across repos.
+
+---
+
+## Tech facts
+
+- **Language:** Swift 6 language mode with **complete** concurrency checking, from the first line of code.
+- **Packaging:** Swift Package Manager — a small set of local packages, thin app targets.
+- **Platforms:** iOS 26 / macOS 26 floor (chosen to use Liquid Glass APIs); the Mac build is a real SwiftUI app, not Catalyst.
+- **Testing:** [swift-testing](https://github.com/swiftlang/swift-testing) for unit/integration tests (no XCTest) plus [swift-snapshot-testing](https://github.com/pointfreeco/swift-snapshot-testing); CloudKit and Game Center are exercised through protocol fakes so the suite runs on a clean CI runner.
+- **Apple services:** CloudKit (private-DB save/record sync) and Game Center (recurring daily leaderboards + achievements, Sudoku).
+- **CI / tooling:** Xcode Cloud as the primary CI track (PR / Main / Release workflows), advisory GitHub Actions for lint/link/metadata, [Tuist](https://tuist.io) generating the umbrella `Game` Xcode project from `Project.swift`, and [mise](https://mise.jdx.dev) as the version + task source of truth, with lefthook + gitleaks pre-commit hooks.
+- **Monetization (v2, Sudoku):** a single removable AdMob banner and a one-time Remove-Ads IAP, with UMP consent and ATT, all isolated inside `AppMonetizationKit`.
+
+---
+
+## Security posture
+
+This is a public spec repo and has been from day one. No secret, PII, or identifiable player data may appear in any commit — enforced by a gitleaks pre-commit hook, an Xcode Cloud post-clone secret scan, GitHub secret-scanning alerts, and a `.gitignore` blocklist. App-public-but-pre-launch-sensitive identifiers (such as AdMob IDs) are injected at build time rather than committed. The full policy is [`docs/foundations.md §7`](docs/foundations.md).
