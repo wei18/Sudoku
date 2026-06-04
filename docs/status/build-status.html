@@ -93,7 +93,7 @@
   <div class="ev dec"><div class="ref">#286<small>已 merge · PR 326 · RFC 核准</small></div><div class="body">
     <b>CaptureGuardKit RFC — 只擋遊戲盤的截取變黑</b>
     <p>按你給的文章重設計，並依你決策收斂：<b>只擋遊戲盤</b>（secure-layer reparent 限該 view，不動整窗）+ <b>兩機制併用</b>（secure-layer 真變黑 + snapshotView override 擋 app-switcher）。錄影走 `UIScreen.isCaptured`。私有層全鎖在單一 `SecureSurfaceBlackout`，kill-switch 預設 OFF，找不到層則退化可見 + telemetry。</p>
-    <div class="meta">設計定稿，未寫 source。Phase 1/2 agent 可做（CI/Sim 綠），Phase 3 實機 spike 驗證真變黑 → 翻 default-ON（user-owned）。第二台相機不在範圍（你：顯而易見不用提）。</div>
+    <div class="meta">設計定稿，未寫 source。<b>已 park 進 backlog</b>（你決定 2026-06-04，Phase 1 暫不開工）。解封後：Phase 1/2 agent 可做（CI/Sim 綠）→ Phase 3 實機 spike 翻 default-ON（user-owned）。第二台相機不在範圍。</div>
   </div></div>
 
   <div class="ev ok"><div class="ref">#287 P2<small>已 merge · PR 323+325</small></div><div class="body">
