@@ -27,7 +27,13 @@ struct TelemetryEventTests {
             .puzzleCompleted(puzzleId: "p", mode: .daily, difficulty: .easy, elapsedSeconds: 60),
             .sessionAbandoned(puzzleId: "p", mode: .practice, difficulty: .hard, elapsedSeconds: 12),
             .errorOccurred(source: "Persistence", code: "lww.conflict", message: "x"),
-            .metricKitReport(metric)
+            .metricKitReport(metric),
+            .reminderPrimerShown(kind: "dailyReady"),
+            .reminderPrimerAccepted(kind: "dailyReady"),
+            .reminderPrimerDeclined(kind: "dailyReady"),
+            .reminderScheduled(kind: "dailyReady"),
+            .reminderFired(kind: "dailyReady"),
+            .reminderOpenedApp(kind: "dailyReady")
         ]
         for event in cases { assertSendable(event) }
     }
@@ -66,7 +72,13 @@ struct TelemetryEventTests {
             .puzzleCompleted(puzzleId: "p-1", mode: .practice, difficulty: .medium, elapsedSeconds: 333),
             .sessionAbandoned(puzzleId: "p-2", mode: .daily, difficulty: .hard, elapsedSeconds: 10),
             .errorOccurred(source: "GameCenter", code: "auth.cancelled", message: "user cancelled"),
-            .metricKitReport(metric)
+            .metricKitReport(metric),
+            .reminderPrimerShown(kind: "dailyReady"),
+            .reminderPrimerAccepted(kind: "dailyReady"),
+            .reminderPrimerDeclined(kind: "dailyReady"),
+            .reminderScheduled(kind: "dailyReady"),
+            .reminderFired(kind: "dailyReady"),
+            .reminderOpenedApp(kind: "dailyReady")
         ]
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()

@@ -35,4 +35,27 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     /// `"quotaExceeded"` / `"underlying"`) — not user-facing copy.
     case gameSaveFailed(puzzleId: String, reason: String)
     case metricKitReport(MetricReport)
+
+    // MARK: - Reminder lifecycle (#287 Phase 2)
+    //
+    // Local-notification reminder funnel. `kind` is the stable
+    // `ReminderKind.rawValue` (`"dailyReady"` / `"streakKeeper"` / `"comeback"`)
+    // — passed as a plain String so this leaf observability module stays free
+    // of a `Reminders` import. The host (AppComposition) owns `RemindersKit`
+    // and maps `ReminderKind.rawValue` at the emit site.
+
+    /// The soft pre-ask primer sheet was presented at a value moment (flow S03).
+    case reminderPrimerShown(kind: String)
+    /// The user accepted the primer → the one-shot system prompt was fired (S04).
+    case reminderPrimerAccepted(kind: String)
+    /// The user dismissed the primer ("Not now") — no system prompt fired (S03 self-return).
+    case reminderPrimerDeclined(kind: String)
+    /// A repeating reminder was scheduled (or replaced) on authorization (S04→S05).
+    case reminderScheduled(kind: String)
+    /// A delivered reminder presented while the app was foregrounded
+    /// (`UNUserNotificationCenterDelegate.willPresent`, flow S05/S07).
+    case reminderFired(kind: String)
+    /// The user tapped a delivered reminder, opening the app
+    /// (`UNUserNotificationCenterDelegate.didReceive`, deep-link to the Daily hub).
+    case reminderOpenedApp(kind: String)
 }

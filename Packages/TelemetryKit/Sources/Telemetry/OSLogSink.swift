@@ -30,6 +30,7 @@ public struct OSLogSink: TelemetrySink {
         self.logger = OSLoggerAdapter(subsystem: subsystem, category: category)
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func receive(_ event: TelemetryEvent) async {
         switch event {
         case .digitPlaced(let row, let col, let digit, let previous):
@@ -104,6 +105,20 @@ public struct OSLogSink: TelemetrySink {
                 message: "metricKitReport kind=\(report.kind.rawValue) bytes=\(report.payloadJSON.count)",
                 privacy: .publicValue
             )
+        // Reminder lifecycle (#287 Phase 2) — `kind` is a stable taxonomy
+        // string (ReminderKind.rawValue), not PII → .publicValue.
+        case .reminderPrimerShown(let kind):
+            logger.log(level: .info, message: "reminderPrimerShown kind=\(kind)", privacy: .publicValue)
+        case .reminderPrimerAccepted(let kind):
+            logger.log(level: .info, message: "reminderPrimerAccepted kind=\(kind)", privacy: .publicValue)
+        case .reminderPrimerDeclined(let kind):
+            logger.log(level: .info, message: "reminderPrimerDeclined kind=\(kind)", privacy: .publicValue)
+        case .reminderScheduled(let kind):
+            logger.log(level: .notice, message: "reminderScheduled kind=\(kind)", privacy: .publicValue)
+        case .reminderFired(let kind):
+            logger.log(level: .notice, message: "reminderFired kind=\(kind)", privacy: .publicValue)
+        case .reminderOpenedApp(let kind):
+            logger.log(level: .notice, message: "reminderOpenedApp kind=\(kind)", privacy: .publicValue)
         }
     }
 }
