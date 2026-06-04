@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sudoku · Minesweeper — Build Status</title>
+<title>Sudoku · Minesweeper — 建置狀態</title>
 <style>
   :root{
     --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3340;
@@ -11,17 +11,16 @@
     --sage:#9BB87E; --slate:#7FAFCF; --amber:#E8A560; --red:#E66258; --green:#4BC579; --violet:#9d8cff;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1060px;margin:0 auto;padding:32px 24px 64px}
   header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:26px}
   h1{font-size:21px;margin:0;font-weight:700;letter-spacing:-.2px}
   h1 .dot{color:var(--slate)}
   .stamp{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
   .lede{color:var(--dim);font-size:13px;margin:6px 0 0}
-  h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:34px 0 14px;font-weight:700}
+  h2{font-size:12px;letter-spacing:.04em;color:var(--faint);margin:34px 0 14px;font-weight:700}
   .muted{color:var(--dim)}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  /* epic progress */
   .epic{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px 20px}
   .bar{height:9px;border-radius:6px;background:#222c38;overflow:hidden;margin:12px 0 6px}
   .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--slate),var(--green));border-radius:6px}
@@ -32,18 +31,16 @@
   .done .ic{background:rgba(75,197,121,.16);color:var(--green)} .now .ic{background:rgba(127,175,207,.18);color:var(--slate);animation:pulse 1.6s ease-in-out infinite} .next .ic{background:#222c38;color:var(--faint)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
   .step b{font-weight:600;font-size:13px} .step .id{color:var(--faint);font-size:11.5px} .step .sub{color:var(--dim);font-size:11.5px;display:block;margin-top:1px}
-  /* activity log — the substance */
   .log{display:grid;gap:11px}
   .ev{display:grid;grid-template-columns:64px 1fr;gap:14px;padding:13px 15px;background:var(--panel);border:1px solid var(--line);border-radius:11px;border-left:3px solid var(--line)}
   .ev.ok{border-left-color:var(--green)} .ev.run{border-left-color:var(--slate)} .ev.dec{border-left-color:var(--amber)} .ev.idea{border-left-color:var(--violet)}
   .ev .ref{font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--dim)}
-  .ev .ref small{display:block;font-weight:600;font-size:10px;letter-spacing:.04em;text-transform:uppercase;margin-top:3px}
+  .ev .ref small{display:block;font-weight:600;font-size:10px;letter-spacing:.02em;margin-top:3px}
   .ev.ok .ref small{color:var(--green)} .ev.run .ref small{color:var(--slate)} .ev.dec .ref small{color:var(--amber)} .ev.idea .ref small{color:var(--violet)}
   .ev .body b{font-weight:650;font-size:13.5px}
   .ev .body p{margin:4px 0 0;color:var(--dim);font-size:12.5px}
   .ev .body .meta{margin-top:5px;font-size:11.5px;color:var(--faint)}
-  .ev .body .meta .v{color:var(--green);font-weight:600} .ev .body .meta .nit{color:var(--amber)} .ev .body .meta a{color:var(--slate);text-decoration:none}
-  /* compact lists */
+  .ev .body .meta .v{color:var(--green);font-weight:600} .ev .body .meta .nit{color:var(--amber)}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:720px){.cols{grid-template-columns:1fr}.ev{grid-template-columns:54px 1fr;gap:10px}}
   .row{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid #1f2730}
@@ -61,117 +58,117 @@
 
 <header>
   <div>
-    <h1>Sudoku <span class="dot">·</span> Minesweeper — Build Status</h1>
-    <p class="lede">Living dashboard · the Leader regenerates it at each milestone · <span class="muted">main green — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
+    <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
+    <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 10:45</div>
+  <div class="stamp">2026-06-04 · 10:50</div>
 </header>
 
 <!-- ====== EPIC ====== -->
-<h2>Minesweeper → mirror-Sudoku build-out &nbsp;<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">epic #293</span></h2>
+<h2>Minesweeper → 鏡像 Sudoku 建置 &nbsp;<span class="muted" style="font-weight:400">epic #293</span></h2>
 <div class="epic">
-  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px">3 / 6 shipped</strong><span class="muted" style="font-size:12px">theme · Home+hubs · Daily &nbsp;→&nbsp; Leaderboard (in review) · Completion · polish</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline"><strong style="font-size:14px">已完成 3 / 6</strong><span class="muted" style="font-size:12px">theme · Home+hubs · Daily &nbsp;→&nbsp; Leaderboard（審查中）· Completion · 收尾</span></div>
   <div class="bar"><i style="width:52%"></i></div>
-  <div class="barmeta"><span>foundation + content landing</span><span>52%</span></div>
+  <div class="barmeta"><span>地基 + 內容陸續落地</span><span>52%</span></div>
   <div class="steps">
-    <div class="step done"><span class="ic">✓</span><div><b>Theme system</b> <span class="id">#278 T1</span><span class="sub">extracted to GameShellUI; MS slate-blue on board</span></div></div>
-    <div class="step done"><span class="ic">✓</span><div><b>Home + reachable hubs</b> <span class="id">#288/#289</span><span class="sub">mode-card entry; Daily/Practice navigable</span></div></div>
-    <div class="step done"><span class="ic">✓</span><div><b>Daily model</b> <span class="id">#290</span><span class="sub">date-seeded trio, deterministic per UTC-day</span></div></div>
-    <div class="step now"><span class="ic">●</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">in review — GC wiring + submit-on-win</span></div></div>
-    <div class="step next"><span class="ic">○</span><div><b>Completion screen</b> <span class="id">#292</span><span class="sub">mirror CompletionView</span></div></div>
-    <div class="step next"><span class="ic">○</span><div><b>Game-view polish</b> <span class="id">#298</span><span class="sub">Mac side-rail · win/lose · VoiceOver · spacing</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Theme 系統</b> <span class="id">#278 T1</span><span class="sub">抽到 GameShellUI；棋盤套上 slate-blue</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Home + 可達 hubs</b> <span class="id">#288/#289</span><span class="sub">mode-card 入口；Daily/Practice 可導航</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Daily 模型</b> <span class="id">#290</span><span class="sub">日期種子三盤，每 UTC-day 決定性</span></div></div>
+    <div class="step now"><span class="ic">●</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">審查中 — GC 接線 + 勝利時提交</span></div></div>
+    <div class="step next"><span class="ic">○</span><div><b>Completion 畫面</b> <span class="id">#292</span><span class="sub">鏡像 CompletionView</span></div></div>
+    <div class="step next"><span class="ic">○</span><div><b>遊戲畫面收尾</b> <span class="id">#298</span><span class="sub">Mac 側欄 · 勝負 · VoiceOver · 間距</span></div></div>
   </div>
 </div>
 
-<!-- ====== ACTIVITY LOG (the substance) ====== -->
-<h2>Activity &amp; decisions &nbsp;<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">newest first · the narrative behind each line</span></h2>
+<!-- ====== ACTIVITY LOG ====== -->
+<h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
 
-  <div class="ev run"><div class="ref">#291<small>in review</small></div><div class="body">
-    <b>Leaderboard / Game Center — dispatched</b>
-    <p>Wire <code>GameCenterClient</code> into MS composition, a GC dashboard modal (mirror Sudoku's #49 side-effect — not an AppRoute), enable the Home "Leaderboard" card (currently a disabled "Coming soon" stub), and submit best-time on a board win. MS already has the GC entitlement; ASC leaderboard-ID registration is a separate user-owned step.</p>
-    <div class="meta">Developer running in worktree → next: CR → merge → updates this panel.</div>
+  <div class="ev run"><div class="ref">#291<small>審查中</small></div><div class="body">
+    <b>Leaderboard / Game Center — 已派發</b>
+    <p>把 <code>GameCenterClient</code> 接進 MS composition、做一個 GC dashboard modal（鏡像 Sudoku #49 的 side-effect — 不是 AppRoute）、啟用 Home 的「Leaderboard」卡（目前是 disabled「Coming soon」stub），並在棋盤勝利時提交最佳時間。MS 已有 GC entitlement；ASC leaderboard-ID 註冊屬另外的 user-owned 步驟。</p>
+    <div class="meta">Developer 在 worktree 進行中 → 下一步：CR → merge → 更新本面板。</div>
   </div></div>
 
-  <div class="ev ok"><div class="ref">#290<small>merged · PR 307</small></div><div class="body">
-    <b>Daily date-seeded model + wired Daily hub</b>
-    <p>Deterministic per-UTC-day board trio (Beginner/Intermediate/Expert); replaced the Daily-hub placeholder with real themed cards. Faithful mirror of Sudoku's <code>dailySeed</code> (FNV-1a over generatorVersion + "daily" + UTC-day + difficulty); <code>UTCDay</code> byte-mirrored rather than imported (avoids MS→Sudoku coupling).</p>
-    <div class="meta"><span class="v">CR APPROVE-WITH-NITS</span> — deterministic (no time/locale leakage, UTC-midnight rollover pinned), hub under MS theme, completion-degrade non-blocking. <span class="nit">Nit:</span> prototype mini-board-strip → text board-summary (cosmetic). Follow-ups: Daily-hub snapshot #308, shared TimeKit extraction #305.</div>
+  <div class="ev ok"><div class="ref">#290<small>已 merge · PR 307</small></div><div class="body">
+    <b>Daily 日期種子模型 + 接好 Daily hub</b>
+    <p>每 UTC-day 決定性的三盤（Beginner/Intermediate/Expert）；把 Daily hub 的 placeholder 換成真實 themed 卡片。忠實鏡像 Sudoku 的 <code>dailySeed</code>（FNV-1a over generatorVersion + "daily" + UTC-day + difficulty）；<code>UTCDay</code> 採 byte-mirror 而非 import（避免 MS→Sudoku 反向耦合）。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — 決定性（無 time/locale 洩漏、UTC 午夜換日已釘住）、hub 在 MS theme 下、completion degrade 非阻塞。<span class="nit">小瑕：</span>prototype 的 mini-board strip 用文字 board-summary 替代（cosmetic）。Follow-up：Daily-hub snapshot #308、共用 TimeKit 抽取 #305。</div>
   </div></div>
 
-  <div class="ev dec"><div class="ref">#236<small>closed · decision</small></div><div class="body">
-    <b>App Store submission prep — review notes + MS metadata + ASC API plan</b>
-    <p>Shipped (PR #304): review notes for both apps (honest — GC/scored-Daily flagged "do-not-claim until wired"), MS metadata listings for 7 locales (within ASC field limits), and the ASC metadata-API extension plan. Then per your answers: MS support/privacy URLs repointed to the shared <code>wei18/Sudoku</code> repo (all 7 locales, <code>137fe7f</code>); brand name 踩地雷 (TW) confirmed.</p>
-    <div class="meta">Spun out: Sudoku v2.5 whats_new refresh → #306; ASC metadata-API impl + screenshots (need built app) → planned/deferred.</div>
+  <div class="ev dec"><div class="ref">#236<small>已關閉 · 決策</small></div><div class="body">
+    <b>App Store 上架準備 — review notes + MS metadata + ASC API 計畫</b>
+    <p>已交付（PR #304）：雙 app 的 review notes（誠實 — GC / 計分 Daily 標註「未接好前不得宣稱」）、MS 7 語系 metadata listings（符合 ASC 欄位上限）、ASC metadata-API 擴充計畫。接著依你的回覆：MS support/privacy URL 改指共用 <code>wei18/Sudoku</code> repo（全 7 語系，<code>137fe7f</code>）；品牌名「踩地雷」(TW) 確認。</p>
+    <div class="meta">分流：Sudoku v2.5 whats_new 更新 → #306；ASC metadata-API 實作 + 截圖（需 build 好的 app）→ 計畫中／延後。</div>
   </div></div>
 
-  <div class="ev ok"><div class="ref">#288/9<small>merged · PR 302</small></div><div class="body">
-    <b>Home mode-card entry + reachable Daily/Practice hubs</b>
-    <p>Built <code>MinesweeperHomeView</code> mirroring Sudoku; the previously-unreachable hub views are now navigable. Design call: Home becomes the root, New Game becomes a <code>.newGame</code> destination (keeps NewGameView untouched). Leaderboard card = disabled stub until #291.</p>
-    <div class="meta"><span class="v">CR APPROVE-WITH-NITS</span> — renders under MS theme (no fallback), <code>.newGame</code> redesign regression-free (board still launches), structure matches the TARGET prototype. Follow-up: Home snapshot #303.</div>
+  <div class="ev ok"><div class="ref">#288/9<small>已 merge · PR 302</small></div><div class="body">
+    <b>Home mode-card 入口 + 可達 Daily/Practice hubs</b>
+    <p>做了鏡像 Sudoku 的 <code>MinesweeperHomeView</code>；原本不可達的 hub views 現在可導航。設計取捨：Home 成為根，New Game 變成 <code>.newGame</code> destination（NewGameView 本身不動）。Leaderboard 卡先 disabled stub，待 #291。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — 在 MS theme 下渲染（無 fallback）、<code>.newGame</code> 重設計無回歸（棋盤照常啟動）、結構吻合 TARGET prototype。Follow-up：Home snapshot #303。</div>
   </div></div>
 
-  <div class="ev ok"><div class="ref">#278 T1<small>merged · 294/295/296</small></div><div class="body">
-    <b>Theme system — the "ugly" root-cause fix</b>
-    <p>P1: extracted the Theme protocol + tokens + env to GameShellUI (Sudoku byte-identical, neutral default, no sage leaked). P2a: split Sudoku's <code>cell</code> tokens out of the now-generic base into <code>\.sudokuCell</code>. P2b: <code>MinesweeperTheme</code> (slate-blue palette, hex verbatim from the prototype) applied to the board.</p>
-    <div class="meta"><span class="v">Designer-verified Aligned + CR APPROVE</span> — covered board renders slate-blue light+dark, all token hex match the prototype; Sudoku 167 snapshots byte-identical throughout. Follow-up: revealed-state snapshot seam #297.</div>
+  <div class="ev ok"><div class="ref">#278 T1<small>已 merge · 294/295/296</small></div><div class="body">
+    <b>Theme 系統 — 解掉「醜」的根因</b>
+    <p>P1：把 Theme protocol + tokens + env 抽到 GameShellUI（Sudoku byte-identical、neutral default、無 sage 洩漏）。P2a：把 Sudoku 的 <code>cell</code> tokens 從泛用 base 拆到 <code>\.sudokuCell</code>。P2b：<code>MinesweeperTheme</code>（slate-blue palette，hex verbatim 自 prototype）套到棋盤。</p>
+    <div class="meta"><span class="v">Designer 視覺驗證 Aligned + CR APPROVE</span> — covered 盤面在 light+dark 都是 slate-blue、token hex 全吻合 prototype；全程 Sudoku 167 snapshots byte-identical。Follow-up：revealed-state snapshot seam #297。</div>
   </div></div>
 
-  <div class="ev ok"><div class="ref">#178<small>merged · PR 300</small></div><div class="body">
-    <b>Adopt IssueReporting (reportIssue) at 2 invariant sites</b>
-    <p>Research found the lib is already a transitive dep (via swift-snapshot-testing) → near-zero cost. Converted the GameViewModel preview-fixture <code>assertionFailure</code> + the MS out-of-bounds swallow to <code>reportIssue</code> (fails tests / warns previews, non-fatal in release). Documented the ErrorReporter-vs-reportIssue rule in foundations.</p>
-    <div class="meta"><span class="v">CR APPROVE-WITH-NITS</span> — no Package.resolved churn, scoped to the 2 UI targets, release behavior unchanged, Swift 6 clean.</div>
+  <div class="ev ok"><div class="ref">#178<small>已 merge · PR 300</small></div><div class="body">
+    <b>採用 IssueReporting（reportIssue）於 2 個 invariant 站點</b>
+    <p>研究發現此 lib 已是 transitive dep（透過 swift-snapshot-testing）→ 成本近乎零。把 GameViewModel 的 preview-fixture <code>assertionFailure</code> + MS 的 out-of-bounds swallow 轉成 <code>reportIssue</code>（test 會 fail / preview 會警告、release 非致命）。在 foundations 記下「ErrorReporter vs reportIssue」分流規則。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — Package.resolved 零 churn、只 scope 到 2 個 UI target、release 行為不變、Swift 6 clean。</div>
   </div></div>
 
-  <div class="ev ok"><div class="ref">#299<small>merged · PR 301</small></div><div class="body">
-    <b>license-plist Acknowledgements for Minesweeper</b>
-    <p>MS ships AdMob/UMP → must disclose third-party licenses. Added a second license-plist config + per-app mise task + per-app CI branching + the MS Settings.bundle resource. Closes an App-Store-compliance gap.</p>
-    <div class="meta"><span class="v">CR APPROVE-WITH-NITS</span> — AdMob+UMP captured via transitive scan, generated bundle gitignored, Sudoku path untouched.</div>
+  <div class="ev ok"><div class="ref">#299<small>已 merge · PR 301</small></div><div class="body">
+    <b>license-plist 為 Minesweeper 生成 Acknowledgements</b>
+    <p>MS 內含 AdMob/UMP → 必須揭露第三方授權。新增第二份 license-plist config + per-app mise task + per-app CI 分支 + MS Settings.bundle resource。補上 App Store 合規缺口。</p>
+    <div class="meta"><span class="v">CR 通過（含小瑕）</span> — AdMob+UMP 由 transitive scan 涵蓋、生成的 bundle gitignored、不碰 Sudoku path。</div>
   </div></div>
 
-  <div class="ev idea"><div class="ref">#286/7<small>approved · parked</small></div><div class="body">
-    <b>Two shared-target proposals approved &amp; parked</b>
-    <p><b>CaptureGuardKit</b> (anti-screenshot cheat-guard) — you want the Netflix-style "board goes black on capture"; that's the secure-layer trick (proposal option d), gated behind the P4 device spike. <b>RemindersKit</b> (local notification reminders) — explicit soft-primer permission, ship Sudoku Daily-ready first; #195 rescoped to ATT-only.</p>
-    <div class="meta">Both PROPOSAL_APPROVED, parked as backlog — MS build-out prioritized first per your call.</div>
+  <div class="ev idea"><div class="ref">#286/7<small>已核准 · park</small></div><div class="body">
+    <b>兩個共用 target 提案：核准並暫存</b>
+    <p><b>CaptureGuardKit</b>（反截圖作弊）— 你要 Netflix 式「截圖時棋盤變黑」，那是 secure-layer trick（提案選項 d），需先過 P4 實機 spike。<b>RemindersKit</b>（本地通知提醒）— explicit 軟詢問權限、先上 Sudoku Daily-ready；#195 收窄為 ATT-only。</p>
+    <div class="meta">兩者皆 PROPOSAL_APPROVED、暫存 backlog — 依你的決定先推 MS build-out。</div>
   </div></div>
 
 </div>
 
-<!-- ====== OPEN BACKLOG ====== -->
-<h2>Open backlog</h2>
+<!-- ====== BACKLOG ====== -->
+<h2>待辦 backlog</h2>
 <div class="cols">
   <div class="card">
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">MS build-out — remaining</div>
-    <div class="row"><span class="iss">#292</span><span class="t">Completion screen</span></div>
-    <div class="row"><span class="iss">#298</span><span class="t">game-view Tier-2 + Mac side-rail</span></div>
-    <div class="row"><span class="iss">#303</span><span class="t">Home snapshot coverage</span></div>
-    <div class="row"><span class="iss">#308</span><span class="t">Daily hub snapshot coverage</span></div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">MS build-out — 剩餘</div>
+    <div class="row"><span class="iss">#292</span><span class="t">Completion 畫面</span></div>
+    <div class="row"><span class="iss">#298</span><span class="t">遊戲畫面 Tier-2 + Mac 側欄</span></div>
+    <div class="row"><span class="iss">#303</span><span class="t">Home snapshot 覆蓋</span></div>
+    <div class="row"><span class="iss">#308</span><span class="t">Daily hub snapshot 覆蓋</span></div>
     <div class="row"><span class="iss">#297</span><span class="t">revealed-state snapshot seam</span></div>
-    <div class="row"><span class="iss">#284</span><span class="t">clear-cache feedback (待 save-flow)</span></div>
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px">Approved &amp; parked</div>
+    <div class="row"><span class="iss">#284</span><span class="t">clear-cache 回饋（待 save-flow）</span></div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin:14px 0 6px">已核准 · 暫存</div>
     <div class="row"><span class="iss">#286</span><span class="t">CaptureGuardKit <span class="pill parked">parked</span></span></div>
     <div class="row"><span class="iss">#287</span><span class="t">RemindersKit <span class="pill parked">parked</span></span></div>
   </div>
   <div class="card">
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Engineering · follow-ups</div>
-    <div class="row"><span class="iss">#305</span><span class="t">extract shared UTCDay → TimeKit leaf</span></div>
-    <div class="row"><span class="iss">#306</span><span class="t">refresh Sudoku v2.5 whats_new copy</span></div>
-    <div class="row"><span class="iss">#276</span><span class="t">gate banner dispose on gate-close</span></div>
-    <div class="row"><span class="iss">#253</span><span class="t">audit CloudKit over-indexing</span></div>
-    <div class="row"><span class="iss">#209</span><span class="t">NSWindow real-macOS snapshot harness</span></div>
-    <div class="row"><span class="iss">#195</span><span class="t">ATT permission UX</span></div>
-    <div class="row"><span class="iss">#252</span><span class="t">templatize provisioning walkthroughs</span></div>
-    <div class="row"><span class="iss">#166</span><span class="t">Android module portability prealloc</span></div>
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px">Infra · user-owned</div>
-    <div class="row"><span class="iss">#158</span><span class="t">GH Actions Phase 2 — review agents <span class="muted">blocked #156</span></span></div>
-    <div class="row"><span class="iss">#156</span><span class="t">GitHub App bot identity <span class="pill user">user</span></span></div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin-bottom:6px">工程 · follow-ups</div>
+    <div class="row"><span class="iss">#305</span><span class="t">抽共用 UTCDay → TimeKit leaf</span></div>
+    <div class="row"><span class="iss">#306</span><span class="t">更新 Sudoku v2.5 whats_new 文案</span></div>
+    <div class="row"><span class="iss">#276</span><span class="t">banner dispose 改 gate-close 觸發</span></div>
+    <div class="row"><span class="iss">#253</span><span class="t">稽核 CloudKit 過度索引</span></div>
+    <div class="row"><span class="iss">#209</span><span class="t">NSWindow 真 macOS snapshot harness</span></div>
+    <div class="row"><span class="iss">#195</span><span class="t">ATT 權限 UX</span></div>
+    <div class="row"><span class="iss">#252</span><span class="t">範本化 provisioning 導覽</span></div>
+    <div class="row"><span class="iss">#166</span><span class="t">Android 模組可攜性預留</span></div>
+    <div class="muted" style="font-size:11px;letter-spacing:.04em;margin:14px 0 6px">基建 · user-owned</div>
+    <div class="row"><span class="iss">#158</span><span class="t">GH Actions Phase 2 — review agents <span class="muted">卡 #156</span></span></div>
+    <div class="row"><span class="iss">#156</span><span class="t">建 GitHub App bot 身分 <span class="pill user">user</span></span></div>
     <div class="row"><span class="iss">#157</span><span class="t">branch protection <span class="pill user">user</span></span></div>
-    <div class="row"><span class="iss">#132</span><span class="t">TestFlight + ASC tracking <span class="pill user">user</span></span></div>
+    <div class="row"><span class="iss">#132</span><span class="t">TestFlight + ASC 追蹤 <span class="pill user">user</span></span></div>
   </div>
 </div>
 
 <footer>
-  Single self-contained file · <code>docs/status/build-status.html</code> · the Leader rewrites it at milestones (git history = the timeline) · left-border colour: <span style="color:var(--green)">▌merged</span> <span style="color:var(--slate)">▌in&nbsp;review</span> <span style="color:var(--amber)">▌decision</span> <span style="color:var(--violet)">▌proposal</span>
+  單一自含檔 · <code>docs/status/build-status.html</code> · Leader 於里程碑重寫（git history = 時間軸）· 左側色條：<span style="color:var(--green)">▌已 merge</span> <span style="color:var(--slate)">▌審查中</span> <span style="color:var(--amber)">▌決策</span> <span style="color:var(--violet)">▌提案</span>
 </footer>
 
 </div>
