@@ -267,9 +267,10 @@ public struct MinesweeperBoardView: View {
     }
 
     // The themed post-game surface. Retry rebuilds the session in place at the
-    // SAME difficulty + seed (a true replay; mines are placed deferred, so the
-    // same seed reproduces the board) and clears the Completion VM so the next
-    // terminal state rebuilds a fresh slice.
+    // SAME difficulty + seed, and clears the Completion VM so the next terminal
+    // state rebuilds a fresh slice. Note: mine placement is deferred to the
+    // first reveal, so the layout is determined by seed + opening tap — an
+    // identical first tap reproduces the same board, a different one does not.
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
         MinesweeperCompletionView(
             viewModel: completionViewModel,
