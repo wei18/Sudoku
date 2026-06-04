@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RemindersKit — Usage Flow Prototype (TARGET, Phase 2)</title>
+<style>
+  :root {
+    /* ── Surface (mirror Sudoku app-flow prototype) ── */
+    --surface-bg:          #FAF8F3;
+    --surface-bg-dark:     #15171A;
+    --surface-primary:     #FFFFFF;
+    --surface-elevated:    #FFFFFF;
+    --surface-placeholder: #EDEAE3;
+
+    /* ── Text ── */
+    --text-primary:    #1A1D21;
+    --text-secondary:  #54595F;
+    --text-tertiary:   #86898E;
+    --text-user:       #5C7A4F;
+
+    /* ── Accent (sage) ── */
+    --accent-primary: #5C7A4F;
+    --accent-muted:   #DCE6D0;
+    --accent-soft:    rgba(92,122,79,0.12);
+
+    /* ── Status ── */
+    --status-success: #1B7A3E;
+    --status-warning: #A86A0E;
+    --status-error:   #C8362B;
+
+    /* ── Spacing scale (4pt grid) ── */
+    --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px; --sp-xl: 32px;
+
+    /* arrow palette (mockup chrome, not app tokens) */
+    --arrow-flow:   #5C7A4F;   /* primary happy path */
+    --arrow-system: #A86A0E;   /* system-owned UI (iOS prompt) */
+    --arrow-deny:   #C8362B;   /* denial / negative branch */
+    --arrow-back:   #C7C7CC;   /* repeatable "Not now" / dismiss */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #f0ede6;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+    color: var(--text-primary);
+  }
+
+  /* ── TARGET honesty banner ── */
+  .target-banner {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 40px;
+    background: repeating-linear-gradient(135deg, #FBEFD6 0 14px, #F7E7C5 14px 28px);
+    border-bottom: 1px solid #E6CF95;
+    font-size: 13px; color: #6B5114; line-height: 1.5;
+  }
+  .target-banner .tag {
+    flex-shrink: 0;
+    background: var(--status-warning); color: #fff; font-weight: 700;
+    font-size: 11px; letter-spacing: .4px; padding: 3px 8px; border-radius: 6px;
+    text-transform: uppercase; margin-top: 1px;
+  }
+  .target-banner b { color: #4A380C; }
+
+  /* ── Header strip ── */
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+    padding: 20px 40px;
+    background: rgba(250,248,243,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #e3ddd2;
+  }
+  .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .header .meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .header code { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  /* ── Canvas ── */
+  .canvas { position: relative; min-width: max-content; padding: 48px 40px 80px; }
+  .arrows-layer {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 10;
+  }
+
+  .flow { margin-bottom: 72px; }
+  .flow-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+  .flow-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 22px; max-width: 760px; line-height: 1.55; }
+  .flow-sub code { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; color: var(--text-primary); }
+  .flow-frames { display: flex; gap: 96px; align-items: flex-start; }
+
+  /* ── iPhone frame ── */
+  .phone { width: 320px; flex-shrink: 0; }
+  .phone-shell {
+    position: relative; width: 320px; height: 694px;
+    background: var(--surface-bg);
+    border-radius: 40px;
+    box-shadow: 0 0 0 4px #1d1d1f, 0 24px 50px rgba(0,0,0,0.18);
+    overflow: hidden;
+  }
+  .phone-shell.dark { background: var(--surface-bg-dark); }
+  .dynamic-island {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 102px; height: 30px; background: #000; border-radius: 16px; z-index: 100;
+  }
+  .status-bar {
+    position: relative; height: 46px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 24px 4px; font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
+  }
+  .dark .status-bar { color: #F2F3F5; }
+  .status-icons { display: flex; align-items: center; gap: 5px; }
+  .home-indicator {
+    position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 5px; background: var(--text-primary); opacity: .55; border-radius: 3px;
+  }
+  .screen { padding: 0 16px; height: calc(694px - 46px - 22px); overflow: hidden; position: relative; }
+  .phone-label { text-align: center; margin-top: 12px; font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+  .phone-source { text-align: center; font-size: 11px; color: var(--text-tertiary); font-family: "SF Mono", ui-monospace, monospace; margin-top: 3px; }
+  .phone-source.owned-system { color: var(--status-warning); }
+  .phone-source.owned-deny   { color: var(--status-error); }
+
+  /* status pill above frame */
+  .state-tag {
+    display: inline-block; margin: 0 auto 8px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .3px; text-transform: uppercase; padding: 3px 9px; border-radius: 20px;
+  }
+  .state-wrap { text-align: center; }
+  .st-nd  { background: var(--surface-placeholder); color: var(--text-secondary); }
+  .st-pri { background: var(--accent-soft); color: var(--accent-primary); }
+  .st-sys { background: rgba(168,106,14,0.14); color: var(--status-warning); }
+  .st-ok  { background: rgba(27,122,62,0.14); color: var(--status-success); }
+  .st-no  { background: rgba(200,54,43,0.12); color: var(--status-error); }
+
+  /* ── In-screen nav bar ── */
+  .navbar-lg { padding: 8px 4px 14px; }
+  .navbar-lg .title { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+  .navbar-inline { display: flex; align-items: center; gap: 8px; padding: 6px 0 12px; font-size: 16px; font-weight: 600; }
+  .navbar-inline .chev { color: var(--accent-primary); font-weight: 600; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface-primary);
+    border: 1px solid rgba(140,137,142,0.18);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .mode-card { display: flex; align-items: center; gap: 12px; min-height: 58px; margin-bottom: 12px; }
+  .mode-icon { width: 32px; height: 32px; display: grid; place-items: center; color: var(--accent-primary); }
+  .mode-text { flex: 1; }
+  .mode-title { font-size: 18px; font-weight: 500; color: var(--text-primary); }
+  .mode-sub { font-size: 12px; color: var(--text-secondary); }
+  .chev-right { color: var(--text-tertiary); font-size: 16px; }
+
+  .section-label { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 18px 2px 8px; }
+
+  /* generic buttons */
+  .btn-prominent {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--accent-primary); color: #fff; font-weight: 600; font-size: 16px;
+    padding: 13px; border-radius: 12px; margin-top: 12px;
+  }
+  .btn-bordered {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1.5px solid var(--accent-primary); color: var(--accent-primary);
+    font-weight: 600; font-size: 15px; padding: 11px; border-radius: 12px; margin-top: 10px;
+  }
+  .btn-plain {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); font-weight: 500; font-size: 15px;
+    padding: 11px; margin-top: 6px;
+  }
+  .btn-destructive {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--status-error); color: #fff; font-weight: 600; font-size: 15px;
+    padding: 12px; border-radius: 12px;
+  }
+
+  /* completion hero (value moment) */
+  .complete-hero { text-align: center; padding-top: 28px; }
+  .complete-ring {
+    width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 18px;
+    border: 4px solid var(--accent-primary);
+    display: grid; place-items: center; color: var(--accent-primary);
+  }
+  .complete-title { font-size: 24px; font-weight: 700; }
+  .complete-sub { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .stat-row { display: flex; justify-content: center; gap: 28px; margin: 22px 0 8px; }
+  .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .4px; }
+
+  /* primer sheet (Phase-2 component) — bottom sheet over dimmed app */
+  .dim { position: absolute; inset: 0; background: rgba(20,22,26,0.42); }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--surface-elevated);
+    border-radius: 22px 22px 0 0;
+    padding: 22px 20px 26px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+  }
+  .sheet-grab { width: 36px; height: 5px; border-radius: 3px; background: rgba(60,60,67,0.3); margin: -8px auto 16px; }
+  .sheet-icon {
+    width: 60px; height: 60px; border-radius: 16px; margin: 0 auto 14px;
+    background: var(--accent-soft); display: grid; place-items: center; color: var(--accent-primary);
+  }
+  .sheet h3 { text-align: center; font-size: 21px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.3px; }
+  .sheet .lede { text-align: center; font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin: 0 14px 16px; }
+  .promise { background: rgba(92,122,79,0.07); border: 1px solid rgba(92,122,79,0.18); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .promise li { list-style: none; display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--text-primary); line-height: 1.45; padding: 4px 0; }
+  .promise ul { margin: 0; padding: 0; }
+  .promise .ic { color: var(--accent-primary); flex-shrink: 0; margin-top: 1px; }
+  .fineprint { font-size: 11px; color: var(--text-tertiary); text-align: center; margin: 4px 6px 0; line-height: 1.4; }
+
+  /* system prompt (iOS-owned) */
+  .sys-alert {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 270px; background: rgba(247,247,247,0.92); backdrop-filter: blur(20px);
+    border-radius: 14px; overflow: hidden; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .sys-alert .body { padding: 18px 16px 14px; }
+  .sys-alert .t { font-size: 17px; font-weight: 600; }
+  .sys-alert .m { font-size: 13px; color: var(--text-primary); margin-top: 4px; line-height: 1.4; }
+  .sys-alert .btns { display: flex; border-top: 0.5px solid rgba(60,60,67,0.29); }
+  .sys-alert .btns div { flex: 1; padding: 11px 4px; font-size: 17px; color: #007AFF; }
+  .sys-alert .btns div:first-child { border-right: 0.5px solid rgba(60,60,67,0.29); }
+  .sys-alert .btns .bold { font-weight: 600; }
+  .sys-note { position: absolute; bottom: 16px; left: 16px; right: 16px; font-size: 10.5px; color: var(--text-tertiary); text-align: center; line-height: 1.4; }
+
+  /* delivered notification banner (lock/banner style) */
+  .notif-stage { padding-top: 10px; }
+  .notif {
+    background: rgba(250,250,250,0.86); backdrop-filter: blur(16px);
+    border-radius: 18px; padding: 12px 14px; display: flex; gap: 11px; align-items: flex-start;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.14); border: 0.5px solid rgba(0,0,0,0.05);
+  }
+  .notif .app-ic { width: 38px; height: 38px; border-radius: 9px; background: var(--accent-primary); display: grid; place-items: center; color: #fff; flex-shrink: 0; font-weight: 700; }
+  .notif .nt { font-size: 14px; font-weight: 600; }
+  .notif .nb { font-size: 13px; color: var(--text-primary); margin-top: 1px; line-height: 1.35; }
+  .notif .nmeta { font-size: 11px; color: var(--text-tertiary); margin-left: auto; flex-shrink: 0; }
+  .tap-hint { text-align: center; font-size: 12px; color: var(--accent-primary); font-weight: 600; margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+  /* settings list */
+  .settings-group { background: var(--surface-primary); border-radius: 12px; overflow: hidden; border: 1px solid rgba(140,137,142,0.16); }
+  .srow { min-height: 48px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 0.5px solid rgba(140,137,142,0.22); }
+  .srow:last-child { border-bottom: none; }
+  .srow .lbl { font-size: 15px; flex: 1; }
+  .srow .ico { color: var(--accent-primary); width: 22px; display: grid; place-items: center; }
+  .switch { width: 44px; height: 26px; border-radius: 14px; position: relative; flex-shrink: 0; }
+  .switch.on { background: var(--accent-primary); }
+  .switch.off { background: rgba(120,120,128,0.32); }
+  .switch .knob { position: absolute; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+  .switch.on .knob { right: 2px; }
+  .switch.off .knob { left: 2px; }
+  .group-foot { font-size: 11.5px; color: var(--text-tertiary); margin: 7px 6px 0; line-height: 1.4; }
+
+  /* macOS note chip on denial */
+  .mac-note { margin-top: 12px; background: rgba(168,106,14,0.08); border: 1px dashed rgba(168,106,14,0.5); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: #6B5114; line-height: 1.45; }
+  .mac-note b { color: #4A380C; }
+
+  /* callout chip ("no cold ask") */
+  .anti-chip { margin-top: 14px; background: rgba(27,122,62,0.07); border: 1px solid rgba(27,122,62,0.25); border-radius: 12px; padding: 12px; }
+  .anti-chip .h { font-size: 12px; font-weight: 700; color: var(--status-success); display: flex; align-items: center; gap: 6px; }
+  .anti-chip .b { font-size: 12px; color: var(--text-secondary); margin-top: 5px; line-height: 1.45; }
+  .anti-chip.bad { background: rgba(200,54,43,0.06); border-color: rgba(200,54,43,0.28); }
+  .anti-chip.bad .h { color: var(--status-error); }
+
+  /* explainer hero (denial recovery) */
+  .explainer-hero { text-align: center; padding-top: 30px; }
+  .explainer-ring {
+    width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 16px;
+    background: rgba(200,54,43,0.10); display: grid; place-items: center; color: var(--status-error);
+  }
+  .explainer-hero h3 { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+  .explainer-hero p { font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin: 0 12px; }
+
+  /* ── Tokens / states panel ── */
+  .tokens-panel { background: #fff; border-top: 2px solid #e3ddd2; padding: 40px; }
+  .tokens-panel h2 { font-size: 24px; margin: 0 0 8px; }
+  .tokens-panel .tp-sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 28px; max-width: 820px; line-height: 1.55; }
+  .tp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; }
+  .tp-block h3 { font-size: 15px; margin: 0 0 12px; }
+  .tp-block code { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; background: #F4F1EA; padding: 1px 5px; border-radius: 4px; }
+
+  /* state machine diagram */
+  .sm { display: flex; flex-direction: column; gap: 0; font-size: 12.5px; }
+  .sm-node {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid rgba(140,137,142,0.25); background: #FBFAF6;
+  }
+  .sm-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .sm-node .nm { font-weight: 600; font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; }
+  .sm-node .ds { color: var(--text-secondary); font-size: 11.5px; margin-left: auto; text-align: right; }
+  .sm-edge { padding: 5px 0 5px 22px; color: var(--text-tertiary); font-size: 11px; position: relative; }
+  .sm-edge::before { content: "↓"; position: absolute; left: 6px; }
+
+  /* legend list rows for arrow types */
+  .arrow-key { display: flex; flex-direction: column; gap: 9px; }
+  .arrow-key .row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .arrow-key svg { flex-shrink: 0; }
+
+  .uc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .uc-table th, .uc-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+  .uc-table th { color: var(--text-tertiary); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+  .ships-now { color: var(--status-success); font-weight: 700; }
+  .ships-later { color: var(--text-tertiary); }
+
+  @media print {
+    body { background: white; }
+    .header { position: static; }
+    .canvas { padding: 24px; }
+    .phone-shell { box-shadow: 0 0 0 2px #1d1d1f; }
+    @page { size: A2 landscape; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════ TARGET HONESTY BANNER ════════════ -->
+<div class="target-banner">
+  <span class="tag">Target</span>
+  <div>
+    <b>RemindersKit Phase&nbsp;2 — not yet built.</b> This is the aspirational design target for the notification permission-priming + reminder lifecycle UX, mirroring
+    <code>meetings/2026-06-03_notification-reminders-proposal.md</code> §5. Foundation (<code>ReminderKind</code> / <code>ReminderAuthStatus</code> / the two protocol seams) merged in #318; the primer UI (Phase&nbsp;2) lives in <code>GameShellUI</code>.
+    <b>U1 (Daily-ready) ships first</b>; U2 (streak) and U3 (comeback) are later. macOS denial deep-link is a known gap (proposal P12 — textual fallback only). No invented features.
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-left">
+    <h1>RemindersKit — Usage Flow</h1>
+    <div class="meta">Design target (Phase 2, pre-build) · Generated 2026-06-04 · anchor use case <b>U1 Sudoku Daily-ready</b> · primer view in <code>GameShellUI</code></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#5C7A4F" stroke-width="2"/></svg>
+      <span>app flow (our UI)</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#A86A0E" stroke-width="2" stroke-dasharray="5 3"/></svg>
+      <span>system-owned (iOS one-shot prompt)</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#C8362B" stroke-width="2"/></svg>
+      <span>denial branch</span>
+    </div>
+    <div class="legend-item">
+      <svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#C7C7CC" stroke-width="2" stroke-dasharray="3 3"/></svg>
+      <span>"Not now" (repeatable, no system prompt)</span>
+    </div>
+  </div>
+</header>
+
+<main class="canvas">
+
+  <!-- ============ ROW 1: VALUE → PRIMER → SYSTEM → GRANTED ============ -->
+  <section class="flow" id="flow-happy">
+    <h2 class="flow-title">Happy path · Soft-primer-gated explicit grant (proposal §5.1 + §5.2)</h2>
+    <p class="flow-sub">
+      No cold-launch ask. The system one-shot <code>requestAuthorization([.alert,.sound])</code> is reached <b>only</b> after the user hits a value moment <i>and</i> accepts our repeatable soft primer. The primer is the filter that preserves the single irrevocable system prompt — declining it fires <b>nothing</b>. Recommendation for U1: explicit, primer-gated (provisional reserved for U3, see legend panel).
+    </p>
+    <div class="flow-frames">
+
+      <!-- S01 — App opens, NO cold ask -->
+      <div class="phone" id="S01">
+        <div class="state-wrap"><span class="state-tag st-nd">status: notDetermined</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-lg"><div class="title">Sudoku</div></div>
+            <div class="card mode-card">
+              <div class="mode-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+              </div>
+              <div class="mode-text"><div class="mode-title">Daily Puzzle</div><div class="mode-sub">Today · Medium · not started</div></div>
+              <div class="chev-right">›</div>
+            </div>
+            <div class="card mode-card">
+              <div class="mode-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M3 12h18"/><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg>
+              </div>
+              <div class="mode-text"><div class="mode-title">Practice</div><div class="mode-sub">Easy · Medium · Hard</div></div>
+              <div class="chev-right">›</div>
+            </div>
+            <div class="anti-chip bad">
+              <div class="h">✕ Anti-pattern we deliberately avoid</div>
+              <div class="b">No permission prompt at cold launch. ~30–40% cold opt-in vs ~89% at a user-triggered value moment (proposal §5.1). The app is fully usable with reminders never enabled.</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S01 — Cold launch (no ask)</div>
+        <div class="phone-source">step 1 · verify: no prompt at launch</div>
+      </div>
+
+      <!-- S02 — Value moment: Daily complete -->
+      <div class="phone" id="S02">
+        <div class="state-wrap"><span class="state-tag st-nd">status: notDetermined</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:43</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="complete-hero">
+              <div class="complete-ring">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div class="complete-title">Daily solved!</div>
+              <div class="complete-sub">Today's Sudoku · Medium</div>
+              <div class="stat-row">
+                <div class="stat"><div class="v">6:12</div><div class="k">Time</div></div>
+                <div class="stat"><div class="v">3</div><div class="k">Streak</div></div>
+                <div class="stat"><div class="v">0</div><div class="k">Errors</div></div>
+              </div>
+            </div>
+            <div class="section-label">Come back tomorrow</div>
+            <div class="card mode-card" style="margin-bottom:0">
+              <div class="mode-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              </div>
+              <div class="mode-text"><div class="mode-title">Remind me when tomorrow's puzzle is ready</div><div class="mode-sub">Tap to set a gentle daily nudge</div></div>
+              <div class="chev-right">›</div>
+            </div>
+            <div class="anti-chip">
+              <div class="h">✓ Value moment = the trigger</div>
+              <div class="b">Primer appears after finishing a Daily (or tapping the affordance above), never before value (proposal §5.1 step 2).</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S02 — Value moment</div>
+        <div class="phone-source">step 2 · prompt only after value</div>
+      </div>
+
+      <!-- S03 — Soft primer sheet (Phase-2 component) -->
+      <div class="phone" id="S03">
+        <div class="state-wrap"><span class="state-tag st-pri">primer (our UI · repeatable)</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:43</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <!-- dimmed app behind -->
+            <div style="opacity:.5; pointer-events:none">
+              <div class="complete-hero" style="padding-top:18px">
+                <div class="complete-ring" style="width:70px;height:70px">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div class="complete-title" style="font-size:20px">Daily solved!</div>
+              </div>
+            </div>
+            <div class="dim"></div>
+            <div class="sheet">
+              <div class="sheet-grab"></div>
+              <div class="sheet-icon">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              </div>
+              <h3>One nudge a day, that's it</h3>
+              <p class="lede">We'll let you know the moment tomorrow's Daily Sudoku is ready — so your streak never slips by accident.</p>
+              <div class="promise">
+                <ul>
+                  <li><span class="ic">✓</span><span><b>One</b> reminder per day, at <b>9:00&nbsp;AM</b> your time. Nothing else.</span></li>
+                  <li><span class="ic">✓</span><span>No badges, no marketing, no "we miss you" guilt.</span></li>
+                  <li><span class="ic">✓</span><span>Turn it off anytime in Settings — one tap.</span></li>
+                </ul>
+              </div>
+              <div class="btn-prominent">Sounds good — turn it on</div>
+              <div class="btn-plain">Not now</div>
+              <div class="fineprint">"Not now" keeps this for later — it does <b>not</b> ask iOS yet. We may offer again after a future Daily.</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S03 — Soft pre-ask primer</div>
+        <div class="phone-source">step 3 · Phase-2 · GameShellUI sheet</div>
+      </div>
+
+      <!-- S04 — System one-shot prompt (iOS-owned) -->
+      <div class="phone" id="S04">
+        <div class="state-wrap"><span class="state-tag st-sys">iOS system prompt · one-shot</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:43</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div style="opacity:.4; pointer-events:none">
+              <div class="navbar-lg"><div class="title">Sudoku</div></div>
+            </div>
+            <div class="dim"></div>
+            <div class="sys-alert">
+              <div class="body">
+                <div class="t">"Sudoku" Would Like to Send You Notifications</div>
+                <div class="m">Notifications may include alerts, sounds, and icon badges. These can be configured in Settings.</div>
+              </div>
+              <div class="btns">
+                <div>Don't Allow</div>
+                <div class="bold">Allow</div>
+              </div>
+            </div>
+            <div class="sys-note">System-owned UI — copy & layout fixed by iOS. We don't draw this; <code>requestAuthorization([.alert,.sound])</code> shows it exactly once. Reached only because the user accepted S03.</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S04 — iOS permission prompt</div>
+        <div class="phone-source owned-system">step 4 · system one-shot · not our UI</div>
+      </div>
+
+      <!-- S05 — Granted: reminder scheduled + delivered notification -->
+      <div class="phone" id="S05">
+        <div class="state-wrap"><span class="state-tag st-ok">status: authorized</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:00</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen notif-stage">
+            <div style="text-align:center; font-size:12px; color:var(--text-tertiary); margin-bottom:6px">— next morning, 9:00 AM —</div>
+            <div class="notif">
+              <div class="app-ic">S</div>
+              <div>
+                <div style="display:flex; align-items:baseline"><span class="nt">Today's puzzle is ready</span><span class="nmeta">now</span></div>
+                <div class="nb">Your daily Sudoku is waiting.</div>
+              </div>
+            </div>
+            <div class="tap-hint">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              tap → deep-links into the Daily hub
+            </div>
+            <div class="card" style="margin-top:18px">
+              <div style="font-size:12px; font-weight:700; color:var(--accent-primary); margin-bottom:6px">Scheduled (1 of 64 slots)</div>
+              <div style="font-size:12px; color:var(--text-secondary); line-height:1.5">
+                <code style="font-family:'SF Mono',monospace; font-size:11px">ReminderKind.dailyReady</code><br>
+                <code style="font-family:'SF Mono',monospace; font-size:11px">UNCalendarNotificationTrigger</code> · hour&nbsp;9, repeats: true · single repeating slot, survives reboot.
+              </div>
+            </div>
+            <div class="anti-chip">
+              <div class="h">✓ Foreground-aware</div>
+              <div class="b">If the Daily hub is already open, <code>willPresent</code> returns <code>[]</code> — no redundant banner (proposal §3.5).</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S05 — Granted · reminder delivered</div>
+        <div class="phone-source">step 4→granted · deep-link to Daily</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ ROW 2: DENIAL + RE-ASK + SETTINGS OPT-OUT ============ -->
+  <section class="flow" id="flow-deny">
+    <h2 class="flow-title">Denial path &amp; opt-out (proposal §5.3 + §6)</h2>
+    <p class="flow-sub">
+      If the user taps <b>Don't Allow</b> on the system prompt (S04), the grant is permanent until changed in Settings. We <b>never</b> re-fire the system prompt (it won't show). Instead: a gentle in-app explainer with a deep-link to Settings (iOS <code>openNotificationSettingsURLString</code>; macOS = textual, P12 gap), then re-ask only via the primer at a <i>later</i> genuine value moment. A Settings toggle lets an authorized user opt out, cancelling the scheduled reminders.
+    </p>
+    <div class="flow-frames">
+
+      <!-- S06 — Denied explainer + Open Settings (iOS) -->
+      <div class="phone" id="S06">
+        <div class="state-wrap"><span class="state-tag st-no">status: denied</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:44</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div class="navbar-inline"><span class="chev">‹</span> Reminders</div>
+            <div class="explainer-hero">
+              <div class="explainer-ring">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+              </div>
+              <h3>Reminders are off</h3>
+              <p>Notifications are turned off for Sudoku in iOS Settings, so we can't tell you when the Daily is ready. You can switch them back on in one place.</p>
+            </div>
+            <div style="margin-top:22px">
+              <div class="btn-prominent">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.51 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Open Settings
+              </div>
+              <div class="btn-plain">Maybe later</div>
+            </div>
+            <div class="mac-note">
+              <b>macOS variant (P12 gap):</b> no <code>openNotificationSettingsURLString</code> on AppKit. Button is replaced with textual guidance — <b>"System Settings → Notifications → Sudoku → Allow Notifications"</b> — no deep-link until a verified URL lands.
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S06 — Denied · in-app explainer</div>
+        <div class="phone-source owned-deny">step 5 · openNotificationSettingsURLString</div>
+      </div>
+
+      <!-- S07 — iOS Settings (where Open Settings lands) -->
+      <div class="phone" id="S07">
+        <div class="state-wrap"><span class="state-tag st-sys">iOS Settings · system</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:44</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen" style="background:#F2F2F7; margin:0 -16px; padding:0 16px">
+            <div class="navbar-inline" style="padding-top:10px"><span class="chev">‹ Sudoku</span></div>
+            <div style="font-size:24px; font-weight:700; margin:2px 2px 14px">Notifications</div>
+            <div class="settings-group">
+              <div class="srow">
+                <span class="lbl">Allow Notifications</span>
+                <div class="switch off"><div class="knob"></div></div>
+              </div>
+            </div>
+            <div class="group-foot">User flips this on, returns to the app; we detect <code>.authorized</code> on next foreground via <code>getNotificationSettings()</code> and schedule the Daily reminder (proposal §5.1 step 6).</div>
+            <div class="mac-note" style="border-style:solid; background:rgba(92,122,79,0.07); border-color:rgba(92,122,79,0.3); color:var(--text-secondary)">
+              This screen is <b>iOS-owned</b>. <code>UIApplication.shared.open(openNotificationSettingsURLString)</code> lands the user here directly — no Settings drilldown.
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S07 — iOS Settings (landing)</div>
+        <div class="phone-source owned-system">deep-link target · system UI</div>
+      </div>
+
+      <!-- S08 — Gentle re-ask via primer at a later value moment -->
+      <div class="phone" id="S08">
+        <div class="state-wrap"><span class="state-tag st-no">status: denied → re-ask via primer only</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen">
+            <div style="opacity:.5; pointer-events:none">
+              <div class="complete-hero" style="padding-top:18px">
+                <div class="complete-ring" style="width:70px;height:70px">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div class="complete-title" style="font-size:20px">Daily solved!</div>
+                <div class="complete-sub">3 days later · streak 6</div>
+              </div>
+            </div>
+            <div class="dim"></div>
+            <div class="sheet">
+              <div class="sheet-grab"></div>
+              <div class="sheet-icon">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              </div>
+              <h3>Still want a daily nudge?</h3>
+              <p class="lede">You're on a 6-day streak. We can remind you the moment each Daily unlocks — and you'll set it up in iOS Settings, one tap.</p>
+              <div class="btn-prominent">Open Settings to allow</div>
+              <div class="btn-plain">No thanks</div>
+              <div class="fineprint">Shown only at a real value moment, never on a timer. We don't re-fire the system prompt — it can't reappear once denied (proposal §5.3).</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S08 — Gentle re-ask (primer)</div>
+        <div class="phone-source">step 5 · no nag · value-gated</div>
+      </div>
+
+      <!-- S09 — Settings opt-out toggle -->
+      <div class="phone" id="S09">
+        <div class="state-wrap"><span class="state-tag st-ok">authorized · user opts out</span></div>
+        <div class="phone-shell">
+          <div class="dynamic-island"></div>
+          <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
+          <div class="screen" style="background:#F2F2F7; margin:0 -16px; padding:0 16px">
+            <div class="navbar-inline" style="padding-top:10px"><span class="chev">‹ Settings</span> Reminders</div>
+            <div style="font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.4px; margin:8px 4px 6px">Daily</div>
+            <div class="settings-group">
+              <div class="srow">
+                <span class="ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                </span>
+                <span class="lbl">Daily-ready reminder</span>
+                <div class="switch on"><div class="knob"></div></div>
+              </div>
+              <div class="srow">
+                <span class="ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <span class="lbl">Time</span>
+                <span style="color:var(--text-secondary); font-size:15px">9:00 AM ›</span>
+              </div>
+            </div>
+            <div class="group-foot">Toggle off → <code>scheduler.cancel(kind: .dailyReady)</code> (scoped removal, never <code>cancelAll</code>). Honors system <code>.denied</code> as opt-out too.</div>
+
+            <div style="font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.4px; margin:18px 4px 6px">Later use cases</div>
+            <div class="settings-group">
+              <div class="srow">
+                <span class="lbl" style="color:var(--text-tertiary)">Streak-keeper <span style="font-size:11px">(U2 · later)</span></span>
+                <div class="switch off"><div class="knob"></div></div>
+              </div>
+              <div class="srow">
+                <span class="lbl" style="color:var(--text-tertiary)">Comeback nudge <span style="font-size:11px">(U3 · later)</span></span>
+                <div class="switch off"><div class="knob"></div></div>
+              </div>
+            </div>
+            <div class="group-foot">U2/U3 ship after U1. Rows shown greyed to convey the planned shape, not v1 scope.</div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+        <div class="phone-label">S09 — Settings opt-out</div>
+        <div class="phone-source">step 7 · cancel(kind:) on toggle-off</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════ ARROWS ════════════ -->
+  <svg class="arrows-layer" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ah-flow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5C7A4F"/></marker>
+      <marker id="ah-system" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#A86A0E"/></marker>
+      <marker id="ah-deny" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#C8362B"/></marker>
+      <marker id="ah-back" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#C7C7CC"/></marker>
+    </defs>
+
+    <!-- Row 1 frame geometry: pad-left 40, gap 96, width 320, vertical center ≈ 48(canvas pad)+22(state tag)+347(half shell)=417 -->
+    <!-- right edge of frame N = 40 + 320 + N*416 ; left edge of frame N+1 = 40 + (N+1)*416 -->
+
+    <!-- S01 → S02 : finish a Daily -->
+    <path d="M 360 417 C 392 417, 424 417, 456 417" fill="none" stroke="#5C7A4F" stroke-width="2" marker-end="url(#ah-flow)"/>
+    <text x="408" y="406" font-size="11" fill="#5C7A4F" text-anchor="middle" font-weight="600">solve Daily</text>
+
+    <!-- S02 → S03 : value moment opens primer -->
+    <path d="M 776 417 C 808 417, 840 417, 872 417" fill="none" stroke="#5C7A4F" stroke-width="2" marker-end="url(#ah-flow)"/>
+    <text x="824" y="406" font-size="11" fill="#5C7A4F" text-anchor="middle" font-weight="600">value → primer</text>
+
+    <!-- S03 → S04 : accept primer → system prompt (system-owned, dashed amber) -->
+    <path d="M 1192 417 C 1224 417, 1256 417, 1288 417" fill="none" stroke="#A86A0E" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#ah-system)"/>
+    <text x="1240" y="402" font-size="11" fill="#A86A0E" text-anchor="middle" font-weight="600">"turn it on" →</text>
+    <text x="1240" y="415" font-size="10" fill="#A86A0E" text-anchor="middle">one-shot prompt</text>
+
+    <!-- S03 "Not now" self-return (repeatable, grey dashed) -->
+    <path d="M 1112 700 C 1112 742, 952 742, 952 706" fill="none" stroke="#C7C7CC" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#ah-back)"/>
+    <text x="1032" y="757" font-size="10.5" fill="#9a9a9e" text-anchor="middle">"Not now" → no system prompt · ask again later</text>
+
+    <!-- S04 → S05 : Allow → granted/scheduled -->
+    <path d="M 1608 417 C 1640 417, 1672 417, 1704 417" fill="none" stroke="#5C7A4F" stroke-width="2" marker-end="url(#ah-flow)"/>
+    <text x="1656" y="406" font-size="11" fill="#5C7A4F" text-anchor="middle" font-weight="600">"Allow"</text>
+
+    <!-- S04 → S06 (row 2): "Don't Allow" → denial branch. Drop down to row 2 first column. -->
+    <!-- Row 2 vertical center ≈ row1center + 694(shell) + label/source(~46) + flow gap(72) + flow-title/sub(~120) ≈ 417 + 932 = 1349 -->
+    <!-- S06 left edge = 40 ; top approach from S04 bottom (x≈1448, y≈764) routing left-down to S06 top (x≈200, y≈1305) -->
+    <path d="M 1448 764 C 1448 1000, 200 1040, 200 1305" fill="none" stroke="#C8362B" stroke-width="2" marker-end="url(#ah-deny)"/>
+    <text x="700" y="1030" font-size="11" fill="#C8362B" text-anchor="middle" font-weight="600">"Don't Allow" (permanent until Settings) → denial path</text>
+
+    <!-- Row 2 arrows: S06 → S07 (Open Settings, deep-link, amber dashed) -->
+    <path d="M 360 1349 C 392 1349, 424 1349, 456 1349" fill="none" stroke="#A86A0E" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#ah-system)"/>
+    <text x="408" y="1338" font-size="10.5" fill="#A86A0E" text-anchor="middle" font-weight="600">Open Settings</text>
+
+    <!-- S07 → S05 : user flips Allow on, next foreground reconciles → scheduled (loop back up to S05). -->
+    <path d="M 776 1305 C 900 1080, 1500 720, 1864 506" fill="none" stroke="#5C7A4F" stroke-width="2" stroke-dasharray="2 4" marker-end="url(#ah-flow)"/>
+    <text x="1330" y="980" font-size="10.5" fill="#5C7A4F" text-anchor="middle" font-weight="600">flip Allow → next foreground getNotificationSettings() → schedule</text>
+
+    <!-- S08 gentle re-ask → S07 settings (loops to settings, amber dashed) -->
+    <path d="M 1192 1349 C 1240 1349, 1180 1349, 776 1349" fill="none" stroke="#A86A0E" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ah-system)" opacity="0.85"/>
+    <text x="980" y="1338" font-size="10.5" fill="#A86A0E" text-anchor="middle">re-ask routes to Settings</text>
+
+    <!-- S08 self note: value-gated re-ask (independent entry, grey) -->
+    <path d="M 1032 1668 C 1032 1700, 1032 1700, 1032 1672" fill="none" stroke="none"/>
+
+    <!-- S09 settings opt-out — independent entry from app Settings (grey dashed inbound) -->
+    <text x="1448" y="1305" font-size="10.5" fill="#9a9a9e" text-anchor="middle">↑ reachable any time from app Settings · toggle-off cancels</text>
+  </svg>
+
+</main>
+
+<!-- ════════════ STATES / TOKENS PANEL ════════════ -->
+<aside class="tokens-panel">
+  <h2>State machine, use cases &amp; flow legend</h2>
+  <p class="tp-sub">
+    The <code>ReminderAuthStatus</code> machine and the arrow language for the canvas above. Foundation types (<code>ReminderKind</code>, <code>ReminderAuthStatus</code>, <code>NotificationAuthorizing</code> + <code>ReminderScheduler</code> seams) merged in #318; the primer view (Phase 2) is the only net-new UI, living in <code>GameShellUI</code> so both Sudoku and Minesweeper render an identical sheet with injected copy.
+  </p>
+
+  <div class="tp-grid">
+
+    <!-- State machine -->
+    <div class="tp-block">
+      <h3>ReminderAuthStatus machine</h3>
+      <div class="sm">
+        <div class="sm-node">
+          <span class="sm-dot" style="background:#86898E"></span>
+          <span class="nm">.notDetermined</span>
+          <span class="ds">cold launch · no ask (S01)</span>
+        </div>
+        <div class="sm-edge">value moment → soft primer (our UI, repeatable)</div>
+        <div class="sm-node">
+          <span class="sm-dot" style="background:#5C7A4F"></span>
+          <span class="nm">primer (S03)</span>
+          <span class="ds">"Not now" loops back, no system prompt</span>
+        </div>
+        <div class="sm-edge">accept primer → system one-shot requestAuthorization (S04)</div>
+        <div class="sm-node">
+          <span class="sm-dot" style="background:#1B7A3E"></span>
+          <span class="nm">.authorized</span>
+          <span class="ds">schedule dailyReady · deliver (S05)</span>
+        </div>
+        <div class="sm-edge" style="color:#C8362B">— or — "Don't Allow"</div>
+        <div class="sm-node" style="border-color:rgba(200,54,43,0.4)">
+          <span class="sm-dot" style="background:#C8362B"></span>
+          <span class="nm">.denied</span>
+          <span class="ds">explainer + Settings deep-link (S06)</span>
+        </div>
+        <div class="sm-edge">Settings → Allow → next-foreground reconcile → .authorized</div>
+        <div class="sm-node" style="border-style:dashed; opacity:.85">
+          <span class="sm-dot" style="background:#A86A0E"></span>
+          <span class="nm">.provisional</span>
+          <span class="ds">reserved · low-stakes (U3 comeback)</span>
+        </div>
+      </div>
+      <p style="font-size:11.5px; color:var(--text-tertiary); margin-top:12px; line-height:1.5">
+        <code>.provisional</code> = quiet delivery, no upfront prompt; the notification "sells itself" and the user keeps/turns-off after a few deliveries. <b>Reserved for U3</b>, not used for U1 — a Daily nudge must be <i>visible</i>, which provisional's silent delivery defeats (proposal §5.2). The <code>provisional: Bool</code> seam stays in the API for later A/B without an API change.
+      </p>
+    </div>
+
+    <!-- Use cases -->
+    <div class="tp-block">
+      <h3>Reminder use cases (proposal §2)</h3>
+      <table class="uc-table">
+        <tr><th>#</th><th>Reminder</th><th>Trigger</th><th>Scope</th></tr>
+        <tr>
+          <td>U1</td>
+          <td><b>Daily-ready</b><br><span style="color:var(--text-tertiary)">"Today's puzzle is ready"</span></td>
+          <td>Calendar · repeats daily</td>
+          <td><span class="ships-now">Ships first ✓</span><br><span style="font-size:11px;color:var(--text-tertiary)">Sudoku now; MS when it gains Daily</span></td>
+        </tr>
+        <tr>
+          <td>U2</td>
+          <td>Streak-keeper</td>
+          <td>Calendar · end-of-day, rescheduled</td>
+          <td><span class="ships-later">Later · needs streak model</span></td>
+        </tr>
+        <tr>
+          <td>U3</td>
+          <td>Comeback nudge</td>
+          <td>TimeInterval · 3/7-day inactivity</td>
+          <td><span class="ships-later">Later · gentle, opt-in, provisional-eligible</span></td>
+        </tr>
+        <tr>
+          <td>U4</td>
+          <td style="color:var(--text-tertiary)">Leaderboard "passed you"</td>
+          <td style="color:var(--text-tertiary)">needs APNs / server</td>
+          <td><span style="color:var(--status-error)">Excluded (serverless)</span></td>
+        </tr>
+      </table>
+      <p style="font-size:11.5px; color:var(--text-tertiary); margin-top:12px; line-height:1.5">
+        All of U1–U3 share one code path differing only in <b>content</b> (copy) + <b>trigger</b>. Local-only — no APNs, no server, no <code>UIBackgroundModes</code>, no privacy-manifest change (proposal §6).
+      </p>
+    </div>
+
+    <!-- Arrow legend -->
+    <div class="tp-block">
+      <h3>Arrow language</h3>
+      <div class="arrow-key">
+        <div class="row">
+          <svg width="46" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#5C7A4F" stroke-width="2" marker-end="url(#ah-flow)"/></svg>
+          <span><b>App flow (our UI)</b> — value → primer → granted/scheduled</span>
+        </div>
+        <div class="row">
+          <svg width="46" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#A86A0E" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#ah-system)"/></svg>
+          <span><b>System-owned</b> — iOS one-shot prompt &amp; Settings; we don't draw these</span>
+        </div>
+        <div class="row">
+          <svg width="46" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#C8362B" stroke-width="2" marker-end="url(#ah-deny)"/></svg>
+          <span><b>Denial branch</b> — "Don't Allow", permanent until Settings</span>
+        </div>
+        <div class="row">
+          <svg width="46" height="10"><line x1="0" y1="5" x2="38" y2="5" stroke="#C7C7CC" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#ah-back)"/></svg>
+          <span><b>"Not now" (repeatable)</b> — declining the primer fires no system prompt</span>
+        </div>
+      </div>
+      <h3 style="margin-top:22px">Honesty notes</h3>
+      <ul style="font-size:12px; color:var(--text-secondary); line-height:1.55; padding-left:18px; margin:0">
+        <li><b>Target, not built.</b> Phase 2 (primer UI) is the design goal; nothing here is shipped.</li>
+        <li><b>U1 first.</b> Daily-ready is the anchor; U2/U3 greyed/deferred.</li>
+        <li><b>macOS denial gap (P12).</b> No AppKit deep-link — textual "System Settings → Notifications → [App]" fallback (S06 note).</li>
+        <li><b>No invented features</b> beyond proposal §2–§6. Copy below is a Phase-2 draft, localized later (7 locales).</li>
+      </ul>
+    </div>
+
+    <!-- Brand tokens (mirror Sudoku prototype) -->
+    <div class="tp-block">
+      <h3>Visual tokens (mirrors app-flow prototype)</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px">
+        <div style="text-align:center"><div style="width:46px;height:46px;border-radius:10px;background:#5C7A4F"></div><div style="font-size:10px;margin-top:4px;color:var(--text-tertiary)">sage<br>#5C7A4F</div></div>
+        <div style="text-align:center"><div style="width:46px;height:46px;border-radius:10px;background:#FAF8F3;border:1px solid #e3ddd2"></div><div style="font-size:10px;margin-top:4px;color:var(--text-tertiary)">paper<br>#FAF8F3</div></div>
+        <div style="text-align:center"><div style="width:46px;height:46px;border-radius:10px;background:#A86A0E"></div><div style="font-size:10px;margin-top:4px;color:var(--text-tertiary)">warning<br>#A86A0E</div></div>
+        <div style="text-align:center"><div style="width:46px;height:46px;border-radius:10px;background:#1B7A3E"></div><div style="font-size:10px;margin-top:4px;color:var(--text-tertiary)">success<br>#1B7A3E</div></div>
+        <div style="text-align:center"><div style="width:46px;height:46px;border-radius:10px;background:#C8362B"></div><div style="font-size:10px;margin-top:4px;color:var(--text-tertiary)">error<br>#C8362B</div></div>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); line-height:1.6">
+        <b>Type</b> — Large Title 30/700, Headline 17/600, Body 15–16/400, Footnote 13/400.<br>
+        <b>Radius</b> — sheet 22, card 16, control 12, switch 14.<br>
+        <b>Spacing</b> — 4pt grid (4·8·16·24·32).<br>
+        <b>Primer sheet</b> — bottom sheet, 22pt top radius, sage icon tile, 3-bullet promise, primary + plain "Not now". Touch targets ≥ 44pt.
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+</body>
+</html>
