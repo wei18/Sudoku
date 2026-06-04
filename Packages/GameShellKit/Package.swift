@@ -25,7 +25,20 @@ let swiftSettings: [SwiftSetting] = [
 // while keeping Sudoku byte-identical.
 
 let productionTargets: [Target] = [
-    .target(name: "GameShellUI", swiftSettings: swiftSettings),
+    .target(
+        name: "GameShellUI",
+        dependencies: [
+            // #287 Phase 2: the reminder permission-priming UI (primer sheet +
+            // `ReminderPermissionModel`) lives here as shared chrome so both
+            // Sudoku and Minesweeper render an identical primer with injected
+            // copy (proposal §4.4 Q2). It depends only on the
+            // `NotificationAuthorizing` protocol seam from the leaf `Reminders`
+            // target — never on `UserNotifications`, which stays restricted to
+            // RemindersKit's Live files.
+            .product(name: "Reminders", package: "RemindersKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Test targets
@@ -36,7 +49,16 @@ let productionTargets: [Target] = [
 // target stops compiling.
 
 let testTargets: [Target] = [
-    .testTarget(name: "GameShellUITests", dependencies: ["GameShellUI"], swiftSettings: swiftSettings),
+    .testTarget(
+        name: "GameShellUITests",
+        dependencies: [
+            "GameShellUI",
+            // #287 Phase 2: `ReminderPermissionModelTests` drive the model with
+            // the shared `FakeNotificationAuthorizing` fake.
+            .product(name: "RemindersTesting", package: "RemindersKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Package
@@ -49,6 +71,13 @@ let package = Package(
     ],
     products: [
         .library(name: "GameShellUI", targets: ["GameShellUI"]),
+    ],
+    dependencies: [
+        // #287 Phase 2: RemindersKit (sibling leaf package, merged #318) hosts
+        // the `NotificationAuthorizing` / `ReminderScheduler` protocol seams and
+        // their Live/Noop/Fake conformers. GameShellUI consumes only the
+        // `Reminders` product (protocols + value types) for the primer UI.
+        .package(name: "RemindersKit", path: "../RemindersKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
