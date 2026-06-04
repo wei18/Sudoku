@@ -469,6 +469,15 @@ internal enum ASCRegisterCLI {
 
         // appStoreVersions + localizations.
         let versions = try await client.listAppStoreVersions(appId: appId)
+        // #310 Problem 2 wiring: flag whether the app already has a released
+        // version. On a first submission (none released) the Reconciler drops
+        // `whatsNew` from version-loc payloads — ASC rejects editing whatsNew
+        // before a released predecessor exists. Reads the newer `appVersionState`
+        // key with `appStoreState` as fallback (mirrors :483).
+        remote.hasReleasedVersion = versions.data.contains { v in
+            let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
+            return MetadataRemoteState.releasedAppStoreStates.contains(state)
+        }
         let versionIncludedById = Dictionary(uniqueKeysWithValues: versions.included.map { ($0.id, $0) })
         let editableVersionStates: Set<String> = [
             "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
