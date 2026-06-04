@@ -464,7 +464,6 @@ internal enum ASCRegisterCLI {
 
         // appInfos + localizations + category relationships.
         let appInfos = try await client.listAppInfos(appId: appId)
-        let appInfoIncludedById = Dictionary(uniqueKeysWithValues: appInfos.included.map { ($0.id, $0) })
         // Pick the editable appInfo: prefer one whose state is an editable
         // value; fall back to the first. The real state enum value is printed
         // below so plan §7's "which appInfo is editable" resolves at run time.
@@ -483,12 +482,22 @@ internal enum ASCRegisterCLI {
                 + "state=\(info.attributes["state"] ?? info.attributes["appStoreState"] ?? "?") "
                 + "(of \(appInfos.data.count) appInfos)")
             let rels = appInfos.relationships[info.id] ?? [:]
-            remote.primaryCategoryId = rels["primaryCategory"]?.first
-            remote.secondaryCategoryId = rels["secondaryCategory"]?.first
-            let locIds = rels["appInfoLocalizations"] ?? []
-            for locId in locIds {
-                guard let loc = appInfoIncludedById[locId],
-                      loc.type == "appInfoLocalizations",
+            // All six category slots side-loaded so drift compares the genre +
+            // both sub-categories, not just the two genres (issue #310).
+            remote.categoryIds = MetadataCategoryIds(
+                primary: rels["primaryCategory"]?.first,
+                primarySubOne: rels["primarySubcategoryOne"]?.first,
+                primarySubTwo: rels["primarySubcategoryTwo"]?.first,
+                secondary: rels["secondaryCategory"]?.first,
+                secondarySubOne: rels["secondarySubcategoryOne"]?.first,
+                secondarySubTwo: rels["secondarySubcategoryTwo"]?.first
+            )
+            // Capture appInfo-locs via the paginated relationship endpoint so
+            // an existing locale beyond the side-load page is not missed →
+            // classified as UPDATE not CREATE (issue #310, same risk as
+            // version-locs below).
+            for loc in try await client.listAppInfoLocalizations(appInfoId: info.id) {
+                guard loc.type == "appInfoLocalizations",
                       let locale = loc.attributes["locale"] else { continue }
                 remote.appInfoLocalizations[locale] = MetadataRemoteState.AppInfoLocRemote(
                     id: loc.id,
@@ -496,12 +505,6 @@ internal enum ASCRegisterCLI {
                     subtitle: loc.attributes["subtitle"],
                     privacyPolicyUrl: loc.attributes["privacyPolicyUrl"]
                 )
-            }
-            if !remote.appInfoLocalizations.isEmpty {
-                let attrKeys = appInfoIncludedById.values
-                    .first { $0.type == "appInfoLocalizations" }?
-                    .attributes.keys.sorted() ?? []
-                print("appInfoLocalizations attributes seen: \(attrKeys)")
             }
         }
 
@@ -516,7 +519,6 @@ internal enum ASCRegisterCLI {
             let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
             return MetadataRemoteState.releasedAppStoreStates.contains(state)
         }
-        let versionIncludedById = Dictionary(uniqueKeysWithValues: versions.included.map { ($0.id, $0) })
         let editableVersionStates: Set<String> = [
             "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
             "METADATA_REJECTED", "INVALID_BINARY", "WAITING_FOR_REVIEW",
@@ -537,10 +539,14 @@ internal enum ASCRegisterCLI {
                 + "version=\(v.attributes["versionString"] ?? "?") "
                 + "state=\(v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? "?") "
                 + "(of \(versions.data.count) versions)")
-            let locIds = versions.relationships[v.id]?["appStoreVersionLocalizations"] ?? []
-            for locId in locIds {
-                guard let loc = versionIncludedById[locId],
-                      loc.type == "appStoreVersionLocalizations",
+            // Capture EVERY existing version-loc via the version's own
+            // paginated relationship endpoint, not the truncatable
+            // `?include=` side-load on the appStoreVersions GET. The live
+            // `es-ES` was missed by the side-load → planned as CREATE → 409
+            // DUPLICATE (issue #310). Pagination here makes it classify as
+            // UPDATE.
+            for loc in try await client.listVersionLocalizations(versionId: v.id) {
+                guard loc.type == "appStoreVersionLocalizations",
                       let locale = loc.attributes["locale"] else { continue }
                 remote.versionLocalizations[locale] = MetadataRemoteState.VersionLocRemote(
                     id: loc.id,
@@ -551,9 +557,6 @@ internal enum ASCRegisterCLI {
                     marketingUrl: loc.attributes["marketingUrl"],
                     supportUrl: loc.attributes["supportUrl"]
                 )
-            }
-            if let sample = versionIncludedById.values.first(where: { $0.type == "appStoreVersionLocalizations" }) {
-                print("appStoreVersionLocalizations attributes seen: \(sample.attributes.keys.sorted())")
             }
         }
 
@@ -582,7 +585,10 @@ internal enum ASCRegisterCLI {
         case .createVersionLoc(_, let l, _):      return "CREATE version-loc      [\(l)]"
         case .updateVersionLoc(_, let l, _):      return "UPDATE version-loc      [\(l)]"
         case .versionLocUnchanged(let l):         return "OK     version-loc      [\(l)]"
-        case .updateCategories(_, let p, let s):  return "UPDATE categories       primary=\(p ?? "nil") secondary=\(s ?? "nil")"
+        case .updateCategories(_, let c):
+            let primary = [c.primary, c.primarySubOne, c.primarySubTwo].compactMap { $0 }.joined(separator: "/")
+            let secondary = [c.secondary, c.secondarySubOne, c.secondarySubTwo].compactMap { $0 }.joined(separator: "/")
+            return "UPDATE categories       primary=[\(primary)] secondary=[\(secondary)]"
         case .categoriesUnchanged:                return "OK     categories"
         }
     }
@@ -590,10 +596,8 @@ internal enum ASCRegisterCLI {
     private static func executeMetadata(_ action: MetadataAction, client: ASCClient) async throws {
         switch action {
         case .createAppInfoLoc(let appInfoId, let locale, let listing):
-            _ = try await client.createAppInfoLocalization(
-                appInfoId: appInfoId, locale: locale,
-                name: listing.name, subtitle: listing.subtitle,
-                privacyPolicyUrl: listing.privacyPolicyUrl
+            try await createOrUpdateAppInfoLoc(
+                client: client, appInfoId: appInfoId, locale: locale, listing: listing
             )
         case .updateAppInfoLoc(let locId, _, let listing):
             _ = try await client.updateAppInfoLocalization(
@@ -604,11 +608,8 @@ internal enum ASCRegisterCLI {
         case .appInfoLocUnchanged:
             break
         case .createVersionLoc(let versionId, let locale, let listing):
-            _ = try await client.createVersionLocalization(
-                versionId: versionId, locale: locale,
-                description: listing.description, keywords: listing.keywords,
-                promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
-                marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+            try await createOrUpdateVersionLoc(
+                client: client, versionId: versionId, locale: locale, listing: listing
             )
         case .updateVersionLoc(let locId, _, let listing):
             _ = try await client.updateVersionLocalization(
@@ -619,12 +620,78 @@ internal enum ASCRegisterCLI {
             )
         case .versionLocUnchanged:
             break
-        case .updateCategories(let appInfoId, let primaryId, let secondaryId):
+        case .updateCategories(let appInfoId, let categories):
             _ = try await client.updateAppInfoCategories(
-                appInfoId: appInfoId, primaryCategoryId: primaryId, secondaryCategoryId: secondaryId
+                appInfoId: appInfoId, categories: categories
             )
         case .categoriesUnchanged:
             break
+        }
+    }
+
+    /// CREATE a version-loc, falling back to PATCH on a 409-DUPLICATE. A stale
+    /// snapshot (or a race) can plan a CREATE for a locale ASC already holds;
+    /// ASC then rejects with `409 ATTRIBUTE.INVALID.DUPLICATE` (the live
+    /// `es-ES` case, issue #310). We re-fetch the version's locs, find the
+    /// existing id for that locale, and switch to UPDATE — so a wedged apply
+    /// self-heals instead of aborting before the remaining locales run.
+    private static func createOrUpdateVersionLoc(
+        client: ASCClient,
+        versionId: String,
+        locale: String,
+        listing: ListingLocale
+    ) async throws {
+        do {
+            _ = try await client.createVersionLocalization(
+                versionId: versionId, locale: locale,
+                description: listing.description, keywords: listing.keywords,
+                promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
+                marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+            )
+        } catch let ASCClient.ClientError.httpStatus(code, _, body)
+            where code == 409 && ASCClient.isDuplicateValueError(body: body) {
+            let existing = try await client.listVersionLocalizations(versionId: versionId)
+                .first { $0.attributes["locale"] == locale }
+            guard let existing else { throw ASCClient.ClientError.httpStatus(code: code, path: locale, body: body) }
+            FileHandle.standardError.write(Data(
+                "warn: version-loc \(locale) already exists (409 dup) — switching CREATE→UPDATE id=\(existing.id)\n".utf8
+            ))
+            _ = try await client.updateVersionLocalization(
+                localizationId: existing.id,
+                description: listing.description, keywords: listing.keywords,
+                promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
+                marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+            )
+        }
+    }
+
+    /// CREATE an appInfo-loc, falling back to PATCH on a 409-DUPLICATE.
+    /// Same defensive self-heal as `createOrUpdateVersionLoc` (issue #310).
+    private static func createOrUpdateAppInfoLoc(
+        client: ASCClient,
+        appInfoId: String,
+        locale: String,
+        listing: ListingLocale
+    ) async throws {
+        do {
+            _ = try await client.createAppInfoLocalization(
+                appInfoId: appInfoId, locale: locale,
+                name: listing.name, subtitle: listing.subtitle,
+                privacyPolicyUrl: listing.privacyPolicyUrl
+            )
+        } catch let ASCClient.ClientError.httpStatus(code, _, body)
+            where code == 409 && ASCClient.isDuplicateValueError(body: body) {
+            let existing = try await client.listAppInfoLocalizations(appInfoId: appInfoId)
+                .first { $0.attributes["locale"] == locale }
+            guard let existing else { throw ASCClient.ClientError.httpStatus(code: code, path: locale, body: body) }
+            FileHandle.standardError.write(Data(
+                "warn: appInfo-loc \(locale) already exists (409 dup) — switching CREATE→UPDATE id=\(existing.id)\n".utf8
+            ))
+            _ = try await client.updateAppInfoLocalization(
+                localizationId: existing.id,
+                name: listing.name, subtitle: listing.subtitle,
+                privacyPolicyUrl: listing.privacyPolicyUrl
+            )
         }
     }
 
