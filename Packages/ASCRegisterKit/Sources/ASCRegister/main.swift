@@ -699,13 +699,17 @@ internal enum ASCRegisterCLI {
         }
     }
 
+    // `internal` (not `private`) so the URLProtocol-stub harness can drive the
+    // real CREATE→PATCH 409 self-heal end-to-end offline (issue #333) rather
+    // than re-implementing the orchestration in the test.
+    //
     /// CREATE a version-loc, falling back to PATCH on a 409-DUPLICATE. A stale
     /// snapshot (or a race) can plan a CREATE for a locale ASC already holds;
     /// ASC then rejects with `409 ATTRIBUTE.INVALID.DUPLICATE` (the live
     /// `es-ES` case, issue #310). We re-fetch the version's locs, find the
     /// existing id for that locale, and switch to UPDATE — so a wedged apply
     /// self-heals instead of aborting before the remaining locales run.
-    private static func createOrUpdateVersionLoc(
+    internal static func createOrUpdateVersionLoc(
         client: ASCClient,
         versionId: String,
         locale: String,
@@ -735,9 +739,11 @@ internal enum ASCRegisterCLI {
         }
     }
 
+    // `internal` for the same offline-harness reason as `createOrUpdateVersionLoc`.
+    //
     /// CREATE an appInfo-loc, falling back to PATCH on a 409-DUPLICATE.
     /// Same defensive self-heal as `createOrUpdateVersionLoc` (issue #310).
-    private static func createOrUpdateAppInfoLoc(
+    internal static func createOrUpdateAppInfoLoc(
         client: ASCClient,
         appInfoId: String,
         locale: String,

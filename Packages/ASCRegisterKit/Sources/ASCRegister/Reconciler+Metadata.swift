@@ -196,9 +196,9 @@ internal enum MetadataReconciler {
                 continue
             }
             if let existing = remote.appInfoLocalizations[listing.locale] {
-                let drift = existing.name != listing.name
-                    || existing.subtitle != listing.subtitle
-                    || existing.privacyPolicyUrl != listing.privacyPolicyUrl
+                let drift = differs(existing.name, listing.name)
+                    || differs(existing.subtitle, listing.subtitle)
+                    || differs(existing.privacyPolicyUrl, listing.privacyPolicyUrl)
                 if drift {
                     out.append(.updateAppInfoLoc(localizationId: existing.id, locale: listing.locale, listing))
                 } else {
@@ -231,12 +231,12 @@ internal enum MetadataReconciler {
                 || listing.marketingUrl != nil || listing.supportUrl != nil
             else { continue }
             if let existing = remote.versionLocalizations[listing.locale] {
-                let drift = existing.description != listing.description
-                    || existing.keywords != listing.keywords
-                    || existing.promotionalText != listing.promotionalText
-                    || existing.whatsNew != listing.whatsNew
-                    || existing.marketingUrl != listing.marketingUrl
-                    || existing.supportUrl != listing.supportUrl
+                let drift = differs(existing.description, listing.description)
+                    || differs(existing.keywords, listing.keywords)
+                    || differs(existing.promotionalText, listing.promotionalText)
+                    || differs(existing.whatsNew, listing.whatsNew)
+                    || differs(existing.marketingUrl, listing.marketingUrl)
+                    || differs(existing.supportUrl, listing.supportUrl)
                 if drift {
                     out.append(.updateVersionLoc(localizationId: existing.id, locale: listing.locale, listing))
                 } else {
@@ -264,6 +264,26 @@ internal enum MetadataReconciler {
             marketingUrl: listing.marketingUrl,
             supportUrl: listing.supportUrl
         )
+    }
+
+    /// Whether the remote value `lhs` differs from the desired value `rhs` for
+    /// drift purposes, ignoring a single trailing newline. YAML `|` block
+    /// scalars (description / whats_new / promotional_text) carry a terminating
+    /// `\n` that the desired `ListingLocale` keeps, but ASC stores+returns the
+    /// value with that newline dropped (same convention `ascCharacterCount`
+    /// uses). Without this, every replan saw `"…\n" != "…"` and re-emitted
+    /// `UPDATE version-loc` even on unchanged content (issue #333). `nil` on
+    /// either side stays a difference unless both are `nil`.
+    private static func differs(_ lhs: String?, _ rhs: String?) -> Bool {
+        normalize(lhs) != normalize(rhs)
+    }
+
+    /// Strip a single trailing newline (`\n`, `\r`, or the `\r\n` grapheme),
+    /// matching `MetadataConfig.ascCharacterCount`. `nil` passes through.
+    private static func normalize(_ value: String?) -> String? {
+        guard var text = value else { return nil }
+        if let last = text.last, last.isNewline { text.removeLast() }
+        return text
     }
 
     // MARK: - categories
