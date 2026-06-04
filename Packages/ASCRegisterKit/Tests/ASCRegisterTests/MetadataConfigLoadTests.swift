@@ -31,7 +31,7 @@ internal struct MetadataConfigLoadTests {
     internal func loadsSudoku() throws {
         let config = try MetadataConfig.load(app: .sudoku, metadataDir: Self.metadataDir())
         #expect(config.appMeta.app == "sudoku")
-        #expect(config.appMeta.appleId == "6772925351")
+        #expect(config.appMeta.appleId == "6771248206")
         #expect(config.appMeta.categories.primary == "Games")
         #expect(config.appMeta.categories.primaryFirstSub == "Puzzle")
         // 7 locale dirs (en, zh-Hant, zh-Hans, ja, es, th, ko); the
@@ -63,11 +63,11 @@ internal struct MetadataConfigLoadTests {
         #expect(enListing.supportUrl == "https://github.com/wei18/Sudoku/issues")
     }
 
-    @Test("Minesweeper subtree loads with no apple_id")
+    @Test("Minesweeper subtree loads with its apple_id")
     internal func loadsMinesweeper() throws {
         let config = try MetadataConfig.load(app: .minesweeper, metadataDir: Self.metadataDir())
         #expect(config.appMeta.app == "minesweeper")
-        #expect(config.appMeta.appleId == nil)  // commented out in MS app-meta
+        #expect(config.appMeta.appleId == "6775733519")  // MS ASC app id (#309)
         #expect(config.appMeta.categories.primaryFirstSub == "Board")
         #expect(!config.listings.isEmpty)
     }
