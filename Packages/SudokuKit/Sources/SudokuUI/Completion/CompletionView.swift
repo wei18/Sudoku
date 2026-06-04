@@ -8,13 +8,24 @@
 
 public import SwiftUI
 import GameCenterClient
+import GameShellUI
 
 public struct CompletionView: View {
     @Bindable private var viewModel: CompletionViewModel
     @Environment(\.theme) private var theme
 
-    public init(viewModel: CompletionViewModel) {
+    // #287 Phase 2: optional daily-ready reminder primer. Non-nil ONLY on a
+    // Daily completion (LiveRouteFactory gates on the puzzleId), so a Practice
+    // solve — and every existing snapshot fixture that omits this param —
+    // renders byte-identically (no affordance, no sheet).
+    @State private var reminderPrimer: ReminderPrimerCoordinator?
+
+    public init(
+        viewModel: CompletionViewModel,
+        reminderPrimer: ReminderPrimerCoordinator? = nil
+    ) {
         self.viewModel = viewModel
+        self._reminderPrimer = State(initialValue: reminderPrimer)
     }
 
     public var body: some View {
@@ -22,6 +33,7 @@ public struct CompletionView: View {
             VStack(spacing: 24) {
                 hero
                 content
+                reminderAffordance
             }
             .padding(20)
             .frame(maxWidth: .infinity)
@@ -29,6 +41,64 @@ public struct CompletionView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
         .task { await viewModel.bootstrap() }
+        .sheet(isPresented: reminderSheetBinding) {
+            if let reminderPrimer {
+                ReminderPrimerSheet(
+                    copy: reminderPrimer.primerCopy,
+                    isRequesting: reminderPrimer.isRequesting,
+                    onAccept: { Task { await reminderPrimer.acceptPrimer() } },
+                    onDecline: { reminderPrimer.declinePrimer() }
+                )
+                .presentationDetents([.medium, .large])
+            }
+        }
+    }
+
+    // The affordance row from flow S02 ("Remind me when tomorrow's puzzle is
+    // ready"). Tapping it presents the soft primer (S03). Shown only for a
+    // Daily solve and only while reminders are not yet authorized — once
+    // granted there is nothing left to ask.
+    @ViewBuilder
+    private var reminderAffordance: some View {
+        if let reminderPrimer, reminderPrimer.status == .notDetermined {
+            Button {
+                Task { await reminderPrimer.presentPrimer() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.badge")
+                        .foregroundStyle(theme.accent.primary.resolved)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Remind me when tomorrow's puzzle is ready")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(theme.text.primary.resolved)
+                            .multilineTextAlignment(.leading)
+                        Text("A gentle daily nudge, default 9 AM — adjustable in Settings")
+                            .font(.caption)
+                            .foregroundStyle(theme.text.secondary.resolved)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(theme.text.tertiary.resolved)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity)
+                .background(theme.surface.primary.resolved, in: .rect(cornerRadius: 14))
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // Bridges the optional coordinator's `isPrimerPresented` to the sheet. With
+    // no coordinator wired the binding is inert (always false → no sheet).
+    private var reminderSheetBinding: Binding<Bool> {
+        Binding(
+            get: { reminderPrimer?.isPrimerPresented ?? false },
+            set: { reminderPrimer?.isPrimerPresented = $0 }
+        )
     }
 
     private var hero: some View {

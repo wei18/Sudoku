@@ -12,12 +12,15 @@
 internal import AdsAdMob
 internal import Foundation
 internal import GameCenterClient
+internal import GameShellUI
 internal import IAPStoreKit2
 internal import MonetizationCore
 internal import MonetizationUI
 internal import Persistence
 internal import PuzzleStore
+internal import Reminders
 internal import SudokuUI
+internal import SwiftUI
 internal import Telemetry
 
 extension AppComposition {
@@ -159,6 +162,68 @@ extension AppComposition {
             errorReporter: errorReporter
         )
 
+        // #287 Phase 2: reminder wiring. RemindersKit's Live conformers +
+        // `UNUserNotificationCenter` stay confined to this composition layer.
+        // `emit` bridges the (non-async) coordinator/delegate callbacks into the
+        // `Telemetry` actor's async `observe`.
+        let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in
+            Task { await telemetry.observe(event) }
+        }
+        let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: "com.wei18.sudoku")
+        let reminderScheduler = LiveReminderScheduler(subsystem: "com.wei18.sudoku")
+        let reminderSettingsStore = ReminderSettingsStore()
+
+        // Foreground-presentation + tap routing. A tapped `dailyReady` reminder
+        // deep-links to the Daily hub (flow S07→S09). Routing mutates the same
+        // `rootViewModel.path` the sidebar uses.
+        ReminderDelegateRetainer.install(
+            onTap: { identifier in
+                if identifier == ReminderKind.dailyReady.rawValue {
+                    if rootViewModel.path.last != .daily {
+                        rootViewModel.path.append(.daily)
+                    }
+                }
+            },
+            emit: emit
+        )
+
+        // Builds a fresh daily-ready primer coordinator per Daily-completion
+        // mount. Copy is passed as `LocalizedStringKey` literals so the app
+        // bundle's `Localizable.xcstrings` localizes them (ai-translated-localization
+        // sweep adds the non-en locales). Body softened to "default 9 AM,
+        // adjustable in Settings" per the persisted-time seam (#321).
+        let makeDailyReminderPrimer: @MainActor () -> ReminderPrimerCoordinator = {
+            ReminderPrimerCoordinator(
+                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
+                scheduler: reminderScheduler,
+                settingsStore: reminderSettingsStore,
+                content: ReminderContent(
+                    title: "Today's Sudoku is ready",
+                    body: "Your daily puzzle is waiting — keep your streak going."
+                ),
+                primerCopy: ReminderPrimerCopy(
+                    title: "Never miss a Daily",
+                    lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
+                    bullets: [
+                        "One gentle nudge a day, default 9 AM",
+                        "Adjustable anytime in Settings",
+                        "Turn it off whenever you like"
+                    ],
+                    acceptCTA: "Remind me",
+                    declineCTA: "Not now",
+                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+                ),
+                deniedCopy: ReminderDeniedCopy(
+                    title: "Reminders are off",
+                    message: "Notifications are turned off for Sudoku in Settings, so we can't tell you when the Daily is ready.",
+                    openSettingsCTA: "Open Settings",
+                    dismissCTA: "Not now",
+                    macOSGuidance: "Enable notifications in System Settings → Notifications → Sudoku."
+                ),
+                emit: emit
+            )
+        }
+
         let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleStore,
             persistence: persistence,
@@ -169,7 +234,8 @@ extension AppComposition {
             iapClient: iapClient,
             adGate: adGate,
             monetizationController: monetizationController,
-            toastController: toastController
+            toastController: toastController,
+            makeDailyReminderPrimer: makeDailyReminderPrimer
         )
 
         return AppComposition(
