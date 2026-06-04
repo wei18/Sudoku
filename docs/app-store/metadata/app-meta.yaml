@@ -35,9 +35,9 @@ copyright: "2026 Wei18"
 # Contact details Apple's reviewer uses if they need to reach the developer.
 # No demo account: the app needs no login (see review notes doc).
 review_information:
-  first_name: "Wei"          # FLAG: confirm reviewer-contact first name
-  last_name: "Wei18"         # FLAG: confirm reviewer-contact last/family name
-  email_address: "11254896+wei18@users.noreply.github.com"
+  first_name: "Wei18"       # git user.name (single handle)
+  last_name: "Wei18"        # ASC needs both fields; single handle => same value
+  email_address: "11254896+wei18@users.noreply.github.com"  # FLAG: GitHub noreply does NOT receive mail — replace with a monitored inbox before submission (Apple emails the review contact)
   phone_number: null  # secret — ASC review contact held in secrets/.env, injected at apply time (never committed)
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
