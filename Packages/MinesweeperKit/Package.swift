@@ -38,6 +38,12 @@ let productionTargets: [Target] = [
             // U15 (2026-06-03): MinesweeperBannerSlotView + MinesweeperBoardView
             // touch `AdProvider` / `AdGate` directly.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // #290: MinesweeperDailyHubViewModel reads completed daily ids via
+            // `PersistenceProtocol.fetchCompletedDailyIds` and funnels a
+            // completion-fetch failure through `Telemetry`'s `ErrorReporter`
+            // (graceful-degrade) — mirrors SudokuUI.DailyHubViewModel's deps.
+            .product(name: "Persistence", package: "PersistenceKit"),
+            .product(name: "Telemetry", package: "TelemetryKit"),
             // #178: invariant-reporting tool — mirrors SudokuUI. `reportIssue(_:)`
             // surfaces impossible-state catches (fails tests, purple-warns in
             // #Preview, non-fatal in release). Deliberate restricted-import

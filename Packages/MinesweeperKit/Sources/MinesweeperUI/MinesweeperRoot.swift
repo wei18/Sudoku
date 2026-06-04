@@ -124,7 +124,11 @@ private struct PreviewRouteFactory: RouteFactory {
         case .board(let difficulty, let seed):
             return AnyView(Text("Preview board: \(String(describing: difficulty)) seed=\(seed)"))
         case .daily:
-            return AnyView(MinesweeperDailyHubView(path: path ?? .constant([])))
+            return AnyView(
+                MinesweeperDailyHubView(
+                    viewModel: MinesweeperDailyHubViewModel(path: path ?? .constant([]))
+                )
+            )
         case .practice:
             return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
         case .settings:
