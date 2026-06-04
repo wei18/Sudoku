@@ -77,6 +77,15 @@ public struct LiveReminderScheduler: ReminderScheduler {
     }
 
     private func makeTrigger(_ schedule: ReminderSchedule) -> UNNotificationTrigger {
+        Self.trigger(for: schedule)
+    }
+
+    // Pure schedule → trigger mapping. `static` + self-free so it is exercisable
+    // without the system `UNUserNotificationCenter` — the testable seam for the
+    // contract-bearing mapping (GitHub #319, #287 CR nit N1). `internal` so
+    // `@testable import Reminders` can assert each case's trigger subtype + key
+    // params. Behavior is identical to the inlined switch it replaced.
+    internal static func trigger(for schedule: ReminderSchedule) -> UNNotificationTrigger {
         switch schedule {
         case let .dailyAt(hour, minute):
             var components = DateComponents()
