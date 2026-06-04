@@ -61,7 +61,7 @@
     <h1>Sudoku <span class="dot">·</span> Minesweeper — 建置狀態</h1>
     <p class="lede">滾動式儀表板 · Leader 於每個里程碑重生 · <span class="muted">main 綠燈 — GameShell 8 / SudokuKit 167 / MinesweeperKit 55</span></p>
   </div>
-  <div class="stamp">2026-06-04 · 16:55</div>
+  <div class="stamp">2026-06-05 · 02:05</div>
 </header>
 
 <!-- ====== EPIC ====== -->
@@ -84,10 +84,22 @@
 <h2>動態與決策 &nbsp;<span class="muted" style="font-weight:400">最新在上 · 每行背後的來龍去脈</span></h2>
 <div class="log">
 
-  <div class="ev run"><div class="ref">#291 MS<small>進行中</small></div><div class="body">
-    <b>Minesweeper 每難度每日排行榜（鏡像 Sudoku）</b>
-    <p>更正：ASCRegister <b>本來就用 ASC API 建排行榜</b>（`createLeaderboard` POST），不是手動後台——Leader 先前誤導已修正並記入 memory。MS 比照 Sudoku 做 easy/medium/hard 三個 recurring 每日榜（`com.wei18.minesweeper.leaderboard.{…}.daily.v1`）：GC config 改 app-aware + 程式端從單一榜改成依難度送分。</p>
-    <div class="meta">你定＝鏡像 Sudoku（非單一最佳時間榜）。`apply`（經 API 真正建立）仍待你授權。IAP 是唯一手動建立的例外（#200）。</div>
+  <div class="ev ok"><div class="ref">App Store readiness<small>LIVE on ASC · 2026-06-05</small></div><div class="body">
+    <b>兩 app 上架 metadata + Sudoku v2.3.5 版號 + MS 排行榜——全數 live</b>
+    <p>第一次真 `metadata apply` 把 <b>Sudoku + Minesweeper 全 7 語系</b>的 app 名稱 / 副標 / 描述 / 關鍵字 / promo / 分類（Games + 2 子分類）推上 ASC。Sudoku ASC 版號 <b>1.0 → 2.3.5</b>（自建 `metadata set-version` 工具）。<b>MS 3 個每日排行榜</b>（easy/medium/hard，含 en-US + zh-Hant 標題）經 GC API 建立完成——確認 MS 已開 Game Center detail。</p>
+    <div class="meta"><b>文案重寫</b>（App Store Optimizer）：Sudoku「No ads」→ 準確的「可移除 banner + Remove-Ads IAP」框架（v2.3.5 含廣告）；MS 移除不實的「resume / 自動存檔」聲明（無 SavedGame flow）；ASO 關鍵字優化（去 name 重複、補 CJK 預算 + ナンプレ）；whats_new 更新。先 ASO 審查（COPY-REVIEW.md）→ 重寫 → 兩 P1 事實風險對 code 查證後修。</div>
+    <div class="meta">過程中 live apply 揪出並修好 metadata 工具 <b>4 個 bug</b>：① 欄位長度未預驗證（你要求）② whatsNew 不可設於首版 ③ 分類映射（子分類誤當 genre→改 6-slot genre+subs）④ version-loc CREATE/UPDATE 誤判（include 截斷→改 relationship-endpoint 分頁 + 409-dup self-heal）。第 5 個（trailing-newline 送出 vs 驗證不一致）記入 #333。皆經 CR APPROVE。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">README<small>已 merge · PR 336</small></div><div class="body">
+    <b>README 重寫為 portfolio README（English 主 + 繁中）</b>
+    <p>展示兩 app + 共用跨平台架構 + Leader/Developer AI 協作方法論；語言切換列。事實更正：11 個 SPM package（原寫 9，補 RemindersKit + ASCRegisterKit）。Leader 修正 agent 因套件註解過時寫錯的 MS 狀態（gameplay 其實 #293 已完工、無存檔流程）。</div>
+    <div class="meta">背景：rebase 後 push 被 non-ff 拒，MS 狀態修正重補於 main。</div>
+  </div></div>
+
+  <div class="ev ok"><div class="ref">backlog<small>新建</small></div><div class="body">
+    <b>三條 backlog 入列</b>
+    <p>#330 遊戲音訊（音樂 + 音效 + 音量控制，硬性約束：`.ambient`/mixWithOthers 不打斷他人串流）；#331 SettingsKit（共用設定框架：畫面 + 功能開關 + 版本 + 宣告 + 權限詢問，匯聚 #287/#321/#330/#286）；#329 MS submit gating 改 daily-only。</div>
   </div></div>
 
   <div class="ev dec"><div class="ref">#286<small>已 merge · PR 326 · RFC 核准</small></div><div class="body">
