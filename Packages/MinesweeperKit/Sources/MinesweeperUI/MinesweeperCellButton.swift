@@ -5,7 +5,7 @@
 // 400-line lint ceiling once the Completion overlay wiring landed. No behavior
 // change — verbatim move of the cell button + its tap-mode enum.
 
-public import SwiftUI
+internal import SwiftUI
 internal import MinesweeperEngine
 
 // MARK: - Interaction mode
@@ -105,8 +105,34 @@ struct MinesweeperCellButton: View {
 
     @ViewBuilder
     private var background: some View {
-        RoundedRectangle(cornerRadius: 4)
-            .fill(backgroundFill)
+        let shape = RoundedRectangle(cornerRadius: 4)
+        if isRaisedCover {
+            // #298 #8: covered cells get a subtle raised-tile treatment — a soft
+            // top highlight + a thin lower edge — so covered-vs-revealed reads
+            // as raised-vs-recessed (the classic Minesweeper tactile affordance)
+            // rather than a flat colour swap. Derived from the covered token via
+            // translucent white/black overlays, so it adapts to light + dark
+            // without new theme tokens.
+            shape.fill(tokens.covered.resolved)
+                .overlay(
+                    shape.fill(
+                        LinearGradient(
+                            colors: [.white.opacity(0.18), .clear],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                )
+                .overlay(shape.strokeBorder(.black.opacity(0.14), lineWidth: 0.5))
+        } else {
+            shape.fill(backgroundFill)
+        }
+    }
+
+    /// Covered (still-tappable) cells that should read as a raised tile — i.e.
+    /// not a surfaced lost-mine and not yet revealed.
+    private var isRaisedCover: Bool {
+        !showsLostMine && (cell.state == .hidden || cell.state == .flagged)
     }
 
     private var backgroundFill: Color {
