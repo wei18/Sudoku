@@ -39,6 +39,12 @@ public enum AdBannerStatus: Sendable, Equatable {
     /// suppression itself — `AdGate` does — but the provider reports the
     /// status downstream.
     case suppressed
+    /// The previously-loaded banner handle has been released via
+    /// `dispose(handle:)`. Distinct from `.notInitialized`: the SDK is still
+    /// initialized and a fresh `refreshBanner()` can re-load — only this
+    /// handle's backing view was torn down (#276). The UI slot collapses on
+    /// this state because dispose only fires once the slot is gone / dismissed.
+    case disposed
 }
 
 // MARK: - AdBannerHandle

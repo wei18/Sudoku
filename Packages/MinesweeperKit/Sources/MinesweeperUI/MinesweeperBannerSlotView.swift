@@ -44,11 +44,18 @@ internal struct MinesweeperBannerSlotView: View {
             }
         }
         .task { await resolveGateAndLoad() }
-        .onDisappear {
-            // Mirror of Sudoku's slot — release the live banner's
-            // `GADBannerView` on disappear so it isn't retained for the
-            // handle's lifetime (#221). No-op unless a loaded handle is held.
-            guard case let .loaded(handle) = status else { return }
+        .onChange(of: status) { oldStatus, _ in
+            // Mirror of Sudoku's slot. Defensive: `status` is written once today
+            // so this does not fire — it guards the dispose path for a future
+            // re-poll/refresh WITHOUT reviving the raw `.onDisappear` dispose,
+            // which thrashed on transient SwiftUI teardown (#276).
+            guard case let .loaded(handle) = oldStatus else { return }
+            if case .loaded(handle) = status { return } // same handle, no churn
+            Task { await adProvider.dispose(handle: handle) }
+        }
+        .onChange(of: dismissed) { _, isDismissed in
+            // Gate closed for the session — release the held banner (#221).
+            guard isDismissed, case let .loaded(handle) = status else { return }
             Task { await adProvider.dispose(handle: handle) }
         }
     }
@@ -85,6 +92,9 @@ internal struct MinesweeperBannerSlotView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .suppressed:
+            EmptyView()
+        case .disposed:
+            // Mirror of Sudoku's slot — held handle released, slot collapsing.
             EmptyView()
         }
     }

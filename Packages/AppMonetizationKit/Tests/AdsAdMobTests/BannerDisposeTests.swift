@@ -29,7 +29,9 @@ struct BannerDisposeTests {
 
         await provider.dispose(handle: handle)
 
-        #expect(await provider.bannerStatus == .notInitialized)
+        // Post-dispose status is `.disposed`, not `.notInitialized`: the SDK is
+        // still initialized, only this handle's view was released (#276).
+        #expect(await provider.bannerStatus == .disposed)
     }
 
     @Test func disposeOfUnrelatedHandleLeavesLoadedStatusIntact() async throws {
