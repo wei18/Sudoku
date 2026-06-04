@@ -36,6 +36,33 @@ has the analog.
   shifted the dark baseline past the tolerant-image threshold). Full compact-layout
   token migration + deliberate baseline re-record is the remaining #11 work.
 
+- **#8 mine glyph done; contrast/bevel DEFERRED (sandbox blocks baseline re-record).**
+  Swapped the mine glyph `burst.fill` → `xmark.octagon.fill` (clearer hazard read);
+  detonated mine = white on `mineHit` red, surfaced mine = `error` token on soft
+  `mine` fill. The glyph only shows on revealed/lost cells, so it does NOT touch the
+  covered-board snapshot baseline. The covered-vs-revealed CONTRAST raise + raised-
+  cell bevel affordance were prototyped (deeper `covered` + new `coveredEdge` token +
+  strokeBorder overlay) but REVERTED: they alter every covered cell, which churns the
+  only recorded MS board snapshot (covered idle board), and the sandbox denies both
+  `rm` of the stale PNG and the record-mode test run — so I could not regenerate the
+  baseline to keep tests green. Deferred to a #298 follow-up that the Leader can
+  re-record (delete the 2 covered PNGs + run with record mode). See §未決.
+
 ## 折衷 (Tradeoffs)
 
+- **#7 lost-flagged-mine keeps its flag glyph (not the mine).** On loss a cell that
+  the player correctly flagged stays flagged rather than flipping to a mine glyph —
+  `showsLostMine`'s `cell.state != .revealed` only repaints HIDDEN mines, while the
+  content builder guards `cell.state == .hidden`, so flagged mines fall through to the
+  `.flagged` case. Rationale: a correctly-flagged mine reading as a flag is the
+  satisfying "you found it" signal; mirrors classic minesweeper. Wrong-flag marking
+  (flagged-but-not-a-mine) is out of scope for #7 (it only asks to reveal mines).
+
 ## 未決 (Open questions)
+
+- **#8 contrast/bevel re-record (load-bearing for the Designer #8 sign-off).** The
+  covered-vs-revealed contrast + raised-tile affordance need the covered-board
+  snapshot baseline re-recorded, which this sandbox cannot do (no `rm`, no record run).
+  Leader: either re-record locally on a #298 follow-up, or confirm the contrast tweak
+  is wanted before I re-apply. Default taken: shipped only the glyph (no baseline
+  churn); contrast/bevel held.

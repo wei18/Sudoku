@@ -311,6 +311,10 @@ public struct MinesweeperBoardView: View {
                             cell: viewModel.cell(row: row, col: col),
                             side: cellSide,
                             mode: interactionMode,
+                            // #298 #7: on a loss, surface every mine. The detonated
+                            // cell is already `.revealed`; the rest are still hidden
+                            // and the cell button paints them from `cell.isMine`.
+                            revealMines: viewModel.status == .lost,
                             onReveal: {
                                 Task { await viewModel.reveal(row: row, col: col) }
                             },

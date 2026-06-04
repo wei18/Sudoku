@@ -32,8 +32,20 @@ struct MinesweeperCellButton: View {
     let side: CGFloat
     /// Current tap mode — drives the button's primary action.
     let mode: InteractionMode
+    /// #298 #7: when the game is lost, every mine is surfaced — a still-hidden
+    /// mine cell renders the soft `mine` token + glyph (the detonated cell
+    /// stays `.revealed` + bold `mineHit`). Off during play so hidden cells stay
+    /// covered.
+    let revealMines: Bool
     let onReveal: () -> Void
     let onToggleFlag: () -> Void
+
+    /// True when this cell should be drawn as a surfaced (non-detonated) mine:
+    /// the game is lost, the cell holds a mine, and it isn't already revealed
+    /// (the revealed-mine path is the detonated cell, handled separately).
+    private var showsLostMine: Bool {
+        revealMines && cell.isMine && cell.state != .revealed
+    }
 
     var body: some View {
         // Primary action follows the on-screen mode: tap reveals in .reveal,
@@ -72,41 +84,64 @@ struct MinesweeperCellButton: View {
 
     @ViewBuilder
     private var background: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(backgroundFill)
+    }
+
+    private var backgroundFill: Color {
+        // #298 #7: on loss, a still-hidden mine surfaces with the soft `mine`
+        // fill (distinct from the detonated `mineHit` red below).
+        if showsLostMine {
+            return tokens.mine.resolved
+        }
         switch cell.state {
         case .hidden, .flagged:
-            RoundedRectangle(cornerRadius: 4)
-                .fill(tokens.covered.resolved)
+            return tokens.covered.resolved
         case .revealed:
-            RoundedRectangle(cornerRadius: 4)
-                // A revealed mine is the detonated cell in Tier-0 (no
-                // separate "other mine" branch yet), so it gets the bold
-                // mineHit red; revealed-safe cells get the revealed bg.
-                .fill(cell.isMine ? tokens.mineHit.resolved : tokens.revealed.resolved)
+            // A revealed mine is the detonated cell (the one the player hit),
+            // so it gets the bold mineHit red; revealed-safe cells get the
+            // revealed bg.
+            return cell.isMine ? tokens.mineHit.resolved : tokens.revealed.resolved
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        switch cell.state {
-        case .hidden:
-            EmptyView()
-        case .flagged:
-            Image(systemName: "flag.fill")
-                .font(.system(size: glyphSize))
-                .foregroundStyle(theme.status.warning.resolved)
-        case .revealed:
-            if cell.isMine {
-                Image(systemName: "burst.fill")
-                    .font(.system(size: glyphSize))
-                    .foregroundStyle(.white)
-            } else if cell.neighborMineCount > 0 {
-                Text("\(cell.neighborMineCount)")
-                    .font(.system(size: glyphSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(numberColor(cell.neighborMineCount))
-            } else {
+        // #298 #7: a still-hidden mine surfaced on loss draws the mine glyph
+        // (a flagged mine keeps its flag below — it was correctly flagged).
+        if showsLostMine, cell.state == .hidden {
+            mineGlyph(detonated: false)
+        } else {
+            switch cell.state {
+            case .hidden:
                 EmptyView()
+            case .flagged:
+                Image(systemName: "flag.fill")
+                    .font(.system(size: glyphSize))
+                    .foregroundStyle(theme.status.warning.resolved)
+            case .revealed:
+                if cell.isMine {
+                    mineGlyph(detonated: true)
+                } else if cell.neighborMineCount > 0 {
+                    Text("\(cell.neighborMineCount)")
+                        .font(.system(size: glyphSize, weight: .semibold, design: .rounded))
+                        .foregroundStyle(numberColor(cell.neighborMineCount))
+                } else {
+                    EmptyView()
+                }
             }
         }
+    }
+
+    // #298 #8: the mine glyph. A filled `xmark.octagon` reads more clearly as a
+    // mine/hazard than the previous `burst.fill` starburst (which looked like a
+    // generic sparkle). The detonated cell sits on the bold `mineHit` red, so
+    // its glyph is white for max contrast; a surfaced (non-detonated) mine sits
+    // on the soft `mine` fill, so its glyph uses the error token for legibility.
+    private func mineGlyph(detonated: Bool) -> some View {
+        Image(systemName: "xmark.octagon.fill")
+            .font(.system(size: glyphSize))
+            .foregroundStyle(detonated ? .white : theme.status.error.resolved)
     }
 
     // Glyph size tracks the cell side so numbers/flags/mines stay proportional
