@@ -112,6 +112,10 @@ extension ASCClient {
         if let description { attributes["description"] = description }
         if let keywords { attributes["keywords"] = keywords }
         if let promotionalText { attributes["promotionalText"] = promotionalText }
+        // `whatsNew` omitted when nil. On a first submission (no released
+        // predecessor) the reconciler nils it upstream so this guard skips it,
+        // avoiding ASC's `409 STATE_ERROR — Attribute 'whatsNew' cannot be
+        // edited at this time` (issue #310).
         if let whatsNew { attributes["whatsNew"] = whatsNew }
         if let marketingUrl { attributes["marketingUrl"] = marketingUrl }
         if let supportUrl { attributes["supportUrl"] = supportUrl }
@@ -146,6 +150,8 @@ extension ASCClient {
         if let description { attributes["description"] = description }
         if let keywords { attributes["keywords"] = keywords }
         if let promotionalText { attributes["promotionalText"] = promotionalText }
+        // `whatsNew` omitted when nil — see the create path: the reconciler
+        // nils it on a first submission to avoid `409 STATE_ERROR` (issue #310).
         if let whatsNew { attributes["whatsNew"] = whatsNew }
         if let marketingUrl { attributes["marketingUrl"] = marketingUrl }
         if let supportUrl { attributes["supportUrl"] = supportUrl }

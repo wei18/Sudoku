@@ -18,6 +18,12 @@
 // description / whats_new contain embedded blank lines that a hand-rolled
 // reader would mishandle.
 
+// swiftlint:disable file_length
+// WHY: the field-length validation table + validator (#310) pushed this past
+// the 400-line cap. Splitting into a `+Validation` file is the eventual
+// cleanup, but the #310 hardening was scoped to not add new source files
+// (parallel-agent file-domain isolation). Mirrors ASCClient.swift's directive.
+
 import Foundation
 import Yams
 
@@ -100,6 +106,37 @@ internal struct MetadataConfig: Sendable, Equatable {
     internal let listings: [ListingLocale]
 }
 
+// MARK: - Field length limits (single source of truth)
+
+/// App Store Connect per-locale character caps for the listing fields the
+/// `metadata` command pushes. ASC enforces these server-side: an over-length
+/// value is rejected mid-`apply` with
+/// `409 ENTITY_ERROR.ATTRIBUTE.INVALID.TOO_LONG`, leaving a PARTIAL apply
+/// (issue #310). We pre-flight against this table at `load()` so `plan` fails
+/// loud before any mutation.
+///
+/// Limits verified against Apple's official docs (retrieved 2026-06-04):
+///   - "App Store Version Localizations" (App Store Connect API reference)
+///     <https://developer.apple.com/documentation/appstoreconnectapi/app-store-version-localizations>
+///   - "Creating Your Product Page" (App Store)
+///     <https://developer.apple.com/app-store/product-page/>
+/// `name` / `subtitle` are `appInfoLocalizations` attributes; the rest are
+/// `appStoreVersionLocalizations` attributes. The caps match the App Store
+/// product-page limits. Counts are user-perceived characters — Swift
+/// `String.count` (grapheme clusters) is the closest match to how ASC counts
+/// (mirrors the live `subtitle cannot be longer than 30` rejection).
+///
+/// Single source of truth; `MetadataConfig.validateFieldLengths` is the only
+/// consumer.
+internal enum MetadataFieldLimits {
+    internal static let name = 30
+    internal static let subtitle = 30
+    internal static let keywords = 100
+    internal static let promotionalText = 170
+    internal static let description = 4000
+    internal static let whatsNew = 4000
+}
+
 // MARK: - Loading
 
 internal enum MetadataConfigError: Error, CustomStringConvertible {
@@ -108,6 +145,9 @@ internal enum MetadataConfigError: Error, CustomStringConvertible {
     case noListings(String)
     case malformedYAML(file: String, reason: String)
     case unknownLocale(code: String, file: String)
+    /// One or more listing fields exceed the ASC character cap. Carries EVERY
+    /// violation (not just the first) so a single `plan` run surfaces them all.
+    case fieldsTooLong([FieldLengthViolation])
 
     internal var description: String {
         switch self {
@@ -118,7 +158,25 @@ internal enum MetadataConfigError: Error, CustomStringConvertible {
         case .unknownLocale(let code, let file):
             return "locale '\(code)' in \(file) has no known App Store Connect locale code "
                 + "(MetadataConfig.ascLocaleCode); add it to the map or fix the YAML"
+        case .fieldsTooLong(let violations):
+            let lines = violations.map { "  - \($0.description)" }.joined(separator: "\n")
+            return "ASC field length validation failed (\(violations.count) "
+                + "violation(s)) — fix the YAML before apply:\n\(lines)"
         }
+    }
+}
+
+/// One over-length listing field, naming app + locale + field + actual length
+/// + the limit (issue #310 — fail loud, all at once).
+internal struct FieldLengthViolation: Sendable, Equatable, CustomStringConvertible {
+    internal let app: String
+    internal let locale: String
+    internal let field: String
+    internal let actual: Int
+    internal let limit: Int
+
+    internal var description: String {
+        "[\(app)/\(locale)] \(field) is \(actual) characters, limit is \(limit)"
     }
 }
 
@@ -147,7 +205,13 @@ extension MetadataConfig {
         guard !listings.isEmpty else {
             throw MetadataConfigError.noListings(subtree.path)
         }
-        return MetadataConfig(appMeta: appMeta, listings: listings)
+        let config = MetadataConfig(appMeta: appMeta, listings: listings)
+        // Pre-flight ASC length caps NOW, at load — which runs during `plan`
+        // (main: load@359 → reconcile@402 → apply@409), so an over-length
+        // field fails loud before any mutating call instead of leaving a
+        // PARTIAL apply (issue #310).
+        try config.validateFieldLengths(app: app.rawValue)
+        return config
     }
 
     private static func loadAppMeta(subtree: URL) throws -> AppMeta {
@@ -247,6 +311,79 @@ extension MetadataConfig {
         }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : raw
+    }
+}
+
+// MARK: - Field length validation (issue #310)
+
+extension MetadataConfig {
+
+    /// Pre-flight every listing field against `MetadataFieldLimits`, collecting
+    /// ALL violations (never stop at the first) and naming
+    /// app+locale+field+actual+limit. Throws `MetadataConfigError.fieldsTooLong`
+    /// if any field is over its ASC cap; otherwise returns silently.
+    ///
+    /// This runs at `load()` time, i.e. during `plan`, before any apply
+    /// mutation — so an over-length value is caught here instead of by ASC's
+    /// `409 TOO_LONG` mid-apply (which leaves a partial apply).
+    internal func validateFieldLengths(app: String) throws {
+        var violations: [FieldLengthViolation] = []
+        for listing in listings {
+            check(listing.name, "name", MetadataFieldLimits.name, app, listing.locale, &violations)
+            check(listing.subtitle, "subtitle", MetadataFieldLimits.subtitle, app, listing.locale, &violations)
+            check(listing.keywords, "keywords", MetadataFieldLimits.keywords, app, listing.locale, &violations)
+            check(
+                listing.promotionalText, "promotionalText",
+                MetadataFieldLimits.promotionalText, app, listing.locale, &violations
+            )
+            check(
+                listing.description, "description",
+                MetadataFieldLimits.description, app, listing.locale, &violations
+            )
+            check(listing.whatsNew, "whatsNew", MetadataFieldLimits.whatsNew, app, listing.locale, &violations)
+        }
+        guard violations.isEmpty else {
+            throw MetadataConfigError.fieldsTooLong(violations)
+        }
+    }
+
+    /// Count a field the way ASC counts and append a violation if over limit.
+    private func check(
+        _ value: String?,
+        _ field: String,
+        _ limit: Int,
+        _ app: String,
+        _ locale: String,
+        _ violations: inout [FieldLengthViolation]
+    ) {
+        guard let value else { return }
+        let count = Self.ascCharacterCount(value)
+        if count > limit {
+            violations.append(FieldLengthViolation(
+                app: app, locale: locale, field: field, actual: count, limit: limit
+            ))
+        }
+    }
+
+    /// The character count ASC applies to a listing field.
+    ///
+    /// ASC counts user-perceived characters; Swift `String.count` (grapheme
+    /// clusters) is the closest match. We strip a SINGLE trailing newline
+    /// first: YAML `|` block scalars (description / whats_new / promotional
+    /// text) carry a terminating `\n` that ASC does NOT count — a live apply
+    /// rejected `promotional_text` at 171 that was only 170 once the trailing
+    /// newline was removed. We trim just the one trailing newline (not all
+    /// whitespace) so internal and leading whitespace still count, matching
+    /// ASC's own counting.
+    internal static func ascCharacterCount(_ value: String) -> Int {
+        var text = value
+        // `\r\n` is a SINGLE grapheme cluster in Swift, so one `removeLast()`
+        // strips `\n`, `\r`, or `\r\n` alike — and only the one trailing
+        // terminator.
+        if let last = text.last, last.isNewline {
+            text.removeLast()
+        }
+        return text.count
     }
 }
 

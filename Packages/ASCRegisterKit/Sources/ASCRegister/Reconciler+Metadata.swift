@@ -50,13 +50,27 @@ internal struct MetadataRemoteState: Sendable, Equatable {
     internal var primaryCategoryId: String?
     internal var secondaryCategoryId: String?
 
+    /// Whether the app has at least one RELEASED / ready-for-sale version in
+    /// ASC. `false` means the chosen `appStoreVersion` is a first submission
+    /// (e.g. 1.0, PREPARE_FOR_SUBMISSION, no released predecessor): ASC then
+    /// FORBIDS setting `whatsNew` (release notes) — a live apply hit
+    /// `409 STATE_ERROR — Attribute 'whatsNew' cannot be edited at this time`
+    /// (issue #310). When `false` the reconciler omits `whatsNew` from version
+    /// create/update actions; when `true` it sends `whatsNew` as before.
+    ///
+    /// Derived from `appStoreState` across the app's fetched versions (no new
+    /// network call). Defaults `true` to preserve the legacy "send whatsNew"
+    /// behavior for callers that do not yet populate it.
+    internal var hasReleasedVersion: Bool
+
     internal init(
         appInfoId: String? = nil,
         versionId: String? = nil,
         appInfoLocalizations: [String: AppInfoLocRemote] = [:],
         versionLocalizations: [String: VersionLocRemote] = [:],
         primaryCategoryId: String? = nil,
-        secondaryCategoryId: String? = nil
+        secondaryCategoryId: String? = nil,
+        hasReleasedVersion: Bool = true
     ) {
         self.appInfoId = appInfoId
         self.versionId = versionId
@@ -64,7 +78,21 @@ internal struct MetadataRemoteState: Sendable, Equatable {
         self.versionLocalizations = versionLocalizations
         self.primaryCategoryId = primaryCategoryId
         self.secondaryCategoryId = secondaryCategoryId
+        self.hasReleasedVersion = hasReleasedVersion
     }
+
+    /// ASC `appStoreState` values that mean a version is live / has been
+    /// released to the store — the presence of any one means this is NOT a
+    /// first submission, so `whatsNew` is editable. Used by the `metadata`
+    /// command to compute `hasReleasedVersion` from the fetched version list.
+    internal static let releasedAppStoreStates: Set<String> = [
+        "READY_FOR_SALE",
+        "PENDING_APPLE_RELEASE",
+        "PENDING_DEVELOPER_RELEASE",
+        "PROCESSING_FOR_APP_STORE",
+        "REPLACED_WITH_NEW_VERSION",
+        "REMOVED_FROM_SALE",
+    ]
 
     internal struct AppInfoLocRemote: Sendable, Equatable {
         internal let id: String
@@ -158,7 +186,13 @@ internal enum MetadataReconciler {
     ) -> [MetadataAction] {
         guard let versionId = remote.versionId else { return [] }
         var out: [MetadataAction] = []
-        for listing in config.listings {
+        for rawListing in config.listings {
+            // On a first submission (no released predecessor) ASC forbids
+            // `whatsNew` (`409 STATE_ERROR ... cannot be edited at this time`,
+            // issue #310). Drop it from BOTH the drift comparison and the
+            // emitted action so apply never sends it; keep sending it once a
+            // released version exists.
+            let listing = remote.hasReleasedVersion ? rawListing : Self.droppingWhatsNew(rawListing)
             guard listing.description != nil || listing.keywords != nil
                 || listing.promotionalText != nil || listing.whatsNew != nil
                 || listing.marketingUrl != nil || listing.supportUrl != nil
@@ -180,6 +214,23 @@ internal enum MetadataReconciler {
             }
         }
         return out
+    }
+
+    /// Return `listing` with `whatsNew` forced to `nil` (first-version rule).
+    /// All other fields are preserved.
+    private static func droppingWhatsNew(_ listing: ListingLocale) -> ListingLocale {
+        ListingLocale(
+            locale: listing.locale,
+            name: listing.name,
+            subtitle: listing.subtitle,
+            privacyPolicyUrl: listing.privacyPolicyUrl,
+            description: listing.description,
+            keywords: listing.keywords,
+            promotionalText: listing.promotionalText,
+            whatsNew: nil,
+            marketingUrl: listing.marketingUrl,
+            supportUrl: listing.supportUrl
+        )
     }
 
     // MARK: - categories
