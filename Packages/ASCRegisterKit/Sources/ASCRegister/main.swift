@@ -54,6 +54,21 @@ internal enum ASCRegisterCLI {
                     printUsage()
                     exit(2)
                 }
+            case "metadata":
+                // App-listing metadata (issue #310). Nested subcommand,
+                // mirrors `iap`. Reads docs/app-store/metadata YAML and
+                // reconciles appInfoLocalizations + appStoreVersionLocalizations
+                // + appInfos categories against ASC.
+                let subSub = rest.first ?? ""
+                let rest2 = Array(rest.dropFirst())
+                switch subSub {
+                case "plan":  try await runMetadataRemote(args: rest2, mode: .plan)
+                case "apply": try await runMetadataRemote(args: rest2, mode: .apply)
+                default:
+                    FileHandle.standardError.write(Data("Unknown metadata subcommand: \(subSub)\n".utf8))
+                    printUsage()
+                    exit(2)
+                }
             case "-h", "--help", "help":
                 printUsage()
             default:
@@ -312,7 +327,258 @@ internal enum ASCRegisterCLI {
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
+          ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
         """)
+    }
+
+    // MARK: - metadata plan / apply (issue #310)
+    // swiftlint:disable function_body_length
+
+    /// App-listing metadata reconcile. Reads the `--app` subtree under
+    /// `--metadata-dir`, snapshots remote ASC metadata (appInfos +
+    /// appStoreVersions + appCategories), diffs per field, prints the plan,
+    /// and in `apply` executes the per-field PATCH/POST.
+    ///
+    /// `--app-id` is optional: it defaults to the `apple_id` in the app's
+    /// `app-meta.yaml`. Minesweeper omits `apple_id` (no ASC record yet), so
+    /// `metadata plan --app minesweeper` exits cleanly with a notice rather
+    /// than 404-crashing.
+    private static func runMetadataRemote(args: [String], mode: ASCClient.Mode) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let appName = try opts.required("app")
+        let metadataDir = opts["metadata-dir"] ?? "docs/app-store/metadata"
+
+        guard let app = MetadataApp(rawValue: appName) else {
+            throw CLIError.invalidValue(flag: "--app", value: appName, allowed: MetadataApp.allCases.map(\.rawValue))
+        }
+
+        let config = try MetadataConfig.load(app: app, metadataDir: metadataDir)
+
+        // App ID: explicit flag wins, else the YAML's apple_id.
+        guard let appId = opts["app-id"] ?? config.appMeta.appleId else {
+            // Minesweeper path: no ASC app record yet. Exit cleanly (the
+            // dispatch brief expects a graceful note, not a crash).
+            print("metadata: app '\(app.rawValue)' has no apple_id in app-meta.yaml "
+                + "and no --app-id given — no ASC app to reconcile against. "
+                + "Create the app in ASC first (user-owned), then re-run with --app-id.")
+            return
+        }
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: mode
+        )
+
+        // 1. Resolve the category catalog (human label → ASC id token).
+        //    Printed so the plan pass surfaces Apple's real id tokens
+        //    (plan §7 UNCONFIRMED resolution).
+        let categoryCatalog: APICollectionWithIncluded
+        do {
+            categoryCatalog = try await client.listAppCategories()
+            printCategoryCatalog(categoryCatalog)
+        } catch {
+            FileHandle.standardError.write(Data("warn: listAppCategories failed: \(error)\n".utf8))
+        }
+
+        // 2. Snapshot remote metadata state.
+        let remote: MetadataRemoteState
+        do {
+            remote = try await snapshotMetadata(client: client, appId: appId, versionFilter: opts["version"])
+        } catch let ASCClient.ClientError.httpStatus(code, path, body) where code == 404 {
+            print("metadata: ASC returned 404 for \(path) — app id \(appId) not found "
+                + "(MS app likely not created yet). Body: \(body)")
+            return
+        }
+
+        // 3. Plan.
+        let actions = MetadataReconciler.plan(config: config, remote: remote)
+        print("Plan: \(actions.count) metadata action(s) for \(app.rawValue) (app-id \(appId))")
+        for action in actions {
+            print("  \(describeMetadata(action))")
+        }
+
+        // 4. Apply (user-owned — only when explicitly requested).
+        if mode == .apply {
+            for action in actions {
+                try await executeMetadata(action, client: client)
+            }
+            print("Applied.")
+        }
+    }
+
+    /// One GET pass that builds the `MetadataRemoteState`: picks the editable
+    /// appInfo + version, indexes their localizations, reads current category
+    /// relationship ids.
+    private static func snapshotMetadata(
+        client: ASCClient,
+        appId: String,
+        versionFilter: String?
+    ) async throws -> MetadataRemoteState {
+        var remote = MetadataRemoteState()
+
+        // appInfos + localizations + category relationships.
+        let appInfos = try await client.listAppInfos(appId: appId)
+        let appInfoIncludedById = Dictionary(uniqueKeysWithValues: appInfos.included.map { ($0.id, $0) })
+        // Pick the editable appInfo: prefer one whose state is an editable
+        // value; fall back to the first. The real state enum value is printed
+        // below so plan §7's "which appInfo is editable" resolves at run time.
+        let editableStates: Set<String> = [
+            "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
+            "METADATA_REJECTED", "INVALID_BINARY", "WAITING_FOR_REVIEW",
+        ]
+        let chosenAppInfo = appInfos.data.first { info in
+            let state = info.attributes["state"] ?? info.attributes["appStoreState"] ?? ""
+            return editableStates.contains(state)
+        } ?? appInfos.data.first
+
+        if let info = chosenAppInfo {
+            remote.appInfoId = info.id
+            print("appInfo chosen: id=\(info.id) "
+                + "state=\(info.attributes["state"] ?? info.attributes["appStoreState"] ?? "?") "
+                + "(of \(appInfos.data.count) appInfos)")
+            let rels = appInfos.relationships[info.id] ?? [:]
+            remote.primaryCategoryId = rels["primaryCategory"]?.first
+            remote.secondaryCategoryId = rels["secondaryCategory"]?.first
+            let locIds = rels["appInfoLocalizations"] ?? []
+            for locId in locIds {
+                guard let loc = appInfoIncludedById[locId],
+                      loc.type == "appInfoLocalizations",
+                      let locale = loc.attributes["locale"] else { continue }
+                remote.appInfoLocalizations[locale] = MetadataRemoteState.AppInfoLocRemote(
+                    id: loc.id,
+                    name: loc.attributes["name"],
+                    subtitle: loc.attributes["subtitle"],
+                    privacyPolicyUrl: loc.attributes["privacyPolicyUrl"]
+                )
+            }
+            if !remote.appInfoLocalizations.isEmpty {
+                let attrKeys = appInfoIncludedById.values
+                    .first { $0.type == "appInfoLocalizations" }?
+                    .attributes.keys.sorted() ?? []
+                print("appInfoLocalizations attributes seen: \(attrKeys)")
+            }
+        }
+
+        // appStoreVersions + localizations.
+        let versions = try await client.listAppStoreVersions(appId: appId)
+        let versionIncludedById = Dictionary(uniqueKeysWithValues: versions.included.map { ($0.id, $0) })
+        let editableVersionStates: Set<String> = [
+            "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
+            "METADATA_REJECTED", "INVALID_BINARY", "WAITING_FOR_REVIEW",
+        ]
+        // `--version` filters to a specific versionString when the app has
+        // several; otherwise pick the editable one, else the first.
+        let candidates = versionFilter.map { filter in
+            versions.data.filter { $0.attributes["versionString"] == filter }
+        } ?? versions.data
+        let chosenVersion = candidates.first { v in
+            let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
+            return editableVersionStates.contains(state)
+        } ?? candidates.first
+
+        if let v = chosenVersion {
+            remote.versionId = v.id
+            print("appStoreVersion chosen: id=\(v.id) "
+                + "version=\(v.attributes["versionString"] ?? "?") "
+                + "state=\(v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? "?") "
+                + "(of \(versions.data.count) versions)")
+            let locIds = versions.relationships[v.id]?["appStoreVersionLocalizations"] ?? []
+            for locId in locIds {
+                guard let loc = versionIncludedById[locId],
+                      loc.type == "appStoreVersionLocalizations",
+                      let locale = loc.attributes["locale"] else { continue }
+                remote.versionLocalizations[locale] = MetadataRemoteState.VersionLocRemote(
+                    id: loc.id,
+                    description: loc.attributes["description"],
+                    keywords: loc.attributes["keywords"],
+                    promotionalText: loc.attributes["promotionalText"],
+                    whatsNew: loc.attributes["whatsNew"],
+                    marketingUrl: loc.attributes["marketingUrl"],
+                    supportUrl: loc.attributes["supportUrl"]
+                )
+            }
+            if let sample = versionIncludedById.values.first(where: { $0.type == "appStoreVersionLocalizations" }) {
+                print("appStoreVersionLocalizations attributes seen: \(sample.attributes.keys.sorted())")
+            }
+        }
+
+        return remote
+    }
+    // swiftlint:enable function_body_length
+
+    /// Print the resolved ASC category catalog (genre id → subcategory ids),
+    /// so the plan pass records the real id tokens (plan §7).
+    private static func printCategoryCatalog(_ catalog: APICollectionWithIncluded) {
+        let subsById = Dictionary(uniqueKeysWithValues: catalog.included.map { ($0.id, $0) })
+        let games = catalog.data.first { $0.id == "GAMES" } ?? catalog.data.first { $0.id.hasPrefix("GAMES") }
+        print("appCategories (top-level genres): \(catalog.data.map(\.id).sorted())")
+        if let games {
+            let subIds = catalog.relationships[games.id]?["subcategories"] ?? []
+            let resolved = subIds.compactMap { subsById[$0]?.id }.sorted()
+            print("appCategories GAMES subcategories: \(resolved)")
+        }
+    }
+
+    private static func describeMetadata(_ action: MetadataAction) -> String {
+        switch action {
+        case .createAppInfoLoc(_, let l, _):      return "CREATE appInfo-loc      [\(l)]"
+        case .updateAppInfoLoc(_, let l, _):      return "UPDATE appInfo-loc      [\(l)]"
+        case .appInfoLocUnchanged(let l):         return "OK     appInfo-loc      [\(l)]"
+        case .createVersionLoc(_, let l, _):      return "CREATE version-loc      [\(l)]"
+        case .updateVersionLoc(_, let l, _):      return "UPDATE version-loc      [\(l)]"
+        case .versionLocUnchanged(let l):         return "OK     version-loc      [\(l)]"
+        case .updateCategories(_, let p, let s):  return "UPDATE categories       primary=\(p ?? "nil") secondary=\(s ?? "nil")"
+        case .categoriesUnchanged:                return "OK     categories"
+        }
+    }
+
+    private static func executeMetadata(_ action: MetadataAction, client: ASCClient) async throws {
+        switch action {
+        case .createAppInfoLoc(let appInfoId, let locale, let listing):
+            _ = try await client.createAppInfoLocalization(
+                appInfoId: appInfoId, locale: locale,
+                name: listing.name, subtitle: listing.subtitle,
+                privacyPolicyUrl: listing.privacyPolicyUrl
+            )
+        case .updateAppInfoLoc(let locId, _, let listing):
+            _ = try await client.updateAppInfoLocalization(
+                localizationId: locId,
+                name: listing.name, subtitle: listing.subtitle,
+                privacyPolicyUrl: listing.privacyPolicyUrl
+            )
+        case .appInfoLocUnchanged:
+            break
+        case .createVersionLoc(let versionId, let locale, let listing):
+            _ = try await client.createVersionLocalization(
+                versionId: versionId, locale: locale,
+                description: listing.description, keywords: listing.keywords,
+                promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
+                marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+            )
+        case .updateVersionLoc(let locId, _, let listing):
+            _ = try await client.updateVersionLocalization(
+                localizationId: locId,
+                description: listing.description, keywords: listing.keywords,
+                promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
+                marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+            )
+        case .versionLocUnchanged:
+            break
+        case .updateCategories(let appInfoId, let primaryId, let secondaryId):
+            _ = try await client.updateAppInfoCategories(
+                appInfoId: appInfoId, primaryCategoryId: primaryId, secondaryCategoryId: secondaryId
+            )
+        case .categoriesUnchanged:
+            break
+        }
     }
 
     // MARK: - iap plan / apply
@@ -512,12 +778,15 @@ internal enum CLIError: Error, CustomStringConvertible {
     case missingFlag(String)
     case cannotReadFile(String)
     case validationFailed
+    case invalidValue(flag: String, value: String, allowed: [String])
 
     internal var description: String {
         switch self {
         case .missingFlag(let f): return "missing required flag: \(f)"
         case .cannotReadFile(let p): return "cannot read file: \(p)"
         case .validationFailed: return "validation failed"
+        case .invalidValue(let flag, let value, let allowed):
+            return "invalid value for \(flag): '\(value)' (allowed: \(allowed.joined(separator: ", ")))"
         }
     }
 }
