@@ -84,4 +84,21 @@ struct LiveGameCenterClientSubmitTests {
         #expect(calls.first?.leaderboardId
                 == "com.wei18.sudoku.leaderboard.hard.daily.v1")
     }
+
+    // #291: game-agnostic raw submit — passes the leaderboard id through
+    // verbatim and applies the same seconds → centiseconds conversion. This
+    // is the path Minesweeper (and any future game) calls directly.
+    @Test func rawSubmitPassesLeaderboardIdAndConverts() async throws {
+        let spy = SubmitSpy()
+        let client = makeClient(spy: spy)
+        try await client.submitScore(
+            leaderboardId: "com.wei18.minesweeper.leaderboard.beginner.besttime.v1",
+            elapsedSeconds: 251
+        )
+        let calls = await spy.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.centiseconds == 25_100)
+        #expect(calls.first?.leaderboardId
+                == "com.wei18.minesweeper.leaderboard.beginner.besttime.v1")
+    }
 }

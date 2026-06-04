@@ -10,9 +10,9 @@
 // (#278 / #296) — no hardcoded colors. The grid is single-column on compact
 // width and two-column on regular (Mac / iPad), matching Sudoku.
 //
-// Leaderboard is a disabled stub until MS Game Center lands (#291): the card
-// renders with a "Coming soon" subtitle and is `.disabled(true)`, so its tap
-// is inert (the VM branch is a documented no-op, never a route).
+// Leaderboard (#291): the card is enabled and presents Apple's native Game
+// Center dashboard modally (`MinesweeperGameCenterDashboard.present`) — a side
+// effect, never a route (mirrors Sudoku #49).
 
 public import SwiftUI
 public import MonetizationCore
@@ -48,8 +48,6 @@ public struct MinesweeperHomeView: View {
                         MinesweeperModeCard(mode: mode)
                     }
                     .buttonStyle(.plain)
-                    // Leaderboard is inert until MS Game Center lands (#291).
-                    .disabled(mode == .leaderboard)
                     .accessibilityIdentifier("MinesweeperHomeView.\(mode.rawValue)Card")
                 }
 
@@ -178,7 +176,7 @@ private extension MinesweeperHomeMode {
         case .newGame: "Pick a difficulty"
         case .daily: "3 boards today"
         case .practice: "All difficulties"
-        case .leaderboard: "Coming soon"
+        case .leaderboard: "Best times"
         case .settings: "Purchases / about"
         }
     }

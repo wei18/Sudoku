@@ -34,6 +34,8 @@
 
 internal import AdsAdMob
 internal import Foundation
+internal import GameCenterClient
+internal import GameCenterTesting
 internal import IAPStoreKit2
 internal import MonetizationCore
 internal import MonetizationTesting
@@ -51,6 +53,12 @@ extension MinesweeperAppComposition {
             NoOpTrackingSink()
         ])
         let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
+
+        // Game Center client (#291). Shared GameCenterKit seam — GameKit is
+        // fully encapsulated inside `LiveGameCenterClient` / `GKAuthDriver`.
+        // The board VM submits a best-time on win; the Home Leaderboard card
+        // presents the native dashboard. Mirrors Sudoku's `AppComposition.Live`.
+        let gameCenter: any GameCenterClient = LiveGameCenterClient(authDriver: GKAuthDriver())
 
         // Persistence. Puzzle loader is a no-op stub — MS has no
         // PuzzleProvider yet and SavedGameStore.fetch never fires for MS
@@ -153,13 +161,16 @@ extension MinesweeperAppComposition {
             monetizationController: monetizationController,
             adProvider: adProvider,
             adGate: adGate,
-            persistence: persistence
+            persistence: persistence,
+            gameCenter: gameCenter,
+            errorReporter: errorReporter
         )
 
         return MinesweeperAppComposition(
             routeFactory: routeFactory,
             telemetry: telemetry,
             errorReporter: errorReporter,
+            gameCenter: gameCenter,
             persistence: persistence,
             adProvider: adProvider,
             iapClient: iapClient,
@@ -177,6 +188,9 @@ extension MinesweeperAppComposition {
     public static func preview() -> MinesweeperAppComposition {
         let telemetry = Telemetry(sinks: [])
         let errorReporter: any ErrorReporter = NoopErrorReporter()
+
+        // #291: fake GC client — zero-IO, never touches GameKit.
+        let gameCenter: any GameCenterClient = FakeGameCenterClient()
 
         let persistence = FakePersistence()
 
@@ -201,13 +215,16 @@ extension MinesweeperAppComposition {
             monetizationController: monetizationController,
             adProvider: adProvider,
             adGate: adGate,
-            persistence: persistence
+            persistence: persistence,
+            gameCenter: gameCenter,
+            errorReporter: errorReporter
         )
 
         return MinesweeperAppComposition(
             routeFactory: routeFactory,
             telemetry: telemetry,
             errorReporter: errorReporter,
+            gameCenter: gameCenter,
             persistence: persistence,
             adProvider: adProvider,
             iapClient: iapClient,

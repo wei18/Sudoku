@@ -42,6 +42,18 @@ public protocol GameCenterClient: Sendable {
         leaderboardKind: LeaderboardKind
     ) async throws
 
+    /// Game-agnostic raw submit: hand a fully-formed leaderboard identifier
+    /// and an elapsed-seconds score straight to GameKit. Sudoku's typed
+    /// `submitScore(puzzleId:…)` above delegates here after computing its
+    /// `LeaderboardKind → id` mapping; Minesweeper (and any future game)
+    /// calls this directly with its own leaderboard IDs (#291). The
+    /// seconds → centiseconds conversion happens inside the implementation,
+    /// exactly once, at the GameKit boundary.
+    func submitScore(
+        leaderboardId: String,
+        elapsedSeconds: Int
+    ) async throws
+
     /// Report a single achievement's progress percent (0...100).
     func reportAchievement(_ achievement: AchievementProgress) async throws
 

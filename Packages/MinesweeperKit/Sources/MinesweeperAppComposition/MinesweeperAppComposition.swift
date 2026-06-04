@@ -15,7 +15,10 @@
 //   - `toastController` — shared toast surface (wired to MinesweeperRoot
 //     via `.toastOverlay` since U15 / PR #263)
 //
-// GameCenter remains unwired — no MS Game Center surface designed yet.
+// GameCenter (#291): `gameCenter` — `LiveGameCenterClient(authDriver:
+//   GKAuthDriver())` in `.live()`, `FakeGameCenterClient` in `.preview()`.
+//   Threaded into `LiveRouteFactory` so the board VM submits a best-time on
+//   win; Home Leaderboard card presents the native GC dashboard modal (#49).
 //
 // Public surface:
 //
@@ -25,6 +28,7 @@
 // The App target reads `bag.rootView` and hands it to `WindowGroup`.
 
 public import SwiftUI
+public import GameCenterClient
 public import GameShellUI
 public import MinesweeperUI
 public import Telemetry
@@ -43,6 +47,10 @@ public struct MinesweeperAppComposition {
     public let routeFactory: any RouteFactory<AppRoute>
     public let telemetry: Telemetry
     public let errorReporter: any ErrorReporter
+    // #291: shared Game Center client. `.live()` = `LiveGameCenterClient`,
+    // `.preview()` = `FakeGameCenterClient`. Held on the bag (mirrors Sudoku's
+    // `AppComposition.gameCenter`) so future MS GC surfaces share one instance.
+    public let gameCenter: any GameCenterClient
     // MS monetization wire Phase 3 (2026-06-03). Order matches Sudoku's
     // `AppComposition` for grep parity.
     public let persistence: any PersistenceProtocol
@@ -57,6 +65,7 @@ public struct MinesweeperAppComposition {
         routeFactory: any RouteFactory<AppRoute>,
         telemetry: Telemetry,
         errorReporter: any ErrorReporter,
+        gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
         adProvider: any AdProvider,
         iapClient: any IAPClient,
@@ -68,6 +77,7 @@ public struct MinesweeperAppComposition {
         self.routeFactory = routeFactory
         self.telemetry = telemetry
         self.errorReporter = errorReporter
+        self.gameCenter = gameCenter
         self.persistence = persistence
         self.adProvider = adProvider
         self.iapClient = iapClient

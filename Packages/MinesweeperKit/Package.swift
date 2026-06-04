@@ -44,6 +44,12 @@ let productionTargets: [Target] = [
             // (graceful-degrade) — mirrors SudokuUI.DailyHubViewModel's deps.
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // #291: Game Center seam. `MinesweeperGameViewModel` submits a
+            // best-time on win via the game-agnostic `GameCenterClient`
+            // protocol; `MinesweeperGameCenterDashboard` presents the native
+            // GC modal. GameKit stays fully encapsulated inside GameCenterKit's
+            // Live target — MinesweeperUI sees only the GameKit-free protocol.
+            .product(name: "GameCenterClient", package: "GameCenterKit"),
             // #178: invariant-reporting tool — mirrors SudokuUI. `reportIssue(_:)`
             // surfaces impossible-state catches (fails tests, purple-warns in
             // #Preview, non-fatal in release). Deliberate restricted-import
@@ -88,6 +94,11 @@ let productionTargets: [Target] = [
             // type leaks into the production target but never instantiates
             // outside `.preview()` — same precedent set by SudokuKit Preview.
             .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
+            // #291: `.live()` wires `LiveGameCenterClient(authDriver:
+            // GKAuthDriver())`; `.preview()` wires `FakeGameCenterClient`.
+            // Mirrors Sudoku's AppComposition (Live.swift / Preview.swift).
+            .product(name: "GameCenterClient", package: "GameCenterKit"),
+            .product(name: "GameCenterTesting", package: "GameCenterKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -108,6 +119,10 @@ let testTargets: [Target] = [
             // `.live()` factories and exercise `observe(_:)` / `report(_:)`
             // smoke calls — direct `import Telemetry` needed.
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // #291: submit-on-win + leaderboard-card present tests inject the
+            // shared `FakeGameCenterClient` to assert call shape.
+            .product(name: "GameCenterClient", package: "GameCenterKit"),
+            .product(name: "GameCenterTesting", package: "GameCenterKit"),
             // #278 Tier-1 Phase 2b: MS snapshot harness. Mirrors SudokuKit's
             // SudokuUITests snapshot dep — themed board baselines are the
             // Designer's visual-verification surface.
@@ -149,6 +164,9 @@ let package = Package(
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
         .package(name: "PersistenceKit", path: "../PersistenceKit"),
         .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
+        // #291: shared Game Center seam (GameCenterClient protocol + Live impl
+        // in GameCenterKit; FakeGameCenterClient in GameCenterTesting).
+        .package(name: "GameCenterKit", path: "../GameCenterKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

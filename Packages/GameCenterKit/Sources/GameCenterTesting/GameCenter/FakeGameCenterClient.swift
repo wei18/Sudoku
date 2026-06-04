@@ -13,6 +13,7 @@ public import SudokuEngine
 public enum FakeGameCenterOperation: Sendable, Equatable, Hashable {
     case authenticate
     case submitScore(puzzleId: String, elapsedSeconds: Int, leaderboardKind: LeaderboardKind)
+    case submitRawScore(leaderboardId: String, elapsedSeconds: Int)
     case reportAchievement(achievementId: String, percentComplete: Double)
     case fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, aroundLocalPlayer: Bool, limit: Int)
     case friendsAuthorizationStatus
@@ -111,6 +112,17 @@ public actor FakeGameCenterClient: GameCenterClient {
             puzzleId: puzzleId,
             elapsedSeconds: elapsedSeconds,
             leaderboardKind: leaderboardKind
+        ))
+        if let error = submitScoreError { throw error }
+    }
+
+    public func submitScore(
+        leaderboardId: String,
+        elapsedSeconds: Int
+    ) async throws {
+        operations.append(.submitRawScore(
+            leaderboardId: leaderboardId,
+            elapsedSeconds: elapsedSeconds
         ))
         if let error = submitScoreError { throw error }
     }
