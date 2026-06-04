@@ -46,6 +46,12 @@ public struct LiveRouteFactory: RouteFactory {
     // v2.4.6: optional toast surface forwarded to `SettingsViewModel` so the
     // clear-cache success can route through the same overlay as IAP results.
     private let toastController: ToastController?
+    // #287 Phase 2: builds a fresh daily-ready primer coordinator for a Daily
+    // completion mount. Injected as a closure (not the raw Reminders seams) so
+    // ALL reminder wiring — Live conformers, copy, telemetry bridge — stays in
+    // AppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
+    // in previews / tests → no primer, byte-identical Completion screens.
+    private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -57,7 +63,8 @@ public struct LiveRouteFactory: RouteFactory {
         iapClient: any IAPClient,
         adGate: AdGate,
         monetizationController: MonetizationStateController? = nil,
-        toastController: ToastController? = nil
+        toastController: ToastController? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -69,6 +76,14 @@ public struct LiveRouteFactory: RouteFactory {
         self.adGate = adGate
         self.monetizationController = monetizationController
         self.toastController = toastController
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
+    }
+
+    /// A puzzleId is a Daily unless it carries the practice prefix — same
+    /// encoding `BoardLoaderView.identity(from:)` relies on. The reminder primer
+    /// is offered only after a Daily solve (proposal §5.1; flow S02).
+    private static func isDaily(puzzleId: String) -> Bool {
+        !puzzleId.hasPrefix("practice-")
     }
 
     @MainActor
@@ -108,6 +123,11 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .completion(let puzzleId, let elapsedSeconds):
+            // #287 Phase 2: offer the daily-ready primer ONLY on a Daily solve
+            // (flow S02). Practice solves pass `reminderPrimer: nil` → no change.
+            let reminderPrimer = Self.isDaily(puzzleId: puzzleId)
+                ? makeDailyReminderPrimer?()
+                : nil
             return AnyView(
                 CompletionView(
                     viewModel: CompletionViewModel(
@@ -115,7 +135,8 @@ public struct LiveRouteFactory: RouteFactory {
                         elapsedSeconds: elapsedSeconds,
                         leaderboardId: LeaderboardIDs.id(for: .dailyEasy),
                         gameCenter: gameCenter
-                    )
+                    ),
+                    reminderPrimer: reminderPrimer
                 )
             )
         case .settings:

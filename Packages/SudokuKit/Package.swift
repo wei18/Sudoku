@@ -34,6 +34,12 @@ let telemetryTestingDep: Target.Dependency = .product(name: "TelemetryTesting", 
 let persistenceDep: Target.Dependency = .product(name: "Persistence", package: "PersistenceKit")
 let gameCenterClientDep: Target.Dependency = .product(name: "GameCenterClient", package: "GameCenterKit")
 let gameCenterTestingDep: Target.Dependency = .product(name: "GameCenterTesting", package: "GameCenterKit")
+// #287 Phase 2: RemindersKit reminder mechanism (protocol seams + value types).
+// SudokuUI's `ReminderPrimerCoordinator` depends on the seams only; the live
+// `UserNotifications` conformers + the UNUserNotificationCenterDelegate stay in
+// AppComposition. `RemindersTesting` provides the fakes for the coordinator tests.
+let remindersDep: Target.Dependency = .product(name: "Reminders", package: "RemindersKit")
+let remindersTestingDep: Target.Dependency = .product(name: "RemindersTesting", package: "RemindersKit")
 
 // MARK: - Production targets
 
@@ -65,6 +71,10 @@ let productionTargets: [Target] = [
             // shell components extract (RootView, Settings shell, Daily /
             // Practice hubs — Phase X PRs).
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // #287 Phase 2: ReminderPrimerCoordinator names the `ReminderScheduler`
+            // / `NotificationAuthorizing` seams + `ReminderContent`. UI/logic only;
+            // never `UserNotifications` (that stays in AppComposition's Live layer).
+            remindersDep,
             // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
             // impossible-state / programmer-error catches (fails tests +
             // purple-warns in #Preview, non-fatal in release). Deliberate
@@ -114,6 +124,11 @@ let productionTargets: [Target] = [
             // re-export does not satisfy Swift 6 module name resolution
             // — AppComposition needs the dep at its target boundary.
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // #287 Phase 2: `.live()` wires `LiveNotificationAuthorizer` +
+            // `LiveReminderScheduler` and sets the `UNUserNotificationCenterDelegate`.
+            // This is the only target allowed `import UserNotifications` (transitively
+            // via the Reminders Live conformers — the delegate itself imports it here).
+            remindersDep,
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
             // for the protocol fakes. Shipped in the binary; the `.live()`
             // factory does not reference them so dead-code elimination keeps
@@ -190,6 +205,10 @@ let testTargets: [Target] = [
             // direct `import GameShellUI` — same reason AppComposition needs
             // the explicit dep at its boundary.
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // #287 Phase 2: ReminderPrimerCoordinatorTests drive the coordinator
+            // with FakeReminderScheduler / FakeNotificationAuthorizing.
+            remindersDep,
+            remindersTestingDep,
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ] + monetizationTestDeps,
         resources: [.copy("__Snapshots__")],
@@ -285,6 +304,11 @@ let package = Package(
         // ships gameplay UI + Sudoku-specific composition.
         // See `meetings/2026-06-01_minesweeper-dev-roadmap.md` Phase X.
         .package(name: "GameShellKit", path: "../GameShellKit"),
+        // #287 Phase 2: shared local-notification reminder mechanism. Leaf
+        // sibling package (protocol seams + value types + Live UN conformers).
+        // SudokuUI consumes the `Reminders` seams; AppComposition wires the Live
+        // conformers + the notification-center delegate.
+        .package(name: "RemindersKit", path: "../RemindersKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
