@@ -79,12 +79,16 @@ runtime ad calls.
 
 | Feature | Sudoku has it | Minesweeper state | Listing/notes treatment |
 |---|---|---|---|
-| Game Center leaderboards / achievements | yes | **not wired** (entitlement only) | omit entirely from v1 listing + notes |
-| Daily (date-seeded, scored) | yes | **stub hub only** (no engine/persistence) | describe as "a daily set of boards" at most; no scoring claim |
-| Saved-game resume | yes (CloudKit) | persistence wired, save-flow follow-up | omit "resume" until the save flow lands |
+| Game Center leaderboards | yes | **WIRED + live in ASC** (#291/#328 — 3 per-difficulty recurring-daily leaderboards created via API) | may be listed/claimed; add the leaderboard block to notes + a leaderboard screenshot |
+| Game Center achievements | yes | **not wired** (no MS achievements) | omit achievements from v1 listing + notes |
+| Daily (date-seeded) | yes | **WIRED** (#290/#307 — date-seeded trio, deterministic per UTC-day) | may describe the daily puzzles + their daily leaderboards |
+| Saved-game resume | yes (CloudKit) | persistence wired, **save-flow still a follow-up** (no SavedGameStore.fetch path) | omit "resume" / "automatic saves" until the save flow lands (copy already scrubbed, #236) |
 
-If Game Center is wired before submission, add the Sudoku-style leaderboard
-block to the notes and a leaderboard screenshot to the attachments below.
+Updated 2026-06-05: the MS mirror-Sudoku build-out epic (#293) shipped this
+session — Game Center leaderboards and the Daily mode are now wired (the
+earlier "not wired / stub" rows were pre-build-out). Saved-game resume remains
+the one genuinely-unwired feature; the store copy was scrubbed of resume claims
+accordingly (#236).
 
 ## Pre-submission verification checklist (Leader/user)
 
