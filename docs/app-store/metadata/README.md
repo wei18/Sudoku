@@ -10,9 +10,11 @@ The repo now ships two apps (Sudoku, Minesweeper). The directory layout is
 ```
 metadata/
 ├── README.md            — this file
+├── app-meta.yaml         — Sudoku app-level (non-localized) fields (SUDOKU-IMPLICIT)
 ├── <locale>/listing.yaml — Sudoku listings (SUDOKU-IMPLICIT, the original tree)
 ├── iap/remove-ads.yaml   — Sudoku Remove Ads IAP (SUDOKU-IMPLICIT)
 └── minesweeper/          — Minesweeper listings (per-app subtree)
+    ├── app-meta.yaml
     ├── <locale>/listing.yaml
     └── iap/remove-ads.yaml
 ```
@@ -38,6 +40,44 @@ flag (or derive the subtree from `--app-id`) and read the matching tree.
 ```
 
 `en` and `zh-Hant` are author-written sources. The other five are AI-translated derivatives per the `ai-translated-localization` skill convention, with locale-specific etiquette already applied (no honorific particles in ja, no ครับ/ค่ะ in th, 해요체 mid-formality in ko, neutral LATAM Spanish, term-level conversion not character-conversion for zh-Hans). The Minesweeper subtree follows the same source/translation tiering.
+
+## App-level metadata (`app-meta.yaml`, since 2026-06-04, #309)
+
+Some ASC fields are **global per app, not per locale** — duplicating them
+across the seven `listing.yaml` files would be a denormalization that drifts.
+They live once per app in `app-meta.yaml`:
+
+- `<top level>/app-meta.yaml` — Sudoku (mirrors the SUDOKU-IMPLICIT placement)
+- `minesweeper/app-meta.yaml` — Minesweeper
+
+**Shape decision (#309):** a separate per-app `app-meta.yaml` (not a block
+inside one locale's listing, not a single shared top-level file) — it keeps
+the existing per-locale files untouched, matches Fastlane `deliver`'s split of
+per-locale vs global/`review_information`, and slots into the asymmetric
+SUDOKU-IMPLICIT + `minesweeper/` layout above. Field names are snake_case to
+match the ASC API JSON keys.
+
+| Field | Scope | Source of truth |
+|---|---|---|
+| `copyright` | app | repo `LICENSE` — `"2026 Wei18"` (ASC prepends ©) |
+| `primary_category` + `primary_first/second_sub_category` | app | Games > Puzzle/Board (Sudoku) · Board/Puzzle (Minesweeper) |
+| `secondary_category` + `secondary_first/second_sub_category` | app | Games > Family (Sudoku) · Strategy (Minesweeper) |
+| `review_information.{first_name,last_name,email_address,phone_number}` | per submission | **PLACEHOLDER — see flags below**; never hardcode the real PII |
+| `review_information.{demo_user,demo_password}` | per submission | `null` — N/A, no login |
+| `review_information.notes_source` / `notes_summary` | per submission | the canonical Notes block is the fenced text in `docs/app-store/review/{sudoku-v2.5,minesweeper-v1}.md` — paste THAT verbatim; the summary just points to it |
+
+**Flagged placeholders (need user confirmation before any ASC upload):**
+`review_information.email_address` (the ASC account email — lives in private
+memory `asc-api-credentials`, deliberately not committed), `phone_number`
+(E.164 contact number), and the reviewer-contact `first_name` / `last_name`.
+
+**Legacy note:** `primary_category`, `secondary_category`, and `age_rating`
+also still appear inside each `listing.yaml` (they predate `app-meta.yaml`).
+`app-meta.yaml` is now the canonical home for the category fields; the
+per-locale copies are kept as-is this round to avoid a churny 14-file edit and
+should be treated as read-only mirrors. `age_rating` stays per-listing for now
+(it is genuinely app-global too; fold it into `app-meta.yaml` in a later
+cleanup if the ASCRegister `metadata` mode wants a single source).
 
 ## Field reference (per Apple ASC limits)
 
