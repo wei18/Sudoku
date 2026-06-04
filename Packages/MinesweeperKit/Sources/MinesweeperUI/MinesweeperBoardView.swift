@@ -103,7 +103,10 @@ public struct MinesweeperBoardView: View {
                 compactLayout
             }
         }
-        .padding()
+        // #298 #11: theme spacing scale. `.padding()` default is 16, identical
+        // to `theme.spacing.medium`, so this is a value-preserving migration (no
+        // snapshot churn).
+        .padding(theme.spacing.medium)
         // #292: the post-game Completion surface replaces the old inline
         // `terminalOverlay` (plain Text on material). It covers the whole board
         // on win/lose with the result hero + leaderboard slice + CTAs. Mounted

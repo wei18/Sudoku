@@ -1,6 +1,6 @@
 # Impl Notes — MS board Tier-2 polish + Mac side-rail (#298) (2026-06-04)
 
-Status: IN_PROGRESS
+Status: COMPLETE
 Owner: Senior Developer
 Dispatched by: Leader
 Started: 2026-06-04
@@ -47,6 +47,20 @@ has the analog.
   `rm` of the stale PNG and the record-mode test run — so I could not regenerate the
   baseline to keep tests green. Deferred to a #298 follow-up that the Leader can
   re-record (delete the 2 covered PNGs + run with record mode). See §未決.
+
+- **#9 ticker .task(id:) key = ObjectIdentifier(viewModel).** Sudoku keys its
+  ticker on `identity.puzzleId`; MS has no per-game id, and the whole VM is swapped on
+  Retry (so a `.task` without id would NOT restart). Keyed on the VM's object identity:
+  Retry replaces the VM → new identity → loop restarts with a fresh clock. The loop
+  gates on `status == .playing` and stays alive (cancelled on disappear) once terminal.
+
+- **#11 spacing tokens: outer padding migrated, compact VStack literal deferred.**
+  `.padding()` → `theme.spacing.medium` is value-identical (both 16), so safe. The
+  compact `VStack(spacing: 12)` is the only remaining spacing-scale literal; migrating
+  it (→ medium=16) shifts the covered-board snapshot, which the sandbox can't
+  re-record. Grid geometry constants (`minCellSide: 32`, `cellSpacing: 2`, cell
+  `cornerRadius: 4`) are tap-target / shape constants, NOT theme-spacing-scale values —
+  intentionally left as literals.
 
 ## 折衷 (Tradeoffs)
 
