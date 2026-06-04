@@ -1,0 +1,57 @@
+# App-level (non-localized) App Store Connect metadata — Minesweeper.
+#
+# These fields are GLOBAL per app, not per locale, so they live here once
+# instead of being duplicated across the seven <locale>/listing.yaml files.
+# See ../../README.md "App-level metadata" for the shape decision. Field names
+# are snake_case to match the ASC API JSON keys (and Fastlane `deliver`).
+#
+# Sources of truth:
+#   - copyright holder ............ repo LICENSE ("Copyright (c) 2026 Wei18")
+#   - categories ................... per-locale listing.yaml (Games > Puzzle/Board)
+#   - review_information.notes ..... docs/app-store/review/minesweeper-v1.md
+#
+# Values flagged "# FLAG:" below are placeholders awaiting user confirmation
+# (the real values are PII / account-private and must not be hardcoded here).
+
+app: minesweeper
+bundle_id: com.wei18.minesweeper
+# apple_id: TBD — Minesweeper not yet created in ASC (no numeric App ID yet).
+
+# --- Categories (ASC App Information) -------------------------------------
+# ASC takes a primary + optional secondary category, each with up to two
+# sub-categories. Minesweeper is a Game; sub-categories refine the genre.
+primary_category: "Games"
+primary_first_sub_category: "Board"
+primary_second_sub_category: "Puzzle"
+secondary_category: "Games"
+secondary_first_sub_category: "Strategy"
+secondary_second_sub_category: null
+
+# --- Copyright (ASC App Information) --------------------------------------
+# ASC convention: "<year> <legal holder name>" (no leading © — ASC adds it).
+copyright: "2026 Wei18"
+
+# --- Review information (ASC App Review, per submission) ------------------
+# Contact details Apple's reviewer uses if they need to reach the developer.
+# No demo account: the app needs no login (see review notes doc).
+review_information:
+  first_name: "Wei"          # FLAG: confirm reviewer-contact first name
+  last_name: "Wei18"         # FLAG: confirm reviewer-contact last/family name
+  email_address: "REPLACE_WITH_ASC_ACCOUNT_EMAIL"  # FLAG: ASC account email (memory `asc-api-credentials`); not hardcoded here
+  phone_number: "REPLACE_WITH_CONTACT_PHONE"        # FLAG: E.164 contact phone, e.g. "+886..."
+  demo_user: null            # N/A — no login required
+  demo_password: null        # N/A — no login required
+  # Notes pasted into ASC "Review Information → Notes". The canonical, full
+  # text is the fenced block in docs/app-store/review/minesweeper-v1.md —
+  # paste THAT verbatim at submission; this summary just points to it.
+  notes_source: "docs/app-store/review/minesweeper-v1.md"
+  notes_summary: |
+    No account or login required; app runs fully on first launch. Classic
+    Minesweeper, three difficulties (Beginner/Intermediate/Expert). First tap
+    is always safe (mines placed lazily after first reveal). One IAP
+    (com.wei18.minesweeper.iap.remove_ads, non-consumable, removes banner ads)
+    — sandbox test steps in the source doc. UMP + ATT consent on first launch;
+    declining is fully supported. CloudKit Private Database only, no app-owned
+    backend. Only third-party SDK is Google Mobile Ads (banner). NOTE: Game
+    Center and scored Daily are NOT wired in v1 — do not claim them. Paste the
+    full Notes block from the source doc verbatim at submission.
