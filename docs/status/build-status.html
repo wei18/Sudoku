@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku · Minesweeper — Build Status</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3340;
+    --txt:#e6edf3; --dim:#8b98a6; --faint:#5b6671;
+    --sage:#9BB87E; --slate:#7FAFCF; --amber:#E8A560; --red:#E66258; --green:#4BC579; --violet:#9d8cff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+  header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:28px}
+  h1{font-size:21px;margin:0;font-weight:700;letter-spacing:-.2px}
+  h1 .dot{color:var(--slate)}
+  .stamp{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .lede{color:var(--dim);font-size:13px;margin:6px 0 0}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:34px 0 14px;font-weight:700}
+  .grid{display:grid;gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  /* progress */
+  .epic{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .bar{height:9px;border-radius:6px;background:#222c38;overflow:hidden;margin:12px 0 6px}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--slate),var(--green));border-radius:6px}
+  .barmeta{display:flex;justify-content:space-between;color:var(--dim);font-size:12px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:16px}
+  .step{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:9px}
+  .step .ic{flex:0 0 auto;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px}
+  .done .ic{background:rgba(75,197,121,.16);color:var(--green)}
+  .now .ic{background:rgba(127,175,207,.18);color:var(--slate);animation:pulse 1.6s ease-in-out infinite}
+  .next .ic{background:#222c38;color:var(--faint)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .step b{font-weight:600;font-size:13px}
+  .step .id{color:var(--faint);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .step .sub{color:var(--dim);font-size:11.5px;display:block;margin-top:1px}
+  /* lists */
+  .row{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid #1f2730}
+  .row:last-child{border-bottom:0}
+  .pr{color:var(--green);font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;flex:0 0 52px}
+  .iss{color:var(--slate);font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;flex:0 0 52px}
+  .row .t{flex:1;font-size:13px}
+  .row .tag{color:var(--faint);font-size:11px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:720px){.cols{grid-template-columns:1fr}}
+  .pill{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:20px;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+  .pill.live{color:var(--slate);border-color:rgba(127,175,207,.4)}
+  .pill.parked{color:var(--violet);border-color:rgba(157,140,255,.35)}
+  .pill.user{color:var(--amber);border-color:rgba(232,165,96,.35)}
+  .legend{color:var(--faint);font-size:11.5px;margin-top:10px}
+  .muted{color:var(--dim)}
+  footer{margin-top:42px;color:var(--faint);font-size:11.5px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Sudoku <span class="dot">·</span> Minesweeper — Build Status</h1>
+    <p class="lede">Living dashboard · regenerated at each milestone by the Leader agent · <span class="muted">main is green (GameShell 8 / SudokuKit 167 / MinesweeperKit 55)</span></p>
+  </div>
+  <div class="stamp">2026-06-04</div>
+</header>
+
+<!-- ============ MS BUILD-OUT EPIC ============ -->
+<h2>Minesweeper → mirror-Sudoku build-out &nbsp;<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">epic #293</span></h2>
+<div class="epic">
+  <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <strong style="font-size:14px">3 / 6 shipped</strong>
+    <span class="muted" style="font-size:12px">theme ✓ · Home+hubs ✓ · Daily ✓ &nbsp;→&nbsp; Leaderboard (in review) · Completion · polish</span>
+  </div>
+  <div class="bar"><i style="width:52%"></i></div>
+  <div class="barmeta"><span>foundation + content landing</span><span>52%</span></div>
+
+  <div class="steps">
+    <div class="step done"><span class="ic">✓</span><div><b>Theme system</b> <span class="id">#278 T1</span><span class="sub">extracted to GameShellUI; MS slate-blue palette on board</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Home + reachable hubs</b> <span class="id">#288/#289</span><span class="sub">mode-card entry; Daily/Practice navigable</span></div></div>
+    <div class="step done"><span class="ic">✓</span><div><b>Daily model</b> <span class="id">#290</span><span class="sub">date-seeded trio, deterministic per UTC-day</span></div></div>
+    <div class="step now"><span class="ic">●</span><div><b>Leaderboard / Game Center</b> <span class="id">#291</span><span class="sub">in review — GC wiring + submit-on-win</span></div></div>
+    <div class="step next"><span class="ic">○</span><div><b>Completion screen</b> <span class="id">#292</span><span class="sub">mirror CompletionView</span></div></div>
+    <div class="step next"><span class="ic">○</span><div><b>Game-view polish</b> <span class="id">#298</span><span class="sub">Mac side-rail · win/lose · VoiceOver · spacing</span></div></div>
+  </div>
+  <div class="legend">✓ shipped · ● in review · ○ queued &nbsp;|&nbsp; theme tracked under #278, the rest under epic #293</div>
+</div>
+
+<!-- ============ IN FLIGHT ============ -->
+<h2>In flight now</h2>
+<div class="card">
+  <div class="row"><span class="iss">#291</span><span class="t">Leaderboard / Game Center integration <span class="pill live">CR pending</span></span><span class="tag">Developer → CR → merge</span></div>
+</div>
+
+<!-- ============ RECENT MERGES ============ -->
+<h2>Recently merged &nbsp;<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">2026-06-03 → 06-04</span></h2>
+<div class="cols">
+  <div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Minesweeper build-out</div>
+    <div class="row"><span class="pr">#307</span><span class="t">Daily date-seeded model + wired hub</span></div>
+    <div class="row"><span class="pr">#302</span><span class="t">Home entry + reachable Daily/Practice hubs</span></div>
+    <div class="row"><span class="pr">#296</span><span class="t">MinesweeperTheme + themed board <span class="tag">T1 P2b</span></span></div>
+    <div class="row"><span class="pr">#295</span><span class="t">split Sudoku cell tokens out of base Theme <span class="tag">T1 P2a</span></span></div>
+    <div class="row"><span class="pr">#294</span><span class="t">extract Theme system to GameShellUI <span class="tag">T1 P1</span></span></div>
+    <div class="row"><span class="pr">#283</span><span class="t">reuse shared About/Storage settings</span></div>
+    <div class="row"><span class="pr">#282</span><span class="t">board scaling + reveal/flag toggle <span class="tag">T0</span></span></div>
+  </div>
+  <div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tooling · refactor · docs</div>
+    <div class="row"><span class="pr">#304</span><span class="t">App Store submission prep (notes + MS metadata + ASC plan)</span></div>
+    <div class="row"><span class="pr">#301</span><span class="t">license-plist Acknowledgements for Minesweeper</span></div>
+    <div class="row"><span class="pr">#300</span><span class="t">adopt IssueReporting (reportIssue) at 2 invariant sites</span></div>
+    <div class="row"><span class="pr">#281</span><span class="t">extract ASCRegister into ASCRegisterKit package</span></div>
+    <div class="row"><span class="pr">#280</span><span class="t">extract generic RoutePath helper to GameShellUI</span></div>
+    <div class="row"><span class="pr">#285</span><span class="t">narrow LeaderboardLoader to local-player centring</span></div>
+    <div class="row"><span class="pr">#275</span><span class="t">AdMob dispose(handle:) for banner cleanup</span></div>
+  </div>
+</div>
+<p class="legend">+ the earlier follow-up sweep &amp; CR audit (#268–#274, #279), AdMob secret-injection thread (#263–#266), and v2.5 doc currency (#272/#273). ~30 PRs merged this session.</p>
+
+<!-- ============ OPEN BACKLOG ============ -->
+<h2>Open backlog</h2>
+<div class="cols">
+  <div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">MS build-out — remaining</div>
+    <div class="row"><span class="iss">#292</span><span class="t">Completion screen</span></div>
+    <div class="row"><span class="iss">#298</span><span class="t">game-view Tier-2 + Mac side-rail</span></div>
+    <div class="row"><span class="iss">#303</span><span class="t">Home snapshot coverage</span></div>
+    <div class="row"><span class="iss">#308</span><span class="t">Daily hub snapshot coverage</span></div>
+    <div class="row"><span class="iss">#297</span><span class="t">revealed-state snapshot seam</span></div>
+    <div class="row"><span class="iss">#284</span><span class="t">clear-cache feedback (待 save-flow)</span></div>
+
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px">Approved &amp; parked proposals</div>
+    <div class="row"><span class="iss">#286</span><span class="t">CaptureGuardKit — anti-capture cheat-guard <span class="pill parked">parked</span></span></div>
+    <div class="row"><span class="iss">#287</span><span class="t">RemindersKit — local notification reminders <span class="pill parked">parked</span></span></div>
+  </div>
+  <div class="card">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Engineering · follow-ups</div>
+    <div class="row"><span class="iss">#305</span><span class="t">extract shared UTCDay into a TimeKit leaf</span></div>
+    <div class="row"><span class="iss">#306</span><span class="t">refresh Sudoku v2.5 whats_new copy</span></div>
+    <div class="row"><span class="iss">#276</span><span class="t">gate banner dispose on gate-close/handle-change</span></div>
+    <div class="row"><span class="iss">#253</span><span class="t">audit CloudKit over-indexing</span></div>
+    <div class="row"><span class="iss">#209</span><span class="t">NSWindow real-macOS snapshot harness</span></div>
+    <div class="row"><span class="iss">#195</span><span class="t">ATT permission UX — design + copy</span></div>
+    <div class="row"><span class="iss">#252</span><span class="t">templatize provisioning walkthroughs</span></div>
+    <div class="row"><span class="iss">#166</span><span class="t">Android module portability prealloc</span></div>
+
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px">Infra · user-owned</div>
+    <div class="row"><span class="iss">#158</span><span class="t">GH Actions Phase 2 — PR review agents <span class="tag">blocked on #156</span></span></div>
+    <div class="row"><span class="iss">#156</span><span class="t">create GitHub App bot identity <span class="pill user">user</span></span></div>
+    <div class="row"><span class="iss">#157</span><span class="t">branch protection + required checks <span class="pill user">user</span></span></div>
+    <div class="row"><span class="iss">#132</span><span class="t">TestFlight + ASC submission tracking <span class="pill user">user</span></span></div>
+  </div>
+</div>
+
+<footer>
+  Generated by the Leader agent · single self-contained file at <code style="color:var(--dim)">docs/status/build-status.html</code> · open with <code style="color:var(--dim)">open</code>, versioned in git.
+  &nbsp;Pills: <span class="pill live">in review</span> <span class="pill parked">parked</span> <span class="pill user">user-owned</span>
+</footer>
+
+</div>
+</body>
+</html>
