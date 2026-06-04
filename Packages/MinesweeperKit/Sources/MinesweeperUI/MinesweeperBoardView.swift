@@ -22,6 +22,14 @@ public import Telemetry
 
 public struct MinesweeperBoardView: View {
 
+    @Environment(\.theme) private var theme
+    // #298 #6 (Tier-1 leftover): drive the Mac 2-column side-rail layout. On
+    // iPad/Mac (regular width) the board + a control rail sit side-by-side,
+    // mirroring Sudoku's BoardView.macLayout; iPhone (compact) keeps the
+    // vertical stack. swiftui-interaction-footguns: read `horizontalSizeClass`,
+    // which is `.regular` on Mac, not a hardcoded `#if os(macOS)`.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
     // engine semantics — it only routes which action a cell tap fires. Mirrors
@@ -85,20 +93,20 @@ public struct MinesweeperBoardView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
-            statusBar
-            modeToggle
-            boardGrid
-            // Banner sits between the grid and the bottom edge. Mirrors
-            // Sudoku's BoardView slot pattern. Suppressed during terminal
-            // states (win / lose) — showing an ad on top of the Completion
-            // surface contradicts the moment's tone, same way Sudoku
-            // suppresses banners during pause.
-            if !viewModel.isTerminal, let adProvider, let adGate {
-                MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
+        // #298 #6: compact (iPhone) keeps the vertical stack; regular (iPad /
+        // Mac) splits into a 2-column board + control rail, mirroring Sudoku's
+        // BoardView.macLayout.
+        Group {
+            if sizeClass == .regular {
+                macLayout
+            } else {
+                compactLayout
             }
         }
-        .padding()
+        // #298 #11: theme spacing scale. `.padding()` default is 16, identical
+        // to `theme.spacing.medium`, so this is a value-preserving migration (no
+        // snapshot churn).
+        .padding(theme.spacing.medium)
         // #292: the post-game Completion surface replaces the old inline
         // `terminalOverlay` (plain Text on material). It covers the whole board
         // on win/lose with the result hero + leaderboard slice + CTAs. Mounted
@@ -118,38 +126,124 @@ public struct MinesweeperBoardView: View {
                 completionViewModel = nil
             }
         }
-        .task {
+        // #298 #9: single elapsed-mirror ticker, replacing the prior
+        // TimelineView-nested-`.task` 1 Hz hack (which re-fired a fresh `.task`
+        // on every timeline tick — swiftui-interaction-footguns: .task re-fire).
+        // Mirrors Sudoku BoardView: one `.task(id:)` owning a `while
+        // !Task.isCancelled { sleep }` loop, cancelled automatically on
+        // disappear. Keyed on the VM's identity so Retry (which swaps the VM in
+        // place at the same seed) restarts the loop with a fresh clock.
+        .task(id: ObjectIdentifier(viewModel)) {
+            // Pull once immediately so the first frame isn't stale. The very
+            // first snapshot could already be terminal (e.g. a board restored
+            // into a finished state); `.onChange` only fires on a transition,
+            // so seed the completion VM here too.
             await viewModel.refresh()
-            // The very first snapshot could already be terminal (e.g. a board
-            // restored into a finished state); `.onChange` only fires on a
-            // transition, so seed the VM here too.
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
             }
+            // Then poll once per second while the game is live. The elapsed
+            // label re-renders because `refresh()` republishes the @Observable
+            // snapshot. Stop polling once terminal (the clock is frozen) but
+            // keep the task alive so cancellation stays tied to the view.
+            while !Task.isCancelled {
+                if viewModel.status == .playing {
+                    await viewModel.refresh()
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    // MARK: - Compact (iPhone) layout
+
+    private var compactLayout: some View {
+        // Spacing literal preserved verbatim (12) from the pre-#298 VStack so the
+        // recorded iPhone covered-board snapshots don't churn. The theme spacing
+        // scale (#298 #11) is applied to the NEW Mac layout below; migrating the
+        // compact literal would re-record baselines and is deferred to #11.
+        VStack(spacing: 12) {
+            statusBar
+            modeToggle
+            boardGrid
+            bannerSlot
+        }
+    }
+
+    // MARK: - Mac (regular) 2-column layout (#298 #6)
+    //
+    // Mirrors Sudoku's BoardView.macLayout (locked 2026-05-30): outer maxWidth
+    // capped + centered, board on the left capped to a square, a ~260 pt control
+    // rail on the right. MS's rail carries the status bar + the Reveal/Flag mode
+    // toggle (MS has no digit pad), keeping the iPhone grid out of the wide Mac
+    // detail pane (#298 critique: the board currently renders the iPhone stack
+    // in the Mac detail).
+    private var macLayout: some View {
+        VStack(spacing: theme.spacing.medium) {
+            HStack(alignment: .top, spacing: theme.spacing.large) {
+                macBoardColumn
+                controlRail
+            }
+            bannerSlot
+        }
+        .frame(maxWidth: Self.macOuterMaxWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, theme.spacing.medium)
+    }
+
+    private static let macOuterMaxWidth: CGFloat = 900
+    private static let macBoardMaxSide: CGFloat = 600
+    private static let macRailWidth: CGFloat = 260
+
+    private var macBoardColumn: some View {
+        boardGrid
+            .frame(maxWidth: Self.macBoardMaxSide, maxHeight: Self.macBoardMaxSide)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    // The Mac control rail: status read-out + the Reveal/Flag toggle, stacked
+    // vertically in a fixed-width column. The toggle keeps `.segmented` styling
+    // (same control as iPhone) — only the placement changes.
+    private var controlRail: some View {
+        VStack(spacing: theme.spacing.medium) {
+            statusBar
+            modeToggle
+            Spacer(minLength: 0)
+        }
+        .frame(width: Self.macRailWidth)
+    }
+
+    // MARK: - Banner slot
+    //
+    // Banner sits between the grid and the bottom edge. Mirrors Sudoku's
+    // BoardView slot pattern. Suppressed during terminal states (win / lose) —
+    // showing an ad on top of the Completion surface contradicts the moment's
+    // tone, same way Sudoku suppresses banners during pause.
+    @ViewBuilder
+    private var bannerSlot: some View {
+        if !viewModel.isTerminal, let adProvider, let adGate {
+            MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
         }
     }
 
     // MARK: - Status bar
 
     private var statusBar: some View {
-        // TimelineView ticks at 1 Hz so the elapsed-seconds counter visibly
-        // ticks during `.playing`. The `.task` inside re-fires on each tick
-        // because the timeline context changes, pulling a fresh snapshot
-        // from the actor (which also refreshes flag/status displays).
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
-            HStack {
-                Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
-                    .monospacedDigit()
-                Spacer()
-                Text(statusText)
-                    .font(.headline)
-                Spacer()
-                Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
-                    .monospacedDigit()
-            }
-            .font(.subheadline)
-            .task { await viewModel.refresh() }
+        // #298 #9: plain HStack — the elapsed/flag/status fields are read
+        // straight off the @Observable view model, which republishes when the
+        // ticker loop (`.task(id:)` on the body) refreshes the snapshot each
+        // second. No TimelineView, no nested `.task`.
+        HStack {
+            Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
+                .monospacedDigit()
+            Spacer()
+            Text(statusText)
+                .font(.headline)
+            Spacer()
+            Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
+                .monospacedDigit()
         }
+        .font(.subheadline)
     }
 
     private var statusText: String {
@@ -233,8 +327,14 @@ public struct MinesweeperBoardView: View {
                     ForEach(0..<cols, id: \.self) { col in
                         MinesweeperCellButton(
                             cell: viewModel.cell(row: row, col: col),
+                            row: row,
+                            column: col,
                             side: cellSide,
                             mode: interactionMode,
+                            // #298 #7: on a loss, surface every mine. The detonated
+                            // cell is already `.revealed`; the rest are still hidden
+                            // and the cell button paints them from `cell.isMine`.
+                            revealMines: viewModel.status == .lost,
                             onReveal: {
                                 Task { await viewModel.reveal(row: row, col: col) }
                             },
