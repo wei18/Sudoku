@@ -40,18 +40,27 @@ internal struct ReconcilerMetadataTests {
         listings: [ListingLocale],
         primary: String? = "Games",
         primarySub: String? = "Puzzle",
+        primarySecondSub: String? = "Board",
         secondary: String? = "Games",
-        secondarySub: String? = "Family"
+        secondarySub: String? = "Family",
+        secondarySecondSub: String? = nil
     ) -> MetadataConfig {
         let cats = AppMeta.Categories(
-            primary: primary, primaryFirstSub: primarySub, primarySecondSub: nil,
-            secondary: secondary, secondaryFirstSub: secondarySub, secondarySecondSub: nil
+            primary: primary, primaryFirstSub: primarySub, primarySecondSub: primarySecondSub,
+            secondary: secondary, secondaryFirstSub: secondarySub, secondarySecondSub: secondarySecondSub
         )
         return MetadataConfig(
             appMeta: AppMeta(app: "sudoku", appleId: "1", copyright: "2026 Wei18", categories: cats),
             listings: listings
         )
     }
+
+    /// The six-slot ids the default `config()` resolves to: genre `GAMES` in
+    /// each `…Category` slot, subs in their `…Sub` slots.
+    private static let expectedCategoryIds = MetadataCategoryIds(
+        primary: "GAMES", primarySubOne: "GAMES_PUZZLE", primarySubTwo: "GAMES_BOARD",
+        secondary: "GAMES", secondarySubOne: "GAMES_FAMILY", secondarySubTwo: nil
+    )
 
     // MARK: - Tests
 
@@ -74,9 +83,11 @@ internal struct ReconcilerMetadataTests {
         )
         #expect(actions.contains { if case .createAppInfoLoc(let id, let loc, _) = $0 { return id == "ai-1" && loc == "en-US" } else { return false } })
         #expect(actions.contains { if case .createVersionLoc(let id, let loc, _) = $0 { return id == "v-1" && loc == "en-US" } else { return false } })
-        // Categories: remote has nil category ids, config has GAMES_PUZZLE → drift.
-        #expect(actions.contains { if case .updateCategories(let id, let primary, let secondary) = $0 {
-            return id == "ai-1" && primary == "GAMES_PUZZLE" && secondary == "GAMES_FAMILY"
+        // Categories: remote has nil category ids → drift. The genre maps to
+        // `GAMES` (NOT the sub `GAMES_PUZZLE` — that was the live 409 bug,
+        // issue #310); subs land in their own slots.
+        #expect(actions.contains { if case .updateCategories(let id, let cats) = $0 {
+            return id == "ai-1" && cats == Self.expectedCategoryIds
         } else { return false } })
     }
 
@@ -93,8 +104,7 @@ internal struct ReconcilerMetadataTests {
             promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
             marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
         )
-        remote.primaryCategoryId = "GAMES_PUZZLE"
-        remote.secondaryCategoryId = "GAMES_FAMILY"
+        remote.categoryIds = Self.expectedCategoryIds
 
         let actions = MetadataReconciler.plan(config: Self.config(listings: [listing]), remote: remote)
         #expect(actions == [
@@ -129,13 +139,69 @@ internal struct ReconcilerMetadataTests {
         #expect(actions.contains { if case .updateVersionLoc(let id, let loc, _) = $0 { return id == "vl-en" && loc == "en-US" } else { return false } })
     }
 
-    @Test("Category match → categoriesUnchanged")
+    @Test("Category match (all six slots) → categoriesUnchanged")
     internal func categoryMatchUnchanged() {
         var remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
-        remote.primaryCategoryId = "GAMES_PUZZLE"
-        remote.secondaryCategoryId = "GAMES_FAMILY"
+        remote.categoryIds = Self.expectedCategoryIds
         let actions = MetadataReconciler.plan(config: Self.config(listings: []), remote: remote)
         #expect(actions == [.categoriesUnchanged])
+    }
+
+    @Test("Genre maps to GAMES not the sub token (live 409 RELATIONSHIP.INVALID fix)")
+    internal func categoryGenreMapsToGamesNotSub() {
+        let remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
+        let actions = MetadataReconciler.plan(config: Self.config(listings: []), remote: remote)
+        guard case .updateCategories(_, let cats) = actions.first else {
+            Issue.record("expected updateCategories"); return
+        }
+        // primaryCategory must be the GENRE, never the sub.
+        #expect(cats.primary == "GAMES")
+        #expect(cats.primary != "GAMES_PUZZLE")
+        #expect(cats.primarySubOne == "GAMES_PUZZLE")
+        #expect(cats.primarySubTwo == "GAMES_BOARD")
+        #expect(cats.secondary == "GAMES")
+        #expect(cats.secondarySubOne == "GAMES_FAMILY")
+    }
+
+    @Test("Null second-sub slot is omitted (nil), not sent")
+    internal func categoryNullSlotOmitted() {
+        let remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
+        // secondary has no second sub in the default config.
+        let actions = MetadataReconciler.plan(config: Self.config(listings: []), remote: remote)
+        guard case .updateCategories(_, let cats) = actions.first else {
+            Issue.record("expected updateCategories"); return
+        }
+        #expect(cats.secondarySubTwo == nil)
+    }
+
+    @Test("Sub-only drift (primarySubTwo differs) → updateCategories")
+    internal func categorySubDriftUpdates() {
+        var remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
+        // Genres + first subs match, but primarySubTwo is stale → must drift.
+        remote.categoryIds = MetadataCategoryIds(
+            primary: "GAMES", primarySubOne: "GAMES_PUZZLE", primarySubTwo: "GAMES_CARD",
+            secondary: "GAMES", secondarySubOne: "GAMES_FAMILY", secondarySubTwo: nil
+        )
+        let actions = MetadataReconciler.plan(config: Self.config(listings: []), remote: remote)
+        #expect(actions == [.updateCategories(appInfoId: "ai-1", Self.expectedCategoryIds)])
+    }
+
+    @Test("Minesweeper category layout maps to the right six slots")
+    internal func minesweeperCategoryLayout() {
+        // MS: primary Games/Board/Puzzle, secondary Games/Strategy.
+        let cfg = Self.config(
+            listings: [],
+            primary: "Games", primarySub: "Board", primarySecondSub: "Puzzle",
+            secondary: "Games", secondarySub: "Strategy", secondarySecondSub: nil
+        )
+        let remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
+        guard case .updateCategories(_, let cats) = MetadataReconciler.plan(config: cfg, remote: remote).first else {
+            Issue.record("expected updateCategories"); return
+        }
+        #expect(cats == MetadataCategoryIds(
+            primary: "GAMES", primarySubOne: "GAMES_BOARD", primarySubTwo: "GAMES_PUZZLE",
+            secondary: "GAMES", secondarySubOne: "GAMES_STRATEGY", secondarySubTwo: nil
+        ))
     }
 
     @Test("Listing with no appInfo-scoped fields skips appInfo loc but still emits version loc")
@@ -175,8 +241,7 @@ internal struct ReconcilerMetadataTests {
             promotionalText: listing.promotionalText, whatsNew: listing.whatsNew,
             marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
         )
-        remoteV2.primaryCategoryId = "GAMES_PUZZLE"
-        remoteV2.secondaryCategoryId = "GAMES_FAMILY"
+        remoteV2.categoryIds = Self.expectedCategoryIds
 
         let secondPlan = MetadataReconciler.plan(config: cfg, remote: remoteV2)
         for action in secondPlan {

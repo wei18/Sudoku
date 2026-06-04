@@ -28,10 +28,18 @@ extension ASCClient {
     /// `appInfos` (one per app-store state); the caller picks the editable
     /// one by `state` (plan §7 UNCONFIRMED → resolved at run time).
     internal func listAppInfos(appId: String) async throws -> APICollectionWithIncluded {
+        // Side-load ALL SIX category relationships so drift compares against
+        // the genre + both sub slots, not just the two genres (issue #310 —
+        // the old 2-slot include made sub drift invisible and mis-classified
+        // the live category state).
         let path = "/v1/apps/\(appId)/appInfos"
-            + "?include=appInfoLocalizations,primaryCategory,secondaryCategory"
+            + "?include=appInfoLocalizations,"
+            + "primaryCategory,primarySubcategoryOne,primarySubcategoryTwo,"
+            + "secondaryCategory,secondarySubcategoryOne,secondarySubcategoryTwo"
             + "&fields[appInfos]=appStoreState,state,appStoreAgeRating,"
-            + "appInfoLocalizations,primaryCategory,secondaryCategory"
+            + "appInfoLocalizations,"
+            + "primaryCategory,primarySubcategoryOne,primarySubcategoryTwo,"
+            + "secondaryCategory,secondarySubcategoryOne,secondarySubcategoryTwo"
             + "&fields[appInfoLocalizations]=locale,name,subtitle,privacyPolicyUrl"
         return try await getCollectionWithIncluded(path: path)
     }
@@ -85,16 +93,15 @@ extension ASCClient {
 
     // MARK: - appStoreVersions (description / keywords / ... per version)
 
-    /// GET the app's `appStoreVersions`, with version localizations
-    /// side-loaded. Used to find the single editable version (plan §5:
-    /// version creation stays user-owned; we GET-and-fail-loud if missing).
+    /// GET the app's `appStoreVersions`. Used to find the single editable
+    /// version + compute `hasReleasedVersion` (plan §5: version creation stays
+    /// user-owned; we GET-and-fail-loud if missing). Version localizations are
+    /// fetched SEPARATELY via the paginated `listVersionLocalizations` — the
+    /// `?include=` side-load truncated and missed an existing locale → a
+    /// CREATE/UPDATE mis-classification (issue #310).
     internal func listAppStoreVersions(appId: String) async throws -> APICollectionWithIncluded {
         let path = "/v1/apps/\(appId)/appStoreVersions"
-            + "?include=appStoreVersionLocalizations"
-            + "&fields[appStoreVersions]=versionString,appStoreState,appVersionState,"
-            + "appStoreVersionLocalizations"
-            + "&fields[appStoreVersionLocalizations]=locale,description,keywords,"
-            + "promotionalText,whatsNew,marketingUrl,supportUrl"
+            + "?fields[appStoreVersions]=versionString,appStoreState,appVersionState"
         return try await getCollectionWithIncluded(path: path)
     }
 
@@ -183,26 +190,27 @@ extension ASCClient {
         return try await getCollectionWithIncluded(path: path)
     }
 
-    /// PATCH the `appInfos` primary + secondary category relationships.
-    /// Each relationship points at one `appCategories` id (the sub-category
-    /// id when present, else the genre id). Idempotent: a PATCH to the same
-    /// ids is a no-op ASC-side.
+    /// PATCH the `appInfos` SIX category relationships: the two top-level
+    /// genres (`primaryCategory` / `secondaryCategory`) and up to two
+    /// sub-categories each (`…SubcategoryOne` / `…SubcategoryTwo`). The genre
+    /// goes in the `…Category` slot and each sub in its own subcategory slot —
+    /// sending a sub as the genre was the live `409 RELATIONSHIP.INVALID`
+    /// (issue #310). A `nil` slot is omitted from the PATCH. Idempotent.
     internal func updateAppInfoCategories(
         appInfoId: String,
-        primaryCategoryId: String?,
-        secondaryCategoryId: String?
+        categories: MetadataCategoryIds
     ) async throws -> APIResource {
         var relationships: [String: Any] = [:]
-        if let primaryCategoryId {
-            relationships["primaryCategory"] = [
-                "data": ["type": "appCategories", "id": primaryCategoryId],
-            ]
+        func add(_ name: String, _ id: String?) {
+            guard let id else { return }
+            relationships[name] = ["data": ["type": "appCategories", "id": id]]
         }
-        if let secondaryCategoryId {
-            relationships["secondaryCategory"] = [
-                "data": ["type": "appCategories", "id": secondaryCategoryId],
-            ]
-        }
+        add("primaryCategory", categories.primary)
+        add("primarySubcategoryOne", categories.primarySubOne)
+        add("primarySubcategoryTwo", categories.primarySubTwo)
+        add("secondaryCategory", categories.secondary)
+        add("secondarySubcategoryOne", categories.secondarySubOne)
+        add("secondarySubcategoryTwo", categories.secondarySubTwo)
         let body: [String: Any] = [
             "data": [
                 "type": "appInfos",
@@ -215,5 +223,31 @@ extension ASCClient {
             path: "/v1/appInfos/\(appInfoId)",
             body: body
         )
+    }
+
+    // MARK: - appStoreVersionLocalizations (reliable, paginated list)
+
+    /// List ALL `appStoreVersionLocalizations` for one version, following
+    /// `links.next` pagination (issue #310). The `?include=…` side-load on the
+    /// `appStoreVersions` GET truncates at the default page size, so an
+    /// existing locale (the live `es-ES`) could be missed → mis-classified as
+    /// CREATE → `409 ATTRIBUTE.INVALID.DUPLICATE`. Hitting the version's own
+    /// relationship endpoint with pagination captures every existing loc.
+    internal func listVersionLocalizations(versionId: String) async throws -> [APIResource] {
+        let path = "/v1/appStoreVersions/\(versionId)/appStoreVersionLocalizations"
+            + "?fields[appStoreVersionLocalizations]=locale,description,keywords,"
+            + "promotionalText,whatsNew,marketingUrl,supportUrl"
+            + "&limit=200"
+        return try await getAllPages(path: path)
+    }
+
+    /// List ALL `appInfoLocalizations` for one appInfo, following pagination
+    /// (issue #310 — same truncation risk as version-locs; keeps the appInfo
+    /// snapshot complete so existing locales classify as UPDATE).
+    internal func listAppInfoLocalizations(appInfoId: String) async throws -> [APIResource] {
+        let path = "/v1/appInfos/\(appInfoId)/appInfoLocalizations"
+            + "?fields[appInfoLocalizations]=locale,name,subtitle,privacyPolicyUrl"
+            + "&limit=200"
+        return try await getAllPages(path: path)
     }
 }

@@ -28,9 +28,43 @@ internal enum MetadataAction: Sendable, Equatable {
     case updateVersionLoc(localizationId: String, locale: String, ListingLocale)
     case versionLocUnchanged(locale: String)
 
-    // appInfos category relationships
-    case updateCategories(appInfoId: String, primaryId: String?, secondaryId: String?)
+    // appInfos category relationships. ASC `appInfos` exposes SIX category
+    // relationship slots: the two top-level genres plus up to two
+    // sub-categories each. The genre token (`GAMES`) goes in
+    // `primary/secondaryCategory`; each sub (`GAMES_PUZZLE`, …) in its own
+    // `…SubcategoryOne/Two` slot. Sending a sub token as the primary genre is
+    // what triggered the live `409 ENTITY_ERROR.RELATIONSHIP.INVALID`
+    // (issue #310). A `nil` slot is omitted from the PATCH body by the client.
+    case updateCategories(appInfoId: String, MetadataCategoryIds)
     case categoriesUnchanged
+}
+
+/// The resolved ASC `appCategories` id tokens for all six `appInfos` category
+/// relationship slots. `nil` means "no value configured" → the client omits
+/// that relationship from the PATCH.
+internal struct MetadataCategoryIds: Sendable, Equatable {
+    internal let primary: String?
+    internal let primarySubOne: String?
+    internal let primarySubTwo: String?
+    internal let secondary: String?
+    internal let secondarySubOne: String?
+    internal let secondarySubTwo: String?
+
+    internal init(
+        primary: String? = nil,
+        primarySubOne: String? = nil,
+        primarySubTwo: String? = nil,
+        secondary: String? = nil,
+        secondarySubOne: String? = nil,
+        secondarySubTwo: String? = nil
+    ) {
+        self.primary = primary
+        self.primarySubOne = primarySubOne
+        self.primarySubTwo = primarySubTwo
+        self.secondary = secondary
+        self.secondarySubOne = secondarySubOne
+        self.secondarySubTwo = secondarySubTwo
+    }
 }
 
 /// Observed remote metadata state for one app. Populated by the `metadata`
@@ -46,9 +80,10 @@ internal struct MetadataRemoteState: Sendable, Equatable {
     /// ASC-locale → existing `appStoreVersionLocalizations` snapshot.
     internal var versionLocalizations: [String: VersionLocRemote]
 
-    /// Current primary / secondary category relationship ids on the appInfo.
-    internal var primaryCategoryId: String?
-    internal var secondaryCategoryId: String?
+    /// Current category relationship ids on the appInfo — all six slots,
+    /// side-loaded so drift compares correctly (issue #310). A slot with no
+    /// value on ASC is `nil`.
+    internal var categoryIds: MetadataCategoryIds
 
     /// Whether the app has at least one RELEASED / ready-for-sale version in
     /// ASC. `false` means the chosen `appStoreVersion` is a first submission
@@ -68,16 +103,14 @@ internal struct MetadataRemoteState: Sendable, Equatable {
         versionId: String? = nil,
         appInfoLocalizations: [String: AppInfoLocRemote] = [:],
         versionLocalizations: [String: VersionLocRemote] = [:],
-        primaryCategoryId: String? = nil,
-        secondaryCategoryId: String? = nil,
+        categoryIds: MetadataCategoryIds = MetadataCategoryIds(),
         hasReleasedVersion: Bool = true
     ) {
         self.appInfoId = appInfoId
         self.versionId = versionId
         self.appInfoLocalizations = appInfoLocalizations
         self.versionLocalizations = versionLocalizations
-        self.primaryCategoryId = primaryCategoryId
-        self.secondaryCategoryId = secondaryCategoryId
+        self.categoryIds = categoryIds
         self.hasReleasedVersion = hasReleasedVersion
     }
 
@@ -241,19 +274,30 @@ internal enum MetadataReconciler {
     ) -> MetadataAction {
         guard let appInfoId = remote.appInfoId else { return .categoriesUnchanged }
         let cats = config.appMeta.categories
-        // The chosen relationship target is the most-specific id available:
-        // the first sub-category if present, else the genre.
-        let primaryId = MetadataConfig.ascCategoryId(
-            genre: cats.primary ?? "",
-            sub: cats.primaryFirstSub
+        // ASC requires the top-level GENRE in `primary/secondaryCategory`
+        // (e.g. `GAMES`) and each sub-category in its own
+        // `…SubcategoryOne/Two` slot (e.g. `GAMES_PUZZLE`). Sending a sub as
+        // the primary genre was the live `409 RELATIONSHIP.INVALID` cause
+        // (issue #310). A genre maps via `ascCategoryId(sub: nil)`; a sub via
+        // `ascCategoryId(genre:sub:)`.
+        let desired = MetadataCategoryIds(
+            primary: MetadataConfig.ascCategoryId(genre: cats.primary ?? "", sub: nil),
+            primarySubOne: subId(genre: cats.primary, sub: cats.primaryFirstSub),
+            primarySubTwo: subId(genre: cats.primary, sub: cats.primarySecondSub),
+            secondary: MetadataConfig.ascCategoryId(genre: cats.secondary ?? "", sub: nil),
+            secondarySubOne: subId(genre: cats.secondary, sub: cats.secondaryFirstSub),
+            secondarySubTwo: subId(genre: cats.secondary, sub: cats.secondarySecondSub)
         )
-        let secondaryId = MetadataConfig.ascCategoryId(
-            genre: cats.secondary ?? "",
-            sub: cats.secondaryFirstSub
-        )
-        if remote.primaryCategoryId == primaryId, remote.secondaryCategoryId == secondaryId {
+        if remote.categoryIds == desired {
             return .categoriesUnchanged
         }
-        return .updateCategories(appInfoId: appInfoId, primaryId: primaryId, secondaryId: secondaryId)
+        return .updateCategories(appInfoId: appInfoId, desired)
+    }
+
+    /// Resolve a sub-category id token from its genre + sub label, or `nil`
+    /// when either is absent (so the slot is omitted from the PATCH).
+    private static func subId(genre: String?, sub: String?) -> String? {
+        guard let genre, let sub, !sub.isEmpty else { return nil }
+        return MetadataConfig.ascCategoryId(genre: genre, sub: sub)
     }
 }

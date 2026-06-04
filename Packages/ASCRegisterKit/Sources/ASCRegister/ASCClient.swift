@@ -47,6 +47,11 @@ internal actor ASCClient {
     /// reader knows content was elided rather than silently cut.
     internal static let errorBodyByteCap: Int = 2048
 
+    /// Upper bound on pages `getAllPages` will follow before aborting, to
+    /// guard against a malformed `links.next` self-loop. Far above any real
+    /// ASC localization count (≤ ~40 locales at limit=200 = 1 page).
+    internal static let maxPages: Int = 50
+
     private let auth: Auth
     private let mode: Mode
     private let session: URLSession
@@ -217,6 +222,62 @@ internal actor ASCClient {
             throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
         }
         return try APIResource.decodeCollection(from: data, path: path, status: status)
+    }
+
+    /// GET a JSON:API collection across ALL pages, following the response's
+    /// `links.next` cursor until absent (issue #310). ASC paginates list
+    /// endpoints (default page size 50), so trusting a single GET — or a
+    /// `?include=` side-load — silently truncates large collections. `next` is
+    /// an absolute URL; `makeRequest` resolves it as-is. A page cap guards
+    /// against a malformed `next` loop.
+    internal func getAllPages(path: String) async throws -> [APIResource] {
+        var out: [APIResource] = []
+        var nextPath: String? = path
+        var pageGuard = 0
+        while let page = nextPath {
+            pageGuard += 1
+            guard pageGuard <= ASCClient.maxPages else {
+                throw ClientError.httpStatus(
+                    code: -1, path: page,
+                    body: "pagination exceeded \(ASCClient.maxPages) pages — aborting to avoid a links.next loop"
+                )
+            }
+            let (data, status) = try await send(method: "GET", path: page, body: nil)
+            guard (200..<300).contains(status) else {
+                throw ClientError.httpStatus(code: status, path: page, body: truncateBody(data))
+            }
+            out.append(contentsOf: try APIResource.decodeCollection(from: data, path: page, status: status))
+            nextPath = ASCClient.nextPageLink(from: data)
+        }
+        return out
+    }
+
+    /// Whether an ASC error response body denotes a "duplicate value" 409 —
+    /// i.e. a CREATE that collided with an already-existing entity
+    /// (`ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE`, live message
+    /// "locale es-ES already exists. Try updating.", issue #310). Pure /
+    /// static so the create-on-409-dup fallback is unit-testable. We match the
+    /// error `code` string (resilient to message wording) and fall back to the
+    /// "already exists" phrasing.
+    internal static func isDuplicateValueError(body: String) -> Bool {
+        if body.contains("ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE")
+            || body.contains("ATTRIBUTE.INVALID.DUPLICATE") {
+            return true
+        }
+        let lowered = body.lowercased()
+        return lowered.contains("already exists") && lowered.contains("updating")
+    }
+
+    /// Pure extractor for the JSON:API `links.next` cursor URL. Returns `nil`
+    /// when the key is absent / null / not a string (last page). Kept static
+    /// and pure so pagination logic is unit-testable without URLSession.
+    internal static func nextPageLink(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let links = json["links"] as? [String: Any],
+              let next = links["next"] as? String,
+              !next.isEmpty
+        else { return nil }
+        return next
     }
 
     /// GET a JSON:API collection and also surface `included[]` side-loads
