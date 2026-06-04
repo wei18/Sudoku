@@ -37,8 +37,8 @@ copyright: "2026 Wei18"
 review_information:
   first_name: "Wei"          # FLAG: confirm reviewer-contact first name
   last_name: "Wei18"         # FLAG: confirm reviewer-contact last/family name
-  email_address: "REPLACE_WITH_ASC_ACCOUNT_EMAIL"  # FLAG: ASC account email (memory `asc-api-credentials`); not hardcoded here
-  phone_number: "REPLACE_WITH_CONTACT_PHONE"        # FLAG: E.164 contact phone, e.g. "+886..."
+  email_address: "11254896+wei18@users.noreply.github.com"
+  phone_number: null  # secret — ASC review contact held in secrets/.env, injected at apply time (never committed)
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
   # Notes pasted into ASC "Review Information → Notes". The canonical, full
