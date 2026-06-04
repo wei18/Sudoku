@@ -46,8 +46,10 @@ internal enum MetadataApp: String, Sendable, CaseIterable {
 /// resources this fans out to. `nil` fields are absent in the YAML and are
 /// skipped (not pushed as empty) during reconcile.
 internal struct ListingLocale: Sendable, Equatable {
-    /// The YAML `locale:` value, already in ASC form (e.g. `en-US`,
-    /// `zh-Hant`). The files were authored with ASC locale codes directly.
+    /// The canonical ASC locale code (e.g. `en-US`, `zh-Hant`, `ko`, `th`).
+    /// The YAML `locale:` value is mapped to this at load time via
+    /// `MetadataConfig.ascLocaleCode(forRepoCode:)` (issue #322), so repo
+    /// codes like `es` / `ko-KR` reach the ASC API as their canonical form.
     internal let locale: String
 
     // → appInfoLocalizations
@@ -105,6 +107,7 @@ internal enum MetadataConfigError: Error, CustomStringConvertible {
     case appMetaNotFound(String)
     case noListings(String)
     case malformedYAML(file: String, reason: String)
+    case unknownLocale(code: String, file: String)
 
     internal var description: String {
         switch self {
@@ -112,6 +115,9 @@ internal enum MetadataConfigError: Error, CustomStringConvertible {
         case .appMetaNotFound(let path): return "app-meta.yaml not found: \(path)"
         case .noListings(let path): return "no <locale>/listing.yaml files under: \(path)"
         case .malformedYAML(let file, let reason): return "malformed YAML in \(file): \(reason)"
+        case .unknownLocale(let code, let file):
+            return "locale '\(code)' in \(file) has no known App Store Connect locale code "
+                + "(MetadataConfig.ascLocaleCode); add it to the map or fix the YAML"
         }
     }
 }
@@ -205,7 +211,13 @@ extension MetadataConfig {
                 )
             }
             // The YAML `locale:` is authoritative; fall back to dir name.
-            let locale = str(dict["locale"]) ?? entry.lastPathComponent
+            let repoLocale = str(dict["locale"]) ?? entry.lastPathComponent
+            // Map the repo code to the canonical ASC code (issue #322) so
+            // reconcile matches the localizations ASC already holds. An
+            // unknown code fails loudly rather than mis-mapping.
+            guard let locale = ascLocaleCode(forRepoCode: repoLocale) else {
+                throw MetadataConfigError.unknownLocale(code: repoLocale, file: listingFile.path)
+            }
             out.append(ListingLocale(
                 locale: locale,
                 name: str(dict["name"]),
@@ -236,6 +248,63 @@ extension MetadataConfig {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : raw
     }
+}
+
+// MARK: - Locale code mapping (issue #322)
+
+extension MetadataConfig {
+
+    /// Map a repo listing-folder locale code to the canonical App Store
+    /// Connect locale shortcode used by `appInfoLocalizations` /
+    /// `appStoreVersionLocalizations` (the `locale` attribute).
+    ///
+    /// The Sudoku listing.yaml files were authored with short codes
+    /// (`es` / `ko` / `th`); the Minesweeper ones with region-qualified codes
+    /// (`es-ES` / `ko-KR` / `th-TH`). Neither set fully matches what ASC
+    /// already holds, so `plan` showed spurious CREATE actions that would
+    /// create duplicate / wrong-locale localizations on `apply` (issue #322).
+    ///
+    /// Canonical ASC codes verified against Apple's official reference,
+    /// "App Store localizations" (App Store Connect Help, retrieved 2026-06-04):
+    /// <https://developer.apple.com/help/app-store-connect/reference/app-store-localizations/>
+    ///   - Spanish (Spain)        → `es-ES`
+    ///   - Korean                 → `ko`     (NOT `ko-KR`)
+    ///   - Thai                   → `th`     (NOT `th-TH`)
+    ///   - Japanese               → `ja`
+    ///   - Chinese (Simplified)   → `zh-Hans`
+    ///   - Chinese (Traditional)  → `zh-Hant`
+    ///   - English (U.S.)         → `en-US`
+    ///
+    /// NOTE: this is deliberately separate from `Config.ascLocaleCode`
+    /// (issue #31), which serves the Game Center / xcstrings path and maps
+    /// `ko → ko-KR` / `th → th-TH`. The App Store metadata catalog uses the
+    /// bare `ko` / `th` forms, so the two maps must not be merged.
+    ///
+    /// The table is restricted to the codes actually present across the
+    /// committed listing.yaml files. An unmapped code returns `nil` so the
+    /// caller fails loudly (`MetadataConfigError.unknownLocale`) rather than
+    /// silently dropping or mis-mapping a localization.
+    internal static func ascLocaleCode(forRepoCode repoCode: String) -> String? {
+        repoToASCLocale[repoCode]
+    }
+
+    /// Repo listing-folder code → canonical ASC locale code. Restricted to the
+    /// codes present across the committed listing.yaml files (issue #322).
+    private static let repoToASCLocale: [String: String] = [
+        // Already-canonical codes (pass through unchanged).
+        "en-US": "en-US",
+        "ja": "ja",
+        "zh-Hans": "zh-Hans",
+        "zh-Hant": "zh-Hant",
+        "es-ES": "es-ES",
+        // Sudoku short codes → canonical ASC codes.
+        "es": "es-ES",
+        "ko": "ko",
+        "th": "th",
+        // Minesweeper region-qualified codes ASC does NOT use → canonical.
+        "ko-KR": "ko",
+        "th-TH": "th",
+    ]
 }
 
 // MARK: - Category id mapping
