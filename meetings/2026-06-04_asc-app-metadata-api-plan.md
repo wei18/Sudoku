@@ -190,6 +190,52 @@ the user provides ASC creds (secrets/ — not referenced here). None are
 blockers to writing the code; they're blockers to a confident first `apply`.
 This is why this round is plan-only.
 
+### 7.a Run-pass status (impl round #310, 2026-06-04)
+
+The `metadata` subcommand is implemented (`MetadataConfig` + `ASCClient+Metadata`
++ `Reconciler+Metadata` + `main.swift` wiring, Yams YAML dep). Build + 68 tests
+green. The read-only `metadata plan --app sudoku` pass that resolves the live
+`?` items below **could not be executed by the implementing subagent**: the
+sandbox denies reading `secrets/.env` (correct security boundary — the subagent
+must not read secret values), and the `.p8`/issuer creds live only there. The
+plan command is wired to print all the run-pass findings (it GETs + dumps the
+category catalog id tokens, the chosen `appInfo` id + state, and the live
+`appInfoLocalizations` / `appStoreVersionLocalizations` attribute keys before
+diffing). **Leader/User with secret-file access must run it once** to flip the
+`?` items:
+
+```
+cd <repo-root> && set -a && . ./secrets/.env && set +a
+swift run --package-path Packages/ASCRegisterKit ASCRegister metadata plan \
+  --key "$ASC_API_KEY_PATH" --key-id "$ASC_API_KEY_ID" \
+  --issuer "$ASC_API_ISSUER_ID" --app sudoku
+```
+
+Resolution status after impl (code-side, pending the live run):
+
+- ~ **`appInfoLocalizations` attribute names** — code sends `name`, `subtitle`,
+  `privacyPolicyUrl`; the plan run prints `appInfoLocalizations attributes seen:`
+  to confirm. **Confirm via the live run above.**
+- ~ **`appStoreVersionLocalizations` attribute names** — code sends `description`,
+  `keywords`, `promotionalText`, `whatsNew`, `marketingUrl`, `supportUrl`; the
+  plan run prints `appStoreVersionLocalizations attributes seen:`. **Confirm via
+  the live run.**
+- ~ **`appCategories` id tokens** — code maps `"Games" + "Puzzle"` → `GAMES_PUZZLE`
+  (SCREAMING_SNAKE: genre + `_` + sub). The plan run prints `appCategories GAMES
+  subcategories:` (the real token list). **Confirm `GAMES_PUZZLE` / `GAMES_BOARD`
+  / `GAMES_FAMILY` / `GAMES_STRATEGY` exist verbatim via the live run.**
+- ~ **Which `appInfo` is editable** — code picks the appInfo whose `state` ∈
+  {PREPARE_FOR_SUBMISSION, DEVELOPER_REJECTED, REJECTED, METADATA_REJECTED,
+  INVALID_BINARY, WAITING_FOR_REVIEW}, else the first; prints the chosen id +
+  state. **Confirm the real state enum via the live run.**
+- ✓ **MS app record** — confirmed absent: `minesweeper/app-meta.yaml` has no
+  `apple_id`. `metadata plan --app minesweeper` exits cleanly with a notice
+  (verified by run: short-circuits before auth, no 404 crash).
+- ✓ **No-YAML-dep reader** — superseded: chose Yams (third-party) over a
+  hand-rolled reader. The committed `|` block scalars (with embedded blank
+  lines) + nested `review_information:` map + `null` all decode correctly,
+  exercised by `MetadataConfigLoadTests` against the real files (4 tests green).
+
 ## 8. Suggested follow-up dispatch
 
 One Developer dispatch, Code-Reviewer-gated (touches ASCRegister core →
