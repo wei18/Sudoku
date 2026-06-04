@@ -13,6 +13,12 @@
 // Win/lose overlay is plain Text on a translucent backdrop — no animation,
 // no haptics, no localization (English inline per dispatch spec).
 
+// swiftlint:disable file_length
+// 410 lines vs 400 limit. The #297 snapshot seam (~10 lines) pushed a file that
+// was already at the limit over it; the view is cohesive (one board renderer +
+// its layout/overlay) and extracting a helper for a test seam would be a larger,
+// non-surgical change. Mirrors the SudokuUI/Board/GameViewModel.swift precedent.
+
 public import SwiftUI
 public import GameCenterClient
 public import MinesweeperEngine
@@ -56,19 +62,26 @@ public struct MinesweeperBoardView: View {
     // the navigation owner (Home / Root) injects this. `nil` → the CTA is hidden
     // (preview / standalone board).
     private let onNewGame: (() -> Void)?
+    // #297: snapshot / preview seam. `true` skips the in-body ticker `.task` so
+    // a pre-seeded board survives capture and no Completion overlay is drawn
+    // over a loss board. Defaults `false` — production never sets it, so the
+    // live refresh path is preserved. Pairs with `MinesweeperGameViewModel(seeded:)`.
+    private let suppressTickerForSnapshot: Bool
 
     public init(
         viewModel: MinesweeperGameViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
-        onNewGame: (() -> Void)? = nil
+        onNewGame: (() -> Void)? = nil,
+        suppressTickerForSnapshot: Bool = false
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.adProvider = adProvider
         self.adGate = adGate
         self.gameCenter = gameCenter
         self.onNewGame = onNewGame
+        self.suppressTickerForSnapshot = suppressTickerForSnapshot
     }
 
     public init(
@@ -90,6 +103,7 @@ public struct MinesweeperBoardView: View {
         self.adGate = adGate
         self.gameCenter = gameCenter
         self.onNewGame = onNewGame
+        self.suppressTickerForSnapshot = false
     }
 
     public var body: some View {
@@ -134,6 +148,8 @@ public struct MinesweeperBoardView: View {
         // disappear. Keyed on the VM's identity so Retry (which swaps the VM in
         // place at the same seed) restarts the loop with a fresh clock.
         .task(id: ObjectIdentifier(viewModel)) {
+            // #297: skip the ticker for a seeded snapshot board (see property).
+            guard !suppressTickerForSnapshot else { return }
             // Pull once immediately so the first frame isn't stale. The very
             // first snapshot could already be terminal (e.g. a board restored
             // into a finished state); `.onChange` only fires on a transition,
@@ -398,3 +414,4 @@ public struct MinesweeperBoardView: View {
     MinesweeperBoardView(difficulty: .beginner, seed: 42)
         .frame(minWidth: 360, minHeight: 480)
 }
+// swiftlint:enable file_length

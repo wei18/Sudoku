@@ -39,6 +39,18 @@ public final class MinesweeperGameViewModel {
     /// native dashboard / `RootView.task` performs the handshake.
     private var didAttemptAuth = false
 
+    // MARK: - Snapshot / preview seam (#297)
+
+    /// When `true`, `refresh()` and the GC submit funnel become no-ops: the
+    /// cached `snapshot` is a fixed, externally-seeded value and the actor is
+    /// never consulted. Used ONLY by the snapshot-test / preview init below so
+    /// deterministic mid-reveal / mineHit / flagged boards survive
+    /// `MinesweeperBoardView`'s in-body `.task { refresh() }` (which would
+    /// otherwise overwrite the seed with the actor's idle snapshot). Production
+    /// callsites never set this — it defaults to `false`, preserving the live
+    /// actor-backed refresh path verbatim.
+    private let isSeeded: Bool
+
     // MARK: - Cached snapshot
 
     public private(set) var snapshot: MinesweeperSessionSnapshot
@@ -83,6 +95,7 @@ public final class MinesweeperGameViewModel {
         self.session = session
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
+        self.isSeeded = false
         let difficulty = session.difficulty
         // Synchronous bootstrap: snapshot before any action is just the
         // immutable initial state — we mirror it locally so SwiftUI has
@@ -97,10 +110,29 @@ public final class MinesweeperGameViewModel {
         )
     }
 
+    /// Snapshot / preview seam (#297). Installs a fixed, fully-formed
+    /// `MinesweeperSessionSnapshot` and marks the view model as seeded, so
+    /// `refresh()` no-ops and the seeded board survives `MinesweeperBoardView`'s
+    /// in-body `.task { refresh() }`. The backing `session` is a throwaway
+    /// actor at the snapshot's difficulty — it is never consulted (every
+    /// mutator path is gated by `isSeeded`). Used only by snapshot tests +
+    /// SwiftUI previews to render deterministic revealed / mineHit / flagged
+    /// states; production callsites use the actor-backed inits above.
+    public init(seeded snapshot: MinesweeperSessionSnapshot) {
+        self.session = MinesweeperSession(difficulty: snapshot.difficulty, seed: 0)
+        self.gameCenter = nil
+        self.errorReporter = nil
+        self.snapshot = snapshot
+        self.isSeeded = true
+    }
+
     // MARK: - Refresh
 
     /// Pull the latest snapshot from the actor (e.g. for elapsed-time ticks).
+    /// No-op when seeded (#297): the cached snapshot is a fixed fixture and the
+    /// actor must never overwrite it.
     public func refresh() async {
+        guard !isSeeded else { return }
         snapshot = await session.snapshot()
         await submitBestTimeIfWon()
     }
