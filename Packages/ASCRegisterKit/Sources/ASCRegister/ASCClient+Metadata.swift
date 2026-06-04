@@ -250,4 +250,134 @@ extension ASCClient {
             + "&limit=200"
         return try await getAllPages(path: path)
     }
+
+    // MARK: - appStoreVersions versionString rename (#310)
+
+    /// PATCH `/v1/appStoreVersions/{id}` to rename the version's
+    /// `versionString`. Only valid for an EDITABLE version with no build
+    /// attached (PREPARE_FOR_SUBMISSION etc.); the caller (`SetVersionResolver`)
+    /// gates the state before this is invoked. The body shape follows the ASC
+    /// `appStoreVersions` PATCH reference: `data.type/id/attributes.versionString`.
+    internal func setVersionString(
+        versionId: String,
+        versionString: String
+    ) async throws -> APIResource {
+        let body = ASCClient.setVersionStringBody(versionId: versionId, versionString: versionString)
+        return try await mutate(
+            method: "PATCH",
+            path: "/v1/appStoreVersions/\(versionId)",
+            body: body
+        )
+    }
+
+    /// Pure builder for the `setVersionString` PATCH body. Kept static so the
+    /// payload shape is unit-testable without URLSession (mirrors
+    /// `nextPageLink` / `isDuplicateValueError`).
+    internal static func setVersionStringBody(
+        versionId: String,
+        versionString: String
+    ) -> [String: Any] {
+        [
+            "data": [
+                "type": "appStoreVersions",
+                "id": versionId,
+                "attributes": ["versionString": versionString],
+            ],
+        ]
+    }
+}
+
+// MARK: - Editable-version selection for `metadata set-version` (#310)
+
+/// Pure resolver that picks the single editable `appStoreVersion` to rename and
+/// refuses released/locked ones. No I/O — fed the decoded version list so the
+/// state guard + disambiguation logic is unit-testable without a live API.
+internal enum SetVersionResolver {
+
+    /// Version states whose `versionString` may still be edited (no build
+    /// locked in). Same set the metadata snapshot uses (ASCClient+Metadata
+    /// `snapshotMetadata`) — kept here as the single source for the guard.
+    internal static let editableVersionStates: Set<String> = [
+        "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
+        "METADATA_REJECTED", "INVALID_BINARY", "WAITING_FOR_REVIEW",
+    ]
+
+    internal struct Version: Sendable, Equatable {
+        internal let id: String
+        internal let versionString: String
+        internal let state: String
+        internal init(id: String, versionString: String, state: String) {
+            self.id = id
+            self.versionString = versionString
+            self.state = state
+        }
+    }
+
+    internal enum ResolveError: Error, CustomStringConvertible, Equatable {
+        case noVersions
+        case noneEditable(states: [String])
+        case ambiguous(versionStrings: [String])
+        case locked(versionString: String, state: String)
+
+        internal var description: String {
+            switch self {
+            case .noVersions:
+                return "no appStoreVersions found for this app"
+            case .noneEditable(let states):
+                return "no editable appStoreVersion to rename (states present: "
+                    + "\(states.sorted().joined(separator: ", "))). Only versions in "
+                    + "\(SetVersionResolver.editableVersionStates.sorted().joined(separator: ", ")) "
+                    + "may be renamed."
+            case .ambiguous(let versionStrings):
+                return "multiple editable appStoreVersions "
+                    + "(\(versionStrings.joined(separator: ", "))) and none is "
+                    + "PREPARE_FOR_SUBMISSION — disambiguate with --version <string>."
+            case .locked(let versionString, let state):
+                return "appStoreVersion \(versionString) is in state \(state), which is "
+                    + "released/locked — refusing to rename. Only editable versions "
+                    + "(\(SetVersionResolver.editableVersionStates.sorted().joined(separator: ", "))) "
+                    + "may be renamed."
+            }
+        }
+    }
+
+    /// Pick the editable version to rename.
+    ///
+    /// - When `versionFilter` is set, restrict to versions whose
+    ///   `versionString` equals it, then apply the editable guard — this also
+    ///   covers the disambiguation case (caller passes `--version`).
+    /// - With no filter: if exactly one editable → that one; if several editable
+    ///   → the PREPARE_FOR_SUBMISSION one, else `.ambiguous`.
+    /// - If a filter names a single version that is released/locked → `.locked`
+    ///   (clear error naming the state), not a silent skip.
+    internal static func choose(
+        versions: [Version],
+        versionFilter: String?
+    ) -> Result<Version, ResolveError> {
+        guard !versions.isEmpty else { return .failure(.noVersions) }
+
+        let candidates = versionFilter.map { filter in
+            versions.filter { $0.versionString == filter }
+        } ?? versions
+
+        // A filter that names exactly one version (released or not) gets a
+        // precise locked/editable verdict rather than a generic "none editable".
+        if versionFilter != nil, candidates.count == 1, let only = candidates.first,
+           !editableVersionStates.contains(only.state) {
+            return .failure(.locked(versionString: only.versionString, state: only.state))
+        }
+
+        let editable = candidates.filter { editableVersionStates.contains($0.state) }
+        switch editable.count {
+        case 0:
+            return .failure(.noneEditable(states: candidates.map(\.state)))
+        case 1:
+            return .success(editable[0])
+        default:
+            if let prepare = editable.first(where: { $0.state == "PREPARE_FOR_SUBMISSION" }) {
+                return .success(prepare)
+            }
+            return .failure(.ambiguous(versionStrings: editable.map(\.versionString)))
+        }
+    }
 }
