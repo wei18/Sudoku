@@ -359,7 +359,7 @@ public struct MinesweeperBoardView: View {
         MinesweeperCompletionViewModel(
             didWin: viewModel.status == .won,
             elapsedSeconds: viewModel.elapsedSeconds,
-            leaderboardId: MinesweeperLeaderboardID.bestTime(
+            leaderboardId: MinesweeperLeaderboardID.daily(
                 for: viewModel.session.difficulty
             ),
             gameCenter: gameCenter

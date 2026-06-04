@@ -149,7 +149,7 @@ public final class MinesweeperGameViewModel {
         // Latch before the await so a re-entrant refresh tick can't double-fire.
         didSubmitWin = true
 
-        let leaderboardId = MinesweeperLeaderboardID.bestTime(for: session.difficulty)
+        let leaderboardId = MinesweeperLeaderboardID.daily(for: session.difficulty)
         let elapsed = snapshot.elapsedSeconds
 
         // Best-effort one-shot auth: the native GC dashboard normally performs

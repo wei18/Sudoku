@@ -14,34 +14,76 @@ import Foundation
 
 internal enum Config {
 
+    // MARK: - App selector (GC, mirrors `MetadataApp` / `--app`, #310)
+
+    /// Which app's Game Center leaderboard set to reconcile. Selected by the
+    /// `--app` flag on `plan` / `apply` / `validate`; defaults to `.sudoku`
+    /// so every existing single-app call site keeps working unchanged.
+    ///
+    /// Achievements + IAPs are NOT app-split here: achievements are Sudoku-only
+    /// for v1, and IAPs already coexist multi-app via productId matching
+    /// (see `Config.iaps`). Only the leaderboard *set* varies by app.
+    internal enum GCApp: String, Sendable, CaseIterable {
+        case sudoku
+        case minesweeper
+
+        /// Bundle-id-rooted leaderboard prefix for this app. Must equal the
+        /// app's runtime constant (`LeaderboardID.dailyPrefix` /
+        /// `MinesweeperLeaderboardID.prefix`) — pinned by ConfigConsistencyTests.
+        internal var leaderboardPrefix: String {
+            switch self {
+            case .sudoku:      return "com.wei18.sudoku.leaderboard"
+            case .minesweeper: return "com.wei18.minesweeper.leaderboard"
+            }
+        }
+
+        /// xcstrings key namespace for this app's leaderboard titles. Sudoku
+        /// keeps the original un-namespaced `gc.leaderboard.*` keys (shipped);
+        /// MS gets an `gc.minesweeper.leaderboard.*` namespace so both apps'
+        /// titles can coexist in one catalog.
+        internal var leaderboardTitleKeyPrefix: String {
+            switch self {
+            case .sudoku:      return "gc.leaderboard"
+            case .minesweeper: return "gc.minesweeper.leaderboard"
+            }
+        }
+    }
+
     // MARK: - Leaderboards (§How.3.1)
 
-    /// Bundle-id-rooted prefix shared by all 3 daily leaderboards.
+    /// Bundle-id-rooted prefix shared by all 3 Sudoku daily leaderboards.
     /// Must equal `LeaderboardIDs.dailyPrefix`.
-    internal static let leaderboardPrefix = "com.wei18.sudoku.leaderboard"
+    internal static let leaderboardPrefix = GCApp.sudoku.leaderboardPrefix
     /// Generator family suffix. Must equal `LeaderboardIDs.versionSuffix`.
     internal static let leaderboardVersionSuffix = "v1"
 
     /// 2-hour upper bound for valid completion times, per §How.3.1 score range.
     internal static let leaderboardScoreMaxMilliseconds: Int64 = 7_200_000
 
-    internal static let leaderboards: [LeaderboardConfig] = [
-        LeaderboardConfig(
-            id: "\(leaderboardPrefix).easy.daily.\(leaderboardVersionSuffix)",
-            referenceName: "Daily Easy v1",
-            difficulty: "easy"
-        ),
-        LeaderboardConfig(
-            id: "\(leaderboardPrefix).medium.daily.\(leaderboardVersionSuffix)",
-            referenceName: "Daily Medium v1",
-            difficulty: "medium"
-        ),
-        LeaderboardConfig(
-            id: "\(leaderboardPrefix).hard.daily.\(leaderboardVersionSuffix)",
-            referenceName: "Daily Hard v1",
-            difficulty: "hard"
-        )
-    ]
+    /// The 3 daily leaderboards for `app`. Same recurring-daily shape across
+    /// apps (elapsed-time formatter, low-to-high sort, P1D recurrence); only
+    /// the id prefix + title-key namespace differ. Difficulty segments are
+    /// `easy/medium/hard` for BOTH apps (MS's engine `beginner/intermediate/
+    /// expert` are mapped to these segments at the runtime call site, mirroring
+    /// Sudoku's id shape — see `MinesweeperLeaderboardID`).
+    internal static func leaderboards(for app: GCApp) -> [LeaderboardConfig] {
+        let prefix = app.leaderboardPrefix
+        let keyPrefix = app.leaderboardTitleKeyPrefix
+        let titleCase: (String) -> String = { $0.prefix(1).uppercased() + $0.dropFirst() }
+        return ["easy", "medium", "hard"].map { difficulty in
+            LeaderboardConfig(
+                id: "\(prefix).\(difficulty).daily.\(leaderboardVersionSuffix)",
+                referenceName: "Daily \(titleCase(difficulty)) v1",
+                difficulty: difficulty,
+                titleKey: "\(keyPrefix).\(difficulty).daily.title"
+            )
+        }
+    }
+
+    /// Sudoku's 3 daily leaderboards. Retained as the default set for every
+    /// existing call site (`.live`, `validate` without `--app`); equal to
+    /// `leaderboards(for: .sudoku)`.
+    internal static let leaderboards: [LeaderboardConfig] = leaderboards(for: .sudoku)
 
     internal static var allLeaderboardIds: [String] {
         leaderboards.map(\.id)
@@ -161,8 +203,26 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     internal let id: String
     /// Internal reference name (not localized; visible only in ASC).
     internal let referenceName: String
-    /// "easy" / "medium" / "hard" — used to look up `gc.leaderboard.<d>.daily.title`.
+    /// "easy" / "medium" / "hard" — kept for back-compat / diagnostics.
     internal let difficulty: String
+    /// Full xcstrings key for this leaderboard's localized title. App-scoped
+    /// so Sudoku (`gc.leaderboard.<d>.daily.title`) and Minesweeper
+    /// (`gc.minesweeper.leaderboard.<d>.daily.title`) coexist in one catalog.
+    internal let titleKey: String
+
+    /// Back-compat initializer defaulting `titleKey` to the original
+    /// un-namespaced Sudoku key. Used by tests that build synthetic configs.
+    internal init(
+        id: String,
+        referenceName: String,
+        difficulty: String,
+        titleKey: String? = nil
+    ) {
+        self.id = id
+        self.referenceName = referenceName
+        self.difficulty = difficulty
+        self.titleKey = titleKey ?? "gc.leaderboard.\(difficulty).daily.title"
+    }
 
     /// ASC score formatter (plain string attribute on `gameCenterLeaderboards`).
     /// `ELAPSED_TIME_CENTISECOND` is Apple's highest-precision elapsed-time formatter

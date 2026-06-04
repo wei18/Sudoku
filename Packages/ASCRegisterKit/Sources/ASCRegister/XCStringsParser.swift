@@ -68,13 +68,24 @@ internal struct XCStringsParser: Sendable {
 
     // MARK: - Lookup helpers
 
-    /// `gc.leaderboard.<difficulty>.daily.title`.
+    /// `gc.leaderboard.<difficulty>.daily.title` (Sudoku default key shape).
     internal static func leaderboardTitle(
         in data: LocalizedKeys,
         locale: String,
         difficulty: String
     ) -> String? {
         data[locale]?["gc.leaderboard.\(difficulty).daily.title"]
+    }
+
+    /// Look up a leaderboard title by its explicit xcstrings key. App-scoped
+    /// keys (Sudoku `gc.leaderboard.*`, MS `gc.minesweeper.leaderboard.*`) flow
+    /// through `LeaderboardConfig.titleKey`.
+    internal static func leaderboardTitle(
+        in data: LocalizedKeys,
+        locale: String,
+        key: String
+    ) -> String? {
+        data[locale]?[key]
     }
 
     /// `gc.achievement.<shortId>.title`.

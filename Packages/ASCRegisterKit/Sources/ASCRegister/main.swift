@@ -89,15 +89,24 @@ internal enum ASCRegisterCLI {
         guard let xcstringsPath = opts["xcstrings"] else {
             throw CLIError.missingFlag("--xcstrings")
         }
+        // Optional `--app` (defaults to sudoku) selects the leaderboard set to
+        // validate xcstrings coverage against.
+        let appName = opts["app"] ?? Config.GCApp.sudoku.rawValue
+        guard let gcApp = Config.GCApp(rawValue: appName) else {
+            throw CLIError.invalidValue(
+                flag: "--app", value: appName, allowed: Config.GCApp.allCases.map(\.rawValue)
+            )
+        }
         let url = URL(fileURLWithPath: xcstringsPath)
         let parsed = try XCStringsParser.parse(fileURL: url)
 
         // Validate Config sanity.
-        let lbIds = Config.allLeaderboardIds
+        let leaderboards = Config.leaderboards(for: gcApp)
+        let lbIds = leaderboards.map(\.id)
         let achIds = Config.allAchievementShortIds
         let pointsSum = Config.totalAchievementPoints
 
-        print("Config:")
+        print("Config (\(gcApp.rawValue)):")
         print("  leaderboards (\(lbIds.count)):")
         for id in lbIds { print("    - \(id)") }
         print("  achievements (\(achIds.count), points=\(pointsSum)):")
@@ -106,7 +115,7 @@ internal enum ASCRegisterCLI {
         }
 
         // Validate xcstrings coverage for en + zh-Hant on every expected key.
-        let expectedKeys = expectedXCStringsKeys()
+        let expectedKeys = expectedXCStringsKeys(leaderboards: leaderboards)
         var missing: [(String, String)] = []  // (locale, key)
         for locale in ["en", "zh-Hant"] {
             for key in expectedKeys {
@@ -141,6 +150,16 @@ internal enum ASCRegisterCLI {
             throw CLIError.cannotReadFile(keyPath)
         }
         let strings = try XCStringsParser.parse(fileURL: URL(fileURLWithPath: xcstringsPath))
+
+        // `--app` selects the per-app leaderboard set (mirrors the metadata
+        // command, #310). Defaults to `sudoku` so existing call sites are
+        // unaffected. Achievements + IAPs are not app-split (see Config.GCApp).
+        let appName = opts["app"] ?? Config.GCApp.sudoku.rawValue
+        guard let gcApp = Config.GCApp(rawValue: appName) else {
+            throw CLIError.invalidValue(
+                flag: "--app", value: appName, allowed: Config.GCApp.allCases.map(\.rawValue)
+            )
+        }
 
         let client = ASCClient(
             auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
@@ -182,15 +201,32 @@ internal enum ASCRegisterCLI {
             }
         }
 
-        // 3. Plan.
-        let actions = Reconciler.plan(
-            config: .live,
+        // 3. Plan. `--app` selects the leaderboard set; the achievement / IAP
+        // slices are app-agnostic (see Config.GCApp). For `--app minesweeper`
+        // the reconciler will also emit achievement actions from the (Sudoku)
+        // achievement config — but MS's GC detail has none, so they surface as
+        // CREATE actions. To keep `--app minesweeper` strictly leaderboard-
+        // scoped, filter to leaderboard actions when targeting a non-sudoku app.
+        let allActions = Reconciler.plan(
+            config: .live(for: gcApp),
             strings: strings,
             remote: remote
         )
+        let actions: [Action] = (gcApp == .sudoku)
+            ? allActions
+            : allActions.filter { action in
+                switch action {
+                case .createLeaderboard, .updateLeaderboard, .leaderboardUnchanged,
+                     .createLeaderboardLocalization, .updateLeaderboardLocalization,
+                     .leaderboardLocalizationUnchanged:
+                    return true
+                default:
+                    return false
+                }
+            }
 
         // 4. Print plan summary; in `apply` also execute.
-        print("Plan: \(actions.count) action(s)")
+        print("Plan: \(actions.count) action(s) for \(gcApp.rawValue)")
         for action in actions {
             print("  \(describe(action))")
         }
@@ -301,10 +337,12 @@ internal enum ASCRegisterCLI {
         }
     }
 
-    private static func expectedXCStringsKeys() -> [String] {
+    private static func expectedXCStringsKeys(
+        leaderboards: [LeaderboardConfig] = Config.leaderboards
+    ) -> [String] {
         var keys: [String] = []
-        for lb in Config.leaderboards {
-            keys.append("gc.leaderboard.\(lb.difficulty).daily.title")
+        for lb in leaderboards {
+            keys.append(lb.titleKey)
         }
         for ach in Config.achievements {
             keys.append(ach.titleKey)
@@ -321,9 +359,9 @@ internal enum ASCRegisterCLI {
     private static func printUsage() {
         print("""
         Usage:
-          ASCRegister validate  --xcstrings <path>
-          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
-          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister validate  --xcstrings <path> [--app <sudoku|minesweeper>]
+          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
+          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>

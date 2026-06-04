@@ -21,6 +21,37 @@ internal struct ConfigConsistencyTests {
             "com.wei18.sudoku.leaderboard.hard.daily.v1",
         ]
         #expect(Config.allLeaderboardIds == expected)
+        #expect(Config.leaderboards(for: .sudoku).map(\.id) == expected)
+    }
+
+    @Test("3 Minesweeper leaderboard IDs are byte-equal to MinesweeperLeaderboardID (#291)")
+    internal func minesweeperLeaderboardIDs() {
+        // Hard-coded here (mirrors the Sudoku GC pattern) so this file stays
+        // import-light; MinesweeperUI is not imported. If the runtime
+        // `MinesweeperLeaderboardID.daily(for:)` constant ever drifts from this
+        // ASC Config, fix BOTH places — this test fails first.
+        //
+        // MS engine difficulty (beginner/intermediate/expert) maps to the
+        // Sudoku-mirroring id segment (easy/medium/hard); the recurring-daily
+        // `.daily.v1` shape matches Sudoku exactly.
+        let expected = [
+            "com.wei18.minesweeper.leaderboard.easy.daily.v1",
+            "com.wei18.minesweeper.leaderboard.medium.daily.v1",
+            "com.wei18.minesweeper.leaderboard.hard.daily.v1",
+        ]
+        #expect(Config.leaderboards(for: .minesweeper).map(\.id) == expected)
+    }
+
+    @Test("Minesweeper leaderboards mirror Sudoku's recurring-daily shape")
+    internal func minesweeperLeaderboardShape() {
+        for board in Config.leaderboards(for: .minesweeper) {
+            #expect(board.defaultFormatter == "ELAPSED_TIME_CENTISECOND")
+            #expect(board.sortOrder == "ASC")
+            #expect(board.recurrenceRule == "FREQ=DAILY;INTERVAL=1")
+            #expect(board.recurrenceDuration == "PT24H")
+            #expect(board.submissionType == "BEST_SCORE")
+            #expect(board.titleKey.hasPrefix("gc.minesweeper.leaderboard."))
+        }
     }
 
     @Test("8 achievement short IDs match the AchievementEvaluator emitted set")
