@@ -64,6 +64,7 @@ internal enum ASCRegisterCLI {
                 switch subSub {
                 case "plan":  try await runMetadataRemote(args: rest2, mode: .plan)
                 case "apply": try await runMetadataRemote(args: rest2, mode: .apply)
+                case "set-version": try await runMetadataSetVersion(args: rest2)
                 default:
                     FileHandle.standardError.write(Data("Unknown metadata subcommand: \(subSub)\n".utf8))
                     printUsage()
@@ -367,6 +368,7 @@ internal enum ASCRegisterCLI {
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
           ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
+          ASCRegister metadata set-version --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> --version <string> [--app-id <id>]
         """)
     }
 
@@ -450,6 +452,74 @@ internal enum ASCRegisterCLI {
             }
             print("Applied.")
         }
+    }
+
+    /// Rename the editable App Store version's `versionString` (#310). GETs the
+    /// app's appStoreVersions, picks the single editable one via
+    /// `SetVersionResolver` (refusing released/locked states), and PATCHes its
+    /// `versionString` to `--version`. Idempotent: if the editable version
+    /// already carries the target, prints "already <x>, no change" and exits 0
+    /// without a mutation. Does NOT touch listing/localization metadata.
+    private static func runMetadataSetVersion(args: [String]) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let appName = try opts.required("app")
+        let target = try opts.required("version")
+        let metadataDir = opts["metadata-dir"] ?? "docs/app-store/metadata"
+
+        guard let app = MetadataApp(rawValue: appName) else {
+            throw CLIError.invalidValue(flag: "--app", value: appName, allowed: MetadataApp.allCases.map(\.rawValue))
+        }
+
+        // App ID: explicit flag wins, else the YAML's apple_id (same resolution
+        // as `runMetadataRemote`).
+        let config = try MetadataConfig.load(app: app, metadataDir: metadataDir)
+        guard let appId = opts["app-id"] ?? config.appMeta.appleId else {
+            print("metadata set-version: app '\(app.rawValue)' has no apple_id in app-meta.yaml "
+                + "and no --app-id given — no ASC app to rename a version on.")
+            return
+        }
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+        // set-version always mutates when a rename is needed — use .apply so the
+        // PATCH is actually sent (the idempotent no-change path exits earlier).
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: .apply
+        )
+
+        // GET versions, map to the pure resolver's value type.
+        let versions = try await client.listAppStoreVersions(appId: appId)
+        let resolverVersions = versions.data.map { v in
+            SetVersionResolver.Version(
+                id: v.id,
+                versionString: v.attributes["versionString"] ?? "",
+                state: v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
+            )
+        }
+
+        let chosen: SetVersionResolver.Version
+        switch SetVersionResolver.choose(versions: resolverVersions, versionFilter: nil) {
+        case .success(let v): chosen = v
+        case .failure(let error): throw error
+        }
+
+        // Idempotent: already at target → no mutation.
+        if chosen.versionString == target {
+            print("metadata set-version: already \(target), no change "
+                + "(version id=\(chosen.id), state=\(chosen.state)).")
+            return
+        }
+
+        print("metadata set-version: renaming version id=\(chosen.id) state=\(chosen.state) "
+            + "\(chosen.versionString) → \(target)")
+        _ = try await client.setVersionString(versionId: chosen.id, versionString: target)
+        print("Applied: \(chosen.versionString) → \(target)")
     }
 
     /// One GET pass that builds the `MetadataRemoteState`: picks the editable
