@@ -55,11 +55,21 @@ public struct BannerSlotView: View {
             }
         }
         .task { await resolveGateAndLoad() }
-        .onDisappear {
-            // Release the live banner's `GADBannerView` when the slot goes away
-            // so the provider doesn't retain it for the handle's lifetime
-            // (#221). No-op unless we hold a loaded handle.
-            guard case let .loaded(handle) = status else { return }
+        .onChange(of: status) { oldStatus, _ in
+            // Defensive: dispose the previously-loaded handle if it is ever
+            // replaced or dropped. Today `status` is written exactly once (in
+            // `resolveGateAndLoad`), so this branch does not fire — it guards
+            // the dispose path for a future re-poll/refresh WITHOUT reviving the
+            // raw `.onDisappear` dispose, which thrashed on transient SwiftUI
+            // teardown (TabView switch, List recycling, split-view churn) (#276).
+            guard case let .loaded(handle) = oldStatus else { return }
+            if case .loaded(handle) = status { return } // same handle, no churn
+            Task { await adProvider.dispose(handle: handle) }
+        }
+        .onChange(of: dismissed) { _, isDismissed in
+            // Gate closed for the session (user tapped ✕). Release the held
+            // banner so the provider drops its retained `GADBannerView` (#221).
+            guard isDismissed, case let .loaded(handle) = status else { return }
             Task { await adProvider.dispose(handle: handle) }
         }
     }
@@ -100,6 +110,10 @@ public struct BannerSlotView: View {
             // AdGate handles suppression; reaching here means the provider
             // disagreed with the gate. Render nothing inside the rect so
             // we don't show a stale state.
+            EmptyView()
+        case .disposed:
+            // The held handle was released (gate closed / dismissed); the slot
+            // is already collapsing. Render nothing rather than a stale ad.
             EmptyView()
         }
     }

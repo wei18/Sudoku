@@ -68,6 +68,8 @@ struct ProtocolShapeTests {
         #expect(a != c)
         #expect(AdBannerStatus.notInitialized == .notInitialized)
         #expect(AdBannerStatus.suppressed == .suppressed)
+        #expect(AdBannerStatus.disposed == .disposed)
+        #expect(AdBannerStatus.disposed != .notInitialized)
         assertSendable(a)
     }
 
