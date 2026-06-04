@@ -52,12 +52,11 @@ public final class MinesweeperHomeViewModel {
         case .settings:
             path.append(.settings)
         case .leaderboard:
-            // No-op until MS Game Center lands (#291). Mirroring Sudoku (#49),
-            // Leaderboard is a modal GC side-effect, never a stack push — so
-            // there is no `.leaderboard` route. The Home card is rendered
-            // `.disabled` so this branch is unreachable from the UI today; it
-            // stays here as the documented seam for the future GC present call.
-            break
+            // #291: present Apple's native Game Center dashboard. Mirroring
+            // Sudoku (#49), Leaderboard is a modal GC side-effect, never a
+            // stack push — so there is no `.leaderboard` route. Passing `nil`
+            // opens the full leaderboards listing (all 3 best-time boards).
+            MinesweeperGameCenterDashboard.present(leaderboardId: nil)
         }
     }
 }

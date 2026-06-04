@@ -14,9 +14,11 @@
 // no haptics, no localization (English inline per dispatch spec).
 
 public import SwiftUI
+public import GameCenterClient
 public import MinesweeperEngine
 public import MonetizationCore
 internal import MinesweeperGameState
+public import Telemetry
 
 public struct MinesweeperBoardView: View {
 
@@ -45,9 +47,16 @@ public struct MinesweeperBoardView: View {
         difficulty: Difficulty = .beginner,
         seed: UInt64 = 0,
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        gameCenter: (any GameCenterClient)? = nil,
+        errorReporter: (any ErrorReporter)? = nil
     ) {
-        self._viewModel = State(initialValue: MinesweeperGameViewModel(difficulty: difficulty, seed: seed))
+        self._viewModel = State(initialValue: MinesweeperGameViewModel(
+            difficulty: difficulty,
+            seed: seed,
+            gameCenter: gameCenter,
+            errorReporter: errorReporter
+        ))
         self.adProvider = adProvider
         self.adGate = adGate
     }

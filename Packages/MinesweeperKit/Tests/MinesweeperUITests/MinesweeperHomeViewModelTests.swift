@@ -40,13 +40,22 @@ struct MinesweeperHomeViewModelTests {
         #expect(viewModel.path == [.settings])
     }
 
-    // Leaderboard is a no-op stub until MS Game Center lands (#291) — it pushes
-    // no route. The Home card is also rendered `.disabled` so this branch is
-    // unreachable from the UI, but the VM invariant (no path mutation) is
-    // asserted directly here.
+    // Leaderboard presents the native GC dashboard as a modal side-effect
+    // (#291 / #49) — it must NOT push a route. The present call bottoms out in
+    // GameKit / GKAccessPoint, which is inert in the test host, so we assert
+    // the navigation invariant: `select(.leaderboard)` leaves the path empty.
     @Test func selectLeaderboardPushesNoRoute() {
         let viewModel = MinesweeperHomeViewModel()
         viewModel.select(.leaderboard)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func selectLeaderboardThroughInjectedBindingPushesNoRoute() {
+        let box = RoutePathBox()
+        let viewModel = MinesweeperHomeViewModel(path: box.binding)
+        viewModel.select(.leaderboard)
+        // Modal side-effect only — the injected nav binding stays untouched.
+        #expect(box.routes.isEmpty)
         #expect(viewModel.path.isEmpty)
     }
 

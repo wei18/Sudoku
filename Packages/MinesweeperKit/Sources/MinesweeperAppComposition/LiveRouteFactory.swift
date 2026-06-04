@@ -23,11 +23,13 @@
 // file's public API untouched.
 
 public import SwiftUI
+public import GameCenterClient
 public import GameShellUI
 public import MinesweeperUI
 public import MonetizationCore
 public import MonetizationUI
 public import Persistence
+public import Telemetry
 
 internal import Foundation
 
@@ -46,17 +48,26 @@ public struct LiveRouteFactory: RouteFactory {
     // both, previews pass nil.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    // #291: threaded into `MinesweeperBoardView` so its `MinesweeperGameViewModel`
+    // can submit a best-time to the difficulty's leaderboard on win. Optional so
+    // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
+    private let gameCenter: (any GameCenterClient)?
+    private let errorReporter: (any ErrorReporter)?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
-        persistence: (any PersistenceProtocol)? = nil
+        persistence: (any PersistenceProtocol)? = nil,
+        gameCenter: (any GameCenterClient)? = nil,
+        errorReporter: (any ErrorReporter)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
         self.adGate = adGate
         self.persistence = persistence
+        self.gameCenter = gameCenter
+        self.errorReporter = errorReporter
     }
 
     @MainActor
@@ -90,7 +101,9 @@ public struct LiveRouteFactory: RouteFactory {
                     difficulty: difficulty,
                     seed: seed,
                     adProvider: adProvider,
-                    adGate: adGate
+                    adGate: adGate,
+                    gameCenter: gameCenter,
+                    errorReporter: errorReporter
                 )
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {

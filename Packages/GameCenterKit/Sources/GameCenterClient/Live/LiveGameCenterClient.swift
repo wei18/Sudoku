@@ -152,13 +152,23 @@ public actor LiveGameCenterClient: GameCenterClient {
         leaderboardKind: LeaderboardKind
     ) async throws {
         _ = (puzzleId, difficulty)
+        // Map the Sudoku-typed kind → canonical `.v1` leaderboard id, then
+        // delegate to the raw game-agnostic path so the centisecond
+        // conversion + hook call site stays single-sourced (#291).
+        let leaderboardId = LeaderboardIDs.id(for: leaderboardKind)
+        try await submitScore(leaderboardId: leaderboardId, elapsedSeconds: elapsedSeconds)
+    }
+
+    public func submitScore(
+        leaderboardId: String,
+        elapsedSeconds: Int
+    ) async throws {
         // Per docs/v1/design.md §How.3.1 (`ELAPSED_TIME_CENTISECOND` formatter):
         // ASC's elapsed-time leaderboards use 1/100-second resolution.
         // Convert seconds → centiseconds at this boundary exactly once
         // (callers + the public protocol stay seconds-only). See impl-notes
         // `meetings/2026-05-20_submit-score-centisecond.impl-notes.md`.
         let centiseconds = Int64(elapsedSeconds) * 100
-        let leaderboardId = LeaderboardIDs.id(for: leaderboardKind)
         try await submitScoreHook(leaderboardId, centiseconds)
     }
 
