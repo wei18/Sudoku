@@ -18,9 +18,9 @@ Both run on **iPhone and Mac** from one codebase, sync through the player's own 
 | | **Sudoku** (primary) | **Minesweeper** (second app) |
 |---|---|---|
 | One-liner | Daily & Practice logic for iPhone and Mac | The classic, made calm — for iPhone and Mac |
-| Status | Codebase feature-complete and shipped; v2.5 monetization layer in its final sprint | Mirrors Sudoku's shell; monetization stack wired; gameplay screen in development |
+| Status | Feature-complete; v2.3.5 monetization (banner + Remove-Ads IAP) in App Store submission | Mirrors Sudoku across every layer except the board — built and tested; pending its own App Store submission |
 | Modes | Daily (3 puzzles/day, global, leaderboard-ranked) + Practice (random, unranked) | Beginner / Intermediate / Expert, first-tap-safe |
-| Cross-device | iCloud Private DB sync of saves + records | Same sync shape, separate iCloud container |
+| Cross-device | iCloud Private DB sync of saves + records | Settings + purchase state via iCloud; no saved-game flow yet |
 | Platforms | iOS 26 / macOS 26, real SwiftUI Mac app (not Catalyst) | Same |
 
 **Ethos (both apps).** No personal data is collected. No third-party analytics SDKs are embedded. Saves live in the player's own iCloud Private Database; Game Center submissions go to Apple. In the monetized builds the *only* third-party SDK is Google's banner-ad library, isolated to a single module — and the banner can be removed permanently with a one-time, non-consumable In-App Purchase.
