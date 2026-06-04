@@ -126,6 +126,34 @@ internal struct ReconcilerMetadataTests {
         #expect(actions.contains { if case .updateAppInfoLoc(let id, let loc, _) = $0 { return id == "ail-en" && loc == "en-US" } else { return false } })
     }
 
+    @Test("version-loc differing only by a trailing block-scalar newline → unchanged (#333)")
+    internal func versionTrailingNewlineConverges() {
+        // The desired config carries the YAML `|` block-scalar terminator on the
+        // multi-line fields; ASC stores+returns them with the trailing newline
+        // dropped (issue #333 — that mismatch made every replan emit UPDATE).
+        let listing = Self.listing(
+            description: "Long desc.\n",
+            promotionalText: "Promo.\n",
+            whatsNew: "v1.\n"
+        )
+        var remote = MetadataRemoteState(appInfoId: "ai-1", versionId: "v-1")
+        remote.appInfoLocalizations["en-US"] = MetadataRemoteState.AppInfoLocRemote(
+            id: "ail-en", name: listing.name, subtitle: listing.subtitle,
+            privacyPolicyUrl: listing.privacyPolicyUrl
+        )
+        // Remote mirrors what ASC actually returns: same content, no trailing newline.
+        remote.versionLocalizations["en-US"] = MetadataRemoteState.VersionLocRemote(
+            id: "vl-en", description: "Long desc.", keywords: listing.keywords,
+            promotionalText: "Promo.", whatsNew: "v1.",
+            marketingUrl: listing.marketingUrl, supportUrl: listing.supportUrl
+        )
+        remote.categoryIds = Self.expectedCategoryIds
+
+        let actions = MetadataReconciler.plan(config: Self.config(listings: [listing]), remote: remote)
+        #expect(actions.contains { if case .versionLocUnchanged(let loc) = $0 { return loc == "en-US" } else { return false } })
+        #expect(!actions.contains { if case .updateVersionLoc = $0 { return true } else { return false } })
+    }
+
     @Test("version field drift (keywords) → updateVersionLoc")
     internal func versionDriftUpdates() {
         let listing = Self.listing()
