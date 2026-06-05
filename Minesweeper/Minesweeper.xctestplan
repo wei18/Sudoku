@@ -18,6 +18,13 @@
   "testTargets" : [
     {
       "target" : {
+        "containerPath" : "container:Packages\/TimeKit",
+        "identifier" : "TimeKitTests",
+        "name" : "TimeKitTests"
+      }
+    },
+    {
+      "target" : {
         "containerPath" : "container:Packages\/MinesweeperCoreKit",
         "identifier" : "MinesweeperEngineTests",
         "name" : "MinesweeperEngineTests"

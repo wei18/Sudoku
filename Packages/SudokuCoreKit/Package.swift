@@ -20,11 +20,19 @@ let swiftSettings: [SwiftSetting] = [
 // Telemetry-only extraction. See `docs/foundations.md §2`.
 //
 // Dep direction (inside SudokuCoreKit):
-//   SudokuEngine  ← zero external dep (Foundation only)
+//   SudokuEngine  → TimeKit (shared UTCDay leaf, #305); else Foundation only
 //   GameState     → SudokuEngine
+//
+// SudokuEngine re-exports TimeKit's `UTCDay` (`@_exported import`) so existing
+// consumers that `import SudokuEngine` keep reaching `UTCDay` unchanged after
+// the #305 extraction.
 
 let productionTargets: [Target] = [
-    .target(name: "SudokuEngine", swiftSettings: swiftSettings),
+    .target(
+        name: "SudokuEngine",
+        dependencies: [.product(name: "TimeKit", package: "TimeKit")],
+        swiftSettings: swiftSettings
+    ),
     .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
 ]
 
@@ -47,6 +55,9 @@ let package = Package(
     products: [
         .library(name: "SudokuEngine", targets: ["SudokuEngine"]),
         .library(name: "GameState", targets: ["GameState"]),
+    ],
+    dependencies: [
+        .package(path: "../TimeKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

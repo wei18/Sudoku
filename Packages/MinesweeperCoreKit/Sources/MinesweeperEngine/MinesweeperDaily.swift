@@ -14,6 +14,7 @@
 // runs and architectures, which is what makes the daily board replayable.
 
 public import Foundation
+internal import TimeKit
 
 public enum MinesweeperDaily {
 

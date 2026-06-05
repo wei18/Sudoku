@@ -24,7 +24,14 @@ let swiftSettings: [SwiftSetting] = [
 // `GameState` module can be added later under a namespaced name when needed.
 
 let productionTargets: [Target] = [
-    .target(name: "MinesweeperEngine", swiftSettings: swiftSettings),
+    // MinesweeperEngine depends on the shared `TimeKit` leaf for `UTCDay`
+    // (#305) — previously byte-mirrored in-package (#290), now imported from
+    // the game-agnostic leaf both cores share.
+    .target(
+        name: "MinesweeperEngine",
+        dependencies: [.product(name: "TimeKit", package: "TimeKit")],
+        swiftSettings: swiftSettings
+    ),
     .target(
         name: "MinesweeperGameState",
         dependencies: ["MinesweeperEngine"],
@@ -35,7 +42,15 @@ let productionTargets: [Target] = [
 // MARK: - Test targets
 
 let testTargets: [Target] = [
-    .testTarget(name: "MinesweeperEngineTests", dependencies: ["MinesweeperEngine"], swiftSettings: swiftSettings),
+    .testTarget(
+        name: "MinesweeperEngineTests",
+        dependencies: [
+            "MinesweeperEngine",
+            // `UTCDay` assertions reach the shared TimeKit leaf directly (#305).
+            .product(name: "TimeKit", package: "TimeKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
     .testTarget(
         name: "MinesweeperGameStateTests",
         dependencies: ["MinesweeperGameState"],
@@ -54,6 +69,9 @@ let package = Package(
     products: [
         .library(name: "MinesweeperEngine", targets: ["MinesweeperEngine"]),
         .library(name: "MinesweeperGameState", targets: ["MinesweeperGameState"]),
+    ],
+    dependencies: [
+        .package(path: "../TimeKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

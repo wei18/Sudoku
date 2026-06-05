@@ -6,6 +6,7 @@
 
 import Foundation
 import Testing
+import TimeKit
 @testable import MinesweeperEngine
 
 // MARK: - Date helpers (UTC)
