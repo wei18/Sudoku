@@ -34,3 +34,30 @@ from a single source — it does **not** replace the marketing-frame / upscale
 pass that produces ASC-exact RGB assets. See
 [`../screenshot-strategy.md`](../screenshot-strategy.md) §Snapshot-sourced
 pipeline for the gap and the path to submission-ready assets.
+
+## Uploading to ASC — `ASCRegister metadata screenshots`
+
+`ASCRegister metadata screenshots` uploads the PNGs in this tree to App Store
+Connect via Apple's multi-part reservation flow (reserve → PUT → commit), per
+app + platform, into the correct `appScreenshotSet`:
+
+```sh
+# DRY-RUN (default): prints what WOULD upload + what is already present. No mutation.
+ASCRegister metadata screenshots --key <p8> --key-id <id> --issuer <id> \
+  --app sudoku --platform all --locale en
+
+# EXECUTE: actually uploads (gated behind --i-am-sure, mirrors `metadata apply`).
+ASCRegister metadata screenshots ... --i-am-sure
+```
+
+- **Device → display type**: `iphone-6.9 → APP_IPHONE_67`,
+  `ipad-13 → APP_IPAD_PRO_3GEN_129` (Apple reuses the 12.9" enum for 13"),
+  `mac → APP_DESKTOP`.
+- **Idempotency**: a PNG whose `fileName` already lives in the matching set is
+  **skipped** (never duplicated). It does not replace existing screenshots.
+- **Checksum**: the commit PATCH sends the MD5 of the file bytes
+  (`sourceFileChecksum`); ASC verifies it against the uploaded bytes.
+- ⚠️ Because these baselines are PREVIEW-ONLY (see the table above), ASC will
+  reject them server-side at the dimension/alpha check even with `--i-am-sure`.
+  The command implements the upload *flow* correctly; submission-ready assets
+  come from the marketing-frame pass (#236).

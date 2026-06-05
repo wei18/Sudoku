@@ -312,13 +312,23 @@ internal actor ASCClient {
         return try APIResource.decodeSingle(from: data, path: path, status: status)
     }
 
-    fileprivate func send(method: String, path: String, body: Data?) async throws -> (Data, Int) {
+    internal func send(method: String, path: String, body: Data?) async throws -> (Data, Int) {
         let req = try makeRequest(method: method, path: path, body: body)
+        return try await perform(req)
+    }
+
+    /// Issue a fully-built `URLRequest` AS-IS over the session — no JWT signing,
+    /// no `baseURL` resolution, no header injection. Used for the screenshot
+    /// multi-part PUT, whose destination URL is an Apple asset-storage endpoint
+    /// that carries its own auth in the reservation's `requestHeaders` (signing
+    /// it with the ASC JWT would be wrong). `session` stays `private`; this is
+    /// the single internal seam for an un-signed request. Returns `(data, status)`.
+    internal func perform(_ request: URLRequest) async throws -> (Data, Int) {
         #if canImport(FoundationNetworking)
         // Linux URLSession lacks async — ASCRegister is Apple-only.
         throw ClientError.unsupportedOnLinux
         #else
-        let (data, response) = try await session.data(for: req)
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         return (data, status)
         #endif

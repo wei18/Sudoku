@@ -442,6 +442,9 @@ extension MetadataConfig {
     private static let repoToASCLocale: [String: String] = [
         // Already-canonical codes (pass through unchanged).
         "en-US": "en-US",
+        // The committed screenshots tree (#311) uses the bare `en` segment while
+        // listing.yaml uses `en-US`; both resolve to the ASC `en-US` locale.
+        "en": "en-US",
         "ja": "ja",
         "zh-Hans": "zh-Hans",
         "zh-Hant": "zh-Hant",
