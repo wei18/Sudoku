@@ -1,0 +1,14 @@
+name: repo audit (upkeep e2e)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    uses: wei18/upkeep/.github/workflows/audit.yml@e2e
+    secrets:
+      claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
