@@ -114,3 +114,41 @@ Each shot has a 2-line overlay: a **headline** (≤ 5 words) and a **subhead** (
 - [ ] Overlay copy is for the file's own locale (one wrong locale on one file is the easiest mistake — quick eyeball spot-check before upload).
 - [ ] Mac Shot 5 sidebar shows full nav, not collapsed.
 - [ ] iPad Shot 3 includes keyboard hint chip.
+
+## Snapshot-sourced pipeline (#311)
+
+Instead of hand-capturing from the built app, the store storyline is wired
+from the committed snapshot-test baselines as a **single source of truth**.
+
+- Mechanism: `mise-tasks/store/screenshots` (task `store:screenshots`) —
+  `sync` / `list` / `clean`. `sync` creates relative **symlinks** under
+  `docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png` pointing
+  at `Packages/.../__Snapshots__/`. Re-recording snapshots auto-refreshes the
+  previews; no PNG is duplicated.
+- Wired today (light mode, `en`/default-locale slots that have a baseline):
+  Sudoku iPhone Home/Daily/Board/Completion/Settings + Mac Home/Board/Settings;
+  Minesweeper iPhone Home/Daily/Board/Completion + Mac Home/Daily. Run
+  `mise run store:screenshots list` for the live mapping and any gaps.
+
+### Why these are PREVIEW-ONLY, not submission-ready
+
+The snapshot PNGs are raw `NSHostingView` renders at the snapshot layout sizes,
+**with an alpha channel** — they do **not** satisfy ASC's screenshot spec:
+
+| Source | Baseline pixels | ASC 2026 requirement | Verdict |
+|---|---|---|---|
+| iPhone snapshot (393×852 @2x) | 786 × 1704, RGBA | iPhone 6.9": 1290×2796 / 1320×2868 — **exact, zero tolerance**, no alpha | ✗ size + alpha |
+| Mac snapshot (900×600 @2x) | 1800 × 1200, RGBA | Mac: ≥ 1280×800, larger OK, no alpha | ✗ alpha (dimensions pass) |
+| iPad | *(no baselines exist)* | iPad 13": 2048×2732 / 2064×2752 | ✗ unwired |
+
+ASC rejects the upload at the dimension/alpha check **before** review, so the
+symlinked tree is for eyeballing the storyline from one source — it is **not**
+an upload path.
+
+### Remaining work to reach submission-ready (separate issue, under #236)
+
+A **marketing-frame / upscale pass** consumes these baselines and emits
+ASC-exact RGB (no-alpha) PNGs at the required device dimensions, applying the
+overlay copy tabled above and (optionally) a device frame. That pass — plus
+adding **iPad snapshot fixtures** for the iPad slot — is what closes the gap to
+a real ASC upload. #311 delivers the wiring + this honest gap doc only.

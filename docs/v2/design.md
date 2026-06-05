@@ -325,6 +325,7 @@ public struct AppComposition {
 - **Subscription / Pro tier**：v3+，需要有 pro feature 可賣
 - **Tip Jar**：考慮（calm brand-friendly），v2.1+
 - **Premium puzzle pack**：與 PuzzleOverride backlog 接合，v2.1+
+- **App Store screenshot 行銷框 / upscale pass**（#311 後續，under #236）：`mise run store:screenshots sync` 已把 snapshot baseline 以 symlink 接成 store storyline 預覽，但 baseline 是 786×1704 / 1800×1200 **含 alpha** 的 NSHostingView raw render，不符 ASC 嚴格尺寸（iPhone 6.9" 1290×2796，zero tolerance）+ no-alpha 規格。需要一個 pass：baseline → ASC-exact RGB（去 alpha、補尺寸）+ overlay copy（screenshot-strategy.md 已列）+ optional device frame。另需 **iPad snapshot fixtures**（目前無 iPad baseline，iPad slot 未接）。
 - ~~**ASCRegister IAP mode**：自動化 IAP product 註冊到 ASC（目前手動）~~ — **CANCELLED 2026-05-26**: v2 只有 1 個 IAP (Remove Ads), 手動建一次就好；~150 LOC subagent 投資 ROI 不划算。重新評估 trigger: IAP 數量 ≥ 3 或要支援 promotional offers / subscription tiers。`tools` 已有的 `ASCRegister` CLI (Game Center 用) 不擴充 `--iap` mode。
 
 > Cross-platform / Android backlog 在 [`docs/v1/design.md §不在 v1 範圍 → §平台與輸入`](../v1/design.md) canonical；本檔不另列 v2 entry。Engineering 預留事項見 [`docs/foundations.md §Backlog`](../foundations.md#backlog) 對應條目。
