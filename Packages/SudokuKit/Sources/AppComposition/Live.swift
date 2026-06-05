@@ -187,6 +187,14 @@ extension AppComposition {
             emit: emit
         )
 
+        // Shared daily-ready notification payload — used both by the primer
+        // (initial schedule) and the #321 Settings time picker (reschedule on
+        // change) so re-scheduling never drifts the title/body.
+        let dailyReadyContent = ReminderContent(
+            title: "Today's Sudoku is ready",
+            body: "Your daily puzzle is waiting — keep your streak going."
+        )
+
         // Builds a fresh daily-ready primer coordinator per Daily-completion
         // mount. Copy is passed as `LocalizedStringKey` literals so the app
         // bundle's `Localizable.xcstrings` localizes them (ai-translated-localization
@@ -197,10 +205,7 @@ extension AppComposition {
                 permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
                 scheduler: reminderScheduler,
                 settingsStore: reminderSettingsStore,
-                content: ReminderContent(
-                    title: "Today's Sudoku is ready",
-                    body: "Your daily puzzle is waiting — keep your streak going."
-                ),
+                content: dailyReadyContent,
                 primerCopy: ReminderPrimerCopy(
                     title: "Never miss a Daily",
                     lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
@@ -224,6 +229,19 @@ extension AppComposition {
             )
         }
 
+        // #321: builds the Settings Daily-reminder time picker model per Settings
+        // mount. Reads/writes the SAME `reminderSettingsStore` the primer uses, so
+        // a time change here is honored by the next primer schedule and vice-versa.
+        let makeReminderTimeSettings: @MainActor () -> ReminderTimeSettingsModel = {
+            ReminderTimeSettingsModel(
+                settingsStore: reminderSettingsStore,
+                scheduler: reminderScheduler,
+                authorizer: reminderAuthorizer,
+                content: dailyReadyContent,
+                emit: emit
+            )
+        }
+
         let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleStore,
             persistence: persistence,
@@ -235,7 +253,8 @@ extension AppComposition {
             adGate: adGate,
             monetizationController: monetizationController,
             toastController: toastController,
-            makeDailyReminderPrimer: makeDailyReminderPrimer
+            makeDailyReminderPrimer: makeDailyReminderPrimer,
+            makeReminderTimeSettings: makeReminderTimeSettings
         )
 
         return AppComposition(
