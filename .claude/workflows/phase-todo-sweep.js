@@ -127,7 +127,7 @@ const CLASSIFY_SCHEMA = {
           rationale: { type: 'string', description: '1-2 sentence reason for the chosen disposition' },
           backlogTarget: {
             type: 'string',
-            enum: ['docs/design.md', 'docs/foundations.md', 'docs/plan.md', 'docs/methodology.md', 'meeting-log', ''],
+            enum: ['docs/v2/design.md', 'docs/foundations.md', 'docs/v2/plan.md', 'docs/methodology.md', 'meeting-log', ''],
             description: 'when disposition=Backlog: which file\'s §Backlog. Per methodology backlog-routing-by-topic.',
           },
           backlogEntry: {
@@ -148,9 +148,9 @@ const classify = await agent(
   `For each match, decide disposition per methodology §派發契約 item 7:\n` +
   `  - **Resolved**: the marker is stale — surrounding code shows the work is already done. Read 5-10 lines around each match if unsure (use \`sed -n 'L1,L2p' file\` or Read tool on specific path).\n` +
   `  - **Backlog**: real follow-up work; route by topic per backlog-routing-by-topic skill:\n` +
-  `      product / feature gaps → docs/design.md §Backlog\n` +
+  `      product / feature gaps → docs/v2/design.md §Backlog\n` +
   `      engineering / tooling / infra → docs/foundations.md §Backlog\n` +
-  `      implementation step / phase work → docs/plan.md §Backlog\n` +
+  `      implementation step / phase work → docs/v2/plan.md §Backlog\n` +
   `      collaboration / process → docs/methodology.md §Backlog\n` +
   `      truly unclassifiable → meeting-log (today's §未決)\n` +
   `  - **Intentional**: marker is deliberate (e.g. "TODO when iOS 19 ships", "placeholder until USD price tier decided") — must include rationale.\n` +

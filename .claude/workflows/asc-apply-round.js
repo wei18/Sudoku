@@ -91,7 +91,7 @@ const KNOWN_RECIPES = {
   },
   RECURRENCE_START_CANNOT_BE_PAST: {
     summary: 'recurrenceStartDate must be future-only.',
-    likelyFix: 'Config.swift: change currentRecurrenceStartDateUTC() → nextRecurrenceStartDateUTC() returning tomorrow UTC 00:00 (today + 86400s). Update RecurrenceStartDateTests with the edge case at 23:59 UTC.',
+    likelyFix: 'Config.swift: ensure recurrenceStartDate uses LeaderboardConfig.nextRecurrenceStartDateUTC() (returns tomorrow UTC 00:00, today + 86400s). Verify NextRecurrenceStartDateTests covers the edge case at 23:59 UTC.',
     pastRounds: '#26',
   },
   RECURRENCE_DURATION_INVALID: {

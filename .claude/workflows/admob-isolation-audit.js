@@ -59,9 +59,9 @@ const expectedFound = scan.hits.some(h => h.file === expectedFile)
 
 let status
 let guidance
-if (violations.length === 0 && expectedFound && scan.hits.length === 1) {
+if (violations.length === 0 && expectedFound) {
   status = 'PASS'
-  guidance = `Exactly 1 hit, in the expected file. Isolation contract intact.`
+  guidance = `All ${scan.hits.length} hit(s) confined to ${expectedFile} (incl. canImport guards). 0 violations — isolation contract intact.`
 } else if (violations.length === 0 && !expectedFound) {
   status = 'WARN_BRIDGE_MISSING'
   guidance = `No hits at all. Expected exactly 1 hit in ${expectedFile}. Either the bridge file moved/renamed (update expectedFile arg) or AdMob is currently not wired (likely intentional during certain builds).`
