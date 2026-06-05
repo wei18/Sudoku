@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+#MISE description="Sync App Store screenshot previews from committed snapshot-test baselines via symlinks. PREVIEW-ONLY: baselines are NOT ASC submission-spec (see docs/app-store/screenshot-strategy.md §Snapshot-sourced pipeline)."
+#
+# Maps selected snapshot-test baseline PNGs → a staging tree
+#   docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png
+# using *relative symlinks*. This keeps the snapshot baseline the single source
+# of truth: re-recording the snapshots (`swift test --record`) auto-updates the
+# store preview with no copy step. Mirrors the scriptable-ops precedent set by
+# `mise-tasks/ck/schema` (#337) and the ASCRegister CLI.
+#
+# ── IMPORTANT — these are PREVIEW assets, NOT submission-ready ─────────────────
+# The baseline PNGs are raw NSHostingView renders at the snapshot layout sizes
+# (iPhone 786×1704, Mac 1800×1200) WITH an alpha channel. App Store Connect
+# requires exact pixel dimensions (iPhone 6.9" = 1290×2796+, zero tolerance) and
+# NO alpha channel. So the symlinked PNGs let reviewers/Leader eyeball the store
+# storyline from a single source, but a separate marketing-frame / upscale pass
+# (snapshot → ASC-exact RGB, optional device frame + overlay copy) is still
+# required before any real ASC upload. See screenshot-strategy.md §gap.
+#
+# Usage:
+#   mise run store:screenshots list                     # print the mapping + gaps
+#   mise run store:screenshots sync  [--app sudoku|minesweeper|all]
+#   mise run store:screenshots clean [--app sudoku|minesweeper|all]
+#
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+OUT_ROOT="$REPO_ROOT/docs/app-store/screenshots"
+
+# ── Mapping table ─────────────────────────────────────────────────────────────
+# One row per store slot that HAS a baseline today. Columns:
+#   app | device | locale | NN-screen | <baseline path relative to REPO_ROOT>
+# Locale `en` is used as the default/source-locale slot; most baselines are
+# rendered in the default locale (a few localized variants exist but the store
+# storyline is wired from the canonical light/default renders for now).
+# Only light-mode renders are wired (ASC v1 storyline is light-mode per
+# screenshot-strategy.md §Capture conventions item 2).
+MAP=(
+  # ── Sudoku · iPhone ─────────────────────────────────────────────────────────
+  "sudoku|iphone-6.9|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/HomeViewTests/snapshotIPhoneLight.HomeView-iPhone-light.png"
+  "sudoku|iphone-6.9|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"
+  "sudoku|iphone-6.9|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"
+  "sudoku|iphone-6.9|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"
+  "sudoku|iphone-6.9|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"
+  # ── Sudoku · Mac ────────────────────────────────────────────────────────────
+  "sudoku|mac|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/HomeViewTests/snapshotMacLight.HomeView-Mac-light.png"
+  "sudoku|mac|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_Mac_light.Board-Mac-light-inProgress.png"
+  "sudoku|mac|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_mac_light_purchased.SettingsView-fullpage-mac-light-purchased.png"
+  # ── Minesweeper · iPhone ────────────────────────────────────────────────────
+  "minesweeper|iphone-6.9|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperHomeSnapshotTests/snapshotHome_iPhone_light.Home-iPhone-light-compact.png"
+  "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"
+  "minesweeper|iphone-6.9|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"
+  "minesweeper|iphone-6.9|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"
+  # ── Minesweeper · Mac ───────────────────────────────────────────────────────
+  "minesweeper|mac|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperHomeSnapshotTests/snapshotHome_regular_light.Home-mac-light-regular.png"
+  "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_regular_light.Daily-mac-light-regular.png"
+)
+
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+SUBCMD="${1:-}"; shift || true
+APP_FILTER="all"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --app) APP_FILTER="${2:-}"; shift 2 ;;
+    -h|--help) sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'; exit 0 ;;
+    *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
+  esac
+done
+case "$APP_FILTER" in all|sudoku|minesweeper) ;; *) echo "error: --app must be sudoku|minesweeper|all" >&2; exit 1 ;; esac
+
+row_matches_filter() { [[ "$APP_FILTER" == "all" || "$1" == "$APP_FILTER" ]]; }
+
+# Relative symlink target: from the symlink's own dir
+# docs/app-store/screenshots/<app>/<device>/<locale>/ back to the baseline.
+# That dir is 6 path components below REPO_ROOT
+# (docs/ app-store/ screenshots/ <app>/ <device>/ <locale>/), so prefix the
+# repo-relative baseline path with six `../`.
+rel_target() { echo "../../../../../../$1"; }
+
+case "$SUBCMD" in
+  list)
+    printf '%-12s %-11s %-6s %-14s %s\n' APP DEVICE LOCALE SLOT BASELINE
+    for row in "${MAP[@]}"; do
+      IFS='|' read -r app device locale slot src <<<"$row"
+      row_matches_filter "$app" || continue
+      mark="ok"; [[ -f "$REPO_ROOT/$src" ]] || mark="MISSING-BASELINE"
+      printf '%-12s %-11s %-6s %-14s %s [%s]\n' "$app" "$device" "$locale" "$slot" "$src" "$mark"
+    done
+    echo
+    echo "Reminder: PREVIEW-ONLY. Not ASC submission-spec (dimensions + alpha)."
+    echo "Known gap: no iPad baselines exist; iPad ASC slot is unwired."
+    ;;
+
+  sync)
+    made=0; skipped=0
+    for row in "${MAP[@]}"; do
+      IFS='|' read -r app device locale slot src <<<"$row"
+      row_matches_filter "$app" || continue
+      if [[ ! -f "$REPO_ROOT/$src" ]]; then
+        echo "skip: baseline missing → $src" >&2; skipped=$((skipped+1)); continue
+      fi
+      dest_dir="$OUT_ROOT/$app/$device/$locale"
+      mkdir -p "$dest_dir"
+      dest="$dest_dir/$slot.png"
+      ln -sfn "$(rel_target "$src")" "$dest"
+      echo "link: $app/$device/$locale/$slot.png → $src"
+      made=$((made+1))
+    done
+    echo "==> synced $made symlink(s), skipped $skipped."
+    echo "    Commit the symlinks (git stores them as links, not PNG copies)."
+    echo "    These are PREVIEW assets — do NOT upload to ASC without the"
+    echo "    marketing-frame/upscale pass (see screenshot-strategy.md §gap)."
+    ;;
+
+  clean)
+    removed=0
+    for row in "${MAP[@]}"; do
+      IFS='|' read -r app device locale slot src <<<"$row"
+      row_matches_filter "$app" || continue
+      dest="$OUT_ROOT/$app/$device/$locale/$slot.png"
+      if [[ -L "$dest" ]]; then rm -f "$dest"; echo "rm: $dest"; removed=$((removed+1)); fi
+    done
+    # Prune now-empty dirs under OUT_ROOT (keep README.md if present).
+    find "$OUT_ROOT" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+    echo "==> removed $removed symlink(s)."
+    ;;
+
+  ""|-h|--help)
+    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    ;;
+
+  *)
+    echo "error: unknown subcommand '$SUBCMD' (expected: list|sync|clean)" >&2
+    exit 1
+    ;;
+esac
