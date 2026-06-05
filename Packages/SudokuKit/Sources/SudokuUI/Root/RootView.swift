@@ -64,7 +64,12 @@ public struct RootView: View {
             routeFactory: routeFactory,
             rootContent: { rootContent }
         )
-        .task { await viewModel.bootstrap() }
+        // Use `.onAppear { Task { … } }` instead of `.task { … }`: Xcode 26's
+        // SwiftUI lowers EVERY `.task` overload to `task(name:priority:file:line:_:)`,
+        // whose opaque-type descriptor links undefined in the arm64 device Release
+        // archive (sim/macOS/Debug fine). bootstrap() is a one-shot boot with its
+        // own idempotency guard, so `.task`'s disappear-cancellation isn't needed. #361
+        .onAppear { Task { await viewModel.bootstrap() } }
         .toastOverlay(
             toastController,
             successTint: theme.status.success.resolved,
