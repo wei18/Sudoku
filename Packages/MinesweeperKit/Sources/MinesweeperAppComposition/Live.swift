@@ -36,6 +36,8 @@ internal import AdsAdMob
 internal import Foundation
 internal import GameCenterClient
 internal import GameCenterTesting
+// #313: `MinesweeperRootViewModel` (launch-bootstrap VM) lives in MinesweeperUI.
+internal import MinesweeperUI
 internal import IAPStoreKit2
 internal import MonetizationCore
 internal import MonetizationTesting
@@ -166,7 +168,16 @@ extension MinesweeperAppComposition {
             errorReporter: errorReporter
         )
 
+        // #313: launch-bootstrap VM owning the GC auth handshake. Shares the
+        // bag's `gameCenter` + `errorReporter` so failures funnel through the
+        // same OSLog channel. Mirrors Sudoku's `AppComposition.live()`.
+        let rootViewModel = MinesweeperRootViewModel(
+            gameCenter: gameCenter,
+            errorReporter: errorReporter
+        )
+
         return MinesweeperAppComposition(
+            rootViewModel: rootViewModel,
             routeFactory: routeFactory,
             telemetry: telemetry,
             errorReporter: errorReporter,
@@ -220,7 +231,14 @@ extension MinesweeperAppComposition {
             errorReporter: errorReporter
         )
 
+        // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.
+        let rootViewModel = MinesweeperRootViewModel(
+            gameCenter: gameCenter,
+            errorReporter: errorReporter
+        )
+
         return MinesweeperAppComposition(
+            rootViewModel: rootViewModel,
             routeFactory: routeFactory,
             telemetry: telemetry,
             errorReporter: errorReporter,

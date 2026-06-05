@@ -20,6 +20,9 @@ public import MonetizationUI
 
 public struct MinesweeperRoot: View {
     @State private var path: [AppRoute] = []
+    // #313: owns the launch-time Game Center auth handshake, kicked from the
+    // `.task` below. Mirrors `SudokuUI.RootView`'s `RootViewModel` wiring.
+    @State private var viewModel: MinesweeperRootViewModel
     @Environment(\.theme) private var theme
 
     private let routeFactory: any RouteFactory<AppRoute>
@@ -37,12 +40,14 @@ public struct MinesweeperRoot: View {
     private let monetizationController: MonetizationStateController?
 
     public init(
+        viewModel: MinesweeperRootViewModel,
         routeFactory: any RouteFactory<AppRoute>,
         toastController: ToastController? = nil,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         monetizationController: MonetizationStateController? = nil
     ) {
+        self._viewModel = State(initialValue: viewModel)
         self.routeFactory = routeFactory
         self.toastController = toastController
         self.adProvider = adProvider
@@ -65,6 +70,10 @@ public struct MinesweeperRoot: View {
                 )
             }
         )
+        // #313: launch-time Game Center auth handshake. Mirrors
+        // `SudokuUI.RootView`'s `.task { await viewModel.bootstrap() }`.
+        // Idempotent — a `.task` re-entry won't re-trigger GameKit auth.
+        .task { await viewModel.bootstrap() }
         .toastOverlay(
             toastController,
             successTint: theme.status.success.resolved,
@@ -111,33 +120,11 @@ public struct MinesweeperRoot: View {
     }
 }
 
-// Preview-only stub. Kept private so production callers must still construct
-// a real `RouteFactory` (e.g. `LiveRouteFactory`) via the composition root.
-@MainActor
-private struct PreviewRouteFactory: RouteFactory {
-    typealias Route = AppRoute
-
-    func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
-        switch route {
-        case .newGame:
-            return AnyView(NewGameView(path: path ?? .constant([])))
-        case .board(let difficulty, let seed, let mode):
-            return AnyView(Text("Preview board: \(String(describing: difficulty)) seed=\(seed) mode=\(mode.rawValue)"))
-        case .daily:
-            return AnyView(
-                MinesweeperDailyHubView(
-                    viewModel: MinesweeperDailyHubViewModel(path: path ?? .constant([]))
-                )
-            )
-        case .practice:
-            return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
-        case .settings:
-            return AnyView(Text("Preview settings"))
-        }
-    }
-}
-
-#Preview {
-    MinesweeperRoot(routeFactory: PreviewRouteFactory())
-        .environment(\.theme, MinesweeperTheme())
-}
+// #313: `MinesweeperRoot` now requires a `MinesweeperRootViewModel` (which
+// holds a `GameCenterClient`). Constructing a GC stub here would need to name
+// the GC protocol's `SudokuEngine.Difficulty` (not importable from this leaf
+// module without a new dep), so the previous root-level `#Preview` is removed
+// — mirroring `SudokuUI.RootView`, which has no `#Preview` either (the
+// composition-root view is exercised via `MinesweeperAppComposition.preview()`
+// + the app target, not a leaf-module preview). Individual surfaces
+// (`MinesweeperHomeView`, hubs, board) keep their own previews.

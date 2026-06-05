@@ -44,6 +44,9 @@ public let minesweeperRemoveAdsProductId: String = "com.wei18.minesweeper.iap.re
 
 @MainActor
 public struct MinesweeperAppComposition {
+    // #313: launch-bootstrap VM. Owns the Game Center auth handshake kicked
+    // from `MinesweeperRoot.task`. Mirrors Sudoku's `AppComposition.rootViewModel`.
+    public let rootViewModel: MinesweeperRootViewModel
     public let routeFactory: any RouteFactory<AppRoute>
     public let telemetry: Telemetry
     public let errorReporter: any ErrorReporter
@@ -62,6 +65,7 @@ public struct MinesweeperAppComposition {
     public let toastController: ToastController
 
     public init(
+        rootViewModel: MinesweeperRootViewModel,
         routeFactory: any RouteFactory<AppRoute>,
         telemetry: Telemetry,
         errorReporter: any ErrorReporter,
@@ -74,6 +78,7 @@ public struct MinesweeperAppComposition {
         monetizationController: MonetizationStateController,
         toastController: ToastController
     ) {
+        self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
         self.telemetry = telemetry
         self.errorReporter = errorReporter
@@ -92,6 +97,7 @@ public struct MinesweeperAppComposition {
     /// `composition.rootView` inside its `WindowGroup`.
     public var rootView: some View {
         MinesweeperRoot(
+            viewModel: rootViewModel,
             routeFactory: routeFactory,
             toastController: toastController,
             // #288 / #289: Home is the root content and mounts the banner slot
