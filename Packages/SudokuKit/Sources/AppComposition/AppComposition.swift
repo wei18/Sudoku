@@ -88,13 +88,18 @@ public struct AppComposition {
         // env key. Inject the same concrete cell palette here so board cells
         // render byte-identically. (Minesweeper injects its own in Phase 2b.)
         .environment(\.sudokuCell, DefaultTheme().cell)
-        .task {
+        // `.onAppear { Task { … } }` not `.task { … }`: Xcode 26 lowers every
+        // `.task` overload to `task(name:…)`, whose opaque descriptor links
+        // undefined in the arm64 device Release archive. This boot is one-shot
+        // (BannerSlotView is honest about deferred state), so disappear-
+        // cancellation isn't needed. See #361.
+        .onAppear { Task {
             // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent
             // with the first frame. `BannerSlotView` is honest about
             // deferred state (shows `.failed` if AdMob has not yet
             // initialized) so this never blocks UI rendering.
             await bootMonetization()
-        }
+        } }
     }
 
     public init(
