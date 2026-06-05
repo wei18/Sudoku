@@ -1,14 +1,11 @@
-// UTCDay — shared UTC calendar-day formatter (Wave 3 audit M16 refactor).
+// UTCDay — shared UTC calendar-day formatter (#305 leaf extraction).
 //
-// `puzzleId` / leaderboard / streak / SavedGame queries all key off the
-// same `"YYYY-MM-DD"` string interpreted in UTC. Prior to this extraction
-// the same Calendar+TimeZone+DateComponents block was duplicated across
-// `PuzzleStore.PuzzleIdentity`, `SubmitGuards`, `AchievementEvaluator`
-// and `SavedGameStore`, each carrying its own scoped
-// force_unwrapping disable for the `TimeZone(identifier: "UTC")!`
-// lookup. Co-located here in SudokuEngine — the deepest leaf —
-// so every caller (PuzzleStore / GameCenterClient / Persistence) can
-// reach it through its existing dependency chain.
+// `puzzleId` / leaderboard / streak / SavedGame queries (Sudoku) and the
+// date-seeded daily puzzle (Minesweeper, #290) all key off the same
+// `"YYYY-MM-DD"` string interpreted in UTC. This type previously lived in
+// `SudokuEngine` and was byte-mirrored into `MinesweeperEngine`; it now lives
+// in the game-agnostic `TimeKit` leaf both cores depend on, so there is a
+// single source of truth and the day-bucket key is identical across games.
 
 public import Foundation
 
@@ -16,7 +13,8 @@ public import Foundation
 ///
 /// Use this anywhere a stable day-bucket key is needed regardless of the
 /// device timezone — puzzleId day prefix, leaderboard cross-day guard,
-/// daily-completion streak counting, CloudKit dailyCompletedOn query.
+/// daily-completion streak counting, CloudKit dailyCompletedOn query, and the
+/// Minesweeper daily seed.
 public enum UTCDay {
 
     /// Gregorian calendar pinned to UTC. `TimeZone(identifier: "UTC")` is
