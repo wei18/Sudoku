@@ -27,14 +27,20 @@ public import SwiftUI
 public struct SettingsView: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
+    // #321: optional so previews / tests / Minesweeper (no Daily yet) mount a
+    // byte-identical Settings screen without the reminder row. Live wiring
+    // injects one so the Daily-reminder time picker renders.
+    private let reminderTimeModel: ReminderTimeSettingsModel?
     @Environment(\.theme) private var theme
 
     public init(
         viewModel: SettingsViewModel,
-        monetizationController: MonetizationStateController? = nil
+        monetizationController: MonetizationStateController? = nil,
+        reminderTimeModel: ReminderTimeSettingsModel? = nil
     ) {
         self.viewModel = viewModel
         self.monetizationController = monetizationController
+        self.reminderTimeModel = reminderTimeModel
     }
 
     public var body: some View {
@@ -53,6 +59,15 @@ public struct SettingsView: View {
                         controller: controller,
                         tintColor: theme.accent.primary.resolved
                     )
+                }
+            }
+
+            // #321: Daily-reminder fire-time picker. Persists the chosen
+            // hour/minute and reschedules `.dailyAt(hour,minute)` on change
+            // (the model gates the reschedule on notification permission).
+            if let reminderTimeModel {
+                Section("Reminders") {
+                    ReminderTimeRow(model: reminderTimeModel)
                 }
             }
 
@@ -90,6 +105,29 @@ public struct SettingsView: View {
 }
 
 // MARK: - Rows
+
+/// #321: the Daily-reminder fire-time row. A `DatePicker` restricted to
+/// `.hourAndMinute` bound to the model's `fireDate`; the model's `didSet`
+/// persists + reschedules. Icon-left to match `AboutRow` so `.formStyle(.grouped)`
+/// renders a consistent full-width pill on macOS (issue #197).
+struct ReminderTimeRow: View {
+    @Bindable var model: ReminderTimeSettingsModel
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        DatePicker(
+            selection: $model.fireDate,
+            displayedComponents: .hourAndMinute
+        ) {
+            Label {
+                Text("Daily reminder")
+            } icon: {
+                Image(systemName: "bell")
+                    .foregroundStyle(theme.accent.primary.resolved)
+            }
+        }
+    }
+}
 
 /// Static About row matching the icon-left / label / spacer / value-right
 /// shape of `RemoveAdsRow` (now in MonetizationUI) so `.formStyle(.grouped)`

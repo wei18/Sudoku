@@ -52,6 +52,11 @@ public struct LiveRouteFactory: RouteFactory {
     // AppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
     // in previews / tests → no primer, byte-identical Completion screens.
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #321: builds the Settings Daily-reminder time picker model per Settings
+    // mount. Injected as a closure (not the raw Reminders seams) so ALL reminder
+    // wiring stays in AppComposition. `nil` in previews / tests → no reminder row,
+    // byte-identical Settings screen.
+    private let makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -64,7 +69,8 @@ public struct LiveRouteFactory: RouteFactory {
         adGate: AdGate,
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
-        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -77,6 +83,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.makeReminderTimeSettings = makeReminderTimeSettings
     }
 
     /// A puzzleId is a Daily unless it carries the practice prefix — same
@@ -147,7 +154,8 @@ public struct LiveRouteFactory: RouteFactory {
                         errorReporter: errorReporter,
                         toastController: toastController
                     ),
-                    monetizationController: monetizationController
+                    monetizationController: monetizationController,
+                    reminderTimeModel: makeReminderTimeSettings?()
                 )
             )
         }
