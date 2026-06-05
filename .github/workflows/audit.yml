@@ -1,6 +1,8 @@
-name: Repo audit (upkeep e2e)
+name: repo audit (upkeep)
 
 on:
+  schedule:
+    - cron: '0 20 * * *'   # 04:00 Asia/Taipei (UTC+8) daily
   workflow_dispatch:
 
 permissions:
