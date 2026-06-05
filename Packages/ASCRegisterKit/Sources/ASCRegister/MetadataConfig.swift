@@ -310,7 +310,12 @@ extension MetadataConfig {
             raw = "\(value)"
         }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : raw
+        // Strip a SINGLE trailing newline so the SENT payload length matches the
+        // validated/counted length. YAML `|` block scalars carry a terminating
+        // `\n` that ASC neither counts nor stores; sending it made a 170-char
+        // field arrive as 171 → live 409 TOO_LONG (obs 3804 / #333). See
+        // ascCharacterCount, which strips the same way for validation.
+        return trimmed.isEmpty ? nil : strippingSingleTrailingNewline(raw)
     }
 }
 
@@ -376,14 +381,21 @@ extension MetadataConfig {
     /// whitespace) so internal and leading whitespace still count, matching
     /// ASC's own counting.
     internal static func ascCharacterCount(_ value: String) -> Int {
+        strippingSingleTrailingNewline(value).count
+    }
+
+    /// Strip a SINGLE trailing newline (`\r\n` is one grapheme cluster in Swift,
+    /// so one `removeLast()` strips `\n`/`\r`/`\r\n` alike — only the one trailing
+    /// terminator, never internal/leading whitespace). YAML `|` block scalars
+    /// carry a terminating newline ASC neither counts nor stores; the SAME strip
+    /// must apply to both the payload `str(...)` sends and the `ascCharacterCount`
+    /// validation so send-length and counted-length agree.
+    internal static func strippingSingleTrailingNewline(_ value: String) -> String {
         var text = value
-        // `\r\n` is a SINGLE grapheme cluster in Swift, so one `removeLast()`
-        // strips `\n`, `\r`, or `\r\n` alike — and only the one trailing
-        // terminator.
         if let last = text.last, last.isNewline {
             text.removeLast()
         }
-        return text.count
+        return text
     }
 }
 
