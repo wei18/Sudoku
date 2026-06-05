@@ -1,0 +1,281 @@
+#!/usr/bin/env bash
+#MISE description="LOCAL archive → export → TestFlight upload (temporary Xcode-Cloud substitute while XCC quota is exhausted). archive/export are safe; the upload step is USER-OWNED and gated behind --i-am-sure. Reads ASC API creds from secrets/.env — never hardcoded."
+#
+# Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
+# §4 table: Build + Archive + upload internal TestFlight) for the window where the
+# XCC monthly compute quota is exhausted. Mirrors the scriptable-ops precedent of
+# `mise-tasks/ck/schema` (#337) + `mise-tasks/store/screenshots` (#311): a
+# commit-tracked, idempotent, Production-gated wrapper around Apple CLIs.
+#
+# PIPELINE (per app + platform):
+#   1. generate : `tuist generate` (the *.xcworkspace is gitignored — must exist)
+#   2. archive  : `xcodebuild archive` → build/<app>-<plat>.xcarchive
+#   3. bump     : patch the archived app's CFBundleVersion to a UNIQUE build number
+#                 (TestFlight rejects duplicate build numbers for a CFBundleShort-
+#                 VersionString). Default = UTC timestamp; override with --build.
+#   4. export   : `xcodebuild -exportArchive` with a runtime-generated
+#                 ExportOptions.plist (App-Store-Connect method) → .ipa / .pkg
+#   5. upload   : `xcrun altool --upload-app` to TestFlight, authenticated with the
+#                 ASC API key (.p8 + key-id + issuer) from secrets/.env. GATED.
+#
+# AUTH: ASC API key. Reuses the SAME secrets/.env keys as ASCRegister
+#   (ASC_API_KEY_PATH / ASC_API_KEY_ID / ASC_API_ISSUER_ID) plus the team id
+#   (reuses CK_TEAM_ID — the single 10-char Apple Developer Team ID already in
+#   .env for cktool). Nothing new is invented; nothing is printed.
+#
+# SAFETY:
+#   - archive + export touch only build/ (gitignored). Safe to run repeatedly.
+#   - upload is the only irreversible, user-owned step → REFUSES without
+#     --i-am-sure, and prints a "user-owned signing, confirm" banner first.
+#   - --archive-only stops after export (produces the .ipa/.pkg, no upload).
+#
+# Usage:
+#   mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
+#
+#   flags:
+#     --archive-only     archive + export only; never upload (default-safe)
+#     --build <N>        explicit CFBundleVersion (build number); default = $(date -u +%Y%m%d%H%M)
+#     --config <name>    xcodebuild configuration (default: Release)
+#     --i-am-sure        REQUIRED to actually upload to TestFlight (user-owned)
+#     -h | --help        this help
+#
+# Examples:
+#   mise run tf:upload sudoku ios --archive-only           # safe: produce .ipa
+#   mise run tf:upload sudoku all --archive-only           # iOS .ipa + macOS .pkg
+#   mise run tf:upload sudoku ios --i-am-sure              # archive+export+UPLOAD
+#   mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
+#
+set -euo pipefail
+
+# ── Public, non-secret config (already in Project.swift / entitlements) ───────
+scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
+bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
+
+usage() {
+    sed -n '2,47p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    exit "${1:-1}"
+}
+
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+# Positionals: <app> <platform>, then optional flags.
+APP="${1:-}";  shift || true
+PLAT="${1:-}"; shift || true
+
+CONFIG="Release"
+BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"   # unique-by-minute default; --build overrides
+ARCHIVE_ONLY=0
+SURE=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --archive-only) ARCHIVE_ONLY=1; shift ;;
+        --i-am-sure)    SURE=1; shift ;;
+        --build)        BUILD_NUMBER="${2:-}"; shift 2 ;;
+        --config)       CONFIG="${2:-}"; shift 2 ;;
+        -h|--help)      usage 0 ;;
+        *) echo "error: unknown argument '$1'" >&2; usage ;;
+    esac
+done
+
+case "$APP" in sudoku|minesweeper) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper (got '$APP')" >&2; usage ;; esac
+case "$PLAT" in ios|macos|all) ;; *) echo "error: platform must be ios|macos|all (got '$PLAT')" >&2; usage ;; esac
+[[ -n "$BUILD_NUMBER" ]] || { echo "error: --build value is empty" >&2; exit 1; }
+
+SCHEME="$(scheme_for "$APP")"
+BUNDLE="$(bundle_for "$APP")"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WORKSPACE="$REPO_ROOT/Game.xcworkspace"
+BUILD_DIR="$REPO_ROOT/build/testflight"
+mkdir -p "$BUILD_DIR"
+
+# ── Auth loader: ASC API creds from secrets/.env (never echoed) ───────────────
+# Sets globals: ASC_KEY_PATH ASC_KEY_ID ASC_ISSUER TEAM_ID. Validates presence,
+# never prints the secret values.
+load_asc_creds() {
+    local env_file="$REPO_ROOT/secrets/.env"
+    if [[ ! -f "$env_file" ]]; then
+        echo "error: $env_file not found. Copy secrets/.env.example → secrets/.env and fill the ASC_* keys." >&2
+        exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "$env_file"
+    ASC_KEY_PATH="${ASC_API_KEY_PATH:-}"
+    ASC_KEY_ID="${ASC_API_KEY_ID:-}"
+    ASC_ISSUER="${ASC_API_ISSUER_ID:-}"
+    TEAM_ID="${CK_TEAM_ID:-}"   # reuse the single Team ID already in .env (cktool)
+    local missing=()
+    [[ -n "$ASC_KEY_ID" && "$ASC_KEY_ID" != REPLACE_KEY_ID ]]                   || missing+=("ASC_API_KEY_ID")
+    [[ -n "$ASC_ISSUER" && "$ASC_ISSUER" != 00000000-0000-0000-0000-000000000000 ]] || missing+=("ASC_API_ISSUER_ID")
+    [[ -n "$TEAM_ID" && "$TEAM_ID" != REPLACE_TEAM_ID ]]                        || missing+=("CK_TEAM_ID")
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "error: secrets/.env is missing real values for: ${missing[*]}" >&2
+        echo "       fill them from project memory (asc-api-credentials + the Team ID)." >&2
+        exit 1
+    fi
+    # altool locates the .p8 by KEY_ID inside one of its search dirs:
+    #   ./private_keys, ~/private_keys, ~/.private_keys, ~/.appstoreconnect/private_keys
+    # The repo convention puts the key at secrets/AuthKey_<KEY_ID>.p8 (gitignored).
+    # We stage a per-run symlink into ./private_keys so altool finds it without
+    # us ever copying or printing the key.
+    local resolved="$ASC_KEY_PATH"
+    [[ "$resolved" = /* ]] || resolved="$REPO_ROOT/$resolved"
+    if [[ ! -f "$resolved" ]]; then
+        echo "error: ASC API key not found at '$resolved' (ASC_API_KEY_PATH in secrets/.env)." >&2
+        echo "       Move your AuthKey_<KEY_ID>.p8 into secrets/ and point ASC_API_KEY_PATH at it." >&2
+        exit 1
+    fi
+    ASC_KEY_RESOLVED="$resolved"
+}
+
+# Stage the .p8 where altool searches, and clean it up on exit. The symlink is
+# created under build/ (gitignored) and exposed to altool via the cwd's
+# ./private_keys lookup by symlinking that too. No secret is copied or printed.
+stage_key_for_altool() {
+    PRIVATE_KEYS_DIR="$BUILD_DIR/private_keys"
+    mkdir -p "$PRIVATE_KEYS_DIR"
+    ln -sfn "$ASC_KEY_RESOLVED" "$PRIVATE_KEYS_DIR/AuthKey_${ASC_KEY_ID}.p8"
+}
+
+# ── ExportOptions.plist generator (runtime; TEAM_ID never committed) ──────────
+# Writes an App-Store-Connect export options plist to $1 for the given platform.
+# `destination=upload` would hand off to ASC directly, but we keep `export`
+# (write .ipa/.pkg to disk) so --archive-only can stop here and the upload is a
+# separate, explicitly-gated altool step.
+write_export_options() {
+    local out="$1" plat="$2"
+    # macOS App Store export needs the same `app-store-connect` method (Xcode 15+
+    # renamed `app-store` → `app-store-connect`; both still accepted by 16/26).
+    /usr/libexec/PlistBuddy -c "Clear dict" \
+        -c "Add :method string app-store-connect" \
+        -c "Add :teamID string $TEAM_ID" \
+        -c "Add :signingStyle string automatic" \
+        -c "Add :destination string export" \
+        -c "Add :uploadSymbols bool true" \
+        -c "Add :manageAppVersionAndBuildNumber bool false" \
+        "$out" >/dev/null
+}
+
+# ── Per-platform pipeline ─────────────────────────────────────────────────────
+# $1 = ios|macos
+run_platform() {
+    local plat="$1"
+    local destination archive_path export_dir
+    case "$plat" in
+        ios)   destination="generic/platform=iOS" ;;
+        macos) destination="generic/platform=macOS" ;;
+    esac
+    archive_path="$BUILD_DIR/${APP}-${plat}.xcarchive"
+    export_dir="$BUILD_DIR/${APP}-${plat}-export"
+
+    echo "────────────────────────────────────────────────────────────────"
+    echo " $APP ($BUNDLE) · $plat · scheme=$SCHEME · config=$CONFIG · build=$BUILD_NUMBER"
+    echo "────────────────────────────────────────────────────────────────"
+
+    # 1) archive ----------------------------------------------------------------
+    echo "==> archive → $archive_path"
+    xcodebuild archive \
+        -workspace "$WORKSPACE" \
+        -scheme "$SCHEME" \
+        -configuration "$CONFIG" \
+        -destination "$destination" \
+        -archivePath "$archive_path" \
+        CODE_SIGN_STYLE=Automatic \
+        DEVELOPMENT_TEAM="$TEAM_ID" \
+        | (command -v xcbeautify >/dev/null 2>&1 && xcbeautify || cat)
+
+    # 2) bump build number on the ARCHIVED app's Info.plist ----------------------
+    # CFBundleVersion is a hardcoded literal "1" in <App>/Info.plist (versions are
+    # NOT driven by CURRENT_PROJECT_VERSION here), so an xcodebuild build-setting
+    # override would not take effect. We patch the archive's embedded Info.plist
+    # post-archive / pre-export — the canonical place agvtool-less projects bump.
+    local app_plist
+    app_plist="$(/usr/bin/find "$archive_path/Products/Applications" -maxdepth 2 -name Info.plist -path '*.app/Info.plist' | head -1)"
+    if [[ -z "$app_plist" ]]; then
+        echo "error: could not locate the archived app's Info.plist under $archive_path" >&2
+        exit 1
+    fi
+    echo "==> bump CFBundleVersion → $BUILD_NUMBER  ($(basename "$(dirname "$app_plist")"))"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$app_plist"
+
+    # 3) export -----------------------------------------------------------------
+    local opts="$BUILD_DIR/ExportOptions-${APP}-${plat}.plist"
+    rm -f "$opts"; /usr/bin/touch "$opts"
+    write_export_options "$opts" "$plat"
+    rm -rf "$export_dir"
+    echo "==> export (App Store Connect) → $export_dir"
+    xcodebuild -exportArchive \
+        -archivePath "$archive_path" \
+        -exportPath "$export_dir" \
+        -exportOptionsPlist "$opts" \
+        -allowProvisioningUpdates \
+        | (command -v xcbeautify >/dev/null 2>&1 && xcbeautify || cat)
+
+    # Locate the produced package: .ipa (iOS) / .pkg (macOS).
+    local pkg upload_type
+    case "$plat" in
+        ios)   pkg="$(/usr/bin/find "$export_dir" -maxdepth 1 -name '*.ipa' | head -1)"; upload_type="ios" ;;
+        macos) pkg="$(/usr/bin/find "$export_dir" -maxdepth 1 -name '*.pkg' | head -1)"; upload_type="macos" ;;
+    esac
+    if [[ -z "$pkg" ]]; then
+        echo "error: export produced no $( [[ $plat == ios ]] && echo .ipa || echo .pkg ) under $export_dir" >&2
+        exit 1
+    fi
+    echo "==> exported: $pkg"
+
+    # 4) upload (GATED) ---------------------------------------------------------
+    if [[ "$ARCHIVE_ONLY" -eq 1 ]]; then
+        echo "==> --archive-only: stopping before upload. Package is at:"
+        echo "    $pkg"
+        return 0
+    fi
+
+    echo "────────────────────────────────────────────────────────────────"
+    echo " TESTFLIGHT UPLOAD — $APP · $plat · build $BUILD_NUMBER"
+    echo "────────────────────────────────────────────────────────────────"
+    echo " This is a USER-OWNED, irreversible action. It signs with your"
+    echo " App Store distribution identity + provisioning profile and pushes"
+    echo " the build to App Store Connect / TestFlight. Confirm the build"
+    echo " number is unique for $BUNDLE @ this marketing version before"
+    echo " proceeding (duplicates are rejected by ASC)."
+    echo "────────────────────────────────────────────────────────────────"
+    if [[ "$SURE" -ne 1 ]]; then
+        echo "Refusing to upload without --i-am-sure. (Re-run with --archive-only to" >&2
+        echo "just produce the package, or add --i-am-sure to upload.)" >&2
+        exit 2
+    fi
+
+    stage_key_for_altool
+    echo "==> altool --upload-app (type=$upload_type)"
+    # altool finds the .p8 by --api-key id inside ./private_keys (we staged a
+    # symlink there). The key path / contents are never passed on argv.
+    # Flags verified against `xcrun altool --upload-app --help` 2026-06-05:
+    # API-key auth uses hyphenated --api-key / --api-issuer (camelCase --apiKey
+    # is only for --generate-jwt). Sanity-check --type once on first real run.
+    ( cd "$BUILD_DIR" && xcrun altool --upload-app \
+        --type "$upload_type" \
+        --file "$pkg" \
+        --api-key "$ASC_KEY_ID" \
+        --api-issuer "$ASC_ISSUER" )
+    echo "==> uploaded $APP $plat build $BUILD_NUMBER to TestFlight. Processing in ASC may take minutes."
+}
+
+# ── Prerequisites that gate every run ─────────────────────────────────────────
+[[ -d "$WORKSPACE" ]] || {
+    echo "==> $WORKSPACE not found — generating with tuist."
+    mise exec -- tuist install
+    mise exec -- tuist generate --no-open
+}
+[[ -d "$WORKSPACE" ]] || { echo "error: tuist generate did not produce $WORKSPACE" >&2; exit 1; }
+
+# Credentials are needed for archive (DEVELOPMENT_TEAM) and upload. Load once.
+load_asc_creds
+
+# Clean up the staged key symlink on every exit path.
+trap 'rm -f "$BUILD_DIR/private_keys/AuthKey_${ASC_KEY_ID:-X}.p8" 2>/dev/null || true' EXIT
+
+case "$PLAT" in
+    ios)   run_platform ios ;;
+    macos) run_platform macos ;;
+    all)   run_platform ios; run_platform macos ;;
+esac
+
+echo "==> done."
