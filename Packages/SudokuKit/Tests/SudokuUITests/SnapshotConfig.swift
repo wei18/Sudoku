@@ -221,4 +221,167 @@ func hostingView<V: SwiftUI.View>(
     host.layoutSubtreeIfNeeded()
     return host
 }
+
+// MARK: - NSWindow-hosted harness (issue #209)
+//
+// WHY a second harness: the `hostingView(...)` path above wraps the SwiftUI
+// subtree in a bare `NSHostingView`. That view has NO surrounding window, so
+// the macOS `Form` / `NavigationSplitView` layout pipeline — which inspects
+// the *window* (split-view ancestry, `.formStyle(.grouped)` section chrome,
+// per-primitive row treatment, sidebar/detail column sizing) — never runs.
+// The subtree renders in an "iOS-shape" host and Mac-only Form regressions
+// (#197, #208) stay invisible to the test (false-positive green).
+//
+// `windowSnapshotView(...)` instead mounts the subtree as an
+// `NSHostingController` set as the `contentViewController` of a real (but
+// offscreen, never ordered-front) `NSWindow`. The controller participates in
+// the genuine AppKit view-controller-in-window containment chain, so SwiftUI
+// resolves `Form`/`NavigationSplitView` against a real window environment and
+// emits the production Mac chrome. We then snapshot the window's `contentView`
+// (an `NSView`), so the existing `Snapshotting<NSView, NSImage>` strategy
+// (`.image` / `.tolerantImage`) and the `assertUISnapshot(...)` baseline
+// lookup apply unchanged.
+//
+// Determinism: the window is created at a fixed content size, given a fixed
+// `NSAppearance`, and forced through a synchronous layout pass
+// (`layoutIfNeeded` on the content view) before capture. It is never ordered
+// on screen and never animated, so there is no async layout race. The window
+// is closed at the end so each test gets a fresh lifecycle.
+//
+// CI caveat (see issue #199 history): like every other snapshot test in this
+// suite, NSWindow-based tests are gated `.enabled(if: !SnapshotEnv.isXcodeCloud)`.
+// A real `NSWindow` requires a window-server connection; Xcode Cloud's
+// headless runner cannot guarantee one, and cross-machine AA/hinting drift
+// already pushed this suite off XCC. Baselines are recorded + verified on the
+// dev Mac only.
+
+/// Mount a SwiftUI View as the `contentViewController` of an offscreen
+/// `NSWindow` and return the window's `contentView` for snapshotting.
+///
+/// Unlike `hostingView(...)`, this exercises the real macOS Form /
+/// NavigationSplitView layout pipeline because the subtree lives inside a
+/// genuine window via `NSHostingController` containment.
+///
+/// - Parameters:
+///   - view:        the SwiftUI subtree under test.
+///   - size:        content size (in points) of the hosting window.
+///   - colorScheme: applied via `.preferredColorScheme` AND mirrored onto the
+///                  window's `appearance` so AppKit dynamic colors resolve.
+///   - locale:      injected via `.environment(\.locale, ...)` when supplied.
+///   - sizeClass:   horizontal size class. Defaults to `.regular` (Mac), the
+///                  whole point of this harness; iPhone fixtures pass `.compact`.
+/// - Returns: the window's `contentView`, plus the owning `NSWindow` the caller
+///   must keep alive until after the snapshot is captured (release closes it).
+@MainActor
+func windowSnapshotView<V: SwiftUI.View>(
+    _ view: V,
+    size: CGSize,
+    colorScheme: ColorScheme = .light,
+    locale: Locale? = nil,
+    sizeClass: UserInterfaceSizeClass = .regular
+) -> (view: NSView, window: NSWindow) {
+    let wrapped = view
+        // Mirror `hostingView`'s explicit environment injection so the two
+        // harnesses agree on theme / cell tokens / size class / locale and
+        // any cross-harness diff is purely the Form/window-chrome delta.
+        .environment(\.theme, DefaultTheme())
+        .environment(\.sudokuCell, DefaultTheme().cell)
+        .environment(\.horizontalSizeClass, Optional(sizeClass))
+        .environment(\.locale, locale ?? .current)
+        .preferredColorScheme(colorScheme)
+
+    let controller = NSHostingController(rootView: wrapped)
+    controller.sizingOptions = []
+
+    let window = NSWindow(
+        contentRect: CGRect(origin: .zero, size: size),
+        styleMask: [.titled, .closable, .fullSizeContentView],
+        backing: .buffered,
+        defer: false
+    )
+    window.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+    window.contentViewController = controller
+    // Pin the content size after assigning the controller so the hosting
+    // controller's preferred size can't grow the window past our box.
+    window.setContentSize(size)
+    // Position far offscreen (below the visible coordinate space) so the
+    // window gets a real window-server backing store + display pass WITHOUT
+    // ever flashing on a visible screen. A never-ordered window has no backing
+    // store, so `bitmapImageRepForCachingDisplay` / layer rendering capture a
+    // blank image — ordering it front (offscreen) forces the SwiftUI layer
+    // tree to actually draw. This is what makes Form/SplitView chrome appear.
+    window.setFrameOrigin(CGPoint(x: -10_000, y: -10_000))
+    window.orderFrontRegardless()
+
+    guard let contentView = window.contentView else {
+        // `contentViewController` always materialises a contentView; this
+        // branch is defensive only.
+        return (controller.view, window)
+    }
+    contentView.frame = CGRect(origin: .zero, size: size)
+    // Force a synchronous layout + display pass so capture is deterministic
+    // (no async layout race). `layoutSubtreeIfNeeded` drives AppKit + embedded
+    // SwiftUI layout to completion; `displayIfNeeded` flushes the draw into the
+    // now-existing backing store.
+    contentView.layoutSubtreeIfNeeded()
+    window.displayIfNeeded()
+    return (contentView, window)
+}
+
+/// Snapshot a SwiftUI View through the NSWindow harness as an `NSImage`.
+///
+/// CAPTURE PATH — why `displayIgnoringOpacity(_:in:)` and not `cacheDisplay`:
+/// an offscreen `NSWindow` under headless `swift test` never connects to a
+/// window-server display, so its backing store stays uninitialised. The usual
+/// capture paths read that backing store and return solid black:
+///   - `NSView.cacheDisplay(in:to:)` → black
+///   - `CALayer.render(in:)` on the content view's layer → black
+/// `displayIgnoringOpacity(_:in:)` instead drives AppKit's *synchronous draw*
+/// directly into a bitmap-backed `NSGraphicsContext`, bypassing the missing
+/// window backing store, so it captures the real rendered content. (Verified
+/// empirically against the standalone-`NSHostingView` baseline — see issue
+/// #209 investigation notes.)
+///
+/// SCOPE — what this harness CAN and CANNOT render headlessly:
+///   - macOS grouped `Form` (`.formStyle(.grouped)`): renders correctly. Form
+///     chrome is plain layout, drawn synchronously, so the window-hosted
+///     render matches production. THIS is the regression surface from #197 /
+///     #208 (Settings Form rows) the harness targets.
+///   - `NavigationSplitView` *sidebar* `List`: does NOT populate headlessly —
+///     `List` is `NSTableView`-backed and needs a live run-loop / display
+///     cycle to materialise cells, which headless `swift test` does not
+///     provide. The split frame + detail pane render; the sidebar rows stay
+///     blank. Exercising the populated sidebar needs an interactive
+///     `xcodebuild test` on a logged-in GUI session (out of scope for the
+///     local `swift test` gate; tracked as the CI caveat below).
+///
+/// Returns an `NSImage` so callers snapshot with `Snapshotting<NSImage, NSImage>`
+/// `.image`. The caller owns the returned window and must `window.close()`
+/// after the snapshot assertion.
+@MainActor
+func windowSnapshotImage<V: SwiftUI.View>(
+    _ view: V,
+    size: CGSize,
+    colorScheme: ColorScheme = .light,
+    locale: Locale? = nil,
+    sizeClass: UserInterfaceSizeClass = .regular
+) -> (image: NSImage, window: NSWindow) {
+    let (contentView, window) = windowSnapshotView(
+        view,
+        size: size,
+        colorScheme: colorScheme,
+        locale: locale,
+        sizeClass: sizeClass
+    )
+    let rep = contentView.bitmapImageRepForCachingDisplay(in: contentView.bounds)!
+    if let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = ctx
+        contentView.displayIgnoringOpacity(contentView.bounds, in: ctx)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+    let image = NSImage(size: contentView.bounds.size)
+    image.addRepresentation(rep)
+    return (image, window)
+}
 #endif
