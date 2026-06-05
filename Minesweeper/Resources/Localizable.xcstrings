@@ -1,236 +1,241 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "gc.minesweeper.leaderboard.easy.daily.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daily Beginner"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "gc.minesweeper.leaderboard.easy.daily.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Beginner"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今日初級"
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "th" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日初級"
           }
         }
       }
     },
-    "gc.minesweeper.leaderboard.hard.daily.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daily Expert"
+    "gc.minesweeper.leaderboard.hard.daily.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Expert"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今日高級"
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "th" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日高級"
           }
         }
       }
     },
-    "gc.minesweeper.leaderboard.medium.daily.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daily Intermediate"
+    "gc.minesweeper.leaderboard.medium.daily.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Intermediate"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今日中級"
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "th" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日中級"
           }
         }
       }
     },
-    "iap.minesweeper.remove_ads.description": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove all in-app ads forever. Family Sharing."
+    "iap.minesweeper.remove_ads.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all in-app ads forever. Family Sharing."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "th" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "永久移除 App 內所有廣告。支援「家人共享」。"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "永久移除 App 內所有廣告。支援「家人共享」。"
           }
         }
       }
     },
-    "iap.minesweeper.remove_ads.name": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove Ads"
+    "iap.minesweeper.remove_ads.name" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Ads"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "th" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "new",
-            "value": "<TRANSLATE>"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "<TRANSLATE>"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "移除廣告"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除廣告"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
