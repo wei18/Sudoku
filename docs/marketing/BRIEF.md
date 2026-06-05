@@ -15,9 +15,12 @@ and split voice only where it must:
    clean modular architecture, Swift 6 strict concurrency, snapshot testing, and two apps
    sharing portable cores. Channels: README, dev-story (LinkedIn / Show HN), architecture
    showcase.
-2. **User acquisition** (audience: people who want a calm, private puzzle game). Hook =
-   no tracking, iCloud sync, Game Center, free with an optional one-tap Remove Ads.
+2. **User acquisition** (audience: people who want a calm puzzle game). Hook =
+   calm design, iCloud sync, Game Center, free with an optional one-tap Remove Ads.
    Channels: App Store ASO, App Store copy, social.
+   **DO NOT use "no tracking" as a hook** — v2+ uses an ad identifier for ad relevance
+   (see Privacy row + §Do-Not-Claim). The privacy hook is "no first-party analytics
+   profiling you + you can decline tailored ads or remove ads entirely."
 
 Voice: calm, precise, understated. No hype adjectives ("amazing", "revolutionary"). No
 emoji-spam. Confidence through specifics, not superlatives. This mirrors the apps' own
@@ -33,7 +36,7 @@ emoji-spam. Confidence through specifics, not superlatives. This mirrors the app
 | Game Center | Leaderboards + **daily** leaderboards, live | per-difficulty **daily** leaderboards, live |
 | iCloud sync | Full game saves + records sync via CloudKit | **MonetizationState only** — NO game saves synced |
 | Monetization | Free; **removable banner ad** + one-time **Remove Ads** IAP | (ads planned, not yet live) |
-| Privacy | No third-party tracking SDK. Apple-only: App Store Analytics + MetricKit + Game Center. PrivacyInfo.xcprivacy shipped | same privacy posture |
+| Privacy | No first-party **analytics** SDK profiling you (Apple-only: App Store Analytics + MetricKit + Game Center). BUT v2+ AdMob uses the iOS ad identifier (IDFA) for **ad relevance**, gated behind the ATT prompt — `PrivacyInfo.xcprivacy` declares `NSPrivacyTracking=true` + AdMob tracking domains. Decline ATT → ads still serve (non-personalized); or remove ads entirely. **Path B — confirmed by user 2026-06-05.** | same posture (ads not yet live) |
 | Saved-game / resume | Has saved-game persistence | **NO saved-game / resume flow** (do not claim resume) |
 
 ## Architecture facts (for portfolio/dev content only)
@@ -51,7 +54,15 @@ emoji-spam. Confidence through specifics, not superlatives. This mirrors the app
 - ❌ "No ads" / "ad-free" for **Sudoku** — it ships a removable banner. Correct framing:
   "free, with an optional one-tap Remove Ads."
 - ❌ "Resume your saved game" for **Minesweeper** — there is no saved-game flow.
-- ❌ Any third-party-analytics or social-login claim — there are none.
+- ❌ unqualified **"No tracking" / "privacy-first, we don't track you"** — FALSE for v2+.
+  AdMob uses the iOS ad identifier (IDFA) for ad relevance behind the ATT prompt;
+  `PrivacyInfo` declares `NSPrivacyTracking=true`. Correct, gentle framing (user-approved
+  Path B, 2026-06-05): *"no first-party analytics SDK building a profile of you; ads may
+  use an ad identifier to stay relevant, only with your permission — decline and ads still
+  work (just less tailored), or remove ads entirely. The tracking is for ad relevance, not
+  a personal profile."*
+- ❌ No third-party **analytics** or social-login SDK — true (none); but do NOT extend this
+  to "no third-party SDKs" — AdMob (advertising) is integrated and does use the ad identifier.
 - ❌ "Syncs your games across devices" for **Minesweeper** — only monetization state syncs.
 - ❌ Award/ranking/userbase numbers — we have none to cite. Do not invent.
 
