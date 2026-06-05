@@ -65,6 +65,7 @@ internal enum ASCRegisterCLI {
                 case "plan":  try await runMetadataRemote(args: rest2, mode: .plan)
                 case "apply": try await runMetadataRemote(args: rest2, mode: .apply)
                 case "set-version": try await runMetadataSetVersion(args: rest2)
+                case "screenshots": try await runMetadataScreenshots(args: rest2)
                 default:
                     FileHandle.standardError.write(Data("Unknown metadata subcommand: \(subSub)\n".utf8))
                     printUsage()
@@ -370,6 +371,7 @@ internal enum ASCRegisterCLI {
           ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
           ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
           ASCRegister metadata set-version --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> --version <string> [--platform ios|macos|all] [--app-id <id>]
+          ASCRegister metadata screenshots --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--platform ios|macos|all] [--locale <repo-code>] [--screenshots-dir <dir>] [--i-am-sure]
         """)
     }
     // swiftlint:enable line_length
@@ -587,6 +589,210 @@ internal enum ASCRegisterCLI {
                 + "state=\(chosen.state) \(chosen.versionString) → \(target)")
             _ = try await client.setVersionString(versionId: chosen.id, versionString: target)
             print("Applied [\(r.platform)]: \(chosen.versionString) → \(target)")
+        }
+    }
+
+    // MARK: - metadata screenshots (upload committed PNGs to ASC)
+
+    /// Upload the committed screenshot PNGs to App Store Connect via Apple's
+    /// multi-part reservation flow (reserve → PUT → commit), per app + platform,
+    /// into the correct `appScreenshotSet`.
+    ///
+    /// SAFETY: the actual upload mutates ASC and is gated behind `--i-am-sure`
+    /// (mirrors the `apply` intent). WITHOUT `--i-am-sure` this is a dry-run: it
+    /// resolves the targets, lists existing sets, and prints exactly what WOULD
+    /// upload (and what would be skipped as already-present) — NO mutation, no
+    /// reserve POST. Default `--locale en` matches the committed tree's repo
+    /// locale segment; default `--screenshots-dir docs/app-store/screenshots`.
+    private static func runMetadataScreenshots(args: [String]) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let appName = try opts.required("app")
+        let metadataDir = opts["metadata-dir"] ?? "docs/app-store/metadata"
+        let screenshotsDir = opts["screenshots-dir"] ?? "docs/app-store/screenshots"
+        let repoLocale = opts["locale"] ?? "en"
+        let isSure = opts.has("i-am-sure")
+
+        guard let app = MetadataApp(rawValue: appName) else {
+            throw CLIError.invalidValue(flag: "--app", value: appName, allowed: MetadataApp.allCases.map(\.rawValue))
+        }
+        let platform = try parsePlatform(opts)
+
+        // ASC locale code the version-localization is keyed by (the committed
+        // tree uses `en`; ASC holds `en-US`). Reuse the metadata map (#322).
+        guard let ascLocale = MetadataConfig.ascLocaleCode(forRepoCode: repoLocale) else {
+            throw CLIError.invalidValue(
+                flag: "--locale", value: repoLocale,
+                allowed: ["en", "ja", "zh-Hans", "zh-Hant", "es", "ko", "th"]
+            )
+        }
+
+        // App ID: explicit flag wins, else the YAML's apple_id (same resolution
+        // as the other metadata commands). MS has no apple_id yet → graceful note.
+        let config = try MetadataConfig.load(app: app, metadataDir: metadataDir)
+        guard let appId = opts["app-id"] ?? config.appMeta.appleId else {
+            print("metadata screenshots: app '\(app.rawValue)' has no apple_id in app-meta.yaml "
+                + "and no --app-id given — no ASC app to upload screenshots to.")
+            return
+        }
+
+        // Discover the committed PNGs in scope.
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: screenshotsDir, app: app.rawValue,
+            platform: platform, localeFilter: repoLocale
+        )
+        guard !assets.isEmpty else {
+            print("metadata screenshots: no PNGs under \(screenshotsDir)/\(app.rawValue)/<device>/\(repoLocale)/ "
+                + "for --platform \(platform.rawValue). Nothing to upload.")
+            return
+        }
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+        // Read-only in dry-run; only an `.apply` client (which actually sends the
+        // reserve POST / commit PATCH) is built under `--i-am-sure`.
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: isSure ? .apply : .plan
+        )
+
+        print("metadata screenshots: \(app.rawValue) app-id \(appId) "
+            + "--platform \(platform.rawValue) --locale \(repoLocale) (ASC \(ascLocale)) "
+            + "— \(assets.count) PNG(s) discovered. \(isSure ? "UPLOADING (--i-am-sure)." : "DRY-RUN (pass --i-am-sure to upload).")")
+
+        try await uploadScreenshots(
+            client: client, appId: appId, ascLocale: ascLocale,
+            platform: platform, assets: assets, apply: isSure
+        )
+    }
+
+    /// Resolve the editable version-localization id per platform for `ascLocale`,
+    /// then for each device's screenshot set: ensure the set exists and (when
+    /// `apply`) reserve→PUT→commit each not-yet-present PNG. Idempotent: a file
+    /// whose name already lives in the set is SKIPPED (never duplicated). Warns
+    /// (does not throw) when a platform has no editable version or no matching
+    /// version-localization. `internal` so the URLProtocol-stub harness drives
+    /// the full reserve→PUT→commit sequence offline.
+    internal static func uploadScreenshots(
+        client: ASCClient,
+        appId: String,
+        ascLocale: String,
+        platform: MetadataPlatform,
+        assets: [ScreenshotAsset],
+        apply: Bool
+    ) async throws {
+        // Editable version per platform (reuse the platform-aware resolver).
+        let versions = try await client.listAppStoreVersions(appId: appId)
+        let outcome = PlatformVersionResolver.resolve(
+            versions: Self.platformVersions(from: versions.data), filter: platform, versionFilter: nil
+        )
+        for skip in outcome.skipped {
+            FileHandle.standardError.write(Data(
+                "warn: metadata screenshots: platform \(skip.platform) skipped — \(skip.reason)\n".utf8
+            ))
+        }
+
+        var uploaded = 0
+        var skipped = 0
+        for resolved in outcome.resolved {
+            let token = resolved.platform
+            // Devices whose platform family maps to this ASC token.
+            let familyAssets = assets.filter { asset in
+                Self.ascToken(for: asset.device.platform) == token
+            }
+            guard !familyAssets.isEmpty else { continue }
+
+            // Find the version-localization for `ascLocale` under this version.
+            let locs = try await client.listVersionLocalizations(versionId: resolved.version.id)
+            guard let loc = locs.first(where: { $0.attributes["locale"] == ascLocale }) else {
+                let msg = "warn: metadata screenshots: [\(token)] no version-localization for \(ascLocale) "
+                    + "(version \(resolved.version.versionString)) — skipping its screenshots\n"
+                FileHandle.standardError.write(Data(msg.utf8))
+                continue
+            }
+
+            // Snapshot existing sets + their fileNames for idempotency.
+            let existing = try await client.listScreenshotSets(versionLocalizationId: loc.id)
+            var setIdByDisplayType = ScreenshotSetIndex.setIdsByDisplayType(existing)
+            let fileNamesBySet = ScreenshotSetIndex.fileNamesBySetId(existing)
+
+            for asset in familyAssets {
+                let displayType = asset.displayType
+                let alreadyPresent = setIdByDisplayType[displayType]
+                    .flatMap { fileNamesBySet[$0] }?.contains(asset.fileName) ?? false
+                if alreadyPresent {
+                    print("  SKIP   [\(token)] \(displayType) \(asset.fileName) (already in set)")
+                    skipped += 1
+                    continue
+                }
+                if !apply {
+                    let setNote = setIdByDisplayType[displayType] == nil ? "create set + " : ""
+                    print("  UPLOAD [\(token)] \(displayType) \(asset.fileName) (\(setNote)reserve→PUT→commit)")
+                    continue
+                }
+                // --- apply: ensure set, then reserve → PUT → commit ---
+                let setId: String
+                if let existingId = setIdByDisplayType[displayType] {
+                    setId = existingId
+                } else {
+                    let created = try await client.createScreenshotSet(
+                        versionLocalizationId: loc.id, displayType: displayType
+                    )
+                    setId = created.id
+                    setIdByDisplayType[displayType] = setId
+                }
+                try await uploadOneScreenshot(client: client, setId: setId, asset: asset, token: token)
+                uploaded += 1
+            }
+        }
+        if apply {
+            print("metadata screenshots: applied — \(uploaded) uploaded, \(skipped) skipped (already present).")
+        } else {
+            print("metadata screenshots: dry-run — would upload "
+                + "\(assets.count - skipped) PNG(s), skip \(skipped) already present. "
+                + "Pass --i-am-sure to execute.")
+        }
+    }
+
+    /// Reserve → PUT each part → commit one screenshot. The MD5 checksum is
+    /// computed over the FULL file bytes and sent in the commit PATCH; ASC
+    /// verifies it against the bytes the PUT(s) delivered.
+    private static func uploadOneScreenshot(
+        client: ASCClient,
+        setId: String,
+        asset: ScreenshotAsset,
+        token: String
+    ) async throws {
+        let bytes = try Data(contentsOf: URL(fileURLWithPath: asset.path))
+        let (id, operations) = try await client.reserveScreenshot(
+            screenshotSetId: setId, fileName: asset.fileName, fileSize: bytes.count
+        )
+        guard !operations.isEmpty else {
+            throw CLIError.invalidValue(
+                flag: "uploadOperations", value: "empty",
+                allowed: ["reservation must return ≥1 uploadOperation for \(asset.fileName)"]
+            )
+        }
+        for operation in operations {
+            try await client.uploadPart(operation, of: bytes)
+        }
+        let checksum = AssetChecksum.md5Hex(bytes)
+        _ = try await client.commitScreenshot(screenshotId: id, checksum: checksum)
+        print("  UPLOAD [\(token)] \(asset.displayType) \(asset.fileName) "
+            + "→ id=\(id) (\(operations.count) part(s), md5=\(checksum))")
+    }
+
+    /// The ASC platform token ("IOS"/"MAC_OS") for a `MetadataPlatform` family.
+    /// `.all` is not a single token (it never tags a device) → "IOS" fallback.
+    private static func ascToken(for platform: MetadataPlatform) -> String {
+        switch platform {
+        case .ios:   return "IOS"
+        case .macos: return "MAC_OS"
+        case .all:   return "IOS"
         }
     }
 
@@ -1062,8 +1268,13 @@ internal enum ASCRegisterCLI {
 
 internal struct Options: Sendable {
     private var values: [String: String]
+    /// Bare boolean flags present with no value (e.g. `--i-am-sure`).
+    private var flags: Set<String>
 
-    private init(_ values: [String: String]) { self.values = values }
+    private init(_ values: [String: String], flags: Set<String>) {
+        self.values = values
+        self.flags = flags
+    }
 
     internal subscript(key: String) -> String? { values[key] }
 
@@ -1072,20 +1283,30 @@ internal struct Options: Sendable {
         return v
     }
 
+    /// Whether a bare boolean flag (`--<key>` with no following value) was
+    /// passed. A `--key value` pair is NOT a boolean flag.
+    internal func has(_ key: String) -> Bool { flags.contains(key) }
+
     internal static func parse(_ args: [String]) -> Options {
         var out: [String: String] = [:]
+        var flags: Set<String> = []
         var i = 0
         while i < args.count {
             let token = args[i]
-            if token.hasPrefix("--"), i + 1 < args.count {
+            // A `--flag` whose next token is another flag (or absent) is a bare
+            // boolean; otherwise it is a `--key value` pair.
+            if token.hasPrefix("--"), i + 1 < args.count, !args[i + 1].hasPrefix("--") {
                 let key = String(token.dropFirst(2))
                 out[key] = args[i + 1]
                 i += 2
+            } else if token.hasPrefix("--") {
+                flags.insert(String(token.dropFirst(2)))
+                i += 1
             } else {
                 i += 1
             }
         }
-        return Options(out)
+        return Options(out, flags: flags)
     }
 }
 

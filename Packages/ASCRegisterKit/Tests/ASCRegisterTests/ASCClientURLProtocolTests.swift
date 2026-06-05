@@ -13,6 +13,11 @@
 // response queue (URLProtocol is instantiated by URLSession, so per-instance
 // injection isn't available).
 
+// swiftlint:disable file_length
+// WHY: the screenshot upload suite (reserve→PUT→commit + checksum + idempotency)
+// shares this file's `StubURLProtocol` harness (it is `private` here), so its
+// tests live alongside the metadata ones rather than duplicating the stub.
+
 internal import CryptoKit
 internal import Foundation
 internal import Testing
@@ -26,10 +31,14 @@ private struct StubResponse: Sendable {
     let body: String
 }
 
-/// One recorded request the client actually issued (for assertion).
+/// One recorded request the client actually issued (for assertion). `body`
+/// captures the request payload (resolving `httpBodyStream` when URLSession
+/// converted a set `httpBody` to a stream) so tests can assert the reserve POST
+/// shape, the PUT chunk bytes, and the commit PATCH checksum.
 private struct RecordedRequest: Sendable {
     let method: String
     let url: String
+    let body: Data
 }
 
 /// Process-global, lock-guarded harness state. `URLProtocol` subclasses are
@@ -51,7 +60,8 @@ private enum StubState {
         lock.lock(); defer { lock.unlock() }
         recorded.append(RecordedRequest(
             method: request.httpMethod ?? "?",
-            url: request.url?.absoluteString ?? "?"
+            url: request.url?.absoluteString ?? "?",
+            body: bodyData(of: request)
         ))
         guard !responses.isEmpty else {
             return StubResponse(status: 599, body: #"{"errors":[{"detail":"stub queue empty"}]}"#)
@@ -62,6 +72,25 @@ private enum StubState {
     static func recordedRequests() -> [RecordedRequest] {
         lock.lock(); defer { lock.unlock() }
         return recorded
+    }
+
+    /// Resolve a request's payload. URLSession often moves a set `httpBody` into
+    /// `httpBodyStream` by the time `URLProtocol` sees it, so we drain the stream
+    /// when `httpBody` is nil. Returns empty `Data` for body-less requests (GET).
+    private static func bodyData(of request: URLRequest) -> Data {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { return Data() }
+        stream.open()
+        defer { stream.close() }
+        var out = Data()
+        let bufferSize = 4096
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: bufferSize)
+            if read <= 0 { break }
+            out.append(buffer, count: read)
+        }
+        return out
     }
 }
 
@@ -373,5 +402,300 @@ internal struct ASCClientURLProtocolTests {
         #expect(snapshots[0].platform == "IOS")
         let getURLs = StubState.recordedRequests().filter { $0.method == "GET" }.map(\.url)
         #expect(!getURLs.contains { $0.contains("/v1/appStoreVersions/mac-v/appStoreVersionLocalizations") })
+    }
+
+    // MARK: - Screenshot upload (reserve → PUT → commit + checksum)
+
+    /// A reservation response with ONE upload operation (single-part). The
+    /// `uploadOperations` array carries the asset-storage PUT url + the byte
+    /// window + the headers ASC wants echoed back. `offset`/`length` cover the
+    /// whole `byteLen`-byte asset.
+    private static func reservationBody(id: String, putURL: String, byteLen: Int) -> String {
+        #"""
+        {"data":{"id":"\#(id)","type":"appScreenshots",
+          "attributes":{"fileName":"01-home.png","fileSize":\#(byteLen),
+            "assetDeliveryState":{"state":"AWAITING_UPLOAD"},
+            "uploadOperations":[
+              {"method":"PUT","url":"\#(putURL)","offset":0,"length":\#(byteLen),
+               "requestHeaders":[{"name":"Content-Type","value":"image/png"}]}
+            ]}}}
+        """#
+    }
+
+    /// `reserveScreenshot` parses the POST response into (id, operations); the
+    /// reserve POST body carries fileName + fileSize + the appScreenshotSet
+    /// relationship.
+    @Test("reserveScreenshot posts fileName/fileSize/set and parses uploadOperations")
+    internal func reserveParsesUploadOperations() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-1", putURL: "https://assets.apple.example/upload/abc", byteLen: 12
+            )),
+        ])
+        let client = Self.makeClient()
+        let (id, ops) = try await client.reserveScreenshot(
+            screenshotSetId: "set-9", fileName: "01-home.png", fileSize: 12
+        )
+        #expect(id == "shot-1")
+        #expect(ops.count == 1)
+        #expect(ops[0].method == "PUT")
+        #expect(ops[0].url == "https://assets.apple.example/upload/abc")
+        #expect(ops[0].offset == 0)
+        #expect(ops[0].length == 12)
+        #expect(ops[0].requestHeaders["Content-Type"] == "image/png")
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.count == 1)
+        #expect(reqs[0].method == "POST")
+        #expect(reqs[0].url.hasSuffix("/v1/appScreenshots"))
+        let bodyJSON = try #require(
+            try JSONSerialization.jsonObject(with: reqs[0].body) as? [String: Any]
+        )
+        let data = try #require(bodyJSON["data"] as? [String: Any])
+        let attrs = try #require(data["attributes"] as? [String: Any])
+        #expect(attrs["fileName"] as? String == "01-home.png")
+        #expect((attrs["fileSize"] as? NSNumber)?.intValue == 12)
+        let rels = try #require(data["relationships"] as? [String: Any])
+        let setRel = try #require(rels["appScreenshotSet"] as? [String: Any])
+        let setData = try #require(setRel["data"] as? [String: Any])
+        #expect(setData["type"] as? String == "appScreenshotSets")
+        #expect(setData["id"] as? String == "set-9")
+    }
+
+    /// `uploadPart` PUTs exactly the operation's byte window to the asset URL
+    /// (not the ASC base URL) with the supplied headers — and NO Authorization
+    /// header (the asset URL self-authorizes; signing it with the ASC JWT is
+    /// wrong).
+    @Test("uploadPart PUTs the offset/length chunk to the asset URL, unsigned")
+    internal func uploadPartSendsChunkUnsigned() async throws {
+        let asset = Data("HELLOWORLD!!".utf8)  // 12 bytes
+        // One operation covering bytes [3..<8) → "LOWOR".
+        let operation = UploadOperation(
+            method: "PUT",
+            url: "https://assets.apple.example/upload/xyz",
+            offset: 3, length: 5,
+            requestHeaders: ["Content-Type": "image/png", "X-Apple-Token": "tok"]
+        )
+        StubState.reset(with: [StubResponse(status: 200, body: "")])
+        let client = Self.makeClient()
+        try await client.uploadPart(operation, of: asset)
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.count == 1)
+        #expect(reqs[0].method == "PUT")
+        #expect(reqs[0].url == "https://assets.apple.example/upload/xyz")
+        // Exactly the [3..<8) window was sent.
+        #expect(reqs[0].body == Data("LOWOR".utf8))
+    }
+
+    /// `commitScreenshot` PATCHes /v1/appScreenshots/{id} with uploaded:true and
+    /// the MD5 checksum the caller computed.
+    @Test("commitScreenshot patches uploaded:true + sourceFileChecksum")
+    internal func commitSendsChecksum() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-1","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        let checksum = AssetChecksum.md5Hex(Data("HELLOWORLD!!".utf8))
+        _ = try await client.commitScreenshot(screenshotId: "shot-1", checksum: checksum)
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.count == 1)
+        #expect(reqs[0].method == "PATCH")
+        #expect(reqs[0].url.hasSuffix("/v1/appScreenshots/shot-1"))
+        let bodyJSON = try #require(
+            try JSONSerialization.jsonObject(with: reqs[0].body) as? [String: Any]
+        )
+        let data = try #require(bodyJSON["data"] as? [String: Any])
+        let attrs = try #require(data["attributes"] as? [String: Any])
+        #expect(attrs["uploaded"] as? Bool == true)
+        #expect(attrs["sourceFileChecksum"] as? String == checksum)
+    }
+
+    /// MD5 is the algorithm ASC expects; verify against a known vector so a
+    /// future refactor can't silently swap the hash.
+    @Test("AssetChecksum.md5Hex matches the known MD5 vector")
+    internal func md5KnownVector() {
+        // MD5("abc") = 900150983cd24fb0d6963f7d28e17f72
+        #expect(AssetChecksum.md5Hex(Data("abc".utf8)) == "900150983cd24fb0d6963f7d28e17f72")
+        #expect(AssetChecksum.md5Hex(Data()) == "d41d8cd98f00b204e9800998ecf8427e")
+    }
+
+    /// End-to-end orchestration in APPLY mode: GET versions → GET version-locs →
+    /// GET existing sets (empty) → CREATE set → reserve POST → PUT chunk →
+    /// commit PATCH. Asserts the full reserve→PUT→commit ordering AND that the
+    /// committed checksum is the MD5 of the on-disk file bytes.
+    @Test("uploadScreenshots apply: GET→createSet→reserve→PUT→commit with file MD5")
+    internal func uploadScreenshotsApplyFullSequence() async throws {
+        let tree = try Self.makeScreenshotTree(
+            device: "iphone-6.9", locale: "en", fileName: "01-home.png",
+            bytes: Data("PNGDATA-12345".utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: tree) }
+        let fileBytes = Data("PNGDATA-12345".utf8)
+        let expectedMD5 = AssetChecksum.md5Hex(fileBytes)
+
+        // iOS version + en-US version-loc + empty set list + create-set echo +
+        // reservation + PUT 200 + commit 200.
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"{"data":[],"included":[],"links":{}}"#),  // no existing sets
+            StubResponse(status: 201, body: #"""
+            {"data":{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"}}}
+            """#),
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-1", putURL: "https://assets.apple.example/u/1", byteLen: fileBytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-1","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+        ])
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        #expect(assets.count == 1)
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        let methods = reqs.map(\.method)
+        // GET versions, GET version-locs, GET sets, POST set, POST reserve, PUT, PATCH commit.
+        #expect(methods == ["GET", "GET", "GET", "POST", "POST", "PUT", "PATCH"])
+        // The set was created for the iPhone 6.9" display type.
+        let createSet = try #require(reqs.first { $0.url.hasSuffix("/v1/appScreenshotSets") })
+        let setBody = try #require(
+            try JSONSerialization.jsonObject(with: createSet.body) as? [String: Any]
+        )
+        let setAttrs = try #require((setBody["data"] as? [String: Any])?["attributes"] as? [String: Any])
+        #expect(setAttrs["screenshotDisplayType"] as? String == "APP_IPHONE_67")
+        // The PUT carried the file bytes; the commit carried that file's MD5.
+        let put = try #require(reqs.first { $0.method == "PUT" })
+        #expect(put.body == fileBytes)
+        #expect(put.url == "https://assets.apple.example/u/1")
+        let commit = try #require(reqs.first { $0.method == "PATCH" })
+        let commitBody = try #require(
+            try JSONSerialization.jsonObject(with: commit.body) as? [String: Any]
+        )
+        let commitAttrs = try #require((commitBody["data"] as? [String: Any])?["attributes"] as? [String: Any])
+        #expect(commitAttrs["uploaded"] as? Bool == true)
+        #expect(commitAttrs["sourceFileChecksum"] as? String == expectedMD5)
+    }
+
+    /// Idempotency: a file whose name already lives in the matching set is
+    /// SKIPPED — no createSet, no reserve, no PUT, no commit. Only the read GETs
+    /// run.
+    @Test("uploadScreenshots apply: skips a file already present in the set")
+    internal func uploadScreenshotsSkipsExisting() async throws {
+        let tree = try Self.makeScreenshotTree(
+            device: "iphone-6.9", locale: "en", fileName: "01-home.png",
+            bytes: Data("PNGDATA".utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // Existing set already contains 01-home.png → skip.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[{"id":"shot-x","type":"appScreenshots"}]}}}],
+            "included":[{"id":"shot-x","type":"appScreenshots",
+            "attributes":{"fileName":"01-home.png"}}],"links":{}}
+            """#),
+        ])
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let methods = StubState.recordedRequests().map(\.method)
+        // Only the three read GETs — no mutation for an already-present file.
+        #expect(methods == ["GET", "GET", "GET"])
+    }
+
+    /// Dry-run (apply:false): resolves + lists, prints what WOULD upload, but
+    /// issues NO mutating request (no createSet / reserve / PUT / commit).
+    @Test("uploadScreenshots dry-run issues no mutating request")
+    internal func uploadScreenshotsDryRunNoMutation() async throws {
+        let tree = try Self.makeScreenshotTree(
+            device: "iphone-6.9", locale: "en", fileName: "01-home.png",
+            bytes: Data("PNGDATA".utf8)
+        )
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"{"data":[],"included":[],"links":{}}"#),
+        ])
+
+        let client = Self.makeClient(mode: .plan)
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: false
+        )
+
+        let methods = StubState.recordedRequests().map(\.method)
+        // Read-only: GET versions, GET version-locs, GET sets. Zero mutations.
+        #expect(methods.allSatisfy { $0 == "GET" })
+        #expect(methods == ["GET", "GET", "GET"])
+    }
+
+    /// Build a throwaway `screenshots/<app>/<device>/<locale>/<file>` tree under
+    /// a temp dir for the discovery + file-read paths. Returns the root to pass
+    /// as `--screenshots-dir`.
+    private static func makeScreenshotTree(
+        device: String, locale: String, fileName: String, bytes: Data
+    ) throws -> URL {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asc-shots-\(UUID().uuidString)")
+        let dir = root
+            .appendingPathComponent("sudoku")
+            .appendingPathComponent(device)
+            .appendingPathComponent(locale)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try bytes.write(to: dir.appendingPathComponent(fileName))
+        return root
     }
 }
