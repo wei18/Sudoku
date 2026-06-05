@@ -65,6 +65,16 @@ public final class MinesweeperDailyHubViewModel {
         self.dateProvider = dateProvider
     }
 
+    /// Seed state for previews / snapshot tests that bypass the async fetch.
+    /// Latches `hasBootstrapped` so the view's `.task { bootstrap() }` becomes a
+    /// no-op and the seeded state survives `NSHostingView` capture — mirrors
+    /// `MinesweeperCompletionViewModel.setStateForTesting`. Production never
+    /// calls this; the live `bootstrap()` path is untouched.
+    public func setStateForTesting(_ state: MinesweeperDailyHubState) {
+        self.state = state
+        self.hasBootstrapped = true
+    }
+
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
