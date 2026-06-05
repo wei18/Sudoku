@@ -152,6 +152,30 @@ v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workfl
 | **Main CI** | merge 到 `main` | Build + Archive + **上傳 internal TestFlight**；**不重跑 test**（已由 PR CI 在 pre-merged 狀態驗證）|
 | **Release** | git tag `v*` | Build + 上傳 App Store Connect（手動送審）|
 
+### 臨時替代：本機 `mise run tf:upload`（XCC quota 耗盡時）
+
+當 Xcode Cloud 當月 compute quota 用罄、上述 **Main CI** 的 "Build + Archive + 上傳 internal TestFlight" 無法跑時，用本機 `mise-tasks/tf/upload`（task `tf:upload`）暫代。它沿用 `ck:schema`（#337）/ `store:screenshots`（#311）的 scriptable-ops 慣例：commit-tracked、idempotent、Production-gated 的 Apple-CLI wrapper。XCC quota 重置後優先回到 Main CI；本工具只是 bridge，不是長期 CI 取代品。
+
+**命令面**：
+
+```
+mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
+  --archive-only   只 archive + export（產 .ipa/.pkg），永不上傳（預設安全）
+  --build <N>      指定 CFBundleVersion（build number）；預設 = $(date -u +%Y%m%d%H%M)
+  --config <name>  xcodebuild configuration（預設 Release）
+  --i-am-sure      上傳到 TestFlight 的**必填** gate（user-owned、不可逆）
+```
+
+**Pipeline**：`tuist generate`（產 gitignored 的 `Game.xcworkspace`）→ `xcodebuild archive` → 用 PlistBuddy 把 archive 內 app 的 `CFBundleVersion` 改成唯一 build number → `xcodebuild -exportArchive`（runtime 產 App-Store-Connect `ExportOptions.plist`，`method=app-store-connect`、`destination=export`）→ `xcrun altool --upload-app --type ios|macos --file <pkg> --apiKey <KEY_ID> --apiIssuer <ISSUER>`。
+
+**Build number 唯一性**：兩支 App 的 `CFBundleVersion` 在各自 `Info.plist` 是 hardcoded literal `1`（版本不走 `CURRENT_PROJECT_VERSION` build setting），所以 xcodebuild build-setting override 無效。本工具改在 **archive 後 / export 前**用 PlistBuddy patch archive 內 `*.app/Info.plist` 的 `CFBundleVersion`，預設值為 UTC 時間戳（分鐘精度，`YYYYMMDDHHmm`）以避免 TestFlight 重號拒絕；需要可重現的號碼時用 `--build <N>`。`CFBundleShortVersionString`（marketing version，Sudoku `2.3.5` / Minesweeper `1.0.0`）不動，仍由 `Info.plist` source-of-truth 控制。
+
+**認證**：沿用 `secrets/.env` 既有 ASC key（`ASC_API_KEY_PATH` / `ASC_API_KEY_ID` / `ASC_API_ISSUER_ID`）+ `CK_TEAM_ID`（同一 10-char Team ID）。腳本把 `.p8` 以 per-run symlink 暫掛到 altool 會搜尋的 `./private_keys/AuthKey_<KEY_ID>.p8`（位於 gitignored 的 `build/`），exit 時清掉；key 路徑 / 內容不經 argv、不印出。
+
+**Upload guard**：`archive` + `export` 只動 `build/`（gitignored），可反覆執行；唯一不可逆的 `altool --upload-app` 必須 `--i-am-sure`，否則印 user-owned 簽章確認 banner 後 `exit 2`。
+
+> **本機簽章前置**：archive 用 Automatic signing（`DEVELOPMENT_TEAM=$CK_TEAM_ID`），需登入 Xcode 的 Apple Developer 帳號讓 Xcode 自動管理 App Store distribution 憑證 + provisioning profile（`-allowProvisioningUpdates`）。憑證 / profile 不在 repo —是 user 機器的 keychain 資產。
+
 ### Scheme 結構：`Sudoku` vs `Sudoku-Workspace`
 
 `tuist generate` 會產出**兩個** scheme，職責互斥：
