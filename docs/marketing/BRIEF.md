@@ -30,7 +30,7 @@ emoji-spam. Confidence through specifics, not superlatives. This mirrors the app
 
 | Topic | Sudoku | Minesweeper |
 |---|---|---|
-| Status | v2.3.5, App Store submission prep | v1, build-out, not yet submitted |
+| Status | v2.5 (monetization release), App Store submission prep | v1.0, build-out, not yet submitted |
 | Platforms | iOS + macOS (SwiftUI) | iOS + macOS (SwiftUI) |
 | Localization | 7 locales (zh-TW, en, ja, zh-CN, es, th, ko) | same 7 locales |
 | Game Center | Leaderboards + **daily** leaderboards, live | per-difficulty **daily** leaderboards, live |
