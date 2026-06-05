@@ -15,6 +15,7 @@ for the rationale.
 1. `cp secrets/.env.example secrets/.env`
 2. Fill values from project memory:
    - `ASC_API_KEY_ID` / `ASC_API_ISSUER` / `ASC_API_SUDOKU_APP_ID` / `ASC_API_MS_APP_ID` — see memory `asc-api-credentials`
+   - `CK_MANAGEMENT_TOKEN` / `CK_TEAM_ID` (CloudKit schema deploy, issue #337) — generate the management token in CloudKit Dashboard → Settings → Tokens; see `docs/foundations.md §7.7.2`
 3. Move ASC API `.p8` cert into this folder:
    - `mv ~/GitHub/ASCAPI_AuthKey_*.p8 secrets/`
 4. Verify gitignore is doing its job:

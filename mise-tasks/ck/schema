@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#MISE description="CloudKit schema tool — export Dev schema (.ckdb) or deploy to an env via xcrun cktool. Production-deploy is user-owned (gated behind --i-am-sure)."
+#
+# Wraps `xcrun cktool` so the CloudKit Development→Production schema deploy becomes
+# a commit-trackable, Leader-orderable step — mirroring how ASCRegister made the
+# ASC metadata / Game Center leaderboard deploys scriptable. See docs/foundations.md
+# §7.7.2 and GitHub issue #337.
+#
+# AUTH: reads the CloudKit *management* token from `secrets/.env` (key
+# `CK_MANAGEMENT_TOKEN`) — never hardcoded, never printed. Mirrors the ASC .p8/.env
+# pattern (foundations §7.7). The token is fed to `cktool save-token` and lives only
+# in cktool's keychain-backed token store for the run, then purged on exit (trap).
+#
+# IDEMPOTENT:
+#   - export : re-running overwrites `cloudkit/<app>.ckdb` with the current Dev schema.
+#   - import : CloudKit schema import is declarative (apply desired state); re-running
+#              the same .ckdb is a no-op. Production indexes are add-only (Apple rule).
+#
+# Usage:
+#   mise run ck:schema export  --app sudoku|minesweeper
+#   mise run ck:schema validate --app sudoku|minesweeper
+#   mise run ck:schema deploy  --app sudoku|minesweeper --env development
+#   mise run ck:schema deploy  --app sudoku|minesweeper --env production --i-am-sure
+#
+set -euo pipefail
+
+# Purge the management token from the keychain on every exit path — it is a
+# Production-capable credential and should not outlive the run. Harmless no-op
+# if no token was registered (e.g. a usage error before auth).
+trap 'xcrun cktool remove-token --type management --force >/dev/null 2>&1 || true' EXIT
+
+# ── Public, non-secret config ────────────────────────────────────────────────
+# Container identifiers are public (already in *.entitlements + Project.swift).
+container_for() {
+    case "$1" in
+        sudoku)      echo "iCloud.com.wei18.sudoku" ;;
+        minesweeper) echo "iCloud.com.wei18.minesweeper" ;;
+        *) echo "" ;;
+    esac
+}
+
+usage() {
+    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    exit "${1:-1}"
+}
+
+# ── Arg parsing ──────────────────────────────────────────────────────────────
+SUBCMD="${1:-}"; shift || true
+APP=""; ENV="development"; SURE=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --app)        APP="${2:-}"; shift 2 ;;
+        --env)        ENV="${2:-}"; shift 2 ;;
+        --i-am-sure)  SURE=1; shift ;;
+        -h|--help)    usage 0 ;;
+        *) echo "error: unknown argument '$1'" >&2; usage ;;
+    esac
+done
+
+[[ -n "$SUBCMD" ]] || { echo "error: missing subcommand (export|validate|deploy)" >&2; usage; }
+[[ -n "$APP" ]]    || { echo "error: --app is required (sudoku|minesweeper)" >&2; usage; }
+CONTAINER="$(container_for "$APP")"
+[[ -n "$CONTAINER" ]] || { echo "error: unknown --app '$APP' (expected: sudoku|minesweeper)" >&2; exit 1; }
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCHEMA_DIR="$REPO_ROOT/cloudkit"
+SCHEMA_FILE="$SCHEMA_DIR/$APP.ckdb"
+
+# ── Auth: load management token from secrets/.env (never echoed) ──────────────
+load_token() {
+    local env_file="$REPO_ROOT/secrets/.env"
+    if [[ ! -f "$env_file" ]]; then
+        echo "error: $env_file not found. Copy secrets/.env.example → secrets/.env and fill CK_MANAGEMENT_TOKEN." >&2
+        exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "$env_file"
+    if [[ -z "${CK_MANAGEMENT_TOKEN:-}" ]]; then
+        echo "error: CK_MANAGEMENT_TOKEN is empty. Generate one in CloudKit Dashboard → Settings → Tokens (management token) and put it in secrets/.env." >&2
+        exit 1
+    fi
+    if [[ -z "${CK_TEAM_ID:-}" ]]; then
+        echo "error: CK_TEAM_ID is empty. Put your 10-char Apple Developer Team ID in secrets/.env." >&2
+        exit 1
+    fi
+    # Register the token with cktool's keychain store. Read from stdin so the
+    # secret never appears in process argv (which `ps` could surface). `--force`
+    # overwrites any prior token non-interactively on re-runs.
+    printf '%s' "$CK_MANAGEMENT_TOKEN" | xcrun cktool save-token --type management --force
+}
+
+case "$SUBCMD" in
+    export)
+        load_token
+        mkdir -p "$SCHEMA_DIR"
+        echo "==> Exporting Development schema for $APP ($CONTAINER) → $SCHEMA_FILE"
+        xcrun cktool export-schema \
+            --team-id "$CK_TEAM_ID" \
+            --container-id "$CONTAINER" \
+            --environment development \
+            --output-file "$SCHEMA_FILE"
+        echo "==> Done. Review the diff, then commit cloudkit/$APP.ckdb as the schema source of truth."
+        ;;
+
+    validate)
+        [[ -f "$SCHEMA_FILE" ]] || { echo "error: $SCHEMA_FILE not found — run 'export' first." >&2; exit 1; }
+        load_token
+        echo "==> Validating $SCHEMA_FILE against $CONTAINER"
+        xcrun cktool validate-schema \
+            --team-id "$CK_TEAM_ID" \
+            --container-id "$CONTAINER" \
+            --file "$SCHEMA_FILE"
+        ;;
+
+    deploy)
+        [[ -f "$SCHEMA_FILE" ]] || { echo "error: $SCHEMA_FILE not found — run 'export' first." >&2; exit 1; }
+        case "$ENV" in development|production) ;; *) echo "error: --env must be development|production" >&2; exit 1 ;; esac
+
+        # ── Production guard: user-owned, irreversible, add-only indexes ──────
+        if [[ "$ENV" == "production" ]]; then
+            echo "────────────────────────────────────────────────────────────────"
+            echo " PRODUCTION SCHEMA DEPLOY — $APP ($CONTAINER)"
+            echo "────────────────────────────────────────────────────────────────"
+            echo " This is a USER-OWNED action. It mutates the live Production"
+            echo " CloudKit schema. Production indexes are ADD-ONLY (Apple rule):"
+            echo " once a field is indexed in Production it can never be removed."
+            echo " Confirm in CloudKit Dashboard that the .ckdb diff is intended"
+            echo " before proceeding."
+            echo "────────────────────────────────────────────────────────────────"
+            if [[ "$SURE" -ne 1 ]]; then
+                echo "Refusing to deploy to Production without --i-am-sure. Aborting." >&2
+                exit 2
+            fi
+            echo "--i-am-sure supplied — proceeding with Production import."
+        fi
+
+        load_token
+        echo "==> Importing $SCHEMA_FILE → $ENV ($CONTAINER)"
+        xcrun cktool import-schema \
+            --team-id "$CK_TEAM_ID" \
+            --container-id "$CONTAINER" \
+            --environment "$ENV" \
+            --file "$SCHEMA_FILE" \
+            --validate
+        echo "==> Done."
+        ;;
+
+    *)
+        echo "error: unknown subcommand '$SUBCMD' (expected: export|validate|deploy)" >&2
+        usage
+        ;;
+esac
