@@ -8,7 +8,9 @@ Stable across versions; updated whenever architecture / process / brand changes:
 - `methodology.md` — collaboration process, dispatch contract, backlog routing
 - `privacy-policy.md` — user-facing legal (en + zh-Hant)
 - `designs/` — visual design system + per-screen design docs
-- `app-store/` — marketing copy + App Store assets (icons / screenshots)
+- `app-store/` — App Store submission metadata + assets (icons / screenshots / review notes)
+- `marketing/` — positioning brief + launch / ASO / social draft collateral
+- `audits/` — point-in-time audit reports (e.g. CloudKit index cost)
 
 ## Version-scoped
 

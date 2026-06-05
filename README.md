@@ -18,7 +18,7 @@ Both run on **iPhone and Mac** from one codebase, sync through the player's own 
 | | **Sudoku** (primary) | **Minesweeper** (second app) |
 |---|---|---|
 | One-liner | Daily & Practice logic for iPhone and Mac | The classic, made calm — for iPhone and Mac |
-| Status | Feature-complete; v2.3.5 monetization (banner + Remove-Ads IAP) in App Store submission | Mirrors Sudoku across every layer except the board — built and tested; pending its own App Store submission |
+| Status | Feature-complete; v2.5 monetization (banner + Remove-Ads IAP) in App Store submission | Mirrors Sudoku across every layer except the board — built and tested; pending its own App Store submission |
 | Modes | Daily (3 puzzles/day, global, leaderboard-ranked) + Practice (random, unranked) | Beginner / Intermediate / Expert, first-tap-safe |
 | Cross-device | iCloud Private DB sync of saves + records | Settings + purchase state via iCloud; no saved-game flow yet |
 | Platforms | iOS 26 / macOS 26, real SwiftUI Mac app (not Catalyst) | Same |
