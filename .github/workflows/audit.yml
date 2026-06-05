@@ -1,4 +1,4 @@
-name: repo audit (upkeep e2e)
+name: Repo audit (upkeep e2e)
 
 on:
   workflow_dispatch:
