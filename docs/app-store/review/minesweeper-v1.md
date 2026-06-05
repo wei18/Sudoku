@@ -93,7 +93,7 @@ accordingly (#236).
 ## Pre-submission verification checklist (Leader/user)
 
 - [ ] Confirm wired feature set against `Packages/MinesweeperKit/Sources/MinesweeperAppComposition/Live.swift` (Game Center? Daily engine? save-flow?).
-- [ ] CloudKit schema deployed to **Production** for `iCloud.com.wei18.minesweeper`.
+- [ ] CloudKit schema deployed to **Production** for `iCloud.com.wei18.minesweeper` — user-owned via `mise run ck:schema deploy --app minesweeper --env production --i-am-sure` (issue #337, foundations §7.7.2), then confirm in CK Dashboard.
 - [ ] `Minesweeper/Resources/PrivacyInfo.xcprivacy` reflects the real AdMob integration (it currently carries the Sudoku tracking stance — correct now that AdMob is wired, but the framing comment still says "copied in anticipation"; refresh the comment in a separate chore).
 - [ ] Production AdMob App ID + banner unit ID swapped in (paired flip — project memory `minesweeper-admob-ids`, held until MS v1 ships).
 - [ ] App Privacy questionnaire in ASC matches the MS PrivacyInfo (user-owned; no API).
