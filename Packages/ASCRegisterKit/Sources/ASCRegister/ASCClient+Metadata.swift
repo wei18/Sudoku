@@ -93,15 +93,21 @@ extension ASCClient {
 
     // MARK: - appStoreVersions (description / keywords / ... per version)
 
-    /// GET the app's `appStoreVersions`. Used to find the single editable
-    /// version + compute `hasReleasedVersion` (plan §5: version creation stays
+    /// GET the app's `appStoreVersions` (incl. the `platform` field). Used to
+    /// resolve the editable version PER PLATFORM (iOS + macOS) via
+    /// `PlatformVersionResolver` + compute `hasReleasedVersion` (plan §5: version creation stays
     /// user-owned; we GET-and-fail-loud if missing). Version localizations are
     /// fetched SEPARATELY via the paginated `listVersionLocalizations` — the
     /// `?include=` side-load truncated and missed an existing locale → a
     /// CREATE/UPDATE mis-classification (issue #310).
+    /// One ASC app holds a SEPARATE `appStoreVersion` per platform (IOS +
+    /// MAC_OS — Sudoku has both). `platform` is requested so the caller can
+    /// group/iterate per platform and reconcile EVERY editable platform version
+    /// rather than only one (multi-platform defect: iOS stuck at 1.0 while
+    /// macOS advanced to 2.3.5).
     internal func listAppStoreVersions(appId: String) async throws -> APICollectionWithIncluded {
         let path = "/v1/apps/\(appId)/appStoreVersions"
-            + "?fields[appStoreVersions]=versionString,appStoreState,appVersionState"
+            + "?fields[appStoreVersions]=versionString,appStoreState,appVersionState,platform"
         return try await getCollectionWithIncluded(path: path)
     }
 

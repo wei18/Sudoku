@@ -357,6 +357,7 @@ internal enum ASCRegisterCLI {
         return keys
     }
 
+    // swiftlint:disable line_length
     private static func printUsage() {
         print("""
         Usage:
@@ -366,11 +367,12 @@ internal enum ASCRegisterCLI {
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
-          ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
-          ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--metadata-dir <dir>]
-          ASCRegister metadata set-version --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> --version <string> [--app-id <id>]
+          ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
+          ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
+          ASCRegister metadata set-version --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> --version <string> [--platform ios|macos|all] [--app-id <id>]
         """)
     }
+    // swiftlint:enable line_length
 
     // MARK: - metadata plan / apply (issue #310)
     // swiftlint:disable function_body_length
@@ -428,38 +430,82 @@ internal enum ASCRegisterCLI {
             FileHandle.standardError.write(Data("warn: listAppCategories failed: \(error)\n".utf8))
         }
 
-        // 2. Snapshot remote metadata state.
-        let remote: MetadataRemoteState
+        let platform = try parsePlatform(opts)
+
+        // 2. Snapshot remote metadata state. The appInfo slice (name / subtitle
+        //    / categories) is platform-INDEPENDENT — appInfos are not per
+        //    platform — so it is snapshotted once. The appStoreVersion slice is
+        //    per platform (IOS + MAC_OS), so a separate snapshot is taken for
+        //    each editable platform version in scope.
+        let base: MetadataRemoteState
+        let platformVersions: [PlatformVersionSnapshot]
         do {
-            remote = try await snapshotMetadata(client: client, appId: appId, versionFilter: opts["version"])
+            base = try await snapshotMetadata(client: client, appId: appId)
+            platformVersions = try await snapshotPlatformVersions(
+                client: client, appId: appId, filter: platform, versionFilter: opts["version"]
+            )
         } catch let ASCClient.ClientError.httpStatus(code, path, body) where code == 404 {
             print("metadata: ASC returned 404 for \(path) — app id \(appId) not found "
                 + "(MS app likely not created yet). Body: \(body)")
             return
         }
 
-        // 3. Plan.
-        let actions = MetadataReconciler.plan(config: config, remote: remote)
-        print("Plan: \(actions.count) metadata action(s) for \(app.rawValue) (app-id \(appId))")
-        for action in actions {
+        // 3. Plan. The appInfo-loc + category actions come from the base state
+        //    (its `versionId` is nil → reconciler emits no version-loc actions).
+        //    The version-loc actions are planned PER platform version, each with
+        //    only `versionId` populated so the reconciler emits version-loc
+        //    actions for that platform alone.
+        let appInfoActions = MetadataReconciler.plan(config: config, remote: base)
+        var platformActions: [(platform: String, actions: [MetadataAction])] = []
+        for pv in platformVersions {
+            let perPlatform = MetadataRemoteState(
+                versionId: pv.versionId,
+                versionLocalizations: pv.versionLocalizations,
+                hasReleasedVersion: pv.hasReleasedVersion
+            )
+            platformActions.append((pv.platform, MetadataReconciler.plan(config: config, remote: perPlatform)))
+        }
+
+        let totalCount = appInfoActions.count + platformActions.reduce(0) { $0 + $1.actions.count }
+        print("Plan: \(totalCount) metadata action(s) for \(app.rawValue) (app-id \(appId), "
+            + "--platform \(platform.rawValue))")
+        for action in appInfoActions {
             print("  \(describeMetadata(action))")
+        }
+        for entry in platformActions {
+            print("  [\(entry.platform)] (version-loc):")
+            for action in entry.actions {
+                print("    \(describeMetadata(action))")
+            }
+        }
+        if platformVersions.isEmpty {
+            print("  (no editable platform version in scope — version-loc copy not pushed)")
         }
 
         // 4. Apply (user-owned — only when explicitly requested).
         if mode == .apply {
-            for action in actions {
+            for action in appInfoActions {
                 try await executeMetadata(action, client: client)
+            }
+            for entry in platformActions {
+                for action in entry.actions {
+                    try await executeMetadata(action, client: client)
+                }
             }
             print("Applied.")
         }
     }
 
-    /// Rename the editable App Store version's `versionString` (#310). GETs the
-    /// app's appStoreVersions, picks the single editable one via
-    /// `SetVersionResolver` (refusing released/locked states), and PATCHes its
-    /// `versionString` to `--version`. Idempotent: if the editable version
-    /// already carries the target, prints "already <x>, no change" and exits 0
-    /// without a mutation. Does NOT touch listing/localization metadata.
+    /// Rename the editable App Store version's `versionString` (#310), across
+    /// ALL editable platform versions by default (platform-aware). GETs the
+    /// app's appStoreVersions (now carrying `platform`), groups by platform via
+    /// `PlatformVersionResolver`, and PATCHes each editable platform version's
+    /// `versionString` to `--version`. `--platform ios|macos|all` (default
+    /// `all`) narrows the scope. Idempotent per platform: a version already at
+    /// the target prints "already <x>, no change" and is not mutated. A platform
+    /// with no editable version prints a warning and is skipped (renaming
+    /// existing versions is in scope; creating a missing one is OUT). Does NOT
+    /// touch listing/localization metadata.
     private static func runMetadataSetVersion(args: [String]) async throws {
         let opts = Options.parse(args)
         let keyPath = try opts.required("key")
@@ -472,6 +518,7 @@ internal enum ASCRegisterCLI {
         guard let app = MetadataApp(rawValue: appName) else {
             throw CLIError.invalidValue(flag: "--app", value: appName, allowed: MetadataApp.allCases.map(\.rawValue))
         }
+        let platform = try parsePlatform(opts)
 
         // App ID: explicit flag wins, else the YAML's apple_id (same resolution
         // as `runMetadataRemote`).
@@ -493,42 +540,103 @@ internal enum ASCRegisterCLI {
             mode: .apply
         )
 
-        // GET versions, map to the pure resolver's value type.
+        // GET versions, rename each editable platform version in scope.
         let versions = try await client.listAppStoreVersions(appId: appId)
-        let resolverVersions = versions.data.map { v in
-            SetVersionResolver.Version(
-                id: v.id,
-                versionString: v.attributes["versionString"] ?? "",
-                state: v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
-            )
-        }
+        try await applySetVersion(
+            client: client,
+            platformVersions: Self.platformVersions(from: versions.data),
+            filter: platform,
+            target: target
+        )
+    }
 
-        let chosen: SetVersionResolver.Version
-        switch SetVersionResolver.choose(versions: resolverVersions, versionFilter: nil) {
-        case .success(let v): chosen = v
-        case .failure(let error): throw error
-        }
+    /// Resolve the editable version per platform (honoring `filter`) and PATCH
+    /// each one's `versionString` to `target`. Idempotent per platform; warns
+    /// (does not throw) for a platform with no editable version. `internal` so
+    /// the URLProtocol-stub harness can drive the multi-platform rename offline.
+    internal static func applySetVersion(
+        client: ASCClient,
+        platformVersions: [PlatformVersionResolver.PlatformVersion],
+        filter: MetadataPlatform,
+        target: String
+    ) async throws {
+        let outcome = PlatformVersionResolver.resolve(
+            versions: platformVersions, filter: filter, versionFilter: nil
+        )
 
-        // Idempotent: already at target → no mutation.
-        if chosen.versionString == target {
-            print("metadata set-version: already \(target), no change "
-                + "(version id=\(chosen.id), state=\(chosen.state)).")
+        // Warn (don't crash) for each platform that has no editable version.
+        for skip in outcome.skipped {
+            let msg = "warn: metadata set-version: platform \(skip.platform) skipped — \(skip.reason)\n"
+            FileHandle.standardError.write(Data(msg.utf8))
+        }
+        if outcome.resolved.isEmpty {
+            print("metadata set-version: no editable platform version in scope "
+                + "(--platform \(filter.rawValue)); nothing renamed.")
             return
         }
 
-        print("metadata set-version: renaming version id=\(chosen.id) state=\(chosen.state) "
-            + "\(chosen.versionString) → \(target)")
-        _ = try await client.setVersionString(versionId: chosen.id, versionString: target)
-        print("Applied: \(chosen.versionString) → \(target)")
+        for r in outcome.resolved {
+            let chosen = r.version
+            // Idempotent per platform: already at target → no mutation.
+            if chosen.versionString == target {
+                print("metadata set-version [\(r.platform)]: already \(target), no change "
+                    + "(version id=\(chosen.id), state=\(chosen.state)).")
+                continue
+            }
+            print("metadata set-version [\(r.platform)]: renaming version id=\(chosen.id) "
+                + "state=\(chosen.state) \(chosen.versionString) → \(target)")
+            _ = try await client.setVersionString(versionId: chosen.id, versionString: target)
+            print("Applied [\(r.platform)]: \(chosen.versionString) → \(target)")
+        }
     }
 
-    /// One GET pass that builds the `MetadataRemoteState`: picks the editable
-    /// appInfo + version, indexes their localizations, reads current category
-    /// relationship ids.
+    /// Parse the optional `--platform ios|macos|all` flag (default `all`).
+    private static func parsePlatform(_ opts: Options) throws -> MetadataPlatform {
+        let raw = opts["platform"] ?? MetadataPlatform.all.rawValue
+        guard let platform = MetadataPlatform(rawValue: raw) else {
+            throw CLIError.invalidValue(
+                flag: "--platform", value: raw, allowed: MetadataPlatform.allCases.map(\.rawValue)
+            )
+        }
+        return platform
+    }
+
+    /// Map decoded ASC `appStoreVersions` resources to the pure resolver's
+    /// platform-tagged value type. A version with no `platform` attribute is
+    /// tagged `"IOS"` so single-platform apps (the legacy shape) keep working.
+    internal static func platformVersions(
+        from data: [APIResource]
+    ) -> [PlatformVersionResolver.PlatformVersion] {
+        data.map { v in
+            PlatformVersionResolver.PlatformVersion(
+                platform: v.attributes["platform"] ?? "IOS",
+                version: SetVersionResolver.Version(
+                    id: v.id,
+                    versionString: v.attributes["versionString"] ?? "",
+                    state: v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
+                )
+            )
+        }
+    }
+
+    /// Per-platform `appStoreVersion` snapshot (the platform-specific slice of
+    /// `MetadataRemoteState`). One is produced per editable platform version in
+    /// scope so version-loc copy is pushed to EVERY platform, not just one.
+    internal struct PlatformVersionSnapshot: Sendable, Equatable {
+        internal let platform: String   // ASC token, e.g. "IOS"
+        internal let versionId: String
+        internal let versionLocalizations: [String: MetadataRemoteState.VersionLocRemote]
+        internal let hasReleasedVersion: Bool
+    }
+
+    /// One GET pass that builds the platform-INDEPENDENT slice of
+    /// `MetadataRemoteState`: picks the editable appInfo, indexes its
+    /// localizations, reads current category relationship ids. The
+    /// appStoreVersion slice is built separately, per platform, by
+    /// `snapshotPlatformVersions`.
     private static func snapshotMetadata(
         client: ASCClient,
-        appId: String,
-        versionFilter: String?
+        appId: String
     ) async throws -> MetadataRemoteState {
         var remote = MetadataRemoteState()
 
@@ -578,47 +686,60 @@ internal enum ASCRegisterCLI {
             }
         }
 
-        // appStoreVersions + localizations.
+        return remote
+    }
+    // swiftlint:enable function_body_length
+
+    /// Build one `PlatformVersionSnapshot` per editable platform version in
+    /// scope. One ASC app holds a SEPARATE `appStoreVersion` per platform
+    /// (IOS + MAC_OS); the old code picked just one, so copy/renames landed on a
+    /// single platform. This GETs the per-platform versions, groups them via
+    /// `PlatformVersionResolver` (honoring `--platform` and `--version`), and
+    /// for each chosen version captures its version-locs via the paginated
+    /// relationship endpoint. A platform with no editable version is warned
+    /// about and omitted (not an error).
+    ///
+    /// `hasReleasedVersion` is computed app-wide (ANY platform released → not a
+    /// first submission) so `whatsNew` gating matches the prior behavior.
+    internal static func snapshotPlatformVersions(
+        client: ASCClient,
+        appId: String,
+        filter: MetadataPlatform,
+        versionFilter: String?
+    ) async throws -> [PlatformVersionSnapshot] {
         let versions = try await client.listAppStoreVersions(appId: appId)
-        // #310 Problem 2 wiring: flag whether the app already has a released
-        // version. On a first submission (none released) the Reconciler drops
-        // `whatsNew` from version-loc payloads — ASC rejects editing whatsNew
-        // before a released predecessor exists. Reads the newer `appVersionState`
-        // key with `appStoreState` as fallback (mirrors :483).
-        remote.hasReleasedVersion = versions.data.contains { v in
+        // App-wide released flag (mirrors the prior single-state snapshot): on a
+        // first submission (none released) the Reconciler drops `whatsNew`.
+        let hasReleased = versions.data.contains { v in
             let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
             return MetadataRemoteState.releasedAppStoreStates.contains(state)
         }
-        let editableVersionStates: Set<String> = [
-            "PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
-            "METADATA_REJECTED", "INVALID_BINARY", "WAITING_FOR_REVIEW",
-        ]
-        // `--version` filters to a specific versionString when the app has
-        // several; otherwise pick the editable one, else the first.
-        let candidates = versionFilter.map { filter in
-            versions.data.filter { $0.attributes["versionString"] == filter }
-        } ?? versions.data
-        let chosenVersion = candidates.first { v in
-            let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
-            return editableVersionStates.contains(state)
-        } ?? candidates.first
 
-        if let v = chosenVersion {
-            remote.versionId = v.id
-            print("appStoreVersion chosen: id=\(v.id) "
-                + "version=\(v.attributes["versionString"] ?? "?") "
-                + "state=\(v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? "?") "
-                + "(of \(versions.data.count) versions)")
-            // Capture EVERY existing version-loc via the version's own
-            // paginated relationship endpoint, not the truncatable
-            // `?include=` side-load on the appStoreVersions GET. The live
-            // `es-ES` was missed by the side-load → planned as CREATE → 409
-            // DUPLICATE (issue #310). Pagination here makes it classify as
-            // UPDATE.
+        let outcome = PlatformVersionResolver.resolve(
+            versions: Self.platformVersions(from: versions.data),
+            filter: filter,
+            versionFilter: versionFilter
+        )
+        for skip in outcome.skipped {
+            let msg = "warn: metadata: platform \(skip.platform) has no editable version — "
+                + "version-loc copy not pushed for it (\(skip.reason))\n"
+            FileHandle.standardError.write(Data(msg.utf8))
+        }
+
+        var snapshots: [PlatformVersionSnapshot] = []
+        for r in outcome.resolved {
+            let v = r.version
+            print("appStoreVersion chosen [\(r.platform)]: id=\(v.id) "
+                + "version=\(v.versionString) state=\(v.state) "
+                + "(of \(versions.data.count) versions across platforms)")
+            // Capture EVERY existing version-loc via the version's own paginated
+            // relationship endpoint, not the truncatable `?include=` side-load
+            // (issue #310 — the live `es-ES` was missed → CREATE → 409 dup).
+            var locs: [String: MetadataRemoteState.VersionLocRemote] = [:]
             for loc in try await client.listVersionLocalizations(versionId: v.id) {
                 guard loc.type == "appStoreVersionLocalizations",
                       let locale = loc.attributes["locale"] else { continue }
-                remote.versionLocalizations[locale] = MetadataRemoteState.VersionLocRemote(
+                locs[locale] = MetadataRemoteState.VersionLocRemote(
                     id: loc.id,
                     description: loc.attributes["description"],
                     keywords: loc.attributes["keywords"],
@@ -628,11 +749,15 @@ internal enum ASCRegisterCLI {
                     supportUrl: loc.attributes["supportUrl"]
                 )
             }
+            snapshots.append(PlatformVersionSnapshot(
+                platform: r.platform,
+                versionId: v.id,
+                versionLocalizations: locs,
+                hasReleasedVersion: hasReleased
+            ))
         }
-
-        return remote
+        return snapshots
     }
-    // swiftlint:enable function_body_length
 
     /// Print the resolved ASC category catalog (genre id → subcategory ids),
     /// so the plan pass records the real id tokens (plan §7).

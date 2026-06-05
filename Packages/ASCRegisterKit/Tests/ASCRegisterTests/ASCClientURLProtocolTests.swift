@@ -107,6 +107,28 @@ internal struct ASCClientURLProtocolTests {
         )
     }
 
+    /// Two-platform `appStoreVersions` GET body — one editable IOS version
+    /// (1.0) + one MAC_OS version whose `appStoreState` is templated, so a test
+    /// can make the macOS version editable (`PREPARE_FOR_SUBMISSION`) or
+    /// locked (`READY_FOR_SALE`). Shared across the platform-aware tests.
+    private static func twoPlatformVersions(macState: String) -> String {
+        #"""
+        {"data":[
+          {"id":"ios-v","type":"appStoreVersions",
+           "attributes":{"versionString":"1.0","platform":"IOS",
+                         "appStoreState":"PREPARE_FOR_SUBMISSION"}},
+          {"id":"mac-v","type":"appStoreVersions",
+           "attributes":{"versionString":"2.3.5","platform":"MAC_OS",
+                         "appStoreState":"\#(macState)"}}
+        ],"links":{}}
+        """#
+    }
+
+    /// A minimal 200 PATCH/echo body for an appStoreVersions mutation.
+    private static let okVersionPatch = #"""
+    {"data":{"id":"x","type":"appStoreVersions","attributes":{"versionString":"2.5"}}}
+    """#
+
     @Test("getAllPages follows links.next across two pages and concatenates")
     internal func paginationAcrossTwoPages() async throws {
         let page1 = #"""
@@ -202,5 +224,154 @@ internal struct ASCClientURLProtocolTests {
         }
         // Only the POST was issued — no GET/PATCH self-heal on a non-dup 409.
         #expect(StubState.recordedRequests().count == 1)
+    }
+
+    // MARK: - Platform-aware version selection (multi-platform defect)
+
+    /// `set-version --platform all` must rename BOTH the IOS and the MAC_OS
+    /// editable version in one run. The app GETs one `appStoreVersions`
+    /// collection carrying a `platform` token per version; `applySetVersion`
+    /// groups by platform and PATCHes each editable one.
+    @Test("set-version all renames both an IOS and a MAC_OS editable version")
+    internal func setVersionAllHitsBothPlatforms() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersions(macState: "PREPARE_FOR_SUBMISSION")),
+            StubResponse(status: 200, body: Self.okVersionPatch),  // PATCH ios-v
+            StubResponse(status: 200, body: Self.okVersionPatch),  // PATCH mac-v
+        ])
+
+        let client = Self.makeClient()
+        let versions = try await client.listAppStoreVersions(appId: "app-1")
+        try await ASCRegisterCLI.applySetVersion(
+            client: client,
+            platformVersions: ASCRegisterCLI.platformVersions(from: versions.data),
+            filter: .all,
+            target: "2.5"
+        )
+
+        let reqs = StubState.recordedRequests()
+        // 1 GET + 2 PATCH (one per platform).
+        #expect(reqs.count == 3)
+        #expect(reqs[0].method == "GET")
+        let patches = reqs.filter { $0.method == "PATCH" }
+        #expect(patches.count == 2)
+        // Both platform version ids were PATCHed — iOS no longer stuck at 1.0.
+        #expect(patches.contains { $0.url.hasSuffix("/v1/appStoreVersions/ios-v") })
+        #expect(patches.contains { $0.url.hasSuffix("/v1/appStoreVersions/mac-v") })
+    }
+
+    /// `set-version --platform ios` targets ONLY the iOS version; the MAC_OS
+    /// version is left untouched.
+    @Test("set-version --platform ios renames only the iOS version")
+    internal func setVersionIOSFilterTargetsOnlyIOS() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersions(macState: "PREPARE_FOR_SUBMISSION")),
+            StubResponse(status: 200, body: Self.okVersionPatch),  // PATCH ios-v only
+        ])
+
+        let client = Self.makeClient()
+        let versions = try await client.listAppStoreVersions(appId: "app-1")
+        try await ASCRegisterCLI.applySetVersion(
+            client: client,
+            platformVersions: ASCRegisterCLI.platformVersions(from: versions.data),
+            filter: .ios,
+            target: "2.5"
+        )
+
+        let reqs = StubState.recordedRequests()
+        let patches = reqs.filter { $0.method == "PATCH" }
+        #expect(patches.count == 1)
+        #expect(patches[0].url.hasSuffix("/v1/appStoreVersions/ios-v"))
+        #expect(!patches.contains { $0.url.hasSuffix("/v1/appStoreVersions/mac-v") })
+    }
+
+    /// A platform whose only version is released/locked has NO editable version
+    /// — `set-version` must warn and skip it (not crash), still renaming the
+    /// other platform's editable version.
+    @Test("set-version warns + skips a platform with no editable version, renames the other")
+    internal func setVersionSkipsPlatformWithoutEditableVersion() async throws {
+        // macOS version is READY_FOR_SALE → no editable version for that
+        // platform → warn + skip (not crash); iOS still renamed.
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersions(macState: "READY_FOR_SALE")),
+            StubResponse(status: 200, body: Self.okVersionPatch),  // PATCH ios-v only (mac skipped)
+        ])
+
+        let client = Self.makeClient()
+        let versions = try await client.listAppStoreVersions(appId: "app-1")
+        // Must NOT throw — the MAC_OS-has-no-editable case is a warn+skip.
+        try await ASCRegisterCLI.applySetVersion(
+            client: client,
+            platformVersions: ASCRegisterCLI.platformVersions(from: versions.data),
+            filter: .all,
+            target: "2.5"
+        )
+
+        let reqs = StubState.recordedRequests()
+        let patches = reqs.filter { $0.method == "PATCH" }
+        #expect(patches.count == 1)
+        #expect(patches[0].url.hasSuffix("/v1/appStoreVersions/ios-v"))
+    }
+
+    /// `metadata apply` snapshot must produce a per-platform version snapshot
+    /// for BOTH IOS and MAC_OS, each carrying that version's own version-locs —
+    /// so version-loc copy is pushed to every platform, not one.
+    @Test("snapshotPlatformVersions yields a snapshot per platform with its own version-locs")
+    internal func snapshotProducesPerPlatformVersionLocs() async throws {
+        let iosLocs = #"""
+        {"data":[{"id":"ios-loc-en","type":"appStoreVersionLocalizations",
+        "attributes":{"locale":"en-US","description":"iOS desc"}}],"links":{}}
+        """#
+        let macLocs = #"""
+        {"data":[{"id":"mac-loc-en","type":"appStoreVersionLocalizations",
+        "attributes":{"locale":"en-US","description":"Mac desc"}}],"links":{}}
+        """#
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersions(macState: "PREPARE_FOR_SUBMISSION")),
+            StubResponse(status: 200, body: iosLocs),  // GET ios-v locs
+            StubResponse(status: 200, body: macLocs),  // GET mac-v locs
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .all, versionFilter: nil
+        )
+
+        #expect(snapshots.count == 2)
+        let byPlatform = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.platform, $0) })
+        #expect(byPlatform["IOS"]?.versionId == "ios-v")
+        #expect(byPlatform["MAC_OS"]?.versionId == "mac-v")
+        // Each platform's snapshot carries its OWN version-loc set (proving the
+        // per-platform GET fan-out, not a shared one).
+        #expect(byPlatform["IOS"]?.versionLocalizations["en-US"]?.description == "iOS desc")
+        #expect(byPlatform["MAC_OS"]?.versionLocalizations["en-US"]?.description == "Mac desc")
+        // The version-locs were fetched from each version's own endpoint.
+        let getURLs = StubState.recordedRequests().filter { $0.method == "GET" }.map(\.url)
+        #expect(getURLs.contains { $0.contains("/v1/appStoreVersions/ios-v/appStoreVersionLocalizations") })
+        #expect(getURLs.contains { $0.contains("/v1/appStoreVersions/mac-v/appStoreVersionLocalizations") })
+    }
+
+    /// `--platform ios` on the snapshot path fetches version-locs for the iOS
+    /// version only (no MAC_OS loc GET).
+    @Test("snapshotPlatformVersions --platform ios snapshots only iOS")
+    internal func snapshotIOSFilterOnlyIOS() async throws {
+        let iosLocs = #"""
+        {"data":[{"id":"ios-loc-en","type":"appStoreVersionLocalizations",
+        "attributes":{"locale":"en-US","description":"iOS desc"}}],"links":{}}
+        """#
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersions(macState: "PREPARE_FOR_SUBMISSION")),
+            StubResponse(status: 200, body: iosLocs),  // only iOS locs fetched
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .ios, versionFilter: nil
+        )
+
+        #expect(snapshots.count == 1)
+        #expect(snapshots[0].platform == "IOS")
+        let getURLs = StubState.recordedRequests().filter { $0.method == "GET" }.map(\.url)
+        #expect(!getURLs.contains { $0.contains("/v1/appStoreVersions/mac-v/appStoreVersionLocalizations") })
     }
 }
