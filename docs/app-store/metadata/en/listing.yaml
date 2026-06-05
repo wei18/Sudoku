@@ -2,7 +2,7 @@ locale: en-US
 name: "Sudoku — Daily & Practice"
 subtitle: "Calm logic for iPhone and Mac"
 promotional_text: |
-  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. No tracking — just an optional banner you remove with one purchase.
+  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
 description: |
   Sudoku, made for thinking — not for noise.
 
@@ -26,7 +26,7 @@ description: |
 
   Privacy, in plain words
 
-  No personal data is collected. No first-party analytics, no tracking. Your saves live in your own iCloud Private Database — visible to you, not to us. Game Center submissions go to Apple. The only third-party SDK is Google's banner-ad library, and you can remove the banner permanently with a single in-app purchase.
+  We run no first-party analytics — nothing of ours builds a profile of you. Your saves live in your own iCloud Private Database — visible to you, not to us. Game Center submissions go to Apple. The one third-party SDK is Google's banner-ad library; it may use an advertising identifier to keep ads relevant, and only with your permission. You can decline (ads still show, just less tailored) — or remove the banner permanently with a single in-app purchase. The identifier is for ad relevance, not a personal profile of you.
 
   Remove Ads
 
@@ -51,7 +51,7 @@ whats_new: |
   • Game Center: three daily leaderboards and eight achievements (500 points total).
   • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
   • Mac native build, not Catalyst — full keyboard support and menu bar items.
-  • No tracking. An optional banner you can remove with a one-time Remove Ads purchase.
+  • No first-party profiling. Ads stay relevant only with your permission — decline, or remove the banner with a one-time Remove Ads purchase.
 
   Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null

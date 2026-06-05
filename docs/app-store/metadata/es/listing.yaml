@@ -2,7 +2,7 @@ locale: es
 name: "Sudoku — Diario y Práctica"
 subtitle: "Lógica serena en iPhone y Mac"
 promotional_text: |
-  Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. Sin seguimiento; solo un banner opcional que quitas con una compra.
+  Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. No te perfilamos; los anuncios se adaptan solo con tu permiso: recházalos o quítalos.
 description: |
   Sudoku, hecho para pensar, no para hacer ruido.
 
@@ -26,7 +26,7 @@ description: |
 
   Privacidad, sin rodeos
 
-  No recopilamos datos personales. Sin analítica propia, sin seguimiento. Tus partidas viven en tu propia base de datos privada de iCloud — visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. El único SDK de terceros es la biblioteca de banners de Google, y puedes quitar el banner para siempre con una sola compra dentro de la app.
+  No tenemos analítica propia: nada nuestro crea un perfil de ti. Tus partidas viven en tu propia base de datos privada de iCloud — visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. El único SDK de terceros es la biblioteca de banners de Google; puede usar un identificador de publicidad para mantener los anuncios relevantes, y solo con tu permiso. Puedes rechazarlo (los anuncios siguen apareciendo, solo que menos personalizados) — o quitar el banner para siempre con una sola compra dentro de la app. El identificador es para la relevancia de los anuncios, no para crear un perfil personal de ti.
 
   Quitar anuncios
 
@@ -51,7 +51,7 @@ whats_new: |
   • Game Center: tres rankings diarios y ocho logros (500 puntos en total).
   • Siete idiomas: chino tradicional, inglés, japonés, chino simplificado, español, tailandés, coreano.
   • Mac nativo, sin Catalyst — teclado completo y elementos en la barra de menús.
-  • Sin seguimiento. Un banner opcional que puedes quitar con una compra única de Quitar anuncios.
+  • Sin perfilado propio. Los anuncios solo se adaptan con tu permiso — puedes rechazarlos o quitar el banner con una compra única de Quitar anuncios.
 
   Gracias por jugar. Comentarios y errores son bienvenidos en el enlace de soporte.
 marketing_url: null

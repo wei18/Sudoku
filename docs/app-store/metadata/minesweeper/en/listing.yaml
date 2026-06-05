@@ -2,7 +2,7 @@ locale: en-US
 name: "Minesweeper — Classic"
 subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |
-  The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. No tracking beyond the optional banner — remove it with one purchase.
+  The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. We don't profile you; ads tailor only with your OK — decline or remove.
 description: |
   Minesweeper, made for thinking — not for noise.
 
@@ -25,7 +25,7 @@ description: |
 
   Privacy, in plain words
 
-  No first-party analytics. No CRM. No backend of our own. Your data lives in your own iCloud Private Database — visible to you, not to us. The only third-party SDK is Google's banner-ad library, and you can remove the banner permanently with a single in-app purchase.
+  No first-party analytics. No CRM. No backend of our own — nothing of ours builds a profile of you. Your data lives in your own iCloud Private Database — visible to you, not to us. The one third-party SDK is Google's banner-ad library; it may use an advertising identifier to keep ads relevant, and only with your permission. You can decline (ads still show, just less tailored) — or remove the banner permanently with a single in-app purchase. The identifier is for ad relevance, not a personal profile of you.
 
   Remove Ads
 
