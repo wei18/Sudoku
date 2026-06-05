@@ -95,11 +95,12 @@ public struct LiveRouteFactory: RouteFactory {
         case .practice:
             // Was unreachable (no AppRoute case). Now reachable from Home.
             return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
-        case .board(let difficulty, let seed):
+        case .board(let difficulty, let seed, let mode):
             return AnyView(
                 MinesweeperBoardView(
                     difficulty: difficulty,
                     seed: seed,
+                    mode: mode,
                     adProvider: adProvider,
                     adGate: adGate,
                     gameCenter: gameCenter,

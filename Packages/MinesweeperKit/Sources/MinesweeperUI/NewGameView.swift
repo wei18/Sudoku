@@ -2,7 +2,7 @@
 //
 // Lives at the root of `MinesweeperRoot`'s NavigationStack. The user picks
 // Beginner / Intermediate / Expert via a segmented `Picker`, then taps
-// "Start" to push `AppRoute.board(difficulty:seed:)` onto the path. A fresh
+// "Start" to push `AppRoute.board(difficulty:seed:mode:)` onto the path. A fresh
 // `UInt64` seed is generated per tap so successive Starts produce different
 // boards (Daily-style date seeding is out of scope for Standard tier).
 
@@ -65,8 +65,9 @@ public struct NewGameView: View {
     /// generates an independent `UInt64` so successive Starts produce
     /// different boards (collision prob ≈ 1 / 2^64 per call).
     internal static func makeBoardRoute(difficulty: Difficulty) -> AppRoute {
+        // #329: manual "New Game" is a practice solve — never a daily submit.
         let seed = UInt64.random(in: .min ... .max)
-        return .board(difficulty: difficulty, seed: seed)
+        return .board(difficulty: difficulty, seed: seed, mode: .practice)
     }
 
     private func displayName(_ level: Difficulty) -> String {

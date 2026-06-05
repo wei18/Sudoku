@@ -18,12 +18,12 @@ import GameShellUI
 
     @Test func factoryReturnsViewForBoardRoute() {
         let factory = LiveRouteFactory()
-        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 0)]
+        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 0, mode: .practice)]
         let binding = Binding<[AppRoute]>(
             get: { path },
             set: { path = $0 }
         )
-        let view = factory.view(for: .board(difficulty: .beginner, seed: 42), path: binding)
+        let view = factory.view(for: .board(difficulty: .beginner, seed: 42, mode: .daily), path: binding)
         _ = view
     }
 
@@ -71,7 +71,7 @@ import GameShellUI
     @Test func factoryHandlesAllDifficultyCases() {
         let factory = LiveRouteFactory()
         for difficulty in Difficulty.allCases {
-            let view = factory.view(for: .board(difficulty: difficulty, seed: 1))
+            let view = factory.view(for: .board(difficulty: difficulty, seed: 1, mode: .practice))
             _ = view
         }
     }
@@ -79,14 +79,14 @@ import GameShellUI
     // MARK: - popToNewGame
 
     @Test func popToNewGameEmptiesPath() {
-        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 1)]
+        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 1, mode: .practice)]
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         LiveRouteFactory.popToNewGame(path: binding)
         #expect(path.isEmpty)
     }
 
     @Test func popToNewGameOnDeepPathStillEmpties() {
-        var path: [AppRoute] = [.settings, .board(difficulty: .expert, seed: 42)]
+        var path: [AppRoute] = [.settings, .board(difficulty: .expert, seed: 42, mode: .practice)]
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         LiveRouteFactory.popToNewGame(path: binding)
         #expect(path.isEmpty)

@@ -15,7 +15,7 @@ public protocol MinesweeperDailyProviding: Sendable {
 }
 
 /// A single daily board descriptor: stable id + difficulty + the date-seeded
-/// seed handed to `.board(difficulty:seed:)`.
+/// seed handed to `.board(difficulty:seed:mode:)`.
 public struct MinesweeperDailyEntry: Hashable, Sendable, Identifiable {
     public let puzzleId: String
     public let difficulty: Difficulty

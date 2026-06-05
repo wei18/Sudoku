@@ -14,8 +14,8 @@
 // no haptics, no localization (English inline per dispatch spec).
 
 // swiftlint:disable file_length
-// 410 lines vs 400 limit. The #297 snapshot seam (~10 lines) pushed a file that
-// was already at the limit over it; the view is cohesive (one board renderer +
+// 428 lines vs 400 limit. The #297 snapshot seam + #329 mode threading pushed a
+// file that was already at the limit over it; the view is cohesive (one board renderer +
 // its layout/overlay) and extracting a helper for a test seam would be a larger,
 // non-surgical change. Mirrors the SudokuUI/Board/GameViewModel.swift precedent.
 
@@ -67,6 +67,12 @@ public struct MinesweeperBoardView: View {
     // over a loss board. Defaults `false` — production never sets it, so the
     // live refresh path is preserved. Pairs with `MinesweeperGameViewModel(seeded:)`.
     private let suppressTickerForSnapshot: Bool
+    // #329: daily/practice classification, forwarded to the rebuilt VM on Retry
+    // so a retried board keeps the same submit-gating as the original. The
+    // `viewModel:` init path takes the VM's mode as already-decided (Retry uses
+    // `viewModel.mode`); the `difficulty:seed:` init path threads it explicitly.
+    // Defaults `.practice` — the most cautious (no daily submit) value.
+    private let mode: GameMode
 
     public init(
         viewModel: MinesweeperGameViewModel,
@@ -82,11 +88,13 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.onNewGame = onNewGame
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
+        self.mode = viewModel.mode
     }
 
     public init(
         difficulty: Difficulty = .beginner,
         seed: UInt64 = 0,
+        mode: GameMode = .practice,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
@@ -96,6 +104,7 @@ public struct MinesweeperBoardView: View {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(
             difficulty: difficulty,
             seed: seed,
+            mode: mode,
             gameCenter: gameCenter,
             errorReporter: errorReporter
         ))
@@ -104,6 +113,7 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.onNewGame = onNewGame
         self.suppressTickerForSnapshot = false
+        self.mode = mode
     }
 
     public var body: some View {
@@ -398,6 +408,7 @@ public struct MinesweeperBoardView: View {
                 viewModel = MinesweeperGameViewModel(
                     difficulty: difficulty,
                     seed: seed,
+                    mode: mode,
                     gameCenter: gameCenter
                 )
             }

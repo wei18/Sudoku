@@ -72,7 +72,9 @@ import MinesweeperEngine
             return
         }
         viewModel.cardTapped(first)
-        #expect(path == [.board(difficulty: first.difficulty, seed: first.seed)])
+        // #329: tapping a Daily card pushes a daily-mode board so the win submits
+        // to the recurring daily leaderboard.
+        #expect(path == [.board(difficulty: first.difficulty, seed: first.seed, mode: .daily)])
     }
 
     @Test func bootstrapIsIdempotent() async {

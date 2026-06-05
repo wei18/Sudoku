@@ -121,8 +121,8 @@ private struct PreviewRouteFactory: RouteFactory {
         switch route {
         case .newGame:
             return AnyView(NewGameView(path: path ?? .constant([])))
-        case .board(let difficulty, let seed):
-            return AnyView(Text("Preview board: \(String(describing: difficulty)) seed=\(seed)"))
+        case .board(let difficulty, let seed, let mode):
+            return AnyView(Text("Preview board: \(String(describing: difficulty)) seed=\(seed) mode=\(mode.rawValue)"))
         case .daily:
             return AnyView(
                 MinesweeperDailyHubView(

@@ -28,11 +28,13 @@ import MinesweeperEngine
     @Test func makeBoardRouteCarriesSelectedDifficulty() {
         for difficulty in Difficulty.allCases {
             let route = NewGameView.makeBoardRoute(difficulty: difficulty)
-            guard case .board(let routeDifficulty, _) = route else {
+            guard case .board(let routeDifficulty, _, let mode) = route else {
                 Issue.record("expected .board case for \(difficulty)")
                 continue
             }
             #expect(routeDifficulty == difficulty)
+            // #329: a manual New Game is a practice solve — never a daily submit.
+            #expect(mode == .practice)
         }
     }
 
@@ -41,7 +43,7 @@ import MinesweeperEngine
         // 1 / 2^64, so this is deterministic for any practical CI run.
         let first = NewGameView.makeBoardRoute(difficulty: .beginner)
         let second = NewGameView.makeBoardRoute(difficulty: .beginner)
-        guard case .board(_, let seedA) = first, case .board(_, let seedB) = second else {
+        guard case .board(_, let seedA, _) = first, case .board(_, let seedB, _) = second else {
             Issue.record("expected .board cases")
             return
         }

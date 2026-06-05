@@ -70,7 +70,7 @@ public struct MinesweeperPracticeHubView: View {
 
     private func start() {
         let seed = UInt64.random(in: .min ... .max)
-        path.append(.board(difficulty: difficulty, seed: seed))
+        path.append(.board(difficulty: difficulty, seed: seed, mode: .practice))
     }
 
     private func displayName(_ level: Difficulty) -> String {

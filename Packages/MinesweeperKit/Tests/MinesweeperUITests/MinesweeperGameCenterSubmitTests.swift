@@ -45,11 +45,12 @@ struct MinesweeperGameCenterSubmitTests {
         }
     }
 
-    @Test func winSubmitsBestTimeOnceWithDifficultyLeaderboardId() async {
+    @Test func dailyWinSubmitsBestTimeOnceWithDifficultyLeaderboardId() async {
         let fake = FakeGameCenterClient()
         let vm = MinesweeperGameViewModel(
             difficulty: .beginner,
             seed: 42,
+            mode: .daily,
             gameCenter: fake
         )
 
@@ -67,11 +68,12 @@ struct MinesweeperGameCenterSubmitTests {
         #expect(submits.first?.1 == vm.elapsedSeconds)
     }
 
-    @Test func intermediateWinSubmitsToIntermediateLeaderboard() async {
+    @Test func intermediateDailyWinSubmitsToIntermediateLeaderboard() async {
         let fake = FakeGameCenterClient()
         let vm = MinesweeperGameViewModel(
             difficulty: .intermediate,
             seed: 7,
+            mode: .daily,
             gameCenter: fake
         )
 
@@ -102,6 +104,7 @@ struct MinesweeperGameCenterSubmitTests {
         let vm = MinesweeperGameViewModel(
             difficulty: .beginner,
             seed: 42,
+            mode: .daily,
             gameCenter: fake
         )
 
@@ -121,9 +124,12 @@ struct MinesweeperGameCenterSubmitTests {
 
     @Test func losingNeverSubmits() async {
         let fake = FakeGameCenterClient()
+        // Daily mode so a submit *would* be eligible on a win — proves the
+        // no-submit is due to the loss, not the practice gate.
         let vm = MinesweeperGameViewModel(
             difficulty: .beginner,
             seed: 13,
+            mode: .daily,
             gameCenter: fake
         )
         // Reveal a corner to seed mines, then detonate the first mine found.
@@ -139,6 +145,31 @@ struct MinesweeperGameCenterSubmitTests {
             await vm.reveal(row: mr, col: mc)
         }
         #expect(vm.status == .lost)
+        let ops = await fake.operations
+        let submitted = ops.contains {
+            if case .submitRawScore = $0 { return true }
+            return false
+        }
+        #expect(submitted == false)
+    }
+
+    @Test func practiceWinNeverSubmits() async {
+        // #329: a Practice solve reaches `.won` (a valid current-cycle board)
+        // but must NOT write the recurring daily leaderboard — mirroring
+        // Sudoku's GameCenterSink daily-only gate. Same fixture as the daily
+        // submit test (beginner / seed 42, real GC client), so the *only*
+        // difference driving "no submit" is `mode: .practice`.
+        let fake = FakeGameCenterClient()
+        let vm = MinesweeperGameViewModel(
+            difficulty: .beginner,
+            seed: 42,
+            mode: .practice,
+            gameCenter: fake
+        )
+
+        await driveToWin(vm)
+        #expect(vm.status == .won)
+
         let ops = await fake.operations
         let submitted = ops.contains {
             if case .submitRawScore = $0 { return true }
