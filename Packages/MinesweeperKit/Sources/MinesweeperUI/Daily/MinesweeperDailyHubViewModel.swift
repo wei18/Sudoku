@@ -95,7 +95,7 @@ public final class MinesweeperDailyHubViewModel {
     }
 
     public func cardTapped(_ card: MinesweeperDailyCard) {
-        path.wrappedValue.append(.board(difficulty: card.difficulty, seed: card.seed))
+        path.wrappedValue.append(.board(difficulty: card.difficulty, seed: card.seed, mode: .daily))
     }
 
     /// Merge the daily trio with the set of completed daily ids into cards,

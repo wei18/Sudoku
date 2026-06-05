@@ -32,6 +32,14 @@ public final class MinesweeperGameViewModel {
     /// Funnel for swallowed submit failures, so a failed leaderboard write is
     /// observable in OSLog instead of silent. `nil` → fully silent.
     private let errorReporter: (any ErrorReporter)?
+    /// #329: gates the GC daily-board submit to daily-mode wins. Mirrors
+    /// Sudoku's `GameCenterSink` (`guard mode == .daily`) — a Practice win is a
+    /// valid current-cycle board but must NOT inflate the recurring daily
+    /// ranking. Defaults to `.practice` so the most cautious behaviour (no
+    /// submit) is the default for any callsite that doesn't thread a mode.
+    /// Exposed read-only so `MinesweeperBoardView`'s Retry can rebuild the VM
+    /// at the same mode (preserving the daily/practice submit gate).
+    public let mode: GameMode
     /// Guards against a double-submit if the snapshot re-publishes `.won`.
     private var didSubmitWin = false
     /// Best-effort one-shot auth so an unauthenticated player's first win
@@ -75,11 +83,13 @@ public final class MinesweeperGameViewModel {
     public convenience init(
         difficulty: Difficulty = .beginner,
         seed: UInt64 = 0,
+        mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
+            mode: mode,
             gameCenter: gameCenter,
             errorReporter: errorReporter
         )
@@ -89,10 +99,12 @@ public final class MinesweeperGameViewModel {
     /// `difficulty` from `session.difficulty` so the two cannot disagree.
     public init(
         session: MinesweeperSession,
+        mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil
     ) {
         self.session = session
+        self.mode = mode
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.isSeeded = false
@@ -120,6 +132,7 @@ public final class MinesweeperGameViewModel {
     /// states; production callsites use the actor-backed inits above.
     public init(seeded snapshot: MinesweeperSessionSnapshot) {
         self.session = MinesweeperSession(difficulty: snapshot.difficulty, seed: 0)
+        self.mode = .practice
         self.gameCenter = nil
         self.errorReporter = nil
         self.snapshot = snapshot
@@ -134,7 +147,7 @@ public final class MinesweeperGameViewModel {
     public func refresh() async {
         guard !isSeeded else { return }
         snapshot = await session.snapshot()
-        await submitBestTimeIfWon()
+        await submitDailyTimeIfWon()
     }
 
     // MARK: - Actions
@@ -156,7 +169,7 @@ public final class MinesweeperGameViewModel {
         // #291: a reveal is the only action that can transition to `.won`
         // (flagging never wins). Submit the best time once we cross into the
         // won state.
-        await submitBestTimeIfWon()
+        await submitDailyTimeIfWon()
     }
 
     public func toggleFlag(row: Int, col: Int) async {
@@ -168,15 +181,21 @@ public final class MinesweeperGameViewModel {
         }
     }
 
-    // MARK: - Game Center submit-on-win (#291)
+    // MARK: - Game Center submit-on-win (#291, #329)
 
-    /// Submit the elapsed time to this difficulty's best-time leaderboard the
-    /// first time the board reaches `.won`. Best-effort: a `nil` client is a
-    /// no-op (MVP / preview), an unauthenticated player's submit no-ops
+    /// Submit the elapsed time to this difficulty's recurring daily leaderboard
+    /// the first time a **daily-mode** board reaches `.won`. Practice wins never
+    /// submit (#329): the gate `mode == .daily` mirrors Sudoku's `GameCenterSink`
+    /// (`guard mode == .daily`), so a Practice solve — a valid current-cycle
+    /// board — cannot inflate the daily ranking. Best-effort: a `nil` client is
+    /// a no-op (MVP / preview), an unauthenticated player's submit no-ops
     /// server-side, and any thrown error is funneled (never re-raised) so a
     /// failed leaderboard write can never interrupt the win moment.
-    private func submitBestTimeIfWon() async {
+    private func submitDailyTimeIfWon() async {
         guard snapshot.status == .won, !didSubmitWin else { return }
+        // #329: daily-only gate — mirrors GameCenterSink.swift:81. Practice
+        // wins reach `.won` but must not write the recurring daily board.
+        guard mode == .daily else { return }
         guard let gameCenter else { return }
         // Latch before the await so a re-entrant refresh tick can't double-fire.
         didSubmitWin = true
@@ -204,7 +223,7 @@ public final class MinesweeperGameViewModel {
             await errorReporter?.report(
                 UserFacingError.classify(error),
                 underlying: error,
-                source: "MinesweeperGameViewModel.submitBestTime"
+                source: "MinesweeperGameViewModel.submitDailyTime"
             )
         }
     }

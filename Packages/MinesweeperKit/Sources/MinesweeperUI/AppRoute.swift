@@ -22,7 +22,11 @@ public import MinesweeperEngine
 
 public enum AppRoute: Hashable, Sendable {
     case newGame
-    case board(difficulty: Difficulty, seed: UInt64)
+    // #329: `mode` carries daily/practice from the navigation origin (Daily hub
+    // → `.daily`, Practice hub / New Game → `.practice`) down to the board so
+    // `MinesweeperGameViewModel` can gate the GC daily-board submit to daily
+    // wins only — mirroring how Sudoku threads its mode to `GameCenterSink`.
+    case board(difficulty: Difficulty, seed: UInt64, mode: GameMode)
     case daily
     case practice
     case settings
