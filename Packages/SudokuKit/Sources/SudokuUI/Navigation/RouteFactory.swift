@@ -126,7 +126,8 @@ public struct LiveRouteFactory: RouteFactory {
                     persistence: persistence,
                     errorReporter: errorReporter,
                     adProvider: adProvider,
-                    adGate: adGate
+                    adGate: adGate,
+                    path: path
                 )
             )
         case .completion(let puzzleId, let elapsedSeconds):

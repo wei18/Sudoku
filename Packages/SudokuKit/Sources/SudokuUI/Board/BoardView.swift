@@ -12,18 +12,27 @@ public struct BoardView: View {
     @Bindable private var viewModel: GameViewModel
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    /// Host navigation path. Optional so previews / snapshot tests (which mount
+    /// `BoardView` directly, with no `NavigationStack`) keep working — `nil`
+    /// makes the solve → completion push a graceful no-op.
+    private let path: Binding<[AppRoute]>?
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @FocusState private var keyboardFocus: Bool
+    /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
+    /// freely, so guard the push to fire EXACTLY once.
+    @State private var hasNavigatedToCompletion = false
 
     public init(
         viewModel: GameViewModel,
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
+        self.path = path
     }
 
     public var body: some View {
@@ -56,6 +65,25 @@ public struct BoardView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+        .onChange(of: viewModel.status) {
+            // Fires only on the live `.playing → .completed` transition (P0-1).
+            // No `initial: true`, so re-opening an already-completed board
+            // (mounted directly in `.completed`) does NOT auto-bounce to
+            // Completion — the finished board stays viewable.
+            pushCompletionIfNeeded()
+        }
+    }
+
+    /// Push `.completion` onto the host path when the session has reached
+    /// `.completed`. Guarded by `hasNavigatedToCompletion` so the sticky
+    /// completion state + SwiftUI re-evaluation can only append once.
+    /// `path == nil` (previews / tests) → graceful no-op.
+    private func pushCompletionIfNeeded() {
+        guard !hasNavigatedToCompletion,
+              let route = viewModel.completionRoute,
+              let path else { return }
+        hasNavigatedToCompletion = true
+        path.wrappedValue.append(route)
     }
 
     // MARK: - Compact (iPhone) layout

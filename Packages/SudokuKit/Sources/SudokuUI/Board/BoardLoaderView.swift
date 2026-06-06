@@ -41,6 +41,9 @@ public struct BoardLoaderView: View {
     // between the grid and the digit pad once the puzzle has loaded.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    // Host navigation path, forwarded to `BoardView` so a solve can push the
+    // `.completion` route. Optional → previews / tests mount without a stack.
+    private let path: Binding<[AppRoute]>?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -51,7 +54,8 @@ public struct BoardLoaderView: View {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil
+        adGate: AdGate? = nil,
+        path: Binding<[AppRoute]>? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
@@ -59,6 +63,7 @@ public struct BoardLoaderView: View {
         self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.adGate = adGate
+        self.path = path
     }
 
     public var body: some View {
@@ -75,7 +80,7 @@ public struct BoardLoaderView: View {
             ProgressView()
                 .controlSize(.large)
         case .loaded(let viewModel):
-            BoardView(viewModel: viewModel, adProvider: adProvider, adGate: adGate)
+            BoardView(viewModel: viewModel, adProvider: adProvider, adGate: adGate, path: path)
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
         }
