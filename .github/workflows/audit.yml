@@ -1,4 +1,4 @@
-name: repo audit (upkeep)
+name: Repo audit (upkeep)
 
 on:
   schedule:
