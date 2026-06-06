@@ -62,7 +62,18 @@ with no priming pre-prompt, and `NSUserTrackingUsageDescription` is a non-locali
 literal. Add a priming sheet (explain the value) → then request ATT; move the purpose string to a
 localized catalog (7 locales). Copy drafted in `docs/v2/att-permission-ux-proposal.md`.
 
-### P1-5 — Accessibility: High-severity barriers (a11y audit)
+### P1-5 — Layout bugs (user-reported; structural, code-confirmed)
+- **Sudoku ResumePill doesn't scroll with the rest of Home.** CONFIRMED in code: `RootView.swift:115`
+  is `VStack(spacing:0) { ResumePill(:117); <Home> }` while `HomeView.swift:43` is its own
+  `ScrollView` — so the pill sits ABOVE the scroll region and stays pinned while content scrolls.
+  Fix: move `ResumePill` to be the first element INSIDE Home's `ScrollView` (so it scrolls with
+  the mode cards), or restructure so the whole column is one scroll region.
+- **Minesweeper game-over (Completion) screen layout is off.** `MinesweeperCompletionView.swift`
+  uses nested `VStack`s with `.frame(maxWidth/maxHeight: .infinity)` + `.padding`; needs a render
+  to pin the exact breakage (cramped / overflow / misalignment). Compare against Sudoku's
+  `CompletionView` layout for parity. **Perceptual — needs the running app to confirm (see below).**
+
+### P1-6 — Accessibility: High-severity barriers (a11y audit)
 - **MS number palette (1–8) fails contrast + dark mode broken** (`MinesweeperTheme.swift:41-50`):
   several digits < 4.5:1 on white; `light==dark` so dark revealed bg makes dark digits invisible.
   Give real light/dark pairs clearing AA. (Core game signal — high priority.)
@@ -106,6 +117,27 @@ M01 ResumePill land). Bigger feature — schedule after the mechanical fixes.
 - Stale MS comments ("no theme tokens", "Leaderboard stub") — delete when touching those files.
 
 ---
+
+## Finding the rest — code-audit vs needing a rendered app
+
+Two classes of UI issue, two tools:
+- **Structural (code-auditable):** fixed-vs-scroll (ResumePill), overlay/ZStack nesting, frame/Spacer
+  misuse, missing `safeAreaInset`, un-themed tokens, missing `.contentShape`, a11y modifiers. A
+  Designer/UX agent reading the SwiftUI code catches these — proven: the ResumePill scroll bug above
+  was found purely from code. **A Designer code-audit pass is worth running for more of these.**
+- **Perceptual (needs the running app):** "this spacing looks cramped", "text clips at AX5", "the
+  completion screen looks broken", visual hierarchy, real contrast. These need the app RENDERED.
+  Code can only suspect them.
+
+**To get the perceptual ones, render the real app in a Simulator** (the same conclusion as the
+screenshot research, #311 comment): headless `swift test` can't render these screens. Options:
+1. **A Simulator MCP** (boot app + screenshot + tap) → a Designer agent visually audits each screen.
+   Most interactive; ideal if available.
+2. **Reuse the deferred XCUITest screenshot pipeline** (screenshot plan P1): a launch-arg routes the
+   app straight into each seeded fixture screen, an XCUITest captures it → those PNGs become the
+   Designer's visual-audit input. The screenshot tool and the visual-audit tool are the SAME build.
+   Leader can already run `xcrun simctl` + `xcodebuild`; only the per-screen navigation needs the
+   XCUITest harness.
 
 ## Suggested execution order
 1. **P0-1, P0-2** (core bugs) — verify-by-test, surgical.
