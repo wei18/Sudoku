@@ -37,11 +37,22 @@ correctly, or the ticker restarts from 0 / double-counts. Repro test → fix.
 _User item 1 + mirror-divergence audit findings 1,2,6,7._ MS copied pre-theme code with stale
 "MS has no theme tokens" comments. Thread `@Environment(\.theme)` + use `theme.accent.primary`
 (slate-blue) like Sudoku:
-- `MinesweeperUI/SettingsView.swift:45,49,54,60` — rows pass `.accentColor` → `theme.accent.primary.resolved`.
-- `MinesweeperUI/MinesweeperBannerSlotView.swift` — `.regularMaterial`/`.secondary` → theme tokens.
-- `MinesweeperUI/MinesweeperPracticeHubView.swift` + `NewGameView.swift` — un-themed; mirror
-  Sudoku's `PracticeHubView` (theme bg/header + difficulty-tinted Picker & CTA). Fold `NewGameView`
-  into Practice hub (it's a duplicate `.board(.practice)` entry — dedup debt).
+- `MinesweeperUI/SettingsView.swift:45,49,54,60` — rows pass `.accentColor` → `theme.accent.primary.resolved`
+  (incl. `SettingsAboutVersionRow` at :60, not just purchase rows). Delete stale `:10,:19` "MS has no theme" comments.
+- `MinesweeperUI/MinesweeperBannerSlotView.swift` — `.regularMaterial` (:68) / `.secondary` (:92,:108) → theme
+  tokens; spinner (:81) has **no tint** → `theme.accent.primary`. Also unify the loaded-copy string
+  (MS ":87 "Ad loaded"" vs Sudoku ":176 "Ad will load here…""). Delete stale `:6-9` comment.
+- `MinesweeperUI/MinesweeperPracticeHubView.swift` (:28-33 passes `backgroundColor:.clear` + `headerForeground:.primary`)
+  + `NewGameView.swift` — un-themed; mirror Sudoku's `PracticeHubView` (theme bg/header + difficulty-tinted Picker
+  & CTA — MS Picker `:43` has **no `.tint`**, so the active difficulty chip is system-blue not difficulty-colored).
+  `NewGameView` is additionally **un-shelled** (bare `VStack…padding(.top,40)`, no `*HubShellView`, default
+  system bg) — fold it into Practice hub (duplicate `.board(.practice)` entry — dedup debt). _Designer L4, D2, D3, D4._
+- `MinesweeperUI/MinesweeperCompletionView.swift` — unauthenticated block (:127-137) has **no "Sign in" button**
+  (Sudoku's `CompletionView.swift:186-190` does → unauthenticated MS players get a dead-end message); add it.
+  Unify leaderboard-CTA copy ("View leaderboard" vs Sudoku "View full leaderboard"). _Designer D5._
+- **Shared-mode Home subtitle drift** (`HomeView.swift:178-179` vs `MinesweeperHomeView.swift:180-181`):
+  Leaderboard "Global / friends" vs "Best times"; Settings "Account / language" vs "Purchases / about" —
+  same surfaces, unrelated copy. Align (Settings especially, near-identical screens). _Designer D8._
 
 ### P1-2 — MS sidebar missing the Leaderboard item (Mac/iPad lose the affordance)
 _Mirror-divergence finding 3._ `MinesweeperRoot.swift:93-119` sidebar lacks Leaderboard (its Home
@@ -68,10 +79,16 @@ localized catalog (7 locales). Copy drafted in `docs/v2/att-permission-ux-propos
   `ScrollView` — so the pill sits ABOVE the scroll region and stays pinned while content scrolls.
   Fix: move `ResumePill` to be the first element INSIDE Home's `ScrollView` (so it scrolls with
   the mode cards), or restructure so the whole column is one scroll region.
-- **Minesweeper game-over (Completion) screen layout is off.** `MinesweeperCompletionView.swift`
-  uses nested `VStack`s with `.frame(maxWidth/maxHeight: .infinity)` + `.padding`; needs a render
-  to pin the exact breakage (cramped / overflow / misalignment). Compare against Sudoku's
-  `CompletionView` layout for parity. **Perceptual — needs the running app to confirm (see below).**
+- **Minesweeper game-over (Completion) screen layout is off — ROOT CAUSE FOUND IN CODE (no render needed).**
+  `MinesweeperCompletionView` is fine in isolation; the breakage is the **mounting**. The completion
+  `.overlay { … }` (`MinesweeperBoardView.swift:139`) is attached *after* `.padding(theme.spacing.medium)`
+  (:133), so the overlay is sized to the board's frame **including** that 16pt pad → the completion
+  surface (`.frame(maxWidth/maxHeight:.infinity).background(...)`, `MinesweeperCompletionView.swift:48-49`)
+  is inset 16pt on every edge and **cannot reach the screen edges or safe areas**. The live board
+  (exploded mines on a loss) shows through the 16pt border + under the status bar / home indicator.
+  Fix: attach `.overlay` **before** `.padding` (move :139 above :133) **and** add `.ignoresSafeArea()`
+  to the completion surface background — or make MS Completion a pushed route like Sudoku's (cleanest
+  parity). _Designer audit L2._
 
 ### P1-6 — Accessibility: High-severity barriers (a11y audit)
 - **MS number palette (1–8) fails contrast + dark mode broken** (`MinesweeperTheme.swift:41-50`):
