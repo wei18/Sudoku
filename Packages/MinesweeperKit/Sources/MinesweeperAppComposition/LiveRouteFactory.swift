@@ -142,12 +142,6 @@ public struct LiveRouteFactory: RouteFactory {
         }
     }
 
-    /// Deletes the active in-progress saved game, mirroring Sudoku's
-    /// `SettingsViewModel.clearCache()`. Parity-only until MS save-flow lands:
-    /// `latestInProgress()` returns nil today so this is a safe no-op, but it
-    /// exercises the real `PersistenceProtocol` path, not a fake button.
-    /// Errors are swallowed — MS has no error funnel wired into Settings yet
-    /// (a follow-up matching Sudoku's `errorReporter` thread can add one).
     /// #331: builds the MS Notices section config. Mirrors Sudoku — the
     /// acknowledgements row deep-links to the app's iOS Settings page where
     /// LicensePlist's `Settings.bundle` surfaces (omitted on macOS, no
@@ -170,6 +164,12 @@ public struct LiveRouteFactory: RouteFactory {
         )
     }
 
+    /// Deletes the active in-progress saved game, mirroring Sudoku's
+    /// `SettingsViewModel.clearCache()`. Parity-only until MS save-flow lands:
+    /// `latestInProgress()` returns nil today so this is a safe no-op, but it
+    /// exercises the real `PersistenceProtocol` path, not a fake button.
+    /// Errors are swallowed — MS has no error funnel wired into Settings yet
+    /// (a follow-up matching Sudoku's `errorReporter` thread can add one).
     @MainActor
     private static func clearCache(persistence: (any PersistenceProtocol)?) async {
         guard let persistence else { return }
