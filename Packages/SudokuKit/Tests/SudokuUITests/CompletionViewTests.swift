@@ -68,6 +68,28 @@ struct CompletionViewTests {
         }
     }
 
+    // #383: Practice solve (nil leaderboard) → `.noLeaderboard`. Neutral
+    // "not ranked" copy, NO sign-in button. The snapshot is the view-level
+    // guard that no sign-in CTA is rendered for this state.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_noLeaderboard_iPhoneLight() async {
+        let viewModel = CompletionViewModel(
+            puzzleId: "practice-7Z9K-medium",
+            elapsedSeconds: 251,
+            leaderboardId: nil,
+            gameCenter: FakeGameCenterClient()
+        )
+        viewModel.setStateForTesting(.noLeaderboard)
+        let host = hostingView(
+            CompletionView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-noLeaderboard")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_fetchFailed_iPhoneLight() async {
         let viewModel = makeViewModel()
         viewModel.setStateForTesting(.failed("network offline"))

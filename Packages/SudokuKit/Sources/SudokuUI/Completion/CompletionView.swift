@@ -4,6 +4,7 @@
 //   .loading              → ProgressView
 //   .loaded(slice)        → hero + leaderboard rows + "View full" CTA
 //   .unauthenticated      → hero + sign-in CTA
+//   .noLeaderboard        → hero + neutral "not ranked" note (Practice, #383)
 //   .failed               → hero + retry CTA
 
 public import SwiftUI
@@ -133,6 +134,8 @@ public struct CompletionView: View {
             viewLeaderboardButton
         case .unauthenticated:
             unauthenticatedBlock
+        case .noLeaderboard:
+            noLeaderboardBlock
         case .failed:
             failedBlock
         }
@@ -188,6 +191,20 @@ public struct CompletionView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+        }
+        .padding(.top, 16)
+    }
+
+    // Practice solves have no leaderboard (#383). Neutral, terminal copy — no
+    // sign-in CTA (nothing to sign in for) and no dead button.
+    private var noLeaderboardBlock: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "dial.medium")
+                .font(.system(size: 36))
+                .foregroundStyle(theme.text.secondary.resolved)
+            Text("Practice puzzles aren't ranked.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(theme.text.primary.resolved)
         }
         .padding(.top, 16)
     }

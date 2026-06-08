@@ -57,4 +57,36 @@ struct CompletionLeaderboardMappingTests {
         }
         #expect(fetched == false)
     }
+
+    // MARK: - nil leaderboard → .noLeaderboard, distinct from .unauthenticated (#383)
+
+    // Practice solve: a nil leaderboard must land on `.noLeaderboard` (neutral
+    // "not ranked" copy, no sign-in button), NOT `.unauthenticated`.
+    @Test func bootstrapWithNilLeaderboardLandsOnNoLeaderboard() async {
+        let fake = FakeGameCenterClient()
+        let viewModel = CompletionViewModel(
+            puzzleId: "practice-7Z9K-medium",
+            elapsedSeconds: 100,
+            leaderboardId: nil,
+            gameCenter: fake
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.state == .noLeaderboard)
+    }
+
+    // Daily solve with a real leaderboard but Game Center not authenticated:
+    // the genuine auth-failure path must still resolve to `.unauthenticated`,
+    // unchanged by the #383 reroute (which only touches the nil-id path).
+    @Test func bootstrapWithRealLeaderboardButNotAuthenticatedStaysUnauthenticated() async {
+        let fake = FakeGameCenterClient()
+        await fake.setFetchLeaderboardSliceError(.notAuthenticated)
+        let viewModel = CompletionViewModel(
+            puzzleId: "2026-05-19-easy",
+            elapsedSeconds: 100,
+            leaderboardId: LeaderboardID.dailyEasy,
+            gameCenter: fake
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.state == .unauthenticated)
+    }
 }
