@@ -22,7 +22,11 @@ public final class CompletionViewModel {
 
     public let puzzleId: String
     public let elapsedSeconds: Int
-    public let leaderboardId: String
+    /// Leaderboard this solve belongs to, or `nil` when the puzzle has no
+    /// associated board (Practice solves — issue #381). A `nil` id makes
+    /// `bootstrap()` and `viewLeaderboardTapped()` no-op rather than fetch /
+    /// present an empty board.
+    public let leaderboardId: String?
     public private(set) var state: CompletionState = .loading
 
     private let gameCenter: any GameCenterClient
@@ -34,7 +38,7 @@ public final class CompletionViewModel {
     public init(
         puzzleId: String,
         elapsedSeconds: Int,
-        leaderboardId: String,
+        leaderboardId: String?,
         gameCenter: any GameCenterClient
     ) {
         self.puzzleId = puzzleId
@@ -64,6 +68,13 @@ public final class CompletionViewModel {
         // `.loading` on every view-lifecycle tick.
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
+        // Practice solves have no leaderboard (#381): skip the fetch and land
+        // on `.unauthenticated`, the existing "no board to show" terminal state
+        // (no slice rows, no retry loop), rather than fetching an empty id.
+        guard let leaderboardId else {
+            state = .unauthenticated
+            return
+        }
         state = .loading
         do {
             let slice = try await gameCenter.fetchLeaderboardSlice(
@@ -84,6 +95,8 @@ public final class CompletionViewModel {
     /// just-solved difficulty's leaderboard (issue #49, 2026-05-20). Side
     /// effect: no stack push, no `path` mutation.
     public func viewLeaderboardTapped() {
+        // No board for Practice solves (#381) → nothing to present.
+        guard let leaderboardId else { return }
         GameCenterDashboard.present(leaderboardId: leaderboardId)
     }
 }
