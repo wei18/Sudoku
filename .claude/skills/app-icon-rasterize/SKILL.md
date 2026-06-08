@@ -7,11 +7,11 @@ description: Rasterize a designer-authored 1024×1024 SVG into the PNG that Appl
 
 Use when a designer hands off the icon as SVG and you need the PNG that `AppIcon.appiconset/Contents.json` references.
 
-This is the gap that bit the team on 2026-06-01 — Sudoku's first-pass icon production left the SVG → 1024 PNG step undocumented (only the downstream Pillow Lanczos *downscale* to the macOS ladder was written up). Following the 2026-06-01 simplification (single 1024 universal PNG, no Tinted, no macOS ladder) there is exactly one rasterize step per appearance and it is documented here.
+This is the gap that bit the team on 2026-06-01 — Sudoku's first-pass icon production left the SVG → 1024 PNG step undocumented (only the downstream Pillow Lanczos *downscale* to the macOS ladder was written up). Each appearance — Light, Dark, Tinted — is a single 1024 universal PNG produced by exactly one rasterize step, documented here. (Tinted was reinstated 2026-06-08, superseding the 2026-06-01 "Light + Dark only" note; both apps now ship `AppIcon-Tinted.png`.)
 
 ## When to use
 
-- Designer subagent (or human designer) produced a clean `light.svg` + `dark.svg` matching the icon spec
+- Designer subagent (or human designer) produced a clean `light.svg` + `dark.svg` + `tinted.svg` matching the icon spec
 - You need the matching `AppIcon-Light.png` + `AppIcon-Dark.png` in `<app>/Assets.xcassets/AppIcon.appiconset/`
 - This Mac does NOT have `rsvg-convert`, `inkscape`, or `imagemagick` (verified absent on the project Mac as of 2026-06-01; Homebrew is not installed)
 
@@ -83,7 +83,7 @@ Common mistakes that cause this:
 
 After rasterize, `sips -g hasAlpha …png` will still report `yes` because QuickLook writes 8-bit RGBA — but every pixel including the corners must be **opaque**. Quick check: open the PNG in Preview at 100%, hover the corners — Digital Color Meter should report the background color (e.g. `#FAF8F3`), not transparency.
 
-This rule applies to both Light and Dark variants. There is no platform on which the artwork should pre-apply its own squircle.
+This rule applies to Light, Dark, and Tinted variants. There is no platform on which the artwork should pre-apply its own squircle.
 
 ## Procedure
 
@@ -99,7 +99,8 @@ ls -la ../tmp/minesweeper-icon-light.svg ../tmp/minesweeper-icon-dark.svg
 #    -o <dir>     output directory (-o cannot rename the file, see step 3)
 qlmanage -t -s 1024 -o ../tmp \
   ../tmp/minesweeper-icon-light.svg \
-  ../tmp/minesweeper-icon-dark.svg
+  ../tmp/minesweeper-icon-dark.svg \
+  ../tmp/minesweeper-icon-tinted.svg
 
 # 3. qlmanage's quirk: it APPENDS `.png` to the source filename instead of
 #    swapping the extension. So `light.svg` becomes `light.svg.png`. Rename
@@ -108,6 +109,8 @@ mv ../tmp/minesweeper-icon-light.svg.png \
    Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png
 mv ../tmp/minesweeper-icon-dark.svg.png \
    Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Dark.png
+mv ../tmp/minesweeper-icon-tinted.svg.png \
+   Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Tinted.png
 
 # 4. Verify dimensions + format.
 file Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png
@@ -117,8 +120,9 @@ sips -g pixelWidth -g pixelHeight Minesweeper/Assets.xcassets/AppIcon.appiconset
 
 # 5. Commit the SVG source-of-truth alongside, under docs/app-store/icons/.
 mkdir -p docs/app-store/icons/<app>/
-cp ../tmp/<app>-icon-light.svg docs/app-store/icons/<app>/light.svg
-cp ../tmp/<app>-icon-dark.svg  docs/app-store/icons/<app>/dark.svg
+cp ../tmp/<app>-icon-light.svg  docs/app-store/icons/<app>/light.svg
+cp ../tmp/<app>-icon-dark.svg   docs/app-store/icons/<app>/dark.svg
+cp ../tmp/<app>-icon-tinted.svg docs/app-store/icons/<app>/tinted.svg
 ```
 
 ## Verify visually
@@ -159,7 +163,7 @@ If any check fails, the fix lives in the SVG, not in a post-process pass — re-
 }
 ```
 
-No Tinted entry (intentionally excluded per 2026-06-01 user direction). No `AppIcon-macOS.appiconset/` (universal idiom covers macOS via auto-scale).
+Tinted entry present — `AppIcon-Tinted.png`, `appearance: luminosity / value: tinted`, universal idiom (adopted 2026-06-08, ships in both apps; supersedes the 2026-06-01 "Light + Dark only" note). No `AppIcon-macOS.appiconset/` (universal idiom covers macOS via auto-scale).
 
 ## Why qlmanage and not X
 
