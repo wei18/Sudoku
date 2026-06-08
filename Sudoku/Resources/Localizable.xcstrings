@@ -2070,6 +2070,53 @@
         }
       }
     },
+    "Practice puzzles aren't ranked." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice puzzles aren't ranked."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los puzles de práctica no se clasifican."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "練習パズルはランキングの対象外です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연습 퍼즐은 순위에 포함되지 않아요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปริศนาฝึกฝนไม่นับเข้าอันดับ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "练习题目不计入排行榜。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "練習題目不列入排行榜。"
+          }
+        }
+      }
+    },
     "Ready to play" : {
       "extractionState" : "stale",
       "localizations" : {

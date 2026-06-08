@@ -40,6 +40,7 @@ public actor FakeGameCenterClient: GameCenterClient {
     )
     public var submitScoreError: GameCenterError?
     public var reportAchievementError: GameCenterError?
+    public var fetchLeaderboardSliceError: GameCenterError?
 
     private var authContinuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
 
@@ -69,6 +70,10 @@ public actor FakeGameCenterClient: GameCenterClient {
 
     public func setReportAchievementError(_ error: GameCenterError?) {
         self.reportAchievementError = error
+    }
+
+    public func setFetchLeaderboardSliceError(_ error: GameCenterError?) {
+        self.fetchLeaderboardSliceError = error
     }
 
     /// Push an auth state into every active `authStateUpdates()` consumer.
@@ -147,6 +152,7 @@ public actor FakeGameCenterClient: GameCenterClient {
             aroundLocalPlayer: aroundLocalPlayer,
             limit: limit
         ))
+        if let error = fetchLeaderboardSliceError { throw error }
         return leaderboardSlice
     }
 

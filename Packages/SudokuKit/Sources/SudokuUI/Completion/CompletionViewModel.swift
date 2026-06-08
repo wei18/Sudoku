@@ -13,6 +13,10 @@ public enum CompletionState: Sendable, Equatable {
     case loading
     case loaded(LeaderboardSlice)
     case unauthenticated
+    /// Puzzle has no associated leaderboard (Practice solves — #383). Distinct
+    /// from `.unauthenticated`: there is nothing to sign in for, so the view
+    /// shows neutral "not ranked" copy with no sign-in CTA / no dead action.
+    case noLeaderboard
     case failed(String)
 }
 
@@ -69,10 +73,11 @@ public final class CompletionViewModel {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
         // Practice solves have no leaderboard (#381): skip the fetch and land
-        // on `.unauthenticated`, the existing "no board to show" terminal state
-        // (no slice rows, no retry loop), rather than fetching an empty id.
+        // on `.noLeaderboard` (#383) — a terminal "not ranked" state distinct
+        // from `.unauthenticated`, so a signed-in player doesn't see a bogus
+        // "Sign in to Game Center" prompt + dead button.
         guard let leaderboardId else {
-            state = .unauthenticated
+            state = .noLeaderboard
             return
         }
         state = .loading
