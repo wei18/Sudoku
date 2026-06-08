@@ -42,6 +42,10 @@ public actor FakePersistence: PersistenceProtocol {
     )
     public var loadOrCreateError: PersistenceError?
     public var latestInProgressError: PersistenceError?
+    /// When set, `loadOrCreate` returns this snapshot instead of the loud
+    /// default throw. Used by tests that exercise the completed-daily
+    /// → Completion route (#379).
+    public var loadOrCreateSnapshot: GameSessionSnapshot?
 
     public init(
         resumeCandidate: SavedGameSummary? = nil,
@@ -61,6 +65,14 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func setLatestInProgressError(_ error: PersistenceError?) {
         self.latestInProgressError = error
+    }
+
+    public func setLoadOrCreateSnapshot(_ snapshot: GameSessionSnapshot?) {
+        self.loadOrCreateSnapshot = snapshot
+    }
+
+    public func setLoadOrCreateError(_ error: PersistenceError?) {
+        self.loadOrCreateError = error
     }
 
     // MARK: - PersistenceProtocol
@@ -95,9 +107,12 @@ public actor FakePersistence: PersistenceProtocol {
         if let error = loadOrCreateError {
             throw error
         }
+        if let snapshot = loadOrCreateSnapshot {
+            return snapshot
+        }
         // Fake target: tests that hit this path should use a real fixture
-        // or override `loadOrCreateError`. Default raises zoneNotProvisioned
-        // so accidental hits are loud.
+        // (`setLoadOrCreateSnapshot`) or override `loadOrCreateError`. Default
+        // raises zoneNotProvisioned so accidental hits are loud.
         throw PersistenceError.zoneNotProvisioned
     }
 

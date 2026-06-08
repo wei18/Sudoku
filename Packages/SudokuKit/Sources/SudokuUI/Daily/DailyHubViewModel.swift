@@ -120,7 +120,40 @@ public final class DailyHubViewModel {
         }
     }
 
+    /// Synchronous tap entry point (the DailyHubView shell closure is sync).
+    /// An un-completed card pushes straight to the board. A completed card
+    /// (#379) must re-surface the player's result, so it fans out to the
+    /// async `openCompleted(_:)` helper which fetches the frozen solve time
+    /// and routes to `.completion`. The helper is `await`-able directly so
+    /// tests don't depend on fire-and-forget `Task` timing.
     public func cardTapped(_ card: DailyCard) {
-        path.append(.board(puzzleId: card.envelope.identity.puzzleId))
+        guard card.isCompleted else {
+            path.append(.board(puzzleId: card.envelope.identity.puzzleId))
+            return
+        }
+        Task { await openCompleted(card) }
+    }
+
+    /// Loads the completed daily's saved snapshot to recover its frozen
+    /// `elapsedSeconds`, then routes to the Completion screen. On a load
+    /// failure we report through the funnel and fall back to `.board` — never
+    /// worse than the pre-#379 behavior, and never silently stuck.
+    func openCompleted(_ card: DailyCard) async {
+        let puzzleId = card.envelope.identity.puzzleId
+        do {
+            let snapshot = try await persistence.loadOrCreate(
+                puzzleId: puzzleId,
+                mode: .daily,
+                difficulty: card.difficulty
+            )
+            path.append(.completion(puzzleId: puzzleId, elapsedSeconds: snapshot.elapsedSeconds))
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "DailyHubViewModel.openCompleted"
+            )
+            path.append(.board(puzzleId: puzzleId))
+        }
     }
 }
