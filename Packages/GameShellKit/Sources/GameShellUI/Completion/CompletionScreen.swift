@@ -97,10 +97,12 @@ public struct CompletionScreen: View {
     private let onSignIn: (() -> Void)?
     /// Retry from the `.failed` block (re-fetch the leaderboard slice).
     private let onRetryLeaderboard: () -> Void
-    /// Accessory rendered INSIDE the `.loaded` case, directly after the
-    /// leaderboard section (no inter-group spacing) — Sudoku's "View full
-    /// leaderboard" CTA sits here to match its prior adjacent layout. MS leaves
-    /// it empty (its CTA lives in the always-on `actions` stack instead).
+    /// Accessory rendered INSIDE the `.loaded` case as a sibling in the outer
+    /// `VStack(spacing: 24)`, immediately after the leaderboard section (so 24pt
+    /// below it — same as the parent group spacing, matching Sudoku's prior
+    /// layout exactly; do NOT "tighten" this or the baseline shifts). Sudoku's
+    /// "View full leaderboard" CTA sits here. MS leaves it empty (its CTA lives
+    /// in the always-on `actions` stack instead).
     private let loadedAccessory: AnyView
     /// Trailing action buttons (View leaderboard / Retry game / New Game). Each
     /// app supplies its own stack; renders after the state content, separated by
