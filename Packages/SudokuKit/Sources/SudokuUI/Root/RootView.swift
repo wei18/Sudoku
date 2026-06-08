@@ -39,6 +39,10 @@ public struct RootView: View {
     // v2.4.5: bottom-anchored transient surface for purchase / restore results.
     // Wired via `.toastOverlay(...)` below.
     private let toastController: ToastController?
+    // #371 / #195: ATT pre-prompt coordinator. Forwarded to HomeView's banner
+    // slot (the trigger) and bound to the priming `.sheet` mounted here at the
+    // root so the sheet presents above the whole app, not from a 50pt slot.
+    @State private var attPrimer: ATTPrimerCoordinator?
 
     public init(
         viewModel: RootViewModel,
@@ -46,7 +50,8 @@ public struct RootView: View {
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         monetizationController: MonetizationStateController? = nil,
-        toastController: ToastController? = nil
+        toastController: ToastController? = nil,
+        attPrimer: ATTPrimerCoordinator? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.routeFactory = routeFactory
@@ -54,6 +59,7 @@ public struct RootView: View {
         self.adGate = adGate
         self.monetizationController = monetizationController
         self.toastController = toastController
+        self._attPrimer = State(initialValue: attPrimer)
     }
 
     public var body: some View {
@@ -75,6 +81,7 @@ public struct RootView: View {
             successTint: theme.status.success.resolved,
             failureTint: theme.status.error.resolved
         )
+        .attPrimerSheet(attPrimer)
     }
 
     // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push
@@ -122,7 +129,8 @@ public struct RootView: View {
             ),
             adProvider: adProvider,
             adGate: adGate,
-            monetizationController: monetizationController
+            monetizationController: monetizationController,
+            attPrimer: attPrimer
         ) {
             if let candidate = viewModel.resumeCandidate {
                 ResumePill(candidate: candidate) {

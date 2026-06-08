@@ -57,6 +57,19 @@ struct ATTPresenterTests {
         #expect(outcome == .unsupported)
         #expect(bridge.requestCallCount == 0)
     }
+
+    // MARK: - currentStatus (#371 / #195): read-only, NEVER prompts
+
+    @Test func currentStatusReadsWithoutRequesting() async {
+        // The pre-prompt flow asks `currentStatus()` to decide whether to even
+        // offer the priming sheet — it must NOT trigger the system dialog.
+        let bridge = FakeATTBridge(initialStatus: .notDetermined, postRequestStatus: .authorized)
+
+        let status = await ATTPresenter.currentStatus(using: bridge)
+
+        #expect(status == .notDetermined)
+        #expect(bridge.requestCallCount == 0)
+    }
 }
 
 // MARK: - FakeATTBridge

@@ -45,20 +45,27 @@ public struct MonetizationBootBridges: Sendable {
         self.initializeAdMob = initializeAdMob
     }
 
-    /// Live wiring: UMPConsentPresenter → ATTPresenter → AdProvider.initialize.
-    /// Outcomes from UMP / ATT are discarded here — the presenters already
-    /// classify success / failure internally; the coordinator only needs to
-    /// know whether the step *threw* (it doesn't, since presenters return
-    /// outcome enums rather than throwing — so these closures are effectively
-    /// non-throwing). `initializeAdMob` is the one closure that can actually
-    /// throw, since `AdProvider.initialize()` rethrows SDK errors.
+    /// Live wiring: UMPConsentPresenter → (ATT no-op) → AdProvider.initialize.
+    /// Outcomes from UMP are discarded here — the presenter already classifies
+    /// success / failure internally; the coordinator only needs to know whether
+    /// the step *threw* (it doesn't, since presenters return outcome enums
+    /// rather than throwing). `initializeAdMob` is the one closure that can
+    /// actually throw, since `AdProvider.initialize()` rethrows SDK errors.
+    ///
+    /// #371 / #195: the ATT step is a deliberate NO-OP. design.md §How.4 forbids
+    /// a cold-launch ATT prompt; the real `ATTPresenter.requestIfNeeded()` is now
+    /// driven by `ATTPrimerCoordinator` (Sudoku UI layer) after Home is seen and
+    /// at the first ad-relevant moment. The slot is kept (rather than dropped) so
+    /// the coordinator's UMP/ATT/AdMob ordering shape + tests stay intact, and so
+    /// re-introducing a different early step later is a one-line change. UMP
+    /// (GDPR consent) is unaffected — it legitimately stays at cold launch (F4).
     public static func live(adProvider: any AdProvider) -> MonetizationBootBridges {
         MonetizationBootBridges(
             requestUMPConsent: {
                 _ = await UMPConsentPresenter.requestIfNeeded()
             },
             requestATT: {
-                _ = await ATTPresenter.requestIfNeeded()
+                // No-op: ATT deferred to ATTPrimerCoordinator (#371 / #195).
             },
             initializeAdMob: {
                 try await adProvider.initialize()

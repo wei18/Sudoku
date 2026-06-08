@@ -43,9 +43,21 @@ public struct BannerSlotView: View {
     /// (purchased / dismissed-today / clock-tamper), keeping Remove-Ads intact.
     private let reloadCoordinator: BannerReloadCoordinator
 
-    public init(adProvider: any AdProvider, adGate: AdGate) {
+    /// ATT pre-prompt trigger (#371 / #195). When the gate is open — i.e. a
+    /// personalized ad is about to load, the first moment ATT actually matters —
+    /// we offer the priming sheet (idempotent, once per launch). nil on hosts
+    /// that don't drive ATT (Minesweeper has its own banner view; it never
+    /// passes this, so MS never prompts ATT).
+    private let attPrimer: ATTPrimerCoordinator?
+
+    public init(
+        adProvider: any AdProvider,
+        adGate: AdGate,
+        attPrimer: ATTPrimerCoordinator? = nil
+    ) {
         self.adProvider = adProvider
         self.adGate = adGate
+        self.attPrimer = attPrimer
         self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
     }
 
@@ -155,6 +167,11 @@ public struct BannerSlotView: View {
         let allowed = await adGate.shouldShowBanner(now: now)
         shouldShow = allowed
         guard allowed else { return }
+        // #371 / #195: the gate is open == a personalized ad is about to load ==
+        // the first moment ATT actually matters. Offer the priming sheet here
+        // (post-Home, contextual; never at cold launch). Idempotent — the
+        // coordinator latches after one offer per launch.
+        await attPrimer?.maybePresentOnAdContext()
         // Kick the provider via the reload seam. `loadBanner` throws in v2.3.4;
         // the failure surfaces as the visible "Ad unavailable" caption (its
         // `.failed` status) rather than being silently swallowed.
