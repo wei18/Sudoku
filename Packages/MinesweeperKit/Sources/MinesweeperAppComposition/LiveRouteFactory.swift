@@ -57,6 +57,12 @@ public struct LiveRouteFactory: RouteFactory {
     // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
+    // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
+    // MS copy) per Settings mount. Injected as a closure (not the raw Reminders
+    // seams) so ALL reminder wiring stays in `.live()`. `nil` in previews / tests
+    // → no reminder section, byte-identical Settings screen. Mirrors Sudoku's
+    // `makeReminderSettings`.
+    private let makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -64,7 +70,8 @@ public struct LiveRouteFactory: RouteFactory {
         adGate: AdGate? = nil,
         persistence: (any PersistenceProtocol)? = nil,
         gameCenter: (any GameCenterClient)? = nil,
-        errorReporter: (any ErrorReporter)? = nil
+        errorReporter: (any ErrorReporter)? = nil,
+        makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -72,6 +79,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
+        self.makeReminderSettings = makeReminderSettings
     }
 
     @MainActor
@@ -136,7 +144,8 @@ public struct LiveRouteFactory: RouteFactory {
                     version: version,
                     clearCache: { await Self.clearCache(persistence: persistence) },
                     monetizationController: monetizationController,
-                    notices: Self.makeSettingsNotices()
+                    notices: Self.makeSettingsNotices(),
+                    reminderSettings: makeReminderSettings?()
                 )
             )
         }
