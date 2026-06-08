@@ -98,6 +98,9 @@ struct GameSessionClearAndStartedAtTests {
         let snap = await session.snapshot()
 
         let restored = await GameSession.restore(from: snap)
+        // A restored in-progress session is `.paused` (frozen clock); the
+        // player resumes before mutating. See GameSession.applySnapshot.
+        try await restored.resume()
         let cell = await restored.currentBoard.digit(atRow: 0, column: 1)
         #expect(cell == nil)
         try await restored.undo()

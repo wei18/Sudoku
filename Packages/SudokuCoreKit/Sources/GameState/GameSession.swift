@@ -283,7 +283,20 @@ public actor GameSession {
     /// (UndoStack's only public mutators are `push` / `undo` / `redo`).
     private func applySnapshot(_ snapshot: GameSessionSnapshot) {
         currentBoard = snapshot.currentBoard
-        status = snapshot.status
+        // Normalize a restored `.playing` snapshot to `.paused`. Mid-play
+        // autosaves persist `.playing` (GameViewModel.scheduleSave runs while
+        // the session is live), but a restored session is ALWAYS frozen
+        // (`runningSince = nil` below), so a `.playing` restore is
+        // semantically "paused until the player explicitly resumes". This
+        // matters because `resume()` only transitions from `.paused`
+        // (GameSessionStatus table) — a frozen `.playing` has no path back to
+        // a running span, leaving the clock stuck at the saved value. As
+        // `.paused`, the existing explicit-resume path (GameViewModel
+        // `startOrResume`: `.paused → resume()`) re-arms the clock when the
+        // board mounts. We do NOT open a running span here: per §How.5.5 the
+        // wall clock must not auto-resume, so time only accrues after the
+        // explicit resume, never before the board is visible.
+        status = snapshot.status == .playing ? .paused : snapshot.status
         notes = snapshot.notes
         accumulatedSeconds = snapshot.elapsedSeconds
         runningSince = nil
