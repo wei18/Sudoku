@@ -123,6 +123,105 @@ struct DailyHubViewModelInteractionTests {
         ])
     }
 
+    // MARK: - #385: cardTapped (sync entry) routes + double-tap latch
+
+    /// Drains the MainActor queue until `box.routes` reaches `count` or the
+    /// bounded yield budget is exhausted. `cardTapped`'s completed branch
+    /// spawns a detached `Task { await openCompleted(_:) }`; the fake's
+    /// `loadOrCreate` resolves without real I/O, so a bounded `Task.yield()`
+    /// poll lets that Task run to completion deterministically — no real time
+    /// elapses and no sleep is needed.
+    private func waitForRouteCount(_ box: RoutePathBox, atLeast count: Int) async {
+        for _ in 0..<1_000 {
+            if box.routes.count >= count { return }
+            await Task.yield()
+        }
+    }
+
+    @Test func tappingCompletedCardViaCardTappedRoutesToCompletionWithSavedTime() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        await persistence.setLoadOrCreateSnapshot(completedSnapshot(elapsedSeconds: 742))
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let base = cards[1]
+        let completedCard = DailyCard(envelope: base.envelope, isCompleted: true)
+
+        // Drive the *sync* entry point (#384's previously-untested branch).
+        viewModel.cardTapped(completedCard)
+        await waitForRouteCount(box, atLeast: 1)
+
+        #expect(box.routes == [
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+        ])
+    }
+
+    @Test func rapidDoubleTapOnCompletedCardRoutesToCompletionExactlyOnce() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        await persistence.setLoadOrCreateSnapshot(completedSnapshot(elapsedSeconds: 742))
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let base = cards[1]
+        let completedCard = DailyCard(envelope: base.envelope, isCompleted: true)
+
+        // Two synchronous taps back-to-back: the second must hit the in-flight
+        // latch before the first Task's `await` resolves. Both run on the
+        // MainActor with no suspension between them, so the latch set in the
+        // first `cardTapped` short-circuits the second.
+        viewModel.cardTapped(completedCard)
+        viewModel.cardTapped(completedCard)
+        await waitForRouteCount(box, atLeast: 1)
+        // Give any erroneously-spawned second Task a chance to push.
+        await Task.yield()
+        await Task.yield()
+
+        #expect(box.routes == [
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+        ])
+    }
+
+    @Test func latchResetsSoLaterTapRoutesAgain() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        await persistence.setLoadOrCreateSnapshot(completedSnapshot(elapsedSeconds: 742))
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let base = cards[1]
+        let completedCard = DailyCard(envelope: base.envelope, isCompleted: true)
+
+        viewModel.cardTapped(completedCard)
+        await waitForRouteCount(box, atLeast: 1)
+
+        // After the first open resolves the latch must clear so a re-tap
+        // (e.g. returning to the hub and tapping again) works.
+        viewModel.cardTapped(completedCard)
+        await waitForRouteCount(box, atLeast: 2)
+
+        let expected: AppRoute = .completion(
+            puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742
+        )
+        #expect(box.routes == [expected, expected])
+    }
+
     @Test func tappingUncompletedCardStillRoutesToBoard() async {
         let provider = FakePuzzleProvider()
         let persistence = FakePersistence()

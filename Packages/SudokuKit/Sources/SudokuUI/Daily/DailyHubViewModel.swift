@@ -54,6 +54,16 @@ public final class DailyHubViewModel {
     /// don't re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
     private var hasBootstrapped = false
 
+    /// Transient in-flight latch for the completed-card → Completion fan-out
+    /// (#385). `cardTapped` is a synchronous `@MainActor` closure, so a
+    /// double-tap (or a tap landing during the in-flight `loadOrCreate`) can
+    /// otherwise push `.completion` twice. Set synchronously before spawning
+    /// the open Task and cleared in `openCompleted`'s `defer` — both run on
+    /// the MainActor, so no second tap can slip a route in during the load.
+    /// Unlike P0-1's one-shot `hasNavigatedToCompletion`, this RESETS so a
+    /// re-tap after returning to the hub works again.
+    private var isOpeningCompleted = false
+
     public init(
         provider: any PuzzleProviderProtocol,
         persistence: any PersistenceProtocol,
@@ -131,6 +141,11 @@ public final class DailyHubViewModel {
             path.append(.board(puzzleId: card.envelope.identity.puzzleId))
             return
         }
+        // #385: drop re-taps while a previous open is still in flight so the
+        // async fan-out can't push `.completion` twice. The `.board` branch
+        // above is synchronous and not latched (unchanged prior behavior).
+        guard !isOpeningCompleted else { return }
+        isOpeningCompleted = true
         Task { await openCompleted(card) }
     }
 
@@ -139,6 +154,10 @@ public final class DailyHubViewModel {
     /// failure we report through the funnel and fall back to `.board` — never
     /// worse than the pre-#379 behavior, and never silently stuck.
     func openCompleted(_ card: DailyCard) async {
+        // Reset on both success and the error/fallback path so a later tap
+        // (#385) re-enters cleanly. `@MainActor` guarantees this runs without
+        // an interleaved `cardTapped` between the route append and the clear.
+        defer { isOpeningCompleted = false }
         let puzzleId = card.envelope.identity.puzzleId
         do {
             let snapshot = try await persistence.loadOrCreate(
