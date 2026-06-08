@@ -1,0 +1,97 @@
+<div class="danger">
+  <strong>不做的後果</strong>：上 TestFlight 後第一個真實使用者打開 → CloudKit 在 Production env 找不到 record types（<code>SavedGame</code> + <code>PersonalRecord</code>）→ 存檔失敗、leaderboard 寫不進 → 噴 error 給 ErrorReporter / 影響評價。
+</div>
+
+<h3>原理（30 秒看完）</h3>
+<p>CloudKit 有兩個 environment：</p>
+<div class="diagram">
+Development         Production
+   │                    │
+   │ schema 自動         │ schema 只能手動
+   │ infer & deploy      │ promote from Dev
+   │                    │
+   ▼                    ▼
+DEBUG / TestFlight   App Store + 部分 TestFlight
+build hits           build hits
+</div>
+<p>
+你目前所有開發測試用的是 Development env、schema 隨 code 變化自動更新。
+但 App Store + 正式 TestFlight 走 Production env，schema 不會自動 sync，
+必須在 CloudKit Dashboard 按 <strong>Deploy Schema to Production</strong>。
+</p>
+
+<hr class="section-divider">
+
+<div class="step">
+  <h2><span class="step-num">1</span>打開 CloudKit Dashboard</h2>
+  <div class="url-badge">🔗 <a href="https://icloud.developer.apple.com/dashboard/" target="_blank">icloud.developer.apple.com/dashboard</a></div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 用跟 Apple Developer 同個帳號登入</li>
+    <li><input type="checkbox" class="checkbox"> 左上選 container：<code>{{CONTAINER_ID}}</code></li>
+  </ul>
+  <div class="warn">
+    別選錯到別的 app 的 container。這次要 deploy 的是 {{APP_NAME}}（<code>{{CONTAINER_ID}}</code>）。
+  </div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">2</span>看 Development schema 一眼</h2>
+  <p>左欄 <strong>Schema</strong> → <strong>Record Types</strong></p>
+  <p>應該看到至少這些：</p>
+  <ul>
+    <li><code>SavedGame</code> — 進行中棋盤的存檔</li>
+    <li><code>PersonalRecord</code> — leaderboard 個人最佳成績</li>
+    <li><code>MonetizationState</code> — Remove Ads 購買狀態</li>
+    <li><code>Users</code>（CloudKit 系統自動）</li>
+  </ul>
+  <p>如果看不到 <code>SavedGame</code> / <code>PersonalRecord</code>：你還沒在 DEBUG build 跑過一次完整存檔/排行流程、Development schema 沒被 infer 出來。先去 Xcode 跑一次再回來。</p>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">3</span>Deploy Schema to Production</h2>
+  <p>左欄 <strong>Schema</strong> → 上方有個 <strong>Deploy Schema Changes…</strong> 按鈕（或長得像「Promote to Production」），點下去。</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> dialog 跳出 → 確認 Dev → Prod diff 看起來合理（會列出新增的 record types + fields + indexes）</li>
+    <li><input type="checkbox" class="checkbox"> 看到 <code>SavedGame</code> + <code>PersonalRecord</code> + <code>MonetizationState</code> 都在 diff 內</li>
+    <li><input type="checkbox" class="checkbox"> 按 <strong>Deploy</strong></li>
+  </ul>
+  <div class="warn">
+    <strong>單向操作</strong>：CloudKit Production schema 一旦 deploy，**fields 只能加不能刪**（Apple 限制）。所以 deploy 前要確認 record types / fields 對。
+  </div>
+  <div class="ok-note">
+    新增的 record types 跟 fields 是無痛的；後續若還要加新 field，再 deploy 一次就好。
+  </div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">4</span>切到 Production env 確認</h2>
+  <p>右上 environment selector 從 <strong>Development</strong> 切 <strong>Production</strong></p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> Schema → Record Types 看得到 <code>SavedGame</code> + <code>PersonalRecord</code> + <code>MonetizationState</code></li>
+    <li><input type="checkbox" class="checkbox"> 點進 <code>SavedGame</code> 看 fields 列表，跟 Dev env 一致</li>
+  </ul>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">5</span>（可選）建 Subscriptions / Indexes</h2>
+  <p>{{APP_NAME}} 的 persistence stack 有用 CloudKit subscription 做 cross-device sync。如果 Dev env 有建 subscription（左欄 <strong>Schema → Subscriptions</strong>），需要對應 promote 到 Production。Indexes 同理。</p>
+  <p>多半的 case：Dev schema deploy 時 dialog 會一起列 subscriptions / indexes 的 diff，按 Deploy 就一起過。</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> Production env 的 Subscriptions 跟 Dev 對齊</li>
+    <li><input type="checkbox" class="checkbox"> Production env 的 Indexes 跟 Dev 對齊</li>
+  </ul>
+</div>
+
+<hr class="section-divider">
+
+<div class="done-banner">
+  <h3>✨ 完成後</h3>
+  <p>回 Claude 跟他說「{{APP_NAME}} CloudKit production deploy 完成」。他會把對應 issue 關掉、其他 release blockers 排掉就能送 TestFlight。</p>
+</div>
+
+<h3 style="margin-top: 40px;">🆘 如果 deploy 失敗</h3>
+<ul>
+  <li>常見錯：<strong>Field type 衝突</strong> — Production 已有舊版 field，新版改了 type。需要先在 Dev env 改回 type 或加新 field name。</li>
+  <li>常見錯：<strong>Record type missing in Dev</strong> — 代表本機沒跑過該 record 流程。Xcode 跑一次完整 flow（存遊戲 / 完成一局產生 PersonalRecord）讓 schema infer 出來。</li>
+  <li>怎樣都 deploy 不過：截圖給 Claude，他幫你判斷。</li>
+</ul>

@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+#MISE description="Render provisioning walkthrough HTML (ASC / AdMob / CloudKit) for an app from shared templates. Substitutes only PUBLIC ids — no secrets. Mirrors mise-tasks/ck/schema conventions."
+#
+# Renders the human-facing provisioning walkthroughs that used to live as
+# hand-edited one-off HTML files in ~/GitHub/Wei18/tmp/. They are now generated
+# from one shared CSS shell + three body fragments under
+# docs/app-store/provisioning/templates/, parameterized by an app's PUBLIC
+# identifiers (bundle id, iCloud container, IAP product id, AppComposition.Live
+# type). See GitHub issue #252 and meetings/2026-06-08_252-provisioning-*.md.
+#
+# NO SECRETS: every substituted value is already public (lives in *.entitlements,
+# Project.swift, docs/app-store/metadata/<app>/iap/). The walkthroughs only tell
+# the user where to FETCH/PASTE the real secret values (AdMob App ID / Banner
+# Unit ID, CK management token) — those values never enter a template. Mirrors
+# the build-time-secret-injection + apple-public-repo-security discipline.
+#
+# Usage:
+#   mise run new_app:provisioning <asc|admob|cloudkit|all> --app <name> [opts]
+#
+#   --app <name>          known app (sudoku|minesweeper) → defaults from case-map,
+#                         or a brand-new name (then pass the --*-id flags below)
+#   --bundle-id <id>      override / supply bundle id        (e.g. com.acme.foo)
+#   --container-id <id>   override / supply iCloud container (e.g. iCloud.com.acme.foo)
+#   --iap-product-id <id> override / supply IAP product id
+#   --live-composition <T> override / supply AppComposition.Live type name
+#   --out <dir>           output dir (default: ~/GitHub/Wei18/tmp)
+#   --open                `open` rendered file(s) after render
+#
+# Examples:
+#   mise run new_app:provisioning all --app minesweeper
+#   mise run new_app:provisioning cloudkit --app sudoku --open
+#   mise run new_app:provisioning asc --app acme --bundle-id com.acme.foo \
+#       --container-id iCloud.com.acme.foo --iap-product-id com.acme.foo.iap.remove_ads
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TMPL_DIR="$REPO_ROOT/docs/app-store/provisioning/templates"
+SHELL_TMPL="$TMPL_DIR/_shell.html.tmpl"
+
+usage() {
+    sed -n '2,38p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    exit "${1:-1}"
+}
+
+# ── Known-apps case-map (all PUBLIC ids) ─────────────────────────────────────
+# name | bundle id | iCloud container | IAP product id | AppComposition.Live type
+apply_app_defaults() {
+    case "$1" in
+        sudoku)
+            APP_NAME="${APP_NAME:-Sudoku}"
+            BUNDLE_ID="${BUNDLE_ID:-com.wei18.sudoku}"
+            CONTAINER_ID="${CONTAINER_ID:-iCloud.com.wei18.sudoku}"
+            IAP_PRODUCT_ID="${IAP_PRODUCT_ID:-com.wei18.sudoku.iap.remove_ads}"
+            LIVE_COMPOSITION="${LIVE_COMPOSITION:-AppComposition.Live}"
+            ;;
+        minesweeper)
+            APP_NAME="${APP_NAME:-Minesweeper}"
+            BUNDLE_ID="${BUNDLE_ID:-com.wei18.minesweeper}"
+            CONTAINER_ID="${CONTAINER_ID:-iCloud.com.wei18.minesweeper}"
+            IAP_PRODUCT_ID="${IAP_PRODUCT_ID:-com.wei18.minesweeper.iap.remove_ads}"
+            LIVE_COMPOSITION="${LIVE_COMPOSITION:-MinesweeperAppComposition.Live}"
+            ;;
+        *)
+            # Brand-new app not in the map: title-case the slug for the display
+            # name, require the rest via flags.
+            APP_NAME="${APP_NAME:-$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')${1:1}}"
+            ;;
+    esac
+}
+
+# ── Arg parsing ──────────────────────────────────────────────────────────────
+TOPIC="${1:-}"; shift || true
+APP=""; OUT_DIR="$HOME/GitHub/Wei18/tmp"; OPEN=0
+APP_NAME=""; BUNDLE_ID=""; CONTAINER_ID=""; IAP_PRODUCT_ID=""; LIVE_COMPOSITION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --app)             APP="${2:-}"; shift 2 ;;
+        --bundle-id)       BUNDLE_ID="${2:-}"; shift 2 ;;
+        --container-id)    CONTAINER_ID="${2:-}"; shift 2 ;;
+        --iap-product-id)  IAP_PRODUCT_ID="${2:-}"; shift 2 ;;
+        --live-composition) LIVE_COMPOSITION="${2:-}"; shift 2 ;;
+        --out)             OUT_DIR="${2:-}"; shift 2 ;;
+        --open)            OPEN=1; shift ;;
+        -h|--help)         usage 0 ;;
+        *) echo "error: unknown argument '$1'" >&2; usage ;;
+    esac
+done
+
+[[ -n "$TOPIC" ]] || { echo "error: missing topic (asc|admob|cloudkit|all)" >&2; usage; }
+case "$TOPIC" in asc|admob|cloudkit|all) ;; *) echo "error: unknown topic '$TOPIC' (asc|admob|cloudkit|all)" >&2; exit 1 ;; esac
+[[ -n "$APP" ]] || { echo "error: --app is required" >&2; usage; }
+
+apply_app_defaults "$APP"
+
+[[ -f "$SHELL_TMPL" ]] || { echo "error: shell template not found: $SHELL_TMPL" >&2; exit 1; }
+
+# Title / subtitle / heading per topic. The heading is the visible <h1>.
+title_for()    { case "$1" in asc) echo "$APP_NAME App 提供步驟（Apple Developer + ASC）";; admob) echo "$APP_NAME AdMob 註冊步驟";; cloudkit) echo "$APP_NAME — CloudKit Production Schema Deploy";; esac; }
+heading_for()  { case "$1" in asc) echo "$APP_NAME App 提供步驟";; admob) echo "$APP_NAME AdMob 註冊";; cloudkit) echo "CloudKit Production Schema Deploy";; esac; }
+subtitle_for() { case "$1" in asc) echo "Apple Developer Portal + App Store Connect • 預估 15-20 分鐘";; admob) echo "Google AdMob console • 預估 10 分鐘";; cloudkit) echo "$APP_NAME release blocker • 預估 5 分鐘";; esac; }
+
+# render <topic> — writes the composed HTML to $OUT_DIR and echoes the path.
+render() {
+    local topic="$1"
+    local body_tmpl="$TMPL_DIR/$topic.body.html.tmpl"
+    [[ -f "$body_tmpl" ]] || { echo "error: body template not found: $body_tmpl" >&2; exit 1; }
+
+    local out_file="$OUT_DIR/$APP-$topic-provisioning.html"
+    [[ "$topic" == "admob" ]] && out_file="$OUT_DIR/$APP-admob-registration.html"
+    [[ "$topic" == "cloudkit" ]] && out_file="$OUT_DIR/$APP-cloudkit-production-deploy.html"
+    mkdir -p "$OUT_DIR"
+
+    # Substitute the public ids into the body fragment first. `#` delimiter so
+    # values containing `/` or `.` are safe; ids are dot/path-shaped, never `#`.
+    local body
+    body="$(sed \
+        -e "s#{{APP_NAME}}#$APP_NAME#g" \
+        -e "s#{{BUNDLE_ID}}#$BUNDLE_ID#g" \
+        -e "s#{{CONTAINER_ID}}#$CONTAINER_ID#g" \
+        -e "s#{{IAP_PRODUCT_ID}}#$IAP_PRODUCT_ID#g" \
+        -e "s#{{LIVE_COMPOSITION}}#$LIVE_COMPOSITION#g" \
+        "$body_tmpl")"
+
+    # Compose: substitute the scalar shell slots, then inject the (multiline)
+    # body at {{BODY}} via awk (avoids sed multiline-replace fiddliness).
+    sed \
+        -e "s#{{TITLE}}#$(title_for "$topic")#g" \
+        -e "s#{{HEADING}}#$(heading_for "$topic")#g" \
+        -e "s#{{SUBTITLE}}#$(subtitle_for "$topic")#g" \
+        -e "s#{{OUT_PATH}}#$out_file#g" \
+        "$SHELL_TMPL" \
+    | awk -v body="$body" '{ if ($0 ~ /\{\{BODY\}\}/) print body; else print }' \
+        > "$out_file"
+
+    echo "$out_file"
+    [[ "$OPEN" -eq 1 ]] && open "$out_file"
+    return 0
+}
+
+topics_to_render=("$TOPIC")
+[[ "$TOPIC" == "all" ]] && topics_to_render=(asc admob cloudkit)
+
+echo "==> Rendering provisioning walkthrough(s) for $APP_NAME → $OUT_DIR"
+for t in "${topics_to_render[@]}"; do
+    f="$(render "$t")"
+    echo "    [$t] $f"
+done
+echo "==> Done. (All substituted ids are public — no secrets baked in.)"

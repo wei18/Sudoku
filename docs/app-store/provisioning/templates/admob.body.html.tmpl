@@ -1,0 +1,122 @@
+<style>.field-row { grid-template-columns: 160px 1fr; }</style>
+
+<p>
+這一步給 {{APP_NAME}} iOS app 拿 AdMob 的 <strong>App ID</strong> + <strong>Banner Ad Unit ID</strong>。
+完成後把兩個 ID 貼回給 Claude，他會塞進 <code>{{LIVE_COMPOSITION}}</code>。
+</p>
+
+<div class="ok-note">
+  <strong>macOS 不用註冊</strong>：Google AdMob mobile SDK 只支援 iOS / Android，macOS 沒對應 banner ad SDK。
+  {{APP_NAME}} macOS 版會 wire 成 <code>NoopAdProvider</code>。只需要 iOS 的 ID。
+</div>
+
+<hr class="section-divider">
+
+<div class="step">
+  <h2><span class="step-num">1</span>登入 + 新增 App</h2>
+  <div class="url-badge">🔗 <a href="https://admob.google.com/" target="_blank">admob.google.com</a></div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 用你的 Google 帳號登入</li>
+    <li><input type="checkbox" class="checkbox"> 左欄 <strong>Apps</strong> → 上方 <strong>ADD APP</strong></li>
+  </ul>
+  <p><strong>App 已發布？</strong> 選 <strong>No</strong>（{{APP_NAME}} 還沒上 App Store）</p>
+  <div class="field-row">
+    <div class="field-label">Platform</div>
+    <div class="field-value">iOS</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">App name</div>
+    <div class="field-value">{{APP_NAME}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">User metrics</div>
+    <div class="field-value">建議勾「Yes」</div>
+  </div>
+  <p>Add → 完成</p>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">2</span>拿 App ID <span class="tag">記下來</span></h2>
+  <p>建好之後 AdMob 會顯示這個 app 的 <strong>App ID</strong>。格式長這樣：<code>ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY</code>（注意是 <code>~</code> 不是 <code>/</code>）。</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 在 app 詳情頁右上找到 App ID</li>
+    <li><input type="checkbox" class="checkbox"> 複製 App ID</li>
+  </ul>
+  <div class="id-box">
+    <div class="id-box-label">📝 把 App ID 貼這（給自己記、不會送出）</div>
+    <input class="id-box-input" type="text" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY">
+  </div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">3</span>新增 Banner Ad Unit</h2>
+  <p>進到剛建好的 {{APP_NAME}} app → 左側 <strong>Ad units</strong> → <strong>ADD AD UNIT</strong></p>
+  <div class="field-row">
+    <div class="field-label">Format</div>
+    <div class="field-value">✅ Banner</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Ad unit name</div>
+    <div class="field-value">{{APP_NAME}} Banner</div>
+  </div>
+  <p style="margin-top: 16px;"><strong>Advanced settings</strong>：</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> eCPM floor: 不設（先 default）</li>
+    <li><input type="checkbox" class="checkbox"> Frequency capping: 不設（先 default）</li>
+  </ul>
+  <p>Create Ad Unit</p>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">4</span>拿 Banner Ad Unit ID <span class="tag">記下來</span></h2>
+  <p>建好後 AdMob 顯示 <strong>Ad Unit ID</strong>。格式：<code>ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ</code>（這個是 <code>/</code> 不是 <code>~</code>）。</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 複製 Ad Unit ID</li>
+  </ul>
+  <div class="id-box">
+    <div class="id-box-label">📝 把 Banner Ad Unit ID 貼這</div>
+    <input class="id-box-input" type="text" placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ">
+  </div>
+  <div class="warn">
+    <strong>App ID 跟 Ad Unit ID 不一樣！</strong>
+    <ul style="margin: 8px 0;">
+      <li>App ID 用 <code>~</code>（蛇形）— 一個 app 一個</li>
+      <li>Ad Unit ID 用 <code>/</code>（斜線）— 一個 banner / interstitial / rewarded 各一個</li>
+    </ul>
+    別搞混。
+  </div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">5</span>App-ads.txt（可選、之後再做）<span class="tag">defer</span></h2>
+  <p>AdMob 會要求 <code>app-ads.txt</code> 放在 marketing URL 對應的 domain 上，用來防止 ad fraud。{{APP_NAME}} 之後 v1 送 App Store 時補上對應的 record line 即可。</p>
+  <p style="color: var(--muted); font-size: 14px;">這步今天可跳過、不影響 banner 顯示測試。等送 App Store 前再回頭做。</p>
+</div>
+
+<hr class="section-divider">
+
+<h3>📋 順手檢查</h3>
+<ul>
+  <li><input type="checkbox" class="checkbox"> AdMob console 內看得到 {{APP_NAME}} app 列表</li>
+  <li><input type="checkbox" class="checkbox"> App ID 已拿到（<code>~</code> 形式）</li>
+  <li><input type="checkbox" class="checkbox"> Banner Ad Unit ID 已拿到（<code>/</code> 形式）</li>
+  <li><input type="checkbox" class="checkbox"> 兩個 ID 都複製好、待回 Claude</li>
+</ul>
+
+<div class="done-banner">
+  <h3>✨ 完成後</h3>
+  <p>回 Claude 跟他說：</p>
+  <p style="font-family: 'SF Mono', monospace; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 6px; margin: 12px 0;">
+    AdMob 註冊完成：<br>
+    App ID: ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY<br>
+    Banner Unit ID: ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+  </p>
+  <p>他會把 ID 接進 <code>{{LIVE_COMPOSITION}}</code> 的 <code>LiveAdMobBridge</code>。</p>
+</div>
+
+<h3 style="margin-top: 40px;">⏳ 不急但要記住</h3>
+<ul>
+  <li><strong>SKAdNetwork (SKAN) IDs</strong>：iOS attribution 用的，要寫進 {{APP_NAME}} 的 <code>Info.plist</code>。AdMob 之後會列出當前需要的 ID 清單，補進去即可。Claude 之後會幫你做。</li>
+  <li><strong>Test mode</strong>：開發測試別用 production ID（會被 Google 反詐騙系統判作弊）。Claude 會用 AdMob 官方 test ID + DEBUG-build conditional 包好，production build 才用你的真 ID。</li>
+  <li><strong>付款設定 / Tax info</strong>：AdMob 要你填一次才會發錢。可以晚一點做、不影響開發。</li>
+</ul>

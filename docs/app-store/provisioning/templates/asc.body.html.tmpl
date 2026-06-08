@@ -1,0 +1,144 @@
+<p>
+完成這 4 步後告訴 Claude，他會接手：
+</p>
+<ul>
+  <li>把 {{APP_NAME}} 的 IAP 加進 IAP product IDs（<code>IAPProductIDs.swift</code>）</li>
+  <li>在 <code>iap-strings.xcstrings.patch</code> 加 {{APP_NAME}} 的 mirror</li>
+  <li>派 subagent 接 {{APP_NAME}} monetization wire（AdGate / IAP / Banner）</li>
+</ul>
+
+<hr class="section-divider">
+
+<div class="step">
+  <h2><span class="step-num">1</span>註冊 App ID <span class="tag">前置</span></h2>
+  <p>建立 {{APP_NAME}} 的 explicit App ID + 啟用必要 capabilities。</p>
+  <div class="url-badge">🔗 <a href="https://developer.apple.com/account/resources/identifiers/list" target="_blank">developer.apple.com/account/resources/identifiers/list</a></div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 點 <strong>+</strong> → 選 <strong>App IDs</strong> → Continue → 選 <strong>App</strong> → Continue</li>
+  </ul>
+  <div class="field-row">
+    <div class="field-label">Description</div>
+    <div class="field-value">{{APP_NAME}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Bundle ID</div>
+    <div class="field-value">{{BUNDLE_ID}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Type</div>
+    <div class="field-value">Explicit</div>
+  </div>
+  <p style="margin-top: 16px;"><strong>Capabilities 勾選</strong>：</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> ✅ <strong>iCloud</strong> → 選 <strong>Include CloudKit support</strong></li>
+    <li><input type="checkbox" class="checkbox"> ✅ <strong>Game Center</strong></li>
+  </ul>
+  <p>Continue → Register</p>
+  <div class="warn">這兩個 capability 漏勾，Xcode 簽章會失敗。後面要回頭補很麻煩。</div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">2</span>註冊 iCloud Container <span class="tag">U4</span></h2>
+  <p>建立專屬的 CloudKit container，跟其他 app 分開。</p>
+  <div class="url-badge">🔗 <a href="https://developer.apple.com/account/resources/identifiers/list/cloudContainer" target="_blank">developer.apple.com/account/resources/identifiers/list/cloudContainer</a></div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 點 <strong>+</strong></li>
+  </ul>
+  <div class="field-row">
+    <div class="field-label">Description</div>
+    <div class="field-value">{{APP_NAME}} iCloud Container</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Identifier</div>
+    <div class="field-value">{{CONTAINER_ID}}</div>
+  </div>
+  <p>Continue → Register</p>
+  <div class="warn">
+    <strong>還沒完！</strong>回到 Step 1 的 App ID <code>{{BUNDLE_ID}}</code> →
+    Edit → iCloud capability → <strong>Configure</strong> → 勾這個新 container → Save。
+    不綁定的話 CloudKit Dashboard 看不到這個 container。
+  </div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 已回 App ID 完成綁定</li>
+  </ul>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">3</span>在 ASC 建立 App 記錄</h2>
+  <p>App Store Connect 上建立 {{APP_NAME}} 的 app 記錄。</p>
+  <div class="url-badge">🔗 <a href="https://appstoreconnect.apple.com/apps" target="_blank">appstoreconnect.apple.com/apps</a></div>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> 點 <strong>+</strong> → New App</li>
+  </ul>
+  <div class="field-row">
+    <div class="field-label">Platforms</div>
+    <div class="field-value">✅ iOS 、 ✅ macOS</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Name</div>
+    <div class="field-value">{{APP_NAME}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Primary Language</div>
+    <div class="field-value">English (U.S.)</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Bundle ID</div>
+    <div class="field-value">{{BUNDLE_ID}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">SKU</div>
+    <div class="field-value">{{BUNDLE_ID}}</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">User Access</div>
+    <div class="field-value">Full Access</div>
+  </div>
+  <p>Create</p>
+  <div class="ok-note">
+    Bundle ID 那欄會看到下拉選單列出 Step 1 註冊的 ID。如果看不到，Step 1 還沒完成或還沒同步（通常 1-2 分鐘）。
+  </div>
+</div>
+
+<div class="step">
+  <h2><span class="step-num">4</span>註冊 Remove Ads IAP <span class="tag">U5</span></h2>
+  <p>在剛建好的 {{APP_NAME}} app 內建立 IAP 產品殼。Localizations / pricing 之後 ASCRegister 推進去。</p>
+  <div class="url-badge">📍 {{APP_NAME}} app → 左欄 <strong>Monetization</strong> → <strong>In-App Purchases</strong> → 點 <strong>+</strong></div>
+  <div class="field-row">
+    <div class="field-label">Type</div>
+    <div class="field-value">✅ Non-Consumable</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Reference Name</div>
+    <div class="field-value">Remove Ads v1</div>
+  </div>
+  <div class="field-row">
+    <div class="field-label">Product ID</div>
+    <div class="field-value">{{IAP_PRODUCT_ID}}</div>
+  </div>
+  <p>Create</p>
+  <p>進去產品頁後：</p>
+  <ul>
+    <li><input type="checkbox" class="checkbox"> <strong>Family Sharing</strong> → 開啟 → Save</li>
+    <li><input type="checkbox" class="checkbox"> 其他欄位 (Localizations / Pricing / Review screenshot) <strong>都不要填</strong> — ASCRegister 之後會推進去</li>
+  </ul>
+  <div class="warn">
+    <strong>Product ID 必須 byte-equal</strong>：<code>{{IAP_PRODUCT_ID}}</code>。
+    拼錯一個字，ASCRegister 對不到、會 silent skip。複製貼上、不要手打。
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<div class="done-banner">
+  <h3>✨ 4 步做完後</h3>
+  <p>回 Claude 跟他說「Apple 那邊 4 步完成」、他會接手 {{APP_NAME}} monetization wire 的工程側。</p>
+</div>
+
+<h3>順手檢查（optional）</h3>
+<ul>
+  <li><input type="checkbox" class="checkbox"> Step 1 App ID 的 capabilities 列表顯示 iCloud (CloudKit) + Game Center</li>
+  <li><input type="checkbox" class="checkbox"> Step 1 → Edit → iCloud → Configure 內看得到 <code>{{CONTAINER_ID}}</code> 被勾</li>
+  <li><input type="checkbox" class="checkbox"> Step 3 ASC app 記錄存在、Bundle ID 顯示正確</li>
+  <li><input type="checkbox" class="checkbox"> Step 4 IAP 產品狀態顯示「缺少元資料」（這正常，ASCRegister 會推進去解）</li>
+</ul>
