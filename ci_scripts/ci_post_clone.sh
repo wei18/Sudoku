@@ -82,17 +82,17 @@ mise exec -- tuist generate --no-open
 #      for the app this workflow builds. Output is .gitignore'd — must run
 #      before xcodebuild bundles <App>/Resources. Per-app config selected via
 #      $CI_PRODUCT (same scheme detection used for AdMob.xcconfig above):
-#        Sudoku      → license_plist.yml             (source of truth)
-#        Minesweeper → license_plist.minesweeper.yml (source of truth)
+#        Sudoku      → App/Sudoku/license_plist.yml             (source of truth)
+#        Minesweeper → App/Minesweeper/license_plist.yml (source of truth)
 #      Invocation routes through `mise run gen:acknowledgements` (SSOT task
 #      body in .mise.toml); the explicit --config-path arg puts the task in
 #      pass-through mode so only the built app's bundle is regenerated.
 case "${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}" in
     Sudoku)
-        mise run gen:acknowledgements --config-path license_plist.yml
+        mise run gen:acknowledgements --config-path App/Sudoku/license_plist.yml
         ;;
     Minesweeper)
-        mise run gen:acknowledgements --config-path license_plist.minesweeper.yml
+        mise run gen:acknowledgements --config-path App/Minesweeper/license_plist.yml
         ;;
     *)
         echo "ERROR: cannot determine acknowledgements config — CI_PRODUCT/CI_XCODE_SCHEME='${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}' (expected Sudoku or Minesweeper)"
