@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Regenerate the AppCompositionTests L10n fixture as a byte-copy of the shipping Sudoku catalog (kills hand-maintained drift; issue #394)."
+set -euo pipefail
+
+# The AppCompositionTests SwiftPM target lives OUTSIDE the App target, so it
+# cannot read App/Sudoku/Resources/Localizable.xcstrings via Bundle.module.
+# Instead of a hand-maintained fork (which silently drifted — issue #394), we
+# mechanically copy the shipping catalog into the test target's Resources as a
+# `.json`-renamed literal. The rename keeps SPM's xcstrings compiler from
+# processing it (see Packages/SudokuKit/Package.swift). `gen:l10n-fixture` is
+# the ONLY sanctioned way to update that file; the L10nFixtureSyncTests gate
+# fails CI if the committed fixture ever diverges from shipping.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SRC="$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings"
+DST="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/Localizable.xcstrings.json"
+
+cp "$SRC" "$DST"
+echo "Regenerated fixture: $DST (byte-copy of $SRC)"

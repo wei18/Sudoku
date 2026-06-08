@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#MISE description="L10n completeness gate: every shipping catalog (Sudoku + Minesweeper) must have 0 <TRANSLATE> placeholders and all 7 locales per key (issue #394)."
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+LOCALES="en zh-Hant zh-Hans ja ko es th"
+
+fail=0
+
+check_catalog() {
+  local path="$1"
+  local name="$2"
+  if [ ! -f "$path" ]; then
+    echo "ERROR [$name]: catalog not found at $path" >&2
+    fail=1
+    return
+  fi
+
+  # 1) No <TRANSLATE> placeholders.
+  local n
+  n="$(grep -c '<TRANSLATE>' "$path" || true)"
+  if [ "$n" -ne 0 ]; then
+    echo "FAIL [$name]: $n <TRANSLATE> placeholder(s) remain in $path" >&2
+    fail=1
+  fi
+
+  # 2) Every translatable key carries all 7 locales (skip shouldTranslate=false).
+  REPO_ROOT="$REPO_ROOT" python3 - "$path" "$name" $LOCALES <<'PY' || fail=1
+import json, sys
+path, name = sys.argv[1], sys.argv[2]
+locales = set(sys.argv[3:])
+d = json.load(open(path, encoding="utf-8"))
+bad = []
+for key, entry in d.get("strings", {}).items():
+    if entry.get("shouldTranslate") is False:
+        continue
+    present = set(entry.get("localizations", {}).keys())
+    missing = locales - present
+    if missing:
+        bad.append((key, sorted(missing)))
+if bad:
+    for key, miss in bad:
+        print(f"FAIL [{name}]: key {key!r} missing locales {miss}", file=sys.stderr)
+    sys.exit(1)
+PY
+}
+
+check_catalog "$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings" "Sudoku"
+check_catalog "$REPO_ROOT/App/Minesweeper/Resources/Localizable.xcstrings" "Minesweeper"
+
+# 3) The AppCompositionTests SwiftPM fixture must be a byte-copy of the shipping
+#    Sudoku catalog (no hand-edited drift). Regenerate via `mise run
+#    gen:l10n_fixture` if this fails.
+FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/Localizable.xcstrings.json"
+SUDOKU="$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings"
+if [ -f "$FIXTURE" ] && [ -f "$SUDOKU" ]; then
+  if ! cmp -s "$FIXTURE" "$SUDOKU"; then
+    echo "FAIL [fixture]: $FIXTURE drifted from shipping catalog. Run: mise run gen:l10n_fixture" >&2
+    fail=1
+  fi
+else
+  echo "ERROR [fixture]: fixture or shipping catalog missing" >&2
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "L10n gate FAILED." >&2
+  exit 1
+fi
+echo "L10n gate passed: both catalogs 0 placeholders, all 7 locales complete."

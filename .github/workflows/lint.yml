@@ -132,3 +132,21 @@ jobs:
           set -euo pipefail
           # shellcheck disable=SC2086
           mise run lint:swift_strict -- ${{ steps.changed.outputs.files }}
+
+  l10n:
+    name: L10n catalogs complete (no <TRANSLATE>, all 7 locales)
+    # Guards both shipping catalogs (Sudoku + Minesweeper) and the
+    # AppCompositionTests fixture sync. Reads the real source tree, so it
+    # catches placeholders the Xcode Cloud distributed test runner can't.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + pinned tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Run L10n completeness gate
+        run: mise run scan:l10n
