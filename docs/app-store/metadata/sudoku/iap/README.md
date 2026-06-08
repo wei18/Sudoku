@@ -22,7 +22,7 @@ Each `<product-slug>.yaml` is a single source-of-truth file covering:
 - `screenshot` — App Review screenshot spec + status (user-owned capture)
 
 en + zh-Hant are author-written sources. Other 5 locales are AI-translated per the
-[`ai-translated-localization`](../../../../.claude/skills/ai-translated-localization/SKILL.md) skill convention.
+[`ai-translated-localization`](../../../../../.claude/skills/ai-translated-localization/SKILL.md) skill convention.
 
 ## Sync to ASC
 
