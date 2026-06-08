@@ -1,5 +1,15 @@
 # App Store screenshots — snapshot-sourced staging tree
 
+> ## ⚠️ CURRENT STATE: PLACEHOLDERS, NOT REAL RENDERS
+> The PNGs currently committed in this tree are **byte-identical placeholders**, not
+> distinct per-screen renders — within each device folder every screen is the same file
+> (e.g. all five Sudoku iPhone PNGs share one set of bytes). They are committed as regular
+> files, not the symlinks described below. This is the known-deferred snapshot→screenshot
+> harness gap tracked in [`TASKS.md`](TASKS.md) (the `swift test` headless emit collapsed
+> every screen to one image). The `sync` / distinctness behaviour documented below describes
+> the **intended** pipeline once that harness lands — it does **not** reflect the bytes on
+> disk today. Do not treat these as real or submission-ready assets.
+
 This directory is **generated**, not hand-authored. Run:
 
 ```sh
