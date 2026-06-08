@@ -102,7 +102,7 @@ personal Game Center alias / iCloud name, then drop into
 
 > The single per-IAP **Review Screenshot** required by ASC for the Remove Ads
 > product is tracked separately in
-> `docs/app-store/metadata/iap/remove-ads.yaml` (`screenshot.expected_path`).
+> `docs/app-store/metadata/sudoku/iap/remove-ads.yaml` (`screenshot.expected_path`).
 
 ## Follow-ups (out of scope this round)
 

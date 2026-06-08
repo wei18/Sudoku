@@ -2,38 +2,34 @@
 
 Per-locale App Store Connect (ASC) listing copy for the project's apps.
 
-## Per-app structure (multi-app, since 2026-06-04)
+## Per-app structure (multi-app, symmetric since 2026-06-08)
 
-The repo now ships two apps (Sudoku, Minesweeper). The directory layout is
-**asymmetric on purpose**:
+The repo ships two apps (Sudoku, Minesweeper). Each app owns a **symmetric**
+per-app subtree under this directory:
 
 ```
 metadata/
-├── README.md            — this file
-├── app-meta.yaml         — Sudoku app-level (non-localized) fields (SUDOKU-IMPLICIT)
-├── <locale>/listing.yaml — Sudoku listings (SUDOKU-IMPLICIT, the original tree)
-├── iap/remove-ads.yaml   — Sudoku Remove Ads IAP (SUDOKU-IMPLICIT)
-└── minesweeper/          — Minesweeper listings (per-app subtree)
+├── README.md            — this file (shared)
+├── COPY-REVIEW.md        — ASO copy review for BOTH apps (shared)
+├── sudoku/              — Sudoku listings (per-app subtree)
+│   ├── app-meta.yaml
+│   ├── <locale>/listing.yaml
+│   └── iap/remove-ads.yaml
+└── minesweeper/         — Minesweeper listings (per-app subtree)
     ├── app-meta.yaml
     ├── <locale>/listing.yaml
     └── iap/remove-ads.yaml
 ```
 
-**Why asymmetric (decision 2026-06-04, #236):** the Sudoku files at the
-top level are the original single-app tree, already referenced by path from
-`v2.5-readiness.md`, the `asc-ops-handoff` skill, `ASCRegister` future-mode
-notes, and the IAP `remove-ads.yaml`. Symmetrising now (moving Sudoku into a
-`sudoku/` subdir) is a churny rename for zero functional gain this round.
-Adding a `minesweeper/` subtree is the minimal, reversible mirror. A future
-symmetrisation to `{sudoku,minesweeper}/` is a known, cheap follow-up — do it
-when a third app lands or when the ASCRegister `metadata` mode (see plan in
-`meetings/2026-06-04_asc-app-metadata-api-plan.md`) needs a uniform per-app
-glob.
+**Layout history:** Sudoku originally lived at this top level (the single-app
+tree, #236) with Minesweeper nested under `minesweeper/` — an asymmetry kept
+for one round to avoid a churny rename. It was symmetrised on 2026-06-08:
+Sudoku moved into `sudoku/`, so `ASCRegister`'s `--app <sudoku|minesweeper>`
+flag now resolves both apps the same way — `<metadata-dir>/<app>` — with no
+top-level special case. The default `--metadata-dir` stays `docs/app-store/metadata`
+(the shared root); the per-app subtree is appended by `--app`.
 
-When the `metadata` mode ships, it should take an `--app <sudoku|minesweeper>`
-flag (or derive the subtree from `--app-id`) and read the matching tree.
-
-## Files (Sudoku, top level)
+## Files (Sudoku, `sudoku/`)
 
 ```
 <locale>/listing.yaml — en (SOURCE) · zh-Hant (SOURCE) · ja · zh-Hans · es · th · ko
@@ -47,14 +43,14 @@ Some ASC fields are **global per app, not per locale** — duplicating them
 across the seven `listing.yaml` files would be a denormalization that drifts.
 They live once per app in `app-meta.yaml`:
 
-- `<top level>/app-meta.yaml` — Sudoku (mirrors the SUDOKU-IMPLICIT placement)
+- `sudoku/app-meta.yaml` — Sudoku
 - `minesweeper/app-meta.yaml` — Minesweeper
 
 **Shape decision (#309):** a separate per-app `app-meta.yaml` (not a block
 inside one locale's listing, not a single shared top-level file) — it keeps
 the existing per-locale files untouched, matches Fastlane `deliver`'s split of
-per-locale vs global/`review_information`, and slots into the asymmetric
-SUDOKU-IMPLICIT + `minesweeper/` layout above. Field names are snake_case to
+per-locale vs global/`review_information`, and slots into the symmetric
+`{sudoku,minesweeper}/` layout above. Field names are snake_case to
 match the ASC API JSON keys.
 
 | Field | Scope | Source of truth |
@@ -98,7 +94,7 @@ cleanup if the ASCRegister `metadata` mode wants a single source).
 ### Manual (Phase 10 A7 today)
 
 1. Open App Store Connect → My Apps → Sudoku → version 1.0.0 → App Information & Version Information.
-2. For each of the 7 locales, paste the matching field from `<locale>/listing.yaml`.
+2. For each of the 7 locales, paste the matching field from `sudoku/<locale>/listing.yaml`.
 3. After upload, **diff the live ASC page against this file** — ASC silently trims trailing whitespace and re-encodes some Unicode (e.g. half-width punctuation). If a diff appears, ASC wins; update this file to match.
 
 ### Future (ASCRegister CLI extension)
