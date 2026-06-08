@@ -13,6 +13,7 @@
 import SwiftUI
 import Testing
 @testable import MinesweeperAppComposition
+import GameShellUI
 import MinesweeperUI
 import MonetizationUI
 
@@ -32,6 +33,20 @@ import MonetizationUI
         // `minesweeperRemoveAdsProductId` and FakeIAPClient.
         let bag = MinesweeperAppComposition.preview()
         let view = SettingsView(monetizationController: bag.monetizationController)
+        _ = view.body
+    }
+
+    @Test func settingsViewConstructsWithNoticesSection() {
+        // #331: injecting a populated notices config mounts the shared
+        // SettingsNoticesSection. Confirms the wired path builds.
+        let view = SettingsView(
+            notices: SettingsNoticesConfig(
+                onAcknowledgements: {},
+                privacyPolicyURL: URL(string: "https://example.com/privacy"),
+                supportURL: URL(string: "https://example.com/support"),
+                copyright: "© 2026 Wei"
+            )
+        )
         _ = view.body
     }
 }

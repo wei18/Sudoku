@@ -12,6 +12,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
+import GameShellUI
 import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
@@ -68,6 +69,22 @@ struct SettingsViewTests {
         await viewModel.bootstrap()
         await viewModel.clearCache()
         #expect(viewModel.clearCacheConfirmation == "Cache cleared")
+    }
+
+    @Test func settingsViewConstructsWithNoticesSection() {
+        // #331: injecting a populated notices config mounts the shared
+        // SettingsNoticesSection. Confirms the wired path builds.
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(
+            viewModel: viewModel,
+            notices: SettingsNoticesConfig(
+                onAcknowledgements: {},
+                privacyPolicyURL: URL(string: "https://example.com/privacy"),
+                supportURL: URL(string: "https://example.com/support"),
+                copyright: "© 2026 Wei"
+            )
+        )
+        _ = view.body
     }
 
     // MARK: - Full-page snapshots (closes #181 test-coverage half)

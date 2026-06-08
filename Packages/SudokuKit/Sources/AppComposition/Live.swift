@@ -23,6 +23,10 @@ internal import SudokuUI
 internal import SwiftUI
 internal import Telemetry
 
+#if canImport(UIKit)
+internal import UIKit
+#endif
+
 extension AppComposition {
 
     public static func live() -> AppComposition {
@@ -242,6 +246,15 @@ extension AppComposition {
             )
         }
 
+        // #331: Notices / 宣告 section config. Acknowledgements live in the
+        // LicensePlist-generated `Settings.bundle` (iOS Settings.app → Sudoku →
+        // Acknowledgements), so the in-app row deep-links to the app's own iOS
+        // Settings page. On macOS there is no such deep-link → omit the row.
+        // Privacy-policy / support URLs are not wired yet (no canonical public
+        // URL committed to the repo — see meetings/2026-06-09_331-settingskit.md);
+        // copyright is derived locally, no fabrication.
+        let settingsNotices = makeSettingsNotices()
+
         let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleStore,
             persistence: persistence,
@@ -254,7 +267,8 @@ extension AppComposition {
             monetizationController: monetizationController,
             toastController: toastController,
             makeDailyReminderPrimer: makeDailyReminderPrimer,
-            makeReminderTimeSettings: makeReminderTimeSettings
+            makeReminderTimeSettings: makeReminderTimeSettings,
+            settingsNotices: settingsNotices
         )
 
         return AppComposition(
@@ -271,6 +285,28 @@ extension AppComposition {
             monetizationStateStore: monetizationStateStore,
             monetizationController: monetizationController,
             toastController: toastController
+        )
+    }
+
+    /// #331: builds the Sudoku Notices section config. Acknowledgements
+    /// deep-links to the app's iOS Settings page (where LicensePlist's
+    /// `Settings.bundle` surfaces); omitted on macOS (no deep-link). Copyright
+    /// is derived locally. Privacy/support URLs intentionally unwired pending a
+    /// canonical public URL (see the #331 meeting note).
+    @MainActor
+    private static func makeSettingsNotices() -> SettingsNoticesConfig {
+        let year = Calendar.current.component(.year, from: Date())
+        var onAcknowledgements: (@MainActor () -> Void)?
+        #if canImport(UIKit)
+        onAcknowledgements = {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+        #endif
+        return SettingsNoticesConfig(
+            onAcknowledgements: onAcknowledgements,
+            copyright: "© \(year) Wei"
         )
     }
 
