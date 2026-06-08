@@ -19,11 +19,17 @@ public import MonetizationCore
 public import MonetizationUI
 public import SwiftUI
 
-public struct HomeView: View {
+public struct HomeView<Header: View>: View {
     @Bindable private var viewModel: HomeViewModel
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     private let monetizationController: MonetizationStateController?
+    // #387: optional header rendered as the first child INSIDE the scroll
+    // region. RootView passes its ResumePill here so the pill scrolls with
+    // the mode cards instead of sitting pinned above HomeView's ScrollView.
+    // RootView still owns the resume-candidate state + tap closure; this is
+    // purely a placement slot.
+    private let header: Header
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -31,16 +37,20 @@ public struct HomeView: View {
         viewModel: HomeViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
-        monetizationController: MonetizationStateController? = nil
+        monetizationController: MonetizationStateController? = nil,
+        @ViewBuilder header: () -> Header = { EmptyView() }
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
         self.monetizationController = monetizationController
+        self.header = header()
     }
 
     public var body: some View {
         ScrollView {
+            header
+
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(HomeMode.allCases) { mode in
                     Button {

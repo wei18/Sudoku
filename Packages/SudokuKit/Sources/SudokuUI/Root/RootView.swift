@@ -112,7 +112,18 @@ public struct RootView: View {
 
     @ViewBuilder
     private var rootContent: some View {
-        VStack(spacing: 0) {
+        // #387: the ResumePill is threaded into HomeView's scroll region via
+        // its `header` slot so it scrolls WITH the mode cards instead of being
+        // pinned above HomeView's own ScrollView. RootView still owns the
+        // resume candidate + tap wiring; only the placement moved.
+        HomeView(
+            viewModel: HomeViewModel(
+                path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
+            ),
+            adProvider: adProvider,
+            adGate: adGate,
+            monetizationController: monetizationController
+        ) {
             if let candidate = viewModel.resumeCandidate {
                 ResumePill(candidate: candidate) {
                     viewModel.resumeTapped()
@@ -120,14 +131,6 @@ public struct RootView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
             }
-            HomeView(
-                viewModel: HomeViewModel(
-                    path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
-                ),
-                adProvider: adProvider,
-                adGate: adGate,
-                monetizationController: monetizationController
-            )
         }
         .background(theme.surface.background.resolved)
     }
