@@ -246,16 +246,74 @@ extension AppComposition {
             )
         }
 
-        // #321: builds the Settings Daily-reminder time picker model per Settings
-        // mount. Reads/writes the SAME `reminderSettingsStore` the primer uses, so
-        // a time change here is honored by the next primer schedule and vice-versa.
-        let makeReminderTimeSettings: @MainActor () -> ReminderTimeSettingsModel = {
-            ReminderTimeSettingsModel(
-                settingsStore: reminderSettingsStore,
+        // #287: builds the Settings Reminders entry per Settings mount — the
+        // shared `ReminderSettingsModel` (enable / prime permission / fire-time)
+        // + the Sudoku-localized copy. Reads/writes the SAME `reminderSettingsStore`
+        // the post-Daily primer uses (via get/set closures), so a time change here
+        // is honored by the next primer schedule and vice-versa. `reminderEmit`
+        // bridges the model's decoupled `Event` to the `Telemetry` facade.
+        let reminderEmit: @Sendable (ReminderSettingsModel.Event) -> Void = { [telemetry] event in
+            let telemetryEvent: TelemetryEvent?
+            switch event {
+            case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
+            case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
+            case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
+            // No `reminderCancelled` telemetry case today — disabling is silent
+            // (the OSLog/Reminders subsystem already logs the center call).
+            case .cancelled: telemetryEvent = nil
+            }
+            guard let telemetryEvent else { return }
+            Task { await telemetry.observe(telemetryEvent) }
+        }
+        let makeReminderSettings: @MainActor () -> ReminderSettingsEntry = {
+            let model = ReminderSettingsModel(
+                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
                 scheduler: reminderScheduler,
-                authorizer: reminderAuthorizer,
+                kind: .dailyReady,
                 content: dailyReadyContent,
-                emit: emit
+                getFireTime: {
+                    let time = reminderSettingsStore.dailyReadyFireTime
+                    return (hour: time.hour, minute: time.minute)
+                },
+                setFireTime: { time in
+                    reminderSettingsStore.dailyReadyFireTime = ReminderFireTime(
+                        hour: time.hour,
+                        minute: time.minute
+                    )
+                },
+                emit: reminderEmit
+            )
+            return ReminderSettingsEntry(
+                model: model,
+                copy: ReminderSettingsCopy(
+                    sectionTitle: "Reminders",
+                    enableTitle: "Daily reminder",
+                    enableCTA: "Turn On",
+                    enabledTitle: "Daily reminder",
+                    enabledStatus: "On",
+                    timeTitle: "Time",
+                    deniedTitle: "Notifications are off",
+                    deniedCTA: "Fix"
+                ),
+                primerCopy: ReminderPrimerCopy(
+                    title: "Never miss a Daily",
+                    lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
+                    bullets: [
+                        "One gentle nudge a day, default 9 AM",
+                        "Adjustable anytime in Settings",
+                        "Turn it off whenever you like"
+                    ],
+                    acceptCTA: "Remind me",
+                    declineCTA: "Not now",
+                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+                ),
+                deniedCopy: ReminderDeniedCopy(
+                    title: "Reminders are off",
+                    message: "Notifications are turned off for Sudoku in Settings, so we can't tell you when the Daily is ready.",
+                    openSettingsCTA: "Open Settings",
+                    dismissCTA: "Not now",
+                    macOSGuidance: "Enable notifications in System Settings → Notifications → Sudoku."
+                )
             )
         }
 
@@ -280,7 +338,7 @@ extension AppComposition {
             monetizationController: monetizationController,
             toastController: toastController,
             makeDailyReminderPrimer: makeDailyReminderPrimer,
-            makeReminderTimeSettings: makeReminderTimeSettings,
+            makeReminderSettings: makeReminderSettings,
             settingsNotices: settingsNotices
         )
 

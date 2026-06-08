@@ -44,7 +44,11 @@ internal import MonetizationTesting
 internal import MonetizationUI
 internal import Persistence
 internal import PersistenceTesting
+internal import Reminders
 internal import Telemetry
+// #287: `ReminderSettingsModel` + the primer/section copy types live in
+// GameShellUI; `MinesweeperReminderSettingsEntry` lives in MinesweeperUI.
+internal import GameShellUI
 
 extension MinesweeperAppComposition {
 
@@ -159,13 +163,100 @@ extension MinesweeperAppComposition {
         // once at composition.
         monetizationController.startListeningForLifetimeOfApp()
 
+        // #287: reminder wiring — mirrors Sudoku's AppComposition. RemindersKit's
+        // Live conformers + `UNUserNotificationCenter` stay confined here. The
+        // Settings Reminders entry is the user-initiated permission-priming path
+        // (MS has no post-Daily primer flow). The fire-time persists in a
+        // device-local `UserDefaults` pair under an MS-namespaced key prefix
+        // (`com.wei18.minesweeper.reminder.*`) — a reminder fires on the device
+        // that scheduled it, so it is NOT CloudKit-synced. `reminderEmit` bridges
+        // the model's decoupled `Event` to the `Telemetry` facade.
+        let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: "com.wei18.minesweeper")
+        let reminderScheduler = LiveReminderScheduler(subsystem: "com.wei18.minesweeper")
+        let reminderEmit: @Sendable (ReminderSettingsModel.Event) -> Void = { [telemetry] event in
+            let telemetryEvent: TelemetryEvent?
+            switch event {
+            case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
+            case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
+            case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
+            case .cancelled: telemetryEvent = nil
+            }
+            guard let telemetryEvent else { return }
+            Task { await telemetry.observe(telemetryEvent) }
+        }
+        let reminderDefaults = UserDefaults.standard
+        let reminderHourKey = "com.wei18.minesweeper.reminder.dailyReadyHour"
+        let reminderMinuteKey = "com.wei18.minesweeper.reminder.dailyReadyMinute"
+        let reminderContent = ReminderContent(
+            title: "Today's Minesweeper is ready",
+            body: "Your daily boards are waiting — keep your streak going."
+        )
+        let makeReminderSettings: @MainActor () -> MinesweeperReminderSettingsEntry = {
+            let model = ReminderSettingsModel(
+                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
+                scheduler: reminderScheduler,
+                kind: .dailyReady,
+                content: reminderContent,
+                getFireTime: {
+                    // Missing key → 9:00 AM default (UserDefaults.integer returns 0
+                    // for absent keys, indistinguishable from midnight — gate on
+                    // presence). Mirrors Sudoku's ReminderSettingsStore default.
+                    guard reminderDefaults.object(forKey: reminderHourKey) != nil else {
+                        return (hour: 9, minute: 0)
+                    }
+                    return (
+                        hour: reminderDefaults.integer(forKey: reminderHourKey),
+                        minute: reminderDefaults.integer(forKey: reminderMinuteKey)
+                    )
+                },
+                setFireTime: { time in
+                    reminderDefaults.set(time.hour, forKey: reminderHourKey)
+                    reminderDefaults.set(time.minute, forKey: reminderMinuteKey)
+                },
+                emit: reminderEmit
+            )
+            return MinesweeperReminderSettingsEntry(
+                model: model,
+                copy: ReminderSettingsCopy(
+                    sectionTitle: "Reminders",
+                    enableTitle: "Daily reminder",
+                    enableCTA: "Turn On",
+                    enabledTitle: "Daily reminder",
+                    enabledStatus: "On",
+                    timeTitle: "Time",
+                    deniedTitle: "Notifications are off",
+                    deniedCTA: "Fix"
+                ),
+                primerCopy: ReminderPrimerCopy(
+                    title: "Never miss a Daily",
+                    lede: "We'll let you know the moment tomorrow's Daily Minesweeper is ready.",
+                    bullets: [
+                        "One gentle nudge a day, default 9 AM",
+                        "Adjustable anytime in Settings",
+                        "Turn it off whenever you like"
+                    ],
+                    acceptCTA: "Remind me",
+                    declineCTA: "Not now",
+                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+                ),
+                deniedCopy: ReminderDeniedCopy(
+                    title: "Reminders are off",
+                    message: "Notifications are turned off for Minesweeper in Settings, so we can't tell you when the Daily is ready.",
+                    openSettingsCTA: "Open Settings",
+                    dismissCTA: "Not now",
+                    macOSGuidance: "Enable notifications in System Settings → Notifications → Minesweeper."
+                )
+            )
+        }
+
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
             adProvider: adProvider,
             adGate: adGate,
             persistence: persistence,
             gameCenter: gameCenter,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            makeReminderSettings: makeReminderSettings
         )
 
         // #313: launch-bootstrap VM owning the GC auth handshake. Shares the

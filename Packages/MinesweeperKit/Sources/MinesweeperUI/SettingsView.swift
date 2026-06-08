@@ -31,17 +31,24 @@ public struct SettingsView: View {
     // #331: shared Notices section inputs, app-injected by the host. Defaulted
     // nil so previews / tests keep the byte-identical screen.
     private let notices: SettingsNoticesConfig?
+    // #287: shared Reminders entry (enable / prime permission / fire-time),
+    // mirroring Sudoku. Defaulted nil so previews / tests mount a byte-identical
+    // screen without the section; the host (LiveRouteFactory) injects one wired
+    // to the RemindersKit Live conformers.
+    private let reminderSettings: MinesweeperReminderSettingsEntry?
 
     public init(
         version: String = "1.0.0",
         clearCache: @escaping @MainActor () async -> Void = {},
         monetizationController: MonetizationStateController? = nil,
-        notices: SettingsNoticesConfig? = nil
+        notices: SettingsNoticesConfig? = nil,
+        reminderSettings: MinesweeperReminderSettingsEntry? = nil
     ) {
         self.version = version
         self.clearCache = clearCache
         self.monetizationController = monetizationController
         self.notices = notices
+        self.reminderSettings = reminderSettings
     }
 
     public var body: some View {
@@ -63,6 +70,19 @@ public struct SettingsView: View {
                 }
             }
 
+            // #287: shared Reminders section — same building block Sudoku mounts.
+            // Tint is `.accentColor` (MS has no theme tokens yet); the primer
+            // sheet itself falls back to GameShellUI's NeutralTheme.
+            if let reminderSettings {
+                ReminderSettingsSection(
+                    model: reminderSettings.model,
+                    tintColor: .accentColor,
+                    copy: reminderSettings.copy,
+                    primerCopy: reminderSettings.primerCopy,
+                    deniedCopy: reminderSettings.deniedCopy
+                )
+            }
+
             Section("About") {
                 SettingsAboutVersionRow(version: version, tintColor: .accentColor)
             }
@@ -81,6 +101,30 @@ public struct SettingsView: View {
                 await controller.bootstrap()
             }
         }
+    }
+}
+
+/// #287: bundle of the shared `ReminderSettingsModel` + the MS-localized copy the
+/// `ReminderSettingsSection` needs. Built at the composition root
+/// (`LiveRouteFactory`) so all reminder wiring stays there; the view receives a
+/// ready-to-mount value. Mirrors `SudokuUI.ReminderSettingsEntry`. Not
+/// `Sendable` — carries `LocalizedStringKey` copy built + consumed on `@MainActor`.
+public struct MinesweeperReminderSettingsEntry {
+    public let model: ReminderSettingsModel
+    public let copy: ReminderSettingsCopy
+    public let primerCopy: ReminderPrimerCopy
+    public let deniedCopy: ReminderDeniedCopy
+
+    public init(
+        model: ReminderSettingsModel,
+        copy: ReminderSettingsCopy,
+        primerCopy: ReminderPrimerCopy,
+        deniedCopy: ReminderDeniedCopy
+    ) {
+        self.model = model
+        self.copy = copy
+        self.primerCopy = primerCopy
+        self.deniedCopy = deniedCopy
     }
 }
 

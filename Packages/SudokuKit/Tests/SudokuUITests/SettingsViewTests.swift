@@ -17,6 +17,7 @@ import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
 import Persistence
+import Reminders
 import SudokuEngine
 import SudokuKitTesting
 
@@ -82,6 +83,46 @@ struct SettingsViewTests {
                 privacyPolicyURL: URL(string: "https://example.com/privacy"),
                 supportURL: URL(string: "https://example.com/support"),
                 copyright: "© 2026 Wei"
+            )
+        )
+        _ = view.body
+    }
+
+    @Test func settingsViewConstructsWithReminderSection() {
+        // #287: injecting a reminder entry mounts the shared
+        // `ReminderSettingsSection` (enable / prime permission / time picker).
+        // Built over the Noop reminder conformers — no system center touched.
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let model = ReminderSettingsModel(
+            permissionModel: ReminderPermissionModel(authorizer: NoopNotificationAuthorizing()),
+            scheduler: NoopReminderScheduler(),
+            kind: .dailyReady,
+            content: ReminderContent(title: "t", body: "b"),
+            getFireTime: { (hour: 9, minute: 0) },
+            setFireTime: { _ in }
+        )
+        let view = SettingsView(
+            viewModel: viewModel,
+            reminderSettings: ReminderSettingsEntry(
+                model: model,
+                copy: ReminderSettingsCopy(
+                    sectionTitle: "Reminders",
+                    enableTitle: "Daily reminder",
+                    enableCTA: "Turn On",
+                    enabledTitle: "Daily reminder",
+                    enabledStatus: "On",
+                    timeTitle: "Time",
+                    deniedTitle: "Notifications are off",
+                    deniedCTA: "Fix"
+                ),
+                primerCopy: ReminderPrimerCopy(
+                    title: "t", lede: "l", bullets: ["b"],
+                    acceptCTA: "a", declineCTA: "d", fineprint: "f"
+                ),
+                deniedCopy: ReminderDeniedCopy(
+                    title: "t", message: "m", openSettingsCTA: "o",
+                    dismissCTA: "d", macOSGuidance: "g"
+                )
             )
         )
         _ = view.body
