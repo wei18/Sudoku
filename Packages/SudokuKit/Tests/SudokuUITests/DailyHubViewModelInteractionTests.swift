@@ -12,9 +12,12 @@ import Foundation
 import Testing
 @testable import SudokuUI
 
+import GameState
 import Persistence
 import PuzzleStore
+import SudokuEngine
 import SudokuKitTesting
+import Telemetry
 
 @MainActor
 @Suite("DailyHubViewModel — interaction (services + injected path)")
@@ -78,5 +81,103 @@ struct DailyHubViewModelInteractionTests {
         viewModel.cardTapped(tapped)
 
         #expect(box.routes == [.board(puzzleId: tapped.envelope.identity.puzzleId)])
+    }
+
+    // MARK: - #379: completed card routes to Completion
+
+    /// Builds a completed-status snapshot whose `elapsedSeconds` is the
+    /// frozen solve time we expect to surface on the Completion route.
+    private func completedSnapshot(elapsedSeconds: Int) -> GameSessionSnapshot {
+        let puzzle = FakePuzzleProvider.defaultPuzzle(difficulty: .easy, seed: 1)
+        return GameSessionSnapshot(
+            puzzle: puzzle,
+            currentBoard: puzzle.solution,
+            status: .completed,
+            elapsedSeconds: elapsedSeconds,
+            undoMoves: [],
+            redoMoves: [],
+            notes: NotesGrid()
+        )
+    }
+
+    @Test func tappingCompletedCardRoutesToCompletionWithSavedTime() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        await persistence.setLoadOrCreateSnapshot(completedSnapshot(elapsedSeconds: 742))
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        // Mark the tapped card completed (bootstrap fixture leaves all un-completed).
+        let base = cards[1]
+        let completedCard = DailyCard(envelope: base.envelope, isCompleted: true)
+
+        await viewModel.openCompleted(completedCard)
+
+        #expect(box.routes == [
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+        ])
+    }
+
+    @Test func tappingUncompletedCardStillRoutesToBoard() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let tapped = cards[0]
+        #expect(tapped.isCompleted == false)
+
+        viewModel.cardTapped(tapped)
+
+        #expect(box.routes == [.board(puzzleId: tapped.envelope.identity.puzzleId)])
+    }
+
+    @Test func completedCardLoadFailureReportsAndFallsBackToBoard() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        await persistence.setLoadOrCreateError(.zoneNotProvisioned)
+        let reporter = RecordingErrorReporter()
+        let box = RoutePathBox()
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            errorReporter: reporter,
+            dateProvider: { Self.fixedDate },
+            path: box.binding
+        )
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let completedCard = DailyCard(envelope: cards[2].envelope, isCompleted: true)
+
+        await viewModel.openCompleted(completedCard)
+
+        // Never worse than today's behavior: still navigates to the board.
+        #expect(box.routes == [.board(puzzleId: cards[2].envelope.identity.puzzleId)])
+        let count = await reporter.reportCount
+        #expect(count == 1)
+    }
+}
+
+/// Records `report(_:underlying:source:)` calls so the failure-path test can
+/// assert the error was funneled rather than silently swallowed.
+private actor RecordingErrorReporter: ErrorReporter {
+    private(set) var reportCount = 0
+
+    func report(_ error: UserFacingError, underlying: any Error, source: String) {
+        reportCount += 1
     }
 }
