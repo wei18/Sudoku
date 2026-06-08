@@ -43,15 +43,15 @@ description: |
   Requiere iOS 26 o macOS 26.
 keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,lapiz,notas,rompecabezas,sudoko,solver,clasico"
 whats_new: |
-  Versión 2.3.5
+  Versión 2.5
 
-  • Modo Diario: tres puzles nuevos cada día a las 00:00 UTC con sus propios rankings recurrentes.
-  • Modo Práctica: tableros aleatorios por dificultad, sin reloj ni puntuación.
-  • Sincronización entre dispositivos: las partidas y estadísticas viajan entre iPhone y Mac a través de tu base de datos privada de iCloud.
-  • Game Center: tres rankings diarios y ocho logros (500 puntos en total).
-  • Siete idiomas: chino tradicional, inglés, japonés, chino simplificado, español, tailandés, coreano.
-  • Mac nativo, sin Catalyst — teclado completo y elementos en la barra de menús.
-  • Sin perfilado propio. Los anuncios solo se adaptan con tu permiso — puedes rechazarlos o quitar el banner con una compra única de Quitar anuncios.
+  Lógica serena, ahora sin anuncios si así lo prefieres.
+
+  • Quitar anuncios — una compra única, no consumible, retira el banner en todas partes, para siempre. Sin suscripción, sin cargos recurrentes.
+  • Restaurar compras — ¿ya la compraste? Restaura tu compra de Quitar anuncios en cualquiera de tus dispositivos con un toque.
+  • Compartir en Familia — una sola compra cubre a todo tu grupo de Compartir en Familia.
+
+  La privacidad sigue siendo como debe ser: no tenemos analítica propia, así que nada nuestro crea un perfil de ti. Si conservas el banner gratuito, los anuncios se adaptan solo con tu permiso, y puedes rechazarlo. Al quitar los anuncios, también se detiene por completo el uso del identificador por parte de la biblioteca de anuncios.
 
   Gracias por jugar. Comentarios y errores son bienvenidos en el enlace de soporte.
 marketing_url: null

@@ -43,15 +43,15 @@ description: |
   Requires iOS 26 or macOS 26.
 keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,killer,solver,board,classic"
 whats_new: |
-  Version 2.3.5
+  Version 2.5
 
-  • Daily mode: three new puzzles at UTC 00:00 every day, with their own recurring leaderboards.
-  • Practice mode: random boards by difficulty, no clock and no scores.
-  • Cross-device sync: saves and statistics flow between iPhone and Mac via your iCloud Private Database.
-  • Game Center: three daily leaderboards and eight achievements (500 points total).
-  • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
-  • Mac native build, not Catalyst — full keyboard support and menu bar items.
-  • No first-party profiling. Ads stay relevant only with your permission — decline, or remove the banner with a one-time Remove Ads purchase.
+  Quiet logic, now ad-free if you want it.
+
+  • Remove Ads — a one-time, non-consumable purchase clears the banner everywhere, forever. No subscription, no recurring charge.
+  • Restore Purchases — already bought it? Restore your Remove Ads entitlement on any of your devices in a tap.
+  • Family Sharing — one purchase covers your whole Family Sharing group.
+
+  Privacy stays the way it should be: we run no first-party analytics, so nothing of ours builds a profile of you. If you keep the free banner, ads tailor only with your permission — and you can decline. Removing ads removes the ad library's identifier use entirely.
 
   Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null
