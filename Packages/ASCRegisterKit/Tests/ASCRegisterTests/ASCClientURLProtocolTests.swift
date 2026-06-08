@@ -158,6 +158,46 @@ internal struct ASCClientURLProtocolTests {
     {"data":{"id":"x","type":"appStoreVersions","attributes":{"versionString":"2.5"}}}
     """#
 
+    /// A two-platform `appStoreVersions` body where each platform may carry a
+    /// RELEASED predecessor alongside its editable version, and the state token
+    /// key (`appStoreState` legacy vs `appVersionState` modern) is selectable.
+    /// Used by the per-platform `hasReleasedVersion` tests (#362): the editable
+    /// version is what gets patched, the optional released predecessor is what
+    /// flips that platform's `hasReleasedVersion` to true.
+    ///
+    /// - `stateKey`: `"appStoreState"` (legacy) or `"appVersionState"` (modern).
+    /// - `iosReleased` / `macReleased`: emit a released predecessor (using
+    ///   `releasedToken`) for that platform's version list.
+    /// - `releasedToken`: the released-state token (e.g. `READY_FOR_SALE` or the
+    ///   modern `READY_FOR_DISTRIBUTION`).
+    private static func twoPlatformVersionsWithReleased(
+        stateKey: String,
+        iosReleased: Bool,
+        macReleased: Bool,
+        releasedToken: String
+    ) -> String {
+        func releasedRow(platform: String, id: String) -> String {
+            #"""
+            {"id":"\#(id)","type":"appStoreVersions",
+             "attributes":{"versionString":"1.0","platform":"\#(platform)",
+                           "\#(stateKey)":"\#(releasedToken)"}}
+            """#
+        }
+        func editableRow(platform: String, id: String, version: String) -> String {
+            #"""
+            {"id":"\#(id)","type":"appStoreVersions",
+             "attributes":{"versionString":"\#(version)","platform":"\#(platform)",
+                           "\#(stateKey)":"PREPARE_FOR_SUBMISSION"}}
+            """#
+        }
+        var rows: [String] = []
+        if iosReleased { rows.append(releasedRow(platform: "IOS", id: "ios-rel")) }
+        rows.append(editableRow(platform: "IOS", id: "ios-v", version: "2.0"))
+        if macReleased { rows.append(releasedRow(platform: "MAC_OS", id: "mac-rel")) }
+        rows.append(editableRow(platform: "MAC_OS", id: "mac-v", version: "2.0"))
+        return "{\"data\":[" + rows.joined(separator: ",") + "],\"links\":{}}"
+    }
+
     @Test("getAllPages follows links.next across two pages and concatenates")
     internal func paginationAcrossTwoPages() async throws {
         let page1 = #"""
@@ -402,6 +442,176 @@ internal struct ASCClientURLProtocolTests {
         #expect(snapshots[0].platform == "IOS")
         let getURLs = StubState.recordedRequests().filter { $0.method == "GET" }.map(\.url)
         #expect(!getURLs.contains { $0.contains("/v1/appStoreVersions/mac-v/appStoreVersionLocalizations") })
+    }
+
+    // MARK: - Per-platform hasReleasedVersion (#362)
+
+    /// Each platform's `hasReleasedVersion` is computed from THAT platform's own
+    /// versions, not app-wide. iOS first submission (no released predecessor) +
+    /// macOS has a released predecessor ⇒ iOS snapshot is NOT released, macOS IS.
+    @Test("snapshotPlatformVersions computes hasReleasedVersion per platform")
+    internal func snapshotHasReleasedVersionPerPlatform() async throws {
+        let emptyLocs = #"{"data":[],"links":{}}"#
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersionsWithReleased(
+                stateKey: "appStoreState", iosReleased: false, macReleased: true,
+                releasedToken: "READY_FOR_SALE"
+            )),
+            StubResponse(status: 200, body: emptyLocs),  // GET ios-v locs
+            StubResponse(status: 200, body: emptyLocs),  // GET mac-v locs
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .all, versionFilter: nil
+        )
+
+        let byPlatform = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.platform, $0) })
+        #expect(byPlatform["IOS"]?.hasReleasedVersion == false)
+        #expect(byPlatform["MAC_OS"]?.hasReleasedVersion == true)
+    }
+
+    /// A platform whose released predecessor reports the MODERN `appVersionState`
+    /// token (`READY_FOR_DISTRIBUTION`) still computes `hasReleasedVersion == true`
+    /// — the released-states set now accepts modern tokens (#362).
+    @Test("snapshotPlatformVersions sees a release via modern appVersionState token")
+    internal func snapshotReleasedViaModernToken() async throws {
+        let emptyLocs = #"{"data":[],"links":{}}"#
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersionsWithReleased(
+                stateKey: "appVersionState", iosReleased: true, macReleased: false,
+                releasedToken: "READY_FOR_DISTRIBUTION"
+            )),
+            StubResponse(status: 200, body: emptyLocs),  // GET ios-v locs
+            StubResponse(status: 200, body: emptyLocs),  // GET mac-v locs
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .all, versionFilter: nil
+        )
+
+        let byPlatform = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.platform, $0) })
+        // iOS released (via modern token) ⇒ true; macOS first submission ⇒ false.
+        #expect(byPlatform["IOS"]?.hasReleasedVersion == true)
+        #expect(byPlatform["MAC_OS"]?.hasReleasedVersion == false)
+    }
+
+    /// End-to-end whatsNew gating: iOS first submission + macOS released ⇒ the
+    /// reconciler drops `whatsNew` for the iOS version-loc create but keeps it
+    /// for macOS — the multi-platform mixed case that fix #1 would otherwise
+    /// unmask into a first-submission iOS 409 STATE_ERROR.
+    @Test("per-platform plan drops whatsNew for first-submission iOS, keeps it for released macOS")
+    internal func perPlatformWhatsNewGating() async throws {
+        let emptyLocs = #"{"data":[],"links":{}}"#
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersionsWithReleased(
+                stateKey: "appVersionState", iosReleased: false, macReleased: true,
+                releasedToken: "READY_FOR_DISTRIBUTION"
+            )),
+            StubResponse(status: 200, body: emptyLocs),  // GET ios-v locs
+            StubResponse(status: 200, body: emptyLocs),  // GET mac-v locs
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .all, versionFilter: nil
+        )
+
+        let cfg = MetadataConfig(
+            appMeta: AppMeta(
+                app: "sudoku", appleId: "1", copyright: nil,
+                categories: AppMeta.Categories(
+                    primary: nil, primaryFirstSub: nil, primarySecondSub: nil,
+                    secondary: nil, secondaryFirstSub: nil, secondarySecondSub: nil
+                )
+            ),
+            listings: [ListingLocale(
+                locale: "en-US", name: nil, subtitle: nil, privacyPolicyUrl: nil,
+                description: "desc", keywords: nil, promotionalText: nil,
+                whatsNew: "Bug fixes", marketingUrl: nil, supportUrl: nil
+            )]
+        )
+
+        func createWhatsNew(for platform: String) -> String?? {
+            guard let snap = snapshots.first(where: { $0.platform == platform }) else { return nil }
+            let remote = MetadataRemoteState(
+                versionId: snap.versionId,
+                versionLocalizations: snap.versionLocalizations,
+                hasReleasedVersion: snap.hasReleasedVersion
+            )
+            let actions = MetadataReconciler.plan(config: cfg, remote: remote)
+            return actions.compactMap { action -> String?? in
+                if case let .createVersionLoc(_, _, payload) = action { return payload.whatsNew }
+                return nil
+            }.first
+        }
+
+        // iOS first submission → whatsNew dropped (nil) → no 409.
+        #expect(createWhatsNew(for: "IOS") == .some(.none))
+        // macOS released → whatsNew preserved.
+        #expect(createWhatsNew(for: "MAC_OS") == .some(.some("Bug fixes")))
+    }
+
+    /// Multi-platform mixed idempotency: iOS version-loc already matches config,
+    /// macOS does not ⇒ exactly ONE update action across both platforms (the
+    /// macOS update); iOS plans a no-op (`versionLocUnchanged`).
+    @Test("metadata mixed idempotency: iOS already at target, macOS not → exactly one update")
+    internal func mixedIdempotencyOneUpdate() async throws {
+        // Both platforms released so whatsNew gating doesn't interfere; the only
+        // drift is macOS's description.
+        StubState.reset(with: [
+            StubResponse(status: 200, body: Self.twoPlatformVersionsWithReleased(
+                stateKey: "appVersionState", iosReleased: true, macReleased: true,
+                releasedToken: "READY_FOR_DISTRIBUTION"
+            )),
+            // iOS locs: already "synced desc" → matches config → no update.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US","description":"synced desc"}}],"links":{}}
+            """#),
+            // macOS locs: stale "old desc" → differs → one update.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"mac-loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US","description":"old desc"}}],"links":{}}
+            """#),
+        ])
+
+        let client = Self.makeClient()
+        let snapshots = try await ASCRegisterCLI.snapshotPlatformVersions(
+            client: client, appId: "app-1", filter: .all, versionFilter: nil
+        )
+        let listing = ListingLocale(
+            locale: "en-US", name: nil, subtitle: nil, privacyPolicyUrl: nil,
+            description: "synced desc", keywords: nil, promotionalText: nil,
+            whatsNew: nil, marketingUrl: nil, supportUrl: nil
+        )
+        let cfg = MetadataConfig(
+            appMeta: AppMeta(
+                app: "sudoku", appleId: "1", copyright: nil,
+                categories: AppMeta.Categories(
+                    primary: nil, primaryFirstSub: nil, primarySecondSub: nil,
+                    secondary: nil, secondaryFirstSub: nil, secondarySecondSub: nil
+                )
+            ),
+            listings: [listing]
+        )
+
+        var updates: [String] = []  // versionId of each platform planning an update
+        for snap in snapshots {
+            let remote = MetadataRemoteState(
+                versionId: snap.versionId,
+                versionLocalizations: snap.versionLocalizations,
+                hasReleasedVersion: snap.hasReleasedVersion
+            )
+            for action in MetadataReconciler.plan(config: cfg, remote: remote) {
+                if case .updateVersionLoc = action { updates.append(snap.versionId) }
+            }
+        }
+
+        // Exactly one update across both platforms — the macOS one. iOS matched
+        // config so it stayed a no-op (no spurious second update).
+        #expect(updates == ["mac-v"])
     }
 
     // MARK: - Screenshot upload (reserve → PUT → commit + checksum)
