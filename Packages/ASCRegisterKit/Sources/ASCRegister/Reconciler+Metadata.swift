@@ -114,17 +114,37 @@ internal struct MetadataRemoteState: Sendable, Equatable {
         self.hasReleasedVersion = hasReleasedVersion
     }
 
-    /// ASC `appStoreState` values that mean a version is live / has been
-    /// released to the store — the presence of any one means this is NOT a
-    /// first submission, so `whatsNew` is editable. Used by the `metadata`
-    /// command to compute `hasReleasedVersion` from the fetched version list.
+    /// Version-state tokens that mean a version is live / has been released to
+    /// the store — the presence of any one means this is NOT a first submission,
+    /// so `whatsNew` is editable. Used by the `metadata` command to compute
+    /// `hasReleasedVersion` from the fetched version list.
+    ///
+    /// ASC API 3.3 renamed the `appStoreState` field to `appVersionState`,
+    /// renaming two released tokens in the process (the remaining released
+    /// tokens are identical in both enums). The snapshot reads whichever field
+    /// the API returns, so BOTH the legacy and the modern released tokens must
+    /// be accepted — otherwise a live app reporting only the modern token
+    /// computes `hasReleasedVersion == false` and the reconciler wrongly drops
+    /// `whatsNew` (issue #362).
+    ///
+    /// Deprecated `appStoreState` → modern `appVersionState` released-token pairs:
+    ///   READY_FOR_SALE          → READY_FOR_DISTRIBUTION
+    ///   PROCESSING_FOR_APP_STORE → PROCESSING_FOR_DISTRIBUTION
+    /// (PENDING_APPLE_RELEASE / PENDING_DEVELOPER_RELEASE / REPLACED_WITH_NEW_VERSION
+    /// are spelled identically in both enums; REMOVED_FROM_SALE has no modern
+    /// equivalent but is kept for legacy-credential reads.)
     internal static let releasedAppStoreStates: Set<String> = [
+        // Legacy `appStoreState` tokens.
         "READY_FOR_SALE",
+        "PROCESSING_FOR_APP_STORE",
+        "REMOVED_FROM_SALE",
+        // Modern `appVersionState` renames.
+        "READY_FOR_DISTRIBUTION",
+        "PROCESSING_FOR_DISTRIBUTION",
+        // Identical in both enums.
         "PENDING_APPLE_RELEASE",
         "PENDING_DEVELOPER_RELEASE",
-        "PROCESSING_FOR_APP_STORE",
         "REPLACED_WITH_NEW_VERSION",
-        "REMOVED_FROM_SALE",
     ]
 
     internal struct AppInfoLocRemote: Sendable, Equatable {

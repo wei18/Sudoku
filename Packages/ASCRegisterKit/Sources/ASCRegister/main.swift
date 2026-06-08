@@ -905,8 +905,15 @@ internal enum ASCRegisterCLI {
     /// relationship endpoint. A platform with no editable version is warned
     /// about and omitted (not an error).
     ///
-    /// `hasReleasedVersion` is computed app-wide (ANY platform released → not a
-    /// first submission) so `whatsNew` gating matches the prior behavior.
+    /// `hasReleasedVersion` is computed PER PLATFORM (issue #362): a platform is
+    /// "released" iff one of ITS OWN versions is in a released state. One ASC app
+    /// holds a separate `appStoreVersion` per platform, each with its own release
+    /// history, so an app whose iOS is a first submission while macOS is live
+    /// must drop `whatsNew` for iOS only — an app-wide flag would either 409 the
+    /// iOS create (first submission, whatsNew forbidden) or silently skip the
+    /// macOS whatsNew. The editable version that gets patched is itself never in
+    /// a released state, so the flag is derived from the platform's full version
+    /// list, not the resolved (editable) version.
     internal static func snapshotPlatformVersions(
         client: ASCClient,
         appId: String,
@@ -914,11 +921,16 @@ internal enum ASCRegisterCLI {
         versionFilter: String?
     ) async throws -> [PlatformVersionSnapshot] {
         let versions = try await client.listAppStoreVersions(appId: appId)
-        // App-wide released flag (mirrors the prior single-state snapshot): on a
-        // first submission (none released) the Reconciler drops `whatsNew`.
-        let hasReleased = versions.data.contains { v in
+        // Per-platform released flag: group every version by its platform token
+        // and mark a platform released if ANY of its versions is in a released
+        // state. On a first submission (that platform has none released) the
+        // Reconciler drops `whatsNew` for that platform alone.
+        var releasedByPlatform: [String: Bool] = [:]
+        for v in versions.data {
+            let platform = v.attributes["platform"] ?? "IOS"
             let state = v.attributes["appVersionState"] ?? v.attributes["appStoreState"] ?? ""
-            return MetadataRemoteState.releasedAppStoreStates.contains(state)
+            let isReleased = MetadataRemoteState.releasedAppStoreStates.contains(state)
+            releasedByPlatform[platform] = (releasedByPlatform[platform] ?? false) || isReleased
         }
 
         let outcome = PlatformVersionResolver.resolve(
@@ -959,7 +971,7 @@ internal enum ASCRegisterCLI {
                 platform: r.platform,
                 versionId: v.id,
                 versionLocalizations: locs,
-                hasReleasedVersion: hasReleased
+                hasReleasedVersion: releasedByPlatform[r.platform] ?? false
             ))
         }
         return snapshots

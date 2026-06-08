@@ -237,4 +237,19 @@ internal struct FirstVersionWhatsNewTests {
         #expect(MetadataRemoteState.releasedAppStoreStates.contains("READY_FOR_SALE"))
         #expect(!MetadataRemoteState.releasedAppStoreStates.contains("PREPARE_FOR_SUBMISSION"))
     }
+
+    @Test("releasedAppStoreStates accepts modern appVersionState tokens (#362)")
+    internal func releasedStatesAcceptsModernTokens() {
+        // ASC 3.3 renamed `appStoreState` → `appVersionState`, renaming two
+        // released tokens (the others are identical in both enums). A released
+        // app reporting the MODERN token must still compute hasReleasedVersion.
+        #expect(MetadataRemoteState.releasedAppStoreStates.contains("READY_FOR_DISTRIBUTION"))
+        #expect(MetadataRemoteState.releasedAppStoreStates.contains("PROCESSING_FOR_DISTRIBUTION"))
+        // Unchanged-in-both released tokens stay present.
+        #expect(MetadataRemoteState.releasedAppStoreStates.contains("PENDING_APPLE_RELEASE"))
+        #expect(MetadataRemoteState.releasedAppStoreStates.contains("PENDING_DEVELOPER_RELEASE"))
+        #expect(MetadataRemoteState.releasedAppStoreStates.contains("REPLACED_WITH_NEW_VERSION"))
+        // PREPARE_FOR_SUBMISSION is a first-submission state in BOTH enums.
+        #expect(!MetadataRemoteState.releasedAppStoreStates.contains("PREPARE_FOR_SUBMISSION"))
+    }
 }
