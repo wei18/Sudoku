@@ -1,24 +1,27 @@
-// MinesweeperCompletionView — post-game result surface (#292).
+// MinesweeperCompletionView — Minesweeper's post-game result surface (#292).
+// Thin wrapper over the shared `GameShellUI.CompletionScreen` body (#418).
 //
-// Mirror of `SudokuUI.CompletionView`: a result hero + (on a win) a Game Center
-// leaderboard slice centred on the local player, with graceful loading /
-// unauthenticated / failed states. CTAs:
-//   - New Game  → back to root (injected closure).
-//   - Retry     → replay the same difficulty (injected closure).
+// Minesweeper owns its PRESENTATION: this view is mounted as a full-board
+// `.overlay` in place of the old inline `terminalOverlay` (see
+// MinesweeperBoardView, #388) — MS's board owns its win/lose state inline and
+// has no completion route, so the surface mounts over the board rather than via
+// a pushed AppRoute (the difference from Sudoku's route-pushed Completion;
+// route-pushed MS Completion deferred — #386).
+//
+// It maps the leaderboard-fetch VM state onto the shared `CompletionScreenState`,
+// injects the win/loss hero outcome, and supplies the always-on action stack:
 //   - View leaderboard → Apple's native GC dashboard.
-//
-// Presented as a full-board overlay in place of the old inline `terminalOverlay`
-// (see MinesweeperBoardView) — MS's board owns its win/lose state inline and has
-// no completion route, so the surface mounts over the board rather than via a
-// pushed AppRoute (the difference from Sudoku's route-pushed Completion; spec
-// allows "overlay or pushed"). Everything is themed via `\.theme` tokens.
+//   - Retry            → replay the same difficulty (injected closure).
+//   - New Game         → back to root (injected closure).
+// The Game Center coupling stays here; the shared shell never imports
+// GameCenterClient. Themed via `\.theme` tokens.
 
 public import SwiftUI
 import GameCenterClient
+import GameShellUI
 
 public struct MinesweeperCompletionView: View {
     @Bindable private var viewModel: MinesweeperCompletionViewModel
-    @Environment(\.theme) private var theme
 
     /// New Game → dismiss to root. `nil` in previews / standalone board.
     private let onNewGame: (() -> Void)?
@@ -36,125 +39,61 @@ public struct MinesweeperCompletionView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                hero
-                content
-                actions
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.surface.background.resolved)
+        CompletionScreen(
+            outcome: outcome,
+            elapsedLabel: elapsedLabel,
+            state: screenState,
+            onRetryLeaderboard: { Task { await viewModel.retry() } },
+            actions: { actions }
+        )
         .task { await viewModel.bootstrap() }
     }
 
-    // MARK: - Hero
+    // MARK: - Outcome (win / loss)
 
-    private var hero: some View {
-        VStack(spacing: 10) {
-            Image(systemName: viewModel.didWin ? "checkmark.circle.fill" : "burst.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(
-                    viewModel.didWin
-                        ? theme.status.success.resolved
-                        : theme.status.error.resolved
-                )
-            Text(viewModel.didWin ? "You won" : "Boom")
-                .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(theme.text.primary.resolved)
-            Text(elapsedLabel)
-                .font(.title3)
-                .foregroundStyle(theme.text.secondary.resolved)
-                .monospacedDigit()
+    private var outcome: CompletionOutcome {
+        if viewModel.didWin {
+            CompletionOutcome(
+                kind: .success,
+                systemImage: "checkmark.circle.fill",
+                title: "You won",
+                accessibilityLabel: Text("You won in \(elapsedLabel)")
+            )
+        } else {
+            CompletionOutcome(
+                kind: .failure,
+                systemImage: "burst.fill",
+                title: "Boom",
+                accessibilityLabel: Text("Boom. Lasted \(elapsedLabel)")
+            )
         }
-        .frame(maxWidth: .infinity)
-        .padding(24)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            viewModel.didWin
-                ? "You won in \(elapsedLabel)"
-                : "Boom. Lasted \(elapsedLabel)"
-        )
     }
 
-    // MARK: - Leaderboard slice / states
+    // MARK: - State mapping
 
-    @ViewBuilder
-    private var content: some View {
+    // MS has no `.noLeaderboard` today; the shared body still handles it.
+    private var screenState: CompletionScreenState {
         switch viewModel.state {
         case .loading:
-            ProgressView()
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, minHeight: 120)
+            .loading
         case .loaded(let slice):
-            leaderboardSection(slice)
+            .loaded(slice.entries.map { entry in
+                CompletionLeaderboardRow(
+                    rank: entry.rank,
+                    displayName: entry.player.displayName,
+                    score: timeLabel(entry.score)
+                )
+            })
         case .unauthenticated:
-            unauthenticatedBlock
+            .unauthenticated
         case .failed:
-            failedBlock
+            .failed
         }
     }
 
-    private func leaderboardSection(_ slice: LeaderboardSlice) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Leaderboard")
-                .font(.headline)
-                .foregroundStyle(theme.text.primary.resolved)
-            VStack(spacing: 4) {
-                ForEach(slice.entries, id: \.rank) { entry in
-                    HStack {
-                        Text("\(entry.rank).")
-                            .monospacedDigit()
-                            .foregroundStyle(theme.text.secondary.resolved)
-                            .frame(width: 32, alignment: .trailing)
-                        Text(entry.player.displayName)
-                            .foregroundStyle(theme.text.primary.resolved)
-                        Spacer()
-                        Text(scoreLabel(entry.score))
-                            .monospacedDigit()
-                            .foregroundStyle(theme.text.primary.resolved)
-                    }
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 8)
-                }
-            }
-        }
-    }
+    // MARK: - CTAs (always-on action stack)
 
-    private var unauthenticatedBlock: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 36))
-                .foregroundStyle(theme.text.secondary.resolved)
-            Text("Sign in to Game Center to compare with others.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(theme.text.primary.resolved)
-        }
-        .padding(.top, 16)
-    }
-
-    private var failedBlock: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(theme.status.warning.resolved)
-            Text("Couldn't load leaderboard.")
-                .foregroundStyle(theme.text.primary.resolved)
-            Button {
-                Task { await viewModel.retry() }
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(.bordered)
-        }
-        .padding(.top, 16)
-    }
-
-    // MARK: - CTAs
-
+    @ViewBuilder
     private var actions: some View {
         VStack(spacing: 12) {
             Button {
@@ -194,10 +133,6 @@ public struct MinesweeperCompletionView: View {
 
     private var elapsedLabel: String {
         timeLabel(viewModel.elapsedSeconds)
-    }
-
-    private func scoreLabel(_ seconds: Int) -> String {
-        timeLabel(seconds)
     }
 
     private func timeLabel(_ total: Int) -> String {

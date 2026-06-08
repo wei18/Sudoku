@@ -1,6 +1,14 @@
-// CompletionView — hero stat + (optional) leaderboard slice.
+// CompletionView — Sudoku's post-solve surface. Thin wrapper over the shared
+// `GameShellUI.CompletionScreen` body (#418).
 //
-// Per docs/designs/06-completion.md. State variants:
+// Sudoku owns its PRESENTATION: this view is rendered inside the pushed
+// `.completion` AppRoute (RouteFactory). It maps the leaderboard-fetch VM state
+// onto the shared `CompletionScreenState`, injects the solve-only success hero,
+// the "View full leaderboard" CTA, and (Daily-only) the reminder primer
+// affordance + sheet (#287). The leaderboard/Game Center coupling stays here:
+// the shared shell never imports GameCenterClient.
+//
+// State variants (mapped onto the shared body):
 //   .loading              → ProgressView
 //   .loaded(slice)        → hero + leaderboard rows + "View full" CTA
 //   .unauthenticated      → hero + sign-in CTA
@@ -30,17 +38,20 @@ public struct CompletionView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                hero
-                content
-                reminderAffordance
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.surface.background.resolved)
+        CompletionScreen(
+            outcome: CompletionOutcome(
+                kind: .success,
+                systemImage: "checkmark.circle.fill",
+                title: "Solved!",
+                accessibilityLabel: Text("Solved in \(elapsedLabel)")
+            ),
+            elapsedLabel: elapsedLabel,
+            state: screenState,
+            onSignIn: { viewModel.viewLeaderboardTapped() },
+            onRetryLeaderboard: { Task { await viewModel.retry() } },
+            loadedAccessory: { viewLeaderboardButton },
+            footer: { reminderAffordance }
+        )
         .task { await viewModel.bootstrap() }
         .sheet(isPresented: reminderSheetBinding) {
             if let reminderPrimer {
@@ -52,6 +63,30 @@ public struct CompletionView: View {
                 )
                 .presentationDetents([.medium, .large])
             }
+        }
+    }
+
+    // Maps the leaderboard-fetch VM state onto the shared screen state. The
+    // `LeaderboardSlice` (a GameCenterClient type) is flattened to plain
+    // `CompletionLeaderboardRow` values here so the shared shell stays GC-free.
+    private var screenState: CompletionScreenState {
+        switch viewModel.state {
+        case .loading:
+            .loading
+        case .loaded(let slice):
+            .loaded(slice.entries.map { entry in
+                CompletionLeaderboardRow(
+                    rank: entry.rank,
+                    displayName: entry.player.displayName,
+                    score: scoreLabel(entry.score)
+                )
+            })
+        case .unauthenticated:
+            .unauthenticated
+        case .noLeaderboard:
+            .noLeaderboard
+        case .failed:
+            .failed
         }
     }
 
@@ -102,71 +137,6 @@ public struct CompletionView: View {
         )
     }
 
-    private var hero: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(theme.status.success.resolved)
-            Text("Solved!")
-                .font(.largeTitle.weight(.semibold))
-                .foregroundStyle(theme.text.primary.resolved)
-            Text(elapsedLabel)
-                .font(.title3)
-                .foregroundStyle(theme.text.secondary.resolved)
-                .monospacedDigit()
-        }
-        .frame(maxWidth: .infinity)
-        .padding(24)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Solved in \(elapsedLabel)")
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch viewModel.state {
-        case .loading:
-            ProgressView()
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, minHeight: 120)
-        case .loaded(let slice):
-            leaderboardSection(slice)
-            viewLeaderboardButton
-        case .unauthenticated:
-            unauthenticatedBlock
-        case .noLeaderboard:
-            noLeaderboardBlock
-        case .failed:
-            failedBlock
-        }
-    }
-
-    private func leaderboardSection(_ slice: LeaderboardSlice) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Leaderboard")
-                .font(.headline)
-                .foregroundStyle(theme.text.primary.resolved)
-            VStack(spacing: 4) {
-                ForEach(slice.entries, id: \.rank) { entry in
-                    HStack {
-                        Text("\(entry.rank).")
-                            .monospacedDigit()
-                            .foregroundStyle(theme.text.secondary.resolved)
-                            .frame(width: 32, alignment: .trailing)
-                        Text(entry.player.displayName)
-                            .foregroundStyle(theme.text.primary.resolved)
-                        Spacer()
-                        Text(scoreLabel(entry.score))
-                            .monospacedDigit()
-                            .foregroundStyle(theme.text.primary.resolved)
-                    }
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 8)
-                }
-            }
-        }
-    }
-
     private var viewLeaderboardButton: some View {
         Button {
             viewModel.viewLeaderboardTapped()
@@ -176,54 +146,6 @@ public struct CompletionView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
-    }
-
-    private var unauthenticatedBlock: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 36))
-                .foregroundStyle(theme.text.secondary.resolved)
-            Text("Sign in to Game Center to compare with others.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(theme.text.primary.resolved)
-            Button("Sign in") {
-                viewModel.viewLeaderboardTapped()
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-        }
-        .padding(.top, 16)
-    }
-
-    // Practice solves have no leaderboard (#383). Neutral, terminal copy — no
-    // sign-in CTA (nothing to sign in for) and no dead button.
-    private var noLeaderboardBlock: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "dial.medium")
-                .font(.system(size: 36))
-                .foregroundStyle(theme.text.secondary.resolved)
-            Text("Practice puzzles aren't ranked.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(theme.text.primary.resolved)
-        }
-        .padding(.top, 16)
-    }
-
-    private var failedBlock: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(theme.status.warning.resolved)
-            Text("Couldn't load leaderboard.")
-                .foregroundStyle(theme.text.primary.resolved)
-            Button {
-                Task { await viewModel.retry() }
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(.bordered)
-        }
-        .padding(.top, 16)
     }
 
     private var elapsedLabel: String {
