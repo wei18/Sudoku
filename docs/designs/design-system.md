@@ -76,7 +76,7 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 | `difficulty.medium` | `#C97D5F` (clay) | `#D89A82` (lighter clay) | Medium puzzles — warm terracotta, new in v2 |
 | `difficulty.hard` | `#E6A857` (amber) | `#EFC07F` (lighter amber) | Hard puzzles — warm amber, new in v2 |
 
-**Canonical example**: `docs/app-store/icons/finalists/light-difficulty-trio.svg` (AppIcon 07) uses these exact three hexes. Canonized as a brand vocabulary after AppIcon Round 2 adoption (see #63).
+**Canonical example**: `docs/app-store/icons/sudoku/light.svg` (AppIcon 07) uses these exact three hexes. Canonized as a brand vocabulary after AppIcon Round 2 adoption (see #63).
 
 **Contrast verification** (key pairings, computed APCA→WCAG fallback):
 

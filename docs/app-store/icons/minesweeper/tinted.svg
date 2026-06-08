@@ -1,11 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- Minesweeper AppIcon Tinted variant — per design spec §6.
+  <!-- Minesweeper AppIcon Tinted variant — ADOPTED & SHIPPING (2026-06-08 user
+       direction). Ships as AppIcon-Tinted.png in
+       App/Minesweeper/Assets.xcassets/AppIcon.appiconset/ under a
+       `luminosity: tinted` appearance entry. (Supersedes the 2026-06-01
+       "Light + Dark only" decision in meetings/2026-06-01_minesweeper-icon-design.md.)
        System multiplies the user's tint over white shapes; the near-black
-       background reads as the negative space (matches Sudoku's tinted-grid-dot
+       background reads as the negative space (matches Sudoku's tinted.svg
        pattern for visual family consistency). Two distinct luminances —
        mine at 100% white, flag fabric at 70% gray — survive any system tint
-       without merging into a single blob (spec §6 "Tinted survival strategy").
-       No rounded-corner clip: Apple's compositor applies the squircle. -->
+       without merging into a single blob (the "Tinted survival strategy" in
+       design spec §6). No rounded-corner clip: Apple's compositor applies the squircle. -->
   <defs>
     <polygon id="spike" points="200,-20 250,-8 250,8 200,20" />
   </defs>

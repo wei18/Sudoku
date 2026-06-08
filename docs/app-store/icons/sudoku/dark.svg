@@ -3,7 +3,7 @@
   <!-- Concept 09: Geometric Burst -->
   <!-- Deep navy bg (flat, per design-system "flat surfaces"); bright amber grid; 4-cell pinwheel sage/clay/lavender/amber asymmetric -->
   <!-- NO rounded-corner clip (2026-06-01 user direction): Apple's compositor
-       applies the squircle mask at render time. See sibling light-difficulty-trio.svg
+       applies the squircle mask at render time. See sibling light.svg
        header for rationale. -->
   <g>
     <rect width="1024" height="1024" fill="#2A3B5C"/>
