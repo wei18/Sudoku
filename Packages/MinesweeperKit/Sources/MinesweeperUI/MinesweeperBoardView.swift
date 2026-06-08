@@ -80,7 +80,8 @@ public struct MinesweeperBoardView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         onNewGame: (() -> Void)? = nil,
-        suppressTickerForSnapshot: Bool = false
+        suppressTickerForSnapshot: Bool = false,
+        completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.adProvider = adProvider
@@ -88,6 +89,13 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.onNewGame = onNewGame
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
+        // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
+        // seeded terminal board renders WITH the overlay mounted (the in-body
+        // `.task` that normally seeds it is skipped under
+        // `suppressTickerForSnapshot`, and `.onChange` never fires because the
+        // board mounts already-terminal — no transition). Defaults nil; the live
+        // app always seeds via `.task` / `.onChange`, never this parameter.
+        self._completionViewModel = State(initialValue: completionViewModelForSnapshot)
         self.mode = viewModel.mode
     }
 
@@ -131,14 +139,32 @@ public struct MinesweeperBoardView: View {
         // to `theme.spacing.medium`, so this is a value-preserving migration (no
         // snapshot churn).
         .padding(theme.spacing.medium)
+        // #388: stretch the board's host frame to fill the whole screen BEFORE
+        // attaching the Completion overlay. An `.overlay` is laid out within the
+        // frame of the view it modifies — the root cause of the prior 16pt inset
+        // was that the overlay was attached directly to the `.padding(16)` result,
+        // which on iPhone is only as tall as the VStack's *intrinsic* height. So
+        // the surface's own `.frame(maxHeight: .infinity)` had nothing to expand
+        // into and the live exploded board showed through the border. Pinning to
+        // `.infinity` here makes the modified view fill the screen, so the overlay
+        // is proposed the full screen and the surface can reach every edge.
+        //
+        // Alignment stays `.center` — that is already how the playing board is
+        // positioned by the host (see the recorded covered/mid-reveal baselines,
+        // which sit vertically centered), so this frame is layout-neutral for the
+        // playing state: the board keeps its 16pt padding and centered position.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // #292: the post-game Completion surface replaces the old inline
         // `terminalOverlay` (plain Text on material). It covers the whole board
         // on win/lose with the result hero + leaderboard slice + CTAs. Mounted
         // as a full-cover overlay (not a pushed route) because the board owns its
-        // terminal state inline and has no completion AppRoute.
+        // terminal state inline and has no completion AppRoute (route-pushed
+        // Completion deferred — #386). `.ignoresSafeArea()` lets it bleed past the
+        // status bar / home indicator so nothing of the live board peeks through.
         .overlay {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
+                    .ignoresSafeArea()
             }
         }
         // Build the Completion VM once when the board crosses into a terminal
