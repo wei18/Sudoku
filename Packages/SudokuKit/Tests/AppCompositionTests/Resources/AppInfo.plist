@@ -66,7 +66,7 @@
        data without a usage description."
     -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>Sudoku uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
+    <string>Sudoku uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

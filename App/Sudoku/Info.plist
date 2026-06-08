@@ -64,9 +64,12 @@
       Without this key the OS terminates the process at TCC with:
       "This app has crashed because it attempted to access privacy-sensitive
        data without a usage description."
+      This literal is the BASE/fallback only; the localized 7-locale strings
+      live in `App/Sudoku/Resources/InfoPlist.xcstrings` (#371). Keep the two
+      English values in sync.
     -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>Sudoku uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
+    <string>Sudoku uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

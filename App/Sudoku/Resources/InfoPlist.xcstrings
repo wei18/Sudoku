@@ -1,0 +1,54 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSUserTrackingUsageDescription" : {
+      "comment" : "ATT system-dialog usage string. Path B framing (ad relevance, not a profile; decline still works, or remove ads). Localized via InfoPlist.xcstrings per #371; Info.plist literal remains as base fallback.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku usa el identificador de publicidad de tu dispositivo para mostrar anuncios relevantes, no para crear un perfil tuyo. Si no aceptas, los anuncios seguirán apareciendo, solo que menos personalizados; o puedes quitarlos por completo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku は端末の広告識別子を、あなたのプロフィール作成ではなく広告の関連性のために利用します。拒否しても広告は表示されますが、関連性は低くなります。広告を完全に削除することもできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku는 사용자의 프로필을 만들기 위해서가 아니라 관련성 높은 광고를 표시하기 위해 기기의 광고 식별자를 사용해요. 거부해도 광고는 계속 표시되며 맞춤화 정도만 낮아집니다. 광고를 완전히 제거할 수도 있어요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku ใช้ตัวระบุโฆษณาของอุปกรณ์เพื่อให้โฆษณาตรงกับความสนใจ ไม่ใช่เพื่อสร้างโปรไฟล์ของคุณ หากปฏิเสธ โฆษณาจะยังแสดงอยู่ เพียงแต่ตรงกับความสนใจน้อยลง หรือจะลบโฆษณาออกทั้งหมดก็ได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku 使用设备的广告标识符来保持广告相关性，而非建立你的个人档案。拒绝后广告仍会显示，只是相关性较低；你也可以完全移除广告。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sudoku 使用裝置的廣告識別碼以維持廣告的相關性，而非建立你的個人檔案。拒絕後廣告仍會顯示，只是較不貼近你的喜好；你也可以完全移除廣告。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
