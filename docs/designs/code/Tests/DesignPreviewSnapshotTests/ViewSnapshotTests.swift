@@ -79,13 +79,14 @@ final class ViewSnapshotTests: XCTestCase {
             named: "boardView_iphone_dark_ja_aboutToComplete"
         )
     }
-    func test_boardView_iphone_light_ko_empty() {
-        assertViewSnapshot(
-            BoardView_Designs(board: BoardView_Designs.demoEmpty),
-            size: DeviceSize.iPhone, locale: Locale(identifier: "ko"),
-            named: "boardView_iphone_light_ko_empty"
-        )
-    }
+    // NOTE (#396): no `boardView_iphone_light_ko_empty` snapshot. DesignPreviewKit
+    // ships NO localization catalog, so every `LocalizedStringKey` (the board's
+    // only locale-sensitive chrome is the "Medium" difficulty label) renders its
+    // literal key regardless of `\.locale`. A ko light empty-board therefore
+    // renders byte-identically to `boardView_iphone_light_en_empty` (false
+    // coverage). Locale-variant coverage is carried by the dark `ja` board
+    // baselines (which differ by colour scheme) and by the localised App targets'
+    // own snapshot suites.
     func test_boardView_iphone_light_en_paused() {
         assertViewSnapshot(
             BoardView_Designs(board: BoardView_Designs.demoInProgressWithErrors, isPaused: true),
@@ -242,13 +243,16 @@ final class ViewSnapshotTests: XCTestCase {
             size: DeviceSize.iPhone, named: "leaderboard_iphone_light_en_error"
         )
     }
-    func test_leaderboard_iphone_light_en_AX3_loaded() {
-        assertViewSnapshot(
-            NavigationStack { LeaderboardView_Designs(state: .loaded(LeaderboardView_Designs.demoEntries)) },
-            size: DeviceSize.iPhone, dynamicTypeSize: .accessibility3,
-            named: "leaderboard_iphone_light_en_AX3_loaded"
-        )
-    }
+    // NOTE (#396): no view-level `leaderboard_..._AX3_loaded` snapshot. The
+    // `.loaded` Leaderboard renders its rows inside a SwiftUI `List`, which on
+    // macOS is `NSTableView`-backed and materialises rows lazily on a run loop;
+    // a synchronous `NSHostingView` snapshot never drives that, so the recorded
+    // golden shows the pickers over an EMPTY row area regardless of
+    // `dynamicTypeSize` — making any view-level AX3_loaded baseline byte-
+    // identical to the non-AX3 one (false coverage). AX3 row reflow is already
+    // asserted at the component level by
+    // `ComponentSnapshotTests.test_leaderboardRow_light_en_AX3`, which renders
+    // `LeaderboardRow` directly (no List) and DOES differ at AX3.
 
     // MARK: - §2 SettingsView (2)
 
