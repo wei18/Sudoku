@@ -115,6 +115,8 @@ public struct OSLogSink: TelemetrySink {
             logger.log(level: .info, message: "reminderPrimerDeclined kind=\(kind)", privacy: .publicValue)
         case .reminderScheduled(let kind):
             logger.log(level: .notice, message: "reminderScheduled kind=\(kind)", privacy: .publicValue)
+        case .reminderCancelled(let kind):
+            logger.log(level: .notice, message: "reminderCancelled kind=\(kind)", privacy: .publicValue)
         case .reminderFired(let kind):
             logger.log(level: .notice, message: "reminderFired kind=\(kind)", privacy: .publicValue)
         case .reminderOpenedApp(let kind):
@@ -132,6 +134,11 @@ struct OSLoggerAdapter: LoggerProtocol {
         self.logger = os.Logger(subsystem: subsystem, category: category)
     }
 
+    // Two nested 5-way (level × privacy) switches — inherently 12, and the
+    // explicit-privacy os.Logger interpolation can't be collapsed without losing
+    // the compile-time privacy literal. Pre-existing; flagged here because this
+    // file is touched by #287's `reminderCancelled` case.
+    // swiftlint:disable:next cyclomatic_complexity
     func log(level: LogLevel, message: String, privacy: LogPrivacy) {
         // The seam pre-rendered the message into a String. We funnel into
         // os.Logger with explicit privacy interpolation on that single

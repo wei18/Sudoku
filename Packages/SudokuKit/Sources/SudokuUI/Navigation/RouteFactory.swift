@@ -53,11 +53,11 @@ public struct LiveRouteFactory: RouteFactory {
     // AppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
     // in previews / tests → no primer, byte-identical Completion screens.
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
-    // #321: builds the Settings Daily-reminder time picker model per Settings
-    // mount. Injected as a closure (not the raw Reminders seams) so ALL reminder
-    // wiring stays in AppComposition. `nil` in previews / tests → no reminder row,
-    // byte-identical Settings screen.
-    private let makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)?
+    // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
+    // Sudoku copy) per Settings mount. Injected as a closure (not the raw
+    // Reminders seams) so ALL reminder wiring stays in AppComposition. `nil` in
+    // previews / tests → no reminder section, byte-identical Settings screen.
+    private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
     // #331: app-injected Notices section config (acknowledgements deep-link,
     // copyright, optional privacy/support URLs). `nil` in previews / tests →
     // no Notices section, byte-identical Settings screen.
@@ -75,7 +75,7 @@ public struct LiveRouteFactory: RouteFactory {
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
-        makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)? = nil,
+        makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
         settingsNotices: SettingsNoticesConfig? = nil
     ) {
         self.puzzleProvider = puzzleProvider
@@ -89,7 +89,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
-        self.makeReminderTimeSettings = makeReminderTimeSettings
+        self.makeReminderSettings = makeReminderSettings
         self.settingsNotices = settingsNotices
     }
 
@@ -187,7 +187,7 @@ public struct LiveRouteFactory: RouteFactory {
                         toastController: toastController
                     ),
                     monetizationController: monetizationController,
-                    reminderTimeModel: makeReminderTimeSettings?(),
+                    reminderSettings: makeReminderSettings?(),
                     notices: settingsNotices
                 )
             )

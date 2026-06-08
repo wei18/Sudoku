@@ -27,10 +27,12 @@ public import SwiftUI
 public struct SettingsView: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
-    // #321: optional so previews / tests / Minesweeper (no Daily yet) mount a
-    // byte-identical Settings screen without the reminder row. Live wiring
-    // injects one so the Daily-reminder time picker renders.
-    private let reminderTimeModel: ReminderTimeSettingsModel?
+    // #287: optional so previews / tests mount a byte-identical Settings screen
+    // without the reminder section. Live wiring injects one + its copy so the
+    // shared `ReminderSettingsSection` (enable / prime permission / time picker)
+    // renders. Replaces the #321 time-only row with the shared GameShellUI
+    // section so Minesweeper mirrors the identical entry.
+    private let reminderSettings: ReminderSettingsEntry?
     // #331: shared Notices section inputs. Defaulted so previews / tests mount
     // a byte-identical screen without the section; the host (RouteFactory)
     // injects the app-specific URLs + copyright + acknowledgements deep-link.
@@ -40,12 +42,12 @@ public struct SettingsView: View {
     public init(
         viewModel: SettingsViewModel,
         monetizationController: MonetizationStateController? = nil,
-        reminderTimeModel: ReminderTimeSettingsModel? = nil,
+        reminderSettings: ReminderSettingsEntry? = nil,
         notices: SettingsNoticesConfig? = nil
     ) {
         self.viewModel = viewModel
         self.monetizationController = monetizationController
-        self.reminderTimeModel = reminderTimeModel
+        self.reminderSettings = reminderSettings
         self.notices = notices
     }
 
@@ -68,13 +70,19 @@ public struct SettingsView: View {
                 }
             }
 
-            // #321: Daily-reminder fire-time picker. Persists the chosen
-            // hour/minute and reschedules `.dailyAt(hour,minute)` on change
-            // (the model gates the reschedule on notification permission).
-            if let reminderTimeModel {
-                Section("Reminders") {
-                    ReminderTimeRow(model: reminderTimeModel)
-                }
+            // #287: shared Reminders section — the user-initiated entry to
+            // enable daily reminders (primes the notification permission via the
+            // shared `ReminderPrimerSheet`), set the fire time, and recover when
+            // denied. Replaces the #321 time-only row; same building block
+            // Minesweeper mounts so the entry is identical across both apps.
+            if let reminderSettings {
+                ReminderSettingsSection(
+                    model: reminderSettings.model,
+                    tintColor: theme.accent.primary.resolved,
+                    copy: reminderSettings.copy,
+                    primerCopy: reminderSettings.primerCopy,
+                    deniedCopy: reminderSettings.deniedCopy
+                )
             }
 
             Section("About") {
@@ -120,30 +128,33 @@ public struct SettingsView: View {
     }
 }
 
-// MARK: - Rows
+// MARK: - Reminder settings entry
 
-/// #321: the Daily-reminder fire-time row. A `DatePicker` restricted to
-/// `.hourAndMinute` bound to the model's `fireDate`; the model's `didSet`
-/// persists + reschedules. Icon-left to match `AboutRow` so `.formStyle(.grouped)`
-/// renders a consistent full-width pill on macOS (issue #197).
-struct ReminderTimeRow: View {
-    @Bindable var model: ReminderTimeSettingsModel
-    @Environment(\.theme) private var theme
+/// #287: bundle of the shared `ReminderSettingsModel` + the Sudoku-localized
+/// copy the `ReminderSettingsSection` needs. Built at the composition root
+/// (`AppComposition.live()`) so all reminder wiring stays there; the view only
+/// receives a ready-to-mount value. Not `Sendable` — carries `LocalizedStringKey`
+/// copy built + consumed on `@MainActor`.
+public struct ReminderSettingsEntry {
+    public let model: ReminderSettingsModel
+    public let copy: ReminderSettingsCopy
+    public let primerCopy: ReminderPrimerCopy
+    public let deniedCopy: ReminderDeniedCopy
 
-    var body: some View {
-        DatePicker(
-            selection: $model.fireDate,
-            displayedComponents: .hourAndMinute
-        ) {
-            Label {
-                Text("Daily reminder")
-            } icon: {
-                Image(systemName: "bell")
-                    .foregroundStyle(theme.accent.primary.resolved)
-            }
-        }
+    public init(
+        model: ReminderSettingsModel,
+        copy: ReminderSettingsCopy,
+        primerCopy: ReminderPrimerCopy,
+        deniedCopy: ReminderDeniedCopy
+    ) {
+        self.model = model
+        self.copy = copy
+        self.primerCopy = primerCopy
+        self.deniedCopy = deniedCopy
     }
 }
+
+// MARK: - Rows
 
 /// Static About row matching the icon-left / label / spacer / value-right
 /// shape of `RemoveAdsRow` (now in MonetizationUI) so `.formStyle(.grouped)`

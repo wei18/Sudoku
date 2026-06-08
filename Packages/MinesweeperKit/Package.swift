@@ -99,6 +99,12 @@ let productionTargets: [Target] = [
             // Mirrors Sudoku's AppComposition (Live.swift / Preview.swift).
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             .product(name: "GameCenterTesting", package: "GameCenterKit"),
+            // #287: the shared local-notification reminder seam. `.live()` wires
+            // `LiveReminderScheduler` / `LiveNotificationAuthorizer` (the only
+            // files allowed to import `UserNotifications`) to drive the Settings
+            // Reminders entry; the UI model/section come through GameShellUI.
+            // Mirrors Sudoku's AppComposition RemindersKit wire.
+            .product(name: "Reminders", package: "RemindersKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -127,6 +133,9 @@ let testTargets: [Target] = [
             // SudokuUITests snapshot dep — themed board baselines are the
             // Designer's visual-verification surface.
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            // #287: the SettingsView reminder-entry sentinel builds a
+            // `ReminderSettingsModel` over the `Reminders` Noop conformers.
+            .product(name: "Reminders", package: "RemindersKit"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because
@@ -167,6 +176,10 @@ let package = Package(
         // #291: shared Game Center seam (GameCenterClient protocol + Live impl
         // in GameCenterKit; FakeGameCenterClient in GameCenterTesting).
         .package(name: "GameCenterKit", path: "../GameCenterKit"),
+        // #287: shared local-notification reminder seam (sibling leaf package,
+        // merged #318). `MinesweeperAppComposition` consumes the `Reminders`
+        // product to wire the Live scheduler/authorizer for the Settings entry.
+        .package(name: "RemindersKit", path: "../RemindersKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
