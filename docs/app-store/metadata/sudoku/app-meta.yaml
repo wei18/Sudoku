@@ -29,6 +29,23 @@ secondary_category: null
 secondary_first_sub_category: null
 secondary_second_sub_category: null
 
+# --- Release notes (whatsNew) applicability -------------------------------
+# The per-locale `whats_new` field lives in each <locale>/listing.yaml and is
+# authored for the v2.5 monetization release (Remove Ads IAP + Restore +
+# Family Sharing; Path B privacy framing — never the phrase "no tracking").
+#
+# whatsNew-on-first-version gate (issue #362, merged): App Store Connect
+# rejects (409 STATE_ERROR) any attempt to set whatsNew on a version that has
+# NEVER been released on a given platform — a first submission has no prior
+# version to write "what's new" against. `hasReleasedVersion` is per-platform
+# in the Reconciler, so `metadata apply` automatically DROPS whats_new for a
+# platform whose first release this is, and KEEPS it for a platform already
+# live. Practical effect for Sudoku v2.5: if iOS or macOS is releasing for the
+# first time, whats_new is silently skipped for that platform (expected, not
+# an error); it applies on any platform that already has a shipped version.
+# Do not block authoring/commit on this — it is enforced at apply time, which
+# is user-owned (needs ASC creds).
+#
 # --- Copyright (ASC App Information) --------------------------------------
 # ASC convention: "<year> <legal holder name>" (no leading © — ASC adds it).
 copyright: "2026 Wei18"
