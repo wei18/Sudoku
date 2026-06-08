@@ -116,7 +116,7 @@ public struct BannerSlotView: View {
                 .controlSize(.small)
                 .tint(theme.accent.primary.resolved)
         case .loaded:
-            // TODO(v2.3.5): real GADBannerView wiring. Until the live AdMob
+            // Deferred: real GADBannerView wiring. Until the live AdMob
             // bridge lands, render the same honest placeholder rect we use
             // for the deferred state so the slot doesn't lie to the user.
             AdMobBannerView()
@@ -196,7 +196,7 @@ public struct BannerSlotView: View {
 /// static "Ad will load here (v2.3.5)" rectangle so the slot is honest about
 /// its deferred state — Brand "calm" contract forbids shimmer/teaser.
 ///
-/// TODO(v2.3.5): replace this body with a `UIViewRepresentable` (iOS) /
+/// Deferred: replace this body with a `UIViewRepresentable` (iOS) /
 /// `NSViewRepresentable` (macOS) wrapping a real `GADBannerView`. The bridge
 /// already isolates the `import GoogleMobileAds` line (foundations.md §9.1)
 /// so the import never leaks here.
