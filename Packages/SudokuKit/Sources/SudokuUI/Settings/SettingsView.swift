@@ -70,32 +70,34 @@ public struct SettingsView: View {
                     deniedCopy: $0.deniedCopy
                 )
             },
-            notices: notices
-        ) {
+            notices: notices,
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
-            if let controller = monetizationController {
-                Section("Purchases") {
-                    if controller.hasPurchasedRemoveAds {
-                        AdsRemovedRow(tintColor: theme.accent.primary.resolved)
-                    } else {
-                        RemoveAdsRow(
+            purchases: {
+                if let controller = monetizationController {
+                    Section("Purchases") {
+                        if controller.hasPurchasedRemoveAds {
+                            AdsRemovedRow(tintColor: theme.accent.primary.resolved)
+                        } else {
+                            RemoveAdsRow(
+                                controller: controller,
+                                tintColor: theme.accent.primary.resolved
+                            )
+                        }
+                        RestorePurchasesRow(
                             controller: controller,
                             tintColor: theme.accent.primary.resolved
                         )
                     }
-                    RestorePurchasesRow(
-                        controller: controller,
-                        tintColor: theme.accent.primary.resolved
-                    )
                 }
-            }
-        } aboutExtraRows: {
+            },
             // #277: the Generator row is Sudoku-only (Minesweeper has no
             // generator). Injected into the shared About section after the
             // shared Version row, preserving the prior order exactly.
-            AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
-        }
+            aboutExtraRows: {
+                AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
+            }
+        )
         .task { await viewModel.bootstrap() }
         .task {
             if let controller = monetizationController {
