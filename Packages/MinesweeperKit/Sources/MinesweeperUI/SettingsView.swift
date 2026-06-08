@@ -52,7 +52,28 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        SettingsShellView(title: "Settings") {
+        // #421: the shared assembly (shell + 5 sections in order) now lives in
+        // `GameShellUI.SettingsScreen`. MS supplies its config + the Purchases
+        // slot, injects NO About extra rows (no generator), and tints with
+        // `.accentColor` (MS has no theme tokens yet).
+        SettingsScreen(
+            version: version,
+            tint: .accentColor,
+            clearCache: clearCache,
+            reminderSettings: reminderSettings.map {
+                // #287: same building block Sudoku mounts; map the MS entry into
+                // the shell's config.
+                SettingsScreenReminderConfig(
+                    model: $0.model,
+                    copy: $0.copy,
+                    primerCopy: $0.primerCopy,
+                    deniedCopy: $0.deniedCopy
+                )
+            },
+            notices: notices
+        ) {
+            // Purchases slot — the app's MonetizationUI rows. GameShellUI never
+            // imports MonetizationUI; the whole conditional Section lives here.
             if let controller = monetizationController {
                 Section("Purchases") {
                     if controller.hasPurchasedRemoveAds {
@@ -69,33 +90,8 @@ public struct SettingsView: View {
                     )
                 }
             }
-
-            // #287: shared Reminders section — same building block Sudoku mounts.
-            // Tint is `.accentColor` (MS has no theme tokens yet); the primer
-            // sheet itself falls back to GameShellUI's NeutralTheme.
-            if let reminderSettings {
-                ReminderSettingsSection(
-                    model: reminderSettings.model,
-                    tintColor: .accentColor,
-                    copy: reminderSettings.copy,
-                    primerCopy: reminderSettings.primerCopy,
-                    deniedCopy: reminderSettings.deniedCopy
-                )
-            }
-
-            Section("About") {
-                SettingsAboutVersionRow(version: version, tintColor: .accentColor)
-            }
-
-            // #331: shared Notices / 宣告 section. Same building block Sudoku
-            // adopts; URLs + copyright app-injected via the config. Tint is
-            // `.accentColor` — MS has no theme tokens yet.
-            if let notices {
-                SettingsNoticesSection(tintColor: .accentColor, config: notices)
-            }
-
-            SettingsStorageSection(clearCache: clearCache)
         }
+        // No `aboutExtraRows` — MS has no generator row (EmptyView default).
         .task {
             if let controller = monetizationController {
                 await controller.bootstrap()
