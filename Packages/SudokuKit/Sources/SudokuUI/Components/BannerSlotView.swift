@@ -36,10 +36,17 @@ public struct BannerSlotView: View {
     @State private var dismissed: Bool = false
 
     @Environment(\.theme) private var theme
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Gate-aware reload seam (#341). Re-evaluates `AdGate` and re-loads only
+    /// when the gate is open — and never touches the provider when it's closed
+    /// (purchased / dismissed-today / clock-tamper), keeping Remove-Ads intact.
+    private let reloadCoordinator: BannerReloadCoordinator
 
     public init(adProvider: any AdProvider, adGate: AdGate) {
         self.adProvider = adProvider
         self.adGate = adGate
+        self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
     }
 
     public var body: some View {
@@ -71,6 +78,16 @@ public struct BannerSlotView: View {
             // banner so the provider drops its retained `GADBannerView` (#221).
             guard isDismissed, case let .loaded(handle) = status else { return }
             Task { await adProvider.dispose(handle: handle) }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Re-poll seam (#341). On returning to the foreground, re-evaluate
+            // the gate: if it has reopened (e.g. the calendar day rolled over
+            // since a dismiss), reload so the banner reappears instead of
+            // staying gone until app relaunch. The coordinator consults
+            // `AdGate` first, so a purchaser / dismissed-today / tamper case
+            // returns `.suppressed` and the provider is never touched.
+            guard newPhase == .active else { return }
+            Task { await repollGate() }
         }
     }
 
@@ -137,14 +154,27 @@ public struct BannerSlotView: View {
         let allowed = await adGate.shouldShowBanner(now: now)
         shouldShow = allowed
         guard allowed else { return }
-        // Kick the provider. `loadBanner` throws in v2.3.4; the failure
-        // surfaces as the visible "Ad unavailable" caption rather than
-        // being silently swallowed.
-        do {
-            try await adProvider.refreshBanner()
-            status = await adProvider.bannerStatus
-        } catch {
-            status = .failed(reason: String(describing: error))
+        // Kick the provider via the reload seam. `loadBanner` throws in v2.3.4;
+        // the failure surfaces as the visible "Ad unavailable" caption (its
+        // `.failed` status) rather than being silently swallowed.
+        status = await reloadCoordinator.reloadIfGateOpen(now: now)
+    }
+
+    /// Foreground re-poll (#341). If the gate has reopened since the last
+    /// resolution (new calendar day after a dismiss), clear the session
+    /// `dismissed` latch and reload so the slot reappears. If the gate is
+    /// still closed (purchased / dismissed-today / tamper), the coordinator
+    /// returns `.suppressed` without touching the provider and we leave the
+    /// slot hidden.
+    private func repollGate() async {
+        let reloaded = await reloadCoordinator.reloadIfGateOpen(now: Date())
+        // `.suppressed` means the gate is still closed (purchased /
+        // dismissed-today / tamper) — leave the slot exactly as it is.
+        guard reloaded != .suppressed else { return }
+        status = reloaded
+        shouldShow = true
+        if dismissed {
+            withAnimation(.easeInOut(duration: 0.18)) { dismissed = false }
         }
     }
 

@@ -28,9 +28,15 @@ internal struct MinesweeperBannerSlotView: View {
     @State private var status: AdBannerStatus = .notInitialized
     @State private var dismissed: Bool = false
 
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Gate-aware reload seam (#341). Mirror of Sudoku's slot.
+    private let reloadCoordinator: BannerReloadCoordinator
+
     internal init(adProvider: any AdProvider, adGate: AdGate) {
         self.adProvider = adProvider
         self.adGate = adGate
+        self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
     }
 
     internal var body: some View {
@@ -57,6 +63,15 @@ internal struct MinesweeperBannerSlotView: View {
             // Gate closed for the session — release the held banner (#221).
             guard isDismissed, case let .loaded(handle) = status else { return }
             Task { await adProvider.dispose(handle: handle) }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Re-poll seam (#341). Mirror of Sudoku's slot: on foreground,
+            // re-evaluate the gate so a next-day reopen reloads the banner.
+            // Coordinator consults `AdGate` first, so a purchaser / dismissed-
+            // today / tamper case returns `.suppressed` and the provider is
+            // never touched.
+            guard newPhase == .active else { return }
+            Task { await repollGate() }
         }
     }
 
@@ -116,11 +131,17 @@ internal struct MinesweeperBannerSlotView: View {
         let allowed = await adGate.shouldShowBanner(now: now)
         shouldShow = allowed
         guard allowed else { return }
-        do {
-            try await adProvider.refreshBanner()
-            status = await adProvider.bannerStatus
-        } catch {
-            status = .failed(reason: String(describing: error))
+        status = await reloadCoordinator.reloadIfGateOpen(now: now)
+    }
+
+    /// Foreground re-poll (#341). Mirror of Sudoku's slot.
+    private func repollGate() async {
+        let reloaded = await reloadCoordinator.reloadIfGateOpen(now: Date())
+        guard reloaded != .suppressed else { return }
+        status = reloaded
+        shouldShow = true
+        if dismissed {
+            withAnimation(.easeInOut(duration: 0.18)) { dismissed = false }
         }
     }
 
