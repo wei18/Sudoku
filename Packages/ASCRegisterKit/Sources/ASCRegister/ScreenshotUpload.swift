@@ -108,11 +108,58 @@ internal enum ScreenshotDiscovery {
 
 // MARK: - set/screenshot remote indexing (pure)
 
+/// One remote screenshot already attached to a set, as the orchestration needs
+/// it for idempotency decisions (#370). `assetDeliveryState` distinguishes a
+/// truly-present COMPLETE asset from a half-finished reservation; the optional
+/// `sourceFileChecksum` (ASC's MD5 of the bytes it holds) lets the caller detect
+/// content drift against the local file.
+internal struct ScreenshotRemoteState: Sendable, Equatable {
+    internal let id: String
+    internal let assetDeliveryState: String?
+    internal let sourceFileChecksum: String?
+
+    /// ASC reports a fully-uploaded, verified asset as `COMPLETE`. Any other
+    /// state (AWAITING_UPLOAD, UPLOAD_COMPLETE-but-not-verified, FAILED, or a
+    /// missing state) means a prior reserve/PUT/commit did not finish → the
+    /// asset must be re-uploaded, not skipped.
+    internal var isComplete: Bool { assetDeliveryState == "COMPLETE" }
+}
+
 /// Helpers to read the `listScreenshotSets` GET into the lookups the
-/// orchestration needs: the set id for a displayType, and the fileNames already
-/// uploaded into a set (for idempotent skip). Pure so the idempotency logic is
-/// unit-testable from a canned response.
+/// orchestration needs: the set id for a displayType, and per-file remote state
+/// (delivery state + checksum) for the idempotency decision. Pure so the logic
+/// is unit-testable from a canned response.
 internal enum ScreenshotSetIndex {
+
+    /// `appScreenshotSet id → (fileName → remote state)`. Built from the
+    /// side-loaded `appScreenshots` plus each set's relationship pointers, so
+    /// the orchestration can decide per file: skip (COMPLETE + same checksum),
+    /// or evict-and-re-upload (non-COMPLETE, or checksum drift) (#370).
+    internal static func screenshotsBySetId(
+        _ collection: APICollectionWithIncluded
+    ) -> [String: [String: ScreenshotRemoteState]] {
+        let shotsById = Dictionary(
+            uniqueKeysWithValues: collection.included
+                .filter { $0.type == "appScreenshots" }
+                .map { ($0.id, $0) }
+        )
+        var out: [String: [String: ScreenshotRemoteState]] = [:]
+        for set in collection.data where set.type == "appScreenshotSets" {
+            let shotIds = collection.relationships[set.id]?["appScreenshots"] ?? []
+            var byName: [String: ScreenshotRemoteState] = [:]
+            for shotId in shotIds {
+                guard let shot = shotsById[shotId],
+                      let name = shot.attributes["fileName"] else { continue }
+                byName[name] = ScreenshotRemoteState(
+                    id: shot.id,
+                    assetDeliveryState: shot.attributes["assetDeliveryState"],
+                    sourceFileChecksum: shot.attributes["sourceFileChecksum"]
+                )
+            }
+            out[set.id] = byName
+        }
+        return out
+    }
 
     /// `screenshotDisplayType → appScreenshotSet id` from a `listScreenshotSets`
     /// response. The displayType lives in each primary set resource's attributes.
@@ -124,32 +171,6 @@ internal enum ScreenshotSetIndex {
             if let displayType = set.attributes["screenshotDisplayType"] {
                 out[displayType] = set.id
             }
-        }
-        return out
-    }
-
-    /// `appScreenshotSet id → set of fileNames already in it`. Built from the
-    /// side-loaded `appScreenshots` (the `included[]`) plus each set's
-    /// relationship pointers, so an existing fileName is skipped rather than
-    /// duplicated (idempotency).
-    internal static func fileNamesBySetId(
-        _ collection: APICollectionWithIncluded
-    ) -> [String: Set<String>] {
-        let shotsById = Dictionary(
-            uniqueKeysWithValues: collection.included
-                .filter { $0.type == "appScreenshots" }
-                .map { ($0.id, $0) }
-        )
-        var out: [String: Set<String>] = [:]
-        for set in collection.data where set.type == "appScreenshotSets" {
-            let shotIds = collection.relationships[set.id]?["appScreenshots"] ?? []
-            var names: Set<String> = []
-            for shotId in shotIds {
-                if let name = shotsById[shotId]?.attributes["fileName"] {
-                    names.insert(name)
-                }
-            }
-            out[set.id] = names
         }
         return out
     }

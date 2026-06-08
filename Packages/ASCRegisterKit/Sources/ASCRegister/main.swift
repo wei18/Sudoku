@@ -715,26 +715,43 @@ internal enum ASCRegisterCLI {
                 continue
             }
 
-            // Snapshot existing sets + their fileNames for idempotency.
+            // Snapshot existing sets + their per-file remote state for
+            // idempotency (#370: skip only a COMPLETE asset whose checksum
+            // matches; otherwise evict + re-upload).
             let existing = try await client.listScreenshotSets(versionLocalizationId: loc.id)
             var setIdByDisplayType = ScreenshotSetIndex.setIdsByDisplayType(existing)
-            let fileNamesBySet = ScreenshotSetIndex.fileNamesBySetId(existing)
+            let shotsBySet = ScreenshotSetIndex.screenshotsBySetId(existing)
 
             for asset in familyAssets {
                 let displayType = asset.displayType
-                let alreadyPresent = setIdByDisplayType[displayType]
-                    .flatMap { fileNamesBySet[$0] }?.contains(asset.fileName) ?? false
-                if alreadyPresent {
-                    print("  SKIP   [\(token)] \(displayType) \(asset.fileName) (already in set)")
+                let existingShot = setIdByDisplayType[displayType]
+                    .flatMap { shotsBySet[$0]?[asset.fileName] }
+                // The local file's MD5 — what a fresh commit would send; also the
+                // value ASC stores in `sourceFileChecksum` once COMPLETE.
+                let localChecksum = AssetChecksum.md5Hex(
+                    try Data(contentsOf: URL(fileURLWithPath: asset.path))
+                )
+                // Skip ONLY when the remote asset is COMPLETE *and* its bytes
+                // match (checksum equal, or ASC didn't report one). A
+                // non-COMPLETE asset (failed prior reserve/commit) or a checksum
+                // drift falls through to evict + re-upload.
+                let contentMatches = existingShot?.sourceFileChecksum.map { $0 == localChecksum } ?? true
+                if let existingShot, existingShot.isComplete, contentMatches {
+                    print("  SKIP   [\(token)] \(displayType) \(asset.fileName) (already in set, COMPLETE)")
                     skipped += 1
                     continue
                 }
+                let reason: String? = existingShot.map {
+                    $0.isComplete ? "content drift" : "incomplete (\($0.assetDeliveryState ?? "no state"))"
+                }
                 if !apply {
                     let setNote = setIdByDisplayType[displayType] == nil ? "create set + " : ""
-                    print("  UPLOAD [\(token)] \(displayType) \(asset.fileName) (\(setNote)reserve→PUT→commit)")
+                    let evictNote = reason.map { "re-upload (\($0)): delete + " } ?? ""
+                    print("  UPLOAD [\(token)] \(displayType) \(asset.fileName) "
+                        + "(\(setNote)\(evictNote)reserve→PUT→commit)")
                     continue
                 }
-                // --- apply: ensure set, then reserve → PUT → commit ---
+                // --- apply: ensure set, evict any stale shot, reserve → PUT → commit ---
                 let setId: String
                 if let existingId = setIdByDisplayType[displayType] {
                     setId = existingId
@@ -744,6 +761,11 @@ internal enum ASCRegisterCLI {
                     )
                     setId = created.id
                     setIdByDisplayType[displayType] = setId
+                }
+                if let existingShot, let reason {
+                    print("  EVICT  [\(token)] \(displayType) \(asset.fileName) "
+                        + "→ delete id=\(existingShot.id) (\(reason))")
+                    try await client.deleteScreenshot(screenshotId: existingShot.id)
                 }
                 try await uploadOneScreenshot(client: client, setId: setId, asset: asset, token: token)
                 uploaded += 1

@@ -409,16 +409,7 @@ internal struct APIResource: Sendable, Equatable {
                 bodyExcerpt: truncateBody(data)
             )
         }
-        var attrs: [String: String] = [:]
-        if let raw = dict["attributes"] as? [String: Any] {
-            for (key, value) in raw {
-                if let str = value as? String {
-                    attrs[key] = str
-                } else if let num = value as? NSNumber {
-                    attrs[key] = num.stringValue
-                }
-            }
-        }
+        let attrs = APIResource.flattenAttributes(dict["attributes"] as? [String: Any])
         return APIResource(id: id, type: type, attributes: attrs)
     }
 }
@@ -496,16 +487,29 @@ extension APIResource {
                 bodyExcerpt: truncateBody(data)
             )
         }
+        let attrs = APIResource.flattenAttributes(dict["attributes"] as? [String: Any])
+        return APIResource(id: id, type: type, attributes: attrs)
+    }
+
+    /// Flatten a JSON:API `attributes` object into the opaque `[String: String]`
+    /// store. String + number scalars map verbatim. The ONE nested object we
+    /// flatten is `assetDeliveryState` (`{state,errors,warnings}`) → its `state`
+    /// string, because asset idempotency (#370) keys on COMPLETE vs not; all
+    /// other nested/array attributes are still dropped (not needed by callers).
+    internal static func flattenAttributes(_ raw: [String: Any]?) -> [String: String] {
+        guard let raw else { return [:] }
         var attrs: [String: String] = [:]
-        if let raw = dict["attributes"] as? [String: Any] {
-            for (key, value) in raw {
-                if let str = value as? String {
-                    attrs[key] = str
-                } else if let num = value as? NSNumber {
-                    attrs[key] = num.stringValue
-                }
+        for (key, value) in raw {
+            if let str = value as? String {
+                attrs[key] = str
+            } else if let num = value as? NSNumber {
+                attrs[key] = num.stringValue
+            } else if key == "assetDeliveryState",
+                      let nested = value as? [String: Any],
+                      let state = nested["state"] as? String {
+                attrs[key] = state
             }
         }
-        return APIResource(id: id, type: type, attributes: attrs)
+        return attrs
     }
 }
