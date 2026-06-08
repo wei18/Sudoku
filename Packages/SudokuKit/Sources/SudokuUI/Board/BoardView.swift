@@ -18,6 +18,7 @@ public struct BoardView: View {
     private let path: Binding<[AppRoute]>?
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var keyboardFocus: Bool
     /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
     /// freely, so guard the push to fire EXACTLY once.
@@ -71,6 +72,24 @@ public struct BoardView: View {
             // (mounted directly in `.completed`) does NOT auto-bounce to
             // Completion — the finished board stays viewable.
             pushCompletionIfNeeded()
+        }
+        // #413: flush the debounced autosave when the board leaves the screen.
+        // `scheduleSave()` is debounced (500 ms) and holds `[weak self]`; a
+        // Home tap (NavigationStack pop → `.onDisappear`) tears the VM down
+        // before the debounce fires, so the pending save sees `self == nil`
+        // and the latest moves + elapsed are silently dropped — the next
+        // Resume then shows a stale/fresh board and the wrong time. Flushing
+        // here persists the live snapshot first. This is the "view dismiss"
+        // case the `GameViewModel.flush()` doc already promised.
+        .onDisappear {
+            Task { await viewModel.flush() }
+        }
+        // #413: same hazard on app backgrounding — persist before suspension
+        // (the "scenePhase background" case `flush()`'s doc references).
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                Task { await viewModel.flush() }
+            }
         }
     }
 
