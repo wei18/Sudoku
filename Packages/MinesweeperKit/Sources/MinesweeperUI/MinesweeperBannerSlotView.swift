@@ -28,9 +28,15 @@ internal struct MinesweeperBannerSlotView: View {
     @State private var status: AdBannerStatus = .notInitialized
     @State private var dismissed: Bool = false
 
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Gate-aware reload seam (#341). Mirror of Sudoku's slot.
+    private let reloadCoordinator: BannerReloadCoordinator
+
     internal init(adProvider: any AdProvider, adGate: AdGate) {
         self.adProvider = adProvider
         self.adGate = adGate
+        self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
     }
 
     internal var body: some View {
@@ -45,10 +51,11 @@ internal struct MinesweeperBannerSlotView: View {
         }
         .task { await resolveGateAndLoad() }
         .onChange(of: status) { oldStatus, _ in
-            // Mirror of Sudoku's slot. Defensive: `status` is written once today
-            // so this does not fire — it guards the dispose path for a future
-            // re-poll/refresh WITHOUT reviving the raw `.onDisappear` dispose,
-            // which thrashed on transient SwiftUI teardown (#276).
+            // Mirror of Sudoku's slot. Defensive: since #341 `status` is written
+            // again on a foreground re-poll (`repollGate`), so this DOES fire when
+            // a reload yields a new handle (same-handle short-circuits below). It
+            // guards the dispose path WITHOUT reviving the raw `.onDisappear`
+            // dispose, which thrashed on transient SwiftUI teardown (#276).
             guard case let .loaded(handle) = oldStatus else { return }
             if case .loaded(handle) = status { return } // same handle, no churn
             Task { await adProvider.dispose(handle: handle) }
@@ -57,6 +64,15 @@ internal struct MinesweeperBannerSlotView: View {
             // Gate closed for the session — release the held banner (#221).
             guard isDismissed, case let .loaded(handle) = status else { return }
             Task { await adProvider.dispose(handle: handle) }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Re-poll seam (#341). Mirror of Sudoku's slot: on foreground,
+            // re-evaluate the gate so a next-day reopen reloads the banner.
+            // Coordinator consults `AdGate` first, so a purchaser / dismissed-
+            // today / tamper case returns `.suppressed` and the provider is
+            // never touched.
+            guard newPhase == .active else { return }
+            Task { await repollGate() }
         }
     }
 
@@ -116,11 +132,17 @@ internal struct MinesweeperBannerSlotView: View {
         let allowed = await adGate.shouldShowBanner(now: now)
         shouldShow = allowed
         guard allowed else { return }
-        do {
-            try await adProvider.refreshBanner()
-            status = await adProvider.bannerStatus
-        } catch {
-            status = .failed(reason: String(describing: error))
+        status = await reloadCoordinator.reloadIfGateOpen(now: now)
+    }
+
+    /// Foreground re-poll (#341). Mirror of Sudoku's slot.
+    private func repollGate() async {
+        let reloaded = await reloadCoordinator.reloadIfGateOpen(now: Date())
+        guard reloaded != .suppressed else { return }
+        status = reloaded
+        shouldShow = true
+        if dismissed {
+            withAnimation(.easeInOut(duration: 0.18)) { dismissed = false }
         }
     }
 
