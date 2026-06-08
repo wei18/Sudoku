@@ -112,25 +112,30 @@ render() {
 
     # Substitute the public ids into the body fragment first. `#` delimiter so
     # values containing `/` or `.` are safe; ids are dot/path-shaped, never `#`.
-    local body
-    body="$(sed \
+    # Write to a temp file (NOT a shell var): the body is multiline HTML, and
+    # passing it via `awk -v` mis-parses embedded newlines/quotes. awk reads it
+    # back with getline below, which handles arbitrary content verbatim.
+    local body_file
+    body_file="$(mktemp)"
+    sed \
         -e "s#{{APP_NAME}}#$APP_NAME#g" \
         -e "s#{{BUNDLE_ID}}#$BUNDLE_ID#g" \
         -e "s#{{CONTAINER_ID}}#$CONTAINER_ID#g" \
         -e "s#{{IAP_PRODUCT_ID}}#$IAP_PRODUCT_ID#g" \
         -e "s#{{LIVE_COMPOSITION}}#$LIVE_COMPOSITION#g" \
-        "$body_tmpl")"
+        "$body_tmpl" > "$body_file"
 
     # Compose: substitute the scalar shell slots, then inject the (multiline)
-    # body at {{BODY}} via awk (avoids sed multiline-replace fiddliness).
+    # body at {{BODY}} via awk getline (avoids sed/awk-v multiline fiddliness).
     sed \
         -e "s#{{TITLE}}#$(title_for "$topic")#g" \
         -e "s#{{HEADING}}#$(heading_for "$topic")#g" \
         -e "s#{{SUBTITLE}}#$(subtitle_for "$topic")#g" \
         -e "s#{{OUT_PATH}}#$out_file#g" \
         "$SHELL_TMPL" \
-    | awk -v body="$body" '{ if ($0 ~ /\{\{BODY\}\}/) print body; else print }' \
+    | awk -v bf="$body_file" '/\{\{BODY\}\}/ { while ((getline line < bf) > 0) print line; next } { print }' \
         > "$out_file"
+    rm -f "$body_file"
 
     echo "$out_file"
     [[ "$OPEN" -eq 1 ]] && open "$out_file"
