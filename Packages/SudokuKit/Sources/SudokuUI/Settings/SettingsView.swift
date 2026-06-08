@@ -31,16 +31,22 @@ public struct SettingsView: View {
     // byte-identical Settings screen without the reminder row. Live wiring
     // injects one so the Daily-reminder time picker renders.
     private let reminderTimeModel: ReminderTimeSettingsModel?
+    // #331: shared Notices section inputs. Defaulted so previews / tests mount
+    // a byte-identical screen without the section; the host (RouteFactory)
+    // injects the app-specific URLs + copyright + acknowledgements deep-link.
+    private let notices: SettingsNoticesConfig?
     @Environment(\.theme) private var theme
 
     public init(
         viewModel: SettingsViewModel,
         monetizationController: MonetizationStateController? = nil,
-        reminderTimeModel: ReminderTimeSettingsModel? = nil
+        reminderTimeModel: ReminderTimeSettingsModel? = nil,
+        notices: SettingsNoticesConfig? = nil
     ) {
         self.viewModel = viewModel
         self.monetizationController = monetizationController
         self.reminderTimeModel = reminderTimeModel
+        self.notices = notices
     }
 
     public var body: some View {
@@ -85,6 +91,16 @@ public struct SettingsView: View {
                     tintColor: theme.accent.primary.resolved
                 )
                 AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
+            }
+
+            // #331: shared Notices / 宣告 section — acknowledgements deep-link,
+            // privacy-policy + support links, copyright. URLs + copyright are
+            // app-injected via the config; the shared section owns layout only.
+            if let notices {
+                SettingsNoticesSection(
+                    tintColor: theme.accent.primary.resolved,
+                    config: notices
+                )
             }
 
             // #277: shared Storage section. Wires the existing VM clearCache.

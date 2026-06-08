@@ -20,21 +20,28 @@
 
 public import SwiftUI
 public import MonetizationUI
-internal import GameShellUI
+// #331: `public` (was `internal`) — `SettingsNoticesConfig` now appears in
+// SettingsView's public init signature, so the import must be public.
+public import GameShellUI
 
 public struct SettingsView: View {
     private let version: String
     private let clearCache: @MainActor () async -> Void
     private let monetizationController: MonetizationStateController?
+    // #331: shared Notices section inputs, app-injected by the host. Defaulted
+    // nil so previews / tests keep the byte-identical screen.
+    private let notices: SettingsNoticesConfig?
 
     public init(
         version: String = "1.0.0",
         clearCache: @escaping @MainActor () async -> Void = {},
-        monetizationController: MonetizationStateController? = nil
+        monetizationController: MonetizationStateController? = nil,
+        notices: SettingsNoticesConfig? = nil
     ) {
         self.version = version
         self.clearCache = clearCache
         self.monetizationController = monetizationController
+        self.notices = notices
     }
 
     public var body: some View {
@@ -58,6 +65,13 @@ public struct SettingsView: View {
 
             Section("About") {
                 SettingsAboutVersionRow(version: version, tintColor: .accentColor)
+            }
+
+            // #331: shared Notices / 宣告 section. Same building block Sudoku
+            // adopts; URLs + copyright app-injected via the config. Tint is
+            // `.accentColor` — MS has no theme tokens yet.
+            if let notices {
+                SettingsNoticesSection(tintColor: .accentColor, config: notices)
             }
 
             SettingsStorageSection(clearCache: clearCache)

@@ -58,6 +58,10 @@ public struct LiveRouteFactory: RouteFactory {
     // wiring stays in AppComposition. `nil` in previews / tests → no reminder row,
     // byte-identical Settings screen.
     private let makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)?
+    // #331: app-injected Notices section config (acknowledgements deep-link,
+    // copyright, optional privacy/support URLs). `nil` in previews / tests →
+    // no Notices section, byte-identical Settings screen.
+    private let settingsNotices: SettingsNoticesConfig?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -71,7 +75,8 @@ public struct LiveRouteFactory: RouteFactory {
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
-        makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)? = nil
+        makeReminderTimeSettings: (@MainActor () -> ReminderTimeSettingsModel)? = nil,
+        settingsNotices: SettingsNoticesConfig? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -85,6 +90,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.makeReminderTimeSettings = makeReminderTimeSettings
+        self.settingsNotices = settingsNotices
     }
 
     /// A puzzleId is a Daily unless it carries the practice prefix — same
@@ -181,7 +187,8 @@ public struct LiveRouteFactory: RouteFactory {
                         toastController: toastController
                     ),
                     monetizationController: monetizationController,
-                    reminderTimeModel: makeReminderTimeSettings?()
+                    reminderTimeModel: makeReminderTimeSettings?(),
+                    notices: settingsNotices
                 )
             )
         }
