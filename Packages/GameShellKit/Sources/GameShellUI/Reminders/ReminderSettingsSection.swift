@@ -43,6 +43,8 @@ public struct ReminderSettingsCopy: Equatable {
     public var enabledTitle: LocalizedStringKey
     /// The trailing status text once on, e.g. "On".
     public var enabledStatus: LocalizedStringKey
+    /// The turn-off row label shown once on, e.g. "Turn off reminders".
+    public var disableTitle: LocalizedStringKey
     /// The fire-time picker label, e.g. "Time".
     public var timeTitle: LocalizedStringKey
     /// The status-row label when denied, e.g. "Notifications are off".
@@ -56,6 +58,7 @@ public struct ReminderSettingsCopy: Equatable {
         enableCTA: LocalizedStringKey,
         enabledTitle: LocalizedStringKey,
         enabledStatus: LocalizedStringKey,
+        disableTitle: LocalizedStringKey,
         timeTitle: LocalizedStringKey,
         deniedTitle: LocalizedStringKey,
         deniedCTA: LocalizedStringKey
@@ -65,6 +68,7 @@ public struct ReminderSettingsCopy: Equatable {
         self.enableCTA = enableCTA
         self.enabledTitle = enabledTitle
         self.enabledStatus = enabledStatus
+        self.disableTitle = disableTitle
         self.timeTitle = timeTitle
         self.deniedTitle = deniedTitle
         self.deniedCTA = deniedCTA
@@ -100,6 +104,7 @@ public struct ReminderSettingsSection: View {
             case .authorized, .provisional:
                 enabledStatusRow
                 timeRow
+                disableRow
             case .denied:
                 deniedRow
             case .notDetermined:
@@ -181,6 +186,29 @@ public struct ReminderSettingsSection: View {
             }
         }
         .accessibilityIdentifier("reminders.settings.time")
+    }
+
+    /// Authorized: the in-app OFF affordance (#287 CR). Cancels the scheduled
+    /// reminder via `model.disable()` so a player who turned reminders on can turn
+    /// them back off without leaving the app. The whole row is the hit target
+    /// (swiftui-interaction-footguns: a trailing-only tap shrinks the target); the
+    /// destructive `.red` label signals the off action.
+    private var disableRow: some View {
+        Button(role: .destructive) {
+            Task { await model.disable() }
+        } label: {
+            HStack {
+                Image(systemName: "bell.slash")
+                    .foregroundStyle(.red)
+                Text(copy.disableTitle)
+                    .foregroundStyle(.red)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("reminders.settings.disable")
     }
 
     /// Denied: a tappable row opening the recovery explainer.

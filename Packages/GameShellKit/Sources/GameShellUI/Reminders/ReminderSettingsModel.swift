@@ -127,6 +127,9 @@ public final class ReminderSettingsModel {
     /// pre-ask primer (the shared `ReminderPrimerSheet`). No system prompt fires
     /// until they accept inside the sheet.
     public func enable() {
+        // Defensive: a double-tap before the sheet commits would otherwise
+        // re-enter and re-present (CR #287). No-op if the primer is already up.
+        guard !isPrimerPresented else { return }
         isPrimerPresented = true
     }
 

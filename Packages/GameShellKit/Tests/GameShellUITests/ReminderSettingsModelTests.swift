@@ -234,6 +234,47 @@ struct ReminderSettingsModelTests {
 
     // MARK: - Disable
 
+    /// The Settings section's OFF affordance (#287 CR): once reminders are On
+    /// (authorized + enabled), the `disableRow` button calls `model.disable()`,
+    /// which must cancel the scheduled reminder AND emit `.cancelled` so the
+    /// on→off funnel is observable. This pins the affordance's contract from the
+    /// On state the row is shown in.
+    @Test("OFF affordance (authorized → disable) cancels + emits .cancelled")
+    func offAffordanceCancelsAndEmitsWhenOn() async throws {
+        let scheduler = FakeReminderScheduler()
+        let recorder = EventRecorder()
+        let model = makeModel(
+            scheduler: scheduler,
+            authorizer: FakeNotificationAuthorizing(status: .authorized),
+            box: TimeBox((hour: 9, minute: 0)),
+            emit: { event in Task { await recorder.record(event) } }
+        )
+        await model.onAppear() // -> .authorized: the row's On state where disableRow shows
+        #expect(model.isEnabled == true)
+
+        // What the disableRow Button action does:
+        await model.disable()
+
+        let cancels = await scheduler.cancelCalls
+        #expect(cancels == [.dailyReady])
+        let events = try await settledEvents(recorder, containing: .cancelled(kind: "dailyReady"))
+        #expect(events.contains(.cancelled(kind: "dailyReady")))
+    }
+
+    @Test("enable() is a no-op while the primer is already presented (double-tap guard)")
+    func enableDoubleTapGuarded() {
+        let model = makeModel(
+            scheduler: FakeReminderScheduler(),
+            authorizer: FakeNotificationAuthorizing(status: .notDetermined),
+            box: TimeBox((hour: 9, minute: 0))
+        )
+        model.enable()
+        #expect(model.isPrimerPresented == true)
+        // A second tap before the sheet commits must not re-enter.
+        model.enable()
+        #expect(model.isPrimerPresented == true)
+    }
+
     @Test("disable() cancels the pending request for the kind")
     func disableCancels() async throws {
         let scheduler = FakeReminderScheduler()

@@ -179,7 +179,8 @@ extension MinesweeperAppComposition {
             case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
             case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
             case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
-            case .cancelled: telemetryEvent = nil
+            // The user turned reminders off in-app — observe the on→off funnel.
+            case let .cancelled(kind): telemetryEvent = .reminderCancelled(kind: kind)
             }
             guard let telemetryEvent else { return }
             Task { await telemetry.observe(telemetryEvent) }
@@ -223,6 +224,7 @@ extension MinesweeperAppComposition {
                     enableCTA: "Turn On",
                     enabledTitle: "Daily reminder",
                     enabledStatus: "On",
+                    disableTitle: "Turn off reminders",
                     timeTitle: "Time",
                     deniedTitle: "Notifications are off",
                     deniedCTA: "Fix"

@@ -1,3 +1,9 @@
+// swiftlint:disable file_length
+// (Composition root: crossed 400 lines once #287 reminders + #417 ATT wiring
+//  both landed here. A composition root legitimately aggregates every live impl;
+//  splitting it would scatter the single boot wiring. Matches the ASCClient /
+//  MetadataConfig file_length precedent.)
+//
 // Live composition — concrete impls for production. docs/v1/design.md §How.1.
 //
 // Wires:
@@ -258,9 +264,8 @@ extension AppComposition {
             case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
             case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
             case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
-            // No `reminderCancelled` telemetry case today — disabling is silent
-            // (the OSLog/Reminders subsystem already logs the center call).
-            case .cancelled: telemetryEvent = nil
+            // The user turned reminders off in-app — observe the on→off funnel.
+            case let .cancelled(kind): telemetryEvent = .reminderCancelled(kind: kind)
             }
             guard let telemetryEvent else { return }
             Task { await telemetry.observe(telemetryEvent) }
@@ -291,6 +296,7 @@ extension AppComposition {
                     enableCTA: "Turn On",
                     enabledTitle: "Daily reminder",
                     enabledStatus: "On",
+                    disableTitle: "Turn off reminders",
                     timeTitle: "Time",
                     deniedTitle: "Notifications are off",
                     deniedCTA: "Fix"

@@ -52,6 +52,9 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     case reminderPrimerDeclined(kind: String)
     /// A repeating reminder was scheduled (or replaced) on authorization (S04→S05).
     case reminderScheduled(kind: String)
+    /// The user turned reminders off in-app → the scheduled reminder was cancelled
+    /// (the on→off funnel, from the Settings OFF affordance, #287).
+    case reminderCancelled(kind: String)
     /// A delivered reminder presented while the app was foregrounded
     /// (`UNUserNotificationCenterDelegate.willPresent`, flow S05/S07).
     case reminderFired(kind: String)

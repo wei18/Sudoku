@@ -111,6 +111,7 @@ struct SettingsViewTests {
                     enableCTA: "Turn On",
                     enabledTitle: "Daily reminder",
                     enabledStatus: "On",
+                    disableTitle: "Turn off reminders",
                     timeTitle: "Time",
                     deniedTitle: "Notifications are off",
                     deniedCTA: "Fix"
