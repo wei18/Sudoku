@@ -2,11 +2,11 @@
 // committed YAML files (issue #310).
 //
 // Source files (docs/app-store/metadata/, see that dir's README for the
-// asymmetric multi-app layout):
+// symmetric multi-app layout):
 //   - <subtree>/<locale>/listing.yaml — per-locale storefront copy.
 //   - <subtree>/app-meta.yaml         — per-app global fields
 //                                       (copyright / categories / review info).
-// where <subtree> is "" (top level) for Sudoku and "minesweeper/" for MS.
+// where <subtree> is "sudoku/" for Sudoku and "minesweeper/" for MS.
 //
 // These map onto the ASC API as (plan §2):
 //   listing.name / subtitle / privacy_policy_url → appInfoLocalizations
@@ -35,12 +35,11 @@ internal enum MetadataApp: String, Sendable, CaseIterable {
     case minesweeper
 
     /// Path component appended to `--metadata-dir` to reach this app's tree.
-    /// Sudoku lives at the top level (the original single-app tree);
-    /// Minesweeper in a `minesweeper/` subtree (metadata/README asymmetric
-    /// layout decision, #236).
+    /// Each app lives in its own subtree (`sudoku/`, `minesweeper/`) under the
+    /// shared `docs/app-store/metadata` root — a symmetric per-app layout.
     internal var subtreeComponent: String {
         switch self {
-        case .sudoku:      return ""
+        case .sudoku:      return "sudoku"
         case .minesweeper: return "minesweeper"
         }
     }
@@ -184,16 +183,14 @@ extension MetadataConfig {
 
     /// Load the full metadata config for `app` from `metadataDir`
     /// (default `docs/app-store/metadata`). Reads `app-meta.yaml` + every
-    /// `<locale>/listing.yaml` under the app's subtree.
+    /// `<locale>/listing.yaml` under the app's subtree (`<metadataDir>/<app>`).
     internal static func load(
         app: MetadataApp,
         metadataDir: String
     ) throws -> MetadataConfig {
         let fileManager = FileManager.default
         let root = URL(fileURLWithPath: metadataDir)
-        let subtree = app.subtreeComponent.isEmpty
-            ? root
-            : root.appendingPathComponent(app.subtreeComponent)
+        let subtree = root.appendingPathComponent(app.subtreeComponent)
 
         var isDir: ObjCBool = false
         guard fileManager.fileExists(atPath: subtree.path, isDirectory: &isDir), isDir.boolValue else {
@@ -256,11 +253,7 @@ extension MetadataConfig {
         for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
             var isDir: ObjCBool = false
             guard fileManager.fileExists(atPath: entry.path, isDirectory: &isDir), isDir.boolValue else { continue }
-            // Skip the sibling app subtree (e.g. `minesweeper/`) so the Sudoku
-            // top-level load does not recurse into the MS tree.
-            if MetadataApp.allCases.contains(where: { $0.subtreeComponent == entry.lastPathComponent }) {
-                continue
-            }
+            // Non-locale dirs (e.g. `iap/`) have no listing.yaml and are skipped.
             let listingFile = entry.appendingPathComponent("listing.yaml")
             guard let text = try? String(contentsOf: listingFile, encoding: .utf8) else { continue }
             let node: Any?

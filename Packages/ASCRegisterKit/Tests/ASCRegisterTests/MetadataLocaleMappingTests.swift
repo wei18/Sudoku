@@ -89,13 +89,16 @@ internal struct MetadataLocaleMappingTests {
     internal func loadThrowsOnUnknownLocale() throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("asc-meta-locale-\(UUID().uuidString)")
-        let localeDir = tmp.appendingPathComponent("qq")
+        // The loader resolves `<metadataDir>/sudoku` for `.sudoku`, so the
+        // fixture lives under a `sudoku/` subtree (symmetric per-app layout).
+        let subtree = tmp.appendingPathComponent("sudoku")
+        let localeDir = subtree.appendingPathComponent("qq")
         try FileManager.default.createDirectory(at: localeDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
         // Minimal app-meta + one listing with an unsupported locale code.
         try "app: tmp\n".write(
-            to: tmp.appendingPathComponent("app-meta.yaml"), atomically: true, encoding: .utf8
+            to: subtree.appendingPathComponent("app-meta.yaml"), atomically: true, encoding: .utf8
         )
         try "locale: qq\nname: Test\n".write(
             to: localeDir.appendingPathComponent("listing.yaml"), atomically: true, encoding: .utf8

@@ -1,6 +1,7 @@
 // MetadataConfigLoadTests — exercises the Yams-backed YAML loader against
-// the real committed `docs/app-store/metadata` tree (issue #310). Verifies
-// the `|` block scalars (with embedded blank lines), nested
+// the real committed `docs/app-store/metadata` tree (issue #310). The loader
+// resolves each app's subtree (`sudoku/`, `minesweeper/`) under that root.
+// Verifies the `|` block scalars (with embedded blank lines), nested
 // `review_information:` map, `null` coercion, and the per-app subtree split
 // all decode without a hand-rolled parser.
 //
@@ -34,8 +35,8 @@ internal struct MetadataConfigLoadTests {
         #expect(config.appMeta.appleId == "6771248206")
         #expect(config.appMeta.categories.primary == "Games")
         #expect(config.appMeta.categories.primaryFirstSub == "Puzzle")
-        // 7 locale dirs (en, zh-Hant, zh-Hans, ja, es, th, ko); the
-        // `minesweeper/` + `iap/` siblings are skipped.
+        // 7 locale dirs (en, zh-Hant, zh-Hans, ja, es, th, ko) under
+        // `sudoku/`; the non-locale `iap/` sibling is skipped.
         let locales = Set(config.listings.map(\.locale))
         #expect(locales.contains("en-US"))
         #expect(locales.contains("zh-Hant"))

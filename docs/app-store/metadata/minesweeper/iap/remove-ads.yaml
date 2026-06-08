@@ -6,7 +6,7 @@
 # Price:      USD 2.99 tier (mirrors Sudoku)
 # Family Sharing: enabled
 #
-# Mirrors docs/app-store/metadata/iap/remove-ads.yaml (the Sudoku IAP).
+# Mirrors docs/app-store/metadata/sudoku/iap/remove-ads.yaml (the Sudoku IAP).
 # Same ASC field limits: name ≤ 30, description ≤ 45.
 #
 # Sources:
