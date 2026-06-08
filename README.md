@@ -46,6 +46,7 @@ Minesweeper/                 # thin shell: @main + DI composition root (mirrors 
 Packages/
 ├── SudokuCoreKit/           # pure-Swift core: SudokuEngine + GameState (leaf, portable)
 ├── MinesweeperCoreKit/      # pure-Swift core: MinesweeperEngine + MinesweeperGameState (leaf)
+├── TimeKit/                 # pure-Swift core: UTCDay date helpers (leaf, portable)
 ├── TelemetryKit/            # Logger + Tracking abstraction + TelemetryTesting fixtures
 ├── PersistenceKit/          # CloudKit persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting

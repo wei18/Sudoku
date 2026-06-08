@@ -46,6 +46,7 @@ Minesweeper/                 # 薄殼：@main + DI composition root（鏡像 Sud
 Packages/
 ├── SudokuCoreKit/           # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植）
 ├── MinesweeperCoreKit/      # 純 Swift 核心：MinesweeperEngine + MinesweeperGameState（leaf）
+├── TimeKit/                 # 純 Swift 核心：UTCDay 日期工具（leaf，可移植）
 ├── TelemetryKit/            # Logger + Tracking 抽象 + TelemetryTesting fixtures
 ├── PersistenceKit/          # CloudKit Persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting
