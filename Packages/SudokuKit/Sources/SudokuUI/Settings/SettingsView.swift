@@ -52,7 +52,28 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        SettingsShellView(title: "Settings") {
+        // #421: the shared assembly (shell + 5 sections in order) now lives in
+        // `GameShellUI.SettingsScreen`. This wrapper supplies the Sudoku config
+        // + the two injected slots (Purchases rows, the Sudoku-only Generator
+        // About row) and the host-specific `.task` side-effects.
+        SettingsScreen(
+            version: viewModel.appVersion,
+            tint: theme.accent.primary.resolved,
+            clearCache: { await viewModel.clearCache() },
+            reminderSettings: reminderSettings.map {
+                // #287: shared Reminders section — same building block both apps
+                // mount; map the Sudoku entry into the shell's config.
+                SettingsScreenReminderConfig(
+                    model: $0.model,
+                    copy: $0.copy,
+                    primerCopy: $0.primerCopy,
+                    deniedCopy: $0.deniedCopy
+                )
+            },
+            notices: notices
+        ) {
+            // Purchases slot — the app's MonetizationUI rows. GameShellUI never
+            // imports MonetizationUI; the whole conditional Section lives here.
             if let controller = monetizationController {
                 Section("Purchases") {
                     if controller.hasPurchasedRemoveAds {
@@ -69,50 +90,11 @@ public struct SettingsView: View {
                     )
                 }
             }
-
-            // #287: shared Reminders section — the user-initiated entry to
-            // enable daily reminders (primes the notification permission via the
-            // shared `ReminderPrimerSheet`), set the fire time, and recover when
-            // denied. Replaces the #321 time-only row; same building block
-            // Minesweeper mounts so the entry is identical across both apps.
-            if let reminderSettings {
-                ReminderSettingsSection(
-                    model: reminderSettings.model,
-                    tintColor: theme.accent.primary.resolved,
-                    copy: reminderSettings.copy,
-                    primerCopy: reminderSettings.primerCopy,
-                    deniedCopy: reminderSettings.deniedCopy
-                )
-            }
-
-            Section("About") {
-                // Issue #197: unify with Purchases section's HStack primitive
-                // so `.formStyle(.grouped)` on macOS renders all rows as
-                // full-width pills. `LabeledContent` lands on a 2-column
-                // preferences layout that bypasses the pill background.
-                //
-                // #277: the Version row is now the shared
-                // `GameShellUI.SettingsAboutVersionRow`. The Generator row is
-                // Sudoku-only (Minesweeper has no generator) and stays here.
-                SettingsAboutVersionRow(
-                    version: viewModel.appVersion,
-                    tintColor: theme.accent.primary.resolved
-                )
-                AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
-            }
-
-            // #331: shared Notices / 宣告 section — acknowledgements deep-link,
-            // privacy-policy + support links, copyright. URLs + copyright are
-            // app-injected via the config; the shared section owns layout only.
-            if let notices {
-                SettingsNoticesSection(
-                    tintColor: theme.accent.primary.resolved,
-                    config: notices
-                )
-            }
-
-            // #277: shared Storage section. Wires the existing VM clearCache.
-            SettingsStorageSection(clearCache: { await viewModel.clearCache() })
+        } aboutExtraRows: {
+            // #277: the Generator row is Sudoku-only (Minesweeper has no
+            // generator). Injected into the shared About section after the
+            // shared Version row, preserving the prior order exactly.
+            AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
         }
         .task { await viewModel.bootstrap() }
         .task {
