@@ -1705,32 +1705,32 @@
         },
         "es" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "Elimina todos los anuncios de la app para siempre. Compatible con En familia."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "アプリ内のすべての広告を永久に非表示にします。ファミリー共有対応。"
           }
         },
         "ko" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "앱 내 모든 광고를 영구적으로 제거합니다. 가족 공유 지원."
           }
         },
         "th" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "นำโฆษณาในแอปทั้งหมดออกถาวร รองรับการแชร์กันในครอบครัว"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "永久移除 App 内所有广告。支持“家人共享”。"
           }
         },
         "zh-Hant" : {
@@ -1752,32 +1752,32 @@
         },
         "es" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "Eliminar anuncios"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "広告を非表示"
           }
         },
         "ko" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "광고 제거"
           }
         },
         "th" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "นำโฆษณาออก"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "<TRANSLATE>"
+            "state" : "translated",
+            "value" : "移除广告"
           }
         },
         "zh-Hant" : {
