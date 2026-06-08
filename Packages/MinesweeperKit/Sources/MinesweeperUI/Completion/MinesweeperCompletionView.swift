@@ -27,15 +27,23 @@ public struct MinesweeperCompletionView: View {
     private let onNewGame: (() -> Void)?
     /// Retry → replay the same difficulty in place.
     private let onRetry: (() -> Void)?
+    /// #386: when re-viewing an already-solved daily there is no stored elapsed
+    /// (MS has no save-flow, #284). The route-pushed surface passes a placeholder
+    /// (e.g. "--:--") so the hero doesn't render a misleading `0:00`; the real
+    /// ranked time still appears in the leaderboard slice. `nil` for the live
+    /// post-game overlay, which formats the just-played `viewModel.elapsedSeconds`.
+    private let elapsedOverride: String?
 
     public init(
         viewModel: MinesweeperCompletionViewModel,
         onNewGame: (() -> Void)? = nil,
-        onRetry: (() -> Void)? = nil
+        onRetry: (() -> Void)? = nil,
+        elapsedOverride: String? = nil
     ) {
         self.viewModel = viewModel
         self.onNewGame = onNewGame
         self.onRetry = onRetry
+        self.elapsedOverride = elapsedOverride
     }
 
     public var body: some View {
@@ -132,7 +140,7 @@ public struct MinesweeperCompletionView: View {
     // MARK: - Formatting
 
     private var elapsedLabel: String {
-        timeLabel(viewModel.elapsedSeconds)
+        elapsedOverride ?? timeLabel(viewModel.elapsedSeconds)
     }
 
     private func timeLabel(_ total: Int) -> String {

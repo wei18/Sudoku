@@ -27,6 +27,13 @@ public enum AppRoute: Hashable, Sendable {
     // `MinesweeperGameViewModel` can gate the GC daily-board submit to daily
     // wins only — mirroring how Sudoku threads its mode to `GameCenterSink`.
     case board(difficulty: Difficulty, seed: UInt64, mode: GameMode)
+    // #386: re-tapping an already-SOLVED daily card pushes this instead of a
+    // fresh `.board` — it re-surfaces the player's result (win hero + the
+    // daily's leaderboard slice) rather than starting a dead replay (mirrors
+    // Sudoku #379). MS stores no elapsed (no save-flow, #284), so the route
+    // carries only `difficulty` (→ the daily leaderboard id) and `mode`; the
+    // hero time is a placeholder and the real ranked time shows in the slice.
+    case completion(difficulty: Difficulty, mode: GameMode)
     case daily
     case practice
     case settings

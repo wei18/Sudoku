@@ -68,6 +68,24 @@ import GameShellUI
         _ = factory.view(for: .practice, path: nil)
     }
 
+    // #386: the solved-daily re-view route renders the standalone Completion
+    // surface. Sentinel — a future switch refactor dropping the case fails here.
+    @Test func factoryReturnsViewForCompletionRoute() {
+        let factory = LiveRouteFactory()
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let view = factory.view(for: .completion(difficulty: .beginner, mode: .daily), path: binding)
+        _ = view
+    }
+
+    @Test func factoryHandlesAllDifficultyCasesForCompletion() {
+        let factory = LiveRouteFactory()
+        for difficulty in Difficulty.allCases {
+            let view = factory.view(for: .completion(difficulty: difficulty, mode: .daily))
+            _ = view
+        }
+    }
+
     @Test func factoryHandlesAllDifficultyCases() {
         let factory = LiveRouteFactory()
         for difficulty in Difficulty.allCases {

@@ -104,8 +104,19 @@ public final class MinesweeperDailyHubViewModel {
         state = .loaded(Self.mergeCards(trio: trio, completed: completed))
     }
 
+    /// #386 (mirror Sudoku #379): a SOLVED daily card re-surfaces the player's
+    /// result via `.completion` instead of starting a fresh seed-deterministic
+    /// board — re-tapping a solved daily should let you re-see the win + the
+    /// daily leaderboard, not dead-replay it. An un-solved card pushes the
+    /// `.daily`-mode board exactly as before. Unlike Sudoku, MS routes
+    /// synchronously: it has no saved snapshot to load (no elapsed to recover,
+    /// #284), so there is no async fan-out / in-flight latch needed here.
     public func cardTapped(_ card: MinesweeperDailyCard) {
-        path.wrappedValue.append(.board(difficulty: card.difficulty, seed: card.seed, mode: .daily))
+        if card.isCompleted {
+            path.wrappedValue.append(.completion(difficulty: card.difficulty, mode: .daily))
+        } else {
+            path.wrappedValue.append(.board(difficulty: card.difficulty, seed: card.seed, mode: .daily))
+        }
     }
 
     /// Merge the daily trio with the set of completed daily ids into cards,
