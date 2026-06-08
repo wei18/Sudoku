@@ -152,5 +152,40 @@ struct MinesweeperCompletionSnapshotTests {
             record: SnapshotMode.recordMode
         )
     }
+
+    // MARK: - Slice states (loading / failed) — dark theme (#315)
+    //
+    // The light loading/failed slices were already pinned; #315 asks for the
+    // four slice states across light + dark. These add the missing dark
+    // baselines so the slice section's dark-theme tints (spinner, warning text)
+    // are also guarded.
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoading_iPhone_dark() {
+        assertUISnapshot(
+            of: hostingView(
+                completionView(didWin: true, state: .loading),
+                size: SnapshotLayouts.iPhone,
+                colorScheme: .dark
+            ),
+            as: .tolerantImage,
+            named: "Completion-iPhone-dark-loading",
+            record: SnapshotMode.recordMode
+        )
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotFailed_iPhone_dark() {
+        assertUISnapshot(
+            of: hostingView(
+                completionView(didWin: true, state: .failed("network offline")),
+                size: SnapshotLayouts.iPhone,
+                colorScheme: .dark
+            ),
+            as: .tolerantImage,
+            named: "Completion-iPhone-dark-failed",
+            record: SnapshotMode.recordMode
+        )
+    }
 }
 #endif
