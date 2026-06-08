@@ -43,15 +43,15 @@ struct MinesweeperNoATTGuardTests {
             .deletingLastPathComponent()  // MinesweeperKit
         let sources = packageRoot.appendingPathComponent("Sources")
 
-        let fm = FileManager.default
+        let fileManager = FileManager.default
         var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: sources.path, isDirectory: &isDir), isDir.boolValue else {
+        guard fileManager.fileExists(atPath: sources.path, isDirectory: &isDir), isDir.boolValue else {
             // Source tree not present (distributed runner). The PR `swift test`
             // run enforces this; nothing to assert here.
             return
         }
 
-        guard let walker = fm.enumerator(at: sources, includingPropertiesForKeys: nil) else {
+        guard let walker = fileManager.enumerator(at: sources, includingPropertiesForKeys: nil) else {
             return
         }
 
