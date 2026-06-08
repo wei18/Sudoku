@@ -63,6 +63,41 @@ struct MinesweeperCompletionSnapshotTests {
         )
     }
 
+    // MARK: - Re-opened solved daily (#386): hero OMITS the time row
+
+    /// #386: re-viewing an already-solved daily has no stored elapsed (#284), so
+    /// the route passes `showsElapsedTime: false` and the shared body OMITS the
+    /// hero time row entirely — win hero + leaderboard, no time line. The real
+    /// ranked time still appears in the leaderboard slice. This baseline pins
+    /// that no-time hero (contrast the `…win-loaded` baseline, which shows the
+    /// "1:05" subtitle from the live-overlay `elapsedSeconds: 65` fixture).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotWinLoadedNoElapsed_iPhone_light() {
+        let viewModel = MinesweeperCompletionViewModel(
+            didWin: true,
+            elapsedSeconds: 0,
+            leaderboardId: MinesweeperLeaderboardID.easyDaily,
+            gameCenter: FakeGameCenterClient()
+        )
+        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
+        let view = MinesweeperCompletionView(
+            viewModel: viewModel,
+            onNewGame: {},
+            onRetry: nil,
+            showsElapsedTime: false
+        )
+        assertUISnapshot(
+            of: hostingView(
+                view,
+                size: SnapshotLayouts.iPhone,
+                colorScheme: .light
+            ),
+            as: .tolerantImage,
+            named: "Completion-iPhone-light-win-loaded-noElapsed",
+            record: SnapshotMode.recordMode
+        )
+    }
+
     // MARK: - Win hero + loaded leaderboard slice
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

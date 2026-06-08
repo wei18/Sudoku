@@ -90,7 +90,12 @@ public struct CompletionScreen: View {
     @Environment(\.theme) private var theme
 
     private let outcome: CompletionOutcome
-    private let elapsedLabel: String
+    /// Hero subtitle time ("4:11"). `nil` OMITS the time row entirely (symbol +
+    /// title only) — used by MS's re-opened solved-daily route, which has no
+    /// stored elapsed (#284/#386); the real ranked time still shows in the
+    /// leaderboard slice. Every has-time caller (Sudoku, MS in-game overlay)
+    /// passes a real label, so their layout is unchanged.
+    private let elapsedLabel: String?
     private let state: CompletionScreenState
     /// Optional sign-in CTA shown under the `.unauthenticated` copy (Sudoku wires
     /// it; Minesweeper passes `nil` → copy only, matching its prior surface).
@@ -114,7 +119,7 @@ public struct CompletionScreen: View {
 
     public init(
         outcome: CompletionOutcome,
-        elapsedLabel: String,
+        elapsedLabel: String?,
         state: CompletionScreenState,
         onSignIn: (() -> Void)? = nil,
         onRetryLeaderboard: @escaping () -> Void,
@@ -158,10 +163,15 @@ public struct CompletionScreen: View {
             Text(outcome.title)
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(theme.text.primary.resolved)
-            Text(elapsedLabel)
-                .font(.title3)
-                .foregroundStyle(theme.text.secondary.resolved)
-                .monospacedDigit()
+            // Omit the time row entirely when there's no elapsed (MS re-opened
+            // solved-daily, #386) — no placeholder/empty row. Has-time callers
+            // render the identical `Text` as before, so snapshots are unchanged.
+            if let elapsedLabel {
+                Text(elapsedLabel)
+                    .font(.title3)
+                    .foregroundStyle(theme.text.secondary.resolved)
+                    .monospacedDigit()
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(24)

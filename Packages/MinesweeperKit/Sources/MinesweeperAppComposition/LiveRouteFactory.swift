@@ -134,6 +134,28 @@ public struct LiveRouteFactory: RouteFactory {
                         }
                     }
             )
+        case .completion(let difficulty, _):
+            // #386: re-viewing an already-solved daily. Build the same
+            // `MinesweeperCompletionView` the live board overlay uses, but
+            // standalone (no board behind it) and seeded as a WIN — a solved
+            // daily is, by definition, won. MS has no stored elapsed (#284), so
+            // the hero OMITS the time row entirely (`showsElapsedTime: false`);
+            // the player's real ranked time shows in the leaderboard slice. New
+            // Game pops to the picker; no Retry (replaying the same daily is the
+            // dead-replay #386 avoids).
+            return AnyView(
+                MinesweeperCompletionView(
+                    viewModel: MinesweeperCompletionViewModel(
+                        didWin: true,
+                        elapsedSeconds: 0,
+                        leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty),
+                        gameCenter: gameCenter
+                    ),
+                    onNewGame: { Self.popToNewGame(path: path) },
+                    onRetry: nil,
+                    showsElapsedTime: false
+                )
+            )
         case .settings:
             let version = (Bundle.main
                 .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)

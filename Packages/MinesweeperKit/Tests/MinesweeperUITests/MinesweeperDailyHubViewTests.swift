@@ -77,6 +77,32 @@ import MinesweeperEngine
         #expect(path == [.board(difficulty: first.difficulty, seed: first.seed, mode: .daily)])
     }
 
+    // #386: re-tapping an already-SOLVED daily routes to `.completion` (re-see
+    // the result + leaderboard), NOT a fresh `.board` (dead replay).
+    @Test func solvedCardTapPushesCompletionRoute() {
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
+        let solved = MinesweeperDailyCard(entry: entry, isCompleted: true)
+        viewModel.cardTapped(solved)
+        #expect(path == [.completion(difficulty: solved.difficulty, mode: .daily)])
+    }
+
+    // #386: an un-solved daily card still pushes the daily-mode board (unchanged
+    // pre-#386 behavior) so a first solve submits to the daily leaderboard.
+    @Test func unsolvedCardTapPushesDailyBoardRoute() {
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
+        let unsolved = MinesweeperDailyCard(entry: entry, isCompleted: false)
+        viewModel.cardTapped(unsolved)
+        #expect(path == [.board(difficulty: unsolved.difficulty, seed: unsolved.seed, mode: .daily)])
+    }
+
     @Test func bootstrapIsIdempotent() async {
         let counter = Counter()
         let counting = CountingProvider(onFetch: { counter.increment() })

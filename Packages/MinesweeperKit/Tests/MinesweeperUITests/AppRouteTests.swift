@@ -58,4 +58,31 @@ import MinesweeperEngine
         #expect(AppRoute.daily == .daily)
         #expect(AppRoute.practice == .practice)
     }
+
+    // #386: the solved-daily re-view route carries difficulty + mode (no seed /
+    // elapsed — MS has no stored snapshot). Payload drives equality, and it is
+    // distinct from a `.board` with the same difficulty.
+    @Test func completionCarriesDifficultyAndMode() {
+        let route = AppRoute.completion(difficulty: .intermediate, mode: .daily)
+        guard case .completion(let difficulty, let mode) = route else {
+            Issue.record("expected .completion case")
+            return
+        }
+        #expect(difficulty == .intermediate)
+        #expect(mode == .daily)
+    }
+
+    @Test func completionIsDistinctFromBoard() {
+        let completion = AppRoute.completion(difficulty: .beginner, mode: .daily)
+        let board = AppRoute.board(difficulty: .beginner, seed: 0, mode: .daily)
+        #expect(completion != board)
+    }
+
+    @Test func completionEqualityUsesPayload() {
+        let lhs = AppRoute.completion(difficulty: .expert, mode: .daily)
+        let rhs = AppRoute.completion(difficulty: .expert, mode: .daily)
+        let other = AppRoute.completion(difficulty: .beginner, mode: .daily)
+        #expect(lhs == rhs)
+        #expect(lhs != other)
+    }
 }

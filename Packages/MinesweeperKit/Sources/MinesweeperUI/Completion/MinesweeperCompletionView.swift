@@ -27,15 +27,23 @@ public struct MinesweeperCompletionView: View {
     private let onNewGame: (() -> Void)?
     /// Retry → replay the same difficulty in place.
     private let onRetry: (() -> Void)?
+    /// #386: when re-viewing an already-solved daily there is no stored elapsed
+    /// (MS has no save-flow, #284), so the hero OMITS the time row entirely (the
+    /// player's real ranked time still appears in the leaderboard slice). The
+    /// route-pushed re-opened-daily surface passes `false`; the live post-game
+    /// overlay leaves it `true` and formats the just-played `elapsedSeconds`.
+    private let showsElapsedTime: Bool
 
     public init(
         viewModel: MinesweeperCompletionViewModel,
         onNewGame: (() -> Void)? = nil,
-        onRetry: (() -> Void)? = nil
+        onRetry: (() -> Void)? = nil,
+        showsElapsedTime: Bool = true
     ) {
         self.viewModel = viewModel
         self.onNewGame = onNewGame
         self.onRetry = onRetry
+        self.showsElapsedTime = showsElapsedTime
     }
 
     public var body: some View {
@@ -57,14 +65,17 @@ public struct MinesweeperCompletionView: View {
                 kind: .success,
                 systemImage: "checkmark.circle.fill",
                 title: "You won",
-                accessibilityLabel: Text("You won in \(elapsedLabel)")
+                // No elapsed → terse "You won" a11y label (re-opened daily, #386).
+                accessibilityLabel: elapsedLabel.map { Text("You won in \($0)") }
+                    ?? Text("You won")
             )
         } else {
             CompletionOutcome(
                 kind: .failure,
                 systemImage: "burst.fill",
                 title: "Boom",
-                accessibilityLabel: Text("Boom. Lasted \(elapsedLabel)")
+                accessibilityLabel: elapsedLabel.map { Text("Boom. Lasted \($0)") }
+                    ?? Text("Boom")
             )
         }
     }
@@ -131,8 +142,10 @@ public struct MinesweeperCompletionView: View {
 
     // MARK: - Formatting
 
-    private var elapsedLabel: String {
-        timeLabel(viewModel.elapsedSeconds)
+    /// Hero subtitle. `nil` when there's no stored elapsed (re-opened solved
+    /// daily, #386) so the shared body omits the time row entirely.
+    private var elapsedLabel: String? {
+        showsElapsedTime ? timeLabel(viewModel.elapsedSeconds) : nil
     }
 
     private func timeLabel(_ total: Int) -> String {
