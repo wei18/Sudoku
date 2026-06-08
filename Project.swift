@@ -47,20 +47,20 @@ let sudokuTarget = Target.target(
     product: .app,
     bundleId: "com.wei18.sudoku",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    infoPlist: .file(path: "Sudoku/Info.plist"),
-    sources: ["Sudoku/**/*.swift"],
+    infoPlist: .file(path: "App/Sudoku/Info.plist"),
+    sources: ["App/Sudoku/**/*.swift"],
     resources: [
-        "Sudoku/Assets.xcassets",
-        "Sudoku/Resources/PrivacyInfo.xcprivacy",
-        "Sudoku/Resources/Localizable.xcstrings",
+        "App/Sudoku/Assets.xcassets",
+        "App/Sudoku/Resources/PrivacyInfo.xcprivacy",
+        "App/Sudoku/Resources/Localizable.xcstrings",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
-        // page). Source of truth: `license_plist.yml`. Regenerated on every
-        // Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not committed
-        // (.gitignore'd). Glob pattern so Tuist doesn't require the directory
-        // to exist at `tuist generate` time on dev machines.
-        .glob(pattern: "Sudoku/Resources/Settings.bundle/**")
+        // page). Source of truth: `App/Sudoku/license_plist.yml`. Regenerated
+        // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
+        // committed (.gitignore'd). Glob pattern so Tuist doesn't require the
+        // directory to exist at `tuist generate` time on dev machines.
+        .glob(pattern: "App/Sudoku/Resources/Settings.bundle/**")
     ],
-    entitlements: .file(path: "Sudoku/Sudoku.entitlements"),
+    entitlements: .file(path: "App/Sudoku/Sudoku.entitlements"),
     dependencies: [
         .package(product: "SudokuUI"),
         .package(product: "AppComposition"),
@@ -86,20 +86,20 @@ let minesweeperTarget = Target.target(
     product: .app,
     bundleId: "com.wei18.minesweeper",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    infoPlist: .file(path: "Minesweeper/Info.plist"),
-    sources: ["Minesweeper/**/*.swift"],
+    infoPlist: .file(path: "App/Minesweeper/Info.plist"),
+    sources: ["App/Minesweeper/**/*.swift"],
     resources: [
-        "Minesweeper/Assets.xcassets",
-        "Minesweeper/Resources/PrivacyInfo.xcprivacy",
-        "Minesweeper/Resources/Localizable.xcstrings",
+        "App/Minesweeper/Assets.xcassets",
+        "App/Minesweeper/Resources/PrivacyInfo.xcprivacy",
+        "App/Minesweeper/Resources/Localizable.xcstrings",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
-        // page). Source of truth: `license_plist.minesweeper.yml`. Regenerated
-        // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
-        // committed (.gitignore'd). Glob pattern so Tuist doesn't require the
+        // page). Source of truth: `App/Minesweeper/license_plist.yml`.
+        // Regenerated on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`;
+        // not committed (.gitignore'd). Glob pattern so Tuist doesn't require the
         // directory to exist at `tuist generate` time on dev machines.
-        .glob(pattern: "Minesweeper/Resources/Settings.bundle/**"),
+        .glob(pattern: "App/Minesweeper/Resources/Settings.bundle/**"),
     ],
-    entitlements: .file(path: "Minesweeper/Minesweeper.entitlements"),
+    entitlements: .file(path: "App/Minesweeper/Minesweeper.entitlements"),
     dependencies: [
         .package(product: "MinesweeperUI"),
         .package(product: "MinesweeperAppComposition"),
@@ -148,12 +148,12 @@ let project = Project(
             // qualify targets across SPM package projects; the xctestplan
             // JSON references them via `containerPath: container:Packages/<pkg>`
             // which xcodebuild resolves through the workspace). See issue #184.
-            testAction: .testPlans(["Sudoku/Sudoku.xctestplan"]),
+            testAction: .testPlans(["App/Sudoku/Sudoku.xctestplan"]),
             runAction: .runAction(
                 configuration: "Debug",
                 executable: "Sudoku",
                 options: .options(
-                    storeKitConfigurationPath: .relativeToManifest("Sudoku/Resources/Sudoku.storekit")
+                    storeKitConfigurationPath: .relativeToManifest("App/Sudoku/Resources/Sudoku.storekit")
                 )
             )
         ),
@@ -161,7 +161,7 @@ let project = Project(
             name: "Minesweeper",
             shared: true,
             buildAction: .buildAction(targets: ["Minesweeper"]),
-            testAction: .testPlans(["Minesweeper/Minesweeper.xctestplan"]),
+            testAction: .testPlans(["App/Minesweeper/Minesweeper.xctestplan"]),
             runAction: .runAction(
                 configuration: "Debug",
                 executable: "Minesweeper"
