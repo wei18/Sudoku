@@ -127,6 +127,38 @@ struct RootViewTests {
         }
     }
 
+    // #387: with a resume candidate the ResumePill must render as the FIRST
+    // child INSIDE HomeView's scroll region (above the mode cards), so it
+    // scrolls with the content instead of staying pinned at the top. This
+    // baseline pins that placement.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotResumeCandidateIPhoneLight() async {
+        let summary = SavedGameSummary(
+            recordName: "saved-2026-05-19-easy",
+            puzzleId: "2026-05-19-easy",
+            mode: .daily,
+            difficulty: .easy,
+            lastModifiedAt: Date(timeIntervalSince1970: 1_715_000_000),
+            elapsedSeconds: 201,
+            status: "inProgress",
+            generatorVersion: 1
+        )
+        let viewModel = RootViewModel(
+            gameCenter: FakeGameCenterClient(),
+            persistence: FakePersistence(resumeCandidate: summary)
+        )
+        await viewModel.bootstrap()
+
+        let view = RootView(
+            viewModel: viewModel,
+            routeFactory: makeTestRouteFactory()
+        )
+        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
+
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "RootView-iPhone-light-resume")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
