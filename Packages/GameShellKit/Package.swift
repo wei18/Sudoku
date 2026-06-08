@@ -27,16 +27,12 @@ let swiftSettings: [SwiftSetting] = [
 let productionTargets: [Target] = [
     .target(
         name: "GameShellUI",
-        dependencies: [
-            // #287 Phase 2: the reminder permission-priming UI (primer sheet +
-            // `ReminderPermissionModel`) lives here as shared chrome so both
-            // Sudoku and Minesweeper render an identical primer with injected
-            // copy (proposal §4.4 Q2). It depends only on the
-            // `NotificationAuthorizing` protocol seam from the leaf `Reminders`
-            // target — never on `UserNotifications`, which stays restricted to
-            // RemindersKit's Live files.
-            .product(name: "Reminders", package: "RemindersKit"),
-        ],
+        // The reminder permission-priming UI (primer sheet + the reminder
+        // models) and the shared Settings screen moved to the sibling
+        // `SettingsKit` package (refactor/settingskit-target, 2026-06-09).
+        // GameShellUI now owns only the game-agnostic shell chrome
+        // (navigation host, hub shells, Theme) and no longer depends on the
+        // `Reminders` seam — SettingsKit consumes it directly.
         swiftSettings: swiftSettings
     ),
 ]
@@ -51,11 +47,11 @@ let productionTargets: [Target] = [
 let testTargets: [Target] = [
     .testTarget(
         name: "GameShellUITests",
+        // The reminder/settings model tests moved to `SettingsKit`'s
+        // `SettingsUITests` (refactor/settingskit-target, 2026-06-09), so this
+        // target no longer needs `RemindersTesting`.
         dependencies: [
             "GameShellUI",
-            // #287 Phase 2: `ReminderPermissionModelTests` drive the model with
-            // the shared `FakeNotificationAuthorizing` fake.
-            .product(name: "RemindersTesting", package: "RemindersKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -72,13 +68,7 @@ let package = Package(
     products: [
         .library(name: "GameShellUI", targets: ["GameShellUI"]),
     ],
-    dependencies: [
-        // #287 Phase 2: RemindersKit (sibling leaf package, merged #318) hosts
-        // the `NotificationAuthorizing` / `ReminderScheduler` protocol seams and
-        // their Live/Noop/Fake conformers. GameShellUI consumes only the
-        // `Reminders` product (protocols + value types) for the primer UI.
-        .package(name: "RemindersKit", path: "../RemindersKit"),
-    ],
+    dependencies: [],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
 )

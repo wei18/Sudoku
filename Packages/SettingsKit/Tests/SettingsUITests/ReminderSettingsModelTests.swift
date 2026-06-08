@@ -10,7 +10,7 @@
 import Foundation
 import Testing
 import UserNotifications
-@testable import GameShellUI
+@testable import SettingsUI
 @testable import Reminders
 import RemindersTesting
 

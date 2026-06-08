@@ -20,7 +20,14 @@
 // dep of their own so Minesweeper can mount the same rows under a different
 // palette in Phase 3.
 
-public import GameShellUI
+// `@Environment(\.theme)` (the Theme env key from GameShellUI) is read only in
+// the view bodies, not in any public signature, so this import is internal.
+internal import GameShellUI
+// refactor/settingskit-target: the shared `SettingsScreen` / `SettingsShellView`
+// + the reminders UI types (`ReminderSettingsModel`, the copy value types,
+// `SettingsNoticesConfig`) moved out of GameShellUI into SettingsUI. `public`
+// because `ReminderSettingsEntry` re-exposes those types in its API surface.
+public import SettingsUI
 public import MonetizationUI
 public import SwiftUI
 
