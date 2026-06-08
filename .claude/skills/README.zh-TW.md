@@ -4,7 +4,7 @@
 
 本目錄為本專案自含（self-contained）的 agent skill 集合。所有在本專案中使用 / 觀察到的 skill 都放這裡，不依賴 user-level `~/.claude/skills/` 的 project-specific 條目。
 
-從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 7 條本 session 觀察到並沉澱出的流程 / 安全 skill，共 **17** 條。
+從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 16 條本 session 沉澱出的流程 / 安全 / 維運 skill，共 **26** 條。
 
 ---
 
@@ -40,6 +40,26 @@
 | [`backlog-routing-by-topic`](backlog-routing-by-topic/SKILL.md) | 散落想法依主題 route 到對應檔 §Backlog（玩法 / 工具 / 實作 / 協作 / fallback meeting log）|
 | [`apple-public-repo-security`](apple-public-repo-security/SKILL.md) | Public iOS / macOS repo 三道防線（lefthook + gitleaks / Xcode Cloud post-clone / GitHub Secret Scanning）+ leak rotate-first SOP |
 | [`leader-developer-handoff-contract`](leader-developer-handoff-contract/SKILL.md) | 派發 sub-agent 的 5 要件：scope / inputs / skills / return format / verification |
+
+---
+
+## 維運、審查與流程 (9)
+
+專案成熟過程中加入的工作流、審查紀律、變現、ASC／圖示維運、以及 mockup skill。
+
+| Skill | 一句話 |
+|---|---|
+| [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | sub-agent 執行期間維護 `meetings/{date}_{topic}.impl-notes.md`——在途決策、偏離、替代方案、待決問題 |
+| [`pr-diff-verification`](pr-diff-verification/SKILL.md) | push／開 PR 前，確認 `git show --stat HEAD` 與 commit message 宣稱的內容一致 |
+| [`subagent-conflict-detection`](subagent-conflict-detection/SKILL.md) | 派發前檢查新 sub-agent 的目標檔案不與在途 sub-agent 的 worktree 重疊 |
+| [`swiftui-interaction-footguns`](swiftui-interaction-footguns/SKILL.md) | 純看程式碼審查會漏掉的 SwiftUI 互動 bug 清單（點擊區域、安全區、sizeClass、`.task` 重觸發） |
+| [`build-time-secret-injection`](build-time-secret-injection/SKILL.md) | xcconfig + Info.plist `$()` + `Bundle.main`，處理「進二進位但不該出現在公開 PR diff」的 ID（AdMob／ASC `.p8`） |
+| [`monetization-sdk-integration`](monetization-sdk-integration/SKILL.md) | 新增／升級／稽核任何第三方變現 SDK；把 `import GoogleMobileAds` 隔離在 live-bridge 檔 |
+| [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | 哪些 App Store Connect／TestFlight 步驟屬 user-owned、哪些可由 Leader 經 ASC API + ASCRegister 下令 |
+| [`app-icon-rasterize`](app-icon-rasterize/SKILL.md) | 用 `qlmanage` 把 1024 SVG 圖示點陣化成 asset catalog PNG——不依賴 Homebrew／雲端 |
+| [`ios-design-mockup`](ios-design-mockup/SKILL.md) | 從 spec 產生單檔 HTML iOS 設計 mockup——iPhone 外框 + SVG 導覽箭頭 + design token 面板 |
+
+> `superpowers/` 目錄是 git **submodule**（`obra/superpowers`），並非已 checkout 的 skill 集——一般 clone 會是空的。執行 `git submodule update --init` 才會拉取；其 skill 不在本索引內。
 
 ---
 
