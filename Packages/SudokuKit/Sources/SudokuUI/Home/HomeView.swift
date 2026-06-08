@@ -24,6 +24,9 @@ public struct HomeView<Header: View>: View {
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     private let monetizationController: MonetizationStateController?
+    // #371 / #195: ATT pre-prompt trigger, forwarded to the BannerSlotView so
+    // the priming sheet is offered at the first ad-relevant moment (gate open).
+    private let attPrimer: ATTPrimerCoordinator?
     // #387: optional header rendered as the first child INSIDE the scroll
     // region. RootView passes its ResumePill here so the pill scrolls with
     // the mode cards instead of sitting pinned above HomeView's ScrollView.
@@ -38,12 +41,14 @@ public struct HomeView<Header: View>: View {
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         monetizationController: MonetizationStateController? = nil,
+        attPrimer: ATTPrimerCoordinator? = nil,
         @ViewBuilder header: () -> Header = { EmptyView() }
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
         self.monetizationController = monetizationController
+        self.attPrimer = attPrimer
         self.header = header()
     }
 
@@ -75,7 +80,7 @@ public struct HomeView<Header: View>: View {
             .padding(16)
 
             if let adProvider, let adGate {
-                BannerSlotView(adProvider: adProvider, adGate: adGate)
+                BannerSlotView(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
             }

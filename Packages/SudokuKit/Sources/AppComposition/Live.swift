@@ -166,6 +166,19 @@ extension AppComposition {
             errorReporter: errorReporter
         )
 
+        // #371 / #195: ATT pre-prompt coordinator. The two ATT touch points are
+        // injected here (the only layer that depends on AdsAdMob — SudokuUI must
+        // not, per foundations.md §9.1). `ATTPresenter.requestIfNeeded()` is
+        // idempotent (only prompts when `.notDetermined`); `currentStatus()`
+        // backs the "should we even offer?" check via the public outcome enum.
+        // The boot sequence no longer calls ATT — this coordinator owns it,
+        // triggered from BannerSlotView when the ad gate opens (post-Home,
+        // first ad-relevant moment).
+        let attPrimer = ATTPrimerCoordinator(
+            isNotDetermined: { await ATTPresenter.currentStatus() == .notDetermined },
+            requestSystemPrompt: { _ = await ATTPresenter.requestIfNeeded() }
+        )
+
         // #287 Phase 2: reminder wiring. RemindersKit's Live conformers +
         // `UNUserNotificationCenter` stay confined to this composition layer.
         // `emit` bridges the (non-async) coordinator/delegate callbacks into the
@@ -284,7 +297,8 @@ extension AppComposition {
             adGate: adGate,
             monetizationStateStore: monetizationStateStore,
             monetizationController: monetizationController,
-            toastController: toastController
+            toastController: toastController,
+            attPrimer: attPrimer
         )
     }
 

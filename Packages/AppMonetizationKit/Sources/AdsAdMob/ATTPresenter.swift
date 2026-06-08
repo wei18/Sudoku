@@ -34,6 +34,17 @@ internal protocol ATTBridge: Sendable {
 }
 
 public enum ATTPresenter {
+    /// Current ATT status WITHOUT prompting. Used by the pre-prompt flow
+    /// (#371 / #195) to decide whether to offer the priming sheet at all — we
+    /// only offer while the system has not yet asked (`.notDetermined`).
+    public static func currentStatus() async -> ATTOutcome {
+        await currentStatus(using: LiveATTBridge())
+    }
+
+    internal static func currentStatus(using bridge: any ATTBridge) async -> ATTOutcome {
+        await bridge.currentStatus()
+    }
+
     /// Request ATT only when the system has not yet asked; on every other
     /// status echo the current outcome. Idempotent across repeated calls.
     public static func requestIfNeeded() async -> ATTOutcome {

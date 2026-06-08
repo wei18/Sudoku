@@ -61,6 +61,11 @@ public struct AppComposition {
     // MonetizationStateController pushes success / failure toasts on purchase
     // and restore (and on out-of-band `purchaseUpdates()` events).
     public let toastController: ToastController
+    // #371 / #195: ATT pre-prompt coordinator. Built in `.live()` (wired to
+    // `ATTPresenter`); `nil` in `.preview()` / `.tests()`. RootView forwards it
+    // to HomeView's banner slot (the trigger) and binds the priming sheet.
+    // Sudoku-only — Minesweeper has no equivalent (it never prompts ATT).
+    public let attPrimer: ATTPrimerCoordinator?
 
     // MARK: - Root view accessor (#244)
 
@@ -75,7 +80,8 @@ public struct AppComposition {
             adProvider: adProvider,
             adGate: adGate,
             monetizationController: monetizationController,
-            toastController: toastController
+            toastController: toastController,
+            attPrimer: attPrimer
         )
         // #278 Tier-1 Phase 1: the `@Environment(\.theme)` key moved to
         // GameShellUI, whose neutral fallback default is intentionally NOT
@@ -94,10 +100,16 @@ public struct AppComposition {
         // (BannerSlotView is honest about deferred state), so disappear-
         // cancellation isn't needed. See #361.
         .onAppear { Task {
-            // v2.3.7: kick the UMP → ATT → AdMob boot sequence concurrent
-            // with the first frame. `BannerSlotView` is honest about
-            // deferred state (shows `.failed` if AdMob has not yet
-            // initialized) so this never blocks UI rendering.
+            // v2.3.7: kick the boot sequence concurrent with the first frame.
+            // `BannerSlotView` is honest about deferred state (shows `.failed`
+            // if AdMob has not yet initialized) so this never blocks UI.
+            //
+            // #371 / #195: ATT no longer fires here. design.md §How.4 forbids a
+            // cold-launch ATT prompt — it must come after Home is seen and at
+            // the first ad-relevant moment. Boot now runs UMP (GDPR consent
+            // stays early, F4) → AdMob init only; ATT is deferred to the
+            // `ATTPrimerCoordinator`, triggered from BannerSlotView when the
+            // ad gate opens.
             await bootMonetization()
         } }
     }
@@ -115,7 +127,8 @@ public struct AppComposition {
         adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
         monetizationController: MonetizationStateController,
-        toastController: ToastController
+        toastController: ToastController,
+        attPrimer: ATTPrimerCoordinator? = nil
     ) {
         self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
@@ -130,14 +143,21 @@ public struct AppComposition {
         self.monetizationStateStore = monetizationStateStore
         self.monetizationController = monetizationController
         self.toastController = toastController
+        self.attPrimer = attPrimer
     }
 
     // MARK: - v2.3.7 boot order
 
-    /// App-launch monetization boot. Runs UMP consent → ATT prompt → AdMob
+    /// App-launch monetization boot. Runs UMP consent → (ATT no-op) → AdMob
     /// SDK initialize in that order. Each step is attempted independently;
     /// a failing earlier step never blocks later steps (banner gate will
     /// surface `.failed` honestly while AdMob is still un-initialized).
+    ///
+    /// #371 / #195: the ATT step is intentionally a NO-OP at boot. The
+    /// coordinator keeps the 3-slot UMP/ATT/AdMob shape (ordering tests rely on
+    /// it) but `MonetizationBootBridges.live` wires the ATT closure to nothing —
+    /// the real ATT prompt is driven later by `ATTPrimerCoordinator` (after Home
+    /// + first ad-context). UMP (GDPR consent) legitimately stays at cold launch.
     ///
     /// Callable from `.task` on the root scene — the boot runs concurrently
     /// with first-frame rendering, never blocks UI.
