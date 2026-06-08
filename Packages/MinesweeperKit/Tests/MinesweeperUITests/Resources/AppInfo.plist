@@ -48,7 +48,7 @@
       Without this key the OS terminates the process at TCC.
     -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>Minesweeper uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
+    <string>Minesweeper uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely.</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>

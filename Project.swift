@@ -53,6 +53,10 @@ let sudokuTarget = Target.target(
         "App/Sudoku/Assets.xcassets",
         "App/Sudoku/Resources/PrivacyInfo.xcprivacy",
         "App/Sudoku/Resources/Localizable.xcstrings",
+        // Localized Info.plist keys (NSUserTrackingUsageDescription — ATT
+        // system-dialog string, Path B framing). #371: the Info.plist literal
+        // stays as base fallback; this catalog supplies all 7 locales.
+        "App/Sudoku/Resources/InfoPlist.xcstrings",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Sudoku/license_plist.yml`. Regenerated
         // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
@@ -92,6 +96,10 @@ let minesweeperTarget = Target.target(
         "App/Minesweeper/Assets.xcassets",
         "App/Minesweeper/Resources/PrivacyInfo.xcprivacy",
         "App/Minesweeper/Resources/Localizable.xcstrings",
+        // Localized Info.plist keys (NSUserTrackingUsageDescription — ATT
+        // system-dialog string, Path B framing). #371: the Info.plist literal
+        // stays as base fallback; this catalog supplies all 7 locales.
+        "App/Minesweeper/Resources/InfoPlist.xcstrings",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Minesweeper/license_plist.yml`.
         // Regenerated on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`;

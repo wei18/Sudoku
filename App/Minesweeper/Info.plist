@@ -46,9 +46,12 @@
       app launch calls `ATTrackingManager.requestTrackingAuthorization` (see
       `Packages/AppMonetizationKit/Sources/AdsAdMob/ATTPresenter.swift`).
       Without this key the OS terminates the process at TCC.
+      This literal is the BASE/fallback only; the localized 7-locale strings
+      live in `App/Minesweeper/Resources/InfoPlist.xcstrings` (#371). Keep the
+      two English values in sync.
     -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>Minesweeper uses this identifier to show ads relevant to your interests. You can decline and ads still work — just less tailored.</string>
+    <string>Minesweeper uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely.</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>
