@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- AppIcon Tinted variant — single-channel friendly per Apple HIG.
-       System renders foreground (white) in user's accent color over a
-       near-black background. Reuses the original Concept 01 single-dot
-       motif (deleted from concepts/ in #63) but designed monochrome. -->
+  <!-- AppIcon Tinted variant — ADOPTED & SHIPPING (2026-06-08 user direction).
+       Ships as AppIcon-Tinted.png in App/Sudoku/Assets.xcassets/AppIcon.appiconset/
+       under a `luminosity: tinted` appearance entry. Single-channel friendly per
+       Apple HIG: the system renders the foreground (white) in the user's accent
+       color over a near-black background. Reuses the original Concept 01
+       single-dot motif (deleted from concepts/ in #63) but designed monochrome.
+       (Supersedes the 2026-06-01 "Light + Dark only" decision.) -->
   <!-- NO rounded-corner clip (2026-06-01 user direction): Apple's compositor
-       applies the squircle mask. See sibling light-difficulty-trio.svg
-       header for rationale. -->
+       applies the squircle mask. See sibling light.svg header for rationale. -->
   <g>
     <!-- Near-black bg; system tinting reads this as the "negative space" -->
     <rect width="1024" height="1024" fill="#0A0A0A"/>

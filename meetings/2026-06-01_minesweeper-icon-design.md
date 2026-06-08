@@ -13,6 +13,8 @@ User confirmed direction:
 
 Sections §6 (variant table) and §7 (16×16 simplification) below are retained for reference but their Tinted / small-ladder portions are out-of-scope for shipping. §8 prompt is unchanged — it produces a single 1024 master that becomes Light, and the same prompt with the §6 Dark-variant swap produces the Dark master.
 
+> **Superseded 2026-06-08:** Tinted variant **IS adopted** (ships as `AppIcon-Tinted.png` in both apps' asset catalogs — `App/Sudoku/Assets.xcassets/AppIcon.appiconset/` and `App/Minesweeper/Assets.xcassets/AppIcon.appiconset/` — under a `luminosity: tinted` appearance entry). The icon source-of-truth is `docs/app-store/icons/{sudoku,minesweeper}/tinted.svg`. The original "Light + Dark only" decision below is retained for record; the §6 "Tinted variant out-of-scope" framing no longer holds.
+
 ## 1. Concept summary
 
 A single **cartoon mine** — round, matte, with eight short radial spikes and a stubby lit fuse — sits dead-center on a warm paper field, framed inside the same 24% rounded clip Sudoku uses. The mine is rendered in deep ink-black `#1F2227` with a soft warm-paper highlight on the upper-left curve, so it reads as a hand-drawn object on graph paper, not a CGI bomb. Tucked into the lower-right quadrant, a **small red triangular flag** on a slim charcoal pole leans toward the mine — the flag is the secondary motif and the splash of saturated color that makes the icon pop at thumbnail size. The background is the canonical Sudoku-family warm paper `#FAF8F3` in light mode, with the faintest 2pt-stroke graph-paper grid ghosted behind the mine at 6% opacity. Reads like a Sunday newspaper puzzle page, not a video-game splash.
