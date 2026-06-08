@@ -51,10 +51,11 @@ internal struct MinesweeperBannerSlotView: View {
         }
         .task { await resolveGateAndLoad() }
         .onChange(of: status) { oldStatus, _ in
-            // Mirror of Sudoku's slot. Defensive: `status` is written once today
-            // so this does not fire — it guards the dispose path for a future
-            // re-poll/refresh WITHOUT reviving the raw `.onDisappear` dispose,
-            // which thrashed on transient SwiftUI teardown (#276).
+            // Mirror of Sudoku's slot. Defensive: since #341 `status` is written
+            // again on a foreground re-poll (`repollGate`), so this DOES fire when
+            // a reload yields a new handle (same-handle short-circuits below). It
+            // guards the dispose path WITHOUT reviving the raw `.onDisappear`
+            // dispose, which thrashed on transient SwiftUI teardown (#276).
             guard case let .loaded(handle) = oldStatus else { return }
             if case .loaded(handle) = status { return } // same handle, no churn
             Task { await adProvider.dispose(handle: handle) }
