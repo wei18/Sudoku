@@ -154,10 +154,38 @@ struct SettingsIAPRowTests {
         #expect(controller.hasPurchasedRemoveAds == false)
     }
 
-    // MARK: - Snapshot baselines
+    // MARK: - Snapshot baselines — ISOLATED Purchases-section rows
+    //
+    // #396: these previously rendered the WHOLE `SettingsView`, producing
+    // goldens byte-identical to `SettingsViewTests`' full-page baselines (the
+    // full-page snapshots — added in #181 — are the canonical SettingsView
+    // chrome coverage). This suite instead renders the isolated
+    // `RemoveAdsRow` / `AdsRemovedRow` + `RestorePurchasesRow` components
+    // inside a bare `Form { Section("Purchases") { … } }`, so the baseline
+    // exercises the IAP rows in isolation — its actual named scope — and is no
+    // longer a duplicate of the full page.
 
     #if canImport(AppKit)
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightUnpurchased() async {
+    /// Render the Purchases-section rows alone, mirroring the production
+    /// composition in `SettingsView` (`Section("Purchases") { … }`) and the
+    /// same `tintColor` (`DefaultTheme().accent.primary.resolved`).
+    @MainActor
+    private func purchasesSection(controller: MonetizationStateController) -> some View {
+        let tint = DefaultTheme().accent.primary.resolved
+        return Form {
+            Section("Purchases") {
+                if controller.hasPurchasedRemoveAds {
+                    AdsRemovedRow(tintColor: tint)
+                } else {
+                    RemoveAdsRow(controller: controller, tintColor: tint)
+                }
+                RestorePurchasesRow(controller: controller, tintColor: tint)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotRowsIPhoneLightUnpurchased() async {
         let (controller, _, _) = await makeController(
             products: [IAPProduct(
                 id: removeAdsProductId,
@@ -167,26 +195,26 @@ struct SettingsIAPRowTests {
             )]
         )
         await controller.bootstrap()
-        let view = SettingsView(
-            viewModel: SettingsViewModel(persistence: FakePersistence()),
-            monetizationController: controller
+        let host = hostingView(
+            purchasesSection(controller: controller),
+            size: CGSize(width: 393, height: 220),
+            colorScheme: .light
         )
-        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "SettingsView-iPhone-light-unpurchased")
+            assertSnapshot(of: host, as: .image, named: "IAPRows-iPhone-light-unpurchased")
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightPurchased() async {
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotRowsIPhoneLightPurchased() async {
         let (controller, _, _) = await makeController(purchased: true)
         await controller.bootstrap()
-        let view = SettingsView(
-            viewModel: SettingsViewModel(persistence: FakePersistence()),
-            monetizationController: controller
+        let host = hostingView(
+            purchasesSection(controller: controller),
+            size: CGSize(width: 393, height: 220),
+            colorScheme: .light
         )
-        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "SettingsView-iPhone-light-purchased")
+            assertSnapshot(of: host, as: .image, named: "IAPRows-iPhone-light-purchased")
         }
     }
     #endif

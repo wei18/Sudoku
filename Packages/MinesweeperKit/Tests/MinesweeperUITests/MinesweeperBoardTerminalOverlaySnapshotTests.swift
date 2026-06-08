@@ -20,6 +20,18 @@
 // surface fills its CONTAINER FRAME edge-to-edge (the 16pt-border regression),
 // but it CANNOT prove status-bar / home-indicator safe-area coverage. That part
 // still needs visual confirmation in an iOS simulator.
+//
+// #396 (intentional byte-identity, NOT false coverage): these two goldens are
+// byte-identical to `MinesweeperCompletionSnapshotTests.snapshotLoss_iPhone_*`
+// — and that equality IS the assertion. Both render the SAME completion VM
+// (didWin:false, elapsed:65, easyDaily, `.unauthenticated`); the difference is
+// the COMPOSITION — here the surface is overlaid on a live `.lost` board, there
+// it is the bare surface. If the overlay fully covers the board (the #388 fix),
+// the board cannot bleed through, so the composited pixels MUST equal the bare
+// surface. A future regression that lets the board show through the border
+// would make this golden differ from its own recorded baseline → red. Kept as a
+// distinct composition guard; the equality with the bare loss golden is the
+// pass condition, not a redundant duplicate.
 
 #if canImport(AppKit)
 import Foundation
