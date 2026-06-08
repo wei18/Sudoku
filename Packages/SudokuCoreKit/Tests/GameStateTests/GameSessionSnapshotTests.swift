@@ -52,8 +52,22 @@ struct GameSessionSnapshotTests {
         let restoredClock = FakeMonotonicClock()
         let restored = await GameSession.restore(from: snap, clock: restoredClock)
 
+        // A restored in-progress (`.playing`) snapshot is normalized to
+        // `.paused` — the only field that differs from the source snapshot.
+        // See GameSession.applySnapshot for the rationale (frozen clock +
+        // resume() can't transition from `.playing`).
         let restoredSnap = await restored.snapshot()
-        #expect(restoredSnap == snap)
+        #expect(restoredSnap.status == .paused)
+        #expect(restoredSnap == GameSessionSnapshot(
+            puzzle: snap.puzzle,
+            currentBoard: snap.currentBoard,
+            status: .paused,
+            elapsedSeconds: snap.elapsedSeconds,
+            undoMoves: snap.undoMoves,
+            redoMoves: snap.redoMoves,
+            notes: snap.notes,
+            startedAt: snap.startedAt
+        ))
     }
 
     @Test("After restore, undo / redo / placeDigit still work")
@@ -66,6 +80,8 @@ struct GameSessionSnapshotTests {
         let snap = await session.snapshot()
 
         let restored = await GameSession.restore(from: snap)
+        // Restored in-progress session is `.paused`; resume before play.
+        try await restored.resume()
         try await restored.redo()
         let cell = await restored.currentBoard.digit(atRow: 0, column: 2)
         #expect(cell == 6)
@@ -73,6 +89,40 @@ struct GameSessionSnapshotTests {
         try await restored.placeDigit(row: 0, col: 3, digit: 7)
         let cell3 = await restored.currentBoard.digit(atRow: 0, column: 3)
         #expect(cell3 == 7)
+    }
+
+    @Test("Restored .playing snapshot normalizes to .paused so resume() re-arms the clock")
+    func restoredPlayingResumesAndAdvances() async throws {
+        // Mid-play autosaves persist status == .playing (GameViewModel
+        // scheduleSave runs during play). A restored session is always
+        // frozen (runningSince = nil); a frozen .playing has no resume()
+        // path (resume only transitions from .paused), so the clock would
+        // stay stuck. Normalizing to .paused lets the explicit-resume path
+        // (startOrResume .paused → resume()) re-open a running span.
+        let snap = GameSessionSnapshot(
+            puzzle: TestPuzzles.simple,
+            currentBoard: TestPuzzles.simple.clues,
+            status: .playing,
+            elapsedSeconds: 120,
+            undoMoves: [],
+            redoMoves: [],
+            notes: NotesGrid(),
+            startedAt: nil
+        )
+
+        let clock = FakeMonotonicClock()
+        let restored = await GameSession.restore(from: snap, clock: clock)
+
+        // Frozen on restore — clock advancing alone must NOT accrue time.
+        clock.set(50)
+        let frozen = await restored.elapsedSeconds
+        #expect(frozen == 120, "restore must not auto-resume the wall clock")
+
+        // Explicit resume re-arms the span from the prior accumulated total.
+        try await restored.resume()
+        clock.set(80)
+        let advanced = await restored.elapsedSeconds
+        #expect(advanced == 150, "120 saved + 30 elapsed after resume")
     }
 
     @Test("All transitions emit their expected telemetry events")
