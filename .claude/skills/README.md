@@ -4,7 +4,7 @@
 
 This directory is the project's self-contained set of agent skills. Every skill used or observed in this project lives here, with no dependency on project-specific entries under the user-level `~/.claude/skills/`.
 
-10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 7 process / security skills distilled from this session — **17** skills in total.
+10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 16 process / security / ops skills distilled from this session — **26** skills in total.
 
 ---
 
@@ -40,6 +40,26 @@ Distilled from collaboration / security patterns observed in this session.
 | [`backlog-routing-by-topic`](backlog-routing-by-topic/SKILL.md) | Route stray ideas by topic to the matching file's §Backlog (gameplay / tooling / implementation / collaboration / fallback to meeting log) |
 | [`apple-public-repo-security`](apple-public-repo-security/SKILL.md) | Three lines of defence for public iOS / macOS repos (lefthook + gitleaks / Xcode Cloud post-clone / GitHub Secret Scanning) + rotate-first leak SOP |
 | [`leader-developer-handoff-contract`](leader-developer-handoff-contract/SKILL.md) | 5 required elements when dispatching a sub-agent: scope / inputs / skills / return format / verification |
+
+---
+
+## Ops, review & process (9)
+
+Workflow, review-discipline, monetization, ASC/icon ops, and mockup skills added as the project matured.
+
+| Skill | One-liner |
+|---|---|
+| [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | Running `meetings/{date}_{topic}.impl-notes.md` during a sub-agent task — in-flight decisions, deviations, alternatives, open questions |
+| [`pr-diff-verification`](pr-diff-verification/SKILL.md) | Before push / PR, verify `git show --stat HEAD` matches what the commit message claims |
+| [`subagent-conflict-detection`](subagent-conflict-detection/SKILL.md) | Before dispatch, check the new sub-agent's target files don't overlap an in-flight sub-agent's worktree |
+| [`swiftui-interaction-footguns`](swiftui-interaction-footguns/SKILL.md) | Checklist of known SwiftUI interaction bugs that slip past pure-code review (tap-target, safe-area, sizeClass, `.task` re-fire) |
+| [`build-time-secret-injection`](build-time-secret-injection/SKILL.md) | xcconfig + Info.plist `$()` + `Bundle.main` for ship-in-binary-but-out-of-PR-diff IDs (AdMob / ASC `.p8`) |
+| [`monetization-sdk-integration`](monetization-sdk-integration/SKILL.md) | Add / upgrade / audit any third-party monetization SDK; isolate `import GoogleMobileAds` to the live-bridge file |
+| [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | Which App Store Connect / TestFlight steps are user-owned vs Leader-orderable via the ASC API + ASCRegister |
+| [`app-icon-rasterize`](app-icon-rasterize/SKILL.md) | Rasterize a 1024 SVG app icon to the asset-catalog PNG via `qlmanage` — no Homebrew / cloud dependency |
+| [`ios-design-mockup`](ios-design-mockup/SKILL.md) | Single-file HTML iOS design mockup from a spec — iPhone frames + SVG nav arrows + design-token panel |
+
+> The `superpowers/` directory is a git **submodule** (`obra/superpowers`), not a checked-out skill set — a normal clone leaves it empty. Run `git submodule update --init` to populate it; its skills are not catalogued here.
 
 ---
 
