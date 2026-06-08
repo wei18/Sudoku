@@ -81,6 +81,9 @@ public struct BoardView: View {
         // Resume then shows a stale/fresh board and the wrong time. Flushing
         // here persists the live snapshot first. This is the "view dismiss"
         // case the `GameViewModel.flush()` doc already promised.
+        // NB: a bare `Task` (NOT `.task {}`) is load-bearing — it captures the
+        // VM strongly and must outlive view teardown to complete the write;
+        // a structured `.task` would be cancelled on disappear and re-drop it.
         .onDisappear {
             Task { await viewModel.flush() }
         }
