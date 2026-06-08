@@ -98,7 +98,7 @@ extension ASCClient {
         let path = "/v1/appStoreVersionLocalizations/\(versionLocalizationId)/appScreenshotSets"
             + "?include=appScreenshots"
             + "&fields[appScreenshotSets]=screenshotDisplayType,appScreenshots"
-            + "&fields[appScreenshots]=fileName,fileSize,assetDeliveryState"
+            + "&fields[appScreenshots]=fileName,fileSize,assetDeliveryState,sourceFileChecksum"
             + "&limit=50"
         return try await getCollectionWithIncluded(path: path)
     }
@@ -218,5 +218,22 @@ extension ASCClient {
             path: "/v1/appScreenshots/\(screenshotId)",
             body: body
         )
+    }
+
+    /// DELETE /v1/appScreenshots/{id}. Used to evict a stale screenshot before
+    /// re-reserving a replacement (issue #370): either a prior reservation left
+    /// in a non-COMPLETE `assetDeliveryState`, or a COMPLETE asset whose source
+    /// bytes drifted (checksum mismatch). Mirrors fastlane deliver's
+    /// delete-then-upload — ASC has no in-place screenshot replace.
+    internal func deleteScreenshot(screenshotId: String) async throws {
+        let path = "/v1/appScreenshots/\(screenshotId)"
+        // `send` (not `mutate`): DELETE returns 204 with an EMPTY body, which
+        // `mutate`'s `decodeSingle` would reject (it requires a `data` object).
+        // The apply/plan gate is enforced by the COMMAND only building an
+        // `.apply` client under `--i-am-sure`, mirroring `reserveScreenshot`.
+        let (data, status) = try await send(method: "DELETE", path: path, body: nil)
+        guard (200..<300).contains(status) else {
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
+        }
     }
 }

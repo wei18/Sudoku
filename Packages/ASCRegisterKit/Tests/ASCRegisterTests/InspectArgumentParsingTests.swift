@@ -30,4 +30,38 @@ internal struct InspectArgumentParsingTests {
             _ = try opts.required("leaderboard")
         }
     }
+
+    // MARK: - bare-flag vs value regression (#370 CR)
+
+    /// Regression guard: `--version 2.5` must parse as the VALUE pair
+    /// `version=2.5`, not as a bare boolean flag. A numeric value that does not
+    /// start with `--` is consumed as the flag's argument.
+    @Test("--version 2.5 is a value pair, not a bare flag")
+    internal func versionWithNumericValueIsAPair() throws {
+        let opts = Options.parse(["--version", "2.5"])
+        #expect(opts["version"] == "2.5")
+        #expect(try opts.required("version") == "2.5")
+        // It must NOT be misread as a bare boolean flag.
+        #expect(opts.has("version") == false)
+    }
+
+    /// A trailing `--flag` with no following token is a bare boolean (e.g.
+    /// `--i-am-sure`); `has()` reports it, `subscript` does not return a value.
+    @Test("trailing --i-am-sure is a bare boolean flag")
+    internal func trailingBareFlag() {
+        let opts = Options.parse(["--version", "2.5", "--i-am-sure"])
+        #expect(opts.has("i-am-sure") == true)
+        #expect(opts["i-am-sure"] == nil)
+        #expect(opts["version"] == "2.5")
+    }
+
+    /// `--flag` immediately followed by another `--flag` is bare; the second is
+    /// its own flag/pair — the first must NOT swallow the `--` token as a value.
+    @Test("--flag followed by another --flag does not swallow it as a value")
+    internal func bareFlagBeforeAnotherFlag() {
+        let opts = Options.parse(["--i-am-sure", "--version", "2.5"])
+        #expect(opts.has("i-am-sure") == true)
+        #expect(opts["i-am-sure"] == nil)
+        #expect(opts["version"] == "2.5")
+    }
 }
