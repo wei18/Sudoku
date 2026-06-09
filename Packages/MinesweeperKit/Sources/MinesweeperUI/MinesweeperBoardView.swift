@@ -14,13 +14,15 @@
 // no haptics, no localization (English inline per dispatch spec).
 
 // swiftlint:disable file_length
-// 428 lines vs 400 limit. The #297 snapshot seam + #329 mode threading pushed a
-// file that was already at the limit over it; the view is cohesive (one board renderer +
+// Over the 400 limit. The #297 snapshot seam + #329 mode threading + #434
+// pause/resume (toolbar toggle + board-cover overlay) pushed a file that was
+// already at the limit further over it; the view is cohesive (one board renderer +
 // its layout/overlay) and extracting a helper for a test seam would be a larger,
 // non-surgical change. Mirrors the SudokuUI/Board/GameViewModel.swift precedent.
 
 public import SwiftUI
 public import GameCenterClient
+import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
 internal import MinesweeperGameState
@@ -273,7 +275,10 @@ public struct MinesweeperBoardView: View {
     // tone, same way Sudoku suppresses banners during pause.
     @ViewBuilder
     private var bannerSlot: some View {
-        if !viewModel.isTerminal, let adProvider, let adGate {
+        // #434: also suppress the banner while paused — mirrors Sudoku, which
+        // gates its banner behind `if !viewModel.isPaused` so the paused board
+        // reads as a deliberate quiet state.
+        if !viewModel.isTerminal, !viewModel.isPaused, let adProvider, let adGate {
             MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
         }
     }
@@ -294,14 +299,50 @@ public struct MinesweeperBoardView: View {
             Spacer()
             Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
                 .monospacedDigit()
+            pauseToggle
         }
         .font(.subheadline)
+    }
+
+    // MARK: - Pause / resume toggle (#434)
+
+    // Mirrors Sudoku's BoardView toolbar toggle: a single button flipping
+    // between Pause and Resume, icon-only on iPhone (compact) and icon + text
+    // on Mac (regular). Only meaningful while a game is live — hidden in idle /
+    // terminal states (the actor no-ops those anyway, but hiding avoids a dead
+    // affordance). The board-cover overlay handles resume-by-tapping-the-board;
+    // this is the explicit header control.
+    @ViewBuilder
+    private var pauseToggle: some View {
+        if viewModel.status == .playing || viewModel.isPaused {
+            Button {
+                Task {
+                    if viewModel.isPaused {
+                        await viewModel.resume()
+                    } else {
+                        await viewModel.pause()
+                    }
+                }
+            } label: {
+                if sizeClass == .regular {
+                    Label(
+                        viewModel.isPaused ? "Resume" : "Pause",
+                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
+                    )
+                } else {
+                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                }
+            }
+            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+            .accessibilityIdentifier("minesweeper.board.pauseToggle")
+        }
     }
 
     private var statusText: String {
         switch viewModel.status {
         case .idle:    return "Ready"
         case .playing: return "Playing"
+        case .paused:  return "Paused"
         case .won:     return "You won"
         case .lost:    return "Boom"
         }
@@ -366,6 +407,17 @@ public struct MinesweeperBoardView: View {
         }
         // Reserve a square-ish slot; the GR fills whatever it is offered.
         .aspectRatio(boardAspectRatio, contentMode: .fit)
+        // #434: cover the minefield while paused so the player can't study the
+        // board with the clock stopped. Tapping the cover resumes. Sized to the
+        // board's own frame via `.overlay`. Mirrors Sudoku's BoardView, which
+        // shows the same shared `PauseOverlayView` over its grid.
+        .overlay {
+            if viewModel.isPaused {
+                PauseOverlayView(onResume: {
+                    Task { await viewModel.resume() }
+                })
+            }
+        }
     }
 
     private var boardAspectRatio: CGFloat {

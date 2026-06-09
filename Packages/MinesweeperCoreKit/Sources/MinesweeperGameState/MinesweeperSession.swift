@@ -109,6 +109,31 @@ public actor MinesweeperSession {
         return snapshot()
     }
 
+    // MARK: - Pause / resume (#434)
+
+    /// Pause an in-progress game: freeze the elapsed clock and move to
+    /// `.paused`. No-op unless currently `.playing` (idle / terminal / already
+    /// paused are left untouched). Mirrors Sudoku's `GameSession.pause()`.
+    /// Returns the post-action snapshot.
+    @discardableResult
+    public func pause() -> MinesweeperSessionSnapshot {
+        guard status == .playing else { return snapshot() }
+        freezeRunningClock()
+        status = .paused
+        return snapshot()
+    }
+
+    /// Resume a paused game: restart the running-span clock from now and move
+    /// back to `.playing`. No-op unless currently `.paused`. Mirrors Sudoku's
+    /// `GameSession.resume()`. Returns the post-action snapshot.
+    @discardableResult
+    public func resume() -> MinesweeperSessionSnapshot {
+        guard status == .paused else { return snapshot() }
+        runningSince = clock.now
+        status = .playing
+        return snapshot()
+    }
+
     // MARK: - Internal
 
     /// Promote `.idle` to `.playing` and start the running-span clock on
