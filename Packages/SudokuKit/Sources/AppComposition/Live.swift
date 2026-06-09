@@ -178,7 +178,6 @@ extension AppComposition {
             gameCenter: gameCenter,
             persistence: persistence,
             errorReporter: errorReporter,
-            supportsResume: true,
             resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 

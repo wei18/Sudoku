@@ -63,6 +63,11 @@ let productionTargets: [Target] = [
             // target. `AVFoundation` stays inside GameAudioKit's Live target — the
             // VM sees only the protocol + value types.
             .product(name: "GameAudio", package: "GameAudioKit"),
+            // #448 step 1b: `MinesweeperRootViewModel` is now a typealias over the
+            // shared `GameAppKit.GameRootViewModel<AppRoute>` (was a byte-identical
+            // bespoke class). GameAppKit is allowed Persistence/GameCenter/Telemetry
+            // deps, unlike the zero-dep GameShellUI. Mirrors SudokuUI's wire (1a).
+            .product(name: "GameAppKit", package: "GameAppKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -216,6 +221,9 @@ let package = Package(
         // #330 P2: shared game-audio seam (GameAudio protocols + value types +
         // Live impls; GameAudioTesting fakes). Mirrors SettingsKit's dep on it.
         .package(name: "GameAudioKit", path: "../GameAudioKit"),
+        // #448 step 1b: shared app-launch coordinator `GameRootViewModel<Route>`.
+        // `MinesweeperUI.MinesweeperRootViewModel` is a typealias over it.
+        .package(name: "GameAppKit", path: "../GameAppKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

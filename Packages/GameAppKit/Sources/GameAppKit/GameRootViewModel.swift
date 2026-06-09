@@ -13,8 +13,9 @@
 // the `path` element type — a per-app `Route` enum — and how `resumeTapped()`
 // builds a board route from a `SavedGameSummary`. Both are injected: `Route`
 // as the generic parameter, the resume mapping as the `resumeRoute` closure.
-// Games that have no resume surface pass `supportsResume: false` to skip the
-// `latestInProgress()` fetch and no-op `resumeTapped()`.
+// Games that have no resume surface omit `resumeRoute` (it defaults to nil) to
+// skip the `latestInProgress()` fetch and no-op `resumeTapped()` — the closure
+// presence alone (`resumeRoute != nil`) implies resume is supported.
 
 public import Foundation
 public import GameCenterClient
@@ -33,20 +34,22 @@ public final class GameRootViewModel<Route: Hashable> {
     private let gameCenter: any GameCenterClient
     private let persistence: any PersistenceProtocol
     private let errorReporter: any ErrorReporter
-    private let supportsResume: Bool
-    private let resumeRoute: (SavedGameSummary) -> Route
+    private let resumeRoute: ((SavedGameSummary) -> Route)?
+
+    /// Resume is supported iff a `resumeRoute` mapping was supplied. Games with
+    /// no resume surface (e.g. Minesweeper, which can't build its board route
+    /// from a `SavedGameSummary` yet) omit the closure → this is false.
+    private var supportsResume: Bool { resumeRoute != nil }
 
     public init(
         gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        supportsResume: Bool = true,
-        resumeRoute: @escaping (SavedGameSummary) -> Route
+        resumeRoute: ((SavedGameSummary) -> Route)? = nil
     ) {
         self.gameCenter = gameCenter
         self.persistence = persistence
         self.errorReporter = errorReporter
-        self.supportsResume = supportsResume
         self.resumeRoute = resumeRoute
     }
 
@@ -106,7 +109,7 @@ public final class GameRootViewModel<Route: Hashable> {
     }
 
     public func resumeTapped() {
-        guard supportsResume, let candidate = resumeCandidate else { return }
+        guard let resumeRoute, let candidate = resumeCandidate else { return }
         path.append(resumeRoute(candidate))
     }
 }
