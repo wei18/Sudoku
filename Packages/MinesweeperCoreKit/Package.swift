@@ -26,15 +26,29 @@ let swiftSettings: [SwiftSetting] = [
 let productionTargets: [Target] = [
     // MinesweeperEngine depends on the shared `TimeKit` leaf for `UTCDay`
     // (#305) — previously byte-mirrored in-package (#290), now imported from
-    // the game-agnostic leaf both cores share.
+    // the game-agnostic leaf both cores share — and on the shared
+    // `DeterminismKit` leaf for `SplitMix64` / `DeterministicRNG` (#446),
+    // previously a diverged in-package copy. It re-exports DeterminismKit so
+    // existing `import MinesweeperEngine` call sites reach `SplitMix64`
+    // unchanged.
     .target(
         name: "MinesweeperEngine",
-        dependencies: [.product(name: "TimeKit", package: "TimeKit")],
+        dependencies: [
+            .product(name: "TimeKit", package: "TimeKit"),
+            .product(name: "DeterminismKit", package: "DeterminismKit"),
+        ],
         swiftSettings: swiftSettings
     ),
+    // MinesweeperGameState depends on the shared `TimeKit` leaf for
+    // `MonotonicClock` / `LiveMonotonicClock` (#446), previously an in-package
+    // copy. It re-exports TimeKit so `import MinesweeperGameState` call sites
+    // reach the clock unchanged.
     .target(
         name: "MinesweeperGameState",
-        dependencies: ["MinesweeperEngine"],
+        dependencies: [
+            "MinesweeperEngine",
+            .product(name: "TimeKit", package: "TimeKit"),
+        ],
         swiftSettings: swiftSettings
     ),
 ]
@@ -72,6 +86,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../TimeKit"),
+        .package(path: "../DeterminismKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
