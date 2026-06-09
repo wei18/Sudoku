@@ -57,6 +57,10 @@ let sudokuTarget = Target.target(
         // system-dialog string, Path B framing). #371: the Info.plist literal
         // stays as base fallback; this catalog supplies all 7 locales.
         "App/Sudoku/Resources/InfoPlist.xcstrings",
+        // #330 P3: zen-wood gameplay audio (SFX + looping BGM). Filename stems
+        // match each `soundKey` LiveSoundPlayer resolves from `Bundle.main`
+        // (place / complete / error / win SFX + `gameplay` BGM).
+        "App/Sudoku/Resources/Audio/**",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Sudoku/license_plist.yml`. Regenerated
         // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
@@ -104,6 +108,10 @@ let minesweeperTarget = Target.target(
         // system-dialog string, Path B framing). #371: the Info.plist literal
         // stays as base fallback; this catalog supplies all 7 locales.
         "App/Minesweeper/Resources/InfoPlist.xcstrings",
+        // #330 P3: zen-wood gameplay audio (SFX + looping BGM). Filename stems
+        // match each `soundKey` LiveSoundPlayer resolves from `Bundle.main`
+        // (reveal / flag / floodClear / explosion / win SFX + `bgm` BGM).
+        "App/Minesweeper/Resources/Audio/**",
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Minesweeper/license_plist.yml`.
         // Regenerated on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`;
