@@ -28,12 +28,19 @@ public protocol SoundPlaying: Sendable {
     /// Set the music channel volume (0...1).
     func setMusicVolume(_ volume: Float)
 
-    /// Master mute — silences all output without losing the per-channel volumes.
+    /// Master mute — silences AUDIO only (sfx + music) without losing the
+    /// per-channel volumes. Haptics are governed independently by
+    /// `setHapticsEnabled`, so muting audio does NOT silence haptics.
     func setMuted(_ muted: Bool)
 
     /// Toggle background music on/off. When turned off the Live impl stops any
     /// playing track; turning it back on does not auto-resume (the caller decides).
     func setMusicEnabled(_ enabled: Bool)
+
+    /// Toggle haptic feedback on/off. Governs haptics INDEPENDENTLY of master mute:
+    /// `setMuted` silences audio only, while this flag silences haptics only. The
+    /// Live impl fires an sfx event's haptic only when this is `true`.
+    func setHapticsEnabled(_ enabled: Bool)
 }
 
 /// Seam 2 — haptics. Wraps the UIKit feedback generators so non-iOS / tests get

@@ -46,28 +46,24 @@ struct LiveSoundPlayerTests {
     }
 
     @Test("playing an sfx event with a haptic fires the haptic")
-    func sfxEventFiresHaptic() async {
+    func sfxEventFiresHaptic() {
         let haptics = FakeHapticPlaying()
         let player = makePlayer(haptics: haptics)
 
         player.play(AudioEvent(soundKey: "tap", haptic: .light))
 
-        // FakeHapticPlaying records via a detached Task; let it drain.
-        try? await Task.sleep(for: .milliseconds(50))
-        let fired = await haptics.playedHaptics
-        #expect(fired == [.light])
+        // FakeHapticPlaying records synchronously — no drain needed.
+        #expect(haptics.playedHaptics == [.light])
     }
 
     @Test("an sfx event with no haptic fires nothing")
-    func sfxEventWithoutHapticFiresNothing() async {
+    func sfxEventWithoutHapticFiresNothing() {
         let haptics = FakeHapticPlaying()
         let player = makePlayer(haptics: haptics)
 
         player.play(AudioEvent(soundKey: "tap"))
 
-        try? await Task.sleep(for: .milliseconds(50))
-        let fired = await haptics.playedHaptics
-        #expect(fired.isEmpty)
+        #expect(haptics.playedHaptics.isEmpty)
     }
 
     @Test("music does not start when other audio is playing (auto-yield)")
@@ -124,7 +120,7 @@ struct NoopAudioTests {
 struct FakeAudioTests {
 
     @Test("FakeSoundPlaying records events, music, volumes, and flags")
-    func fakeRecords() async {
+    func fakeRecords() {
         let fake = FakeSoundPlaying()
 
         fake.play(AudioEvent(soundKey: "a", haptic: .medium))
@@ -134,19 +130,43 @@ struct FakeAudioTests {
         fake.setMusicVolume(0.6)
         fake.setMuted(true)
         fake.setMusicEnabled(false)
+        fake.setHapticsEnabled(false)
 
-        try? await Task.sleep(for: .milliseconds(50))
-
-        let events = await fake.playedEvents
+        // Recording is synchronous — no drain needed.
+        let events = fake.playedEvents
         #expect(events.map(\.soundKey) == ["a"])
         #expect(events.first?.haptic == .medium)
 
-        #expect(await fake.startedMusicKeys == ["bgm"])
-        #expect(await fake.stopMusicCount == 1)
-        #expect(await fake.sfxVolume == 0.3)
-        #expect(await fake.musicVolume == 0.6)
-        #expect(await fake.isMuted == true)
-        #expect(await fake.isMusicEnabled == false)
+        #expect(fake.startedMusicKeys == ["bgm"])
+        #expect(fake.stopMusicCount == 1)
+        #expect(fake.sfxVolume == 0.3)
+        #expect(fake.musicVolume == 0.6)
+        #expect(fake.isMuted == true)
+        #expect(fake.isMusicEnabled == false)
+        #expect(fake.hapticsEnabled == false)
+    }
+
+    @Test("FakeSoundPlaying records play() calls in exact call order")
+    func fakeRecordsEventsInOrder() {
+        let fake = FakeSoundPlaying()
+        let first = AudioEvent(soundKey: "A")
+        let second = AudioEvent(soundKey: "B")
+
+        fake.play(first)
+        fake.play(second)
+
+        // Synchronous recording guarantees order: [A, B], never [B, A].
+        #expect(fake.playedEvents == [first, second])
+    }
+
+    @Test("FakeHapticPlaying records play() calls in exact call order")
+    func fakeHapticsRecordInOrder() {
+        let fake = FakeHapticPlaying()
+
+        fake.play(.light)
+        fake.play(.heavy)
+
+        #expect(fake.playedHaptics == [.light, .heavy])
     }
 
     @Test("FakeAudioSession is scriptable")

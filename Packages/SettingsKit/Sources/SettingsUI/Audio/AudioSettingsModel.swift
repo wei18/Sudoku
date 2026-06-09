@@ -50,10 +50,13 @@ public final class AudioSettingsModel {
         }
     }
 
-    /// Whether haptic feedback is on. (No live-player method — haptics fire per
-    /// event; the host reads this flag when constructing events in P2.)
+    /// Whether haptic feedback is on. Persists + pushes to the live player, which
+    /// gates per-event haptics on this flag independently of master mute (#330 P2).
     public var hapticsEnabled: Bool {
-        didSet { setHapticsEnabled(hapticsEnabled) }
+        didSet {
+            setHapticsEnabled(hapticsEnabled)
+            player?.setHapticsEnabled(hapticsEnabled)
+        }
     }
 
     /// Whether background music is on.
