@@ -55,15 +55,22 @@ public struct MinesweeperRoot: View {
         self.monetizationController = monetizationController
     }
 
+    // #410: one `MinesweeperHomeViewModel` drives BOTH the Home cards and the
+    // sidebar, so the mode list (Daily / Practice / Leaderboard / Settings) +
+    // their tap actions come from a single source. Bound to Root's `path`.
+    private var homeViewModel: MinesweeperHomeViewModel {
+        MinesweeperHomeViewModel(path: $path)
+    }
+
     public var body: some View {
         RootShellView(
             path: $path,
             title: "Minesweeper",
-            sidebarItems: sidebarItems,
+            sidebarItems: HomeModeItem.sidebarItems(from: homeViewModel.modeItems),
             routeFactory: routeFactory,
             rootContent: {
                 MinesweeperHomeView(
-                    viewModel: MinesweeperHomeViewModel(path: $path),
+                    viewModel: homeViewModel,
                     adProvider: adProvider,
                     adGate: adGate,
                     monetizationController: monetizationController
@@ -81,43 +88,6 @@ public struct MinesweeperRoot: View {
         )
     }
 
-    // Sidebar mirrors the Home mode cards. New Game / Daily / Practice /
-    // Settings push an `AppRoute`; Leaderboard is a no-op stub until MS Game
-    // Center lands (#291) — present in the list for parity but inert.
-    //
-    // §設計決定: same as Sudoku's RootView — direct `path.append` / mutation
-    // inside the onTap closure (not `NavigationLink(value:)`) so the mutation
-    // and the destination registry share the detail-pane scope on macOS
-    // NavigationSplitView. Cross-pane value-link lookup is the documented
-    // footgun (Sudoku issue #197).
-    private var sidebarItems: [SidebarItem<AppRoute>] {
-        [
-            SidebarItem(
-                id: "newGame",
-                titleKey: "New Game",
-                systemImage: "plus.circle",
-                onTap: { path.append(.newGame) }
-            ),
-            SidebarItem(
-                id: "daily",
-                titleKey: "Daily",
-                systemImage: "calendar",
-                onTap: { path.append(.daily) }
-            ),
-            SidebarItem(
-                id: "practice",
-                titleKey: "Practice",
-                systemImage: "dice",
-                onTap: { path.append(.practice) }
-            ),
-            SidebarItem(
-                id: "settings",
-                titleKey: "Settings",
-                systemImage: "gear",
-                onTap: { path.append(.settings) }
-            ),
-        ]
-    }
 }
 
 // #313: `MinesweeperRoot` now requires a `MinesweeperRootViewModel` (which

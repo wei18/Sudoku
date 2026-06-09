@@ -62,11 +62,20 @@ public struct RootView: View {
         self._attPrimer = State(initialValue: attPrimer)
     }
 
+    // #410: one `HomeViewModel` drives BOTH the Home cards and the sidebar, so
+    // the mode list (Daily / Practice / Leaderboard / Settings) + their tap
+    // actions come from a single source. Bound to RootViewModel's path so the
+    // sidebar, the Home cards, and `RootShellView`'s NavigationStack all share
+    // one navigation array.
+    private var homeViewModel: HomeViewModel {
+        HomeViewModel(path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }))
+    }
+
     public var body: some View {
         RootShellView(
             path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
             title: "Sudoku",
-            sidebarItems: sidebarItems,
+            sidebarItems: HomeModeItem.sidebarItems(from: homeViewModel.modeItems),
             routeFactory: routeFactory,
             rootContent: { rootContent }
         )
@@ -84,39 +93,6 @@ public struct RootView: View {
         .attPrimerSheet(attPrimer)
     }
 
-    // Sidebar mirrors HomeView's mode list. Daily / Practice / Settings push
-    // an `AppRoute`; Leaderboard is a side effect — it presents Apple's
-    // native Game Center dashboard modally (issue #49, 2026-05-20) rather
-    // than pushing onto the stack.
-    private var sidebarItems: [SidebarItem<AppRoute>] {
-        [
-            SidebarItem(
-                id: "daily",
-                titleKey: "Daily",
-                systemImage: "calendar",
-                onTap: { viewModel.path.append(.daily) }
-            ),
-            SidebarItem(
-                id: "practice",
-                titleKey: "Practice",
-                systemImage: "dice",
-                onTap: { viewModel.path.append(.practice) }
-            ),
-            SidebarItem(
-                id: "leaderboard",
-                titleKey: "Leaderboard",
-                systemImage: "trophy.fill",
-                onTap: { GameCenterDashboard.present() }
-            ),
-            SidebarItem(
-                id: "settings",
-                titleKey: "Settings",
-                systemImage: "gear",
-                onTap: { viewModel.path.append(.settings) }
-            ),
-        ]
-    }
-
     @ViewBuilder
     private var rootContent: some View {
         // #387: the ResumePill is threaded into HomeView's scroll region via
@@ -124,9 +100,7 @@ public struct RootView: View {
         // pinned above HomeView's own ScrollView. RootView still owns the
         // resume candidate + tap wiring; only the placement moved.
         HomeView(
-            viewModel: HomeViewModel(
-                path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 })
-            ),
+            viewModel: homeViewModel,
             adProvider: adProvider,
             adGate: adGate,
             monetizationController: monetizationController,

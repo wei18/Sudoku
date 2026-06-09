@@ -1,23 +1,23 @@
-// HomeView — 4 mode cards (Daily / Practice / Leaderboard / Settings).
+// HomeView — Sudoku's 4 mode cards (Daily / Practice / Leaderboard / Settings).
 //
-// Per docs/designs/02-home.md. Single state, no loading. Liquid Glass on
-// each card (.glassEffect available on iOS 26 / macOS 26 — the deployment
-// targets per foundations.md §1).
+// Thin wrapper over `GameShellUI.HomeScreen` (#410). The shared scaffold owns
+// the `ScrollView { header ; LazyVGrid(cards + RemoveAds) ; banner }` body, the
+// column sizeClass logic, the mode card rendering, and the themed background.
+// HomeView keeps only the Sudoku-specific bits:
+//   - the per-mode subtitles + tap routing (via `HomeViewModel.modeItems`),
+//   - the optional 5th "Remove Ads" card (MonetizationUI — kept app-side so it
+//     never leaks into GameShellUI),
+//   - the banner slot (`BannerSlotView` — AdProvider / AdGate live here),
+//   - the navigation title + the monetization bootstrap `.task`.
 //
-// v2.3.4: an optional `BannerSlotView` lives below the mode cards. The slot
-// itself decides whether to render anything (it consults `AdGate`); HomeView
-// just hands it the protocol deps. When the gate says no banner the slot
-// collapses to 0pt so the layout is unaffected.
-//
-// v2.3.6: an optional 5th "Remove Ads" card sits below the four mode cards
-// (above the banner slot) when an unpurchased `MonetizationStateController`
-// is injected. It taps into the same purchase flow as Settings → Remove Ads;
-// after a successful purchase the controller flips `hasPurchasedRemoveAds`
-// and the card disappears on the next observation pass.
+// #387: an optional `header` slot renders as the first child INSIDE the scroll
+// region (RootView passes its ResumePill here so the pill scrolls with the mode
+// cards). RootView still owns the resume-candidate state + tap closure.
 
 public import MonetizationCore
 public import MonetizationUI
 public import SwiftUI
+import GameShellUI
 
 public struct HomeView<Header: View>: View {
     @Bindable private var viewModel: HomeViewModel
@@ -30,11 +30,7 @@ public struct HomeView<Header: View>: View {
     // #387: optional header rendered as the first child INSIDE the scroll
     // region. RootView passes its ResumePill here so the pill scrolls with
     // the mode cards instead of sitting pinned above HomeView's ScrollView.
-    // RootView still owns the resume-candidate state + tap closure; this is
-    // purely a placement slot.
     private let header: Header
-    @Environment(\.theme) private var theme
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     public init(
         viewModel: HomeViewModel,
@@ -53,19 +49,10 @@ public struct HomeView<Header: View>: View {
     }
 
     public var body: some View {
-        ScrollView {
-            header
-
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(HomeMode.allCases) { mode in
-                    Button {
-                        viewModel.select(mode)
-                    } label: {
-                        ModeCard(mode: mode)
-                    }
-                    .buttonStyle(.plain)
-                }
-
+        HomeScreen(
+            items: viewModel.modeItems,
+            header: { header },
+            removeAdsCard: {
                 if let controller = monetizationController, !controller.hasPurchasedRemoveAds {
                     Button {
                         Task { await controller.purchaseRemoveAds() }
@@ -76,16 +63,15 @@ public struct HomeView<Header: View>: View {
                     .disabled(controller.purchaseInFlight)
                     .accessibilityIdentifier("HomeView.RemoveAdsCard")
                 }
+            },
+            banner: {
+                if let adProvider, let adGate {
+                    BannerSlotView(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
             }
-            .padding(16)
-
-            if let adProvider, let adGate {
-                BannerSlotView(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-            }
-        }
-        .background(theme.surface.background.resolved)
+        )
         .navigationTitle("Sudoku")
         .task {
             if let controller = monetizationController {
@@ -93,50 +79,12 @@ public struct HomeView<Header: View>: View {
             }
         }
     }
-
-    private var columns: [GridItem] {
-        if sizeClass == .regular {
-            return [GridItem(.flexible()), GridItem(.flexible())]
-        }
-        return [GridItem(.flexible())]
-    }
-}
-
-struct ModeCard: View {
-    let mode: HomeMode
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: mode.symbolName)
-                .font(.title2)
-                .foregroundStyle(theme.accent.primary.resolved)
-                .frame(width: 36, height: 36)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(mode.titleKey)
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(theme.text.primary.resolved)
-                Text(mode.subtitleKey)
-                    .font(.caption)
-                    .foregroundStyle(theme.text.secondary.resolved)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(theme.text.tertiary.resolved)
-        }
-        .padding(16)
-        .frame(minHeight: 72)
-        .contentShape(Rectangle())
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-    }
 }
 
 /// 5th mode-card slot for Remove Ads. Tinted with `difficulty.medium` to
 /// signal commerce intent (per v2.3.6 brief: not a difficulty cue; reuses
-/// the medium clay accent token from PR #78). Layout mirrors `ModeCard`
-/// so the grid row height stays consistent.
+/// the medium clay accent token from PR #78). Layout mirrors the shared
+/// `HomeModeCard` so the grid row height stays consistent.
 struct RemoveAdsCard: View {
     @Bindable var controller: MonetizationStateController
     @Environment(\.theme) private var theme
@@ -172,34 +120,5 @@ struct RemoveAdsCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-private extension HomeMode {
-    var titleKey: LocalizedStringKey {
-        switch self {
-        case .daily: "Daily"
-        case .practice: "Practice"
-        case .leaderboard: "Leaderboard"
-        case .settings: "Settings"
-        }
-    }
-
-    var subtitleKey: LocalizedStringKey {
-        switch self {
-        case .daily: "3 puzzles today"
-        case .practice: "Mixed difficulty pool"
-        case .leaderboard: "Global / friends"
-        case .settings: "Account / language"
-        }
-    }
-
-    var symbolName: String {
-        switch self {
-        case .daily: "calendar"
-        case .practice: "dice"
-        case .leaderboard: "trophy.fill"
-        case .settings: "gear"
-        }
     }
 }

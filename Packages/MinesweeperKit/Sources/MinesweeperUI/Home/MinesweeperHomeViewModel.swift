@@ -1,26 +1,25 @@
-// MinesweeperHomeViewModel — owns the mode-card list + drives navigation.
+// MinesweeperHomeViewModel — owns the mode-item list + drives navigation.
 //
 // Mirror of `SudokuUI.HomeViewModel` (#288 / #289, 2026-06-04). Routing is
 // delegated through `GameShellUI.RoutePath<AppRoute>` (#240) so the same VM
 // works inside `MinesweeperRoot` (bound to its `path`) and standalone in
 // previews / unit tests (bound to a local stub array).
 //
-// Card list differs from Sudoku: MS keeps a "New Game" entry (its primary
-// difficulty picker) ahead of Daily / Practice / Leaderboard / Settings.
+// #410: the mode set + canonical titles / SF Symbols now live in the shared
+// `GameShellUI.HomeMode` (Daily / Practice / Leaderboard / Settings), identical
+// to Sudoku. The erroneous extra `newGame` mode (Sudoku never had one) is
+// REMOVED — MS reaches its difficulty picker through Practice, like Sudoku.
+// This VM supplies MS-specific subtitles + tap actions via `modeItems`, the
+// single source for both the Home cards (HomeScreen) and the sidebar.
 
 public import Foundation
 public import SwiftUI
-import GameShellUI
+public import GameShellUI
 
-public enum MinesweeperHomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Identifiable {
-    case newGame
-    case daily
-    case practice
-    case leaderboard
-    case settings
-
-    public var id: String { rawValue }
-}
+/// The shared 4-mode enum — identical to Sudoku after the #410 New Game
+/// removal. Kept as a typealias so existing `select(_:)` call sites and tests
+/// (`.daily`, `.practice`, …) read unchanged.
+public typealias MinesweeperHomeMode = GameShellUI.HomeMode
 
 @MainActor
 @Observable
@@ -41,10 +40,20 @@ public final class MinesweeperHomeViewModel {
         self.routePath = RoutePath(path)
     }
 
+    /// The 4 shared modes bound to MS's subtitles + tap actions. Single source
+    /// of truth for both the Home card grid and the sidebar.
+    public var modeItems: [HomeModeItem] {
+        HomeMode.allCases.map { mode in
+            HomeModeItem(
+                mode: mode,
+                subtitleKey: mode.subtitleKey,
+                onTap: { [weak self] in self?.select(mode) }
+            )
+        }
+    }
+
     public func select(_ mode: MinesweeperHomeMode) {
         switch mode {
-        case .newGame:
-            path.append(.newGame)
         case .daily:
             path.append(.daily)
         case .practice:
@@ -57,6 +66,18 @@ public final class MinesweeperHomeViewModel {
             // stack push — so there is no `.leaderboard` route. Passing `nil`
             // opens the full leaderboards listing (all 3 best-time boards).
             MinesweeperGameCenterDashboard.present(leaderboardId: nil)
+        }
+    }
+}
+
+private extension MinesweeperHomeMode {
+    /// MS-specific subtitles, resolved from MS's `Localizable.xcstrings`.
+    var subtitleKey: LocalizedStringKey {
+        switch self {
+        case .daily: "3 boards today"
+        case .practice: "All difficulties"
+        case .leaderboard: "Best times"
+        case .settings: "Purchases / about"
         }
     }
 }

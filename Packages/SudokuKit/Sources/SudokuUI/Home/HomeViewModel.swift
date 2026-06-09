@@ -1,21 +1,24 @@
-// HomeViewModel — owns the 4-mode card list + drives navigation.
+// HomeViewModel — owns the 4-mode item list + drives navigation.
 //
 // Per docs/v1/design.md §How.5.4. Routing is delegated through a binding so the
 // same VM works inside RootView (bound to its `path`) and standalone in
 // previews / unit tests (bound to a local stub array).
+//
+// #410: the mode set (Daily / Practice / Leaderboard / Settings) + their
+// canonical titles / SF Symbols now live in `GameShellUI.HomeMode` (shared with
+// Minesweeper). `HomeMode` here is a typealias to that shared enum. This VM
+// supplies the Sudoku-specific subtitles + tap actions via `modeItems`, the
+// single source for both the Home cards (HomeScreen) and the sidebar
+// (RootView derives `SidebarItem`s from the same list).
 
 public import Foundation
 public import SwiftUI
-import GameShellUI
+public import GameShellUI
 
-public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Identifiable {
-    case daily
-    case practice
-    case leaderboard
-    case settings
-
-    public var id: String { rawValue }
-}
+/// The shared 4-mode enum. Sudoku has no extra modes, so this is exactly the
+/// shared set — kept as a typealias so existing `select(_:)` call sites and
+/// tests (`.daily`, `.practice`, …) read unchanged.
+public typealias HomeMode = GameShellUI.HomeMode
 
 @MainActor
 @Observable
@@ -36,6 +39,18 @@ public final class HomeViewModel {
         self.routePath = RoutePath(path)
     }
 
+    /// The 4 shared modes bound to Sudoku's subtitles + tap actions. Single
+    /// source of truth for both the Home card grid and the sidebar.
+    public var modeItems: [HomeModeItem] {
+        HomeMode.allCases.map { mode in
+            HomeModeItem(
+                mode: mode,
+                subtitleKey: mode.subtitleKey,
+                onTap: { [weak self] in self?.select(mode) }
+            )
+        }
+    }
+
     public func select(_ mode: HomeMode) {
         // `.leaderboard` is a side-effect (presents Apple's native Game Center
         // dashboard) rather than a stack push — issue #49 (2026-05-20).
@@ -48,6 +63,18 @@ public final class HomeViewModel {
             path.append(.settings)
         case .leaderboard:
             GameCenterDashboard.present()
+        }
+    }
+}
+
+private extension HomeMode {
+    /// Sudoku-specific subtitles, resolved from Sudoku's `Localizable.xcstrings`.
+    var subtitleKey: LocalizedStringKey {
+        switch self {
+        case .daily: "3 puzzles today"
+        case .practice: "Mixed difficulty pool"
+        case .leaderboard: "Global / friends"
+        case .settings: "Account / language"
         }
     }
 }
