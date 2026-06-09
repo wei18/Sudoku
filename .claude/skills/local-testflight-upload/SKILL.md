@@ -47,7 +47,8 @@ mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
 
 ## Pipeline (per app + platform)
 
-1. **generate** — `tuist generate` if `Game.xcworkspace` is absent (it's gitignored).
+0. **acknowledgements** — `tuist install` (resolve SwiftPM) → `mise run gen:acknowledgements` → THEN `tuist generate`. Order matters (#433): `gen:acknowledgements` needs resolved checkouts to enumerate deps, and Tuist globs the `Settings.bundle` at *generate* time — so the bundle must be populated before generate or the installed build ships an EMPTY Acknowledgements page. See [[acknowledgements-generation]].
+1. **generate** — `tuist generate` (the `Game.xcworkspace` is gitignored).
 2. **archive** — `xcodebuild archive` → `build/testflight/<app>-<plat>.xcarchive`.
 3. **bump** — PlistBuddy `Set :CFBundleVersion` on the **archived app's** embedded
    Info.plist. `CFBundleVersion` is a hardcoded `"1"` literal in the app's
