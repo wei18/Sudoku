@@ -3,7 +3,6 @@
 // #288 / #289 (2026-06-04): MS now opens to a Home mode-card surface (mirror
 // of Sudoku's `HomeView`) instead of straight to `NewGameView`. The Home cards
 // push these routes:
-//   - `.newGame`  → NewGameView (difficulty picker; was the old root content).
 //   - `.daily`    → MinesweeperDailyHubView (existed in source but was
 //                   unreachable — no AppRoute case wired it).
 //   - `.practice` → MinesweeperPracticeHubView (same — now reachable).
@@ -21,7 +20,6 @@
 public import MinesweeperEngine
 
 public enum AppRoute: Hashable, Sendable {
-    case newGame
     // #329: `mode` carries daily/practice from the navigation origin (Daily hub
     // → `.daily`, Practice hub / New Game → `.practice`) down to the board so
     // `MinesweeperGameViewModel` can gate the GC daily-board submit to daily

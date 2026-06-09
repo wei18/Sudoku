@@ -106,10 +106,6 @@ public struct LiveRouteFactory: RouteFactory {
     @MainActor
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
-        case .newGame:
-            // Difficulty picker — was the old root content; now a destination
-            // pushed from the Home "New Game" card / sidebar (#288 / #289).
-            return AnyView(NewGameView(path: path ?? .constant([])))
         case .daily:
             // #290: date-seeded daily trio + completion overlay. The hub VM
             // pulls the three boards from `LiveMinesweeperDailyProvider`
@@ -273,7 +269,7 @@ public struct LiveRouteFactory: RouteFactory {
         }
     }
 
-    /// Empties the navigation path so the root content (NewGameView) becomes
+    /// Empties the navigation path so the root content (MinesweeperHomeView) becomes
     /// visible again. Safe against any path depth, empty path, and nil
     /// binding. Extracted for unit testing — see `LiveRouteFactoryTests`.
     @MainActor
