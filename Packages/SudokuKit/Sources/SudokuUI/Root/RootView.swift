@@ -17,8 +17,10 @@ public import MonetizationCore
 public import MonetizationUI
 public import SwiftUI
 public import GameShellUI
-internal import Persistence
-internal import SudokuEngine
+// #448 step 3: `GameRoot` (shared Root shell + onAppear-bootstrap + toast) and
+// `ResumePill` (moved out of this file) now live in GameAppKit. Public because
+// the `RootView` init's `RootViewModel` is a typealias over `GameRootViewModel`.
+public import GameAppKit
 
 public struct RootView: View {
     @State private var viewModel: RootViewModel
@@ -72,24 +74,22 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        RootShellView(
-            path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
+        // #448 step 3: the common Root shape (RootShellView + onAppear-bootstrap
+        // + toast overlay, including the `.task`→`.onAppear` arm64-Release-link
+        // workaround, #361) now lives in `GameAppKit.GameRoot`. Sudoku layers on
+        // its app-specific bits: the ATT priming sheet and the ResumePill inside
+        // `rootContent`.
+        GameRoot(
+            viewModel: viewModel,
             title: "Sudoku",
             sidebarItems: HomeModeItem.sidebarItems(from: homeViewModel.modeItems),
             routeFactory: routeFactory,
-            rootContent: { rootContent }
-        )
-        // Use `.onAppear { Task { … } }` instead of `.task { … }`: Xcode 26's
-        // SwiftUI lowers EVERY `.task` overload to `task(name:priority:file:line:_:)`,
-        // whose opaque-type descriptor links undefined in the arm64 device Release
-        // archive (sim/macOS/Debug fine). bootstrap() is a one-shot boot with its
-        // own idempotency guard, so `.task`'s disappear-cancellation isn't needed. #361
-        .onAppear { Task { await viewModel.bootstrap() } }
-        .toastOverlay(
-            toastController,
+            toastController: toastController,
             successTint: theme.status.success.resolved,
             failureTint: theme.status.error.resolved
-        )
+        ) {
+            rootContent
+        }
         .attPrimerSheet(attPrimer)
     }
 
@@ -115,46 +115,5 @@ public struct RootView: View {
             }
         }
         .background(theme.surface.background.resolved)
-    }
-}
-
-// MARK: - Resume pill
-
-struct ResumePill: View {
-    let candidate: SavedGameSummary
-    let onTap: () -> Void
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "arrow.clockwise")
-                    .foregroundStyle(theme.accent.primary.resolved)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Resume \(candidate.difficulty.rawValue.capitalized)")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(theme.text.primary.resolved)
-                    Text(elapsedLabel)
-                        .font(.caption)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(theme.text.tertiary.resolved)
-            }
-            .padding(12)
-            .background(theme.surface.primary.resolved, in: .rect(cornerRadius: 14))
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var elapsedLabel: String {
-        let total = candidate.elapsedSeconds
-        let minutes = total / 60
-        let seconds = total % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
