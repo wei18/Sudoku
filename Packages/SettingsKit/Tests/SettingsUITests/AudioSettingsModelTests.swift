@@ -89,7 +89,7 @@ struct AudioSettingsModelTests {
     }
 
     @Test("setters push to the injected live player")
-    func settersPushToPlayer() async {
+    func settersPushToPlayer() {
         let store = Store()
         let player = FakeSoundPlaying()
         let model = makeModel(store: store, player: player)
@@ -98,14 +98,14 @@ struct AudioSettingsModelTests {
         model.sfxVolume = 0.35
         model.isMuted = true
         model.musicEnabled = false
+        model.hapticsEnabled = false
 
-        // FakeSoundPlaying records via detached Tasks; let them drain.
-        try? await Task.sleep(for: .milliseconds(50))
-
-        #expect(await player.musicVolume == Float(0.25))
-        #expect(await player.sfxVolume == Float(0.35))
-        #expect(await player.isMuted == true)
-        #expect(await player.isMusicEnabled == false)
+        // FakeSoundPlaying records synchronously — no drain needed.
+        #expect(player.musicVolume == Float(0.25))
+        #expect(player.sfxVolume == Float(0.35))
+        #expect(player.isMuted == true)
+        #expect(player.isMusicEnabled == false)
+        #expect(player.hapticsEnabled == false)
     }
 
     @Test("nil player is tolerated (Previews / audio-disabled)")

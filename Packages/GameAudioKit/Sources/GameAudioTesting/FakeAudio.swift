@@ -3,81 +3,119 @@
 // or "music never started because other audio was playing" without touching
 // AVFoundation / the system audio session. Import nothing beyond `GameAudio`.
 //
-// All three are `actor`s: the protocols are `Sendable`, and actor isolation gives
-// data-race-free recording with the least ceremony (swift6-concurrency). Their
-// nonisolated protocol methods hop onto the actor to record.
+// All three are `final class … @unchecked Sendable` with an `NSLock`-guarded
+// backing store (mirroring `FakeAudioSession` below). The protocols' sync methods
+// record SYNCHRONOUSLY, in call order — so a test can assert `play(A); play(B)`
+// recorded exactly `[A, B]`. (An earlier `actor` version did fire-and-forget
+// `Task { await record(...) }`, which did NOT guarantee order — swift6-concurrency.)
 
 public import GameAudio
 internal import Foundation
 
 /// Records sfx events + music start/stop + volume / mute / music-enabled state.
-public actor FakeSoundPlaying: SoundPlaying {
+public final class FakeSoundPlaying: SoundPlaying, @unchecked Sendable {
 
-    /// Every sfx `play(_:)` event in order.
-    public private(set) var playedEvents: [AudioEvent] = []
-    /// Keys passed to `playMusic`, in order.
-    public private(set) var startedMusicKeys: [String] = []
-    /// Count of `stopMusic` calls.
-    public private(set) var stopMusicCount = 0
-
-    public private(set) var sfxVolume: Float = 1.0
-    public private(set) var musicVolume: Float = 1.0
-    public private(set) var isMuted = false
-    public private(set) var isMusicEnabled = true
+    private let lock = NSLock()
+    private var _playedEvents: [AudioEvent] = []
+    private var _startedMusicKeys: [String] = []
+    private var _stopMusicCount = 0
+    private var _sfxVolume: Float = 1.0
+    private var _musicVolume: Float = 1.0
+    private var _isMuted = false
+    private var _isMusicEnabled = true
+    private var _hapticsEnabled = true
 
     public init() {}
 
-    nonisolated public func play(_ event: AudioEvent) {
-        Task { await self.record(event) }
+    public func play(_ event: AudioEvent) {
+        lock.lock(); defer { lock.unlock() }
+        _playedEvents.append(event)
     }
 
-    nonisolated public func playMusic(key: String) {
-        Task { await self.recordMusicStart(key) }
+    public func playMusic(key: String) {
+        lock.lock(); defer { lock.unlock() }
+        _startedMusicKeys.append(key)
     }
 
-    nonisolated public func stopMusic() {
-        Task { await self.recordMusicStop() }
+    public func stopMusic() {
+        lock.lock(); defer { lock.unlock() }
+        _stopMusicCount += 1
     }
 
-    nonisolated public func setSFXVolume(_ volume: Float) {
-        Task { await self.setSFX(volume) }
+    public func setSFXVolume(_ volume: Float) {
+        lock.lock(); defer { lock.unlock() }
+        _sfxVolume = volume
     }
 
-    nonisolated public func setMusicVolume(_ volume: Float) {
-        Task { await self.setMusic(volume) }
+    public func setMusicVolume(_ volume: Float) {
+        lock.lock(); defer { lock.unlock() }
+        _musicVolume = volume
     }
 
-    nonisolated public func setMuted(_ muted: Bool) {
-        Task { await self.setMute(muted) }
+    public func setMuted(_ muted: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        _isMuted = muted
     }
 
-    nonisolated public func setMusicEnabled(_ enabled: Bool) {
-        Task { await self.setMusicEnabledState(enabled) }
+    public func setMusicEnabled(_ enabled: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        _isMusicEnabled = enabled
     }
 
-    // MARK: - Recording (actor-isolated)
+    public func setHapticsEnabled(_ enabled: Bool) {
+        lock.lock(); defer { lock.unlock() }
+        _hapticsEnabled = enabled
+    }
 
-    private func record(_ event: AudioEvent) { playedEvents.append(event) }
-    private func recordMusicStart(_ key: String) { startedMusicKeys.append(key) }
-    private func recordMusicStop() { stopMusicCount += 1 }
-    private func setSFX(_ volume: Float) { sfxVolume = volume }
-    private func setMusic(_ volume: Float) { musicVolume = volume }
-    private func setMute(_ muted: Bool) { isMuted = muted }
-    private func setMusicEnabledState(_ enabled: Bool) { isMusicEnabled = enabled }
+    // MARK: - Lock-guarded reads
+
+    /// Every sfx `play(_:)` event in order.
+    public var playedEvents: [AudioEvent] {
+        lock.lock(); defer { lock.unlock() }; return _playedEvents
+    }
+    /// Keys passed to `playMusic`, in order.
+    public var startedMusicKeys: [String] {
+        lock.lock(); defer { lock.unlock() }; return _startedMusicKeys
+    }
+    /// Count of `stopMusic` calls.
+    public var stopMusicCount: Int {
+        lock.lock(); defer { lock.unlock() }; return _stopMusicCount
+    }
+    public var sfxVolume: Float {
+        lock.lock(); defer { lock.unlock() }; return _sfxVolume
+    }
+    public var musicVolume: Float {
+        lock.lock(); defer { lock.unlock() }; return _musicVolume
+    }
+    public var isMuted: Bool {
+        lock.lock(); defer { lock.unlock() }; return _isMuted
+    }
+    public var isMusicEnabled: Bool {
+        lock.lock(); defer { lock.unlock() }; return _isMusicEnabled
+    }
+    /// Latest value passed to `setHapticsEnabled` (defaults to `true`).
+    public var hapticsEnabled: Bool {
+        lock.lock(); defer { lock.unlock() }; return _hapticsEnabled
+    }
 }
 
 /// Records every fired haptic, in order.
-public actor FakeHapticPlaying: HapticPlaying {
+public final class FakeHapticPlaying: HapticPlaying, @unchecked Sendable {
 
-    public private(set) var playedHaptics: [HapticKind] = []
+    private let lock = NSLock()
+    private var _playedHaptics: [HapticKind] = []
 
     public init() {}
 
-    nonisolated public func play(_ kind: HapticKind) {
-        Task { await self.record(kind) }
+    public func play(_ kind: HapticKind) {
+        lock.lock(); defer { lock.unlock() }
+        _playedHaptics.append(kind)
     }
 
-    private func record(_ kind: HapticKind) { playedHaptics.append(kind) }
+    /// Every fired haptic, in order.
+    public var playedHaptics: [HapticKind] {
+        lock.lock(); defer { lock.unlock() }; return _playedHaptics
+    }
 }
 
 /// Scriptable audio session: set `isOtherAudioPlaying` to drive the music

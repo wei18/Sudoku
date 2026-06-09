@@ -13,6 +13,7 @@ public struct NoopSoundPlaying: SoundPlaying {
     public func setMusicVolume(_ volume: Float) {}
     public func setMuted(_ muted: Bool) {}
     public func setMusicEnabled(_ enabled: Bool) {}
+    public func setHapticsEnabled(_ enabled: Bool) {}
 }
 
 /// Fires no haptics.

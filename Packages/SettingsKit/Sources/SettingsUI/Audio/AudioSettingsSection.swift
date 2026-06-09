@@ -51,6 +51,7 @@ public struct AudioSettingsSection: View {
                     .foregroundStyle(tintColor)
             }
         }
+        .tint(tintColor)
         .accessibilityIdentifier("audio.settings.mute")
     }
 
@@ -96,6 +97,7 @@ public struct AudioSettingsSection: View {
                     .foregroundStyle(tintColor)
             }
         }
+        .tint(tintColor)
         .accessibilityIdentifier("audio.settings.musicEnabled")
     }
 
@@ -109,6 +111,7 @@ public struct AudioSettingsSection: View {
                     .foregroundStyle(tintColor)
             }
         }
+        .tint(tintColor)
         .accessibilityIdentifier("audio.settings.haptics")
     }
 }

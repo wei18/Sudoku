@@ -55,6 +55,7 @@ public final class LiveSoundPlayer: SoundPlaying, @unchecked Sendable {
     private var musicVolume: Float = 1.0
     private var isMuted = false
     private var isMusicEnabled = true
+    private var hapticsEnabled = true
 
     /// - Parameters:
     ///   - bundle: where sound files are looked up by `soundKey` (defaults to the
@@ -78,10 +79,15 @@ public final class LiveSoundPlayer: SoundPlaying, @unchecked Sendable {
     // MARK: - SFX
 
     public func play(_ event: AudioEvent) {
-        // Haptic fires regardless of whether the sound asset exists (a missing
-        // asset is the normal P1 path, but the haptic still gives feedback).
+        // Contract (#330 P2): haptics are governed by `hapticsEnabled` ONLY — master
+        // mute (`isMuted`) silences audio, NOT haptics. The haptic also fires
+        // regardless of whether the sound asset exists (a missing asset is the
+        // normal P1 path, but the haptic still gives feedback).
         if let haptic = event.haptic {
-            haptics.play(haptic)
+            lock.lock()
+            let fireHaptic = hapticsEnabled
+            lock.unlock()
+            if fireHaptic { haptics.play(haptic) }
         }
 
         #if canImport(AVFoundation)
@@ -171,6 +177,12 @@ public final class LiveSoundPlayer: SoundPlaying, @unchecked Sendable {
             musicPlayer = nil
         }
         #endif
+    }
+
+    public func setHapticsEnabled(_ enabled: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        hapticsEnabled = enabled
     }
 
     // MARK: - Helpers
