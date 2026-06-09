@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#MISE description="Verify each gameplay soundKey (#330) has a matching bundled audio asset whose filename stem == the soundKey and whose extension LiveSoundPlayer resolves."
+#
+# LiveSoundPlayer.audioURL(for:) resolves a soundKey via
+# bundle.url(forResource: key, withExtension: ext) across this extension set.
+# A bundled asset is only loadable if its filename stem == the soundKey AND its
+# extension is one of these. This check fails loudly if any expected asset is
+# missing / mis-named — the class of bug where audio silently no-ops.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+EXTS="caf wav m4a aif aiff mp3"   # mirrors LiveSoundPlayer.audioURL(for:)
+fail=0
+
+# app_dir : space-separated soundKeys (SFX + BGM stems)
+check() {
+  local app_dir="$1"; shift
+  local keys=("$@")
+  local audio="$ROOT/App/$app_dir/Resources/Audio"
+  for key in "${keys[@]}"; do
+    local found=""
+    for ext in $EXTS; do
+      local f="$audio/$key.$ext"
+      if [[ -f "$f" && -s "$f" ]]; then found="$f"; break; fi
+    done
+    if [[ -z "$found" ]]; then
+      echo "MISSING: $app_dir soundKey '$key' has no non-empty asset in $audio (tried: $EXTS)" >&2
+      fail=1
+    else
+      local size; size=$(wc -c <"$found" | tr -d ' ')
+      echo "OK: $app_dir '$key' -> ${found#$ROOT/} (${size} bytes)"
+    fi
+  done
+}
+
+# Stems MUST match the soundKeys in:
+#   SudokuAudioEvents.swift     (place/complete/error/win) + SudokuAudioMusic.gameplay
+#   MinesweeperAudioEvents.swift(reveal/flag/floodClear/explosion/win) + bgm
+check Sudoku      place complete error win gameplay
+check Minesweeper reveal flag floodClear explosion win bgm
+
+if [[ "$fail" -ne 0 ]]; then
+  echo "audio verify FAILED" >&2
+  exit 1
+fi
+echo "audio verify PASS"
