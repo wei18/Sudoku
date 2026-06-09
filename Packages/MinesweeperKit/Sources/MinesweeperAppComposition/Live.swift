@@ -260,6 +260,9 @@ extension MinesweeperAppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
+            // #284: same shared controller the Root mounts via `.toastOverlay`
+            // — clear-cache feedback lands on it.
+            toastController: toastController,
             makeReminderSettings: makeReminderSettings
         )
 
@@ -323,7 +326,8 @@ extension MinesweeperAppComposition {
             adGate: adGate,
             persistence: persistence,
             gameCenter: gameCenter,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            toastController: toastController
         )
 
         // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.

@@ -17,6 +17,15 @@
 // no-op), but it IS the real protocol method, not a fake button. Version is
 // read from `Bundle.main` (CFBundleShortVersionString) at the callsite.
 //
+// #284: clear-cache now surfaces user feedback, mirroring Sudoku's
+// `SettingsViewModel.clearCache()`. Success → a success toast on the shared
+// `ToastController` (mounted on `MinesweeperRoot` via `.toastOverlay`); a
+// thrown delete error → the existing `errorReporter` funnel PLUS a failure
+// toast (Sudoku reports + shows success-anyway; MS shows the failure so the
+// user isn't told "cleared" when it wasn't). The success path is cosmetic
+// today — no MS save-flow → `latestInProgress()` returns nil → nothing to
+// delete — but the error path is the real future-proofing.
+//
 // The board destination is wrapped with a "New Game" toolbar Button that
 // pops back to the picker (`popToNewGame` → `path.removeAll()`). Wrapping at
 // this site (instead of editing `MinesweeperBoardView`) keeps the merged MVP
@@ -61,6 +70,12 @@ public struct LiveRouteFactory: RouteFactory {
     // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
+    // #284: optional toast surface forwarded into the clear-cache action so
+    // success / failure feedback lands on the same bottom overlay as IAP
+    // results (mounted on `MinesweeperRoot` via `.toastOverlay`). Optional so
+    // preview / test callsites that pass no controller keep compiling — when
+    // nil, clear-cache still runs (and still reports errors) but shows no toast.
+    private let toastController: ToastController?
     // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
     // MS copy) per Settings mount. Injected as a closure (not the raw Reminders
     // seams) so ALL reminder wiring stays in `.live()`. `nil` in previews / tests
@@ -75,6 +90,7 @@ public struct LiveRouteFactory: RouteFactory {
         persistence: (any PersistenceProtocol)? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
+        toastController: ToastController? = nil,
         makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil
     ) {
         self.monetizationController = monetizationController
@@ -83,6 +99,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
+        self.toastController = toastController
         self.makeReminderSettings = makeReminderSettings
     }
 
@@ -165,10 +182,18 @@ public struct LiveRouteFactory: RouteFactory {
                 .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
                 ?? "1.0.0"
             let persistence = self.persistence
+            let errorReporter = self.errorReporter
+            let toastController = self.toastController
             return AnyView(
                 SettingsView(
                     version: version,
-                    clearCache: { await Self.clearCache(persistence: persistence) },
+                    clearCache: {
+                        await Self.clearCache(
+                            persistence: persistence,
+                            errorReporter: errorReporter,
+                            toastController: toastController
+                        )
+                    },
                     monetizationController: monetizationController,
                     notices: Self.makeSettingsNotices(),
                     reminderSettings: makeReminderSettings?()
@@ -200,20 +225,51 @@ public struct LiveRouteFactory: RouteFactory {
     }
 
     /// Deletes the active in-progress saved game, mirroring Sudoku's
-    /// `SettingsViewModel.clearCache()`. Parity-only until MS save-flow lands:
-    /// `latestInProgress()` returns nil today so this is a safe no-op, but it
-    /// exercises the real `PersistenceProtocol` path, not a fake button.
-    /// Errors are swallowed — MS has no error funnel wired into Settings yet
-    /// (a follow-up matching Sudoku's `errorReporter` thread can add one).
+    /// `SettingsViewModel.clearCache()`, and surfaces user feedback (#284).
+    ///
+    /// On success → a success toast ("Cache cleared"). On a thrown delete
+    /// error → the error funnels through `errorReporter` (same channel Sudoku
+    /// uses) AND a failure toast tells the user it didn't clear. Parity-only
+    /// until MS save-flow lands: `latestInProgress()` returns nil today so the
+    /// delete is a safe no-op and the success path is cosmetic, but it
+    /// exercises the real `PersistenceProtocol` path and the error path is the
+    /// real future-proofing.
+    ///
+    /// `internal` (not `private`) so `LiveRouteFactoryTests` can drive the
+    /// success / failure branches directly with a fake persistence — there is
+    /// no MS Settings ViewModel to host the logic (the Sudoku home).
     @MainActor
-    private static func clearCache(persistence: (any PersistenceProtocol)?) async {
+    static func clearCache(
+        persistence: (any PersistenceProtocol)?,
+        errorReporter: (any ErrorReporter)?,
+        toastController: ToastController?
+    ) async {
         guard let persistence else { return }
         do {
             if let candidate = try await persistence.latestInProgress() {
                 try await persistence.deleteAbandoned(recordName: candidate.recordName)
             }
+            // Localized via the app catalog (Bundle.main) — `Toast.message` is a
+            // plain String rendered verbatim by `Text`, so the lookup happens
+            // here, not at the view layer.
+            toastController?.show(
+                Toast(
+                    style: .success,
+                    message: String(localized: "Cache cleared", bundle: .main)
+                )
+            )
         } catch {
-            // No-op: see doc comment. MS Settings has no error surface yet.
+            await errorReporter?.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "LiveRouteFactory.clearCache"
+            )
+            toastController?.show(
+                Toast(
+                    style: .failure,
+                    message: String(localized: "Couldn't clear cache", bundle: .main)
+                )
+            )
         }
     }
 
