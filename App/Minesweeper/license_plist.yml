@@ -20,7 +20,12 @@ options:
     - Packages/MinesweeperKit/Package.swift
 
   # Settings.bundle landing path inside the App target's resources.
-  outputPath: App/Minesweeper/Resources/Settings.bundle
+  # NB: LicensePlist resolves outputPath relative to THIS config file's directory
+  # (App/Minesweeper/), not the repo root — so it's `Resources/Settings.bundle`,
+  # not `App/Minesweeper/Resources/...` (that would double the path and land in
+  # App/Minesweeper/App/Minesweeper/Resources/, which Tuist's resource glob never
+  # picks up). Regression introduced when #393 co-located the config under App/.
+  outputPath: Resources/Settings.bundle
 
   # Overwrite stale entries on each CI run.
   force: true
