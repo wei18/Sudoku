@@ -17,6 +17,8 @@ public import SwiftUI
 public import Persistence
 public import PuzzleStore
 public import Telemetry
+// #330 P2: the `SoundPlaying` seam forwarded into the live `GameViewModel`.
+public import GameAudio
 import GameState
 import SudokuEngine
 
@@ -41,6 +43,9 @@ public struct BoardLoaderView: View {
     // between the grid and the digit pad once the puzzle has loaded.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    // #330 P2: gameplay audio seam, forwarded into the live `GameViewModel`.
+    // Defaults to `NoopSoundPlaying` so previews / tests stay silent.
+    private let soundPlayer: any SoundPlaying
     // Host navigation path, forwarded to `BoardView` so a solve can push the
     // `.completion` route. Optional → previews / tests mount without a stack.
     private let path: Binding<[AppRoute]>?
@@ -55,6 +60,7 @@ public struct BoardLoaderView: View {
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         path: Binding<[AppRoute]>? = nil
     ) {
         self.puzzleId = puzzleId
@@ -63,6 +69,7 @@ public struct BoardLoaderView: View {
         self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.adGate = adGate
+        self.soundPlayer = soundPlayer
         self.path = path
     }
 
@@ -127,7 +134,8 @@ public struct BoardLoaderView: View {
                 initialStatus: snapshot.status,
                 initialElapsedSeconds: snapshot.elapsedSeconds,
                 persistence: persistence,
-                errorReporter: errorReporter
+                errorReporter: errorReporter,
+                soundPlayer: soundPlayer
             )
             state = .loaded(viewModel)
             // #227: kick the session into `.playing` (idle → start, paused →

@@ -17,6 +17,10 @@
 
 internal import AdsAdMob
 internal import Foundation
+// #330 P2: the Live audio stack (`LiveAudioSession` + `LiveHaptics` +
+// `LiveSoundPlayer`) is constructed here — the only Sudoku layer that touches
+// the Live conformers (which reach AVFoundation inside GameAudioKit).
+internal import GameAudio
 internal import GameCenterClient
 internal import GameShellUI
 internal import IAPStoreKit2
@@ -336,6 +340,34 @@ extension AppComposition {
         // copyright is derived locally, no fabrication.
         let settingsNotices = makeSettingsNotices()
 
+        // #330 P2: Live audio stack. The session is configured for ambient
+        // mix-with-others at boot; the player wraps it + the haptics seam. P2
+        // ships SILENT (no assets until P3) — `LiveSoundPlayer` tolerates the
+        // missing files and no-ops. `AVFoundation` stays confined to
+        // GameAudioKit's Live files; this layer only names the seams.
+        let audioSession = LiveAudioSession(subsystem: "com.wei18.sudoku")
+        audioSession.configureAmbient()
+        let soundPlayer = LiveSoundPlayer(
+            session: audioSession,
+            haptics: LiveHaptics(),
+            subsystem: "com.wei18.sudoku"
+        )
+
+        // Settings audio entry, persisted in `UserDefaults` under a Sudoku key
+        // prefix (no shared store type → no cross-app key collision with
+        // Minesweeper). Defaults match the spec: BGM on, haptics on, not muted,
+        // volumes 0.7. Each setter fans out to the running `soundPlayer`. The
+        // model seeds the live player's volumes/flags from the persisted values
+        // on construction below.
+        let audioSettings = makeAudioSettings(player: soundPlayer)
+        // Push the persisted state into the just-built player so the running
+        // session matches what the Settings screen shows from first launch.
+        soundPlayer.setSFXVolume(Float(audioSettings.sfxVolume))
+        soundPlayer.setMusicVolume(Float(audioSettings.musicVolume))
+        soundPlayer.setMuted(audioSettings.isMuted)
+        soundPlayer.setMusicEnabled(audioSettings.musicEnabled)
+        soundPlayer.setHapticsEnabled(audioSettings.hapticsEnabled)
+
         let routeFactory = LiveRouteFactory(
             puzzleProvider: puzzleStore,
             persistence: persistence,
@@ -349,7 +381,9 @@ extension AppComposition {
             toastController: toastController,
             makeDailyReminderPrimer: makeDailyReminderPrimer,
             makeReminderSettings: makeReminderSettings,
-            settingsNotices: settingsNotices
+            settingsNotices: settingsNotices,
+            soundPlayer: soundPlayer,
+            audioSettings: audioSettings
         )
 
         return AppComposition(
@@ -367,6 +401,45 @@ extension AppComposition {
             monetizationController: monetizationController,
             toastController: toastController,
             attPrimer: attPrimer
+        )
+    }
+
+    /// #330 P2: builds the Sudoku audio settings model. Persistence is backed
+    /// by `UserDefaults.standard` under a `com.wei18.sudoku.audio.*` key prefix
+    /// (so Minesweeper's mirror never collides). Defaults match the spec: BGM
+    /// on, haptics on, not muted, volumes 0.7. Each setter fans out to the
+    /// injected live `player` so a slider move updates the running audio at once.
+    @MainActor
+    private static func makeAudioSettings(player: any SoundPlaying) -> AudioSettingsModel {
+        let defaults = UserDefaults.standard
+        let prefix = "com.wei18.sudoku.audio"
+        let musicVolumeKey = "\(prefix).musicVolume"
+        let sfxVolumeKey = "\(prefix).sfxVolume"
+        let mutedKey = "\(prefix).isMuted"
+        let hapticsKey = "\(prefix).hapticsEnabled"
+        let musicEnabledKey = "\(prefix).musicEnabled"
+
+        // `UserDefaults` returns 0 / false for an absent key; seed the spec
+        // defaults on first launch so the stored value is authoritative after.
+        func volume(_ key: String) -> Double {
+            defaults.object(forKey: key) == nil ? 0.7 : defaults.double(forKey: key)
+        }
+        func flag(_ key: String, default fallback: Bool) -> Bool {
+            defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key)
+        }
+
+        return AudioSettingsModel(
+            player: player,
+            getMusicVolume: { volume(musicVolumeKey) },
+            setMusicVolume: { defaults.set($0, forKey: musicVolumeKey) },
+            getSFXVolume: { volume(sfxVolumeKey) },
+            setSFXVolume: { defaults.set($0, forKey: sfxVolumeKey) },
+            getIsMuted: { flag(mutedKey, default: false) },
+            setMuted: { defaults.set($0, forKey: mutedKey) },
+            getHapticsEnabled: { flag(hapticsKey, default: true) },
+            setHapticsEnabled: { defaults.set($0, forKey: hapticsKey) },
+            getMusicEnabled: { flag(musicEnabledKey, default: true) },
+            setMusicEnabled: { defaults.set($0, forKey: musicEnabledKey) }
         )
     }
 
