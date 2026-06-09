@@ -76,6 +76,10 @@ public final class MinesweeperGameViewModel {
 
     public var isTerminal: Bool { status == .won || status == .lost }
 
+    /// #434: mirrors Sudoku's `GameViewModel.isPaused` (`status == .paused`).
+    /// Drives the toolbar Pause/Resume toggle + the board-cover overlay.
+    public var isPaused: Bool { status == .paused }
+
     // MARK: - Init
 
     /// Construct a fresh session from a difficulty + seed. Use this for
@@ -179,6 +183,24 @@ public final class MinesweeperGameViewModel {
             // See `reveal`. #178: surface the invariant violation.
             reportIssue("toggleFlag out-of-bounds from well-formed grid: \(error)")
         }
+    }
+
+    // MARK: - Pause / resume (#434)
+
+    /// Pause the game: freeze the elapsed clock + flip to `.paused`. No-op when
+    /// seeded (preview/snapshot) or when the actor isn't `.playing` (the actor
+    /// itself guards the transition). Mirrors Sudoku's `GameViewModel.pause()`.
+    public func pause() async {
+        guard !isSeeded else { return }
+        snapshot = await session.pause()
+    }
+
+    /// Resume the game: restart the clock + flip back to `.playing`. No-op when
+    /// seeded or when the actor isn't `.paused`. Mirrors Sudoku's
+    /// `GameViewModel.resume()`.
+    public func resume() async {
+        guard !isSeeded else { return }
+        snapshot = await session.resume()
     }
 
     // MARK: - Game Center submit-on-win (#291, #329)

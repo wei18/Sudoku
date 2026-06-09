@@ -55,6 +55,42 @@ import MinesweeperGameState
         #expect(vm.isTerminal == true)
     }
 
+    // MARK: - Pause / resume (#434)
+
+    @Test func pauseSetsIsPausedAndFreezesElapsed() async {
+        let vm = MinesweeperGameViewModel(difficulty: .beginner, seed: 42)
+        await vm.reveal(row: 4, col: 4)
+        #expect(vm.isPaused == false)
+
+        await vm.pause()
+        #expect(vm.isPaused == true)
+        #expect(vm.status == .paused)
+        let frozen = vm.elapsedSeconds
+
+        // While paused the ticker no-ops; elapsed must not advance via refresh.
+        await vm.refresh()
+        #expect(vm.elapsedSeconds == frozen)
+    }
+
+    @Test func resumeReturnsToPlaying() async {
+        let vm = MinesweeperGameViewModel(difficulty: .beginner, seed: 42)
+        await vm.reveal(row: 4, col: 4)
+        await vm.pause()
+        #expect(vm.isPaused == true)
+
+        await vm.resume()
+        #expect(vm.isPaused == false)
+        #expect(vm.status == .playing)
+    }
+
+    @Test func pauseBeforeFirstActionIsNoop() async {
+        // Idle session: pause must not flip an un-started game into `.paused`.
+        let vm = MinesweeperGameViewModel(difficulty: .beginner, seed: 1)
+        await vm.pause()
+        #expect(vm.isPaused == false)
+        #expect(vm.status == .idle)
+    }
+
     @Test func sharedSessionRoundTrips() async {
         // ViewModel injected with an external session — used by previews /
         // composition. Snapshot must update via the same actor.

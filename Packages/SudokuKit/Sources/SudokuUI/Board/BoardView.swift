@@ -6,6 +6,7 @@
 
 public import MonetizationCore
 public import SwiftUI
+import GameShellUI
 import SudokuEngine
 
 public struct BoardView: View {

@@ -243,4 +243,87 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
     }
 }
 
+// MARK: - Pause / resume (#434)
+
+@Suite struct MinesweeperSessionPauseTests {
+    @Test func pauseFreezesTheClock() async throws {
+        let clock = FakeClock(0)
+        let session = MinesweeperSession(difficulty: .beginner, seed: 1, clock: clock)
+        _ = try await session.reveal(row: 4, col: 4)
+        clock.advance(by: 5)
+
+        let paused = await session.pause()
+        #expect(paused.status == .paused)
+        #expect(paused.elapsedSeconds == 5)
+
+        // Time keeps moving in the wall clock, but elapsed stays frozen.
+        clock.advance(by: 100)
+        let stillPaused = await session.elapsedSeconds
+        #expect(stillPaused == 5)
+    }
+
+    @Test func resumeRestartsTheClockWithoutLosingAccumulatedTime() async throws {
+        let clock = FakeClock(0)
+        let session = MinesweeperSession(difficulty: .beginner, seed: 1, clock: clock)
+        _ = try await session.reveal(row: 4, col: 4)
+        clock.advance(by: 5)
+        _ = await session.pause()
+
+        // Paused gap should NOT count toward elapsed.
+        clock.advance(by: 30)
+        let resumed = await session.resume()
+        #expect(resumed.status == .playing)
+        #expect(resumed.elapsedSeconds == 5)
+
+        // After resume the clock advances again from the accumulated base.
+        clock.advance(by: 4)
+        let afterResume = await session.elapsedSeconds
+        #expect(afterResume == 9)
+    }
+
+    @Test func pauseIsNoopWhenIdle() async {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 1, clock: FakeClock())
+        let snap = await session.pause()
+        #expect(snap.status == .idle)
+    }
+
+    @Test func pauseIsNoopAfterTerminal() async throws {
+        let clock = FakeClock(0)
+        let session = MinesweeperSession(difficulty: .beginner, seed: 13, clock: clock)
+        _ = try await session.reveal(row: 4, col: 4)
+        // Drive to a loss.
+        let snap = await session.snapshot()
+        var minePos: (Int, Int)?
+        for r in 0..<snap.rows {
+            for c in 0..<snap.columns where snap.cell(row: r, col: c).isMine {
+                minePos = (r, c); break
+            }
+            if minePos != nil { break }
+        }
+        let (mr, mc) = try #require(minePos)
+        _ = try await session.reveal(row: mr, col: mc)
+        let paused = await session.pause()
+        #expect(paused.status == .lost)
+    }
+
+    @Test func resumeIsNoopWhenNotPaused() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 1, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let snap = await session.resume()
+        #expect(snap.status == .playing)
+    }
+
+    @Test func revealWhilePausedIsNoop() async throws {
+        let clock = FakeClock(0)
+        let session = MinesweeperSession(difficulty: .beginner, seed: 1, clock: clock)
+        _ = try await session.reveal(row: 4, col: 4)
+        let before = await session.snapshot()
+        _ = await session.pause()
+        // A reveal while paused must be absorbed (guard excludes `.paused`).
+        let after = try await session.reveal(row: 0, col: 0)
+        #expect(after.status == .paused)
+        #expect(after.cells == before.cells)
+    }
+}
+
 // swiftlint:enable identifier_name
