@@ -142,9 +142,9 @@ public struct LiveRouteFactory: RouteFactory {
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
                             Button("New Game", systemImage: "plus.circle") {
-                                // Pop everything off the stack — root content
-                                // (NewGameView) becomes visible again so the
-                                // user can pick a fresh difficulty + seed.
+                                // Pop everything off the stack so the Home
+                                // mode-card surface (root content) becomes
+                                // visible again.
                                 Self.popToNewGame(path: path)
                             }
                             .accessibilityIdentifier("minesweeper.board.newGame")

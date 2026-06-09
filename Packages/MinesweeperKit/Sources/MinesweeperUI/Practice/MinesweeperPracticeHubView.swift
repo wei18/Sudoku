@@ -4,10 +4,7 @@
 // slot) and a Start button (cta slot). Mirrors Sudoku's Practice hub shape
 // per `feedback/minesweeper-mirrors-sudoku.md` but drops the shimmer state
 // machine — MS has no async generator today, so the CTA pushes the route
-// synchronously (same shape as `NewGameView`).
-//
-// `NewGameView` continues to ship alongside this stub for now; sidebar
-// wiring + de-duplication is deferred to a follow-up.
+// synchronously.
 
 public import SwiftUI
 internal import GameShellUI

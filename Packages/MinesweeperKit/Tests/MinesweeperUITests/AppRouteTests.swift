@@ -1,6 +1,5 @@
-// AppRouteTests — pure enum semantics for Minesweeper's navigation route.
-// Separated from `NewGameViewTests` so that file stays focused on the view's
-// behavior (route building) rather than enum payload mechanics.
+// AppRouteTests — pure enum semantics for Minesweeper's navigation route
+// (payload mechanics: distinctness + equality of route cases).
 
 import Testing
 import MinesweeperUI
