@@ -1,0 +1,39 @@
+{
+  "identifier" : "3D7C9F12-6B4E-4A28-9E15-7C2A8F0B1D34",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : true,
+      "internalID" : "B2C3D4E5-F6A7-4890-A123-456789BCDEF0",
+      "localizations" : [
+        {
+          "description" : "Permanently remove banner ads in Minesweeper.",
+          "displayName" : "Remove Ads",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "永久移除 Minesweeper 中的橫幅廣告。",
+          "displayName" : "移除廣告",
+          "locale" : "zh_Hant"
+        }
+      ],
+      "productID" : "com.wei18.minesweeper.iap.remove_ads",
+      "referenceName" : "Remove Ads",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0000000000",
+    "_developerTeamID" : "0000000000",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

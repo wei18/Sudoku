@@ -262,12 +262,40 @@ run_platform() {
 }
 
 # ── Prerequisites that gate every run ─────────────────────────────────────────
+# Resolve packages + materialise the workspace. `tuist install` populates the
+# SwiftPM checkouts + Package.resolved that LicensePlist reads in the next step;
+# `tuist generate` creates the *.xcworkspace (gitignored). Always run install so
+# the resolved state exists even when the workspace is already present from a
+# prior run.
+mise exec -- tuist install
 [[ -d "$WORKSPACE" ]] || {
     echo "==> $WORKSPACE not found — generating with tuist."
-    mise exec -- tuist install
     mise exec -- tuist generate --no-open
 }
 [[ -d "$WORKSPACE" ]] || { echo "error: tuist generate did not produce $WORKSPACE" >&2; exit 1; }
+
+# ── Regenerate Acknowledgements Settings.bundle, then RE-generate the project ──
+# The Settings.bundle is gitignored build output (Xcode Cloud regenerates it via
+# ci_post_clone.sh), so on a local machine it's absent until we regenerate it
+# here. Without it the installed build's iOS Settings → Acknowledgements page is
+# empty. Two ordering constraints, both load-bearing:
+#
+#   1. gen must run AFTER `tuist install` — LicensePlist enumerates the dependency
+#      graph from the resolved SwiftPM state (Package.resolved + the package
+#      checkouts). Run it with no resolution in place and it emits an EMPTY list.
+#   2. gen must run BEFORE `tuist generate` *captures* the bundle — Tuist globs it
+#      as an App resource (Project.swift: `App/<App>/Resources/Settings.bundle/**`)
+#      and the glob is resolved into file references at generate time, not build
+#      time. If the bundle dir is absent/empty when the project is generated,
+#      xcodebuild copies nothing into the .app.
+#
+# So: install (resolve) → gen (populate bundle) → generate (re-glob the now-
+# populated bundle) → archive. The unconditional re-generate below is what makes
+# the freshly-written bundle land in the generated project's resource phase.
+echo "==> regenerate Acknowledgements Settings.bundle (gen:acknowledgements)"
+mise run gen:acknowledgements
+echo "==> re-generate project so Tuist globs the populated Settings.bundle"
+mise exec -- tuist generate --no-open
 
 # Credentials are needed for archive (DEVELOPMENT_TEAM) and upload. Load once.
 load_asc_creds

@@ -19,7 +19,12 @@ options:
     - Packages/SudokuKit/Package.swift
 
   # Settings.bundle landing path inside the App target's resources.
-  outputPath: App/Sudoku/Resources/Settings.bundle
+  # NB: LicensePlist resolves outputPath relative to THIS config file's directory
+  # (App/Sudoku/), not the repo root — so it's `Resources/Settings.bundle`, not
+  # `App/Sudoku/Resources/...` (that would double the path and land in
+  # App/Sudoku/App/Sudoku/Resources/, which Tuist's resource glob never picks up).
+  # Regression introduced when #393 co-located the config under App/.
+  outputPath: Resources/Settings.bundle
 
   # Overwrite stale entries on each CI run.
   force: true

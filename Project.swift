@@ -181,7 +181,10 @@ let project = Project(
             testAction: .testPlans(["App/Minesweeper/Minesweeper.xctestplan"]),
             runAction: .runAction(
                 configuration: "Debug",
-                executable: "Minesweeper"
+                executable: "Minesweeper",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/Minesweeper/Resources/Minesweeper.storekit")
+                )
             )
         ),
     ]
