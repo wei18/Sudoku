@@ -51,7 +51,9 @@ Packages/
 ├── PersistenceKit/          # CloudKit persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting
 ├── RemindersKit/            # shared local-notification reminders (UserNotifications isolated to Live)
-├── GameShellKit/            # GameShellUI — the navigation/settings shell both apps share
+├── GameAudioKit/            # shared SFX / BGM / haptics audio engine (AVFoundation isolated to Live)
+├── GameShellKit/            # GameShellUI — the navigation shell both apps share
+├── SettingsKit/             # SettingsUI — the shared settings sections both apps mount
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2 (third-party SDK isolation)
 ├── SudokuKit/               # Sudoku-specific: PuzzleStore / SudokuUI / AppComposition
 ├── MinesweeperKit/          # Minesweeper-specific: MinesweeperUI / MinesweeperAppComposition
@@ -62,7 +64,7 @@ Packages/
 
 - **Portable leaf cores.** `SudokuCoreKit` and `MinesweeperCoreKit` import only Foundation — no Apple frameworks — so the puzzle/engine math could be lifted to another front-end (an Android port is an explicit backlog item).
 - **Restricted framework imports.** CloudKit lives only in `PersistenceKit`, GameKit only in `GameCenterKit`, UserNotifications only in `RemindersKit`'s Live files, and the Google Mobile Ads SDK only in `AppMonetizationKit/AdsAdMob`. Everything above consumes protocol seams, which keeps the UI and logic layers unit-testable and preview-able.
-- **A shared shell, not copy-paste.** When Minesweeper needed the same navigation, settings, hub, toast, and banner-slot surfaces, those were extracted into `GameShellKit` (`GameShellUI`) rather than duplicated. The second app reuses the shell and ships *only* its gameplay UI and the bits that genuinely differ — which is exactly why "Minesweeper mirrors Sudoku except the board" is a true statement, not a slogan.
+- **A shared shell, not copy-paste.** When Minesweeper needed the same navigation, hub, toast, and banner-slot surfaces, those were extracted into `GameShellKit` (`GameShellUI`) rather than duplicated, while the shared settings sections live in `SettingsKit` (`SettingsUI`). The second app reuses the shell and ships *only* its gameplay UI and the bits that genuinely differ — which is exactly why "Minesweeper mirrors Sudoku except the board" is a true statement, not a slogan.
 - **Game-prefixed targets.** Where two games need the same domain target (each game has its own `GameState`), names are game-prefixed (`MinesweeperEngine`, `MinesweeperGameState`, `MinesweeperUI`) so the generated Xcode workspace has no module-name collisions; genuinely shared targets are named by *function* (`GameShellUI`).
 
 ---

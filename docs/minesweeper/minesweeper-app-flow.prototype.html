@@ -886,7 +886,7 @@
   <section class="flow" id="flow-settings">
     <h2 class="flow-title">Settings <span class="chip shipped">SHIPPED (shared sections)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>SettingsView</code> — already shipped via the shared <code>GameShellUI.SettingsAboutStorage</code>.</b> A native grouped Form: <b>Purchases</b> (Remove Ads / Restore via shared <code>MonetizationUI</code> rows), <b>About</b> (Version from <code>Bundle.main</code>), <b>Storage</b> (Clear cache → confirmation dialog → <code>PersistenceProtocol</code>). All tints use <code>.accentColor</code> today; under the proposed theme they would resolve to <code>accent.primary</code>.
+      <b>Mirror of Sudoku's <code>SettingsView</code> — already shipped via the shared <code>SettingsUI.SettingsScreen</code>.</b> The MS <code>SettingsView</code> mounts the shared <code>SettingsScreen</code>, a native grouped Form assembling the same five shared sections in order: <b>Purchases</b> (Remove Ads / Restore via shared <code>MonetizationUI</code> rows), <b>Reminders</b> (daily-reminder toggle + fire time, #287), <b>Sound</b> (mute / volumes / BGM / haptics, #330), <b>About</b> (Version from <code>Bundle.main</code>), <b>Notices</b> (links + copyright), <b>Storage</b> (Clear cache → confirmation dialog → <code>PersistenceProtocol</code>). All tints use <code>.accentColor</code> today; under the proposed theme they would resolve to <code>accent.primary</code>.
     </p>
     <div class="flow-frames">
 
@@ -903,6 +903,17 @@
                 <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" stroke="currentColor" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Remove Ads <span class="price-r">$2.99</span></div>
                 <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" stroke-width="1.6"/><path d="M4 20v-4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Restore Purchases</div>
               </div>
+              <div class="form-section-h">Reminders</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Daily Reminder <span class="val">On</span></div>
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Time <span class="val">9:00 AM</span></div>
+              </div>
+              <div class="form-section-h">Sound</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Sound Effects <span class="val">On</span></div>
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l10-2v13" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="16" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></span> Music <span class="val">On</span></div>
+                <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><rect x="7" y="3" width="10" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Haptics <span class="val">On</span></div>
+              </div>
               <div class="form-section-h">About</div>
               <div class="form-group">
                 <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.1" fill="currentColor"/></svg></span> Version <span class="val">1.0.0</span></div>
@@ -915,8 +926,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M16 — Settings (Purchases / About / Storage) <span class="built-tag s">SHIPPED</span></div>
-        <div class="phone-source">SettingsView · SettingsAboutStorage · MonetizationUI</div>
+        <div class="phone-label">M16 — Settings (Purchases / Reminders / Sound / About / Storage) <span class="built-tag s">SHIPPED</span></div>
+        <div class="phone-source">SettingsView · SettingsUI.SettingsScreen · MonetizationUI</div>
       </div>
 
       <!-- M17 Clear cache confirmation -->
@@ -967,6 +978,17 @@
                 <div class="form-group">
                   <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14l-1.5 10.5a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 6z" stroke="currentColor" stroke-width="1.6"/><path d="M9 6a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Remove Ads <span class="price-r">$2.99</span></div>
                   <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" stroke-width="1.6"/><path d="M4 20v-4h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Restore Purchases</div>
+                </div>
+                <div class="form-section-h">Reminders</div>
+                <div class="form-group">
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6"/></svg></span> Daily Reminder <span class="val">On</span></div>
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Time <span class="val">9:00 AM</span></div>
+                </div>
+                <div class="form-section-h">Sound</div>
+                <div class="form-group">
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Sound Effects <span class="val">On</span></div>
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l10-2v13" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" stroke="currentColor" stroke-width="1.6"/><circle cx="16.5" cy="16" r="2.5" stroke="currentColor" stroke-width="1.6"/></svg></span> Music <span class="val">On</span></div>
+                  <div class="form-row"><span class="ico"><svg viewBox="0 0 24 24" fill="none"><rect x="7" y="3" width="10" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Haptics <span class="val">On</span></div>
                 </div>
                 <div class="form-section-h">About</div>
                 <div class="form-group">

@@ -51,7 +51,9 @@ Packages/
 ├── PersistenceKit/          # CloudKit Persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting
 ├── RemindersKit/            # 共用本地通知提醒（UserNotifications 隔離於 Live）
-├── GameShellKit/            # GameShellUI——兩款 App 共用的導覽 / 設定殼
+├── GameAudioKit/            # 共用 SFX / BGM / 觸覺回饋音訊引擎（AVFoundation 隔離於 Live）
+├── GameShellKit/            # GameShellUI——兩款 App 共用的導覽殼
+├── SettingsKit/             # SettingsUI——兩款 App 共用的設定區塊
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（第三方 SDK 隔離）
 ├── SudokuKit/               # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
 ├── MinesweeperKit/          # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition
@@ -62,7 +64,7 @@ Packages/
 
 - **可移植的 leaf 核心。** `SudokuCoreKit` 與 `MinesweeperCoreKit` 只 import Foundation——不碰任何 Apple framework——所以這套題目 / 引擎數學可被搬到另一個前端（Android port 是明確列在 backlog 的項目）。
 - **受限的 framework import。** CloudKit 只存在於 `PersistenceKit`、GameKit 只在 `GameCenterKit`、UserNotifications 只在 `RemindersKit` 的 Live 檔、Google Mobile Ads SDK 只在 `AppMonetizationKit/AdsAdMob`。上層一律透過 protocol seam 取用，讓 UI 與邏輯層維持可單元測試、可 preview。
-- **共用一個殼，而非複製貼上。** 當 Minesweeper 需要同樣的導覽、設定、hub、toast 與 banner-slot 介面時，這些被抽進 `GameShellKit`（`GameShellUI`），而非複製。第二款 App 複用這個殼，只交付*自己*的玩法 UI 與真正不同的部分——這正是「Minesweeper 除了棋盤之外鏡像 Sudoku」之所以是事實、而非口號的原因。
+- **共用一個殼，而非複製貼上。** 當 Minesweeper 需要同樣的導覽、hub、toast 與 banner-slot 介面時，這些被抽進 `GameShellKit`（`GameShellUI`），而非複製；共用的設定區塊則放在 `SettingsKit`（`SettingsUI`）。第二款 App 複用這個殼，只交付*自己*的玩法 UI 與真正不同的部分——這正是「Minesweeper 除了棋盤之外鏡像 Sudoku」之所以是事實、而非口號的原因。
 - **Game-prefixed target。** 當兩款遊戲需要同一個 domain target 時（每款遊戲都有自己的 `GameState`），名稱以遊戲名前綴（`MinesweeperEngine`、`MinesweeperGameState`、`MinesweeperUI`），讓 Tuist 生成的 Xcode workspace 無 module 名稱衝突；真正共用的 target 則以*功能*命名（`GameShellUI`）。
 
 ---
