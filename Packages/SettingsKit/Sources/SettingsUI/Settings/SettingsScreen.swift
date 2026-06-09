@@ -31,6 +31,7 @@ public import SwiftUI
 public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
     private let purchases: () -> Purchases
     private let reminderSettings: SettingsScreenReminderConfig?
+    private let audioSettings: AudioSettingsModel?
     private let version: String
     private let aboutExtraRows: () -> AboutExtraRows
     private let notices: SettingsNoticesConfig?
@@ -42,6 +43,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
         tint: Color,
         clearCache: @escaping @MainActor () async -> Void,
         reminderSettings: SettingsScreenReminderConfig? = nil,
+        audioSettings: AudioSettingsModel? = nil,
         notices: SettingsNoticesConfig? = nil,
         @ViewBuilder purchases: @escaping () -> Purchases,
         @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() }
@@ -50,6 +52,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
         self.tint = tint
         self.clearCache = clearCache
         self.reminderSettings = reminderSettings
+        self.audioSettings = audioSettings
         self.notices = notices
         self.purchases = purchases
         self.aboutExtraRows = aboutExtraRows
@@ -73,6 +76,13 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
                     primerCopy: reminderSettings.primerCopy,
                     deniedCopy: reminderSettings.deniedCopy
                 )
+            }
+
+            // 2b. Sound — shared audio section (mute / volumes / BGM / haptics).
+            // Same building block both apps mount; rendered only when an audio
+            // model is injected (#330 P1; nil keeps existing call sites compiling).
+            if let audioSettings {
+                AudioSettingsSection(model: audioSettings, tintColor: tint)
             }
 
             // 3. About — shared Version row + injected extra rows. Sudoku passes

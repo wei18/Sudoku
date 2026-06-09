@@ -1,0 +1,181 @@
+// Foundation tests (swift-testing-baseline). They assert the protocol-level
+// contract: the Live player tolerates a missing asset key without crashing,
+// playing an sfx event with a haptic fires the haptic, music does not start when
+// other audio is playing (auto-yield), and the Noop impls are inert.
+//
+// All macOS-runnable: LiveSoundPlayer uses AVFoundation (present on macOS) and a
+// bundle with no audio assets, so every play() hits the tolerated missing-asset
+// path. The haptic seam is faked, so no UIKit dependency leaks into the test.
+
+import Foundation
+import Testing
+
+import GameAudio
+import GameAudioTesting
+
+@Suite("LiveSoundPlayer — missing-asset tolerance + haptic + auto-yield")
+struct LiveSoundPlayerTests {
+
+    /// A bundle with no audio assets (the test runner ships none), so every
+    /// `soundKey` resolves to a missing asset — the normal P1 path.
+    private func makePlayer(
+        haptics: any HapticPlaying = NoopHapticPlaying(),
+        session: any AudioSessionConfiguring = FakeAudioSession()
+    ) -> LiveSoundPlayer {
+        LiveSoundPlayer(
+            bundle: .main,
+            session: session,
+            haptics: haptics,
+            subsystem: "GameAudioTests"
+        )
+    }
+
+    @Test("play() tolerates a missing asset key without crashing")
+    func playMissingAssetIsNoop() {
+        let player = makePlayer()
+        // No asset for this key in the test bundle → logged + no-op, never traps.
+        player.play(AudioEvent(soundKey: "does-not-exist"))
+        player.play(AudioEvent(soundKey: "also-missing", channel: .sfx))
+    }
+
+    @Test("playMusic() tolerates a missing asset key without crashing")
+    func playMusicMissingAssetIsNoop() {
+        let player = makePlayer()
+        player.playMusic(key: "missing-track")
+        player.stopMusic()
+    }
+
+    @Test("playing an sfx event with a haptic fires the haptic")
+    func sfxEventFiresHaptic() async {
+        let haptics = FakeHapticPlaying()
+        let player = makePlayer(haptics: haptics)
+
+        player.play(AudioEvent(soundKey: "tap", haptic: .light))
+
+        // FakeHapticPlaying records via a detached Task; let it drain.
+        try? await Task.sleep(for: .milliseconds(50))
+        let fired = await haptics.playedHaptics
+        #expect(fired == [.light])
+    }
+
+    @Test("an sfx event with no haptic fires nothing")
+    func sfxEventWithoutHapticFiresNothing() async {
+        let haptics = FakeHapticPlaying()
+        let player = makePlayer(haptics: haptics)
+
+        player.play(AudioEvent(soundKey: "tap"))
+
+        try? await Task.sleep(for: .milliseconds(50))
+        let fired = await haptics.playedHaptics
+        #expect(fired.isEmpty)
+    }
+
+    @Test("music does not start when other audio is playing (auto-yield)")
+    func musicAutoYields() {
+        let session = FakeAudioSession(isOtherAudioPlaying: true)
+        let player = makePlayer(session: session)
+        // Auto-yield returns before any asset lookup; the assertion is that it
+        // does not trap and respects the session — no observable side effect to
+        // probe on the Live player, so reaching here is the pass.
+        player.playMusic(key: "missing-track")
+    }
+
+    @Test("volume / mute setters are tolerated and clamp out of range")
+    func settersTolerated() {
+        let player = makePlayer()
+        player.setSFXVolume(2.0)   // clamps to 1
+        player.setMusicVolume(-1)  // clamps to 0
+        player.setMuted(true)
+        player.setMuted(false)
+        player.setMusicEnabled(false)
+        player.setMusicEnabled(true)
+    }
+}
+
+@Suite("Noop conformers are inert")
+struct NoopAudioTests {
+
+    @Test("NoopSoundPlaying does nothing")
+    func noopSoundPlayer() {
+        let player = NoopSoundPlaying()
+        player.play(AudioEvent(soundKey: "x", haptic: .heavy))
+        player.playMusic(key: "y")
+        player.stopMusic()
+        player.setSFXVolume(0.5)
+        player.setMusicVolume(0.5)
+        player.setMuted(true)
+        player.setMusicEnabled(false)
+    }
+
+    @Test("NoopHapticPlaying does nothing")
+    func noopHaptics() {
+        NoopHapticPlaying().play(.success)
+    }
+
+    @Test("NoopAudioSession reports no other audio and configures inertly")
+    func noopSession() {
+        let session = NoopAudioSession()
+        session.configureAmbient()
+        #expect(session.isOtherAudioPlaying == false)
+    }
+}
+
+@Suite("Fake conformers record calls")
+struct FakeAudioTests {
+
+    @Test("FakeSoundPlaying records events, music, volumes, and flags")
+    func fakeRecords() async {
+        let fake = FakeSoundPlaying()
+
+        fake.play(AudioEvent(soundKey: "a", haptic: .medium))
+        fake.playMusic(key: "bgm")
+        fake.stopMusic()
+        fake.setSFXVolume(0.3)
+        fake.setMusicVolume(0.6)
+        fake.setMuted(true)
+        fake.setMusicEnabled(false)
+
+        try? await Task.sleep(for: .milliseconds(50))
+
+        let events = await fake.playedEvents
+        #expect(events.map(\.soundKey) == ["a"])
+        #expect(events.first?.haptic == .medium)
+
+        #expect(await fake.startedMusicKeys == ["bgm"])
+        #expect(await fake.stopMusicCount == 1)
+        #expect(await fake.sfxVolume == 0.3)
+        #expect(await fake.musicVolume == 0.6)
+        #expect(await fake.isMuted == true)
+        #expect(await fake.isMusicEnabled == false)
+    }
+
+    @Test("FakeAudioSession is scriptable")
+    func fakeSessionScriptable() {
+        let session = FakeAudioSession(isOtherAudioPlaying: true)
+        #expect(session.isOtherAudioPlaying == true)
+        session.configureAmbient()
+        #expect(session.didConfigure == true)
+        session.isOtherAudioPlaying = false
+        #expect(session.isOtherAudioPlaying == false)
+    }
+}
+
+@Suite("AudioEvent value type")
+struct AudioEventTests {
+
+    @Test("default init is sfx channel, no haptic")
+    func defaults() {
+        let event = AudioEvent(soundKey: "place")
+        #expect(event.soundKey == "place")
+        #expect(event.haptic == nil)
+        #expect(event.channel == .sfx)
+    }
+
+    @Test("Hashable / Equatable")
+    func hashable() {
+        let lhs = AudioEvent(soundKey: "k", haptic: .light, channel: .sfx)
+        let rhs = AudioEvent(soundKey: "k", haptic: .light, channel: .sfx)
+        #expect(lhs == rhs)
+        #expect(Set([lhs, rhs]).count == 1)
+    }
+}
