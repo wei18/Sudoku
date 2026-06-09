@@ -32,6 +32,10 @@ public import Persistence
 public import Telemetry
 
 internal import Foundation
+// refactor/settingskit-target (2026-06-09): `SettingsNoticesConfig` moved out of
+// GameShellUI into SettingsUI. Used only in the private `makeSettingsNotices()`,
+// so the import is internal.
+internal import SettingsUI
 
 #if canImport(UIKit)
 internal import UIKit

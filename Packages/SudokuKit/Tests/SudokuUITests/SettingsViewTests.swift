@@ -12,7 +12,9 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
-import GameShellUI
+// refactor/settingskit-target: `SettingsScreen` + the reminder copy/model types
+// moved out of GameShellUI into SettingsUI.
+import SettingsUI
 import MonetizationCore
 import MonetizationTesting
 import MonetizationUI

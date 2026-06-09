@@ -4,7 +4,9 @@
 // schedule path (flow S02→S05) and the decline / denied branches.
 
 import Foundation
-import GameShellUI
+// refactor/settingskit-target: `ReminderPermissionModel` + the primer/denied
+// copy types moved out of GameShellUI into SettingsUI.
+import SettingsUI
 import Reminders
 import RemindersTesting
 import SwiftUI

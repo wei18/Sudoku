@@ -29,9 +29,12 @@ let productionTargets: [Target] = [
             .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
             .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
             // Standard nav wire (2026-06-02): MinesweeperRoot wraps
-            // `RootShellView`, SettingsView wraps `SettingsShellView`. Both
-            // come from GameShellKit.
+            // `RootShellView` (still in GameShellUI).
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // refactor/settingskit-target (2026-06-09): SettingsView wraps
+            // `SettingsScreen` / `SettingsShellView` + builds the reminders entry
+            // (`ReminderSettingsModel` etc.) — all moved into SettingsUI.
+            .product(name: "SettingsUI", package: "SettingsKit"),
             // MS monetization wire Phase 3 (2026-06-03): SettingsView mounts
             // the shared `RemoveAdsRow` / `AdsRemovedRow` / `RestorePurchasesRow`.
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
@@ -105,6 +108,11 @@ let productionTargets: [Target] = [
             // Reminders entry; the UI model/section come through GameShellUI.
             // Mirrors Sudoku's AppComposition RemindersKit wire.
             .product(name: "Reminders", package: "RemindersKit"),
+            // refactor/settingskit-target (2026-06-09): Live.swift builds the
+            // `MinesweeperReminderSettingsEntry` (wrapping `ReminderSettingsModel` /
+            // `ReminderPermissionModel`) + names `SettingsNoticesConfig`;
+            // LiveRouteFactory names `SettingsNoticesConfig` — all in SettingsUI.
+            .product(name: "SettingsUI", package: "SettingsKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -136,6 +144,9 @@ let testTargets: [Target] = [
             // #287: the SettingsView reminder-entry sentinel builds a
             // `ReminderSettingsModel` over the `Reminders` Noop conformers.
             .product(name: "Reminders", package: "RemindersKit"),
+            // refactor/settingskit-target: MinesweeperSettingsViewTests name
+            // `ReminderSettingsModel` / `SettingsScreen`, now in SettingsUI.
+            .product(name: "SettingsUI", package: "SettingsKit"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because
@@ -180,6 +191,10 @@ let package = Package(
         // merged #318). `MinesweeperAppComposition` consumes the `Reminders`
         // product to wire the Live scheduler/authorizer for the Settings entry.
         .package(name: "RemindersKit", path: "../RemindersKit"),
+        // refactor/settingskit-target (2026-06-09): shared Settings screen + the
+        // reminders UI carved out of GameShellUI. `MinesweeperUI` /
+        // `MinesweeperAppComposition` consume the `SettingsUI` product.
+        .package(name: "SettingsKit", path: "../SettingsKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

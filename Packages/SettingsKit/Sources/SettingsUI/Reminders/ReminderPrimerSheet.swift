@@ -10,8 +10,14 @@
 // Sudoku's `DefaultTheme`). Touch targets ≥ 44pt; `.contentShape(Rectangle())`
 // on the tappable rows (swiftui-interaction-footguns: Spacer/padding don't grow
 // the hit region under custom gestures/plain buttons).
+//
+// Theme machinery (`EnvironmentValues.theme`, `NeutralTheme` default) lives in
+// GameShellUI; SettingsUI depends on it for these two themed sheets. The `theme`
+// is read only inside the view bodies (not in any public signature), so the
+// import is `internal` (impl-notes 2026-06-09 D1).
 
 public import SwiftUI
+internal import GameShellUI
 
 // MARK: - Copy value type (fully injected)
 

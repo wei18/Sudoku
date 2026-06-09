@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import GameShellUI
+@testable import SettingsUI
 
 // MARK: - SettingsNoticesSection (issue #331)
 //

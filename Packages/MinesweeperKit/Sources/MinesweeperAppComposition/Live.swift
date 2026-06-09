@@ -46,9 +46,11 @@ internal import Persistence
 internal import PersistenceTesting
 internal import Reminders
 internal import Telemetry
-// #287: `ReminderSettingsModel` + the primer/section copy types live in
-// GameShellUI; `MinesweeperReminderSettingsEntry` lives in MinesweeperUI.
-internal import GameShellUI
+// refactor/settingskit-target (2026-06-09): `ReminderSettingsModel` /
+// `ReminderPermissionModel` + the primer/section/denied copy types moved out of
+// GameShellUI into SettingsUI; `MinesweeperReminderSettingsEntry` lives in
+// MinesweeperUI. `.live()` builds the reminders entry here.
+internal import SettingsUI
 
 extension MinesweeperAppComposition {
 

@@ -6,7 +6,7 @@
 // provisional flag propagates, and refresh re-reads a Settings change.
 
 import Testing
-@testable import GameShellUI
+@testable import SettingsUI
 import Reminders
 import RemindersTesting
 

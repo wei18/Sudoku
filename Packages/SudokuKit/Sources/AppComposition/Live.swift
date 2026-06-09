@@ -25,6 +25,10 @@ internal import MonetizationUI
 internal import Persistence
 internal import PuzzleStore
 internal import Reminders
+// refactor/settingskit-target: `ReminderSettingsModel` / `ReminderPermissionModel`
+// + the primer/section/denied copy types + `SettingsNoticesConfig` moved out of
+// GameShellUI into SettingsUI; `.live()` builds the reminders entry + notices here.
+internal import SettingsUI
 internal import SudokuUI
 internal import SwiftUI
 internal import Telemetry

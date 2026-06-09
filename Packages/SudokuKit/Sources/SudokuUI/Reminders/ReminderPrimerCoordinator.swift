@@ -7,7 +7,7 @@
 //   - the persisted fire time (#321 seam) + the `ReminderScheduler`
 //   - the telemetry emit closure (primer shown/accepted/declined, scheduled)
 //
-// It depends ONLY on the `Reminders` protocol seams + GameShellUI; it never
+// It depends ONLY on the `Reminders` protocol seams + SettingsUI; it never
 // imports `UserNotifications` (that stays in AppComposition's Live layer). The
 // host (LiveRouteFactory) constructs one per Daily-completion mount.
 //
@@ -15,7 +15,10 @@
 // re-exposes `permissionModel.status` / `.isRequesting` for the sheet bindings.
 
 public import SwiftUI
-public import GameShellUI
+// refactor/settingskit-target: `ReminderPermissionModel` + the primer/denied
+// copy types moved out of GameShellUI into SettingsUI. `public` because they
+// appear in this coordinator's API surface.
+public import SettingsUI
 public import Reminders
 public import Telemetry
 

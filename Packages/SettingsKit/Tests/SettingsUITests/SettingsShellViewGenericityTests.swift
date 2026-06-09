@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import GameShellUI
+@testable import SettingsUI
 
 // MARK: - Sentinel: SettingsShellView stays generic
 //

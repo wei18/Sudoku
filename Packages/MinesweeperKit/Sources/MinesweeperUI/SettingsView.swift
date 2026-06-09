@@ -20,9 +20,11 @@
 
 public import SwiftUI
 public import MonetizationUI
-// #331: `public` (was `internal`) — `SettingsNoticesConfig` now appears in
-// SettingsView's public init signature, so the import must be public.
-public import GameShellUI
+// refactor/settingskit-target (2026-06-09): `SettingsScreen` /
+// `SettingsNoticesConfig` + the reminders UI types moved out of GameShellUI into
+// SettingsUI. `public` because `SettingsNoticesConfig` +
+// `MinesweeperReminderSettingsEntry`'s copy types appear in public signatures.
+public import SettingsUI
 
 public struct SettingsView: View {
     private let version: String

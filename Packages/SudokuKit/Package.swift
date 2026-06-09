@@ -40,6 +40,12 @@ let gameCenterTestingDep: Target.Dependency = .product(name: "GameCenterTesting"
 // AppComposition. `RemindersTesting` provides the fakes for the coordinator tests.
 let remindersDep: Target.Dependency = .product(name: "Reminders", package: "RemindersKit")
 let remindersTestingDep: Target.Dependency = .product(name: "RemindersTesting", package: "RemindersKit")
+// refactor/settingskit-target (2026-06-09): the shared Settings screen + the
+// reminders UI (primer sheet, `ReminderSettingsSection` / `ReminderSettingsModel`,
+// `ReminderPermissionModel`) moved out of GameShellUI into the sibling SettingsKit
+// package. `SettingsView` + `ReminderPrimerCoordinator` + `CompletionView` consume
+// these from `SettingsUI`; AppComposition builds the entry configs.
+let settingsUIDep: Target.Dependency = .product(name: "SettingsUI", package: "SettingsKit")
 
 // MARK: - Production targets
 
@@ -75,6 +81,10 @@ let productionTargets: [Target] = [
             // / `NotificationAuthorizing` seams + `ReminderContent`. UI/logic only;
             // never `UserNotifications` (that stays in AppComposition's Live layer).
             remindersDep,
+            // refactor/settingskit-target: the shared Settings screen + reminders UI
+            // (primer sheet, settings/permission models) moved here. SettingsView,
+            // ReminderPrimerCoordinator, and CompletionView consume them via `import SettingsUI`.
+            settingsUIDep,
             // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
             // impossible-state / programmer-error catches (fails tests +
             // purple-warns in #Preview, non-fatal in release). Deliberate
@@ -129,6 +139,11 @@ let productionTargets: [Target] = [
             // This is the only target allowed `import UserNotifications` (transitively
             // via the Reminders Live conformers — the delegate itself imports it here).
             remindersDep,
+            // refactor/settingskit-target: AppComposition builds the
+            // `ReminderSettingsEntry` (which wraps `ReminderSettingsModel` /
+            // `ReminderPermissionModel`) + names `SettingsNoticesConfig`, all moved
+            // to SettingsUI.
+            settingsUIDep,
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
             // for the protocol fakes. Shipped in the binary; the `.live()`
             // factory does not reference them so dead-code elimination keeps
@@ -209,6 +224,10 @@ let testTargets: [Target] = [
             // with FakeReminderScheduler / FakeNotificationAuthorizing.
             remindersDep,
             remindersTestingDep,
+            // refactor/settingskit-target: SettingsViewTests +
+            // ReminderPrimerCoordinatorTests name `SettingsScreen` / the reminder
+            // copy + model types, now in SettingsUI.
+            settingsUIDep,
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ] + monetizationTestDeps,
         resources: [.copy("__Snapshots__")],
@@ -309,6 +328,10 @@ let package = Package(
         // SudokuUI consumes the `Reminders` seams; AppComposition wires the Live
         // conformers + the notification-center delegate.
         .package(name: "RemindersKit", path: "../RemindersKit"),
+        // refactor/settingskit-target (2026-06-09): shared Settings screen + the
+        // reminders UI carved out of GameShellUI into this sibling package.
+        // SudokuUI / AppComposition consume the `SettingsUI` product.
+        .package(name: "SettingsKit", path: "../SettingsKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

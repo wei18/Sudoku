@@ -13,7 +13,9 @@
 import SwiftUI
 import Testing
 @testable import MinesweeperAppComposition
-import GameShellUI
+// refactor/settingskit-target: `SettingsScreen` + the reminder copy/model types
+// moved out of GameShellUI into SettingsUI.
+import SettingsUI
 import MinesweeperUI
 import MonetizationUI
 import Reminders

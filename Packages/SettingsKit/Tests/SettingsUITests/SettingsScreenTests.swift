@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import GameShellUI
+@testable import SettingsUI
 import Reminders
 
 // MARK: - SettingsScreen (issue #421)

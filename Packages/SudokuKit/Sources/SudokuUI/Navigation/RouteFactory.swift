@@ -20,6 +20,9 @@ public import PuzzleStore
 internal import SudokuEngine
 public import Telemetry
 public import GameShellUI
+// refactor/settingskit-target: `SettingsNoticesConfig` moved out of GameShellUI
+// into SettingsUI; it appears in `LiveRouteFactory.init`'s public signature.
+public import SettingsUI
 
 // MARK: - LiveRouteFactory
 
