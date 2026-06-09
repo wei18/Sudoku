@@ -46,6 +46,14 @@ let package = Package(
     targets: [
         .target(
             name: "GameAudio",
+            // Shared audio assets (#446 part-2): the two byte-identical files used by
+            // BOTH Sudoku and Minesweeper are vended once here via the synthesized
+            // `Bundle.module`. `.copy` (not `.process`) preserves the pre-encoded
+            // bytes verbatim — no re-encoding. Game-specific SFX stay in each app.
+            resources: [
+                .copy("Resources/gameplay.caf"),
+                .copy("Resources/win.wav"),
+            ],
             swiftSettings: swiftSettings
         ),
         // GameAudioTesting — shared fakes (FakeSoundPlaying + FakeHapticPlaying +

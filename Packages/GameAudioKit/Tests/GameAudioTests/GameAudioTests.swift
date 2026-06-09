@@ -10,7 +10,7 @@
 import Foundation
 import Testing
 
-import GameAudio
+@testable import GameAudio
 import GameAudioTesting
 
 @Suite("LiveSoundPlayer — missing-asset tolerance + haptic + auto-yield")
@@ -197,5 +197,22 @@ struct AudioEventTests {
         let rhs = AudioEvent(soundKey: "k", haptic: .light, channel: .sfx)
         #expect(lhs == rhs)
         #expect(Set([lhs, rhs]).count == 1)
+    }
+}
+
+// The two shared assets (#446 part-2) must be reachable via `Bundle.module`, or
+// the `LiveSoundPlayer` fallback finds nothing and both apps go SILENTLY silent
+// (no crash — audio can't be snapshot-tested). This proves they're bundled.
+@Suite("GameAudioKit shared resources are bundled (#446)")
+struct SharedAudioResourcesTests {
+
+    @Test("gameplay.caf (shared BGM) resolves from Bundle.module")
+    func gameplayBGMBundled() {
+        #expect(SharedAudioResources.url(forResource: "gameplay", withExtension: "caf") != nil)
+    }
+
+    @Test("win.wav (shared SFX) resolves from Bundle.module")
+    func winSFXBundled() {
+        #expect(SharedAudioResources.url(forResource: "win", withExtension: "wav") != nil)
     }
 }
