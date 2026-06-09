@@ -513,7 +513,7 @@
   <section class="flow" id="flow-daily">
     <h2 class="flow-title">Daily</h2>
     <p class="flow-sub">
-      <code>DailyHubView</code> (via <code>DailyHubShellView</code>) lists 3 puzzles for today — one per difficulty, color-dot + completion checkmark + a decorative MiniBoardStrip. When the generator can't produce today's set the state lifts to <code>.empty</code> and an <code>.alert</code> surfaces.
+      <code>DailyHubView</code> (via <code>DailyHubShellView</code>) lists 3 puzzles for today — one per difficulty, color-dot + completion checkmark + a decorative MiniBoardStrip. When the generator can't produce today's set, Sudoku's own <code>DailyHubState</code> enters <code>.exhausted</code> (which the generic shell maps to its <code>HubLoadState.empty</code> case) and an <code>.alert</code> surfaces.
     </p>
     <div class="flow-frames">
 
@@ -740,7 +740,7 @@
   <section class="flow" id="flow-settings">
     <h2 class="flow-title">Settings</h2>
     <p class="flow-sub">
-      <code>SettingsView</code> (via <code>SettingsShellView</code>) — a native grouped Form: <b>Purchases</b> (Remove Ads / Restore, hidden once purchased), <b>About</b> (Version + Generator), and a shared <b>Storage</b> section (Clear cache). Purchase / restore / clear-cache results surface through the bottom-center <code>ToastController</code> mounted on RootView.
+      <code>SettingsView</code> wraps the shared <code>SettingsUI.SettingsScreen</code> (via <code>SettingsShellView</code>) — a native grouped Form assembling six shared sections in order: <b>Purchases</b> (Remove Ads / Restore, hidden once purchased), <b>Reminders</b> (daily-reminder toggle + fire time), <b>Sound</b> (mute / volumes / BGM / haptics), <b>About</b> (Version + Generator), <b>Notices</b> (links + copyright), and a shared <b>Storage</b> section (Clear cache). Purchase / restore / clear-cache results surface through the bottom-center <code>ToastController</code> mounted on RootView.
     </p>
     <div class="flow-frames">
 
@@ -757,10 +757,26 @@
                 <div class="form-row"><span class="ico">✦</span> Remove Ads <span class="price">$2.99</span></div>
                 <div class="form-row"><span class="ico">↺</span> Restore Purchases</div>
               </div>
+              <div class="form-section-h">Reminders</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico">🔔</span> Daily Reminder <span class="val">On</span></div>
+                <div class="form-row"><span class="ico">🕘</span> Time <span class="val">9:00 AM</span></div>
+              </div>
+              <div class="form-section-h">Sound</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico">🔊</span> Sound Effects <span class="val">On</span></div>
+                <div class="form-row"><span class="ico">🎵</span> Music <span class="val">On</span></div>
+                <div class="form-row"><span class="ico">📳</span> Haptics <span class="val">On</span></div>
+              </div>
               <div class="form-section-h">About</div>
               <div class="form-group">
                 <div class="form-row"><span class="ico">ⓘ</span> Version <span class="val">2.4.0</span></div>
                 <div class="form-row"><span class="ico">⚙</span> Generator <span class="val">v1</span></div>
+              </div>
+              <div class="form-section-h">Notices</div>
+              <div class="form-group">
+                <div class="form-row"><span class="ico">📄</span> Acknowledgements <span class="chev-right">›</span></div>
+                <div class="form-row"><span class="ico">©</span> Copyright</div>
               </div>
               <div class="form-section-h">Storage</div>
               <div class="form-group">
@@ -770,8 +786,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">S11 — Settings (Purchases / About / Storage)</div>
-        <div class="phone-source">SettingsView · SettingsShellView · MonetizationUI rows</div>
+        <div class="phone-label">S11 — Settings (Purchases / Reminders / Sound / About / Notices / Storage)</div>
+        <div class="phone-source">SettingsView · SettingsUI.SettingsScreen · SettingsShellView · MonetizationUI rows</div>
       </div>
 
     </div>
@@ -893,10 +909,26 @@
                   <div class="mac-form-row"><span class="ico">✦</span> Remove Ads <span class="price">$2.99</span></div>
                   <div class="mac-form-row"><span class="ico">↺</span> Restore Purchases</div>
                 </div>
+                <div class="mac-form-h">Reminders</div>
+                <div class="mac-form-group">
+                  <div class="mac-form-row"><span class="ico">🔔</span> Daily Reminder <span class="val">On</span></div>
+                  <div class="mac-form-row"><span class="ico">🕘</span> Time <span class="val">9:00 AM</span></div>
+                </div>
+                <div class="mac-form-h">Sound</div>
+                <div class="mac-form-group">
+                  <div class="mac-form-row"><span class="ico">🔊</span> Sound Effects <span class="val">On</span></div>
+                  <div class="mac-form-row"><span class="ico">🎵</span> Music <span class="val">On</span></div>
+                  <div class="mac-form-row"><span class="ico">📳</span> Haptics <span class="val">On</span></div>
+                </div>
                 <div class="mac-form-h">About</div>
                 <div class="mac-form-group">
                   <div class="mac-form-row"><span class="ico">ⓘ</span> Version <span class="val">2.4.0</span></div>
                   <div class="mac-form-row"><span class="ico">⚙</span> Generator <span class="val">v1</span></div>
+                </div>
+                <div class="mac-form-h">Notices</div>
+                <div class="mac-form-group">
+                  <div class="mac-form-row"><span class="ico">📄</span> Acknowledgements <span class="chev-right">›</span></div>
+                  <div class="mac-form-row"><span class="ico">©</span> Copyright</div>
                 </div>
                 <div class="mac-form-h">Storage</div>
                 <div class="mac-form-group">
@@ -906,8 +938,8 @@
             </div>
           </div>
         </div>
-        <div class="mac-label">M03 — SettingsView grouped Form (full-width pill rows, #197)</div>
-        <div class="mac-source">SettingsShellView · .formStyle(.grouped) · MonetizationUI rows</div>
+        <div class="mac-label">M03 — SettingsView grouped Form (Purchases / Reminders / Sound / About / Notices / Storage · full-width pill rows, #197)</div>
+        <div class="mac-source">SettingsUI.SettingsScreen · SettingsShellView · .formStyle(.grouped) · MonetizationUI rows</div>
       </div>
 
       <!-- M04 DailyHubView in detail pane -->

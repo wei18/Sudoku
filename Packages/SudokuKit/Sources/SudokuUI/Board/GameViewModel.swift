@@ -1,6 +1,6 @@
 // GameViewModel — owns one in-flight game session for BoardView.
 //
-// Per docs/v1/docs/v1/design.md §How.5.3 (state machine) + §How.5.4 (VM ownership) +
+// Per docs/v1/design.md §How.5.3 (state machine) + §How.5.4 (VM ownership) +
 // §How.5.5 (debounce flush).
 //
 // Implementation choice: the VM mirrors `GameSession` state into observable
