@@ -35,13 +35,6 @@ import GameShellUI
 
     // #288 / #289: the Home mode cards push these routes. Sentinel coverage —
     // a future switch refactor that drops a case fails compilation here.
-    @Test func factoryReturnsViewForNewGameRoute() {
-        let factory = LiveRouteFactory()
-        var path: [AppRoute] = []
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        let view = factory.view(for: .newGame, path: binding)
-        _ = view
-    }
 
     @Test func factoryReturnsViewForDailyRoute() {
         let factory = LiveRouteFactory()
@@ -63,7 +56,6 @@ import GameShellUI
         // Hub routes fall back to `.constant([])` when no binding is supplied
         // (preview path); must not trap.
         let factory = LiveRouteFactory()
-        _ = factory.view(for: .newGame, path: nil)
         _ = factory.view(for: .daily, path: nil)
         _ = factory.view(for: .practice, path: nil)
     }

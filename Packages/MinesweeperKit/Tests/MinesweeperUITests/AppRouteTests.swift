@@ -1,6 +1,5 @@
-// AppRouteTests — pure enum semantics for Minesweeper's navigation route.
-// Separated from `NewGameViewTests` so that file stays focused on the view's
-// behavior (route building) rather than enum payload mechanics.
+// AppRouteTests — pure enum semantics for Minesweeper's navigation route
+// (payload mechanics: distinctness + equality of route cases).
 
 import Testing
 import MinesweeperUI
@@ -45,7 +44,7 @@ import MinesweeperEngine
     // #288 / #289: the payload-free Home routes are distinct from each other
     // and from `.settings`.
     @Test func homeRoutesAreDistinct() {
-        let routes: [AppRoute] = [.newGame, .daily, .practice, .settings]
+        let routes: [AppRoute] = [.daily, .practice, .settings]
         for (lhsIndex, lhs) in routes.enumerated() {
             for (rhsIndex, rhs) in routes.enumerated() where lhsIndex != rhsIndex {
                 #expect(lhs != rhs)
@@ -54,7 +53,6 @@ import MinesweeperEngine
     }
 
     @Test func sameCaseRoutesAreEqual() {
-        #expect(AppRoute.newGame == .newGame)
         #expect(AppRoute.daily == .daily)
         #expect(AppRoute.practice == .practice)
     }
