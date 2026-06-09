@@ -34,6 +34,10 @@
 
 internal import AdsAdMob
 internal import Foundation
+// #330 P2: `.live()` builds `LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`
+// and `AudioSettingsModel`; `.preview()` wires `NoopSoundPlaying`. `AVFoundation`
+// stays inside GameAudioKit's Live files — composition sees only the seams.
+internal import GameAudio
 internal import GameCenterClient
 internal import GameCenterTesting
 // #313: `MinesweeperRootViewModel` (launch-bootstrap VM) lives in MinesweeperUI.
@@ -67,6 +71,34 @@ extension MinesweeperAppComposition {
         // The board VM submits a best-time on win; the Home Leaderboard card
         // presents the native dashboard. Mirrors Sudoku's `AppComposition.Live`.
         let gameCenter: any GameCenterClient = LiveGameCenterClient(authDriver: GKAuthDriver())
+
+        // Audio stack (#330 P2). Mirrors the monetization / reminder wiring shape:
+        // every framework-touching conformer is constructed here and only the
+        // `SoundPlaying` seam leaves the composition root.
+        //   - `LiveAudioSession.configureAmbient()` runs once at boot so game audio
+        //     mixes with other apps (the user's podcast keeps playing).
+        //   - `LiveSoundPlayer` reads sfx/music assets from `Bundle.main` by
+        //     `soundKey`. P2 ships NO assets (P3 adds the zen-wood set), so every
+        //     `play` / `playMusic` tolerates the missing file and no-ops (silent).
+        //   - `AudioSettingsModel` persists mute / volumes / BGM / haptics in a
+        //     device-local MS-namespaced `UserDefaults` pair, and pushes every
+        //     change to the live player. Defaults per spec: BGM on, haptics on, not
+        //     muted, volumes 0.7. Like reminders, the fire-time is device-local
+        //     (NOT CloudKit-synced) — audio preference is a per-device setting.
+        let audioSession = LiveAudioSession(subsystem: "com.wei18.minesweeper")
+        audioSession.configureAmbient()
+        let soundPlayer: any SoundPlaying = LiveSoundPlayer(
+            session: audioSession,
+            haptics: LiveHaptics(),
+            subsystem: "com.wei18.minesweeper"
+        )
+        let audioDefaults = UserDefaults.standard
+        let audioKeyPrefix = "com.wei18.minesweeper.audio."
+        let audioSettings = MinesweeperAppComposition.makeAudioSettings(
+            player: soundPlayer,
+            defaults: audioDefaults,
+            keyPrefix: audioKeyPrefix
+        )
 
         // Persistence. Puzzle loader is a no-op stub — MS has no
         // PuzzleProvider yet and SavedGameStore.fetch never fires for MS
@@ -263,7 +295,10 @@ extension MinesweeperAppComposition {
             // #284: same shared controller the Root mounts via `.toastOverlay`
             // — clear-cache feedback lands on it.
             toastController: toastController,
-            makeReminderSettings: makeReminderSettings
+            makeReminderSettings: makeReminderSettings,
+            // #330 P2: gameplay audio + the shared Sound settings section.
+            soundPlayer: soundPlayer,
+            audioSettings: audioSettings
         )
 
         // #313: launch-bootstrap VM owning the GC auth handshake. Shares the
@@ -327,7 +362,11 @@ extension MinesweeperAppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
-            toastController: toastController
+            toastController: toastController,
+            // #330 P2: preview audio is the silent Noop — zero-IO, never touches
+            // AVFoundation / the system audio session. `audioSettings` stays nil so
+            // the preview Settings screen is byte-identical (no Sound section).
+            soundPlayer: NoopSoundPlaying()
         )
 
         // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.
@@ -349,6 +388,48 @@ extension MinesweeperAppComposition {
             monetizationStateStore: monetizationStateStore,
             monetizationController: monetizationController,
             toastController: toastController
+        )
+    }
+
+    /// #330 P2: build the shared `AudioSettingsModel` over the live player +
+    /// device-local `UserDefaults`. Mirrors the reminder-settings persistence
+    /// shape: get/set closures over an MS-namespaced key prefix, so MS's audio
+    /// preferences never collide with Sudoku's and stay device-local (NOT
+    /// CloudKit-synced — audio is a per-device setting). Spec defaults are applied
+    /// on first run via the absent-key gates: BGM on, haptics on, not muted,
+    /// volumes 0.7. Pushing each change to the player keeps the running audio in
+    /// sync as the user moves a slider.
+    private static func makeAudioSettings(
+        player: any SoundPlaying,
+        defaults: UserDefaults,
+        keyPrefix: String
+    ) -> AudioSettingsModel {
+        let musicVolumeKey = keyPrefix + "musicVolume"
+        let sfxVolumeKey = keyPrefix + "sfxVolume"
+        let mutedKey = keyPrefix + "muted"
+        let hapticsKey = keyPrefix + "hapticsEnabled"
+        let musicEnabledKey = keyPrefix + "musicEnabled"
+        // `UserDefaults.double` / `.bool` return 0 / false for absent keys, which
+        // is indistinguishable from a deliberately-stored 0 / off — gate on
+        // presence so the spec defaults seed cleanly on first run.
+        func storedDouble(_ key: String, default fallback: Double) -> Double {
+            defaults.object(forKey: key) != nil ? defaults.double(forKey: key) : fallback
+        }
+        func storedBool(_ key: String, default fallback: Bool) -> Bool {
+            defaults.object(forKey: key) != nil ? defaults.bool(forKey: key) : fallback
+        }
+        return AudioSettingsModel(
+            player: player,
+            getMusicVolume: { storedDouble(musicVolumeKey, default: 0.7) },
+            setMusicVolume: { defaults.set($0, forKey: musicVolumeKey) },
+            getSFXVolume: { storedDouble(sfxVolumeKey, default: 0.7) },
+            setSFXVolume: { defaults.set($0, forKey: sfxVolumeKey) },
+            getIsMuted: { storedBool(mutedKey, default: false) },
+            setMuted: { defaults.set($0, forKey: mutedKey) },
+            getHapticsEnabled: { storedBool(hapticsKey, default: true) },
+            setHapticsEnabled: { defaults.set($0, forKey: hapticsKey) },
+            getMusicEnabled: { storedBool(musicEnabledKey, default: true) },
+            setMusicEnabled: { defaults.set($0, forKey: musicEnabledKey) }
         )
     }
 }
