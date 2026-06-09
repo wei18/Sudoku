@@ -148,6 +148,9 @@ let testTargets: [Target] = [
             // shared `FakeGameCenterClient` to assert call shape.
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             .product(name: "GameCenterTesting", package: "GameCenterKit"),
+            // #448: MinesweeperRootViewModelTests inject `FakePersistence`
+            // (zero-IO) for the launch-bootstrap `persistence.bootstrap()` call.
+            .product(name: "PersistenceTesting", package: "PersistenceKit"),
             // #278 Tier-1 Phase 2b: MS snapshot harness. Mirrors SudokuKit's
             // SudokuUITests snapshot dep — themed board baselines are the
             // Designer's visual-verification surface.

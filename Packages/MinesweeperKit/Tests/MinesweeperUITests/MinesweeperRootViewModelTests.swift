@@ -15,6 +15,7 @@ import Testing
 @testable import MinesweeperUI
 import GameCenterClient
 import GameCenterTesting
+import PersistenceTesting
 import Telemetry
 
 @MainActor
@@ -26,7 +27,7 @@ struct MinesweeperRootViewModelTests {
         let player = PlayerSummary(teamPlayerId: "P0001", displayName: "Sweeper")
         await fake.setAuthResult(.success(.authenticated(player)))
 
-        let vm = MinesweeperRootViewModel(gameCenter: fake)
+        let vm = MinesweeperRootViewModel(gameCenter: fake, persistence: FakePersistence())
         await vm.bootstrap()
 
         #expect(vm.authState == .authenticated(player))
@@ -39,7 +40,7 @@ struct MinesweeperRootViewModelTests {
         await fake.setAuthResult(.failure(.notAuthenticated))
         let reporter = FakeErrorReporter()
 
-        let vm = MinesweeperRootViewModel(gameCenter: fake, errorReporter: reporter)
+        let vm = MinesweeperRootViewModel(gameCenter: fake, persistence: FakePersistence(), errorReporter: reporter)
         // Must not crash / throw — GC is optional and never blocks launch.
         await vm.bootstrap()
 
@@ -52,7 +53,7 @@ struct MinesweeperRootViewModelTests {
 
     @Test func bootstrapIsIdempotent() async {
         let fake = FakeGameCenterClient()
-        let vm = MinesweeperRootViewModel(gameCenter: fake)
+        let vm = MinesweeperRootViewModel(gameCenter: fake, persistence: FakePersistence())
 
         await vm.bootstrap()
         await vm.bootstrap()

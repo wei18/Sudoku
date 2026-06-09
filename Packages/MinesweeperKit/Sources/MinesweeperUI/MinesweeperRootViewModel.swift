@@ -1,17 +1,18 @@
 // MinesweeperRootViewModel — coordinates Minesweeper app-launch bootstrap.
 //
-// Mirrors `SudokuUI.RootViewModel` (issue #313): owns the launch-time Game
-// Center auth handshake (`GameCenterClient.authenticate`) kicked off from
-// `MinesweeperRoot`'s `.task`. Unlike Sudoku's RootViewModel this does NOT
-// run `persistence.bootstrap()` or fetch a resume candidate — Minesweeper has
-// no saved-game / resume flow yet (no ResumePill in MinesweeperRoot), so the
-// only launch IO to mirror is the GC auth.
+// Mirrors `SudokuUI.RootViewModel` (issue #313): owns the launch-time
+// CloudKit-zone provisioning (`PersistenceProtocol.bootstrap`) + Game Center
+// auth handshake (`GameCenterClient.authenticate`), both kicked off from
+// `MinesweeperRoot`'s `.task`. The resume-candidate fetch
+// (`latestInProgress()`) is NOT mirrored — Minesweeper has no saved-game /
+// resume flow yet (issue #448 item ①, out of scope here).
 //
-// Errors from the auth handshake are swallowed into `.unauthenticated` and
-// funneled through `ErrorReporter` — Game Center is optional and Root must
-// never block gameplay (mirrors Sudoku's RootViewModel auth block exactly).
+// Errors from either fetch are swallowed and funneled through `ErrorReporter`
+// — both bootstrap and GC auth are optional and Root must never block
+// gameplay (mirrors Sudoku's RootViewModel bootstrap exactly).
 
 public import GameCenterClient
+public import Persistence
 public import Telemetry
 public import SwiftUI
 
@@ -23,13 +24,16 @@ public final class MinesweeperRootViewModel {
     public private(set) var hasBootstrapped: Bool = false
 
     private let gameCenter: any GameCenterClient
+    private let persistence: any PersistenceProtocol
     private let errorReporter: any ErrorReporter
 
     public init(
         gameCenter: any GameCenterClient,
+        persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter()
     ) {
         self.gameCenter = gameCenter
+        self.persistence = persistence
         self.errorReporter = errorReporter
     }
 
@@ -39,6 +43,23 @@ public final class MinesweeperRootViewModel {
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
+
+        // Issue #448: CloudKit zone provisioning. Must run so AdGate's
+        // `LiveMonetizationStateStore.loadState()` can seed the first-launch
+        // record (fresh iCloud accounts otherwise hit zoneNotFound, and AdGate
+        // conservatively suppresses the Home banner). Failures funnel through
+        // `errorReporter`; bootstrap is idempotent + non-blocking, so a
+        // transient failure retries next launch and must not block Root.
+        // Mirrors `RootViewModel.bootstrap.persistence`.
+        do {
+            try await persistence.bootstrap()
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "MinesweeperRootViewModel.bootstrap.persistence"
+            )
+        }
 
         do {
             self.authState = try await gameCenter.authenticate()

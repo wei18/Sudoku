@@ -306,6 +306,7 @@ extension MinesweeperAppComposition {
         // same OSLog channel. Mirrors Sudoku's `AppComposition.live()`.
         let rootViewModel = MinesweeperRootViewModel(
             gameCenter: gameCenter,
+            persistence: persistence,
             errorReporter: errorReporter
         )
 
@@ -369,9 +370,11 @@ extension MinesweeperAppComposition {
             soundPlayer: NoopSoundPlaying()
         )
 
-        // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.
+        // #313: preview launch-bootstrap VM over the fake GC client + fake
+        // persistence — zero-IO.
         let rootViewModel = MinesweeperRootViewModel(
             gameCenter: gameCenter,
+            persistence: persistence,
             errorReporter: errorReporter
         )
 
