@@ -17,11 +17,16 @@ public import SwiftUI
 public import GameShellUI
 public import MonetizationCore
 public import MonetizationUI
+// #448 step 3: shared `GameRoot` (Root shell + onAppear-bootstrap + toast).
+// Public because the init's `MinesweeperRootViewModel` is a typealias over
+// `GameRootViewModel`.
+public import GameAppKit
 
 public struct MinesweeperRoot: View {
-    @State private var path: [AppRoute] = []
-    // #313: owns the launch-time Game Center auth handshake, kicked from the
-    // `.task` below. Mirrors `SudokuUI.RootView`'s `RootViewModel` wiring.
+    // #313: owns the launch-time Game Center auth handshake. Its `path` (from
+    // `GameRootViewModel`) is the single navigation array — bound to the
+    // sidebar, the Home cards, and `GameRoot`'s NavigationStack. Mirrors
+    // `SudokuUI.RootView`'s `RootViewModel` wiring.
     @State private var viewModel: MinesweeperRootViewModel
     @Environment(\.theme) private var theme
 
@@ -59,33 +64,32 @@ public struct MinesweeperRoot: View {
     // sidebar, so the mode list (Daily / Practice / Leaderboard / Settings) +
     // their tap actions come from a single source. Bound to Root's `path`.
     private var homeViewModel: MinesweeperHomeViewModel {
-        MinesweeperHomeViewModel(path: $path)
+        MinesweeperHomeViewModel(path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }))
     }
 
     public var body: some View {
-        RootShellView(
-            path: $path,
+        // #448 step 3: the common Root shape (RootShellView + bootstrap + toast)
+        // now lives in `GameAppKit.GameRoot`. This also swaps the former
+        // `.task { bootstrap() }` for GameRoot's `.onAppear { Task { … } }` —
+        // fixing the latent arm64 device-Release link risk (Xcode 26 lowers
+        // every `.task` overload to `task(name:…)`, whose descriptor links
+        // undefined in the device Release archive). #361
+        GameRoot(
+            viewModel: viewModel,
             title: "Minesweeper",
             sidebarItems: HomeModeItem.sidebarItems(from: homeViewModel.modeItems),
             routeFactory: routeFactory,
-            rootContent: {
-                MinesweeperHomeView(
-                    viewModel: homeViewModel,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    monetizationController: monetizationController
-                )
-            }
-        )
-        // #313: launch-time Game Center auth handshake. Mirrors
-        // `SudokuUI.RootView`'s `.task { await viewModel.bootstrap() }`.
-        // Idempotent — a `.task` re-entry won't re-trigger GameKit auth.
-        .task { await viewModel.bootstrap() }
-        .toastOverlay(
-            toastController,
+            toastController: toastController,
             successTint: theme.status.success.resolved,
             failureTint: theme.status.error.resolved
-        )
+        ) {
+            MinesweeperHomeView(
+                viewModel: homeViewModel,
+                adProvider: adProvider,
+                adGate: adGate,
+                monetizationController: monetizationController
+            )
+        }
     }
 
 }

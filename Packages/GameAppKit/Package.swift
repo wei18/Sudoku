@@ -34,6 +34,13 @@ let productionTargets: [Target] = [
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // #448 step 3: shared `GameRoot` view + `ResumePill`. GameShellUI
+            // for the `RootShellView` / `SidebarItem` / `RouteFactory` shell +
+            // the `Theme` environment; MonetizationUI for `ToastController` +
+            // the `.toastOverlay(…)` helper. (GameShellKit stays zero-dep — the
+            // deps live here, above it.)
+            .product(name: "GameShellUI", package: "GameShellKit"),
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -75,6 +82,10 @@ let package = Package(
         .package(name: "PersistenceKit", path: "../PersistenceKit"),
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
         .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
+        // #448 step 3: shared `GameRoot` view + `ResumePill` consume the
+        // zero-dep UI shell + the monetization toast overlay.
+        .package(name: "GameShellKit", path: "../GameShellKit"),
+        .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
