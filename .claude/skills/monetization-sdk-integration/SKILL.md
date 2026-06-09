@@ -101,6 +101,10 @@ Test target (e.g. `Tests/AdsAdMobTests/`) ships `Fake<SdkName>Bridge` (actor or 
 - Release branch of `bannerAdUnitID` constant uses `fatalError("REPLACE_IN_v2.5.3: …")` rather than a placeholder string — prevents accidental Release build silently serving test creatives against production app ID
 - Paired-flip checklist in `v2.5-readiness.md §v2.5.3` ensures Info.plist `GADApplicationIdentifier` + bridge constant flip together
 
+### Real banner landed + SDK-view-crossing seam (PR #441/#443, 2026-06-09)
+- The long-deferred `GADBannerView` SwiftUI host shipped. `import GoogleMobileAds` stays confined to `AdsAdMob/LiveAdMobBridge.swift`; the live banner crosses into `MonetizationUI` via `BannerViewProviding.bannerView(for:) -> AnyView?` — an **`AnyView` (SwiftUI), never a GoogleMobileAds type** — so `MonetizationUI` / `SudokuUI` / `MinesweeperUI` import zero SDK. One shared `MonetizationUI.BannerSlotView` replaced the two per-app placeholder slots.
+- ID split: `#if DEBUG` forces Google's universal test unit; Release reads the per-app prod id from `Bundle.main GADBannerUnitID` (xcconfig). Supersedes the older `fatalError("REPLACE_IN_v2.5.3")` placeholder approach.
+
 ### macOS conditional gating (PR #101, #106)
 - Initial AdMob integration left `import GoogleMobileAds` ungated → macOS build broke
 - Fix: `canImport(GoogleMobileAds)` + Package.swift `condition: .when(platforms: [.iOS])` + macOS fallback uses `NoopAdProvider` from `MonetizationCore`

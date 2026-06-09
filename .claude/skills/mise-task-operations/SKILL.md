@@ -25,6 +25,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run lint:swift [files]` | SwiftLint, warn-only (lefthook pre-commit) | safe | [[mise-tool-management]] |
 | `mise run lint:swift_strict [files]` | SwiftLint, warnings-fail (PR CI) | safe | [[mise-tool-management]] |
 | `mise run new_app:provisioning` | render provisioning walkthrough HTML (public IDs only) | safe | [[asc-ops-handoff]] |
+| `mise run verify:audio` | check each #330 gameplay soundKey resolves to a bundled asset (stem == soundKey, resolver-ext) | safe (read-only) | — (#330) |
 
 ## CI scripts (Xcode Cloud)
 
