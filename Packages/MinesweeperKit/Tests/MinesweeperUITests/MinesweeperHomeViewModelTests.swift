@@ -16,12 +16,6 @@ struct MinesweeperHomeViewModelTests {
 
     // MARK: - Local-stub branch (no injected binding)
 
-    @Test func selectNewGamePushesNewGameRouteLocalStub() {
-        let viewModel = MinesweeperHomeViewModel()
-        viewModel.select(.newGame)
-        #expect(viewModel.path == [.newGame])
-    }
-
     @Test func selectDailyPushesDailyRouteLocalStub() {
         let viewModel = MinesweeperHomeViewModel()
         viewModel.select(.daily)
@@ -84,19 +78,32 @@ struct MinesweeperHomeViewModelTests {
         let box = RoutePathBox()
         let viewModel = MinesweeperHomeViewModel(path: box.binding)
 
-        viewModel.select(.newGame)
         viewModel.select(.daily)
         viewModel.select(.practice)
+        viewModel.select(.settings)
 
-        #expect(box.routes == [.newGame, .daily, .practice])
+        #expect(box.routes == [.daily, .practice, .settings])
     }
 
-    @Test func allModesAreEnumerated() {
-        // Guards the card list against accidental shrinkage — the grid renders
-        // `MinesweeperHomeMode.allCases`, so the entry surface depends on this.
+    // #410: the erroneous "New Game" mode was removed — MS's mode set is now
+    // identical to Sudoku's: Daily / Practice / Leaderboard / Settings, in that
+    // order. Guards the card list against accidental shrinkage AND against the
+    // New Game mode creeping back in.
+    @Test func allModesAreEnumeratedWithoutNewGame() {
         #expect(MinesweeperHomeMode.allCases == [
-            .newGame, .daily, .practice, .leaderboard, .settings,
+            .daily, .practice, .leaderboard, .settings,
         ])
+        // No `newGame` case exists on the shared enum at all.
+        #expect(!MinesweeperHomeMode.allCases.contains { $0.id == "newGame" })
+    }
+
+    // #410: the Home mode-items list (single source for cards + sidebar) carries
+    // no New Game entry, so neither the Home grid nor the sidebar can show one.
+    @Test func modeItemsHaveNoNewGameEntry() {
+        let viewModel = MinesweeperHomeViewModel()
+        let ids = viewModel.modeItems.map(\.id)
+        #expect(ids == ["daily", "practice", "leaderboard", "settings"])
+        #expect(!ids.contains("newGame"))
     }
 }
 
