@@ -49,7 +49,8 @@ struct RootViewTests {
         let persistence = FakePersistence()
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: persistence
+            persistence: persistence,
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 
         await viewModel.bootstrap()
@@ -63,7 +64,11 @@ struct RootViewTests {
     @Test func bootstrapCallsAuthenticateExactlyOnce() async {
         let gameCenter = FakeGameCenterClient()
         let persistence = FakePersistence()
-        let viewModel = RootViewModel(gameCenter: gameCenter, persistence: persistence)
+        let viewModel = RootViewModel(
+            gameCenter: gameCenter,
+            persistence: persistence,
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+        )
 
         await viewModel.bootstrap()
         await viewModel.bootstrap()  // idempotent
@@ -87,7 +92,8 @@ struct RootViewTests {
         let persistence = FakePersistence(resumeCandidate: summary)
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: persistence
+            persistence: persistence,
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 
         await viewModel.bootstrap()
@@ -100,7 +106,8 @@ struct RootViewTests {
         await gameCenter.setAuthResult(.failure(.cancelled))
         let viewModel = RootViewModel(
             gameCenter: gameCenter,
-            persistence: FakePersistence()
+            persistence: FakePersistence(),
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 
         await viewModel.bootstrap()
@@ -112,7 +119,8 @@ struct RootViewTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateIPhoneLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence()
+            persistence: FakePersistence(),
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
         await viewModel.bootstrap()
 
@@ -144,7 +152,8 @@ struct RootViewTests {
         )
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence(resumeCandidate: summary)
+            persistence: FakePersistence(resumeCandidate: summary),
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
         await viewModel.bootstrap()
 
@@ -162,7 +171,8 @@ struct RootViewTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence()
+            persistence: FakePersistence(),
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
         await viewModel.bootstrap()
 

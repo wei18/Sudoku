@@ -54,7 +54,9 @@ extension AppComposition {
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            supportsResume: true,
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 
         let routeFactory = LiveRouteFactory(

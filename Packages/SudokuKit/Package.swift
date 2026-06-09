@@ -53,6 +53,11 @@ let settingsUIDep: Target.Dependency = .product(name: "SettingsUI", package: "Se
 // fakes. No `AVFoundation` leaks past GameAudioKit's Live files.
 let gameAudioDep: Target.Dependency = .product(name: "GameAudio", package: "GameAudioKit")
 let gameAudioTestingDep: Target.Dependency = .product(name: "GameAudioTesting", package: "GameAudioKit")
+// #448 step 1a: generic app-launch coordinator `GameRootViewModel<Route>` lives
+// in GameAppKit (which is allowed Persistence/GameCenter/Telemetry deps, unlike
+// the zero-dep GameShellUI). SudokuUI's `RootViewModel` is now a typealias over
+// `GameRootViewModel<AppRoute>`.
+let gameAppDep: Target.Dependency = .product(name: "GameAppKit", package: "GameAppKit")
 
 // MARK: - Production targets
 
@@ -84,6 +89,8 @@ let productionTargets: [Target] = [
             // shell components extract (RootView, Settings shell, Daily /
             // Practice hubs — Phase X PRs).
             .product(name: "GameShellUI", package: "GameShellKit"),
+            // #448 step 1a: `RootViewModel = GameRootViewModel<AppRoute>`.
+            gameAppDep,
             // #287 Phase 2: ReminderPrimerCoordinator names the `ReminderScheduler`
             // / `NotificationAuthorizing` seams + `ReminderContent`. UI/logic only;
             // never `UserNotifications` (that stays in AppComposition's Live layer).
@@ -346,6 +353,10 @@ let package = Package(
         // ships gameplay UI + Sudoku-specific composition.
         // See `meetings/2026-06-01_minesweeper-dev-roadmap.md` Phase X.
         .package(name: "GameShellKit", path: "../GameShellKit"),
+        // #448 step 1a: app-level shell sitting above GameShellUI, hosting the
+        // generic `GameRootViewModel<Route>`. Unlike the zero-dep GameShellKit,
+        // GameAppKit is allowed Persistence / GameCenter / Telemetry deps.
+        .package(name: "GameAppKit", path: "../GameAppKit"),
         // #287 Phase 2: shared local-notification reminder mechanism. Leaf
         // sibling package (protocol seams + value types + Live UN conformers).
         // SudokuUI consumes the `Reminders` seams; AppComposition wires the Live
