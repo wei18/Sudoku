@@ -4,7 +4,7 @@
 
 本目錄為本專案自含（self-contained）的 agent skill 集合。所有在本專案中使用 / 觀察到的 skill 都放這裡，不依賴 user-level `~/.claude/skills/` 的 project-specific 條目。
 
-從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 16 條本 session 沉澱出的流程 / 安全 / 維運 skill，共 **26** 條。
+從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 21 條本 session 沉澱出的流程 / 安全 / 維運 skill，共 **31** 條。
 
 ---
 
@@ -43,7 +43,7 @@
 
 ---
 
-## 維運、審查與流程 (9)
+## 維運、審查與流程 (14)
 
 專案成熟過程中加入的工作流、審查紀律、變現、ASC／圖示維運、以及 mockup skill。
 
@@ -58,6 +58,11 @@
 | [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | 哪些 App Store Connect／TestFlight 步驟屬 user-owned、哪些可由 Leader 經 ASC API + ASCRegister 下令 |
 | [`app-icon-rasterize`](app-icon-rasterize/SKILL.md) | 用 `qlmanage` 把 1024 SVG 圖示點陣化成 asset catalog PNG——不依賴 Homebrew／雲端 |
 | [`ios-design-mockup`](ios-design-mockup/SKILL.md) | 從 spec 產生單檔 HTML iOS 設計 mockup——iPhone 外框 + SVG 導覽箭頭 + design token 面板 |
+| [`mise-task-operations`](mise-task-operations/SKILL.md) | 所有維運任務的索引／入口——動手 grep「X 怎麼做」前先查這裡；每個 `mise run` 任務對應到呼叫法 + 安全閘 + 主理 skill |
+| [`local-testflight-upload`](local-testflight-upload/SKILL.md) | 用 `mise run tf:upload` 在本機 archive→export→上傳 TestFlight；XCC 額度用盡時的 Main-CI 臨時替代；上傳以 `--i-am-sure` 把關 |
+| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | 用 `mise run ck:schema`（`xcrun cktool`）export／validate／deploy CloudKit schema；`.ckdb` 為真實來源；Production deploy 屬 user-owned 且 `--i-am-sure` 把關 |
+| [`appstore-screenshot-pipeline`](appstore-screenshot-pipeline/SKILL.md) | 用 `mise run store:screenshots` 從 snapshot baseline 以 symlink 同步 App Store 截圖「預覽」；PREVIEW-ONLY（非 ASC 送審規格） |
+| [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | 用 `mise run gen:acknowledgements`（LicensePlist）從 SwiftPM 依賴圖重生 Settings.bundle 致謝頁；產物 gitignored |
 
 > `superpowers/` 目錄是 git **submodule**（`obra/superpowers`），並非已 checkout 的 skill 集——一般 clone 會是空的。執行 `git submodule update --init` 才會拉取；其 skill 不在本索引內。
 

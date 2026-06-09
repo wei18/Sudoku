@@ -144,7 +144,7 @@ write_export_options() {
     local out="$1" plat="$2"
     # macOS App Store export needs the same `app-store-connect` method (Xcode 15+
     # renamed `app-store` → `app-store-connect`; both still accepted by 16/26).
-    /usr/libexec/PlistBuddy -c "Clear dict" \
+    /usr/libexec/PlistBuddy \
         -c "Add :method string app-store-connect" \
         -c "Add :teamID string $TEAM_ID" \
         -c "Add :signingStyle string automatic" \
@@ -198,7 +198,10 @@ run_platform() {
 
     # 3) export -----------------------------------------------------------------
     local opts="$BUILD_DIR/ExportOptions-${APP}-${plat}.plist"
-    rm -f "$opts"; /usr/bin/touch "$opts"
+    # NB: do NOT pre-`touch` this — PlistBuddy cannot parse a 0-length file
+    # ("Cannot parse a NULL or zero-length data"). `rm` so write_export_options
+    # starts clean; PlistBuddy auto-creates the file on first `Add`.
+    rm -f "$opts"
     write_export_options "$opts" "$plat"
     rm -rf "$export_dir"
     echo "==> export (App Store Connect) → $export_dir"
