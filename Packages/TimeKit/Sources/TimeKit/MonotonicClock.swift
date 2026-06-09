@@ -1,4 +1,5 @@
-// MonotonicClock — minimal time-source seam for `GameSession.elapsedSeconds`.
+// MonotonicClock — minimal time-source seam for elapsed-time accounting
+// (`GameSession.elapsedSeconds` / `MinesweeperSession`).
 //
 // DESIGN NOTE:
 //
@@ -10,8 +11,11 @@
 // keeps the call sites clean and tests trivially synchronous.
 //
 // `LiveMonotonicClock` is the production implementation (wraps
-// `ContinuousClock`). `FakeMonotonicClock` lives in the test target so
-// tests can advance time deterministically without `Task.sleep`.
+// `ContinuousClock`). `FakeMonotonicClock` lives in each consumer's test
+// target so tests can advance time deterministically without `Task.sleep`.
+//
+// Hoisted into the game-agnostic `TimeKit` leaf (#446); previously duplicated
+// in `SudokuCoreKit/GameState` and `MinesweeperCoreKit/MinesweeperGameState`.
 
 public import Foundation
 

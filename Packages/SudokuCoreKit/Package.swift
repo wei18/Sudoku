@@ -20,20 +20,33 @@ let swiftSettings: [SwiftSetting] = [
 // Telemetry-only extraction. See `docs/foundations.md §2`.
 //
 // Dep direction (inside SudokuCoreKit):
-//   SudokuEngine  → TimeKit (shared UTCDay leaf, #305); else Foundation only
-//   GameState     → SudokuEngine
+//   SudokuEngine  → TimeKit (shared UTCDay leaf, #305),
+//                   DeterminismKit (shared SplitMix64/DeterministicRNG, #446)
+//   GameState     → SudokuEngine, TimeKit (shared MonotonicClock leaf, #446)
 //
-// SudokuEngine re-exports TimeKit's `UTCDay` (`@_exported import`) so existing
-// consumers that `import SudokuEngine` keep reaching `UTCDay` unchanged after
-// the #305 extraction.
+// SudokuEngine re-exports TimeKit's `UTCDay` and DeterminismKit's
+// `SplitMix64`/`DeterministicRNG` (`@_exported import`) so existing consumers
+// that `import SudokuEngine` keep reaching those symbols unchanged after the
+// #305 / #446 extractions. GameState re-exports TimeKit's `MonotonicClock`
+// for the same reason (#446).
 
 let productionTargets: [Target] = [
     .target(
         name: "SudokuEngine",
-        dependencies: [.product(name: "TimeKit", package: "TimeKit")],
+        dependencies: [
+            .product(name: "TimeKit", package: "TimeKit"),
+            .product(name: "DeterminismKit", package: "DeterminismKit"),
+        ],
         swiftSettings: swiftSettings
     ),
-    .target(name: "GameState", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
+    .target(
+        name: "GameState",
+        dependencies: [
+            "SudokuEngine",
+            .product(name: "TimeKit", package: "TimeKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
 ]
 
 // MARK: - Test targets
@@ -58,6 +71,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../TimeKit"),
+        .package(path: "../DeterminismKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
