@@ -38,19 +38,25 @@ public struct SettingsView: View {
     // screen without the section; the host (LiveRouteFactory) injects one wired
     // to the RemindersKit Live conformers.
     private let reminderSettings: MinesweeperReminderSettingsEntry?
+    // #330 P2: shared Sound section model (mute / volumes / BGM / haptics).
+    // Defaulted nil so previews / tests keep the byte-identical screen without the
+    // section; the host (LiveRouteFactory) injects the live-player-backed model.
+    private let audioSettings: AudioSettingsModel?
 
     public init(
         version: String = "1.0.0",
         clearCache: @escaping @MainActor () async -> Void = {},
         monetizationController: MonetizationStateController? = nil,
         notices: SettingsNoticesConfig? = nil,
-        reminderSettings: MinesweeperReminderSettingsEntry? = nil
+        reminderSettings: MinesweeperReminderSettingsEntry? = nil,
+        audioSettings: AudioSettingsModel? = nil
     ) {
         self.version = version
         self.clearCache = clearCache
         self.monetizationController = monetizationController
         self.notices = notices
         self.reminderSettings = reminderSettings
+        self.audioSettings = audioSettings
     }
 
     public var body: some View {
@@ -72,6 +78,7 @@ public struct SettingsView: View {
                     deniedCopy: $0.deniedCopy
                 )
             },
+            audioSettings: audioSettings,
             notices: notices
         ) {
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never

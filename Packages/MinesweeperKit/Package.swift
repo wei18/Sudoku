@@ -58,6 +58,11 @@ let productionTargets: [Target] = [
             // #Preview, non-fatal in release). Deliberate restricted-import
             // allowance, not a replacement for ErrorReporter. See foundations.md §3.
             .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
+            // #330 P2: `MinesweeperGameViewModel` fires `AudioEvent`s through the
+            // injected `SoundPlaying` seam; the MS event constants live in this
+            // target. `AVFoundation` stays inside GameAudioKit's Live target — the
+            // VM sees only the protocol + value types.
+            .product(name: "GameAudio", package: "GameAudioKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -113,6 +118,12 @@ let productionTargets: [Target] = [
             // `ReminderPermissionModel`) + names `SettingsNoticesConfig`;
             // LiveRouteFactory names `SettingsNoticesConfig` — all in SettingsUI.
             .product(name: "SettingsUI", package: "SettingsKit"),
+            // #330 P2: `.live()` builds the Live audio stack (`LiveAudioSession` +
+            // `LiveHaptics` + `LiveSoundPlayer`) and `AudioSettingsModel`; the VM /
+            // route factory receive `SoundPlaying`. `.preview()` wires
+            // `NoopSoundPlaying`. `AVFoundation` stays inside GameAudioKit's Live
+            // files — composition sees only the public seams.
+            .product(name: "GameAudio", package: "GameAudioKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -147,6 +158,10 @@ let testTargets: [Target] = [
             // refactor/settingskit-target: MinesweeperSettingsViewTests name
             // `ReminderSettingsModel` / `SettingsScreen`, now in SettingsUI.
             .product(name: "SettingsUI", package: "SettingsKit"),
+            // #330 P2: gameplay-audio tests inject `FakeSoundPlaying` to assert
+            // which `AudioEvent` (+ haptic) each MS action fires.
+            .product(name: "GameAudio", package: "GameAudioKit"),
+            .product(name: "GameAudioTesting", package: "GameAudioKit"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because
@@ -195,6 +210,9 @@ let package = Package(
         // reminders UI carved out of GameShellUI. `MinesweeperUI` /
         // `MinesweeperAppComposition` consume the `SettingsUI` product.
         .package(name: "SettingsKit", path: "../SettingsKit"),
+        // #330 P2: shared game-audio seam (GameAudio protocols + value types +
+        // Live impls; GameAudioTesting fakes). Mirrors SettingsKit's dep on it.
+        .package(name: "GameAudioKit", path: "../GameAudioKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

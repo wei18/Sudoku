@@ -21,6 +21,7 @@
 // non-surgical change. Mirrors the SudokuUI/Board/GameViewModel.swift precedent.
 
 public import SwiftUI
+public import GameAudio
 public import GameCenterClient
 import GameShellUI
 public import MinesweeperEngine
@@ -75,12 +76,21 @@ public struct MinesweeperBoardView: View {
     // `viewModel.mode`); the `difficulty:seed:` init path threads it explicitly.
     // Defaults `.practice` — the most cautious (no daily submit) value.
     private let mode: GameMode
+    // #330 P2: gameplay-audio seam, held at the board so it can (a) start the
+    // looping BGM when the board appears and (b) be re-threaded into the VM that
+    // Retry rebuilds in place. Defaults `NoopSoundPlaying` so preview / snapshot /
+    // MVP callsites stay silent; production wires `LiveSoundPlayer` via the
+    // route factory. The `viewModel:` init derives it from the supplied VM is NOT
+    // possible (the VM keeps its player private), so callers that pass a built VM
+    // also pass the same player for BGM/Retry — defaulting to Noop is safe.
+    private let soundPlayer: any SoundPlaying
 
     public init(
         viewModel: MinesweeperGameViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onNewGame: (() -> Void)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil
@@ -89,6 +99,7 @@ public struct MinesweeperBoardView: View {
         self.adProvider = adProvider
         self.adGate = adGate
         self.gameCenter = gameCenter
+        self.soundPlayer = soundPlayer
         self.onNewGame = onNewGame
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
@@ -109,6 +120,7 @@ public struct MinesweeperBoardView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onNewGame: (() -> Void)? = nil
     ) {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(
@@ -116,11 +128,13 @@ public struct MinesweeperBoardView: View {
             seed: seed,
             mode: mode,
             gameCenter: gameCenter,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            soundPlayer: soundPlayer
         ))
         self.adProvider = adProvider
         self.adGate = adGate
         self.gameCenter = gameCenter
+        self.soundPlayer = soundPlayer
         self.onNewGame = onNewGame
         self.suppressTickerForSnapshot = false
         self.mode = mode
@@ -177,6 +191,23 @@ public struct MinesweeperBoardView: View {
             } else if !isTerminal {
                 completionViewModel = nil
             }
+        }
+        // #330 P2: start the looping background music when the board appears, and
+        // stop it when the board goes away (the `.task` is cancelled on disappear).
+        // The Live player auto-yields if another app is already playing audio, so
+        // this never stomps the user's podcast / music. Skipped for seeded snapshot
+        // boards so capture stays side-effect-free. The Noop player (preview / MVP)
+        // makes both calls no-ops. NOTE: assets ship in P3 — `playMusic` is silent
+        // until then (the Live player tolerates the missing track and logs).
+        .task(id: ObjectIdentifier(viewModel)) {
+            guard !suppressTickerForSnapshot else { return }
+            soundPlayer.playMusic(key: "bgm")
+            // Keep the task alive so its cancellation (board disappear / VM swap)
+            // is what stops the music — mirrors the ticker's lifetime-binding.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+            }
+            soundPlayer.stopMusic()
         }
         // #298 #9: single elapsed-mirror ticker, replacing the prior
         // TimelineView-nested-`.task` 1 Hz hack (which re-fired a fresh `.task`
@@ -487,7 +518,11 @@ public struct MinesweeperBoardView: View {
                     difficulty: difficulty,
                     seed: seed,
                     mode: mode,
-                    gameCenter: gameCenter
+                    gameCenter: gameCenter,
+                    // #330 P2: re-thread the audio seam so the retried board keeps
+                    // firing gameplay audio (the rebuilt VM would otherwise default
+                    // to Noop).
+                    soundPlayer: soundPlayer
                 )
             }
         )

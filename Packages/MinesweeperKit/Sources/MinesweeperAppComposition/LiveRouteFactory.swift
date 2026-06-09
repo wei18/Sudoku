@@ -39,12 +39,16 @@ public import MonetizationCore
 public import MonetizationUI
 public import Persistence
 public import Telemetry
+// #330 P2: `SoundPlaying` is threaded into `MinesweeperBoardView` (gameplay audio)
+// and `AudioSettingsModel` (in SettingsUI) into the Settings screen. Public
+// because `SoundPlaying` appears in the public `init`.
+public import GameAudio
 
 internal import Foundation
 // refactor/settingskit-target (2026-06-09): `SettingsNoticesConfig` moved out of
 // GameShellUI into SettingsUI. Used only in the private `makeSettingsNotices()`,
-// so the import is internal.
-internal import SettingsUI
+// so the import is internal. #330 P2 also names `AudioSettingsModel` (SettingsUI).
+public import SettingsUI
 
 #if canImport(UIKit)
 internal import UIKit
@@ -82,6 +86,15 @@ public struct LiveRouteFactory: RouteFactory {
     // → no reminder section, byte-identical Settings screen. Mirrors Sudoku's
     // `makeReminderSettings`.
     private let makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)?
+    // #330 P2: gameplay-audio player, threaded into every `MinesweeperBoardView`
+    // so the VM fires sfx + haptics and the board starts BGM. Optional so
+    // preview / test callsites stay silent — when nil, the board defaults to
+    // `NoopSoundPlaying`.
+    private let soundPlayer: (any SoundPlaying)?
+    // #330 P2: the shared Settings audio model (mute / volumes / BGM / haptics),
+    // built once at the composition root over the Live player + UserDefaults.
+    // Optional so preview / test Settings stay byte-identical (no Sound section).
+    private let audioSettings: AudioSettingsModel?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -91,7 +104,9 @@ public struct LiveRouteFactory: RouteFactory {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         toastController: ToastController? = nil,
-        makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil
+        makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil,
+        soundPlayer: (any SoundPlaying)? = nil,
+        audioSettings: AudioSettingsModel? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -101,6 +116,8 @@ public struct LiveRouteFactory: RouteFactory {
         self.errorReporter = errorReporter
         self.toastController = toastController
         self.makeReminderSettings = makeReminderSettings
+        self.soundPlayer = soundPlayer
+        self.audioSettings = audioSettings
     }
 
     @MainActor
@@ -134,6 +151,8 @@ public struct LiveRouteFactory: RouteFactory {
                     adGate: adGate,
                     gameCenter: gameCenter,
                     errorReporter: errorReporter,
+                    // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
+                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
                     // #292: the Completion overlay's "New Game" CTA pops the
                     // stack back to the difficulty picker — same target as the
                     // in-play toolbar button below.
@@ -192,7 +211,10 @@ public struct LiveRouteFactory: RouteFactory {
                     },
                     monetizationController: monetizationController,
                     notices: Self.makeSettingsNotices(),
-                    reminderSettings: makeReminderSettings?()
+                    reminderSettings: makeReminderSettings?(),
+                    // #330 P2: the shared Sound section (nil in preview/test → no
+                    // section, byte-identical screen).
+                    audioSettings: audioSettings
                 )
             )
         }

@@ -34,6 +34,10 @@
 
 internal import AdsAdMob
 internal import Foundation
+// #330 P2: `.live()` builds `LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`
+// and `AudioSettingsModel`; `.preview()` wires `NoopSoundPlaying`. `AVFoundation`
+// stays inside GameAudioKit's Live files — composition sees only the seams.
+internal import GameAudio
 internal import GameCenterClient
 internal import GameCenterTesting
 // #313: `MinesweeperRootViewModel` (launch-bootstrap VM) lives in MinesweeperUI.
@@ -67,6 +71,34 @@ extension MinesweeperAppComposition {
         // The board VM submits a best-time on win; the Home Leaderboard card
         // presents the native dashboard. Mirrors Sudoku's `AppComposition.Live`.
         let gameCenter: any GameCenterClient = LiveGameCenterClient(authDriver: GKAuthDriver())
+
+        // Audio stack (#330 P2). Mirrors the monetization / reminder wiring shape:
+        // every framework-touching conformer is constructed here and only the
+        // `SoundPlaying` seam leaves the composition root.
+        //   - `LiveAudioSession.configureAmbient()` runs once at boot so game audio
+        //     mixes with other apps (the user's podcast keeps playing).
+        //   - `LiveSoundPlayer` reads sfx/music assets from `Bundle.main` by
+        //     `soundKey`. P2 ships NO assets (P3 adds the zen-wood set), so every
+        //     `play` / `playMusic` tolerates the missing file and no-ops (silent).
+        //   - `AudioSettingsModel` persists mute / volumes / BGM / haptics in a
+        //     device-local MS-namespaced `UserDefaults` pair, and pushes every
+        //     change to the live player. Defaults per spec: BGM on, haptics on, not
+        //     muted, volumes 0.7. Like reminders, the fire-time is device-local
+        //     (NOT CloudKit-synced) — audio preference is a per-device setting.
+        let audioSession = LiveAudioSession(subsystem: "com.wei18.minesweeper")
+        audioSession.configureAmbient()
+        let soundPlayer: any SoundPlaying = LiveSoundPlayer(
+            session: audioSession,
+            haptics: LiveHaptics(),
+            subsystem: "com.wei18.minesweeper"
+        )
+        let audioDefaults = UserDefaults.standard
+        let audioKeyPrefix = "com.wei18.minesweeper.audio."
+        let audioSettings = MinesweeperAppComposition.makeAudioSettings(
+            player: soundPlayer,
+            defaults: audioDefaults,
+            keyPrefix: audioKeyPrefix
+        )
 
         // Persistence. Puzzle loader is a no-op stub — MS has no
         // PuzzleProvider yet and SavedGameStore.fetch never fires for MS
@@ -263,7 +295,10 @@ extension MinesweeperAppComposition {
             // #284: same shared controller the Root mounts via `.toastOverlay`
             // — clear-cache feedback lands on it.
             toastController: toastController,
-            makeReminderSettings: makeReminderSettings
+            makeReminderSettings: makeReminderSettings,
+            // #330 P2: gameplay audio + the shared Sound settings section.
+            soundPlayer: soundPlayer,
+            audioSettings: audioSettings
         )
 
         // #313: launch-bootstrap VM owning the GC auth handshake. Shares the
@@ -327,7 +362,11 @@ extension MinesweeperAppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
-            toastController: toastController
+            toastController: toastController,
+            // #330 P2: preview audio is the silent Noop — zero-IO, never touches
+            // AVFoundation / the system audio session. `audioSettings` stays nil so
+            // the preview Settings screen is byte-identical (no Sound section).
+            soundPlayer: NoopSoundPlaying()
         )
 
         // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.
@@ -351,6 +390,7 @@ extension MinesweeperAppComposition {
             toastController: toastController
         )
     }
+
 }
 
 /// Sentinel thrown by the `.live()` puzzle loader stub. MS

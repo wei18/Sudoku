@@ -8,6 +8,7 @@
 // MVP scope: no telemetry, no undo, no persistence (per dispatch spec).
 
 import IssueReporting
+public import GameAudio
 public import GameCenterClient
 public import MinesweeperEngine
 public import MinesweeperGameState
@@ -46,6 +47,16 @@ public final class MinesweeperGameViewModel {
     /// still has a chance to land server-side. Mirrors Sudoku, where the
     /// native dashboard / `RootView.task` performs the handshake.
     private var didAttemptAuth = false
+
+    // MARK: - Audio (#330 P2)
+
+    /// Gameplay-audio seam. Fires an `AudioEvent` (sfx + paired haptic) at each
+    /// meaningful moment — reveal, flag, flood-clear, mine-hit, win. Defaults to
+    /// `NoopSoundPlaying` so MVP / preview / test callsites that don't thread a
+    /// player stay silent. `AVFoundation` never reaches this layer — the VM holds
+    /// only the protocol. Production wires `LiveSoundPlayer` via the composition
+    /// root.
+    private let soundPlayer: any SoundPlaying
 
     // MARK: - Snapshot / preview seam (#297)
 
@@ -89,13 +100,15 @@ public final class MinesweeperGameViewModel {
         seed: UInt64 = 0,
         mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
-        errorReporter: (any ErrorReporter)? = nil
+        errorReporter: (any ErrorReporter)? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying()
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
             mode: mode,
             gameCenter: gameCenter,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            soundPlayer: soundPlayer
         )
     }
 
@@ -105,12 +118,14 @@ public final class MinesweeperGameViewModel {
         session: MinesweeperSession,
         mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
-        errorReporter: (any ErrorReporter)? = nil
+        errorReporter: (any ErrorReporter)? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying()
     ) {
         self.session = session
         self.mode = mode
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
+        self.soundPlayer = soundPlayer
         self.isSeeded = false
         let difficulty = session.difficulty
         // Synchronous bootstrap: snapshot before any action is just the
@@ -139,6 +154,9 @@ public final class MinesweeperGameViewModel {
         self.mode = .practice
         self.gameCenter = nil
         self.errorReporter = nil
+        // Seeded boards never mutate, so no audio ever fires; a Noop keeps the
+        // seam non-optional without any preview/snapshot side-effect.
+        self.soundPlayer = NoopSoundPlaying()
         self.snapshot = snapshot
         self.isSeeded = true
     }
@@ -161,6 +179,10 @@ public final class MinesweeperGameViewModel {
     }
 
     public func reveal(row: Int, col: Int) async {
+        // #330 P2: snapshot the prior status + revealed-count so we can classify
+        // the outcome of this reveal into the right audio event.
+        let previousStatus = snapshot.status
+        let revealedBefore = revealedCount(in: snapshot)
         do {
             snapshot = try await session.reveal(row: row, col: col)
         } catch {
@@ -170,6 +192,7 @@ public final class MinesweeperGameViewModel {
             // test / #Preview (non-fatal in release).
             reportIssue("reveal out-of-bounds from well-formed grid: \(error)")
         }
+        fireRevealAudio(previousStatus: previousStatus, revealedBefore: revealedBefore)
         // #291: a reveal is the only action that can transition to `.won`
         // (flagging never wins). Submit the best time once we cross into the
         // won state.
@@ -177,11 +200,54 @@ public final class MinesweeperGameViewModel {
     }
 
     public func toggleFlag(row: Int, col: Int) async {
+        let flagsBefore = snapshot.flagCount
         do {
             snapshot = try await session.toggleFlag(row: row, col: col)
         } catch {
             // See `reveal`. #178: surface the invariant violation.
             reportIssue("toggleFlag out-of-bounds from well-formed grid: \(error)")
+        }
+        // #330 P2: fire the flag sfx only when the toggle actually changed the
+        // flag count (an attempt to flag a revealed cell is a no-op in the engine
+        // and shouldn't click). SFX only — no haptic on a routine tap.
+        if snapshot.flagCount != flagsBefore {
+            soundPlayer.play(.minesweeperFlag)
+        }
+    }
+
+    // MARK: - Audio classification (#330 P2)
+
+    /// Number of currently-revealed cells in a snapshot — used to tell a single
+    /// reveal (delta 1) from a flood-clear (delta > 1).
+    private func revealedCount(in snapshot: MinesweeperSessionSnapshot) -> Int {
+        var count = 0
+        for cell in snapshot.cells where cell.state == .revealed { count += 1 }
+        return count
+    }
+
+    /// Map the outcome of a `reveal` onto exactly one audio event:
+    ///   - crossed into `.lost`  → explosion (mine hit)
+    ///   - crossed into `.won`   → win
+    ///   - revealed > 1 new cell → floodClear
+    ///   - revealed exactly 1    → reveal (SFX only, no haptic)
+    ///   - revealed 0            → silent (tap on an already-revealed/flagged cell)
+    /// Win/lose take precedence over the cell-delta so a winning flood-clear plays
+    /// the win cue, not the flood cue.
+    private func fireRevealAudio(previousStatus: MinesweeperSessionStatus, revealedBefore: Int) {
+        let status = snapshot.status
+        if status == .lost, previousStatus != .lost {
+            soundPlayer.play(.minesweeperExplosion)
+            return
+        }
+        if status == .won, previousStatus != .won {
+            soundPlayer.play(.minesweeperWin)
+            return
+        }
+        let delta = revealedCount(in: snapshot) - revealedBefore
+        if delta > 1 {
+            soundPlayer.play(.minesweeperFloodClear)
+        } else if delta == 1 {
+            soundPlayer.play(.minesweeperReveal)
         }
     }
 
