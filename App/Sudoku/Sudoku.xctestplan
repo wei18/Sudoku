@@ -25,6 +25,13 @@
     },
     {
       "target" : {
+        "containerPath" : "container:Packages\/GameAppKit",
+        "identifier" : "GameAppKitTests",
+        "name" : "GameAppKitTests"
+      }
+    },
+    {
+      "target" : {
         "containerPath" : "container:Packages\/SudokuCoreKit",
         "identifier" : "SudokuEngineTests",
         "name" : "SudokuEngineTests"

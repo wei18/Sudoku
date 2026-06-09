@@ -177,7 +177,9 @@ extension AppComposition {
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
-            errorReporter: errorReporter
+            errorReporter: errorReporter,
+            supportsResume: true,
+            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
         )
 
         // #371 / #195: ATT pre-prompt coordinator. The two ATT touch points are
