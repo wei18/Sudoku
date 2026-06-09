@@ -6,15 +6,13 @@
 //
 // `.live()` wires:
 //   - `Telemetry(sinks: [OSLogSink, NoOpTrackingSink])` — OSLog subsystem
-//     `com.wei18.minesweeper`, category `Telemetry`. MetricKit sink
-//     intentionally NOT installed yet.
+//     `com.wei18.minesweeper`, category `Telemetry`. No MetricKit sink yet.
 //   - `LiveErrorReporter(telemetry:)`.
 //   - `LivePersistence(ckConfig: .minesweeper, ...)` — puzzle loader is a
 //     no-op stub; MS has no PuzzleProvider yet and no SavedGame flow
 //     hits it. Wired via the `PrivateCKConfig.minesweeper` namespace from
 //     PR #257 so the MS zone / subscription IDs never collide with Sudoku.
-//   - `LiveStoreKit2IAPClient(knownProductIds: [...])` — MS Remove Ads SKU
-//     from PR #258.
+//   - `LiveStoreKit2IAPClient(knownProductIds: [...])` — MS Remove Ads SKU.
 //   - `LiveAdMobAdProvider` on iOS (DEBUG = Google universal test banner,
 //     Release = fatalError gate per Sudoku precedent until v1 release
 //     checklist swaps in MS production banner id from project memory
@@ -23,10 +21,8 @@
 //   - `AdGate(store: persistence.monetizationStateStore(),
 //             onPersistenceError: telemetry funnel)`.
 //   - `MonetizationStateController(productId: minesweeperRemoveAdsProductId,
-//             ...)` — the parameterized init shipped with this PR so the
-//             same controller drives MS's ASC product instead of Sudoku's.
-//   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`
-//     (wired in U15 / PR #263; surfaced through `composition.rootView`).
+//             ...)` — parameterized so it drives MS's ASC product, not Sudoku's.
+//   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`.
 //
 // `.preview()` wires fakes from MonetizationTesting + `FakePersistence`
 // (PersistenceTesting, zero-IO — #261) so no Preview path can trap on a real
@@ -306,6 +302,7 @@ extension MinesweeperAppComposition {
         // same OSLog channel. Mirrors Sudoku's `AppComposition.live()`.
         let rootViewModel = MinesweeperRootViewModel(
             gameCenter: gameCenter,
+            persistence: persistence,
             errorReporter: errorReporter
         )
 
@@ -369,9 +366,11 @@ extension MinesweeperAppComposition {
             soundPlayer: NoopSoundPlaying()
         )
 
-        // #313: preview launch-bootstrap VM over the fake GC client — zero-IO.
+        // #313: preview launch-bootstrap VM over the fake GC client + fake
+        // persistence — zero-IO.
         let rootViewModel = MinesweeperRootViewModel(
             gameCenter: gameCenter,
+            persistence: persistence,
             errorReporter: errorReporter
         )
 
