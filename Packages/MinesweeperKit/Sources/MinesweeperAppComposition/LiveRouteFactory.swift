@@ -26,10 +26,10 @@
 // today — no MS save-flow → `latestInProgress()` returns nil → nothing to
 // delete — but the error path is the real future-proofing.
 //
-// The board destination is wrapped with a "New Game" toolbar Button that
-// pops back to the picker (`popToNewGame` → `path.removeAll()`). Wrapping at
-// this site (instead of editing `MinesweeperBoardView`) keeps the merged MVP
-// file's public API untouched.
+// #448: the board destination's "New Game" CTA lives only in the Completion
+// overlay (threaded via `onNewGame` → `popToNewGame` → `path.removeAll()`).
+// The divergent in-play toolbar button was removed to restore parity with
+// Sudoku's board route, which has no such toolbar item.
 
 public import SwiftUI
 public import GameCenterClient
@@ -154,21 +154,9 @@ public struct LiveRouteFactory: RouteFactory {
                     // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
                     soundPlayer: soundPlayer ?? NoopSoundPlaying(),
                     // #292: the Completion overlay's "New Game" CTA pops the
-                    // stack back to the difficulty picker — same target as the
-                    // in-play toolbar button below.
+                    // stack back to the difficulty picker.
                     onNewGame: { Self.popToNewGame(path: path) }
                 )
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button("New Game", systemImage: "plus.circle") {
-                                // Pop everything off the stack so the Home
-                                // mode-card surface (root content) becomes
-                                // visible again.
-                                Self.popToNewGame(path: path)
-                            }
-                            .accessibilityIdentifier("minesweeper.board.newGame")
-                        }
-                    }
             )
         case .completion(let difficulty, _):
             // #386: re-viewing an already-solved daily. Build the same
