@@ -48,7 +48,9 @@ struct MinesweeperRootViewModelTests {
         let received = await reporter.received
         #expect(received.count == 1)
         #expect(received.first?.error == .gameCenterUnauthenticated)
-        #expect(received.first?.source == "MinesweeperRootViewModel.bootstrap.authenticate")
+        // #448 step 1b: the source label is now the shared VM's, since
+        // `MinesweeperRootViewModel` is a typealias over `GameRootViewModel`.
+        #expect(received.first?.source == "GameRootViewModel.bootstrap.authenticate")
     }
 
     @Test func bootstrapIsIdempotent() async {

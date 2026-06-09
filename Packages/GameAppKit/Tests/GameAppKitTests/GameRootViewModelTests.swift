@@ -1,8 +1,8 @@
 // GameRootViewModelTests — bootstrap + resume behavior of the generic Root VM.
 //
 // Mirrors Sudoku's RootViewTests bootstrap/resume assertions against a tiny
-// test `Route` enum, plus the `supportsResume: false` path (skip the fetch +
-// no-op `resumeTapped()`).
+// test `Route` enum, plus the no-resume path (`resumeRoute: nil` — skips the
+// fetch + no-ops `resumeTapped()`).
 
 import Foundation
 import Testing
@@ -196,13 +196,12 @@ struct GameRootViewModelTests {
         #expect(viewModel.path == [.board(puzzleId: summary.puzzleId)])
     }
 
-    @Test func supportsResumeFalseSkipsFetchAndNoOpsResume() async {
+    @Test func nilResumeRouteSkipsFetchAndNoOpsResume() async {
         let summary = makeSummary()
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(),
-            persistence: StubPersistence(resumeCandidate: summary),
-            supportsResume: false,
-            resumeRoute: { Route.board(puzzleId: $0.puzzleId) }
+            persistence: StubPersistence(resumeCandidate: summary)
+            // resumeRoute omitted (nil) → no resume surface.
         )
 
         await viewModel.bootstrap()
