@@ -202,7 +202,10 @@ public struct MinesweeperBoardView: View {
         // until then (the Live player tolerates the missing track and logs).
         .task(id: ObjectIdentifier(viewModel)) {
             guard !suppressTickerForSnapshot else { return }
-            soundPlayer.playMusic(key: "bgm")
+            // #446 part-2: the BGM track is the SHARED asset vended by GameAudioKit
+            // under the canonical key "gameplay" (same bytes Sudoku uses); the Live
+            // player falls back to `Bundle.module` to find it.
+            soundPlayer.playMusic(key: "gameplay")
             // Keep the task alive so its cancellation (board disappear / VM swap)
             // is what stops the music — mirrors the ticker's lifetime-binding.
             while !Task.isCancelled {

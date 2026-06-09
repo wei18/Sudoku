@@ -214,10 +214,22 @@ public final class LiveSoundPlayer: SoundPlaying, @unchecked Sendable {
         }
     }
 
-    /// Search the injected bundle for `key` across the audio extensions we ship.
+    /// Resolve `key` to an asset URL across the audio extensions we ship.
+    ///
+    /// Resolution order (#446 part-2): the injected `bundle` FIRST — that's where
+    /// each app's game-specific SFX live — then a fallback to `Bundle.module`,
+    /// GameAudioKit's own resource bundle, which vends the two byte-identical
+    /// SHARED assets (`gameplay.caf` BGM + `win.wav`) for both apps. An unresolved
+    /// key still returns `nil`, preserving the missing-file no-op tolerance.
     private func audioURL(for key: String) -> URL? {
-        for ext in ["caf", "wav", "m4a", "aif", "aiff", "mp3"] {
+        let extensions = ["caf", "wav", "m4a", "aif", "aiff", "mp3"]
+        for ext in extensions {
             if let url = bundle.url(forResource: key, withExtension: ext) {
+                return url
+            }
+        }
+        for ext in extensions {
+            if let url = SharedAudioResources.url(forResource: key, withExtension: ext) {
                 return url
             }
         }
