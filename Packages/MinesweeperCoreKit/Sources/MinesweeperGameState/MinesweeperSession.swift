@@ -65,12 +65,55 @@ public actor MinesweeperSession {
     public func snapshot() -> MinesweeperSessionSnapshot {
         MinesweeperSessionSnapshot(
             difficulty: difficulty,
+            seed: seed,
             cells: engine.cells,
             status: status,
             elapsedSeconds: elapsedSeconds,
             mineCount: engine.mineCount,
             flagCount: flagCount
         )
+    }
+
+    // MARK: - Restore (#455)
+
+    /// Rebuild a session from a snapshot. Mirrors `GameSession.restore`:
+    /// the engine is reconstructed from the snapshot's `seed` + `difficulty`
+    /// (the same deterministic init path) and reinstated to the captured
+    /// board (`cells`), so the mine layout is bit-identical to the original.
+    /// The restored session is frozen — `elapsedSeconds` is fully captured in
+    /// `accumulatedSeconds`, the clock does not auto-resume, and a restored
+    /// `.playing` is normalized to `.paused` (matching Sudoku's
+    /// `GameSession.applySnapshot`): a frozen `.playing` has no path back to a
+    /// running span, so it is parked at `.paused` until an explicit `resume()`.
+    public static func restore(
+        from snapshot: MinesweeperSessionSnapshot,
+        clock: any MonotonicClock = LiveMonotonicClock()
+    ) async -> MinesweeperSession {
+        let session = MinesweeperSession(
+            difficulty: snapshot.difficulty,
+            seed: snapshot.seed,
+            clock: clock
+        )
+        await session.applySnapshot(snapshot)
+        return session
+    }
+
+    /// Actor-isolated restore step. Reinstates the captured board into a fresh
+    /// engine (same deterministic seed/difficulty init) and freezes the clock.
+    private func applySnapshot(_ snapshot: MinesweeperSessionSnapshot) {
+        let minesPlaced = snapshot.cells.contains { $0.isMine }
+        engine = MinesweeperEngine(
+            difficulty: snapshot.difficulty,
+            seed: snapshot.seed,
+            cells: snapshot.cells,
+            minesPlaced: minesPlaced,
+            isLost: snapshot.status == .lost
+        )
+        // A restored session is always frozen: a restored `.playing` is parked
+        // at `.paused` (no running span) so `resume()` can re-arm the clock.
+        status = snapshot.status == .playing ? .paused : snapshot.status
+        accumulatedSeconds = snapshot.elapsedSeconds
+        runningSince = nil
     }
 
     private var flagCount: Int {

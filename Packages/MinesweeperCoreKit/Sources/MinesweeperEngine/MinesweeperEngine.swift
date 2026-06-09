@@ -40,6 +40,26 @@ public struct MinesweeperEngine: Sendable {
         self.isLost = false
     }
 
+    /// Restore an engine to a previously-captured board state (persistence
+    /// round-trip, #455). Does NOT touch the deterministic generation path —
+    /// the supplied `cells` already encode the seed-derived mine layout +
+    /// reveal/flag state. `moves` is reset (the undo/replay history is not
+    /// persisted in MVP); win/lose is recomputed by the session from `status`.
+    public init(
+        difficulty: Difficulty,
+        seed: UInt64,
+        cells: [Cell],
+        minesPlaced: Bool,
+        isLost: Bool
+    ) {
+        self.difficulty = difficulty
+        self.seed = seed
+        self.cells = cells
+        self.moves = []
+        self.minesPlaced = minesPlaced
+        self.isLost = isLost
+    }
+
     // MARK: - Indexing
 
     public func index(row: Int, col: Int) -> Int { row * columns + col }
