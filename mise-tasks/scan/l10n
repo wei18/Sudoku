@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="L10n completeness gate: every shipping catalog (Sudoku + Minesweeper) must have 0 <TRANSLATE> placeholders and all 7 locales per key (issue #394)."
+#MISE description="L10n completeness + AppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -60,6 +60,21 @@ if [ -f "$FIXTURE" ] && [ -f "$SUDOKU" ]; then
   fi
 else
   echo "ERROR [fixture]: fixture or shipping catalog missing" >&2
+  fail=1
+fi
+
+# 4) Same byte-copy guard for the PrivacyInfo manifest fixture (PrivacyManifestTests
+#    reads the bundled copy via Bundle.module). Regenerate via `mise run
+#    gen:privacy_fixture` if this fails.
+PRIVACY_FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/PrivacyInfo.xcprivacy"
+PRIVACY_SRC="$REPO_ROOT/App/Sudoku/Resources/PrivacyInfo.xcprivacy"
+if [ -f "$PRIVACY_FIXTURE" ] && [ -f "$PRIVACY_SRC" ]; then
+  if ! cmp -s "$PRIVACY_FIXTURE" "$PRIVACY_SRC"; then
+    echo "FAIL [fixture]: $PRIVACY_FIXTURE drifted from shipping manifest. Run: mise run gen:privacy_fixture" >&2
+    fail=1
+  fi
+else
+  echo "ERROR [fixture]: PrivacyInfo fixture or shipping manifest missing" >&2
   fail=1
 fi
 
