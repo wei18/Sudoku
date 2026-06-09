@@ -75,6 +75,10 @@ let sudokuTarget = Target.target(
         .package(product: "MonetizationCore"),
         .package(product: "AdsAdMob"),
         .package(product: "IAPStoreKit2"),
+        // #330 P1: explicit App-target link so the GameAudioKit engine is in the
+        // bundle. P1 only defines the package; gameplay triggers + composition
+        // wiring land in P2.
+        .package(product: "GameAudio"),
     ],
     settings: .settings(base: appTargetSettings)
 )
@@ -111,6 +115,10 @@ let minesweeperTarget = Target.target(
     dependencies: [
         .package(product: "MinesweeperUI"),
         .package(product: "MinesweeperAppComposition"),
+        // #330 P1: explicit App-target link so the GameAudioKit engine is in the
+        // bundle. P1 only defines the package; gameplay triggers + composition
+        // wiring land in P2.
+        .package(product: "GameAudio"),
     ],
     settings: .settings(base: appTargetSettings)
 )
@@ -126,6 +134,7 @@ let project = Project(
         .local(path: "Packages/AppMonetizationKit"),
         .local(path: "Packages/MinesweeperKit"),
         .local(path: "Packages/GameShellKit"),
+        .local(path: "Packages/GameAudioKit"),
         // macOS-only ASC API dev CLI (issue #254). Surfaced here so it's
         // discoverable in the generated workspace; no app target depends on
         // it (it's tooling, not part of either app binary).

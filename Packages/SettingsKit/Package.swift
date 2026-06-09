@@ -41,6 +41,7 @@ let productionTargets: [Target] = [
         dependencies: [
             .product(name: "GameShellUI", package: "GameShellKit"),
             .product(name: "Reminders", package: "RemindersKit"),
+            .product(name: "GameAudio", package: "GameAudioKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -56,6 +57,9 @@ let testTargets: [Target] = [
             // The moved `ReminderSettingsModelTests` / `ReminderPermissionModelTests`
             // drive the models with the shared Noop/Fake authorizers.
             .product(name: "RemindersTesting", package: "RemindersKit"),
+            // `AudioSettingsModelTests` drives the audio model with the shared
+            // Fake sound player to assert setters push to the live player.
+            .product(name: "GameAudioTesting", package: "GameAudioKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -75,6 +79,7 @@ let package = Package(
     dependencies: [
         .package(name: "GameShellKit", path: "../GameShellKit"),
         .package(name: "RemindersKit", path: "../RemindersKit"),
+        .package(name: "GameAudioKit", path: "../GameAudioKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
