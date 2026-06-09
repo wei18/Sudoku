@@ -11,13 +11,14 @@
 // they can render deterministic boards without spinning up generators.
 
 // swiftlint:disable file_length
-// 432 lines vs 400 limit. The class is cohesive (one in-flight game session,
-// all mutation handlers + state-machine + debounced save live together by
-// design). Splitting would push private state across files and hurt
-// readability. Tracked for proper refactor in a follow-up backlog issue.
+// 626 lines vs 400 limit. The class is cohesive (one in-flight game session,
+// all mutation handlers + state-machine + debounced save + #330 P2 audio cues
+// live together by design). Splitting would push private state across files and
+// hurt readability. Tracked for proper refactor in a follow-up backlog issue.
 
 public import Foundation
 import IssueReporting
+public import GameAudio
 public import GameState
 public import Persistence
 public import PuzzleStore
@@ -77,6 +78,13 @@ public final class GameViewModel {
     /// preview init paths zero-IO.
     private let errorReporter: any ErrorReporter
 
+    /// #330 P2: audio/haptic seam. Plays the Sudoku gameplay cues (place /
+    /// section-cleared / mistake / win) + the looping BGM. Defaults to
+    /// `NoopSoundPlaying` so snapshot tests + Previews stay silent and the
+    /// live `LiveSoundPlayer` is injected only by the composition root. The VM
+    /// holds the protocol ONLY — AVFoundation never leaks in here.
+    private let soundPlayer: any SoundPlaying
+
     /// Debounce interval for the save task; injectable so tests can shrink it.
     private let saveDebounceNanos: UInt64
     private var pendingSaveTask: Task<Void, Never>?
@@ -97,6 +105,7 @@ public final class GameViewModel {
         initialElapsedSeconds: Int = 0,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         saveDebounceNanos: UInt64 = 500_000_000,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
@@ -108,6 +117,7 @@ public final class GameViewModel {
         self.elapsedSeconds = initialElapsedSeconds
         self.persistence = persistence
         self.errorReporter = errorReporter
+        self.soundPlayer = soundPlayer
         self.saveDebounceNanos = saveDebounceNanos
         self.clock = clock
     }
@@ -132,6 +142,7 @@ public final class GameViewModel {
         self.session = nil
         self.persistence = nil
         self.errorReporter = NoopErrorReporter()
+        self.soundPlayer = NoopSoundPlaying()
         self.saveDebounceNanos = 0
         self.board = board
         self.notes = notes
@@ -210,6 +221,11 @@ public final class GameViewModel {
         if board.givenMask[index] { return }
 
         if let session {
+            // #330 P2: capture pre-mutation state so we can fire the right audio
+            // cue after the re-sync (which is the authoritative post-state).
+            let wasCompleted = status == .completed
+            let unitsCompleteBefore = digit == nil ? 0 : completedUnitCount(touching: coord)
+
             if let digit {
                 await runSession("placeDigit") {
                     try await session.placeDigit(row: coord.row, col: coord.column, digit: digit)
@@ -224,6 +240,10 @@ public final class GameViewModel {
                 }
             }
             await resyncFromSession()
+
+            if let digit {
+                fireAudio(forDigit: digit, at: coord, wasCompleted: wasCompleted, unitsCompleteBefore: unitsCompleteBefore)
+            }
         } else {
             // Preview / test path: poke the mirror without crossing actor.
             // An invalid coord here is a programmer error in fixture wiring,
@@ -303,6 +323,8 @@ public final class GameViewModel {
         }
         await runSession("pause") { try await session.pause() }
         await resyncFromSession()
+        // #330 P2: silence BGM while paused.
+        stopMusic()
         await flush()
     }
 
@@ -313,6 +335,8 @@ public final class GameViewModel {
         }
         await runSession("resume") { try await session.resume() }
         await resyncFromSession()
+        // #330 P2: resume BGM (player auto-yields if other audio is playing).
+        startMusic()
     }
 
     /// Idempotent "boot the session into a state where mutations land".
@@ -387,6 +411,90 @@ public final class GameViewModel {
         let nextRow = max(0, min(Board.dimension - 1, current.row + rowDelta))
         let nextCol = max(0, min(Board.dimension - 1, current.column + columnDelta))
         selection = GridCoordinate(row: nextRow, column: nextCol)
+    }
+
+    // MARK: - Audio (#330 P2)
+
+    /// Start the looping gameplay BGM. The live player auto-yields when another
+    /// app is already playing audio, so this is safe to call unconditionally.
+    /// No-op on the snapshot / preview path (`NoopSoundPlaying`).
+    public func startMusic() {
+        soundPlayer.playMusic(key: SudokuAudioMusic.gameplay)
+    }
+
+    /// Stop the looping gameplay BGM (board dismissed). No-op under Noop.
+    public func stopMusic() {
+        soundPlayer.stopMusic()
+    }
+
+    /// Decide which gameplay cue to fire after a digit placement, in priority
+    /// order: a solve (win) trumps everything; otherwise a mistake (the placed
+    /// cell now conflicts); otherwise a plain placement, optionally followed by
+    /// a section-cleared cue when this move newly completed a row / column / box.
+    private func fireAudio(forDigit digit: Int, at coord: GridCoordinate, wasCompleted: Bool, unitsCompleteBefore: Int) {
+        // Win: the live `.playing → .completed` transition. Fires exactly once
+        // (a re-placed digit on an already-completed board won't re-transition).
+        if status == .completed, !wasCompleted {
+            soundPlayer.play(.sudokuWin)
+            return
+        }
+
+        // Mistake: the placed cell is now flagged as conflicting.
+        let index = Board.index(row: coord.row, column: coord.column)
+        if errorIndices.contains(index) {
+            soundPlayer.play(.sudokuMistake)
+            return
+        }
+
+        // Plain placement (sound only, no haptic).
+        soundPlayer.play(.sudokuPlace)
+
+        // Section cleared: this move newly completed at least one of the three
+        // units (row / column / box) that contain the cell.
+        if completedUnitCount(touching: coord) > unitsCompleteBefore {
+            soundPlayer.play(.sudokuSectionCleared)
+        }
+    }
+
+    /// Count how many of the three units (row, column, box) containing `coord`
+    /// are fully filled with NO conflict — i.e. correctly completed. Compared
+    /// before vs after a placement to detect a NEWLY completed section.
+    private func completedUnitCount(touching coord: GridCoordinate) -> Int {
+        var count = 0
+        if isUnitComplete(rowIndices(coord.row)) { count += 1 }
+        if isUnitComplete(columnIndices(coord.column)) { count += 1 }
+        if isUnitComplete(boxIndices(row: coord.row, column: coord.column)) { count += 1 }
+        return count
+    }
+
+    /// A unit is "complete" when every cell holds a digit and none is flagged as
+    /// an error (a fully-filled-but-conflicting unit is not a real completion).
+    private func isUnitComplete(_ indices: [Int]) -> Bool {
+        for index in indices {
+            guard board.digit(atIndex: index) != nil else { return false }
+            if errorIndices.contains(index) { return false }
+        }
+        return true
+    }
+
+    private func rowIndices(_ row: Int) -> [Int] {
+        (0..<Board.dimension).map { Board.index(row: row, column: $0) }
+    }
+
+    private func columnIndices(_ column: Int) -> [Int] {
+        (0..<Board.dimension).map { Board.index(row: $0, column: column) }
+    }
+
+    private func boxIndices(row: Int, column: Int) -> [Int] {
+        let boxRow = (row / 3) * 3
+        let boxCol = (column / 3) * 3
+        var indices: [Int] = []
+        for boxR in boxRow..<boxRow + 3 {
+            for boxC in boxCol..<boxCol + 3 {
+                indices.append(Board.index(row: boxR, column: boxC))
+            }
+        }
+        return indices
     }
 
     // MARK: - Persistence

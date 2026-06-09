@@ -54,6 +54,10 @@ public struct BoardView: View {
         .onKeyPress(phases: .down, action: handleKeyPress)
         .background(undoRedoShortcuts)
         .task(id: viewModel.identity.puzzleId) {
+            // #330 P2: start the looping gameplay BGM when the board appears.
+            // The live player auto-yields if another app is already playing
+            // audio; under `NoopSoundPlaying` (previews / tests) it's a no-op.
+            viewModel.startMusic()
             // #227 elapsed-mirror ticker: `GameViewModel.elapsedSeconds` is
             // only refreshed via `resyncFromSession()` after a mutation, so
             // between user inputs the header label would stay frozen. Poll
@@ -86,6 +90,8 @@ public struct BoardView: View {
         // VM strongly and must outlive view teardown to complete the write;
         // a structured `.task` would be cancelled on disappear and re-drop it.
         .onDisappear {
+            // #330 P2: stop the BGM when the board leaves the screen.
+            viewModel.stopMusic()
             Task { await viewModel.flush() }
         }
         // #413: same hazard on app backgrounding — persist before suspension

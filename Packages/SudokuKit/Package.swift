@@ -46,6 +46,13 @@ let remindersTestingDep: Target.Dependency = .product(name: "RemindersTesting", 
 // package. `SettingsView` + `ReminderPrimerCoordinator` + `CompletionView` consume
 // these from `SettingsUI`; AppComposition builds the entry configs.
 let settingsUIDep: Target.Dependency = .product(name: "SettingsUI", package: "SettingsKit")
+// #330 P2: shared game-audio mechanism. SudokuUI fires gameplay cues via the
+// `SoundPlaying` seam (defaults to Noop); AppComposition builds the Live audio
+// stack (`LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`) +
+// `AudioSettingsModel`. Test targets pull `GameAudioTesting`'s order-preserving
+// fakes. No `AVFoundation` leaks past GameAudioKit's Live files.
+let gameAudioDep: Target.Dependency = .product(name: "GameAudio", package: "GameAudioKit")
+let gameAudioTestingDep: Target.Dependency = .product(name: "GameAudioTesting", package: "GameAudioKit")
 
 // MARK: - Production targets
 
@@ -85,6 +92,10 @@ let productionTargets: [Target] = [
             // (primer sheet, settings/permission models) moved here. SettingsView,
             // ReminderPrimerCoordinator, and CompletionView consume them via `import SettingsUI`.
             settingsUIDep,
+            // #330 P2: `GameViewModel` fires gameplay cues through the
+            // `SoundPlaying` seam (defaults to `NoopSoundPlaying`). No
+            // `AVFoundation` — that stays in GameAudioKit's Live files.
+            gameAudioDep,
             // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
             // impossible-state / programmer-error catches (fails tests +
             // purple-warns in #Preview, non-fatal in release). Deliberate
@@ -144,6 +155,13 @@ let productionTargets: [Target] = [
             // `ReminderPermissionModel`) + names `SettingsNoticesConfig`, all moved
             // to SettingsUI.
             settingsUIDep,
+            // #330 P2: composition root builds the Live audio stack
+            // (`LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`) +
+            // `AudioSettingsModel`, and injects the `SoundPlaying` into the
+            // gameplay VM + the `AudioSettingsModel` into Settings. This is the
+            // only Sudoku target that constructs the Live conformers (which
+            // transitively reach AVFoundation inside GameAudioKit).
+            gameAudioDep,
             // `.preview()` and `.tests()` factories pull from SudokuKitTesting
             // for the protocol fakes. Shipped in the binary; the `.live()`
             // factory does not reference them so dead-code elimination keeps
@@ -228,6 +246,11 @@ let testTargets: [Target] = [
             // ReminderPrimerCoordinatorTests name `SettingsScreen` / the reminder
             // copy + model types, now in SettingsUI.
             settingsUIDep,
+            // #330 P2: GameViewModelAudioTests drive the VM with the
+            // order-preserving `FakeSoundPlaying` to assert the cue fired at
+            // each gameplay trigger point.
+            gameAudioDep,
+            gameAudioTestingDep,
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
         ] + monetizationTestDeps,
         resources: [.copy("__Snapshots__")],
@@ -332,6 +355,10 @@ let package = Package(
         // reminders UI carved out of GameShellUI into this sibling package.
         // SudokuUI / AppComposition consume the `SettingsUI` product.
         .package(name: "SettingsKit", path: "../SettingsKit"),
+        // #330 P2: shared game-audio mechanism (protocol seams + value types +
+        // Noop/Live conformers + GameAudioTesting fakes). Leaf sibling package;
+        // SettingsKit already depends on it for `AudioSettingsModel`.
+        .package(name: "GameAudioKit", path: "../GameAudioKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

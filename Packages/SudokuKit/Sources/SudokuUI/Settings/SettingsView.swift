@@ -44,18 +44,24 @@ public struct SettingsView: View {
     // a byte-identical screen without the section; the host (RouteFactory)
     // injects the app-specific URLs + copyright + acknowledgements deep-link.
     private let notices: SettingsNoticesConfig?
+    // #330 P2: the shared audio settings model (volumes / mute / music / haptics).
+    // `nil` in previews / tests → no audio section, byte-identical screen. Live
+    // wiring injects one whose setters fan out to the running `LiveSoundPlayer`.
+    private let audioSettings: AudioSettingsModel?
     @Environment(\.theme) private var theme
 
     public init(
         viewModel: SettingsViewModel,
         monetizationController: MonetizationStateController? = nil,
         reminderSettings: ReminderSettingsEntry? = nil,
-        notices: SettingsNoticesConfig? = nil
+        notices: SettingsNoticesConfig? = nil,
+        audioSettings: AudioSettingsModel? = nil
     ) {
         self.viewModel = viewModel
         self.monetizationController = monetizationController
         self.reminderSettings = reminderSettings
         self.notices = notices
+        self.audioSettings = audioSettings
     }
 
     public var body: some View {
@@ -77,6 +83,8 @@ public struct SettingsView: View {
                     deniedCopy: $0.deniedCopy
                 )
             },
+            // #330 P2: the shared audio section (renders only when non-nil).
+            audioSettings: audioSettings,
             notices: notices,
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.

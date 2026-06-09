@@ -23,6 +23,10 @@ public import GameShellUI
 // refactor/settingskit-target: `SettingsNoticesConfig` moved out of GameShellUI
 // into SettingsUI; it appears in `LiveRouteFactory.init`'s public signature.
 public import SettingsUI
+// #330 P2: the `SoundPlaying` seam (injected into the gameplay VM) +
+// `AudioSettingsModel` (injected into Settings) both appear in this factory's
+// public init signature. The seam only — no `AVFoundation`.
+public import GameAudio
 
 // MARK: - LiveRouteFactory
 
@@ -65,6 +69,13 @@ public struct LiveRouteFactory: RouteFactory {
     // copyright, optional privacy/support URLs). `nil` in previews / tests →
     // no Notices section, byte-identical Settings screen.
     private let settingsNotices: SettingsNoticesConfig?
+    // #330 P2: the gameplay audio player, forwarded to `BoardLoaderView` →
+    // `GameViewModel` so placements / mistakes / section-clears / wins fire
+    // their cues. Defaults to `NoopSoundPlaying` so previews / tests stay silent.
+    private let soundPlayer: any SoundPlaying
+    // #330 P2: the Settings audio entry (volumes / mute / music / haptics).
+    // `nil` in previews / tests → no audio section, byte-identical Settings.
+    private let audioSettings: AudioSettingsModel?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -79,7 +90,9 @@ public struct LiveRouteFactory: RouteFactory {
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
-        settingsNotices: SettingsNoticesConfig? = nil
+        settingsNotices: SettingsNoticesConfig? = nil,
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
+        audioSettings: AudioSettingsModel? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -94,6 +107,8 @@ public struct LiveRouteFactory: RouteFactory {
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.makeReminderSettings = makeReminderSettings
         self.settingsNotices = settingsNotices
+        self.soundPlayer = soundPlayer
+        self.audioSettings = audioSettings
     }
 
     /// A puzzleId is a Daily unless it carries the practice prefix — same
@@ -161,6 +176,7 @@ public struct LiveRouteFactory: RouteFactory {
                     errorReporter: errorReporter,
                     adProvider: adProvider,
                     adGate: adGate,
+                    soundPlayer: soundPlayer,
                     path: path
                 )
             )
@@ -191,7 +207,8 @@ public struct LiveRouteFactory: RouteFactory {
                     ),
                     monetizationController: monetizationController,
                     reminderSettings: makeReminderSettings?(),
-                    notices: settingsNotices
+                    notices: settingsNotices,
+                    audioSettings: audioSettings
                 )
             )
         }
