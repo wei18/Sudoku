@@ -1,6 +1,7 @@
 internal import Foundation
 internal import MonetizationCore
 internal import os
+internal import SwiftUI
 
 #if canImport(GoogleMobileAds)
 internal import GoogleMobileAds
@@ -30,6 +31,11 @@ internal final class LiveAdMobBridge: AdMobBridge {
     // same DEBUG ↔ Release swap point.
     private let bannerAdUnitID: String
 
+    /// Test seam (#441): the ad-unit-id the bridge will actually request with,
+    /// after the DEBUG test-unit override. Lets `BannerViewProvidingTests`
+    /// assert the Debug-test / Release-prod split without booting the SDK.
+    internal var effectiveBannerAdUnitID: String { bannerAdUnitID }
+
     // `OSAllocatedUnfairLock` is the Swift 6 strict-concurrency-safe equivalent
     // of `NSLock` — its `withLock` overloads are `nonisolated` and callable
     // from async contexts, unlike `NSLock.lock()` which is restricted.
@@ -49,8 +55,23 @@ internal final class LiveAdMobBridge: AdMobBridge {
     private let inFlightDelegates = OSAllocatedUnfairLock<Set<BannerLoadDelegate>>(initialState: [])
     #endif
 
+    /// Google's UNIVERSAL TEST banner unit id (publicly documented, safe to
+    /// commit). DEBUG builds ALWAYS serve test creatives against this id so a
+    /// dev / simulator build can never accidentally request production ads
+    /// against the live app id. Release reads the real per-app prod id from
+    /// `Info.plist` (`GADBannerUnitID`, injected from `Tuist/AdMob.xcconfig`),
+    /// which `AppComposition` passes into `bannerAdUnitID`. (#441 — user
+    /// decision: prod ids in Release / TestFlight are intended.)
+    /// https://developers.google.com/admob/ios/test-ads#sample_ad_units
+    internal static let debugTestBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
+
     internal init(bannerAdUnitID: String) {
+        #if DEBUG
+        // Ignore the injected (possibly production) id in DEBUG — test creatives only.
+        self.bannerAdUnitID = Self.debugTestBannerAdUnitID
+        #else
         self.bannerAdUnitID = bannerAdUnitID
+        #endif
     }
 
     // MARK: AdMobBridge
@@ -168,6 +189,19 @@ internal final class LiveAdMobBridge: AdMobBridge {
         // Non-iOS / SDK-absent builds retain no per-handle state — no-op.
     }
 
+    @MainActor
+    internal func bannerView(for handle: AdBannerHandle) -> AnyView? {
+        #if canImport(GoogleMobileAds)
+        // Look up the retained `BannerView` for this handle and wrap it in a
+        // `UIViewRepresentable`. The SDK view never escapes AdsAdMob — only the
+        // type-erased `AnyView` crosses into MonetizationUI (foundations.md §9.1).
+        guard let bannerView = liveBanners.withLock({ $0[handle.id] }) else { return nil }
+        return AnyView(BannerViewRepresentable(bannerView: bannerView))
+        #else
+        return nil
+        #endif
+    }
+
     // MARK: - Internal helpers
 
     private func setCachedStatus(_ status: AdBannerStatus) {
@@ -242,6 +276,28 @@ internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecke
         resumeOnce(.failure(CancellationError()))
     }
 }
+
+// MARK: - BannerViewRepresentable
+//
+// SwiftUI host for a live `BannerView`. The bridge already owns the view's
+// lifecycle (retained in `liveBanners`, torn down in `dispose`); this
+// representable just mounts it. It is wrapped in `AnyView` by
+// `bannerView(for:)` so the SDK type never crosses the AdsAdMob border
+// (foundations.md §9.1). `#if canImport(UIKit)` keeps this iOS-only.
+
+#if canImport(UIKit)
+internal struct BannerViewRepresentable: UIViewRepresentable {
+    let bannerView: BannerView
+
+    func makeUIView(context: Context) -> BannerView {
+        bannerView
+    }
+
+    func updateUIView(_ uiView: BannerView, context: Context) {
+        // The bridge owns the view's content (ad load); no per-update mutation.
+    }
+}
+#endif
 #endif
 
 // `final class` + `NSLock`-guarded state + `nonisolated(unsafe)` is the same

@@ -26,6 +26,8 @@ public struct MinesweeperHomeView: View {
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     private let monetizationController: MonetizationStateController?
+    // #441: tints the shared `MonetizationUI.BannerSlotView` from MS theme tokens.
+    @Environment(\.theme) private var theme
 
     public init(
         viewModel: MinesweeperHomeViewModel,
@@ -57,9 +59,20 @@ public struct MinesweeperHomeView: View {
             },
             banner: {
                 if let adProvider, let adGate {
-                    MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                    BannerSlotView(
+                        adProvider: adProvider,
+                        adGate: adGate,
+                        // Live provider conforms to `BannerViewProviding`; fakes /
+                        // macOS NoopAdProvider don't → nil → honest fallback. The
+                        // cast keeps MinesweeperUI free of an AdsAdMob import (§9.1).
+                        bannerHost: adProvider as? any BannerViewProviding,
+                        backgroundColor: theme.surface.placeholder.resolved,
+                        progressTint: theme.accent.primary.resolved,
+                        captionColor: theme.text.secondary.resolved,
+                        dismissTint: theme.accent.muted.resolved.opacity(0.7)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
             }
         )

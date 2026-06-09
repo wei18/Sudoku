@@ -1,4 +1,6 @@
 public import MonetizationCore
+public import MonetizationUI
+public import SwiftUI
 
 // MARK: - LiveAdMobAdProvider
 //
@@ -12,7 +14,11 @@ public import MonetizationCore
 // "stable when successful, retryable on failure").
 
 public actor LiveAdMobAdProvider: AdProvider {
-    private let bridge: any AdMobBridge
+    // `nonisolated` because the bridge is set once at init and never mutated;
+    // the `@MainActor` `BannerViewProviding` conformance (below) reads it
+    // without hopping onto the actor. `any AdMobBridge` is `Sendable`, so this
+    // is safe.
+    private nonisolated let bridge: any AdMobBridge
     private var didStart: Bool = false
     private var lastKnownStatus: AdBannerStatus = .notInitialized
 
@@ -83,5 +89,17 @@ public actor LiveAdMobAdProvider: AdProvider {
         if case .loaded(handle) = lastKnownStatus {
             lastKnownStatus = .disposed
         }
+    }
+}
+
+// MARK: - BannerViewProviding (#441)
+//
+// Lets the shared `MonetizationUI.BannerSlotView` render the real banner for a
+// loaded handle. The view comes from the bridge as a type-erased `AnyView`, so
+// `GoogleMobileAds` stays confined to `LiveAdMobBridge` (foundations.md §9.1).
+extension LiveAdMobAdProvider: BannerViewProviding {
+    @MainActor
+    public func bannerView(for handle: AdBannerHandle) -> AnyView? {
+        bridge.bannerView(for: handle)
     }
 }

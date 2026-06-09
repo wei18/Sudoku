@@ -35,6 +35,11 @@ let productionTargets: [Target] = [
         name: "AdsAdMob",
         dependencies: [
             "MonetizationCore",
+            // #441: AdsAdMob conforms `LiveAdMobAdProvider` to MonetizationUI's
+            // `BannerViewProviding` so the loaded `BannerView` can cross into the
+            // shared `BannerSlotView` as a type-erased `AnyView`. No cycle:
+            // MonetizationUI → MonetizationCore only; it never imports AdsAdMob.
+            "MonetizationUI",
             // Both products ship iOS-only xcframeworks (Google does not provide
             // macOS binary slices). Gate the link-time dependency on iOS so
             // macOS builds — which include the AdsAdMob source via the App's

@@ -1,4 +1,5 @@
 internal import MonetizationCore
+internal import SwiftUI
 
 // MARK: - AdMobBridge
 //
@@ -37,6 +38,15 @@ internal protocol AdMobBridge: Sendable {
     /// view down on the main actor (`UIView` subclass); fakes just drop their
     /// bookkeeping (#221).
     func dispose(handle: AdBannerHandle) async
+
+    /// SwiftUI view rendering the banner backing `handle`, or `nil` for an
+    /// unknown / disposed handle or a non-iOS / SDK-absent build (#441). The
+    /// live bridge wraps its retained `BannerView` in a `UIViewRepresentable`;
+    /// the return type is the SwiftUI-neutral `AnyView` so `BannerView`
+    /// (formerly `GADBannerView`) never crosses the target border
+    /// (foundations.md §9.1).
+    @MainActor
+    func bannerView(for handle: AdBannerHandle) -> AnyView?
 }
 
 // MARK: - AdMobBridgeError

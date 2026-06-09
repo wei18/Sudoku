@@ -26,6 +26,7 @@ public import GameCenterClient
 import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
+import MonetizationUI
 internal import MinesweeperGameState
 public import Telemetry
 
@@ -310,7 +311,18 @@ public struct MinesweeperBoardView: View {
         // gates its banner behind `if !viewModel.isPaused` so the paused board
         // reads as a deliberate quiet state.
         if !viewModel.isTerminal, !viewModel.isPaused, let adProvider, let adGate {
-            MinesweeperBannerSlotView(adProvider: adProvider, adGate: adGate)
+            BannerSlotView(
+                adProvider: adProvider,
+                adGate: adGate,
+                // Live provider conforms to `BannerViewProviding`; fakes / macOS
+                // return nil → honest fallback. Cast keeps MinesweeperUI free of
+                // an AdsAdMob import (§9.1).
+                bannerHost: adProvider as? any BannerViewProviding,
+                backgroundColor: theme.surface.placeholder.resolved,
+                progressTint: theme.accent.primary.resolved,
+                captionColor: theme.text.secondary.resolved,
+                dismissTint: theme.accent.muted.resolved.opacity(0.7)
+            )
         }
     }
 

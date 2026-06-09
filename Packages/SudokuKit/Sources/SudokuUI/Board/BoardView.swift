@@ -7,6 +7,7 @@
 public import MonetizationCore
 public import SwiftUI
 import GameShellUI
+import MonetizationUI
 import SudokuEngine
 
 public struct BoardView: View {
@@ -127,7 +128,7 @@ public struct BoardView: View {
             // grid), and showing an ad on top of that contradicts the
             // calm contract.
             if !viewModel.isPaused, let adProvider, let adGate {
-                BannerSlotView(adProvider: adProvider, adGate: adGate)
+                themedBanner(adProvider: adProvider, adGate: adGate)
             }
             digitPad
         }
@@ -149,12 +150,28 @@ public struct BoardView: View {
             }
             // Pause-time banner suppression preserved on Mac too.
             if !viewModel.isPaused, let adProvider, let adGate {
-                BannerSlotView(adProvider: adProvider, adGate: adGate)
+                themedBanner(adProvider: adProvider, adGate: adGate)
             }
         }
         .frame(maxWidth: 960)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 16)  // additive to outer .padding(16) → ≥ 32 pt
+    }
+
+    /// Themed shared `MonetizationUI.BannerSlotView` (#441). Board never drives
+    /// ATT (Home owns the primer), so `onAdContext` stays nil. The live provider
+    /// conforms to `BannerViewProviding`; fakes / macOS return nil → honest
+    /// fallback. The cast keeps SudokuUI free of an AdsAdMob import (§9.1).
+    private func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
+        BannerSlotView(
+            adProvider: adProvider,
+            adGate: adGate,
+            bannerHost: adProvider as? any BannerViewProviding,
+            backgroundColor: theme.surface.placeholder.resolved,
+            progressTint: theme.accent.primary.resolved,
+            captionColor: theme.text.secondary.resolved,
+            dismissTint: theme.accent.muted.resolved.opacity(0.7)
+        )
     }
 
     private var macBoardColumn: some View {

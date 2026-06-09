@@ -1,5 +1,6 @@
 import Foundation
 import os
+import SwiftUI
 @testable import AdsAdMob
 import MonetizationCore
 
@@ -84,5 +85,13 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
 
     internal func dispose(handle: AdBannerHandle) async {
         state.withLock { $0.disposedHandles.append(handle) }
+    }
+
+    // #441: the fake serves no real ad, so there is no view to host. Returning
+    // nil exercises the `BannerSlotView` "loaded-but-no-host" fallback path
+    // (the slot renders nothing inside the rect rather than a placeholder).
+    @MainActor
+    internal func bannerView(for handle: AdBannerHandle) -> AnyView? {
+        nil
     }
 }
