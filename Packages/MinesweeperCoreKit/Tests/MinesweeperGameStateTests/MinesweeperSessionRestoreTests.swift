@@ -96,6 +96,75 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
         // A restored mid-play (.playing) session is parked at .paused.
         #expect(restoredSnap.status == .paused || restoredSnap.status == snap.status)
     }
+
+    /// A snapshot captured WHILE `.playing` (not pre-paused) restores to
+    /// `.paused` with elapsed preserved. The other tests pause before
+    /// snapshotting, so this is the only one that actually exercises the
+    /// `.playing → .paused` restore remap.
+    @Test func restoringPlayingSessionParksAtPausedWithElapsed() async throws {
+        let clock = FakeClock()
+        let session = MinesweeperSession(difficulty: .beginner, seed: 13, clock: clock)
+        _ = try await session.reveal(row: 4, col: 4)
+        clock.advance(by: 17)
+        let snap = await session.snapshot()   // NO pause — captured while playing
+        #expect(snap.status == .playing)
+        #expect(snap.elapsedSeconds == 17)
+
+        let restored = await MinesweeperSession.restore(from: snap, clock: FakeClock())
+        let restoredSnap = await restored.snapshot()
+        #expect(restoredSnap.status == .paused)
+        #expect(restoredSnap.elapsedSeconds == 17)
+    }
+
+    /// After restore the game is `.paused`; `resume()` → revealing a new hidden
+    /// non-mine cell succeeds and reveals it — proves the reinstated board
+    /// supports continued play (flood-fill uses the restored neighbor counts).
+    @Test func restoredSessionResumesAndContinuesPlay() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 11, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let snap = await session.snapshot()
+
+        let restored = await MinesweeperSession.restore(from: snap, clock: FakeClock())
+        #expect(await restored.snapshot().status == .paused)
+        _ = await restored.resume()
+
+        var revealedNew = false
+        outer: for r in 0..<snap.rows {
+            for c in 0..<snap.columns {
+                let cell = snap.cell(row: r, col: c)
+                if cell.state == .hidden, !cell.isMine {
+                    let after = try await restored.reveal(row: r, col: c)
+                    #expect(after.cell(row: r, col: c).state == .revealed)
+                    revealedNew = true
+                    break outer
+                }
+            }
+        }
+        #expect(revealedNew)
+    }
+
+    /// Revealing a known mine after restore transitions to `.lost` — terminal
+    /// detection works on a reinstated board.
+    @Test func restoredSessionDetectsLossOnMineReveal() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 23, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let snap = await session.snapshot()
+
+        let restored = await MinesweeperSession.restore(from: snap, clock: FakeClock())
+        _ = await restored.resume()
+
+        var hitMine = false
+        outer: for r in 0..<snap.rows {
+            for c in 0..<snap.columns where snap.cell(row: r, col: c).state == .hidden
+            && snap.cell(row: r, col: c).isMine {
+                let after = try await restored.reveal(row: r, col: c)
+                #expect(after.status == .lost)
+                hitMine = true
+                break outer
+            }
+        }
+        #expect(hitMine)
+    }
 }
 
 // swiftlint:enable identifier_name
