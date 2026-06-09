@@ -32,6 +32,9 @@ public struct HomeView<Header: View>: View {
     // the mode cards instead of sitting pinned above HomeView's ScrollView.
     private let header: Header
 
+    // #441: tints the shared `MonetizationUI.BannerSlotView` from theme tokens.
+    @Environment(\.theme) private var theme
+
     public init(
         viewModel: HomeViewModel,
         adProvider: (any AdProvider)? = nil,
@@ -66,7 +69,7 @@ public struct HomeView<Header: View>: View {
             },
             banner: {
                 if let adProvider, let adGate {
-                    BannerSlotView(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
+                    bannerSlot(adProvider: adProvider, adGate: adGate)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                 }
@@ -78,6 +81,28 @@ public struct HomeView<Header: View>: View {
                 await controller.bootstrap()
             }
         }
+    }
+
+    /// Themed shared `MonetizationUI.BannerSlotView` (#441). The live provider
+    /// conforms to `BannerViewProviding`; fakes / macOS NoopAdProvider don't →
+    /// nil → honest fallback. The cast keeps SudokuUI free of an AdsAdMob
+    /// import (§9.1). ATT priming (#371 / #195) is offered at the first
+    /// ad-relevant moment (gate open) via `onAdContext`.
+    private func bannerSlot(adProvider: any AdProvider, adGate: AdGate) -> some View {
+        var onAdContext: (@Sendable () async -> Void)?
+        if let primer = attPrimer {
+            onAdContext = { await primer.maybePresentOnAdContext() }
+        }
+        return BannerSlotView(
+            adProvider: adProvider,
+            adGate: adGate,
+            bannerHost: adProvider as? any BannerViewProviding,
+            onAdContext: onAdContext,
+            backgroundColor: theme.surface.placeholder.resolved,
+            progressTint: theme.accent.primary.resolved,
+            captionColor: theme.text.secondary.resolved,
+            dismissTint: theme.accent.muted.resolved.opacity(0.7)
+        )
     }
 }
 
