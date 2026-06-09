@@ -4,7 +4,7 @@
 
 This directory is the project's self-contained set of agent skills. Every skill used or observed in this project lives here, with no dependency on project-specific entries under the user-level `~/.claude/skills/`.
 
-10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 16 process / security / ops skills distilled from this session — **26** skills in total.
+10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 21 process / security / ops skills distilled from this session — **31** skills in total.
 
 ---
 
@@ -43,7 +43,7 @@ Distilled from collaboration / security patterns observed in this session.
 
 ---
 
-## Ops, review & process (9)
+## Ops, review & process (14)
 
 Workflow, review-discipline, monetization, ASC/icon ops, and mockup skills added as the project matured.
 
@@ -58,6 +58,11 @@ Workflow, review-discipline, monetization, ASC/icon ops, and mockup skills added
 | [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | Which App Store Connect / TestFlight steps are user-owned vs Leader-orderable via the ASC API + ASCRegister |
 | [`app-icon-rasterize`](app-icon-rasterize/SKILL.md) | Rasterize a 1024 SVG app icon to the asset-catalog PNG via `qlmanage` — no Homebrew / cloud dependency |
 | [`ios-design-mockup`](ios-design-mockup/SKILL.md) | Single-file HTML iOS design mockup from a spec — iPhone frames + SVG nav arrows + design-token panel |
+| [`mise-task-operations`](mise-task-operations/SKILL.md) | Index / entry point for every repo ops task — before grepping "how is X done", check here; maps each `mise run` task → invocation + safety gate + owning skill |
+| [`local-testflight-upload`](local-testflight-upload/SKILL.md) | Local archive→export→TestFlight via `mise run tf:upload`; temporary Xcode-Cloud-Main-CI substitute; upload gated behind `--i-am-sure` |
+| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | Export / validate / deploy CloudKit schema via `mise run ck:schema` (`xcrun cktool`); `.ckdb` source of truth; Production deploy user-owned + `--i-am-sure` gated |
+| [`appstore-screenshot-pipeline`](appstore-screenshot-pipeline/SKILL.md) | Sync App Store screenshot PREVIEWS from snapshot baselines via `mise run store:screenshots`; symlink-based, PREVIEW-ONLY (not ASC submission-spec) |
+| [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | Regenerate Settings.bundle Acknowledgements from the SwiftPM dep graph via `mise run gen:acknowledgements` (LicensePlist); output gitignored |
 
 > The `superpowers/` directory is a git **submodule** (`obra/superpowers`), not a checked-out skill set — a normal clone leaves it empty. Run `git submodule update --init` to populate it; its skills are not catalogued here.
 
