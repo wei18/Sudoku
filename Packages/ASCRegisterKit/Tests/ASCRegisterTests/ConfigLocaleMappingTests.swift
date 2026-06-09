@@ -54,3 +54,31 @@ internal struct ConfigLocaleMappingTests {
         #expect(Config.ascLocaleCode(for: "xx-YY") == "xx-YY")
     }
 }
+
+// IAP localizations use ASC's app-level locale catalog (like metadata), which
+// wants bare `th` / `ko` — NOT the GC-tuned `th-TH` / `ko-KR`. A live `iap
+// apply` (#432, 2026-06-09) got IAP_LOCALIZATION_UNSUPPORTED_LOCALE_CODE for
+// `th-TH`; this suite pins the IAP variant so the two paths can't re-converge.
+@Suite("Config.ascIAPLocaleCode")
+internal struct ConfigIAPLocaleMappingTests {
+
+    @Test("th → th (NOT th-TH, unlike Game Center)")
+    internal func th() {
+        #expect(Config.ascIAPLocaleCode(for: "th") == "th")
+        #expect(Config.ascLocaleCode(for: "th") == "th-TH")  // GC path unchanged
+    }
+
+    @Test("ko → ko (NOT ko-KR, unlike Game Center)")
+    internal func ko() {
+        #expect(Config.ascIAPLocaleCode(for: "ko") == "ko")
+        #expect(Config.ascLocaleCode(for: "ko") == "ko-KR")  // GC path unchanged
+    }
+
+    @Test("Other locales delegate to ascLocaleCode")
+    internal func delegates() {
+        #expect(Config.ascIAPLocaleCode(for: "en") == "en-US")
+        #expect(Config.ascIAPLocaleCode(for: "es") == "es-ES")
+        #expect(Config.ascIAPLocaleCode(for: "zh-Hant") == "zh-Hant")
+        #expect(Config.ascIAPLocaleCode(for: "ja") == "ja")
+    }
+}

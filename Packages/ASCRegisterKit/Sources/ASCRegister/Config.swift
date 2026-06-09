@@ -195,6 +195,21 @@ internal enum Config {
         default:        return xcstringsCode
         }
     }
+
+    /// IAP-localization variant of `ascLocaleCode`. ASC's **in-app-purchase**
+    /// localization catalog (like App Store *metadata* — see `MetadataConfig`)
+    /// uses the bare `"th"` / `"ko"` codes, NOT the region-suffixed
+    /// `"th-TH"` / `"ko-KR"` that `ascLocaleCode` returns for Game Center. A
+    /// live `iap apply` (2026-06-09, #432) got
+    /// `IAP_LOCALIZATION_UNSUPPORTED_LOCALE_CODE` for `th-TH`. All other
+    /// locales match `ascLocaleCode` (e.g. `es` → `es-ES`, `en` → `en-US`).
+    internal static func ascIAPLocaleCode(for xcstringsCode: String) -> String {
+        switch xcstringsCode {
+        case "th": return "th"
+        case "ko": return "ko"
+        default:   return ascLocaleCode(for: xcstringsCode)
+        }
+    }
 }
 
 // MARK: - Value types

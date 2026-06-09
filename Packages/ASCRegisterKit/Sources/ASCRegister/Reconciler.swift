@@ -298,7 +298,7 @@ internal struct Reconciler: Sendable {
                     in: strings, locale: locale, shortId: product.shortId
                 ) else { continue }
 
-                let ascLocale = Config.ascLocaleCode(for: locale)
+                let ascLocale = Config.ascIAPLocaleCode(for: locale)
                 let key = RemoteState.LocalizationKey(
                     vendorId: product.productId, locale: ascLocale
                 )
