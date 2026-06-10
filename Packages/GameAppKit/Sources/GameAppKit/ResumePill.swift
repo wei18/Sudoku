@@ -1,25 +1,27 @@
 // ResumePill — shared "resume in-progress game" pill (#448 step 3).
 //
 // Moved out of `SudokuUI.RootView` so any game's Root can mount the same
-// resume affordance over its Home content. Renders a `SavedGameSummary`
-// (difficulty + elapsed) as a tappable card; the host supplies the tap
-// action. Rendering is byte-identical to the former inline Sudoku version so
-// existing snapshot baselines are unchanged.
+// resume affordance over its Home content. Renders a plain `title` /
+// `subtitle` (the game-agnostic `ResumeCandidate` fields, #455) as a tappable
+// card; the host supplies the tap action. Rendering is byte-identical to the
+// former `SavedGameSummary`-typed version so existing snapshot baselines are
+// unchanged. The `"Resume \(difficulty)"` + `%d:%02d` elapsed formatting now
+// lives in each game's `fetchResume` mapping.
 //
-// Uses `SavedGameSummary` from Persistence (GameAppKit already depends on it)
-// and the `@Environment(\.theme)` from GameShellUI.
+// Uses the `@Environment(\.theme)` from GameShellUI.
 
 public import SwiftUI
-public import Persistence
 internal import GameShellUI
 
 public struct ResumePill: View {
-    let candidate: SavedGameSummary
+    let title: String
+    let subtitle: String
     let onTap: () -> Void
     @Environment(\.theme) private var theme
 
-    public init(candidate: SavedGameSummary, onTap: @escaping () -> Void) {
-        self.candidate = candidate
+    public init(title: String, subtitle: String, onTap: @escaping () -> Void) {
+        self.title = title
+        self.subtitle = subtitle
         self.onTap = onTap
     }
 
@@ -29,10 +31,10 @@ public struct ResumePill: View {
                 Image(systemName: "arrow.clockwise")
                     .foregroundStyle(theme.accent.primary.resolved)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Resume \(candidate.difficulty.rawValue.capitalized)")
+                    Text(title)
                         .font(.body.weight(.medium))
                         .foregroundStyle(theme.text.primary.resolved)
-                    Text(elapsedLabel)
+                    Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
@@ -47,12 +49,5 @@ public struct ResumePill: View {
             .accessibilityAddTraits(.isButton)
         }
         .buttonStyle(.plain)
-    }
-
-    private var elapsedLabel: String {
-        let total = candidate.elapsedSeconds
-        let minutes = total / 60
-        let seconds = total % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }

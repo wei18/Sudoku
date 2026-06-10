@@ -107,7 +107,7 @@ public struct RootView: View {
             attPrimer: attPrimer
         ) {
             if let candidate = viewModel.resumeCandidate {
-                ResumePill(candidate: candidate) {
+                ResumePill(title: candidate.title, subtitle: candidate.subtitle) {
                     viewModel.resumeTapped()
                 }
                 .padding(.horizontal, 16)

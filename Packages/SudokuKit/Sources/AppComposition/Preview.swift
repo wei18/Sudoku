@@ -6,6 +6,7 @@
 // land without affecting unit/snapshot test behavior.
 
 internal import Foundation
+internal import GameAppKit
 internal import MonetizationCore
 internal import MonetizationTesting
 internal import MonetizationUI
@@ -51,11 +52,20 @@ extension AppComposition {
             toastController: toastController
         )
 
+        // #455: same `SavedGameSummary` → `ResumeCandidate` mapping as `.live()`,
+        // using the shared `AppComposition.elapsed` helper.
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
             errorReporter: errorReporter,
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            fetchResume: {
+                guard let summary = try await persistence.latestInProgress() else { return nil }
+                return ResumeCandidate(
+                    title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                    subtitle: AppComposition.elapsed(summary.elapsedSeconds),
+                    route: .board(puzzleId: summary.puzzleId)
+                )
+            }
         )
 
         let routeFactory = LiveRouteFactory(

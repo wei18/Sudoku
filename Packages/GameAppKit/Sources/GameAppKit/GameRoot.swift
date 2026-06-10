@@ -21,7 +21,7 @@ public import SwiftUI
 public import GameShellUI
 public import MonetizationUI
 
-public struct GameRoot<Route: Hashable, RootContent: View>: View {
+public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
     // The app-side Root owns the VM as `@State`; GameRoot holds the same
     // `@Observable` reference. Property access in `body` registers observation,
     // so a plain stored reference (not a second `@State`) is correct here and
