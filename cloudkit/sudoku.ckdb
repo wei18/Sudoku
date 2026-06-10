@@ -1,0 +1,75 @@
+DEFINE SCHEMA
+
+    RECORD TYPE MonetizationState (
+        "___createTime"       TIMESTAMP,
+        "___createdBy"        REFERENCE,
+        "___etag"             STRING,
+        "___modTime"          TIMESTAMP,
+        "___modifiedBy"       REFERENCE,
+        "___recordID"         REFERENCE,
+        dismissedDate         TIMESTAMP,
+        firstLaunchAt         TIMESTAMP QUERYABLE SORTABLE,
+        hasPurchasedRemoveAds INT64 QUERYABLE SORTABLE,
+        lastSeenWallClock     TIMESTAMP,
+        lastShownDate         TIMESTAMP,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE PersonalRecord (
+        "___createTime"    TIMESTAMP,
+        "___createdBy"     REFERENCE,
+        "___etag"          STRING,
+        "___modTime"       TIMESTAMP,
+        "___modifiedBy"    REFERENCE,
+        "___recordID"      REFERENCE,
+        bestTimeSeconds    INT64,
+        completedCount     INT64,
+        completedPuzzleIds LIST<STRING>,
+        difficulty         STRING,
+        lastUpdatedAt      TIMESTAMP,
+        mode               STRING,
+        schemaVersion      INT64,
+        totalTimeSeconds   INT64,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE SavedGame (
+        "___createTime"  TIMESTAMP,
+        "___createdBy"   REFERENCE,
+        "___etag"        STRING,
+        "___modTime"     TIMESTAMP,
+        "___modifiedBy"  REFERENCE,
+        "___recordID"    REFERENCE,
+        boardState       STRING QUERYABLE SEARCHABLE SORTABLE,
+        difficulty       STRING QUERYABLE SEARCHABLE SORTABLE,
+        elapsedSeconds   INT64 QUERYABLE SORTABLE,
+        generatorVersion INT64 QUERYABLE SORTABLE,
+        lastModifiedAt   TIMESTAMP QUERYABLE SORTABLE,
+        mode             STRING QUERYABLE SEARCHABLE SORTABLE,
+        notesState       BYTES QUERYABLE SORTABLE,
+        puzzleId         STRING QUERYABLE SEARCHABLE SORTABLE,
+        schemaVersion    INT64 QUERYABLE SORTABLE,
+        startedAt        TIMESTAMP QUERYABLE SORTABLE,
+        status           STRING QUERYABLE SEARCHABLE SORTABLE,
+        statusEnvelope   BYTES QUERYABLE SORTABLE,
+        undoStack        BYTES QUERYABLE SORTABLE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE Users (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        roles           LIST<INT64>,
+        GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );
