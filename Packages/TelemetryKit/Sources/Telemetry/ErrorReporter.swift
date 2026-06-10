@@ -2,11 +2,11 @@
 //
 // Replaces the previous `try?` swallowing pattern. Every catch site at a
 // module boundary calls `await reporter.report(.bucket, underlying: error,
-// source: "Module.method")`. The Live impl fans the report through:
-//   1. `Telemetry.observe(.errorOccurred(source:code:message:))` — joins
-//      the existing fan-out so OSLog / future trackers receive it.
-//   2. An in-memory ring buffer of the most recent 20 reports for future
-//      debug surfaces (shake-to-view, settings diagnostics).
+// source: "Module.method")`. The Live impl fans the report through
+// `Telemetry.observe(.errorOccurred(source:code:message:))` — joining the
+// existing fan-out so OSLog / future trackers receive it. (#459: the former
+// recent-reports ring buffer + `recent()` were removed — speculative API
+// with no production consumer; reintroduce alongside a real debug surface.)
 //
 // Sendable contract: protocol + every impl Sendable (`actor` for Live and
 // Fake; `struct` for Noop). All callers from `@MainActor` view models
@@ -15,9 +15,9 @@
 public import Foundation
 
 /// One recorded report, suitable for diagnostic surfaces. `underlyingDescription`
-/// is captured eagerly (the Live impl maps `String(describing: error)` at
-/// report time) so the actor does not need to retain heterogeneous `Error`
-/// existentials across actor hops — keeps the buffer cheaply Sendable.
+/// is captured eagerly (`String(describing: error)` at report time) so no
+/// heterogeneous `Error` existential is retained across actor hops — keeps
+/// `FakeErrorReporter.received` (its remaining consumer) cheaply Sendable.
 public struct ErrorReport: Sendable, Equatable, Hashable {
     public let error: UserFacingError
     public let source: String
@@ -48,22 +48,12 @@ public protocol ErrorReporter: Sendable {
     ) async
 }
 
-/// Live impl — fans every report through the injected `Telemetry` actor
-/// and retains a bounded ring buffer of recent reports.
+/// Live impl — fans every report through the injected `Telemetry` actor.
 public actor LiveErrorReporter: ErrorReporter {
-    /// Issue #67 acceptance: "in-memory recent-errors buffer (bounded ~20)".
-    public static let bufferCapacity = 20
-
     private let telemetry: Telemetry
-    private let clock: @Sendable () -> Date
-    private var buffer: [ErrorReport] = []
 
-    public init(
-        telemetry: Telemetry,
-        clock: @escaping @Sendable () -> Date = { Date() }
-    ) {
+    public init(telemetry: Telemetry) {
         self.telemetry = telemetry
-        self.clock = clock
     }
 
     public func report(
@@ -71,35 +61,13 @@ public actor LiveErrorReporter: ErrorReporter {
         underlying: any Error,
         source: String
     ) async {
-        let description = String(describing: underlying)
-        let report = ErrorReport(
-            error: error,
-            source: source,
-            underlyingDescription: description,
-            timestamp: clock()
-        )
-        appendBounded(report)
         await telemetry.observe(
             .errorOccurred(
                 source: source,
                 code: error.rawCode,
-                message: description
+                message: String(describing: underlying)
             )
         )
-    }
-
-    /// Snapshot of the most recent reports (oldest first). Exposed for
-    /// future debug surfaces; tests use `FakeErrorReporter` instead.
-    // TODO(issue: TBD): wire debug overlay surface
-    public func recent() -> [ErrorReport] {
-        buffer
-    }
-
-    private func appendBounded(_ report: ErrorReport) {
-        buffer.append(report)
-        if buffer.count > Self.bufferCapacity {
-            buffer.removeFirst(buffer.count - Self.bufferCapacity)
-        }
     }
 }
 
