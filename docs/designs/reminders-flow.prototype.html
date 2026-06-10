@@ -328,7 +328,7 @@
   <span class="tag">Shipped</span>
   <div>
     <b>RemindersKit Phase&nbsp;2 — shipped (#287).</b> The notification permission-priming + reminder lifecycle UX described here is implemented, mirroring
-    <code>meetings/2026-06-03_notification-reminders-proposal.md</code> §5. Foundation (<code>ReminderKind</code> / <code>ReminderAuthStatus</code> / the two protocol seams) merged in #318; the primer UI (<code>ReminderPrimerSheet</code> + <code>ReminderDeniedExplainer</code>) lives in <code>SettingsUI</code>, the live scheduler/authorizer in <code>RemindersKit/Live</code>, wired via <code>ReminderPrimerCoordinator</code> in both apps.
+    <code>meetings/2026-06-03_notification-reminders-proposal.md</code> §5. Foundation (<code>ReminderKind</code> / <code>ReminderAuthStatus</code> / the two protocol seams) merged in #318; the primer UI (<code>ReminderPrimerSheet</code> + <code>ReminderDeniedExplainer</code>) lives in <code>SettingsUI</code>, the live scheduler/authorizer in <code>RemindersKit/Live</code> — wired via <code>ReminderPrimerCoordinator</code> (Sudoku, post-Daily) and the shared Settings reminder section (both apps).
     <b>U1 (Daily-ready) is what shipped</b>; U2 (streak) and U3 (comeback) remain future targets. macOS denial deep-link is still a known gap (proposal P12 — textual fallback only).
   </div>
 </div>

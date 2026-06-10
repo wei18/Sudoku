@@ -15,9 +15,9 @@
 public import Foundation
 
 /// One recorded report, suitable for diagnostic surfaces. `underlyingDescription`
-/// is captured eagerly (the Live impl maps `String(describing: error)` at
-/// report time) so the actor does not need to retain heterogeneous `Error`
-/// existentials across actor hops — keeps the buffer cheaply Sendable.
+/// is captured eagerly (`String(describing: error)` at report time) so no
+/// heterogeneous `Error` existential is retained across actor hops — keeps
+/// `FakeErrorReporter.received` (its remaining consumer) cheaply Sendable.
 public struct ErrorReport: Sendable, Equatable, Hashable {
     public let error: UserFacingError
     public let source: String

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Minesweeper — TARGET App Flow (mirror-Sudoku)</title>
+<title>Minesweeper — App Flow (mirror-Sudoku, as-built)</title>
 <style>
   :root {
     /* ============================================================
@@ -423,7 +423,7 @@
   Originally the aspirational mirror-Sudoku target (2026-06-03). The build-out has since <strong>shipped</strong>:
   Home mode-cards + sidebar (#288/#289), Daily + Practice routes, Completion overlay + Game Center dashboard (#291/#292/#386), shared Settings sections, and the <code>MinesweeperTheme</code> tokens.
   Screens tagged <span class="built-tag s">SHIPPED</span> exist today; the few remaining
-  <span class="built-tag t">NOT YET BUILT</span> elements are called out inline (Home resume pill — #455 in flight; Completion best-time row — no stored elapsed, #284).
+  <span class="built-tag t">NOT YET BUILT</span> elements are called out inline (Home resume pill — #455 in flight; Completion best-time row — no stored elapsed until the #455 save-flow).
 </div>
 
 <header class="header">
@@ -462,9 +462,8 @@
               <span class="chev-right">›</span>
             </div>
             <div style="font-size:11px;color:var(--text-tertiary);text-align:center;margin:6px 0 14px;border:1px dashed #cdd6de;border-radius:10px;padding:8px;">
-              macOS / iPad-regular: NavigationSplitView shows a sidebar<br>(New Game · Daily · Practice · Leaderboard · Settings). See M03.
+              macOS / iPad-regular: NavigationSplitView shows a sidebar<br>(Daily · Practice · Leaderboard · Settings). See M03.
             </div>
-            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">New Game</div><div class="mode-sub">Pick a difficulty</div></div><span class="chev-right">›</span></div>
             <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
           </div>
           <div class="home-indicator"></div>
@@ -480,7 +479,6 @@
           <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
             <div class="navbar-lg"><div class="title">Minesweeper</div></div>
-            <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">New Game</div><div class="mode-sub">Pick a difficulty</div></div><span class="chev-right">›</span></div>
             <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
             <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg></div><div class="mode-text"><div class="mode-title">Practice</div><div class="mode-sub">All difficulties</div></div><span class="chev-right">›</span></div>
             <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">Leaderboard</div><div class="mode-sub">Game Center · best times</div></div><span class="chev-right">›</span></div>
@@ -501,7 +499,6 @@
           <div class="mac-body">
             <div class="mac-sidebar" style="display:flex; flex-direction:column;">
               <div class="sb-title">Minesweeper</div>
-              <div class="sb-row active"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
@@ -509,11 +506,12 @@
               <div class="sb-row commerce" style="color:var(--diff-intermediate)"><svg viewBox="0 0 24 24" fill="none" style="color:var(--diff-intermediate)"><path d="M12 3l2.4 6.3H21l-5.2 4 2 6.4L12 16l-5.8 3.7 2-6.4-5.2-4h6.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Remove Ads · $2.99</div>
             </div>
             <div class="mac-detail">
-              <div class="mac-detail-title">New Game</div>
-              <div style="display:flex; flex-direction:column; align-items:center; gap:20px; padding-top:24px;">
-                <div class="segmented" style="max-width:420px; width:100%;"><div class="seg active">Beginner</div><div class="seg">Intermediate</div><div class="seg">Expert</div></div>
-                <div style="font-size:14px;color:var(--text-secondary)">9 × 9 · 10 mines</div>
-                <div class="btn-prominent" style="max-width:280px; width:100%; margin-top:4px;">Start</div>
+              <div class="mac-detail-title">Minesweeper</div>
+              <div style="max-width:460px; margin:8px auto 0;">
+                <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg></div><div class="mode-text"><div class="mode-title">Daily</div><div class="mode-sub">3 boards today</div></div><span class="chev-right">›</span></div>
+                <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg></div><div class="mode-text"><div class="mode-title">Practice</div><div class="mode-sub">All difficulties</div></div><span class="chev-right">›</span></div>
+                <div class="card mode-card"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">Leaderboard</div><div class="mode-sub">Game Center · best times</div></div><span class="chev-right">›</span></div>
+                <div class="card mode-card" style="margin-bottom:0;"><div class="mode-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="mode-text"><div class="mode-title">Settings</div><div class="mode-sub">Purchases · about</div></div><span class="chev-right">›</span></div>
               </div>
             </div>
           </div>
@@ -566,7 +564,6 @@
           <div class="mac-body">
             <div class="mac-sidebar">
               <div class="sb-title">Minesweeper</div>
-              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
               <div class="sb-row active"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
@@ -625,7 +622,6 @@
           <div class="mac-body">
             <div class="mac-sidebar">
               <div class="sb-title">Minesweeper</div>
-              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
               <div class="sb-row active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
@@ -683,7 +679,7 @@
           <div class="dynamic-island"></div>
           <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span></div>
             <div class="board-header">
               <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 7</span>
               <span class="status-text">Playing</span>
@@ -708,7 +704,7 @@
           <div class="dynamic-island"></div>
           <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span></div>
             <div class="board-header">
               <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 5</span>
               <span class="status-text">Playing</span>
@@ -733,7 +729,7 @@
           <div class="dynamic-island"></div>
           <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span></div>
             <div class="board-header">
               <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 99</span>
               <span class="status-text">Playing</span>
@@ -761,7 +757,7 @@
           <div class="dynamic-island"></div>
           <div class="status-bar"><span>9:41</span><span class="status-icons">●●● ⌃ ▮</span></div>
           <div class="screen">
-            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span><span style="color:var(--accent-primary);font-weight:500;">New Game</span></div>
+            <div class="navbar-inline" style="justify-content:space-between;"><span><span class="chev">‹</span> </span></div>
             <div class="board-header">
               <span class="stat flag-ct"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h12l-3 4 3 4H5"/></svg> 3</span>
               <span class="status-text" style="color:var(--status-error)">Boom</span>
@@ -810,7 +806,6 @@
                 </div>
                 <div class="rail-card">
                   <div class="rail-h">Game</div>
-                  <div class="btn-bordered" style="padding:9px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
                 </div>
                 <div class="banner-slot" style="margin-top:0;"><span class="x">⊗</span>Banner (when ads on)</div>
               </div>
@@ -828,7 +823,7 @@
   <section class="flow" id="flow-end">
     <h2 class="flow-title">Completion &amp; Leaderboard <span class="chip shipped">SHIPPED (#291/#292/#386 · overlay, no best-time row)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a terminal board, <code>MinesweeperCompletionView</code> mounts as an <b>overlay on the live board</b> (#388 — full-cover, not a stack push); re-viewing an already-solved daily uses the standalone <code>.completion</code> route (#386). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally (#291) — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Divergence from this mock: no best-time row — MS stores no elapsed yet (#284); the player's ranked time shows in the leaderboard slice instead.</em>
+      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a terminal board, <code>MinesweeperCompletionView</code> mounts as an <b>overlay on the live board</b> (#388 — full-cover, not a stack push); re-viewing an already-solved daily uses the standalone <code>.completion</code> route (#386). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally (#291) — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Divergence from this mock: no best-time row — MS stores no elapsed until the #455 save-flow; the player's ranked time shows in the leaderboard slice instead.</em>
     </p>
     <div class="flow-frames">
 
@@ -853,7 +848,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M14 — Completion (hero + slice) <span class="built-tag s">SHIPPED (overlay)</span> · best-time row <span class="built-tag t">NOT YET BUILT (#284)</span></div>
+        <div class="phone-label">M14 — Completion (hero + slice) <span class="built-tag s">SHIPPED (overlay)</span> · best-time row <span class="built-tag t">NOT YET BUILT (needs #455 save-flow)</span></div>
         <div class="phone-source">CompletionView · .loaded(slice)</div>
       </div>
 
@@ -886,7 +881,7 @@
   <section class="flow" id="flow-settings">
     <h2 class="flow-title">Settings <span class="chip shipped">SHIPPED (shared sections)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>SettingsView</code> — already shipped via the shared <code>SettingsUI.SettingsScreen</code>.</b> The MS <code>SettingsView</code> mounts the shared <code>SettingsScreen</code>, a native grouped Form assembling the same six shared sections in order: <b>Purchases</b> (Remove Ads / Restore via shared <code>MonetizationUI</code> rows), <b>Reminders</b> (daily-reminder toggle + fire time, #287), <b>Sound</b> (mute / volumes / BGM / haptics, #330), <b>About</b> (Version from <code>Bundle.main</code>), <b>Notices</b> (links + copyright), <b>Storage</b> (Clear cache → confirmation dialog → <code>PersistenceProtocol</code>). All tints use <code>.accentColor</code> today; under the proposed theme they would resolve to <code>accent.primary</code>.
+      <b>Mirror of Sudoku's <code>SettingsView</code> — already shipped via the shared <code>SettingsUI.SettingsScreen</code>.</b> The MS <code>SettingsView</code> mounts the shared <code>SettingsScreen</code>, a native grouped Form assembling the same six shared sections in order: <b>Purchases</b> (Remove Ads / Restore via shared <code>MonetizationUI</code> rows), <b>Reminders</b> (daily-reminder toggle + fire time, #287), <b>Sound</b> (mute / volumes / BGM / haptics, #330), <b>About</b> (Version from <code>Bundle.main</code>), <b>Notices</b> (links + copyright), <b>Storage</b> (Clear cache → confirmation dialog → <code>PersistenceProtocol</code>). Tints resolve from the shipped <code>MinesweeperTheme</code> (<code>accent.primary</code>).
     </p>
     <div class="flow-frames">
 
@@ -970,7 +965,6 @@
           <div class="mac-body">
             <div class="mac-sidebar">
               <div class="sb-title">Minesweeper</div>
-              <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v9M7.5 12h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> New Game</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.3"/></svg> Daily</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3v18h1.6V4.2h9.2l-2.4 3.4 2.4 3.4H6.6"/></svg> Practice</div>
               <div class="sb-row"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z" stroke="currentColor" stroke-width="1.7"/><path d="M9 16h6v3H9zM7 20h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Leaderboard</div>
@@ -1034,10 +1028,10 @@
 <aside class="tokens-panel">
   <h2>Design System — MS theme <span class="chip shipped" style="font-size:12px; vertical-align:middle;">IMPLEMENTED (MinesweeperTheme.swift)</span></h2>
   <p class="tp-sub">
-    This is a <b>proposal</b>. Today Minesweeper has <b>no theme</b> — the board uses raw SwiftUI primitives (<code>Color.secondary</code>, <code>.orange</code>, <code>.red</code>) and every other tint is <code>.accentColor</code>. The token set below mirrors the <em>structure</em> of Sudoku's <code>DefaultTheme.swift</code> (surface / cell / text / accent / status / difficulty, each a light/dark pair) so MS could adopt an identical <code>Theme</code> protocol — but with a distinct identity palette: <b>slate-blueprint blue + signal-orange flag + mine-red</b>, a sibling to Sudoku's sage / warm-paper rather than a clone.
+    These are the <b>shipped</b> token values — <code>MinesweeperUI/Theme/MinesweeperTheme.swift</code> (+ <code>MinesweeperCellTokens</code>), injected at the composition root via <code>@Environment(\.theme)</code> exactly as SudokuUI does. The set mirrors the <em>structure</em> of Sudoku's <code>DefaultTheme.swift</code> (surface / cell / text / accent / status / difficulty, each a light/dark pair) with a distinct identity palette: <b>slate-blueprint blue + signal-orange flag + mine-red</b>, a sibling to Sudoku's sage / warm-paper rather than a clone.
   </p>
   <div class="tp-callout">
-    <strong>To adopt this:</strong> add a <code>MinesweeperTheme: Theme</code> (or lift the shared <code>Theme</code> protocol into <code>GameShellKit</code>), inject via <code>@Environment(\.theme)</code> exactly as SudokuUI does, and replace the board's hard-coded primitives with <code>theme.cell.*</code> / <code>theme.status.*</code>. Each swatch below shows light · dark.
+    <strong>Note:</strong> changing these values churns the MS snapshot baselines (the themed board frames are pinned by <code>MinesweeperUITests</code>). Each swatch below shows light · dark.
   </div>
 
   <div class="tp-grid">
