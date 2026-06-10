@@ -34,9 +34,6 @@ internal actor ASCClient {
 
     internal enum ClientError: Error, Sendable, Equatable {
         case httpStatus(code: Int, path: String, body: String)
-        // swiftlint:disable:next todo
-        // TODO: remove if still unused after error refactor settles
-        case missingResponseBody
         case decodeFailed(reason: String, path: String, status: Int, bodyExcerpt: String)
         case invalidURL(String)
         case unsupportedOnLinux  // FoundationNetworking lacks `data(for:)` async

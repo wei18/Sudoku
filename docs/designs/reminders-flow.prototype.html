@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RemindersKit — Usage Flow Prototype (TARGET, Phase 2)</title>
+<title>RemindersKit — Usage Flow Prototype (SHIPPED, Phase 2)</title>
 <style>
   :root {
     /* ── Surface (mirror Sudoku app-flow prototype) ── */
@@ -323,20 +323,20 @@
 </head>
 <body>
 
-<!-- ════════════ TARGET HONESTY BANNER ════════════ -->
+<!-- ════════════ BUILD-STATUS BANNER (#459: re-tagged shipped) ════════════ -->
 <div class="target-banner">
-  <span class="tag">Target</span>
+  <span class="tag">Shipped</span>
   <div>
-    <b>RemindersKit Phase&nbsp;2 — not yet built.</b> This is the aspirational design target for the notification permission-priming + reminder lifecycle UX, mirroring
-    <code>meetings/2026-06-03_notification-reminders-proposal.md</code> §5. Foundation (<code>ReminderKind</code> / <code>ReminderAuthStatus</code> / the two protocol seams) merged in #318; the primer UI (Phase&nbsp;2) lives in <code>SettingsUI</code>.
-    <b>U1 (Daily-ready) ships first</b>; U2 (streak) and U3 (comeback) are later. macOS denial deep-link is a known gap (proposal P12 — textual fallback only). No invented features.
+    <b>RemindersKit Phase&nbsp;2 — shipped (#287).</b> The notification permission-priming + reminder lifecycle UX described here is implemented, mirroring
+    <code>meetings/2026-06-03_notification-reminders-proposal.md</code> §5. Foundation (<code>ReminderKind</code> / <code>ReminderAuthStatus</code> / the two protocol seams) merged in #318; the primer UI (<code>ReminderPrimerSheet</code> + <code>ReminderDeniedExplainer</code>) lives in <code>SettingsUI</code>, the live scheduler/authorizer in <code>RemindersKit/Live</code>, wired via <code>ReminderPrimerCoordinator</code> in both apps.
+    <b>U1 (Daily-ready) is what shipped</b>; U2 (streak) and U3 (comeback) remain future targets. macOS denial deep-link is still a known gap (proposal P12 — textual fallback only).
   </div>
 </div>
 
 <header class="header">
   <div class="header-left">
     <h1>RemindersKit — Usage Flow</h1>
-    <div class="meta">Design target (Phase 2, pre-build) · Generated 2026-06-04 · anchor use case <b>U1 Sudoku Daily-ready</b> · primer view in <code>SettingsUI</code></div>
+    <div class="meta">As-built (Phase 2 shipped #287; re-tagged 2026-06-10 per #459) · Generated 2026-06-04 · anchor use case <b>U1 Sudoku Daily-ready</b> · primer view in <code>SettingsUI</code></div>
   </div>
   <div class="legend">
     <div class="legend-item">
@@ -866,8 +866,8 @@
       </div>
       <h3 style="margin-top:22px">Honesty notes</h3>
       <ul style="font-size:12px; color:var(--text-secondary); line-height:1.55; padding-left:18px; margin:0">
-        <li><b>Target, not built.</b> Phase 2 (primer UI) is the design goal; nothing here is shipped.</li>
-        <li><b>U1 first.</b> Daily-ready is the anchor; U2/U3 greyed/deferred.</li>
+        <li><b>Shipped (#287).</b> Phase 2 (primer UI + settings section + live scheduler) is implemented; this page now documents the as-built flow (#459 re-tag).</li>
+        <li><b>U1 only.</b> Daily-ready shipped; U2 (streak) / U3 (comeback) remain deferred targets.</li>
         <li><b>macOS denial gap (P12).</b> No AppKit deep-link — textual "System Settings → Notifications → [App]" fallback (S06 note).</li>
         <li><b>No invented features</b> beyond proposal §2–§6. Copy below is a Phase-2 draft, localized later (7 locales).</li>
       </ul>

@@ -7,7 +7,7 @@
 <style>
   :root {
     /* ============================================================
-       PROPOSED MS THEME — NOT YET IMPLEMENTED.
+       MS THEME — IMPLEMENTED (MinesweeperUI/Theme/MinesweeperTheme.swift).
        Mirrors Sudoku's DefaultTheme.swift token STRUCTURE
        (surface / cell / text / accent / status / difficulty),
        but with a distinct Minesweeper identity:
@@ -419,17 +419,17 @@
 <body>
 
 <div class="target-banner">
-  <span class="pill">TARGET / ASPIRATIONAL</span>
-  This board depicts what Minesweeper <strong>should become</strong> once it mirrors Sudoku — <strong>not the current shipped app.</strong>
-  Today MS ships only New Game → Board + Settings. Screens tagged
-  <span class="built-tag t">NOT YET BUILT</span> are the mirror-Sudoku build-out target;
-  <span class="built-tag s">SHIPPED</span> exists today (Board Tier-0, Settings shared sections). The theme tokens shown are a <strong>PROPOSAL</strong> — MS has no theme implemented yet.
+  <span class="pill">AS-BUILT (re-tagged #459)</span>
+  Originally the aspirational mirror-Sudoku target (2026-06-03). The build-out has since <strong>shipped</strong>:
+  Home mode-cards + sidebar (#288/#289), Daily + Practice routes, Completion overlay + Game Center dashboard (#291/#292/#386), shared Settings sections, and the <code>MinesweeperTheme</code> tokens.
+  Screens tagged <span class="built-tag s">SHIPPED</span> exist today; the few remaining
+  <span class="built-tag t">NOT YET BUILT</span> elements are called out inline (Home resume pill — #455 in flight; Completion best-time row — no stored elapsed, #284).
 </div>
 
 <header class="header">
   <div class="header-left">
-    <h1>Minesweeper — TARGET App Flow</h1>
-    <div class="meta">Aspirational mirror-Sudoku design · Generated 2026-06-03 · structure mirrors <code>SudokuUI/</code> · gameplay mirrors <code>MinesweeperBoardView.swift</code></div>
+    <h1>Minesweeper — App Flow</h1>
+    <div class="meta">Mirror-Sudoku design, now as-built (re-tagged 2026-06-10 per #459) · Generated 2026-06-03 · structure mirrors <code>SudokuUI/</code> · gameplay mirrors <code>MinesweeperBoardView.swift</code></div>
   </div>
   <div class="legend">
     <div class="legend-item"><svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#3E6B8C" stroke-width="2"/><path d="M32 1 L38 5 L32 9 z" fill="#3E6B8C"/></svg><span>push (path.append AppRoute)</span></div>
@@ -443,9 +443,9 @@
 
   <!-- ============ ENTRY & HOME ============ -->
   <section class="flow" id="flow-home">
-    <h2 class="flow-title">Entry &amp; Home <span class="chip target">TARGET · not yet built</span></h2>
+    <h2 class="flow-title">Entry &amp; Home <span class="chip shipped">SHIPPED (#288/#289)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> The MS root would wrap <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (New Game · Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>HomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>Today MS has none of this — only a bare <code>NewGameView</code> as root.</em>
+      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> <code>MinesweeperRoot</code> wraps the shared <code>GameRoot</code> → <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>MinesweeperHomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>The one unshipped element: the Home resume pill (M01) — saved-game persistence is #455, in flight.</em>
     </p>
     <div class="flow-frames">
 
@@ -469,7 +469,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M01 — Root container + Resume pill <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M01 — Root container <span class="built-tag s">SHIPPED</span> + Resume pill <span class="built-tag t">NOT YET BUILT (#455)</span></div>
         <div class="phone-source">MinesweeperRoot · RootShellView · ResumePill</div>
       </div>
 
@@ -490,7 +490,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M02 — Home (5 mode cards + Remove Ads + banner) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M02 — Home (4 mode cards + Remove Ads + banner) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView</div>
       </div>
 
@@ -518,7 +518,7 @@
             </div>
           </div>
         </div>
-        <div class="phone-label">M03 — macOS Home (NavigationSplitView sidebar + detail) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M03 — macOS Home (NavigationSplitView sidebar + detail) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">RootShellView · NavigationSplitView · sidebar</div>
       </div>
 
@@ -527,9 +527,9 @@
 
   <!-- ============ DAILY ============ -->
   <section class="flow" id="flow-daily">
-    <h2 class="flow-title">Daily <span class="chip target">TARGET · exists in source but unreachable</span></h2>
+    <h2 class="flow-title">Daily <span class="chip shipped">SHIPPED (#288/#290)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>DailyHubView</code>.</b> <code>MinesweeperDailyHubView</code> <em>already exists</em> (wraps <code>DailyHubShellView</code> with three date-seeded cards — one per difficulty) but is <b>not wired into any navigation surface</b>, so a player can't reach it today. The target adds sidebar / Home-card entry, a difficulty colour-dot + completion checkmark, and a decorative mini-board strip per card.
+      <b>Mirror of Sudoku's <code>DailyHubView</code>.</b> <code>MinesweeperDailyHubView</code> wraps <code>DailyHubShellView</code> with three date-seeded cards — one per difficulty — reachable from the Home Daily card and the sidebar. Completed-card checkmarks read <code>fetchCompletedDailyIds</code> (parity-stub until the MS save-flow lands — #455).
     </p>
     <div class="flow-frames">
 
@@ -555,7 +555,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M04 — Daily hub (3 date-seeded boards) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M04 — Daily hub (3 date-seeded boards) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">MinesweeperDailyHubView · DailyHubShellView</div>
       </div>
 
@@ -582,7 +582,7 @@
             </div>
           </div>
         </div>
-        <div class="phone-label">M05 — macOS Daily (3-column grid in detail) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M05 — macOS Daily (3-column grid in detail) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">DailyHubShellView · LazyVGrid (regular = 3 col)</div>
       </div>
 
@@ -591,9 +591,9 @@
 
   <!-- ============ PRACTICE ============ -->
   <section class="flow" id="flow-practice">
-    <h2 class="flow-title">Practice <span class="chip target">TARGET · exists in source but unreachable</span></h2>
+    <h2 class="flow-title">Practice <span class="chip shipped">SHIPPED (#288/#289)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>PracticeHubView</code>.</b> <code>MinesweeperPracticeHubView</code> <em>already exists</em> (wraps <code>PracticeHubShellView</code> with a segmented difficulty <code>Picker</code> + a <code>.borderedProminent</code> Start card that does <code>path.append(.board(difficulty, seed))</code>) — but, like Daily, is <b>not wired into navigation</b>. Difficulties are the real <code>Difficulty.swift</code> presets: Beginner 9×9·10, Intermediate 16×16·40, Expert 16×30·99.
+      <b>Mirror of Sudoku's <code>PracticeHubView</code>.</b> <code>MinesweeperPracticeHubView</code> wraps <code>PracticeHubShellView</code> with a segmented difficulty <code>Picker</code> + a <code>.borderedProminent</code> Start card that does <code>path.append(.board(difficulty, seed))</code> — reachable from the Home Practice card and the sidebar. Difficulties are the real <code>Difficulty.swift</code> presets: Beginner 9×9·10, Intermediate 16×16·40, Expert 16×30·99.
     </p>
     <div class="flow-frames">
 
@@ -614,7 +614,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M06 — Practice hub (picker + Start) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M06 — Practice hub (picker + Start) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">MinesweeperPracticeHubView · segmented Picker</div>
       </div>
 
@@ -645,7 +645,7 @@
             </div>
           </div>
         </div>
-        <div class="phone-label">M07 — macOS Practice (detail column) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M07 — macOS Practice (detail column) <span class="built-tag s">SHIPPED</span></div>
         <div class="phone-source">PracticeHubShellView · filter + cta slots</div>
       </div>
 
@@ -826,9 +826,9 @@
 
   <!-- ============ COMPLETION + LEADERBOARD ============ -->
   <section class="flow" id="flow-end">
-    <h2 class="flow-title">Completion &amp; Leaderboard <span class="chip target">TARGET · not yet built</span></h2>
+    <h2 class="flow-title">Completion &amp; Leaderboard <span class="chip shipped">SHIPPED (#291/#292/#386 · overlay, no best-time row)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a win, the board would push a <code>CompletionView</code>: a "Cleared!" hero with elapsed time + best-time, plus a leaderboard slice. "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Today MS shows only an inline win/lose overlay with no completion screen, no best-time, no Game Center.</em>
+      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a terminal board, <code>MinesweeperCompletionView</code> mounts as an <b>overlay on the live board</b> (#388 — full-cover, not a stack push); re-viewing an already-solved daily uses the standalone <code>.completion</code> route (#386). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally (#291) — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Divergence from this mock: no best-time row — MS stores no elapsed yet (#284); the player's ranked time shows in the leaderboard slice instead.</em>
     </p>
     <div class="flow-frames">
 
@@ -853,7 +853,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M14 — Completion (hero + best-time + slice) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M14 — Completion (hero + slice) <span class="built-tag s">SHIPPED (overlay)</span> · best-time row <span class="built-tag t">NOT YET BUILT (#284)</span></div>
         <div class="phone-source">CompletionView · .loaded(slice)</div>
       </div>
 
@@ -875,7 +875,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M15 — Game Center dashboard (modal) <span class="built-tag t">NOT YET BUILT</span></div>
+        <div class="phone-label">M15 — Game Center dashboard (modal) <span class="built-tag s">SHIPPED (#291)</span></div>
         <div class="phone-source">GameCenterDashboard.present() · per-difficulty board</div>
       </div>
 
@@ -1032,7 +1032,7 @@
 
 <!-- ============ TOKENS PANEL ============ -->
 <aside class="tokens-panel">
-  <h2>Design System — PROPOSED MS theme <span class="chip target" style="font-size:12px; vertical-align:middle;">NOT YET IMPLEMENTED</span></h2>
+  <h2>Design System — MS theme <span class="chip shipped" style="font-size:12px; vertical-align:middle;">IMPLEMENTED (MinesweeperTheme.swift)</span></h2>
   <p class="tp-sub">
     This is a <b>proposal</b>. Today Minesweeper has <b>no theme</b> — the board uses raw SwiftUI primitives (<code>Color.secondary</code>, <code>.orange</code>, <code>.red</code>) and every other tint is <code>.accentColor</code>. The token set below mirrors the <em>structure</em> of Sudoku's <code>DefaultTheme.swift</code> (surface / cell / text / accent / status / difficulty, each a light/dark pair) so MS could adopt an identical <code>Theme</code> protocol — but with a distinct identity palette: <b>slate-blueprint blue + signal-orange flag + mine-red</b>, a sibling to Sudoku's sage / warm-paper rather than a clone.
   </p>

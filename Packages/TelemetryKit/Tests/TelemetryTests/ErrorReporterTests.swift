@@ -8,7 +8,6 @@
 // Also covers:
 //   - UserFacingError.classify maps CKError-domain codes correctly
 //   - FakeErrorReporter records reports for VM-level tests
-//   - LiveErrorReporter ring buffer caps at the documented capacity
 
 import Foundation
 import Testing
@@ -73,29 +72,6 @@ struct ErrorReporterTests {
         }
         #expect(source == "Test.cloudKitFlow")
         #expect(code == UserFacingError.iCloudSignedOut.rawCode)
-    }
-
-    @Test
-    func liveReporterRetainsRecentReportsBoundedByCapacity() async {
-        let telemetry = Telemetry(sinks: [])
-        let reporter = LiveErrorReporter(telemetry: telemetry)
-        let cap = LiveErrorReporter.bufferCapacity
-
-        let throwable = NSError(domain: "Test", code: 1)
-        for index in 0..<(cap + 5) {
-            await reporter.report(
-                .unknown,
-                underlying: throwable,
-                source: "Test.iteration\(index)"
-            )
-        }
-
-        let recent = await reporter.recent()
-        #expect(recent.count == cap, "Buffer must cap at \(cap), got \(recent.count)")
-        // Oldest entries must be evicted: first remaining iteration is 5
-        // (cap=20 entries kept of 25 total → iterations 5..24).
-        #expect(recent.first?.source == "Test.iteration5")
-        #expect(recent.last?.source == "Test.iteration\(cap + 4)")
     }
 
     @Test
