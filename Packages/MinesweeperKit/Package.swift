@@ -23,6 +23,21 @@ let swiftSettings: [SwiftSetting] = [
 // both packages join the same Xcode project's package graph.
 
 let productionTargets: [Target] = [
+    // #455: MS saved-game store — maps the Codable `MinesweeperSessionSnapshot`
+    // ↔ CloudKit `RecordPayload` via the shared public `PrivateCKGateway`,
+    // returning the MS-native `MinesweeperSavedGameSummary` (the shared
+    // `SavedGameSummary` is Sudoku-typed; see #455 thread). INERT until the
+    // user-owned ck:schema deploy adds `SavedGame` to the MS container —
+    // composition wiring is #455 step 4.
+    .target(
+        name: "MinesweeperPersistence",
+        dependencies: [
+            .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
+            .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
+            .product(name: "Persistence", package: "PersistenceKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
     .target(
         name: "MinesweeperUI",
         dependencies: [
@@ -135,6 +150,17 @@ let productionTargets: [Target] = [
 ]
 
 let testTargets: [Target] = [
+    // #455: store tests run against the shared `FakePrivateCKGateway` —
+    // zero live CloudKit. (PersistenceTesting transitively drags SudokuCoreKit
+    // into this test graph; harmless, same as MinesweeperUITests.)
+    .testTarget(
+        name: "MinesweeperPersistenceTests",
+        dependencies: [
+            "MinesweeperPersistence",
+            .product(name: "PersistenceTesting", package: "PersistenceKit"),
+        ],
+        swiftSettings: swiftSettings
+    ),
     .testTarget(
         name: "MinesweeperUITests",
         dependencies: [
@@ -200,6 +226,8 @@ let package = Package(
     products: [
         .library(name: "MinesweeperUI", targets: ["MinesweeperUI"]),
         .library(name: "MinesweeperAppComposition", targets: ["MinesweeperAppComposition"]),
+        // #455: consumed by MinesweeperAppComposition in step 4 (fetchResume wire).
+        .library(name: "MinesweeperPersistence", targets: ["MinesweeperPersistence"]),
     ],
     dependencies: [
         .package(path: "../MinesweeperCoreKit"),

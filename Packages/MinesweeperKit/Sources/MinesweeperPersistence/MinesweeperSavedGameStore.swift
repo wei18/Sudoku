@@ -1,0 +1,165 @@
+// MinesweeperSavedGameStore — maps `MinesweeperSessionSnapshot` ↔
+// `RecordPayload` for the Minesweeper `SavedGame` CloudKit record type
+// (#455; structural mirror of Sudoku's `SavedGameStore`).
+//
+// Built on the shared public `PrivateCKGateway` seam: record-type name
+// `"SavedGame"` is safe to reuse — each app owns its own CKContainer
+// (`PrivateCKConstants` doc), so the Sudoku and MS records never collide.
+//
+// Wire shape (this is the `cloudkit/minesweeper.ckdb` schema contract):
+//   difficulty      String      Difficulty.rawValue (beginner/intermediate/expert)
+//   seed            Int(64)     UInt64 bit-pattern (see `seed` mapping below)
+//   mode            String      game-mode qualifier ("daily" / "practice")
+//   elapsedSeconds  Int(64)
+//   status          String      "inProgress" / "completed"
+//   lastModifiedAt  Date/Time
+//   schemaVersion   Int(64)     1
+//   stateBlob       Bytes       JSON-encoded MinesweeperSessionSnapshot
+//
+// Seed mapping: `RecordValue.int(Int)` is the only integer wire type, and
+// CloudKit's Int(64) is signed — a board seed is `UInt64`, so it crosses the
+// wire as its `Int64` bit-pattern (`Int64(bitPattern:)` out,
+// `UInt64(bitPattern:)` back). Lossless both ways for every UInt64.
+//
+// INERT until #455 step 4: nothing constructs this store yet — composition
+// wiring (and the Telemetry save-funnel mirroring Sudoku's store) lands after
+// the user-owned `ck:schema` deploy adds the record type to the MS container.
+
+public import Foundation
+public import MinesweeperEngine
+public import MinesweeperGameState
+public import Persistence
+
+public actor MinesweeperSavedGameStore {
+
+    // MARK: - Field keys (mirror Sudoku's SavedGameStore.Field)
+
+    enum Field {
+        static let difficulty = "difficulty"
+        static let seed = "seed"
+        static let mode = "mode"
+        static let elapsedSeconds = "elapsedSeconds"
+        static let status = "status"
+        static let lastModifiedAt = "lastModifiedAt"
+        static let schemaVersion = "schemaVersion"
+        static let stateBlob = "stateBlob"
+    }
+
+    static let currentSchemaVersion = 1
+
+    // MARK: - Deps
+
+    private let gateway: any PrivateCKGateway
+    private let clock: @Sendable () -> Date
+
+    public init(
+        gateway: any PrivateCKGateway,
+        clock: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.gateway = gateway
+        self.clock = clock
+    }
+
+    // MARK: - API
+
+    /// Persist an in-flight (or terminal) board. `modeRaw` qualifies the
+    /// save ("daily" / "practice") — the snapshot itself carries no mode,
+    /// mirroring Sudoku's qualified `save(_:puzzleId:mode:difficulty:)`.
+    public func save(
+        _ snapshot: MinesweeperSessionSnapshot,
+        modeRaw: String,
+        recordName: String
+    ) async throws {
+        let blob = try JSONEncoder().encode(snapshot)
+        let payload = RecordPayload(
+            recordType: PrivateCKConstants.savedGameRecordType,
+            recordName: recordName,
+            fields: [
+                Field.difficulty: .string(snapshot.difficulty.rawValue),
+                Field.seed: .int(Int(Int64(bitPattern: snapshot.seed))),
+                Field.mode: .string(modeRaw),
+                Field.elapsedSeconds: .int(snapshot.elapsedSeconds),
+                Field.status: .string(Self.wireStatus(for: snapshot.status)),
+                Field.lastModifiedAt: .date(clock()),
+                Field.schemaVersion: .int(Self.currentSchemaVersion),
+                Field.stateBlob: .data(blob),
+            ]
+        )
+        try await gateway.save(payload)
+    }
+
+    /// Most recently touched non-completed save, or nil. Feeds MS's future
+    /// `fetchResume` closure (#460 seam).
+    public func latestInProgress() async throws -> MinesweeperSavedGameSummary? {
+        let payloads = try await gateway.query(
+            .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "inProgress")
+        )
+        return payloads
+            .compactMap(Self.summary(from:))
+            .max { $0.lastModifiedAt < $1.lastModifiedAt }
+    }
+
+    /// Decode the full snapshot for a known record, or nil when absent /
+    /// not yet migrated. The caller rebuilds the live board via
+    /// `MinesweeperSession.restore(from:)`.
+    public func loadInProgress(recordName: String) async throws -> MinesweeperSessionSnapshot? {
+        guard
+            let payload = try await gateway.fetch(recordName: recordName),
+            case .data(let blob) = payload.fields[Field.stateBlob]
+        else { return nil }
+        return try? JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: blob)
+    }
+
+    /// Flip a save to "completed" so `latestInProgress()` stops surfacing it.
+    public func markCompleted(recordName: String) async throws {
+        guard let existing = try await gateway.fetch(recordName: recordName) else {
+            throw PersistenceError.underlying(
+                domain: "MinesweeperPersistence",
+                code: 404,
+                description: "markCompleted: record \(recordName) not found"
+            )
+        }
+        var fields = existing.fields
+        fields[Field.status] = .string("completed")
+        fields[Field.lastModifiedAt] = .date(clock())
+        try await gateway.save(
+            RecordPayload(
+                recordType: existing.recordType,
+                recordName: existing.recordName,
+                fields: fields
+            )
+        )
+    }
+
+    // MARK: - Mapping
+
+    /// `.won` / `.lost` are archival-complete; everything else (idle /
+    /// playing / paused) is a resumable in-progress save.
+    static func wireStatus(for status: MinesweeperSessionStatus) -> String {
+        switch status {
+        case .won, .lost: return "completed"
+        default: return "inProgress"
+        }
+    }
+
+    static func summary(from payload: RecordPayload) -> MinesweeperSavedGameSummary? {
+        guard
+            case .string(let difficultyRaw) = payload.fields[Field.difficulty],
+            let difficulty = Difficulty(rawValue: difficultyRaw),
+            case .int(let seedBits) = payload.fields[Field.seed],
+            case .string(let modeRaw) = payload.fields[Field.mode],
+            case .int(let elapsed) = payload.fields[Field.elapsedSeconds],
+            case .string(let status) = payload.fields[Field.status],
+            case .date(let lastModifiedAt) = payload.fields[Field.lastModifiedAt]
+        else { return nil }
+        return MinesweeperSavedGameSummary(
+            recordName: payload.recordName,
+            difficulty: difficulty,
+            seed: UInt64(bitPattern: Int64(seedBits)),
+            modeRaw: modeRaw,
+            elapsedSeconds: elapsed,
+            lastModifiedAt: lastModifiedAt,
+            status: status
+        )
+    }
+}
