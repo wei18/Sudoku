@@ -36,7 +36,7 @@ Distilled from collaboration / security patterns observed in this session.
 | [`session-to-meeting-log`](session-to-meeting-log/SKILL.md) | Consolidate Claude Code session JSONL into `meetings/{date}_{topic}.md`; summary, not verbatim |
 | [`methodology-pattern-extractor`](methodology-pattern-extractor/SKILL.md) | Extract patterns recurring ≥ 3 times from meeting logs; append to `methodology.md §Patterns` |
 | [`subagent-review-cycles`](subagent-review-cycles/SKILL.md) | Leader / Developer / Code-Reviewer triad; round-1 cosmetic inline edits; limit(N) |
-| [`spec-phase-orchestration`](spec-phase-orchestration/SKILL.md) | 6 files (README + foundations / design / plan / methodology + meetings/); section-by-section; prerequisite gate; no code before spec |
+| [`spec-phase-orchestration`](spec-phase-orchestration/SKILL.md) | 5 files + meetings/（README + foundations / design / plan / methodology）; section-by-section; prerequisite gate; no code before spec |
 | [`backlog-routing-by-topic`](backlog-routing-by-topic/SKILL.md) | Route stray ideas by topic to the matching file's §Backlog (gameplay / tooling / implementation / collaboration / fallback to meeting log) |
 | [`apple-public-repo-security`](apple-public-repo-security/SKILL.md) | Three lines of defence for public iOS / macOS repos (lefthook + gitleaks / Xcode Cloud post-clone / GitHub Secret Scanning) + rotate-first leak SOP |
 | [`leader-developer-handoff-contract`](leader-developer-handoff-contract/SKILL.md) | 5 required elements when dispatching a sub-agent: scope / inputs / skills / return format / verification |
