@@ -40,6 +40,13 @@
     {
       "target" : {
         "containerPath" : "container:Packages\/MinesweeperKit",
+        "identifier" : "MinesweeperPersistenceTests",
+        "name" : "MinesweeperPersistenceTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Packages\/MinesweeperKit",
         "identifier" : "MinesweeperUITests",
         "name" : "MinesweeperUITests"
       }
