@@ -12,6 +12,7 @@ public import GameAudio
 public import GameCenterClient
 public import MinesweeperEngine
 public import MinesweeperGameState
+public import MinesweeperPersistence
 public import Observation
 public import Telemetry
 
@@ -58,6 +59,18 @@ public final class MinesweeperGameViewModel {
     /// root.
     private let soundPlayer: any SoundPlaying
 
+    // MARK: - Persistence (#455 step 4)
+
+    /// Saved-game store seam. `nil` (MVP / preview / test callsites) → no
+    /// persistence side-effects, preserving every pre-#455 behaviour verbatim.
+    /// Production threads the composition-root `MinesweeperSavedGameStore`.
+    private let store: MinesweeperSavedGameStore?
+    /// The save's CloudKit identity, derived ONCE at board construction via
+    /// `MinesweeperSavedGameStore.recordName(dailyDay:difficulty:)` /
+    /// `.recordName(practice:)` — never re-derived at save time, so a daily
+    /// board backgrounded across midnight still upserts its own record.
+    private let recordName: String?
+
     // MARK: - Snapshot / preview seam (#297)
 
     /// When `true`, `refresh()` and the GC submit funnel become no-ops: the
@@ -101,14 +114,18 @@ public final class MinesweeperGameViewModel {
         mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
-        soundPlayer: any SoundPlaying = NoopSoundPlaying()
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
+        store: MinesweeperSavedGameStore? = nil,
+        recordName: String? = nil
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
             mode: mode,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
-            soundPlayer: soundPlayer
+            soundPlayer: soundPlayer,
+            store: store,
+            recordName: recordName
         )
     }
 
@@ -119,13 +136,17 @@ public final class MinesweeperGameViewModel {
         mode: GameMode = .practice,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
-        soundPlayer: any SoundPlaying = NoopSoundPlaying()
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
+        store: MinesweeperSavedGameStore? = nil,
+        recordName: String? = nil
     ) {
         self.session = session
         self.mode = mode
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
+        self.store = store
+        self.recordName = recordName
         self.isSeeded = false
         let difficulty = session.difficulty
         // Synchronous bootstrap: snapshot before any action is just the
@@ -157,6 +178,8 @@ public final class MinesweeperGameViewModel {
         // Seeded boards never mutate, so no audio ever fires; a Noop keeps the
         // seam non-optional without any preview/snapshot side-effect.
         self.soundPlayer = NoopSoundPlaying()
+        self.store = nil
+        self.recordName = nil
         self.snapshot = snapshot
         self.isSeeded = true
     }
@@ -197,6 +220,37 @@ public final class MinesweeperGameViewModel {
         // (flagging never wins). Submit the best time once we cross into the
         // won state.
         await submitDailyTimeIfWon()
+        // #455: a terminal board persists immediately — `wireStatus` maps
+        // won/lost → "completed", which removes it from the resume-candidate
+        // set (the upsert also covers a board that was never saved mid-play).
+        if snapshot.status == .won || snapshot.status == .lost {
+            await persistCurrentState()
+        }
+    }
+
+    // MARK: - Persistence (#455 step 4)
+
+    /// Persist the current board through the saved-game store. Trigger points:
+    /// pause, terminal reveal (above), and the view-lifecycle hooks
+    /// (`scenePhase == .background`, `onDisappear`) in `MinesweeperBoardView`.
+    /// No-ops when the persistence seam isn't threaded (MVP/preview/tests),
+    /// when seeded (#297 fixtures must stay side-effect-free), or while the
+    /// board is still `.idle` (a zero-information pre-first-reveal save would
+    /// occupy the resume pill for nothing). Failures funnel — a failed save
+    /// never interrupts gameplay (mirrors Sudoku's flush; conflict policy is
+    /// the documented MVP bare-throw → funnel, #463 CR).
+    public func persistCurrentState() async {
+        guard !isSeeded, let store, let recordName else { return }
+        guard snapshot.status != .idle else { return }
+        do {
+            try await store.save(snapshot, modeRaw: mode.rawValue, recordName: recordName)
+        } catch {
+            await errorReporter?.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "MinesweeperGameViewModel.persistCurrentState"
+            )
+        }
     }
 
     public func toggleFlag(row: Int, col: Int) async {
@@ -259,6 +313,9 @@ public final class MinesweeperGameViewModel {
     public func pause() async {
         guard !isSeeded else { return }
         snapshot = await session.pause()
+        // #455: a pause is a natural save point (mirrors Sudoku's
+        // pause-triggered flush, §How.5.5).
+        await persistCurrentState()
     }
 
     /// Resume the game: restart the clock + flip back to `.playing`. No-op when

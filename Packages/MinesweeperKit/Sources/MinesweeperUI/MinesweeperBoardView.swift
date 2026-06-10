@@ -28,6 +28,7 @@ public import MinesweeperEngine
 public import MonetizationCore
 import MonetizationUI
 internal import MinesweeperGameState
+public import MinesweeperPersistence
 public import Telemetry
 
 public struct MinesweeperBoardView: View {
@@ -39,6 +40,10 @@ public struct MinesweeperBoardView: View {
     // vertical stack. swiftui-interaction-footguns: read `horizontalSizeClass`,
     // which is `.regular` on Mac, not a hardcoded `#if os(macOS)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    // #455 step 4: app-backgrounding is a save point (the other two are pause
+    // and terminal reveal, both inside the VM). Mirrors Sudoku's
+    // scenePhase-triggered flush (§How.5.5).
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
@@ -122,7 +127,9 @@ public struct MinesweeperBoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        onNewGame: (() -> Void)? = nil
+        onNewGame: (() -> Void)? = nil,
+        store: MinesweeperSavedGameStore? = nil,
+        recordName: String? = nil
     ) {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(
             difficulty: difficulty,
@@ -130,7 +137,9 @@ public struct MinesweeperBoardView: View {
             mode: mode,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
-            soundPlayer: soundPlayer
+            soundPlayer: soundPlayer,
+            store: store,
+            recordName: recordName
         ))
         self.adProvider = adProvider
         self.adGate = adGate
@@ -192,6 +201,17 @@ public struct MinesweeperBoardView: View {
             } else if !isTerminal {
                 completionViewModel = nil
             }
+        }
+        // #455 step 4: view-lifecycle save points. The VM's
+        // `persistCurrentState()` self-guards (nil store / seeded / .idle), so
+        // these are no-ops everywhere the persistence seam isn't threaded.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                Task { await viewModel.persistCurrentState() }
+            }
+        }
+        .onDisappear {
+            Task { await viewModel.persistCurrentState() }
         }
         // #330 P2: start the looping background music when the board appears, and
         // stop it when the board goes away (the `.task` is cancelled on disappear).

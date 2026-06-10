@@ -103,6 +103,31 @@ struct MinesweeperSavedGameStoreTests {
     }
 
     @Test
+    func latestInProgressFiltersStaleDailies() async throws {
+        let gateway = FakePrivateCKGateway()
+        let store = makeStore(gateway)   // clock = fixedDate → "today" is fixed
+        let snapshot = try await midPlaySnapshot(seed: 3)
+
+        // A daily from a long-gone day: hidden from the resume pill (the hub
+        // has rotated; resuming it is meaningless — Sudoku #228 class).
+        try await store.save(snapshot, modeRaw: "daily", recordName: "daily-2000-01-01-beginner")
+        #expect(try await store.latestInProgress() == nil)
+
+        // Today's daily passes the filter…
+        let today = UTCDay.string(from: Self.fixedDate)
+        try await store.save(snapshot, modeRaw: "daily", recordName: "daily-\(today)-beginner")
+        #expect(try #require(try await store.latestInProgress()).recordName == "daily-\(today)-beginner")
+
+        // …and practice saves never expire (use a later clock so it wins max-by).
+        let later = MinesweeperSavedGameStore(
+            gateway: gateway,
+            clock: { Self.fixedDate.addingTimeInterval(60) }
+        )
+        try await later.save(snapshot, modeRaw: "practice", recordName: "practice-beginner")
+        #expect(try #require(try await later.latestInProgress()).recordName == "practice-beginner")
+    }
+
+    @Test
     func wireStatusMapsTerminalStatesToCompleted() async throws {
         let session = MinesweeperSession(difficulty: .beginner, seed: 7)
         _ = try await session.reveal(row: 4, col: 4)

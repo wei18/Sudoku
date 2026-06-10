@@ -37,6 +37,7 @@ public import GameShellUI
 public import MinesweeperUI
 public import MonetizationCore
 public import MonetizationUI
+public import MinesweeperPersistence
 public import Persistence
 public import Telemetry
 // #330 P2: `SoundPlaying` is threaded into `MinesweeperBoardView` (gameplay audio)
@@ -95,6 +96,10 @@ public struct LiveRouteFactory: RouteFactory {
     // built once at the composition root over the Live player + UserDefaults.
     // Optional so preview / test Settings stay byte-identical (no Sound section).
     private let audioSettings: AudioSettingsModel?
+    // #455 step 4: saved-game store, threaded into every board so the VM can
+    // persist (pause / background / terminal) and into the `.resumeBoard`
+    // loader. Optional so preview / test callsites stay persistence-free.
+    private let savedGameStore: MinesweeperSavedGameStore?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -106,7 +111,8 @@ public struct LiveRouteFactory: RouteFactory {
         toastController: ToastController? = nil,
         makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil,
         soundPlayer: (any SoundPlaying)? = nil,
-        audioSettings: AudioSettingsModel? = nil
+        audioSettings: AudioSettingsModel? = nil,
+        savedGameStore: MinesweeperSavedGameStore? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -118,6 +124,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.makeReminderSettings = makeReminderSettings
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
+        self.savedGameStore = savedGameStore
     }
 
     @MainActor
@@ -155,6 +162,31 @@ public struct LiveRouteFactory: RouteFactory {
                     soundPlayer: soundPlayer ?? NoopSoundPlaying(),
                     // #292: the Completion overlay's "New Game" CTA pops the
                     // stack back to the difficulty picker.
+                    onNewGame: { Self.popToNewGame(path: path) },
+                    // #455 step 4: persistence seam. The save's identity is
+                    // derived ONCE here (today's date for a daily, a singleton
+                    // slot per practice difficulty) — see the store's
+                    // recordName helpers for the scheme rationale.
+                    store: savedGameStore,
+                    recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty)
+                )
+            )
+        case .resumeBoard(let recordName, let mode):
+            // #455 step 4: restore a persisted board. Loader fetches the
+            // snapshot + rebuilds the exact board; without a store (preview /
+            // test factories) the route is unreachable — fetchResume is only
+            // wired in `.live()` — so an empty view is an honest fallback.
+            guard let savedGameStore else { return AnyView(EmptyView()) }
+            return AnyView(
+                MinesweeperBoardLoaderView(
+                    recordName: recordName,
+                    mode: mode,
+                    store: savedGameStore,
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    gameCenter: gameCenter,
+                    errorReporter: errorReporter,
+                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
                     onNewGame: { Self.popToNewGame(path: path) }
                 )
             )

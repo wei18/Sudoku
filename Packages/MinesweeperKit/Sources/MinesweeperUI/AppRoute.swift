@@ -32,6 +32,13 @@ public enum AppRoute: Hashable, Sendable {
     // carries only `difficulty` (→ the daily leaderboard id) and `mode`; the
     // hero time is a placeholder and the real ranked time shows in the slice.
     case completion(difficulty: Difficulty, mode: GameMode)
+    // #455 step 4: resume a persisted in-progress board. Carries the CloudKit
+    // recordName (the save's identity) + the mode qualifier; the route factory
+    // mounts `MinesweeperBoardLoaderView`, which fetches the snapshot and
+    // rebuilds the exact board via `MinesweeperSession.restore(from:)`. A
+    // fresh `.board` can't express this — it would re-derive a NEW board from
+    // the seed instead of replaying the saved reveal/flag state.
+    case resumeBoard(recordName: String, mode: GameMode)
     case daily
     case practice
     case settings

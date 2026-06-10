@@ -35,6 +35,9 @@ let productionTargets: [Target] = [
             .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
             .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
             .product(name: "Persistence", package: "PersistenceKit"),
+            // #455 step 4: save funnel mirrors Sudoku's SavedGameStore
+            // (.gameSaved / .gameSaveFailed).
+            .product(name: "Telemetry", package: "TelemetryKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -83,6 +86,10 @@ let productionTargets: [Target] = [
             // bespoke class). GameAppKit is allowed Persistence/GameCenter/Telemetry
             // deps, unlike the zero-dep GameShellUI. Mirrors SudokuUI's wire (1a).
             .product(name: "GameAppKit", package: "GameAppKit"),
+            // #455 step 4: `MinesweeperGameViewModel` persists in-progress boards
+            // through `MinesweeperSavedGameStore`; `MinesweeperBoardLoaderView`
+            // restores them for the `.resumeBoard` route. Same-package target.
+            "MinesweeperPersistence",
         ],
         swiftSettings: swiftSettings
     ),
@@ -90,6 +97,13 @@ let productionTargets: [Target] = [
         name: "MinesweeperAppComposition",
         dependencies: [
             "MinesweeperUI",
+            // #455 step 4: `.live()` builds the MinesweeperSavedGameStore over
+            // the public gateway factory; the route factory threads it into
+            // boards + the `.resumeBoard` loader.
+            "MinesweeperPersistence",
+            // #455 step 4: `.live()`'s fetchResume closure names
+            // `ResumeCandidate<AppRoute>` (the #460 game-agnostic resume DTO).
+            .product(name: "GameAppKit", package: "GameAppKit"),
             // LiveRouteFactory conforms to `RouteFactory<AppRoute>` from
             // GameShellUI.
             .product(name: "GameShellUI", package: "GameShellKit"),
@@ -182,6 +196,9 @@ let testTargets: [Target] = [
             // #448: MinesweeperRootViewModelTests inject `FakePersistence`
             // (zero-IO) for the launch-bootstrap `persistence.bootstrap()` call.
             .product(name: "PersistenceTesting", package: "PersistenceKit"),
+            // #455 step 4: persist-hook tests drive the VM's saved-game seam
+            // against the fake gateway.
+            "MinesweeperPersistence",
             // #278 Tier-1 Phase 2b: MS snapshot harness. Mirrors SudokuKit's
             // SudokuUITests snapshot dep — themed board baselines are the
             // Designer's visual-verification surface.
