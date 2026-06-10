@@ -60,7 +60,7 @@
 | [`ios-design-mockup`](ios-design-mockup/SKILL.md) | 從 spec 產生單檔 HTML iOS 設計 mockup——iPhone 外框 + SVG 導覽箭頭 + design token 面板 |
 | [`mise-task-operations`](mise-task-operations/SKILL.md) | 所有維運任務的索引／入口——動手 grep「X 怎麼做」前先查這裡；每個 `mise run` 任務對應到呼叫法 + 安全閘 + 主理 skill |
 | [`local-testflight-upload`](local-testflight-upload/SKILL.md) | 用 `mise run tf:upload` 在本機 archive→export→上傳 TestFlight；XCC 額度用盡時的 Main-CI 臨時替代；上傳以 `--i-am-sure` 把關 |
-| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | 用 `mise run ck:schema`（`xcrun cktool`）export／validate／deploy CloudKit schema；`.ckdb` 為真實來源；Production deploy 屬 user-owned 且 `--i-am-sure` 把關 |
+| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | 用 `mise run ck:schema`（`xcrun cktool`）export／validate／deploy CloudKit schema；`.ckdb` 為真實來源；Production 推進僅能在 CloudKit Console（user-owned） |
 | [`appstore-screenshot-pipeline`](appstore-screenshot-pipeline/SKILL.md) | 用 `mise run store:screenshots` 從 snapshot baseline 以 symlink 同步 App Store 截圖「預覽」；PREVIEW-ONLY（非 ASC 送審規格） |
 | [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | 用 `mise run gen:acknowledgements`（LicensePlist）從 SwiftPM 依賴圖重生 Settings.bundle 致謝頁；產物 gitignored |
 

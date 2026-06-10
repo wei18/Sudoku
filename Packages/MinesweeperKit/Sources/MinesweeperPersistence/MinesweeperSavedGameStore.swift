@@ -16,11 +16,11 @@
 //   schemaVersion   Int(64)     1
 //   stateBlob       Bytes       JSON-encoded MinesweeperSessionSnapshot
 //
-// Index contract (part of the .ckdb spec — #463 CR): `latestInProgress()`
+// Index contract (part of the .ckdb spec — #463 CR / #464): `latestInProgress()`
 // issues `NSPredicate("status == %@")` on the live gateway, so the schema
-// must mark `status` QUERYABLE (+ the CloudKit-required `recordName`
-// QUERYABLE on the record type). `lastModifiedAt` needs no sortable index —
-// the max-by is client-side.
+// marks `status` QUERYABLE — and nothing else. `recordName` needs no index
+// (Sudoku Production runs the identical statusEquals query without one), and
+// `lastModifiedAt` needs no sortable index — the max-by is client-side.
 //
 // Seed mapping: `RecordValue.int(Int)` is the only integer wire type, and
 // CloudKit's Int(64) is signed — a board seed is `UInt64`, so it crosses the

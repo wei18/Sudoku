@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="CloudKit schema tool — export Dev schema (.ckdb) or deploy to an env via xcrun cktool. Production-deploy is user-owned (gated behind --i-am-sure)."
+#MISE description="CloudKit schema tool — export / validate / deploy-to-Development via xcrun cktool. Production promote is Console-only (user-owned); the production subcommand prints the steps and exits."
 #
 # Wraps `xcrun cktool` so the CloudKit Development→Production schema deploy becomes
 # a commit-trackable, Leader-orderable step — mirroring how ASCRegister made the
@@ -18,9 +18,11 @@
 #
 # Usage:
 #   mise run ck:schema export  --app sudoku|minesweeper
-#   mise run ck:schema validate --app sudoku|minesweeper
+#   mise run ck:schema validate --app sudoku|minesweeper [--env development|production]
 #   mise run ck:schema deploy  --app sudoku|minesweeper --env development
-#   mise run ck:schema deploy  --app sudoku|minesweeper --env production --i-am-sure
+#   (production: NOT scriptable — cktool import-schema is development-only;
+#    promote via CloudKit Console "Deploy Schema Changes to Production…".
+#    Running `deploy --env production` prints the Console steps and exits.)
 #
 set -euo pipefail
 
@@ -40,7 +42,7 @@ container_for() {
 }
 
 usage() {
-    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,/^set /p' "$0" | grep '^#' | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -51,6 +53,8 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --app)        APP="${2:-}"; shift 2 ;;
         --env)        ENV="${2:-}"; shift 2 ;;
+        # Legacy flag: production import was removed (Console-only); accepted
+        # so old documented commands degrade to the instructions, not an error.
         --i-am-sure)  SURE=1; shift ;;
         -h|--help)    usage 0 ;;
         *) echo "error: unknown argument '$1'" >&2; usage ;;
@@ -83,10 +87,14 @@ load_token() {
         echo "error: CK_TEAM_ID is empty. Put your 10-char Apple Developer Team ID in secrets/.env." >&2
         exit 1
     fi
-    # Register the token with cktool's keychain store. Read from stdin so the
-    # secret never appears in process argv (which `ps` could surface). `--force`
-    # overwrites any prior token non-interactively on re-runs.
-    printf '%s' "$CK_MANAGEMENT_TOKEN" | xcrun cktool save-token --type management --force
+    # Register the token with cktool's keychain store. cktool accepts the token
+    # ONLY as a positional argument (or an interactive secure prompt) — stdin
+    # piping fails in non-interactive mode with "Interaction was required"
+    # (verified against `cktool save-token --help`, first live run 2026-06-10).
+    # Brief argv exposure on the local machine is accepted; the EXIT trap
+    # purges the keychain entry on every exit path. `--force` overwrites prior
+    # tokens on re-runs.
+    xcrun cktool save-token "$CK_MANAGEMENT_TOKEN" --type management --force
 }
 
 case "$SUBCMD" in
@@ -105,10 +113,13 @@ case "$SUBCMD" in
     validate)
         [[ -f "$SCHEMA_FILE" ]] || { echo "error: $SCHEMA_FILE not found — run 'export' first." >&2; exit 1; }
         load_token
-        echo "==> Validating $SCHEMA_FILE against $CONTAINER"
+        echo "==> Validating $SCHEMA_FILE against $CONTAINER ($ENV)"
+        # --environment is REQUIRED by cktool (first live run 2026-06-10);
+        # validation honors --env and defaults to development.
         xcrun cktool validate-schema \
             --team-id "$CK_TEAM_ID" \
             --container-id "$CONTAINER" \
+            --environment "$ENV" \
             --file "$SCHEMA_FILE"
         ;;
 
@@ -116,22 +127,31 @@ case "$SUBCMD" in
         [[ -f "$SCHEMA_FILE" ]] || { echo "error: $SCHEMA_FILE not found — run 'export' first." >&2; exit 1; }
         case "$ENV" in development|production) ;; *) echo "error: --env must be development|production" >&2; exit 1 ;; esac
 
-        # ── Production guard: user-owned, irreversible, add-only indexes ──────
+        # ── Production: NOT scriptable (verified live 2026-06-10) ─────────────
+        # cktool `import-schema` only accepts the development environment —
+        # Production returns "endpoint not applicable in the environment
+        # 'production'", and cktool has NO dev→prod promote subcommand. The
+        # promotion is CloudKit Console-only ("Deploy Schema Changes to
+        # Production…"), which keeps it naturally user-owned.
         if [[ "$ENV" == "production" ]]; then
             echo "────────────────────────────────────────────────────────────────"
             echo " PRODUCTION SCHEMA DEPLOY — $APP ($CONTAINER)"
             echo "────────────────────────────────────────────────────────────────"
-            echo " This is a USER-OWNED action. It mutates the live Production"
-            echo " CloudKit schema. Production indexes are ADD-ONLY (Apple rule):"
+            echo " cktool CANNOT push schema to Production (import-schema is"
+            echo " development-only; there is no promote subcommand)."
+            echo ""
+            echo " Do it in CloudKit Console (user-owned):"
+            echo "   1. https://icloud.developer.apple.com/dashboard"
+            echo "      → container $CONTAINER → environment: Development"
+            echo "   2. Make sure Development matches cloudkit/$APP.ckdb"
+            echo "      (mise run ck:schema deploy --app $APP --env development)"
+            echo "   3. Schema → 'Deploy Schema Changes to Production…'"
+            echo "      → review the field/index diff → Deploy."
+            echo ""
+            echo " Reminder: Production indexes are ADD-ONLY (Apple rule) —"
             echo " once a field is indexed in Production it can never be removed."
-            echo " Confirm in CloudKit Dashboard that the .ckdb diff is intended"
-            echo " before proceeding."
             echo "────────────────────────────────────────────────────────────────"
-            if [[ "$SURE" -ne 1 ]]; then
-                echo "Refusing to deploy to Production without --i-am-sure. Aborting." >&2
-                exit 2
-            fi
-            echo "--i-am-sure supplied — proceeding with Production import."
+            exit 2
         fi
 
         load_token

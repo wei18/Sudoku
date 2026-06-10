@@ -78,7 +78,7 @@ runtime ad calls.
 
 ## Pre-submission verification checklist (Leader/user)
 
-- [ ] CloudKit schema deployed to **Production** (not just Development) — user-owned via `mise run ck:schema deploy --app sudoku --env production --i-am-sure` (issue #337, foundations §7.7.2), then confirm in CK Dashboard before submit.
+- [ ] CloudKit schema deployed to **Production** (not just Development) — user-owned via CloudKit Console: container → Development → Schema → "Deploy Schema Changes to Production…" (cktool cannot push prod — foundations §7.7.2); sync Dev first with `mise run ck:schema deploy --app sudoku --env development`, then confirm the prod diff in Console before submit.
 - [ ] Sandbox Apple Account provisioned for the reviewer's region (per `asc-ops-handoff` — user-owned).
 - [ ] Production AdMob App ID + banner unit ID swapped in (paired flip, v2.5.3 — see `docs/v2/v2.5-readiness.md §v2.5.3`).
 - [ ] App Privacy questionnaire in ASC matches `Sudoku/Resources/PrivacyInfo.xcprivacy` (user-owned; no API — `v2.5-readiness.md §App Privacy`).

@@ -60,7 +60,7 @@ Workflow, review-discipline, monetization, ASC/icon ops, and mockup skills added
 | [`ios-design-mockup`](ios-design-mockup/SKILL.md) | Single-file HTML iOS design mockup from a spec — iPhone frames + SVG nav arrows + design-token panel |
 | [`mise-task-operations`](mise-task-operations/SKILL.md) | Index / entry point for every repo ops task — before grepping "how is X done", check here; maps each `mise run` task → invocation + safety gate + owning skill |
 | [`local-testflight-upload`](local-testflight-upload/SKILL.md) | Local archive→export→TestFlight via `mise run tf:upload`; temporary Xcode-Cloud-Main-CI substitute; upload gated behind `--i-am-sure` |
-| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | Export / validate / deploy CloudKit schema via `mise run ck:schema` (`xcrun cktool`); `.ckdb` source of truth; Production deploy user-owned + `--i-am-sure` gated |
+| [`cloudkit-schema-ops`](cloudkit-schema-ops/SKILL.md) | Export / validate / deploy CloudKit schema via `mise run ck:schema` (`xcrun cktool`); `.ckdb` source of truth; Production promote = CloudKit Console-only (user-owned) |
 | [`appstore-screenshot-pipeline`](appstore-screenshot-pipeline/SKILL.md) | Sync App Store screenshot PREVIEWS from snapshot baselines via `mise run store:screenshots`; symlink-based, PREVIEW-ONLY (not ASC submission-spec) |
 | [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | Regenerate Settings.bundle Acknowledgements from the SwiftPM dep graph via `mise run gen:acknowledgements` (LicensePlist); output gitignored |
 

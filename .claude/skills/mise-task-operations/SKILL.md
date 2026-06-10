@@ -15,7 +15,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | Task | What | Safety | Deeper skill |
 |---|---|---|---|
 | `mise run tf:upload <app> <ios\|macos\|all> [--archive-only\|--i-am-sure]` | archive → export → TestFlight upload | upload gated `--i-am-sure` (user-owned); archive/export safe | [[local-testflight-upload]] |
-| `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e] [--i-am-sure]` | CloudKit schema export / validate / deploy | prod deploy gated `--i-am-sure` (user-owned) | [[cloudkit-schema-ops]] |
+| `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e]` | CloudKit schema export / validate / dev-deploy | prod promote = Console-only (user-owned); task prints steps + exit 2 | [[cloudkit-schema-ops]] |
 | `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | sync ASC screenshot PREVIEWS from snapshot baselines (symlinks) | safe; PREVIEW-ONLY (not ASC-spec) | [[appstore-screenshot-pipeline]] |
 | `mise run gen:acknowledgements [--config-path …]` | regenerate Settings.bundle license page | safe; output gitignored | [[acknowledgements-generation]] |
 | `mise run gen:l10n_fixture` | regenerate AppCompositionTests L10n fixture (byte-copy of Sudoku catalog) | safe | [[ai-translated-localization]] |
@@ -38,9 +38,10 @@ exists wastes time and tokens — this index exists so that never happens.
 
 - **Secrets** come from `secrets/.env` (gitignored) — never argv, never echoed.
   See [[build-time-secret-injection]].
-- **Irreversible / live-service steps are gated behind `--i-am-sure`** and are
-  user-owned (tf:upload's upload, ck:schema's production deploy). archive / export
-  / validate / dev-deploy / scans / lint / generate are Leader-orderable + safe.
+- **Irreversible / live-service steps are user-owned**: tf:upload's upload is
+  gated behind `--i-am-sure`; ck:schema's production promote is CloudKit
+  Console-only (cktool cannot push prod). archive / export / validate /
+  dev-deploy / scans / lint / generate are Leader-orderable + safe.
 - **Tool versions** are pinned in `.mise.toml` ([[mise-tool-management]]); CI and
   dev share them for parity.
 
