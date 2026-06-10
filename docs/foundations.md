@@ -449,12 +449,15 @@ Leader-orderable 的步驟，做法與 ASCRegister 把 ASC metadata / GC leaderb
 | `export` | 從 Development 拉 schema → 寫 `cloudkit/<app>.ckdb`（commit 作為 source of truth）| 否 |
 | `validate` | 對 container 預檢 `cloudkit/<app>.ckdb` | 否 |
 | `deploy --env development` | 把 `.ckdb` import 回 Development（自由可跑）| 否 |
-| `deploy --env production --i-am-sure` | import 到 **Production**——**user-owned**，gated | 是 |
+| `deploy --env production` | **不可腳本化**（cktool import 僅限 Development）——印出 Console 步驟後 `exit 2` | — |
 
-**Production guard**：`deploy --env production` 印出一段 "user-owned / 不可逆 /
-indexes 為 add-only" 的確認 gate，且**必須**附 `--i-am-sure` flag 才會真的呼叫
-`cktool import-schema`；缺 flag 直接 `exit 2`。這保留「`apply`/import 由 user 授權」
-的既有分工（與 ASCRegister 一致），自動化只到「準備好、可一鍵下達」為止。
+**Production promote（2026-06-10 實跑修正）**：`cktool import-schema` 只接受
+Development——Production 回 "endpoint not applicable"，且 cktool 沒有 promote
+子指令。dev→prod 推進**只能**在 CloudKit Console（container → Development →
+Schema → "Deploy Schema Changes to Production…" → review diff → Deploy），
+天然 user-owned。`deploy --env production` 會印出上述步驟後 `exit 2`。
+Production 欄位/索引為 add-only（永不可移除）。詳見
+`.claude/skills/cloudkit-schema-ops` §Live-run gotchas。
 
 **Auth**：CloudKit *management* token，user 在 CloudKit Dashboard → Settings →
 Tokens 產生一次（cktool 的 ASC `.p8` 對應物），存進 `secrets/.env` 的

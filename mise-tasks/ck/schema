@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="CloudKit schema tool — export Dev schema (.ckdb) or deploy to an env via xcrun cktool. Production-deploy is user-owned (gated behind --i-am-sure)."
+#MISE description="CloudKit schema tool — export / validate / deploy-to-Development via xcrun cktool. Production promote is Console-only (user-owned); the production subcommand prints the steps and exits."
 #
 # Wraps `xcrun cktool` so the CloudKit Development→Production schema deploy becomes
 # a commit-trackable, Leader-orderable step — mirroring how ASCRegister made the
@@ -42,7 +42,7 @@ container_for() {
 }
 
 usage() {
-    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,/^set /p' "$0" | grep '^#' | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -53,6 +53,8 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --app)        APP="${2:-}"; shift 2 ;;
         --env)        ENV="${2:-}"; shift 2 ;;
+        # Legacy flag: production import was removed (Console-only); accepted
+        # so old documented commands degrade to the instructions, not an error.
         --i-am-sure)  SURE=1; shift ;;
         -h|--help)    usage 0 ;;
         *) echo "error: unknown argument '$1'" >&2; usage ;;
