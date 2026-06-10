@@ -20,6 +20,7 @@ internal import Foundation
 // #330 P2: the Live audio stack (`LiveAudioSession` + `LiveHaptics` +
 // `LiveSoundPlayer`) is constructed here — the only Sudoku layer that touches
 // the Live conformers (which reach AVFoundation inside GameAudioKit).
+internal import GameAppKit
 internal import GameAudio
 internal import GameCenterClient
 internal import GameShellUI
@@ -174,11 +175,23 @@ extension AppComposition {
         // via `FakeIAPClient.finishUpdates()`.
         monetizationController.startListeningForLifetimeOfApp()
 
+        // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
+        // `ResumeCandidate` here (the only layer that knows the Sudoku type).
+        // Throwing — `GameRootViewModel.bootstrap` owns the error funnel.
+        // Strings match the former `ResumePill` rendering exactly so snapshot
+        // baselines do not move ("Resume Easy", "3:21" for 201s).
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
             errorReporter: errorReporter,
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            fetchResume: {
+                guard let summary = try await persistence.latestInProgress() else { return nil }
+                return ResumeCandidate(
+                    title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                    subtitle: AppComposition.elapsed(summary.elapsedSeconds),
+                    route: .board(puzzleId: summary.puzzleId)
+                )
+            }
         )
 
         // #371 / #195: ATT pre-prompt coordinator. The two ATT touch points are

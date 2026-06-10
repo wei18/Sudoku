@@ -11,6 +11,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
+import GameAppKit
 import GameCenterClient
 import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 import MonetizationCore
@@ -20,6 +21,24 @@ import PuzzleStore
 import SudokuEngine
 import SudokuKitTesting
 import Telemetry
+
+// #455: mirrors the Sudoku composition `fetchResume` mapping — reads the
+// injected `FakePersistence` and maps its `SavedGameSummary` into the
+// game-agnostic `ResumeCandidate` with the same strings the pill renders.
+private func sudokuFetchResume(
+    _ persistence: FakePersistence
+) -> () async throws -> ResumeCandidate<AppRoute>? {
+    {
+        guard let summary = try await persistence.latestInProgress() else { return nil }
+        let minutes = summary.elapsedSeconds / 60
+        let seconds = summary.elapsedSeconds % 60
+        return ResumeCandidate(
+            title: "Resume \(summary.difficulty.rawValue.capitalized)",
+            subtitle: String(format: "%d:%02d", minutes, seconds),
+            route: .board(puzzleId: summary.puzzleId)
+        )
+    }
+}
 
 @MainActor
 private func makeTestRouteFactory() -> LiveRouteFactory {
@@ -50,7 +69,7 @@ struct RootViewTests {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: persistence,
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            fetchResume: sudokuFetchResume(persistence)
         )
 
         await viewModel.bootstrap()
@@ -67,7 +86,7 @@ struct RootViewTests {
         let viewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            fetchResume: sudokuFetchResume(persistence)
         )
 
         await viewModel.bootstrap()
@@ -93,21 +112,29 @@ struct RootViewTests {
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: persistence,
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            fetchResume: sudokuFetchResume(persistence)
         )
 
         await viewModel.bootstrap()
 
-        #expect(viewModel.resumeCandidate == summary)
+        // #455: `resumeCandidate` is now the game-agnostic DTO, not the
+        // Sudoku-typed `SavedGameSummary`. Assert the mapped fields ("Resume
+        // Easy" + "3:21" for 201s) + the board route.
+        #expect(viewModel.resumeCandidate == ResumeCandidate(
+            title: "Resume Easy",
+            subtitle: "3:21",
+            route: .board(puzzleId: summary.puzzleId)
+        ))
     }
 
     @Test func authFailureFallsBackToUnauthenticated() async {
         let gameCenter = FakeGameCenterClient()
         await gameCenter.setAuthResult(.failure(.cancelled))
+        let persistence = FakePersistence()
         let viewModel = RootViewModel(
             gameCenter: gameCenter,
-            persistence: FakePersistence(),
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            persistence: persistence,
+            fetchResume: sudokuFetchResume(persistence)
         )
 
         await viewModel.bootstrap()
@@ -117,10 +144,11 @@ struct RootViewTests {
 
     #if canImport(AppKit)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateIPhoneLight() async {
+        let persistence = FakePersistence()
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence(),
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            persistence: persistence,
+            fetchResume: sudokuFetchResume(persistence)
         )
         await viewModel.bootstrap()
 
@@ -150,10 +178,11 @@ struct RootViewTests {
             status: "inProgress",
             generatorVersion: 1
         )
+        let persistence = FakePersistence(resumeCandidate: summary)
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence(resumeCandidate: summary),
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            persistence: persistence,
+            fetchResume: sudokuFetchResume(persistence)
         )
         await viewModel.bootstrap()
 
@@ -169,10 +198,11 @@ struct RootViewTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
+        let persistence = FakePersistence()
         let viewModel = RootViewModel(
             gameCenter: FakeGameCenterClient(),
-            persistence: FakePersistence(),
-            resumeRoute: { AppRoute.board(puzzleId: $0.puzzleId) }
+            persistence: persistence,
+            fetchResume: sudokuFetchResume(persistence)
         )
         await viewModel.bootstrap()
 

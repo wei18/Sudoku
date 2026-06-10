@@ -1,8 +1,11 @@
 // GameRootViewModelTests — bootstrap + resume behavior of the generic Root VM.
 //
-// Mirrors Sudoku's RootViewTests bootstrap/resume assertions against a tiny
-// test `Route` enum, plus the no-resume path (`resumeRoute: nil` — skips the
-// fetch + no-ops `resumeTapped()`).
+// #455: resume is now driven by an injected `fetchResume` closure returning
+// the game-agnostic `ResumeCandidate<Route>` DTO (not a Sudoku-typed
+// `SavedGameSummary`). Tests cover: `fetchResume == nil` (no fetch, nil
+// candidate, `resumeTapped()` no-ops), a closure returning a candidate
+// (candidate set, `resumeTapped()` appends `candidate.route`), and a throwing
+// closure (nil candidate + funneled error). Uses a tiny test `Route` enum.
 
 import Foundation
 import Testing
@@ -10,13 +13,16 @@ import GameCenterClient
 import GameState
 import Persistence
 import SudokuEngine
+import Telemetry
 @testable import GameAppKit
 
 // MARK: - Test Route
 
-private enum Route: Hashable {
+private enum Route: Hashable, Sendable {
     case board(puzzleId: String)
 }
+
+private struct ResumeFetchError: Error {}
 
 // MARK: - Fakes
 
@@ -118,33 +124,28 @@ private struct StubGameCenter: GameCenterClient {
     func requestFriendsAuthorization() async throws -> FriendsAuthStatus { .notDetermined }
 }
 
-private func makeSummary() -> SavedGameSummary {
-    SavedGameSummary(
-        recordName: "saved-2026-05-19-easy",
-        puzzleId: "2026-05-19-easy",
-        mode: .daily,
-        difficulty: .easy,
-        lastModifiedAt: Date(timeIntervalSince1970: 1_715_000_000),
-        elapsedSeconds: 201,
-        status: "inProgress",
-        generatorVersion: 1
+// MARK: - Tests
+
+private func makeCandidate() -> ResumeCandidate<Route> {
+    ResumeCandidate(
+        title: "Resume Easy",
+        subtitle: "3:21",
+        route: .board(puzzleId: "2026-05-19-easy")
     )
 }
-
-// MARK: - Tests
 
 @MainActor
 @Suite("GameRootViewModel — bootstrap + resume")
 struct GameRootViewModelTests {
 
     @Test func bootstrapSetsAuthStateAndFetchesResumeCandidate() async {
-        let summary = makeSummary()
+        let candidate = makeCandidate()
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(authResult: .success(.authenticated(
                 PlayerSummary(teamPlayerId: "p1", displayName: "Player")
             ))),
-            persistence: StubPersistence(resumeCandidate: summary),
-            resumeRoute: { Route.board(puzzleId: $0.puzzleId) }
+            persistence: StubPersistence(),
+            fetchResume: { candidate }
         )
 
         await viewModel.bootstrap()
@@ -152,14 +153,14 @@ struct GameRootViewModelTests {
         #expect(viewModel.authState == .authenticated(
             PlayerSummary(teamPlayerId: "p1", displayName: "Player")
         ))
-        #expect(viewModel.resumeCandidate == summary)
+        #expect(viewModel.resumeCandidate == candidate)
     }
 
     @Test func authFailureFallsBackToUnauthenticated() async {
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(authResult: .failure(.cancelled)),
             persistence: StubPersistence(),
-            resumeRoute: { Route.board(puzzleId: $0.puzzleId) }
+            fetchResume: { makeCandidate() }
         )
 
         await viewModel.bootstrap()
@@ -172,7 +173,7 @@ struct GameRootViewModelTests {
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(),
             persistence: persistence,
-            resumeRoute: { Route.board(puzzleId: $0.puzzleId) }
+            fetchResume: { makeCandidate() }
         )
 
         await viewModel.bootstrap()
@@ -182,26 +183,25 @@ struct GameRootViewModelTests {
         #expect(count == 1)
     }
 
-    @Test func resumeTappedAppendsResumeRoute() async {
-        let summary = makeSummary()
+    @Test func resumeTappedAppendsCandidateRoute() async {
+        let candidate = makeCandidate()
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(),
-            persistence: StubPersistence(resumeCandidate: summary),
-            resumeRoute: { Route.board(puzzleId: $0.puzzleId) }
+            persistence: StubPersistence(),
+            fetchResume: { candidate }
         )
         await viewModel.bootstrap()
 
         viewModel.resumeTapped()
 
-        #expect(viewModel.path == [.board(puzzleId: summary.puzzleId)])
+        #expect(viewModel.path == [candidate.route])
     }
 
-    @Test func nilResumeRouteSkipsFetchAndNoOpsResume() async {
-        let summary = makeSummary()
+    @Test func nilFetchResumeSkipsFetchAndNoOpsResume() async {
         let viewModel = GameRootViewModel<Route>(
             gameCenter: StubGameCenter(),
-            persistence: StubPersistence(resumeCandidate: summary)
-            // resumeRoute omitted (nil) → no resume surface.
+            persistence: StubPersistence()
+            // fetchResume omitted (nil) → no resume surface.
         )
 
         await viewModel.bootstrap()
@@ -209,5 +209,21 @@ struct GameRootViewModelTests {
 
         viewModel.resumeTapped()
         #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func fetchResumeThrowsLeavesNilAndFunnelsError() async {
+        let reporter = FakeErrorReporter()
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(),
+            persistence: StubPersistence(),
+            errorReporter: reporter,
+            fetchResume: { throw ResumeFetchError() }
+        )
+
+        await viewModel.bootstrap()
+
+        #expect(viewModel.resumeCandidate == nil)
+        let received = await reporter.received
+        #expect(received.contains { $0.source == "GameRootViewModel.bootstrap.resume" })
     }
 }

@@ -201,4 +201,16 @@ public struct AppComposition {
         await coordinator.boot()
         #endif
     }
+
+    // MARK: - Resume helpers (#455)
+
+    /// `%d:%02d` elapsed label for the resume pill subtitle. Moved out of the
+    /// former `SavedGameSummary`-typed `ResumePill` (now game-agnostic) into a
+    /// single shared home so `.live()` and `.preview()` map `SavedGameSummary`
+    /// into the game-agnostic `ResumeCandidate` with byte-identical strings.
+    static func elapsed(_ totalSeconds: Int) -> String {
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
 }
