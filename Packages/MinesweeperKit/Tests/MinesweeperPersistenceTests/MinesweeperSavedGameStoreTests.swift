@@ -103,17 +103,57 @@ struct MinesweeperSavedGameStoreTests {
     }
 
     @Test
-    func terminalSnapshotSavesAsCompleted() async throws {
-        let gateway = FakePrivateCKGateway()
-        let store = makeStore(gateway)
+    func wireStatusMapsTerminalStatesToCompleted() async throws {
         let session = MinesweeperSession(difficulty: .beginner, seed: 7)
         _ = try await session.reveal(row: 4, col: 4)
         let snap = await session.snapshot()
 
-        // Force a terminal wire-status without playing to an actual loss:
-        // wireStatus is the unit under test here.
         #expect(MinesweeperSavedGameStore.wireStatus(for: .won) == "completed")
         #expect(MinesweeperSavedGameStore.wireStatus(for: .lost) == "completed")
         #expect(MinesweeperSavedGameStore.wireStatus(for: snap.status) == "inProgress")
+    }
+
+    @Test
+    func recordNameSchemesAreStable() {
+        #expect(
+            MinesweeperSavedGameStore.recordName(dailyDay: "2026-06-10", difficulty: .beginner)
+                == "daily-2026-06-10-beginner"
+        )
+        #expect(
+            MinesweeperSavedGameStore.recordName(practice: .expert) == "practice-expert"
+        )
+    }
+
+    @Test
+    func loadInProgressThrowsOnNewerSchemaVersion() async throws {
+        let gateway = FakePrivateCKGateway()
+        let store = makeStore(gateway)
+        let snapshot = try await midPlaySnapshot()
+        try await store.save(snapshot, modeRaw: "practice", recordName: "future")
+
+        // Simulate a record written by a newer build.
+        var payload = try #require(await gateway.fetch(recordName: "future"))
+        payload.fields["schemaVersion"] = .int(MinesweeperSavedGameStore.currentSchemaVersion + 1)
+        await gateway.seed(payload)
+
+        await #expect(throws: PersistenceError.self) {
+            _ = try await store.loadInProgress(recordName: "future")
+        }
+    }
+
+    @Test
+    func loadInProgressPropagatesCorruptBlobError() async throws {
+        let gateway = FakePrivateCKGateway()
+        let store = makeStore(gateway)
+        let snapshot = try await midPlaySnapshot()
+        try await store.save(snapshot, modeRaw: "practice", recordName: "corrupt")
+
+        var payload = try #require(await gateway.fetch(recordName: "corrupt"))
+        payload.fields["stateBlob"] = .data(Data("not json".utf8))
+        await gateway.seed(payload)
+
+        await #expect(throws: (any Error).self) {
+            _ = try await store.loadInProgress(recordName: "corrupt")
+        }
     }
 }

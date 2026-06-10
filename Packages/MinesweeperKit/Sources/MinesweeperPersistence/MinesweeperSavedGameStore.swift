@@ -16,10 +16,21 @@
 //   schemaVersion   Int(64)     1
 //   stateBlob       Bytes       JSON-encoded MinesweeperSessionSnapshot
 //
+// Index contract (part of the .ckdb spec — #463 CR): `latestInProgress()`
+// issues `NSPredicate("status == %@")` on the live gateway, so the schema
+// must mark `status` QUERYABLE (+ the CloudKit-required `recordName`
+// QUERYABLE on the record type). `lastModifiedAt` needs no sortable index —
+// the max-by is client-side.
+//
 // Seed mapping: `RecordValue.int(Int)` is the only integer wire type, and
 // CloudKit's Int(64) is signed — a board seed is `UInt64`, so it crosses the
 // wire as its `Int64` bit-pattern (`Int64(bitPattern:)` out,
 // `UInt64(bitPattern:)` back). Lossless both ways for every UInt64.
+//
+// Conflict scope (deliberate MVP trim, #463 CR): `save` is a bare
+// `gateway.save` — a cross-device `.syncConflict` THROWS instead of merging.
+// Sudoku's RetryHarness + ConflictResolver are overkill for MS v1; step 4
+// decides between whole-record LWW retry or surfacing the throw.
 //
 // INERT until #455 step 4: nothing constructs this store yet — composition
 // wiring (and the Telemetry save-funnel mirroring Sudoku's store) lands after
@@ -99,15 +110,24 @@ public actor MinesweeperSavedGameStore {
             .max { $0.lastModifiedAt < $1.lastModifiedAt }
     }
 
-    /// Decode the full snapshot for a known record, or nil when absent /
-    /// not yet migrated. The caller rebuilds the live board via
+    /// Decode the full snapshot for a known record; nil only when the record
+    /// is genuinely absent. A blob written by a NEWER schema throws
+    /// `.schemaVersionTooNew`; a corrupt blob propagates its decode error —
+    /// both distinguishable from "no save", so step 4 can hide/delete the
+    /// candidate instead of surfacing a resume pill that loads nothing
+    /// (#463 CR). The caller rebuilds the live board via
     /// `MinesweeperSession.restore(from:)`.
     public func loadInProgress(recordName: String) async throws -> MinesweeperSessionSnapshot? {
-        guard
-            let payload = try await gateway.fetch(recordName: recordName),
-            case .data(let blob) = payload.fields[Field.stateBlob]
-        else { return nil }
-        return try? JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: blob)
+        guard let payload = try await gateway.fetch(recordName: recordName) else { return nil }
+        if case .int(let version) = payload.fields[Field.schemaVersion],
+           version > Self.currentSchemaVersion {
+            throw PersistenceError.schemaVersionTooNew(
+                expected: Self.currentSchemaVersion,
+                found: version
+            )
+        }
+        guard case .data(let blob) = payload.fields[Field.stateBlob] else { return nil }
+        return try JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: blob)
     }
 
     /// Flip a save to "completed" so `latestInProgress()` stops surfacing it.
@@ -129,6 +149,27 @@ public actor MinesweeperSavedGameStore {
                 fields: fields
             )
         )
+    }
+
+    // MARK: - Record names
+    //
+    // Centralized so step 4 cannot reinvent an ad-hoc scheme — Sudoku's store
+    // grew its `recordName(for:mode:)` helper after a freehand overload wrote
+    // to the wrong name and orphaned a record per save (#463 CR / Sudoku
+    // SavedGameStore scar). One record per daily board; one resumable slot
+    // per practice difficulty.
+
+    /// `daily-<YYYY-MM-DD>-<difficulty>` — identical to
+    /// `MinesweeperDaily.puzzleId(day:difficulty:)`, so the saved record,
+    /// the hub card, and stale-daily detection all share one identity.
+    public static func recordName(dailyDay day: String, difficulty: Difficulty) -> String {
+        MinesweeperDaily.puzzleId(day: day, difficulty: difficulty)
+    }
+
+    /// `practice-<difficulty>` — a singleton resumable slot per difficulty
+    /// (a new practice game of the same difficulty overwrites the old save).
+    public static func recordName(practice difficulty: Difficulty) -> String {
+        "practice-\(difficulty.rawValue)"
     }
 
     // MARK: - Mapping
