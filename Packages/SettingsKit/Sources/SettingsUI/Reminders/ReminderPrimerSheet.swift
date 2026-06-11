@@ -25,10 +25,10 @@
 //           Button level (after `.buttonStyle`) so only the visible row is
 //           interactive and no invisible rectangle bleeds into the sheet body.
 //   R6.2 — `declineButton` switches from `.plain` to `DeclineButtonStyle`, a
-//           local `ButtonStyle` that animates opacity on press, shows a subtle
-//           rounded-rectangle highlight on focus (keyboard / TV-style nav), and
-//           carries an `accessibilityAddTraits(.isButton)` explicitly so VoiceOver
-//           announces the pressed state correctly.
+//           local `ButtonStyle` that animates opacity on press and shows a subtle
+//           rounded-rectangle highlight on focus (keyboard / TV-style nav).
+//           VoiceOver keeps the button role automatically — SwiftUI propagates
+//           it through `ButtonStyle`.
 //   R6.3 — Detent restriction lives in the presenter (`ReminderSettingsSection`):
 //           `.presentationDetents([.medium])` (single) and
 //           `.presentationDragIndicator(.hidden)` prevent drag-up layout breakage.
@@ -89,6 +89,7 @@ public struct ReminderPrimerCopy: Equatable {
 private struct DeclineButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isFocused) private var isFocused
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -100,8 +101,8 @@ private struct DeclineButtonStyle: ButtonStyle {
                         .padding(-4)
                 }
             }
-            .animation(.spring(duration: 0.15), value: configuration.isPressed)
-            .animation(.easeInOut(duration: 0.1), value: isFocused)
+            .animation(reduceMotion ? nil : .spring(duration: 0.15), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.1), value: isFocused)
     }
 }
 
@@ -138,36 +139,41 @@ public struct ReminderPrimerSheet: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
-            iconTile
-            VStack(spacing: 6) {
-                // R6.4: minimumScaleFactor prevents truncation on SE-class widths
-                // and at AX text sizes; lineLimit(nil) keeps multiline wrapping.
-                Text(copy.title)
-                    .font(.title2.weight(.bold))
+        // R6.3/R6.4 interplay: the sheet is locked to a single .medium detent, so
+        // at AX text sizes the content can exceed the detent height. ScrollView
+        // keeps the fineprint and decline button reachable instead of clipped.
+        ScrollView {
+            VStack(spacing: 16) {
+                iconTile
+                VStack(spacing: 6) {
+                    // R6.4: minimumScaleFactor prevents truncation on SE-class widths
+                    // and at AX text sizes; lineLimit(nil) keeps multiline wrapping.
+                    Text(copy.title)
+                        .font(.title2.weight(.bold))
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.75)
+                        .lineLimit(nil)
+                        .foregroundStyle(theme.text.primary.resolved)
+                    Text(copy.lede)
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.75)
+                        .lineLimit(nil)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                }
+                promiseBlock
+                VStack(spacing: 8) {
+                    acceptButton
+                    declineButton
+                }
+                Text(copy.fineprint)
+                    .font(.caption2)
                     .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.75)
-                    .lineLimit(nil)
-                    .foregroundStyle(theme.text.primary.resolved)
-                Text(copy.lede)
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.75)
-                    .lineLimit(nil)
-                    .foregroundStyle(theme.text.secondary.resolved)
+                    .foregroundStyle(theme.text.tertiary.resolved)
             }
-            promiseBlock
-            VStack(spacing: 8) {
-                acceptButton
-                declineButton
-            }
-            Text(copy.fineprint)
-                .font(.caption2)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(theme.text.tertiary.resolved)
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity)
         .background(theme.surface.elevated.resolved)
     }
 
@@ -334,14 +340,16 @@ public struct ReminderDeniedExplainer: View {
                 .background(theme.status.warning.resolved.opacity(0.10), in: .rect(cornerRadius: 10))
             #endif
 
+            // R6.1/R6.2 (same pattern as declineButton): hit region scoped to the
+            // button frame, pressed/focus feedback via DeclineButtonStyle.
             Button(action: onDismiss) {
                 Text(copy.dismissCTA)
                     .font(.body.weight(.medium))
                     .foregroundStyle(theme.text.secondary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(DeclineButtonStyle())
+            .contentShape(Rectangle())
         }
         .padding(24)
         .frame(maxWidth: .infinity)
