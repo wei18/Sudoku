@@ -3,12 +3,17 @@
 //   - `GameCenterClient` (runtime submit + auth + achievement reporting)
 //   - `ASCRegister` (App Store Connect API provisioning CLI)
 //
-// Lives in SudokuEngine — the deepest leaf module both targets can reach —
-// per the pattern set by `UTCDay` in PR #127. Resolves issue #66 (M6):
-// the previous arrangement kept duplicate strings in `GameCenterClient/
-// LeaderboardIDs.swift` and `ASCRegister/Config.swift`, reconciled by
-// `ConfigConsistencyTests`. With a single source the consistency check
-// is structural-by-construction.
+// Lives in SudokuEngine — the deepest leaf module the RUNTIME targets can
+// reach — per the pattern set by `UTCDay` in PR #127 (issue #66 / M6).
+// Honest scope of the centralization (#466):
+//   - GameCenterClient consumes this structurally (`LeaderboardIDs.swift`
+//     re-exports `LeaderboardID`; `AchievementEvaluator` emits the
+//     `AchievementID` short ids) — structural-by-construction there.
+//   - ASCRegister is a STANDALONE CLI package that does not depend on
+//     SudokuCoreKit; `ASCRegister/Config.swift` keeps its own copy of these
+//     strings, reconciled at runtime by `ConfigConsistencyTests` ("fix them
+//     in BOTH places") — deliberate: pulling the whole engine into the CLI
+//     for 11 strings would invert the tooling/runtime dependency split.
 //
 // Domain layering note: SudokuEngine is otherwise puzzle-mechanics-focused
 // and holds no Game Center semantics. We host the *identifier strings*

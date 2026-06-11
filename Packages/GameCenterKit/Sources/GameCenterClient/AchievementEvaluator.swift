@@ -15,7 +15,8 @@
 // local SwiftData mirror anyway (§How.6.5 not a network round trip).
 //
 // Achievement ID prefix `com.wei18.sudoku.achievement.` is NOT applied
-// here — the evaluator emits short stable ids ("first_puzzle" etc.).
+// here — the evaluator emits the short ids from `AchievementID` (#466:
+// previously raw literals; the SSOT enum is now actually consumed).
 // Prefix is added at submit time by `GameCenterSink` (§How.3.2 末段).
 
 public import Foundation
@@ -42,38 +43,38 @@ public actor AchievementEvaluator: Sendable {
         var results: [AchievementProgress] = []
 
         // 1. first_puzzle — always 100% on any completion.
-        results.append(AchievementProgress(achievementId: "first_puzzle", percentComplete: 100))
+        results.append(AchievementProgress(achievementId: AchievementID.firstPuzzle, percentComplete: 100))
 
         // 2. daily.complete_one — Daily mode only, 100% on first daily.
         if mode == .daily {
-            results.append(AchievementProgress(achievementId: "daily.complete_one", percentComplete: 100))
+            results.append(AchievementProgress(achievementId: AchievementID.dailyCompleteOne, percentComplete: 100))
         }
 
         // 3 + 4. Streaks — count consecutive UTC days (incl. today) with
         // at least one daily completion.
         let streak = try await consecutiveDailyStreak(endingOn: today, maxDays: 7)
         if streak >= 3 {
-            results.append(AchievementProgress(achievementId: "daily.streak_3", percentComplete: 100))
+            results.append(AchievementProgress(achievementId: AchievementID.dailyStreak3, percentComplete: 100))
         }
         if streak >= 7 {
-            results.append(AchievementProgress(achievementId: "daily.streak_7", percentComplete: 100))
+            results.append(AchievementProgress(achievementId: AchievementID.dailyStreak7, percentComplete: 100))
         }
 
         // 5 + 6. Practice counts — sum across difficulties.
         let practiceCount = try await totalCompletedCount(mode: .practice)
         results.append(AchievementProgress(
-            achievementId: "practice.complete_10",
+            achievementId: AchievementID.practiceComplete10,
             percentComplete: percent(progress: practiceCount, target: 10)
         ))
         results.append(AchievementProgress(
-            achievementId: "practice.complete_100",
+            achievementId: AchievementID.practiceComplete100,
             percentComplete: percent(progress: practiceCount, target: 100)
         ))
 
         // 7. hard.master — hard completions across both modes.
         let hardCount = try await totalHardCount()
         results.append(AchievementProgress(
-            achievementId: "hard.master",
+            achievementId: AchievementID.hardMaster,
             percentComplete: percent(progress: hardCount, target: 25)
         ))
 
@@ -87,7 +88,7 @@ public actor AchievementEvaluator: Sendable {
             todaysIds.contains("\(todayKey)-\(diff.rawValue)")
         }
         if sweepDone {
-            results.append(AchievementProgress(achievementId: "daily.sweep", percentComplete: 100))
+            results.append(AchievementProgress(achievementId: AchievementID.dailySweep, percentComplete: 100))
         }
 
         _ = (puzzleId, difficulty) // referenced through the puzzleId in higher-level logging

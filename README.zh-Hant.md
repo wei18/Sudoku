@@ -46,7 +46,8 @@ Minesweeper/                 # 薄殼：@main + DI composition root（鏡像 Sud
 Packages/
 ├── SudokuCoreKit/           # 純 Swift 核心：SudokuEngine + GameState（leaf，可移植）
 ├── MinesweeperCoreKit/      # 純 Swift 核心：MinesweeperEngine + MinesweeperGameState（leaf）
-├── TimeKit/                 # 純 Swift 核心：UTCDay 日期工具（leaf，可移植）
+├── TimeKit/                 # 純 Swift 核心：UTCDay 日期工具 + MonotonicClock（leaf，可移植）
+├── DeterminismKit/          # 純 Swift 核心：SplitMix64 / DeterministicRNG，兩引擎共用（leaf）
 ├── TelemetryKit/            # Logger + Tracking 抽象 + TelemetryTesting fixtures
 ├── PersistenceKit/          # CloudKit Persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting
@@ -54,6 +55,7 @@ Packages/
 ├── GameAudioKit/            # 共用 SFX / BGM / 觸覺回饋音訊引擎（AVFoundation 隔離於 Live）
 ├── GameShellKit/            # GameShellUI——兩款 App 共用的導覽殼
 ├── SettingsKit/             # SettingsUI——兩款 App 共用的設定區塊
+├── GameAppKit/              # 共用 app-composition 層:GameRootViewModel / GameRoot / ResumePill / ResumeCandidate
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（第三方 SDK 隔離）
 ├── SudokuKit/               # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
 ├── MinesweeperKit/          # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition

@@ -36,7 +36,7 @@
 | [`session-to-meeting-log`](session-to-meeting-log/SKILL.md) | 把 Claude Code session JSONL 整理成 `meetings/{date}_{topic}.md`；摘要、非 verbatim |
 | [`methodology-pattern-extractor`](methodology-pattern-extractor/SKILL.md) | 從 meeting log 抽出 ≥ 3 次重複的 pattern，追加至 `methodology.md §Patterns` |
 | [`subagent-review-cycles`](subagent-review-cycles/SKILL.md) | Leader / Developer / Code-Reviewer 三角；round 1 cosmetic inline edit；limit(N) |
-| [`spec-phase-orchestration`](spec-phase-orchestration/SKILL.md) | 6 file（README + foundations / design / plan / methodology + meetings/）；section-by-section；prerequisite gate；無 spec 不寫 code |
+| [`spec-phase-orchestration`](spec-phase-orchestration/SKILL.md) | 5 files + meetings/（README + foundations / design / plan / methodology）；section-by-section；prerequisite gate；無 spec 不寫 code |
 | [`backlog-routing-by-topic`](backlog-routing-by-topic/SKILL.md) | 散落想法依主題 route 到對應檔 §Backlog（玩法 / 工具 / 實作 / 協作 / fallback meeting log）|
 | [`apple-public-repo-security`](apple-public-repo-security/SKILL.md) | Public iOS / macOS repo 三道防線（lefthook + gitleaks / Xcode Cloud post-clone / GitHub Secret Scanning）+ leak rotate-first SOP |
 | [`leader-developer-handoff-contract`](leader-developer-handoff-contract/SKILL.md) | 派發 sub-agent 的 5 要件：scope / inputs / skills / return format / verification |

@@ -46,7 +46,8 @@ Minesweeper/                 # thin shell: @main + DI composition root (mirrors 
 Packages/
 ├── SudokuCoreKit/           # pure-Swift core: SudokuEngine + GameState (leaf, portable)
 ├── MinesweeperCoreKit/      # pure-Swift core: MinesweeperEngine + MinesweeperGameState (leaf)
-├── TimeKit/                 # pure-Swift core: UTCDay date helpers (leaf, portable)
+├── TimeKit/                 # pure-Swift core: UTCDay date helpers + MonotonicClock (leaf, portable)
+├── DeterminismKit/          # pure-Swift core: SplitMix64 / DeterministicRNG shared by both engines (leaf)
 ├── TelemetryKit/            # Logger + Tracking abstraction + TelemetryTesting fixtures
 ├── PersistenceKit/          # CloudKit persistence + PersistenceTesting
 ├── GameCenterKit/           # GameCenterClient + GameCenterTesting
@@ -54,6 +55,7 @@ Packages/
 ├── GameAudioKit/            # shared SFX / BGM / haptics audio engine (AVFoundation isolated to Live)
 ├── GameShellKit/            # GameShellUI — the navigation shell both apps share
 ├── SettingsKit/             # SettingsUI — the shared settings sections both apps mount
+├── GameAppKit/              # shared app-composition layer: GameRootViewModel / GameRoot / ResumePill / ResumeCandidate
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2 (third-party SDK isolation)
 ├── SudokuKit/               # Sudoku-specific: PuzzleStore / SudokuUI / AppComposition
 ├── MinesweeperKit/          # Minesweeper-specific: MinesweeperUI / MinesweeperAppComposition
