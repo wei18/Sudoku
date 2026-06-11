@@ -76,81 +76,81 @@ struct GameRootViewModelLeaveTests {
     // MARK: - Epic 1: Modal presentation
 
     @Test func presentGameSetsActiveRouteAndPresented() {
-        let vm = makeVM()
-        #expect(vm.activeGameRoute == nil)
-        #expect(vm.isGamePresented == false)
+        let sut = makeVM()
+        #expect(sut.activeGameRoute == nil)
+        #expect(sut.isGamePresented == false)
 
-        vm.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
 
-        #expect(vm.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
-        #expect(vm.isGamePresented == true)
+        #expect(sut.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
+        #expect(sut.isGamePresented == true)
     }
 
     @Test func dismissGameClearsRouteAndPresented() {
-        let vm = makeVM()
-        vm.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        let sut = makeVM()
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
 
-        vm.dismissGame()
+        sut.dismissGame()
 
-        #expect(vm.activeGameRoute == nil)
-        #expect(vm.isGamePresented == false)
+        #expect(sut.activeGameRoute == nil)
+        #expect(sut.isGamePresented == false)
     }
 
     @Test func dismissGameWhenNotPresentedIsNoop() {
-        let vm = makeVM()
+        let sut = makeVM()
         // Must not crash or set unexpected state.
-        vm.dismissGame()
+        sut.dismissGame()
 
-        #expect(vm.activeGameRoute == nil)
-        #expect(vm.isGamePresented == false)
+        #expect(sut.activeGameRoute == nil)
+        #expect(sut.isGamePresented == false)
     }
 
     // MARK: - Epic 2: Leave confirmation
 
     @Test func requestLeaveShowsConfirmation() {
-        let vm = makeVM()
-        #expect(vm.isShowingLeaveConfirmation == false)
+        let sut = makeVM()
+        #expect(sut.isShowingLeaveConfirmation == false)
 
-        vm.requestLeave()
+        sut.requestLeave()
 
-        #expect(vm.isShowingLeaveConfirmation == true)
+        #expect(sut.isShowingLeaveConfirmation == true)
     }
 
     @Test func cancelLeaveHidesConfirmationWithoutDismissing() {
-        let vm = makeVM()
-        vm.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
-        vm.requestLeave()
+        let sut = makeVM()
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.requestLeave()
 
-        vm.cancelLeave()
+        sut.cancelLeave()
 
-        #expect(vm.isShowingLeaveConfirmation == false)
+        #expect(sut.isShowingLeaveConfirmation == false)
         // Game remains presented.
-        #expect(vm.isGamePresented == true)
-        #expect(vm.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
+        #expect(sut.isGamePresented == true)
+        #expect(sut.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
     }
 
     @Test func confirmLeaveHidesConfirmationAndDismissesGame() {
-        let vm = makeVM()
-        vm.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
-        vm.requestLeave()
+        let sut = makeVM()
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.requestLeave()
 
-        vm.confirmLeave()
+        sut.confirmLeave()
 
-        #expect(vm.isShowingLeaveConfirmation == false)
-        #expect(vm.isGamePresented == false)
-        #expect(vm.activeGameRoute == nil)
+        #expect(sut.isShowingLeaveConfirmation == false)
+        #expect(sut.isGamePresented == false)
+        #expect(sut.activeGameRoute == nil)
     }
 
     @Test func requestLeaveWhenNoGamePresentedIsHarmless() {
-        let vm = makeVM()
+        let sut = makeVM()
         // requestLeave without a presented game (UI guard should prevent this,
         // but the VM must not crash).
-        vm.requestLeave()
+        sut.requestLeave()
 
-        #expect(vm.isShowingLeaveConfirmation == true)
+        #expect(sut.isShowingLeaveConfirmation == true)
         // confirmLeave still clears it safely.
-        vm.confirmLeave()
-        #expect(vm.isShowingLeaveConfirmation == false)
-        #expect(vm.isGamePresented == false)
+        sut.confirmLeave()
+        #expect(sut.isShowingLeaveConfirmation == false)
+        #expect(sut.isGamePresented == false)
     }
 }
