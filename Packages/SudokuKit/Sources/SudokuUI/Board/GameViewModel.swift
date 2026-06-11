@@ -402,6 +402,10 @@ public final class GameViewModel {
     public func select(row: Int, column: Int) {
         guard (0..<Board.dimension).contains(row),
               (0..<Board.dimension).contains(column) else { return }
+        // Epic 9 (SDD-003): given (prefilled) cells are not selectable —
+        // tapping them does nothing, produces no highlight.
+        let index = Board.index(row: row, column: column)
+        guard !board.givenMask[index] else { return }
         selection = GridCoordinate(row: row, column: column)
     }
 
