@@ -35,9 +35,9 @@ struct MinesweeperPersistHooksTests {
     @Test
     func pausePersistsInProgressSave() async throws {
         let gateway = FakePrivateCKGateway()
-        let vm = makeVM(gateway: gateway)
-        await vm.reveal(row: 4, col: 4)
-        await vm.pause()
+        let viewModel = makeVM(gateway: gateway)
+        await viewModel.reveal(row: 4, col: 4)
+        await viewModel.pause()
 
         let payload = try #require(await gateway.fetch(recordName: "practice-beginner"))
         #expect(payload.fields["status"] == .string("inProgress"))
@@ -47,31 +47,31 @@ struct MinesweeperPersistHooksTests {
     @Test
     func idleBoardNeverPersists() async {
         let gateway = FakePrivateCKGateway()
-        let vm = makeVM(gateway: gateway)
+        let viewModel = makeVM(gateway: gateway)
         // No reveal — the board is still .idle; a save here would occupy the
         // resume pill with a zero-information record.
-        await vm.persistCurrentState()
+        await viewModel.persistCurrentState()
         #expect(await gateway.recordCount() == 0)
     }
 
     @Test
     func terminalRevealPersistsCompleted() async throws {
         let gateway = FakePrivateCKGateway()
-        let vm = makeVM(gateway: gateway)
-        await vm.reveal(row: 4, col: 4)
+        let viewModel = makeVM(gateway: gateway)
+        await viewModel.reveal(row: 4, col: 4)
 
         // Reveal a known mine → .lost → the terminal hook saves "completed",
         // which removes the record from the resume-candidate set.
-        outer: for row in 0..<vm.rows {
-            for col in 0..<vm.columns {
-                let cell = vm.cell(row: row, col: col)
+        outer: for row in 0..<viewModel.rows {
+            for col in 0..<viewModel.columns {
+                let cell = viewModel.cell(row: row, col: col)
                 if cell.isMine, cell.state == .hidden {
-                    await vm.reveal(row: row, col: col)
+                    await viewModel.reveal(row: row, col: col)
                     break outer
                 }
             }
         }
-        #expect(vm.status == .lost)
+        #expect(viewModel.status == .lost)
 
         let payload = try #require(await gateway.fetch(recordName: "practice-beginner"))
         #expect(payload.fields["status"] == .string("completed"))
@@ -86,7 +86,7 @@ struct MinesweeperPersistHooksTests {
             .alwaysOnSave(.underlying(domain: "Test", code: 1, description: "boom"))
         )
         let reporter = FakeErrorReporter()
-        let vm = MinesweeperGameViewModel(
+        let viewModel = MinesweeperGameViewModel(
             difficulty: .beginner,
             seed: 7,
             mode: .practice,
@@ -94,10 +94,10 @@ struct MinesweeperPersistHooksTests {
             store: MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate }),
             recordName: "practice-beginner"
         )
-        await vm.reveal(row: 4, col: 4)
-        await vm.pause()   // save throws → funnel, no crash, state intact
+        await viewModel.reveal(row: 4, col: 4)
+        await viewModel.pause()   // save throws → funnel, no crash, state intact
 
-        #expect(vm.status == .paused)
+        #expect(viewModel.status == .paused)
         let received = await reporter.received
         #expect(received.contains {
             $0.source == "MinesweeperGameViewModel.persistCurrentState"
