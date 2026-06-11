@@ -77,6 +77,8 @@ struct GameViewModelFixedCellTests {
 
     // MARK: - placeDigit must still be a no-op for fixed cells (regression guard)
 
+    // This behavior predates Epic 9 (placeDigit had its own givenMask gate);
+    // the test ensures the new select() guard didn't disturb the mutation path.
     @Test func placeDigit_onFixedCell_isNoOp() async throws {
         let (viewModel, _) = try makeLiveViewModel()
         await viewModel.startOrResume()

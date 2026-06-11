@@ -410,6 +410,9 @@ public final class GameViewModel {
     }
 
     /// Move focus by a delta (used by Mac arrow keys). Clamps to board bounds.
+    /// Given cells are intentionally reachable here (no `givenMask` guard):
+    /// SDD-003 Epic 9 targets tap interaction only, and skipping givens would
+    /// make arrow navigation jump non-linearly. The guard lives in `select()`.
     public func moveSelection(rowDelta: Int, columnDelta: Int) {
         let current = selection ?? GridCoordinate(row: 0, column: 0)
         let nextRow = max(0, min(Board.dimension - 1, current.row + rowDelta))
