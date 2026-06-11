@@ -74,6 +74,10 @@ Trigger：點擊 `[X]`。
 Investigation：盤點 `ResumeCandidate` / `ResumePill`（GameAppKit）+
 `PersistenceKit` restore flow，確認缺失資料。
 
+> 註：resume seam 本身已完工（見 `2026-06-10-resume-seam-design.md` §as-built，
+> 兩款 app 的 `fetchResume` 已接線）。本 epic 修的是 seam 上游 —
+> per-game persistence 保存/還原的資料完整性，勿重新設計 seam。
+
 **AC**: (3.1) 棋盤一致；(3.2) Notes 一致；(3.3) Timer 一致；(3.4) Mistakes 一致；
 (3.5) Daily Challenge 可恢復。
 
@@ -83,6 +87,9 @@ Full Screen Completion → **Popup Completion**（GameShellKit `CompletionScreen
 兩款 app 共用 — 這是 GameShellKit breaking change）。
 
 - 移除：Retry · New Game · Leaderboard；保留：Close
+  > 註：`CompletionScreen` 的 CTA 是各 app 經 `actions:` ViewBuilder 注入的——
+  > 「移除」發生在各 app 的注入點，不是刪共用元件的按鈕；Close 由 `actions`
+  > 注入或新增 `onClose` callback。
 - 顯示：Success/Failed · Time · Mistakes
 - Banner Rule：Popup 不顯示 Banner（AD-003）
 
@@ -93,9 +100,16 @@ Target 頁面全部掛 Banner：Home · Game · Daily · Settings · Statistics 
 Architecture：由 GameShellKit 統一處理（如 `ScreenContainer = Content + BannerSlot`），
 避免各畫面自行掛 `BannerSlotView()`。
 
+> 註：`BannerSlotView` 在 AppMonetizationKit；GameShellKit 的 `ScreenContainer`
+> **不得 import AppMonetizationKit**（zero-dep 規則）——banner slot 以閉包/
+> ViewBuilder 注入，組裝在 GameAppKit。
+
 CR Task：研究 Sudoku.com / Microsoft Sudoku / Minesweeper Classic 的 banner placement。
 
 ## Epic 6 — Reminder UX Fix（P0）— `ReminderPrimerSheet`
+
+> 註：`ReminderPrimerSheet` 在 **SettingsKit**（SettingsUI/Reminders/），
+> 不屬 AC-001 的 GameShellKit 範圍——就地修，勿搬移。
 
 - **R6.1** 任意位置點擊產生 Highlight → 修正互動區域
 - **R6.2** Not Now Button 無 Highlight → 補 Pressed / Focused / Accessibility state
