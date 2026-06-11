@@ -17,6 +17,14 @@
 // DTO (#455), so this VM is no longer coupled to any Sudoku-typed persistence.
 // Games that have no resume surface omit `fetchResume` (it defaults to nil) to
 // skip the fetch and no-op `resumeTapped()`.
+//
+// SDD-003 Epic 1+2: adds modal game presentation (`presentGame` / `dismissGame`)
+// and leave-confirmation state (`requestLeave` / `cancelLeave` / `confirmLeave`).
+// Board routes that previously pushed onto `path` now use `presentGame(route:)`
+// from the per-game RouteFactory or hub VMs; `GameRoot` presents them as a
+// `fullScreenCover`. The `[X]` close button calls `requestLeave()` → dialog →
+// `confirmLeave()` dismisses (save already happens via the board's `onDisappear`
+// flush, which fires before `activeGameRoute` is cleared).
 
 public import Foundation
 public import GameCenterClient
@@ -31,6 +39,23 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     public private(set) var resumeCandidate: ResumeCandidate<Route>?
     public private(set) var hasBootstrapped: Bool = false
     public var path: [Route] = []
+
+    // MARK: - Epic 1: Modal game presentation (SDD-003)
+
+    /// The route currently presented as a fullScreenCover game modal.
+    /// Set by `presentGame(route:)`; cleared by `dismissGame()` / `confirmLeave()`.
+    public private(set) var activeGameRoute: Route?
+
+    /// Drives the `.fullScreenCover(isPresented:)` binding in `GameRoot`.
+    /// Separate from `activeGameRoute` so SwiftUI can animate the dismiss before
+    /// the route is cleared.
+    public private(set) var isGamePresented: Bool = false
+
+    // MARK: - Epic 2: Leave confirmation (SDD-003)
+
+    /// `true` while the "Leave Game?" confirmation dialog is showing.
+    /// Set by `requestLeave()`; cleared by `cancelLeave()` / `confirmLeave()`.
+    public private(set) var isShowingLeaveConfirmation: Bool = false
 
     private let gameCenter: any GameCenterClient
     private let persistence: any PersistenceProtocol
@@ -108,5 +133,44 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     public func resumeTapped() {
         guard let candidate = resumeCandidate else { return }
         path.append(candidate.route)
+    }
+
+    // MARK: - Epic 1: Modal presentation (SDD-003)
+
+    /// Present a game board as a fullScreenCover modal. Called from per-app
+    /// hub VMs (DailyHub / PracticeHub) when the player taps a board card.
+    /// Replaces the former `path.append(boardRoute)` pattern.
+    public func presentGame(route: Route) {
+        activeGameRoute = route
+        isGamePresented = true
+    }
+
+    /// Dismiss the modal game. Called by SwiftUI's `isPresented` binding setter
+    /// (interactive dismiss — disabled for fullScreenCover, so this is only
+    /// called by `confirmLeave()`). Safe to call when nothing is presented.
+    public func dismissGame() {
+        isGamePresented = false
+        activeGameRoute = nil
+    }
+
+    // MARK: - Epic 2: Leave confirmation (SDD-003)
+
+    /// Show the "Leave Game?" confirmation. Called by the `[X]` close button
+    /// inside the modal board. Timer is unaffected — the game VM stays live.
+    public func requestLeave() {
+        isShowingLeaveConfirmation = true
+    }
+
+    /// User chose Cancel. Hide the confirmation; the game continues unchanged.
+    public func cancelLeave() {
+        isShowingLeaveConfirmation = false
+    }
+
+    /// User chose Leave. Save happens via the board view's `onDisappear` flush
+    /// (already wired in both Sudoku `BoardView` and MS `MinesweeperBoardView`).
+    /// This method only dismisses the modal; `onDisappear` fires first.
+    public func confirmLeave() {
+        isShowingLeaveConfirmation = false
+        dismissGame()
     }
 }

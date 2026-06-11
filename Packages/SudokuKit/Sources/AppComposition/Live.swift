@@ -397,7 +397,11 @@ extension AppComposition {
             makeReminderSettings: makeReminderSettings,
             settingsNotices: settingsNotices,
             soundPlayer: soundPlayer,
-            audioSettings: audioSettings
+            audioSettings: audioSettings,
+            // SDD-003 Epic 1: wire board routes to the modal presentation path.
+            // `rootViewModel.presentGame(route:)` stores the route + sets
+            // `isGamePresented = true`; `GameRoot`'s `.fullScreenCover` reacts.
+            onPresentBoard: { [rootViewModel] route in rootViewModel.presentGame(route: route) }
         )
 
         return AppComposition(

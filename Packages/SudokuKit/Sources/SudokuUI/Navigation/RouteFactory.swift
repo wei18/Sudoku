@@ -27,6 +27,10 @@ public import SettingsUI
 // `AudioSettingsModel` (injected into Settings) both appear in this factory's
 // public init signature. The seam only — no `AVFoundation`.
 public import GameAudio
+// SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
+// `onPresentBoard` is wired, so board views are presented as fullScreenCover
+// modals instead of NavigationStack pushes.
+public import GameAppKit
 
 // MARK: - LiveRouteFactory
 
@@ -76,6 +80,13 @@ public struct LiveRouteFactory: RouteFactory {
     // #330 P2: the Settings audio entry (volumes / mute / music / haptics).
     // `nil` in previews / tests → no audio section, byte-identical Settings.
     private let audioSettings: AudioSettingsModel?
+    // SDD-003 Epic 1: closure that modal-presents a board route via
+    // `GameRootViewModel.presentGame(route:)`. When non-nil, board routes
+    // (`AppRoute.board`) return a `GameBoardRedirect` that pops the push entry
+    // and fires this closure instead of building a `BoardLoaderView` inline.
+    // `nil` (default) preserves the legacy push-navigation behavior for tests
+    // and previews that don't wire a Root VM.
+    private let onPresentBoard: (@MainActor (AppRoute) -> Void)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -92,7 +103,8 @@ public struct LiveRouteFactory: RouteFactory {
         makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
         settingsNotices: SettingsNoticesConfig? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        audioSettings: AudioSettingsModel? = nil
+        audioSettings: AudioSettingsModel? = nil,
+        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -109,6 +121,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.settingsNotices = settingsNotices
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
+        self.onPresentBoard = onPresentBoard
     }
 
     /// A puzzleId is a Daily unless it carries the practice prefix — same
@@ -167,7 +180,20 @@ public struct LiveRouteFactory: RouteFactory {
                     viewModel: PracticeHubViewModel(provider: puzzleProvider, path: path)
                 )
             )
-        case .board(let puzzleId):
+        case .board:
+            // SDD-003 Epic 1: when `onPresentBoard` is wired (production),
+            // redirect to the fullScreenCover modal. Legacy push path is kept
+            // for tests / previews that don't inject `onPresentBoard`.
+            if let onPresentBoard {
+                return AnyView(
+                    GameBoardRedirect(
+                        route: route,
+                        path: path,
+                        onPresent: onPresentBoard
+                    )
+                )
+            }
+            guard case .board(let puzzleId) = route else { return AnyView(EmptyView()) }
             return AnyView(
                 BoardLoaderView(
                     puzzleId: puzzleId,

@@ -283,6 +283,18 @@ extension MinesweeperAppComposition {
             telemetry: telemetry
         )
 
+        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
+        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
+        // Constructed before routeFactory so `onPresentBoard` can capture it
+        // without a forward-reference — mirrors Sudoku's `AppComposition.live()`.
+        let rootViewModel = MinesweeperRootViewModel(
+            gameCenter: gameCenter,
+            persistence: persistence,
+            errorReporter: errorReporter,
+            // #455 step 4: lights the Home resume pill (see Live+Resume.swift).
+            fetchResume: makeFetchResume(store: savedGameStore)
+        )
+
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
             adProvider: adProvider,
@@ -296,17 +308,9 @@ extension MinesweeperAppComposition {
             // #330 P2: gameplay audio + the shared Sound settings section.
             soundPlayer: soundPlayer,
             audioSettings: audioSettings,
-            savedGameStore: savedGameStore
-        )
-
-        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
-        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
-        let rootViewModel = MinesweeperRootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter,
-            // #455 step 4: lights the Home resume pill (see Live+Resume.swift).
-            fetchResume: makeFetchResume(store: savedGameStore)
+            savedGameStore: savedGameStore,
+            // SDD-003 Epic 1: wire board routes to the modal presentation path.
+            onPresentBoard: { [rootViewModel] route in rootViewModel.presentGame(route: route) }
         )
 
         return MinesweeperAppComposition(

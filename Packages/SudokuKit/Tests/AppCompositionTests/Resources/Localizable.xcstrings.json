@@ -4739,5 +4739,197 @@
       }
     }
   },
+  "leave.game.cancel" : {
+    "comment" : "SDD-003 Epic 2 — Leave Game confirmation dialog: Cancel action button.",
+    "extractionState" : "manual",
+    "localizations" : {
+      "en" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Cancel"
+        }
+      },
+      "es" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Cancelar"
+        }
+      },
+      "ja" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "キャンセル"
+        }
+      },
+      "ko" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "취소"
+        }
+      },
+      "th" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "ยกเลิก"
+        }
+      },
+      "zh-Hans" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "取消"
+        }
+      },
+      "zh-Hant" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "取消"
+        }
+      }
+    }
+  },
+  "leave.game.leave" : {
+    "comment" : "SDD-003 Epic 2 — Leave Game confirmation dialog: destructive Leave action button.",
+    "extractionState" : "manual",
+    "localizations" : {
+      "en" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Leave"
+        }
+      },
+      "es" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Salir"
+        }
+      },
+      "ja" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "離れる"
+        }
+      },
+      "ko" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "나가기"
+        }
+      },
+      "th" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "ออก"
+        }
+      },
+      "zh-Hans" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "离开"
+        }
+      },
+      "zh-Hant" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "離開"
+        }
+      }
+    }
+  },
+  "leave.game.message" : {
+    "comment" : "SDD-003 Epic 2 — Leave Game confirmation dialog: message body explaining that progress is auto-saved.",
+    "extractionState" : "manual",
+    "localizations" : {
+      "en" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Your progress will be saved automatically."
+        }
+      },
+      "es" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Tu progreso se guardará automáticamente."
+        }
+      },
+      "ja" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "進行状況は自動的に保存されます。"
+        }
+      },
+      "ko" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "진행 상황이 자동으로 저장됩니다."
+        }
+      },
+      "th" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "ความคืบหน้าของคุณจะถูกบันทึกโดยอัตโนมัติ"
+        }
+      },
+      "zh-Hans" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "您的进度将自动保存。"
+        }
+      },
+      "zh-Hant" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "您的進度將自動儲存。"
+        }
+      }
+    }
+  },
+  "leave.game.title" : {
+    "comment" : "SDD-003 Epic 2 — Leave Game confirmation dialog: title shown when the player taps the [X] close button during gameplay.",
+    "extractionState" : "manual",
+    "localizations" : {
+      "en" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "Leave Game?"
+        }
+      },
+      "es" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "¿Salir del juego?"
+        }
+      },
+      "ja" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "ゲームを離れますか？"
+        }
+      },
+      "ko" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "게임을 나가시겠습니까?"
+        }
+      },
+      "th" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "ออกจากเกมหรือไม่?"
+        }
+      },
+      "zh-Hans" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "离开游戏？"
+        }
+      },
+      "zh-Hant" : {
+        "stringUnit" : {
+          "state" : "translated",
+          "value" : "離開遊戲？"
+        }
+      }
+    }
+  },
   "version" : "1.0"
 }
