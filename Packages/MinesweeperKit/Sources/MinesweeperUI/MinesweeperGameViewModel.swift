@@ -5,7 +5,8 @@
 // the ViewModel caches the most recent snapshot and republishes it to the
 // view tree after every `await` round-trip.
 //
-// MVP scope: no telemetry, no undo, no persistence (per dispatch spec).
+// Scope: no telemetry, no undo. Persistence landed in #455 step 4 — the
+// optional `store`/`recordName` seam below; nil keeps the original MVP shape.
 
 import IssueReporting
 public import GameAudio
@@ -33,7 +34,9 @@ public final class MinesweeperGameViewModel {
     private let gameCenter: (any GameCenterClient)?
     /// Funnel for swallowed submit failures, so a failed leaderboard write is
     /// observable in OSLog instead of silent. `nil` → fully silent.
-    private let errorReporter: (any ErrorReporter)?
+    /// Internal (not private) so `MinesweeperBoardView.onRetry` can re-thread
+    /// it into the rebuilt VM — same treatment as `mode` (#465 CR).
+    let errorReporter: (any ErrorReporter)?
     /// #329: gates the GC daily-board submit to daily-mode wins. Mirrors
     /// Sudoku's `GameCenterSink` (`guard mode == .daily`) — a Practice win is a
     /// valid current-cycle board but must NOT inflate the recurring daily
@@ -64,12 +67,15 @@ public final class MinesweeperGameViewModel {
     /// Saved-game store seam. `nil` (MVP / preview / test callsites) → no
     /// persistence side-effects, preserving every pre-#455 behaviour verbatim.
     /// Production threads the composition-root `MinesweeperSavedGameStore`.
-    private let store: MinesweeperSavedGameStore?
+    /// Internal so `onRetry` re-threads it (#465 CR — same as `soundPlayer`).
+    let store: MinesweeperSavedGameStore?
     /// The save's CloudKit identity, derived ONCE at board construction via
     /// `MinesweeperSavedGameStore.recordName(dailyDay:difficulty:)` /
     /// `.recordName(practice:)` — never re-derived at save time, so a daily
     /// board backgrounded across midnight still upserts its own record.
-    private let recordName: String?
+    /// Internal so `onRetry` re-threads it (the retried board keeps the same
+    /// save slot — same difficulty/mode, fresh state overwrites the old save).
+    let recordName: String?
 
     // MARK: - Snapshot / preview seam (#297)
 

@@ -9,6 +9,7 @@ import MinesweeperGameState
 import MinesweeperPersistence
 import Persistence
 import PersistenceTesting
+import Telemetry
 @testable import MinesweeperUI
 
 @MainActor
@@ -76,6 +77,39 @@ struct MinesweeperPersistHooksTests {
         #expect(payload.fields["status"] == .string("completed"))
         let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
         #expect(try await store.latestInProgress() == nil)
+    }
+
+    @Test
+    func saveFailureFunnelsAndNeverInterruptsGameplay() async throws {
+        let gateway = FakePrivateCKGateway()
+        await gateway.setFailureMode(
+            .alwaysOnSave(.underlying(domain: "Test", code: 1, description: "boom"))
+        )
+        let reporter = FakeErrorReporter()
+        let vm = MinesweeperGameViewModel(
+            difficulty: .beginner,
+            seed: 7,
+            mode: .practice,
+            errorReporter: reporter,
+            store: MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate }),
+            recordName: "practice-beginner"
+        )
+        await vm.reveal(row: 4, col: 4)
+        await vm.pause()   // save throws → funnel, no crash, state intact
+
+        #expect(vm.status == .paused)
+        let received = await reporter.received
+        #expect(received.contains {
+            $0.source == "MinesweeperGameViewModel.persistCurrentState"
+        })
+    }
+
+    /// #465 CR: `GameModeRaw` mirrors `GameMode.rawValue` by convention only
+    /// (dependency direction forbids the import) — lock the string contract.
+    @Test
+    func gameModeRawMatchesGameModeRawValues() {
+        #expect(GameMode.daily.rawValue == GameModeRaw.daily)
+        #expect(GameMode.practice.rawValue == GameModeRaw.practice)
     }
 
     @Test

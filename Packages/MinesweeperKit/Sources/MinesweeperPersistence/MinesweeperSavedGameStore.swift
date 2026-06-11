@@ -27,14 +27,14 @@
 // wire as its `Int64` bit-pattern (`Int64(bitPattern:)` out,
 // `UInt64(bitPattern:)` back). Lossless both ways for every UInt64.
 //
-// Conflict scope (deliberate MVP trim, #463 CR): `save` is a bare
-// `gateway.save` — a cross-device `.syncConflict` THROWS instead of merging.
-// Sudoku's RetryHarness + ConflictResolver are overkill for MS v1; step 4
-// decides between whole-record LWW retry or surfacing the throw.
+// Conflict scope (deliberate MVP trim, #463 CR; decided in step 4): `save` is
+// a bare `gateway.save` — a cross-device `.syncConflict` THROWS, and the VM's
+// `persistCurrentState()` funnels it (never interrupts gameplay). Sudoku's
+// RetryHarness + ConflictResolver remain overkill for MS v1.
 //
-// INERT until #455 step 4: nothing constructs this store yet — composition
-// wiring (and the Telemetry save-funnel mirroring Sudoku's store) lands after
-// the user-owned `ck:schema` deploy adds the record type to the MS container.
+// Constructed by `MinesweeperAppComposition.live()` (#455 step 4) over
+// `PrivateCKGatewayFactory`; the `SavedGame` schema deployed to both CloudKit
+// environments 2026-06-10 (cloudkit/minesweeper.ckdb).
 
 public import Foundation
 public import MinesweeperEngine
@@ -115,9 +115,10 @@ public actor MinesweeperSavedGameStore {
 
     /// Most recently touched non-completed save, or nil. Feeds MS's
     /// `fetchResume` closure (#460 seam). Stale dailies are filtered out:
-    /// yesterday's daily board can't be resumed meaningfully (the hub already
-    /// rotated), so only today's daily — or any practice save — is a
-    /// candidate. Mirrors Sudoku's #228 fix; the day rides in the
+    /// a daily from a PAST day can't be resumed meaningfully (the hub already
+    /// rotated), so dailies from today (`>=` also admits future-dated names —
+    /// unreachable, nothing writes them) and any practice save are the
+    /// candidates. Mirrors Sudoku's #228 fix; the day rides in the
     /// `daily-<YYYY-MM-DD>-<difficulty>` recordName scheme.
     public func latestInProgress() async throws -> MinesweeperSavedGameSummary? {
         let payloads = try await gateway.query(

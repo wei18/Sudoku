@@ -554,10 +554,17 @@ public struct MinesweeperBoardView: View {
                     seed: seed,
                     mode: mode,
                     gameCenter: gameCenter,
+                    // #465 CR: re-thread the funnel + persistence seams (same
+                    // class of bug as the #330 soundPlayer omission below) —
+                    // a retried board must keep saving to its original slot,
+                    // or pause/background/terminal hooks silently die.
+                    errorReporter: viewModel.errorReporter,
                     // #330 P2: re-thread the audio seam so the retried board keeps
                     // firing gameplay audio (the rebuilt VM would otherwise default
                     // to Noop).
-                    soundPlayer: soundPlayer
+                    soundPlayer: soundPlayer,
+                    store: viewModel.store,
+                    recordName: viewModel.recordName
                 )
             }
         )
