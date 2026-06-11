@@ -122,7 +122,11 @@ public struct ReminderSettingsSection: View {
                 onAccept: { Task { await model.acceptPrimer() } },
                 onDecline: { model.declinePrimer() }
             )
-            .presentationDetents([.medium, .large])
+            // R6.3 (SDD-003): single fixed detent prevents drag-up layout
+            // breakage; hidden indicator removes the affordance to drag at all.
+            // The sheet is dismissed explicitly via "Not now" or accept only.
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $model.isDeniedExplainerPresented) {
             ReminderDeniedExplainer(
