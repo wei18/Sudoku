@@ -1,8 +1,8 @@
-# SDD-003 — Puzzle Platform UX Refresh (v2.6 / MS v1.1)
+# SDD-003 — Puzzle Platform UX Refresh (v2.6)
 
 - **Status**: Approved（user-authored，2026-06-12 落地）
 - **Author**: Wei
-- **Scope**: Sudoku v2.6 · Minesweeper v1.1 · Shared Platform
+- **Scope**: Sudoku v2.6 · Minesweeper v2.6（版號同步，user 決定 2026-06-12）· Shared Platform
 - **Source**: 外部 SDD 討論（ChatGPT session「SDD 設計與需求整理」），本檔為 repo 正式版
 
 ## Background
@@ -151,7 +151,10 @@ First Win · Perfect Run · 7 Day Streak · 30 Day Streak · Expert Solver。
 
 ## Open Questions
 
-- **OQ-001** Game View Timer 是否改為 Navigation Bar Item？（Owner: Designer）
+- **OQ-001 ✅ RESOLVED（user，2026-06-12）**：是 — Game View Timer 改為
+  Navigation Bar Item（與 `[X]` 同列右上角）。實作為 Epic 1 的 follow-up
+  （第一版先維持現況 Timer，nav-bar-item 化獨立 PR）。
 - **OQ-002** Daily Challenge Failure 最終規則？（Owner: CR/PM）
-- **OQ-003** Banner 是否涵蓋所有 Modal / Sheet？（Owner: CR/Designer/RD）
-  建議流程：CR → Designer 視覺稿 → RD 實作，避免直接改 GameShellKit 後返工。
+- **OQ-003 ✅ RESOLVED（user，2026-06-12）**：是 — Banner 涵蓋所有 Modal / Sheet
+  （含 modal 化後的 Game View、Reminder sheet）。唯一例外維持 AD-003：
+  Completion Popup 不顯示 Banner，由底層畫面承載。
