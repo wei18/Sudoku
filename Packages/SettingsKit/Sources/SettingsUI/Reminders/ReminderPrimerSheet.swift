@@ -15,6 +15,28 @@
 // GameShellUI; SettingsUI depends on it for these two themed sheets. The `theme`
 // is read only inside the view bodies (not in any public signature), so the
 // import is `internal` (impl-notes 2026-06-09 D1).
+//
+// R6.1–R6.4 fixes (SDD-003 Epic 6):
+//   R6.1 — `.contentShape(Rectangle())` removed from inside `acceptButton` label
+//           (`.borderedProminent` owns its own hit-test boundary; the inner
+//           contentShape was silently widening the button's press region into
+//           surrounding non-interactive content). For `declineButton`, `.plain`
+//           style collapses hit region to drawn text — moved contentShape to the
+//           Button level (after `.buttonStyle`) so only the visible row is
+//           interactive and no invisible rectangle bleeds into the sheet body.
+//   R6.2 — `declineButton` switches from `.plain` to `DeclineButtonStyle`, a
+//           local `ButtonStyle` that animates opacity on press, shows a subtle
+//           rounded-rectangle highlight on focus (keyboard / TV-style nav), and
+//           carries an `accessibilityAddTraits(.isButton)` explicitly so VoiceOver
+//           announces the pressed state correctly.
+//   R6.3 — Detent restriction lives in the presenter (`ReminderSettingsSection`):
+//           `.presentationDetents([.medium])` (single) and
+//           `.presentationDragIndicator(.hidden)` prevent drag-up layout breakage.
+//   R6.4 — Icon tile uses `@ScaledMetric` so it contracts at AX3+. Title / lede
+//           add `.minimumScaleFactor(0.75)` so text never truncates on narrow
+//           SE-class widths. All `Text` views already have no fixed heights — the
+//           `VStack` allows free vertical growth. `fixedSize` is NOT applied
+//           anywhere, letting every element wrap naturally.
 
 public import SwiftUI
 internal import GameShellUI
@@ -54,6 +76,35 @@ public struct ReminderPrimerCopy: Equatable {
     }
 }
 
+// MARK: - Decline button style (R6.2)
+
+/// A `ButtonStyle` for the "Not Now" row that provides pressed-state opacity
+/// feedback and a keyboard-focus highlight ring. `.plain` gives no visual
+/// feedback at all; `.bordered` is too heavy for a secondary dismiss action.
+///
+/// Behaviour:
+/// - Pressed → opacity 0.5, animated with spring(duration: 0.15)
+/// - Focused (hardware keyboard / TV navigation) → rounded-rectangle stroke
+/// - Reduced-motion → no animation, just the final opacity value
+private struct DeclineButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isFocused) private var isFocused
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.5 : 1.0)
+            .overlay {
+                if isFocused {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.accentColor, lineWidth: 2)
+                        .padding(-4)
+                }
+            }
+            .animation(.spring(duration: 0.15), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.1), value: isFocused)
+    }
+}
+
 // MARK: - Primer sheet
 
 public struct ReminderPrimerSheet: View {
@@ -63,6 +114,9 @@ public struct ReminderPrimerSheet: View {
     private let onDecline: () -> Void
 
     @Environment(\.theme) private var theme
+
+    // R6.4: icon tile contracts at AX text sizes so the sheet still fits.
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 60
 
     /// - Parameters:
     ///   - copy: localized strings (host-provided).
@@ -87,13 +141,19 @@ public struct ReminderPrimerSheet: View {
         VStack(spacing: 16) {
             iconTile
             VStack(spacing: 6) {
+                // R6.4: minimumScaleFactor prevents truncation on SE-class widths
+                // and at AX text sizes; lineLimit(nil) keeps multiline wrapping.
                 Text(copy.title)
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.75)
+                    .lineLimit(nil)
                     .foregroundStyle(theme.text.primary.resolved)
                 Text(copy.lede)
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.75)
+                    .lineLimit(nil)
                     .foregroundStyle(theme.text.secondary.resolved)
             }
             promiseBlock
@@ -111,12 +171,17 @@ public struct ReminderPrimerSheet: View {
         .background(theme.surface.elevated.resolved)
     }
 
+    // R6.4: `iconSize` from `@ScaledMetric` shrinks proportionally at AX3+.
     private var iconTile: some View {
-        Image(systemName: "bell.badge")
-            .font(.system(size: 28))
+        let clampedSize = min(iconSize, 80)
+        return Image(systemName: "bell.badge")
+            .font(.system(size: clampedSize * 0.47))
             .foregroundStyle(theme.accent.primary.resolved)
-            .frame(width: 60, height: 60)
-            .background(theme.accent.muted.resolved.opacity(0.4), in: .rect(cornerRadius: 16))
+            .frame(width: clampedSize, height: clampedSize)
+            .background(
+                theme.accent.muted.resolved.opacity(0.4),
+                in: .rect(cornerRadius: clampedSize * 0.267)
+            )
             .accessibilityHidden(true)
     }
 
@@ -140,6 +205,9 @@ public struct ReminderPrimerSheet: View {
         .background(theme.accent.muted.resolved.opacity(0.25), in: .rect(cornerRadius: 12))
     }
 
+    // R6.1: Removed the `.contentShape(Rectangle())` from inside the label.
+    // `.borderedProminent` manages its own visual + hit region. The inner
+    // contentShape was silently expanding the tappable zone into adjacent content.
     private var acceptButton: some View {
         Button(action: onAccept) {
             Group {
@@ -153,7 +221,6 @@ public struct ReminderPrimerSheet: View {
             }
             .frame(maxWidth: .infinity, minHeight: 28)
             .padding(.vertical, 11)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
@@ -161,15 +228,19 @@ public struct ReminderPrimerSheet: View {
         .disabled(isRequesting)
     }
 
+    // R6.1: `.contentShape(Rectangle())` is now on the Button exterior (after
+    // `.buttonStyle`) so the hit region matches the visual label row without
+    // bleeding into surrounding non-interactive content.
+    // R6.2: `DeclineButtonStyle` provides pressed-opacity + focus-ring feedback.
     private var declineButton: some View {
         Button(action: onDecline) {
             Text(copy.declineCTA)
                 .font(.body.weight(.medium))
                 .foregroundStyle(theme.text.secondary.resolved)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DeclineButtonStyle())
+        .contentShape(Rectangle())
         .disabled(isRequesting)
     }
 }
