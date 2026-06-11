@@ -16,6 +16,14 @@
 public import Foundation
 public import MinesweeperEngine
 
+/// Wire values for the `mode` qualifier. Mirrors `MinesweeperUI.GameMode`'s
+/// raw values without importing the UI layer (dependency direction: the
+/// composition root maps `GameMode.rawValue ↔ modeRaw` at the seam).
+public enum GameModeRaw {
+    public static let daily = "daily"
+    public static let practice = "practice"
+}
+
 public struct MinesweeperSavedGameSummary: Sendable, Equatable, Hashable, Codable, Identifiable {
     public var id: String { recordName }
 

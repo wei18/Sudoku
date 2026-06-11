@@ -27,19 +27,20 @@
 // wire as its `Int64` bit-pattern (`Int64(bitPattern:)` out,
 // `UInt64(bitPattern:)` back). Lossless both ways for every UInt64.
 //
-// Conflict scope (deliberate MVP trim, #463 CR): `save` is a bare
-// `gateway.save` — a cross-device `.syncConflict` THROWS instead of merging.
-// Sudoku's RetryHarness + ConflictResolver are overkill for MS v1; step 4
-// decides between whole-record LWW retry or surfacing the throw.
+// Conflict scope (deliberate MVP trim, #463 CR; decided in step 4): `save` is
+// a bare `gateway.save` — a cross-device `.syncConflict` THROWS, and the VM's
+// `persistCurrentState()` funnels it (never interrupts gameplay). Sudoku's
+// RetryHarness + ConflictResolver remain overkill for MS v1.
 //
-// INERT until #455 step 4: nothing constructs this store yet — composition
-// wiring (and the Telemetry save-funnel mirroring Sudoku's store) lands after
-// the user-owned `ck:schema` deploy adds the record type to the MS container.
+// Constructed by `MinesweeperAppComposition.live()` (#455 step 4) over
+// `PrivateCKGatewayFactory`; the `SavedGame` schema deployed to both CloudKit
+// environments 2026-06-10 (cloudkit/minesweeper.ckdb).
 
 public import Foundation
 public import MinesweeperEngine
 public import MinesweeperGameState
 public import Persistence
+public import Telemetry
 
 public actor MinesweeperSavedGameStore {
 
@@ -61,13 +62,16 @@ public actor MinesweeperSavedGameStore {
     // MARK: - Deps
 
     private let gateway: any PrivateCKGateway
+    private let telemetry: Telemetry?
     private let clock: @Sendable () -> Date
 
     public init(
         gateway: any PrivateCKGateway,
+        telemetry: Telemetry? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.gateway = gateway
+        self.telemetry = telemetry
         self.clock = clock
     }
 
@@ -81,33 +85,66 @@ public actor MinesweeperSavedGameStore {
         modeRaw: String,
         recordName: String
     ) async throws {
-        let blob = try JSONEncoder().encode(snapshot)
-        let payload = RecordPayload(
-            recordType: PrivateCKConstants.savedGameRecordType,
-            recordName: recordName,
-            fields: [
-                Field.difficulty: .string(snapshot.difficulty.rawValue),
-                Field.seed: .int(Int(Int64(bitPattern: snapshot.seed))),
-                Field.mode: .string(modeRaw),
-                Field.elapsedSeconds: .int(snapshot.elapsedSeconds),
-                Field.status: .string(Self.wireStatus(for: snapshot.status)),
-                Field.lastModifiedAt: .date(clock()),
-                Field.schemaVersion: .int(Self.currentSchemaVersion),
-                Field.stateBlob: .data(blob),
-            ]
-        )
-        try await gateway.save(payload)
+        do {
+            let blob = try JSONEncoder().encode(snapshot)
+            let payload = RecordPayload(
+                recordType: PrivateCKConstants.savedGameRecordType,
+                recordName: recordName,
+                fields: [
+                    Field.difficulty: .string(snapshot.difficulty.rawValue),
+                    Field.seed: .int(Int(Int64(bitPattern: snapshot.seed))),
+                    Field.mode: .string(modeRaw),
+                    Field.elapsedSeconds: .int(snapshot.elapsedSeconds),
+                    Field.status: .string(Self.wireStatus(for: snapshot.status)),
+                    Field.lastModifiedAt: .date(clock()),
+                    Field.schemaVersion: .int(Self.currentSchemaVersion),
+                    Field.stateBlob: .data(blob),
+                ]
+            )
+            try await gateway.save(payload)
+            await telemetry?.observe(.gameSaved(puzzleId: recordName))
+        } catch {
+            // Mirror Sudoku's SavedGameStore: a failed save is observable
+            // (telemetry funnel) but still thrown so the caller can react.
+            await telemetry?.observe(
+                .gameSaveFailed(puzzleId: recordName, reason: String(describing: error))
+            )
+            throw error
+        }
     }
 
-    /// Most recently touched non-completed save, or nil. Feeds MS's future
-    /// `fetchResume` closure (#460 seam).
+    /// Most recently touched non-completed save, or nil. Feeds MS's
+    /// `fetchResume` closure (#460 seam). Stale dailies are filtered out:
+    /// a daily from a PAST day can't be resumed meaningfully (the hub already
+    /// rotated), so dailies from today (`>=` also admits future-dated names —
+    /// unreachable, nothing writes them) and any practice save are the
+    /// candidates. Mirrors Sudoku's #228 fix; the day rides in the
+    /// `daily-<YYYY-MM-DD>-<difficulty>` recordName scheme.
     public func latestInProgress() async throws -> MinesweeperSavedGameSummary? {
         let payloads = try await gateway.query(
             .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "inProgress")
         )
+        let todayUTC = UTCDay.string(from: clock())
         return payloads
             .compactMap(Self.summary(from:))
+            .filter { summary in
+                guard summary.modeRaw == GameModeRaw.daily else { return true }
+                guard let day = Self.dailyDay(fromRecordName: summary.recordName) else { return true }
+                return day >= todayUTC
+            }
             .max { $0.lastModifiedAt < $1.lastModifiedAt }
+    }
+
+    /// `daily-<YYYY-MM-DD>-<difficulty>` → `YYYY-MM-DD`; nil for any other
+    /// shape (treated as non-stale, mirroring Sudoku's tolerant parse).
+    static func dailyDay(fromRecordName recordName: String) -> String? {
+        guard recordName.hasPrefix("daily-") else { return nil }
+        let day = recordName.dropFirst("daily-".count).prefix(10)
+        guard day.count == 10,
+              day[day.index(day.startIndex, offsetBy: 4)] == "-",
+              day[day.index(day.startIndex, offsetBy: 7)] == "-"
+        else { return nil }
+        return String(day)
     }
 
     /// Decode the full snapshot for a known record; nil only when the record
