@@ -1,6 +1,6 @@
 # Project Skills
 
-> A Traditional Chinese version of this document is available at [`README.zh-TW.md`](README.zh-TW.md).
+> A Traditional Chinese version of this document is available at [`README.zh-Hant.md`](README.zh-Hant.md).
 
 This directory is the project's self-contained set of agent skills. Every skill used or observed in this project lives here, with no dependency on project-specific entries under the user-level `~/.claude/skills/`.
 

@@ -58,7 +58,7 @@ fetchResume: {                                     // async throws — VM catche
 `SavedGameSummary` / `PersistenceProtocol` / `SavedGameStore` / CloudKit untouched. `RootView`'s `rootContent` reads `viewModel.resumeCandidate` (now the DTO) and builds `ResumePill(title:subtitle:onTap:)`. The `elapsed()` `"%d:%02d"` helper (deleted from `ResumePill`) lands as a small private helper in Sudoku's `AppComposition` (next to the `fetchResume` closure) — single home, so the byte-identical string is not re-implemented divergently.
 
 **5. Minesweeper**
-Stays `fetchResume: nil` today (no MS store yet). When the MS store lands (downstream #455 steps), MS injects its own `fetchResume` returning `ResumeCandidate(title:"Resume \(msDifficulty)", subtitle:…, route:.board(difficulty:seed:mode:))`. **No further GameAppKit change** — the seam is ready; MS resume becomes one injection away.
+*(As designed 2026-06-10 AM; superseded the same day.)* MS started at `fetchResume: nil`. **As-built (#463 + #465):** `MinesweeperSavedGameStore` shipped and `.live()` now injects `fetchResume` (Live+Resume.swift) mapping the MS-native summary onto a dedicated `.resumeBoard(recordName:mode:)` route (not `.board` — a restored board must replay saved state, not re-derive from the seed). The seam prediction held: **no further GameAppKit change was needed.**
 
 ## Data flow
 
@@ -93,7 +93,7 @@ The `resumeCandidate: SavedGameSummary? → ResumeCandidate<Route>?` and `resume
 
 ## Out of scope (downstream #455)
 
-- MS in-progress board persistence + an MS saved-game store (blocked on the Sudoku-coupled `LivePersistence`/`PersistenceProtocol` — MS gets its own store/fetch).
+- MS in-progress board persistence + an MS saved-game store (MS got its own store/fetch, as predicted — shipped in #463/#465 the same day).
 - `cloudkit/minesweeper.ckdb` `SavedGame` record type + `ck:schema` deploy (**user-owned**; the `.ckdb` is user-seeded, absent from the repo).
 - Wiring MS's `fetchResume` into its composition.
 
