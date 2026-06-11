@@ -276,8 +276,8 @@ extension MinesweeperAppComposition {
             )
         }
 
-        // #455 step 4: saved-game store over the public gateway factory —
-        // same container/zone `LivePersistence.bootstrap()` provisions.
+        // #455 step 4: saved-game store over the public gateway factory
+        // (same container/zone `LivePersistence.bootstrap()` provisions).
         let savedGameStore = MinesweeperSavedGameStore(
             gateway: PrivateCKGatewayFactory.live(config: .minesweeper),
             telemetry: telemetry
@@ -290,8 +290,7 @@ extension MinesweeperAppComposition {
             persistence: persistence,
             gameCenter: gameCenter,
             errorReporter: errorReporter,
-            // #284: same shared controller the Root mounts via `.toastOverlay`
-            // — clear-cache feedback lands on it.
+            // #284: shared toast — clear-cache feedback lands on it.
             toastController: toastController,
             makeReminderSettings: makeReminderSettings,
             // #330 P2: gameplay audio + the shared Sound settings section.
@@ -300,9 +299,8 @@ extension MinesweeperAppComposition {
             savedGameStore: savedGameStore
         )
 
-        // #313: launch-bootstrap VM owning the GC auth handshake. Shares the
-        // bag's `gameCenter` + `errorReporter` so failures funnel through the
-        // same OSLog channel. Mirrors Sudoku's `AppComposition.live()`.
+        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
+        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
         let rootViewModel = MinesweeperRootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
@@ -327,10 +325,9 @@ extension MinesweeperAppComposition {
         )
     }
 
-    /// Preview / test wiring. Empty-sinks `Telemetry`, fake IAP / AdGate
-    /// store / AdProvider, and `FakePersistence` (zero-IO — #261). Mirrors
-    /// Sudoku's `AppComposition` Preview, which also wires a fake persistence
-    /// so no Preview path can trap on a real CloudKit gateway.
+    /// Preview / test wiring: empty-sinks `Telemetry`, fake IAP / AdGate
+    /// store / AdProvider, `FakePersistence` (zero-IO — #261) — no Preview
+    /// path can trap on a real CloudKit gateway (mirrors Sudoku's Preview).
     public static func preview() -> MinesweeperAppComposition {
         let telemetry = Telemetry(sinks: [])
         let errorReporter: any ErrorReporter = NoopErrorReporter()
@@ -397,8 +394,7 @@ extension MinesweeperAppComposition {
 
 }
 
-/// Sentinel thrown by the `.live()` puzzle loader stub. MS
-/// has no PuzzleProvider yet; the loader closure only ever fires if
-/// `SavedGameStore.fetch(...)` walks a saved record back through it, which
-/// can't happen until MS save-flow lands (separate dispatch).
+/// Sentinel thrown by the `.live()` puzzle loader stub — MS has no
+/// PuzzleProvider; its resume path (#455) goes through `MinesweeperPersistence`,
+/// never through Sudoku-shaped `SavedGameStore.loadOrCreate`.
 private struct MinesweeperLivePuzzleLoaderUnavailable: Error {}
