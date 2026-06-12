@@ -402,10 +402,17 @@ public final class GameViewModel {
     public func select(row: Int, column: Int) {
         guard (0..<Board.dimension).contains(row),
               (0..<Board.dimension).contains(column) else { return }
+        // Epic 9 (SDD-003): given (prefilled) cells are not selectable —
+        // tapping them does nothing, produces no highlight.
+        let index = Board.index(row: row, column: column)
+        guard !board.givenMask[index] else { return }
         selection = GridCoordinate(row: row, column: column)
     }
 
     /// Move focus by a delta (used by Mac arrow keys). Clamps to board bounds.
+    /// Given cells are intentionally reachable here (no `givenMask` guard):
+    /// SDD-003 Epic 9 targets tap interaction only, and skipping givens would
+    /// make arrow navigation jump non-linearly. The guard lives in `select()`.
     public func moveSelection(rowDelta: Int, columnDelta: Int) {
         let current = selection ?? GridCoordinate(row: 0, column: 0)
         let nextRow = max(0, min(Board.dimension - 1, current.row + rowDelta))
