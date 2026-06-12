@@ -86,6 +86,53 @@ import GameShellUI
         }
     }
 
+    // MARK: - #491 modal vs push context
+
+    /// #491: with `onPresentBoard` wired, calling `view(for:path:nil)` (the modal
+    /// path used by GameRoot's fullScreenCover) must return the real board view,
+    /// not the zero-content `GameBoardRedirect`.
+    @Test func boardRouteWithOnPresentBoardAndNilPathReturnsBoardView() {
+        var presented: AppRoute?
+        let factory = LiveRouteFactory(onPresentBoard: { presented = $0 })
+        let view = factory.view(for: .board(difficulty: .beginner, seed: 42, mode: .practice), path: nil)
+        let dump = String(describing: view)
+        // Modal context (path: nil) must render the real board, not the redirect.
+        #expect(dump.contains("MinesweeperBoardView"), "Expected MinesweeperBoardView but got: \(dump)")
+        // onPresentBoard must NOT have been invoked from this factory call.
+        #expect(presented == nil)
+    }
+
+    /// #491: with `onPresentBoard` wired, calling `view(for:path:<non-nil>)` (the
+    /// push context) must still return `GameBoardRedirect`.
+    @Test func boardRouteWithOnPresentBoardAndNonNilPathReturnsRedirect() {
+        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 42, mode: .practice)]
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let factory = LiveRouteFactory(onPresentBoard: { _ in })
+        let view = factory.view(for: .board(difficulty: .beginner, seed: 42, mode: .practice), path: binding)
+        let dump = String(describing: view)
+        #expect(dump.contains("GameBoardRedirect"), "Expected GameBoardRedirect but got: \(dump)")
+    }
+
+    /// #491: `.resumeBoard` — same two-context contract. path: nil → real loader.
+    @Test func resumeBoardWithOnPresentBoardAndNilPathReturnsEmptyView() {
+        // Without a savedGameStore the loader falls back to EmptyView (documented
+        // fallback); the key assertion is that it does NOT return GameBoardRedirect.
+        let factory = LiveRouteFactory(onPresentBoard: { _ in })
+        let view = factory.view(for: .resumeBoard(recordName: "ms-daily-2026-06-12", mode: .daily), path: nil)
+        let dump = String(describing: view)
+        #expect(!dump.contains("GameBoardRedirect"), "path: nil must not produce GameBoardRedirect; got: \(dump)")
+    }
+
+    /// #491: `.resumeBoard` push context → redirect still fires.
+    @Test func resumeBoardWithOnPresentBoardAndNonNilPathReturnsRedirect() {
+        var path: [AppRoute] = [.resumeBoard(recordName: "ms-daily-2026-06-12", mode: .daily)]
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let factory = LiveRouteFactory(onPresentBoard: { _ in })
+        let view = factory.view(for: .resumeBoard(recordName: "ms-daily-2026-06-12", mode: .daily), path: binding)
+        let dump = String(describing: view)
+        #expect(dump.contains("GameBoardRedirect"), "Expected GameBoardRedirect but got: \(dump)")
+    }
+
     // MARK: - popToNewGame
 
     @Test func popToNewGameEmptiesPath() {
