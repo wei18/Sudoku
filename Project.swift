@@ -131,6 +131,47 @@ let minesweeperTarget = Target.target(
     settings: .settings(base: appTargetSettings)
 )
 
+// Tiles2048 app target — SDD-004 Milestone 2 skeleton. Mirrors `minesweeperTarget`'s
+// shape with per-app values: bundleId `com.wei18.tiles2048`, source/resource paths
+// under `Tiles2048/`, entitlements with the separate iCloud container
+// `iCloud.com.wei18.tiles2048`. Only depends on the local Game2048Kit products
+// today — full monetization and platform wiring (banner / IAP / GC / audio) lands
+// in Milestones 3–4.
+let tiles2048Target = Target.target(
+    name: "Tiles2048",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .app,
+    bundleId: "com.wei18.tiles2048",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    infoPlist: .file(path: "App/Tiles2048/Info.plist"),
+    sources: ["App/Tiles2048/**/*.swift"],
+    resources: [
+        "App/Tiles2048/Assets.xcassets",
+        "App/Tiles2048/Resources/PrivacyInfo.xcprivacy",
+        "App/Tiles2048/Resources/Localizable.xcstrings",
+        // Localized Info.plist keys (NSUserTrackingUsageDescription — ATT
+        // system-dialog string, Path B framing). Info.plist literal stays as
+        // base fallback; this catalog supplies all 7 locales (mirrors #371).
+        "App/Tiles2048/Resources/InfoPlist.xcstrings",
+        // M3/M4: add Audio/** when zen-wood (or 2048-appropriate) assets land.
+        // LicensePlist-generated Settings.bundle (App Store Acknowledgements
+        // page). Source of truth: `App/Tiles2048/license_plist.yml`.
+        // Regenerated on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`;
+        // not committed (.gitignore'd). Glob pattern so Tuist doesn't require the
+        // directory to exist at `tuist generate` time on dev machines.
+        .glob(pattern: "App/Tiles2048/Resources/Settings.bundle/**"),
+    ],
+    entitlements: .file(path: "App/Tiles2048/Tiles2048.entitlements"),
+    dependencies: [
+        .package(product: "Game2048UI"),
+        .package(product: "Game2048AppComposition"),
+        // M3/M4: add explicit App-target links for GameAudio, MonetizationCore,
+        // AdsAdMob, IAPStoreKit2 so the xcframework slices embed correctly
+        // (mirrors the explicit dep pattern from sudokuTarget / minesweeperTarget).
+    ],
+    settings: .settings(base: appTargetSettings)
+)
+
 let project = Project(
     name: "Game",
     options: .options(
@@ -143,6 +184,8 @@ let project = Project(
         .local(path: "Packages/MinesweeperKit"),
         .local(path: "Packages/GameShellKit"),
         .local(path: "Packages/GameAudioKit"),
+        // SDD-004: Tiles2048 UI + composition shell.
+        .local(path: "Packages/Game2048Kit"),
         // macOS-only ASC API dev CLI (issue #254). Surfaced here so it's
         // discoverable in the generated workspace; no app target depends on
         // it (it's tooling, not part of either app binary).
@@ -162,7 +205,7 @@ let project = Project(
             .release(name: "Release", xcconfig: "Tuist/Config-Release.xcconfig"),
         ]
     ),
-    targets: [sudokuTarget, minesweeperTarget],
+    targets: [sudokuTarget, minesweeperTarget, tiles2048Target],
     schemes: [
         .scheme(
             name: "Sudoku",
@@ -193,6 +236,18 @@ let project = Project(
                 options: .options(
                     storeKitConfigurationPath: .relativeToManifest("App/Minesweeper/Resources/Minesweeper.storekit")
                 )
+            )
+        ),
+        // SDD-004 Milestone 2: Tiles2048 scheme. No .xctestplan yet (M3/M4 adds
+        // the Game2048UITests snapshot suite + AppCompositionTests shape-coverage).
+        // No StoreKit config yet (M3/M4 wires the IAP product catalog).
+        .scheme(
+            name: "Tiles2048",
+            shared: true,
+            buildAction: .buildAction(targets: ["Tiles2048"]),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "Tiles2048"
             )
         ),
     ]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="L10n completeness + AppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
+#MISE description="L10n completeness + AppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper + Tiles2048) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -56,6 +56,7 @@ PY
 
 check_catalog "$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings" "Sudoku"
 check_catalog "$REPO_ROOT/App/Minesweeper/Resources/Localizable.xcstrings" "Minesweeper"
+check_catalog "$REPO_ROOT/App/Tiles2048/Resources/Localizable.xcstrings" "Tiles2048"
 
 # 3) The AppCompositionTests SwiftPM fixture must be a byte-copy of the shipping
 #    Sudoku catalog (no hand-edited drift). Regenerate via `mise run
@@ -91,4 +92,4 @@ if [ "$fail" -ne 0 ]; then
   echo "L10n gate FAILED." >&2
   exit 1
 fi
-echo "L10n gate passed: both catalogs 0 placeholders, all 7 locales complete."
+echo "L10n gate passed: all 3 catalogs 0 placeholders, all 7 locales complete."
