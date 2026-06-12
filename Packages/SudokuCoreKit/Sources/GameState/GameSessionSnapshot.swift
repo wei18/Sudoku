@@ -31,8 +31,9 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
     /// `placeDigit`; never decrements (correcting a mistake is progress, not
     /// forgiveness). Persisted in the `SavedGame` CloudKit record so Resume
     /// returns the exact count the player had when they left (SDD-003 AC-3.4).
-    /// Defaults to 0 for backward-compat decoding of older snapshots that
-    /// predate this field.
+    /// Backward compat: the init default (0) covers in-memory call sites, and
+    /// `SavedGameMapper` maps an absent CloudKit field to 0 for records saved
+    /// before this field existed.
     public let mistakeCount: Int
 
     public init(
