@@ -262,6 +262,43 @@ run_platform() {
 }
 
 # ── Prerequisites that gate every run ─────────────────────────────────────────
+# AdMob.xcconfig from secrets/.env — local parity with ci_post_clone.sh §3.1b
+# (XCC renders the same file from per-workflow Secret env vars). Per-app keys:
+# SUDOKU_ADMOB_APP_ID / SUDOKU_ADMOB_BANNER_UNIT_ID and the MINESWEEPER_*
+# twins. When the pair is present the file is (re)written for THIS app's
+# archive — Debug builds still force Google's test ad unit in code, so prod
+# values here never serve live ads from a dev run. When absent, whatever
+# Tuist/AdMob.xcconfig already exists is used unchanged (e.g. the committed
+# example's test IDs).
+render_admob_xcconfig() {
+    local env_file="$REPO_ROOT/secrets/.env"
+    [[ -f "$env_file" ]] || return 0
+    # shellcheck disable=SC1090
+    source "$env_file"
+    local prefix
+    case "$APP" in
+        sudoku)      prefix="SUDOKU" ;;
+        minesweeper) prefix="MINESWEEPER" ;;
+        *) return 0 ;;
+    esac
+    local app_id_var="${prefix}_ADMOB_APP_ID"
+    local banner_var="${prefix}_ADMOB_BANNER_UNIT_ID"
+    local app_id="${!app_id_var:-}"
+    local banner="${!banner_var:-}"
+    if [[ -z "$app_id" || -z "$banner" ]]; then
+        echo "==> AdMob: ${app_id_var}/${banner_var} not in secrets/.env — keeping existing Tuist/AdMob.xcconfig as-is."
+        return 0
+    fi
+    {
+        echo "// Rendered by mise-tasks/tf/upload from secrets/.env (${prefix}_ADMOB_*)."
+        echo "// Gitignored. Do not commit. See ci_post_clone.sh §3.1b for the XCC twin."
+        echo "ADMOB_APP_ID = ${app_id}"
+        echo "ADMOB_BANNER_UNIT_ID = ${banner}"
+    } > "$REPO_ROOT/Tuist/AdMob.xcconfig"
+    echo "==> AdMob: rendered Tuist/AdMob.xcconfig for $APP from secrets/.env (values not shown)."
+}
+render_admob_xcconfig
+
 # Resolve packages + materialise the workspace. `tuist install` populates the
 # SwiftPM checkouts + Package.resolved that LicensePlist reads in the next step;
 # `tuist generate` creates the *.xcworkspace (gitignored). Always run install so

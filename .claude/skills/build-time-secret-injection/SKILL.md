@@ -202,3 +202,13 @@ A future PR should add a build-phase script that asserts no `$()` literals survi
 | 5 | ADR + `docs/foundations.md §7` update | Locks the decision history. |
 
 Reference precedent: AdMob migration 2026-06-03, PR #265.
+
+
+## AdMob env keys (as-built, 2026-06-13)
+
+`secrets/.env` carries the production pairs `SUDOKU_ADMOB_APP_ID` /
+`SUDOKU_ADMOB_BANNER_UNIT_ID` and `MINESWEEPER_*` twins. Two consumers render
+`Tuist/AdMob.xcconfig` from them: XCC `ci_post_clone.sh` §3.1b (from workflow
+Secret env vars) and `mise-tasks/tf/upload` step 0 (from `secrets/.env`).
+Values live in secrets/.env (primary) + the XCC workflow config + the
+project-memory files as recovery backup — never in code, comments, or diffs.
