@@ -34,6 +34,10 @@
 public import SwiftUI
 public import GameCenterClient
 public import GameShellUI
+// SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
+// `onPresentBoard` is wired, so board views are presented as fullScreenCover
+// modals instead of NavigationStack pushes.
+public import GameAppKit
 public import MinesweeperUI
 public import MonetizationCore
 public import MonetizationUI
@@ -100,6 +104,12 @@ public struct LiveRouteFactory: RouteFactory {
     // persist (pause / background / terminal) and into the `.resumeBoard`
     // loader. Optional so preview / test callsites stay persistence-free.
     private let savedGameStore: MinesweeperSavedGameStore?
+    // SDD-003 Epic 1: closure that modal-presents a board route via
+    // `GameRootViewModel.presentGame(route:)`. When non-nil, `.board` and
+    // `.resumeBoard` routes return a `GameBoardRedirect` instead of building
+    // the board view inline as a NavigationStack push destination.
+    // `nil` (default) preserves legacy push behavior for tests / previews.
+    private let onPresentBoard: (@MainActor (AppRoute) -> Void)?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -112,7 +122,8 @@ public struct LiveRouteFactory: RouteFactory {
         makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil,
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
-        savedGameStore: MinesweeperSavedGameStore? = nil
+        savedGameStore: MinesweeperSavedGameStore? = nil,
+        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -125,6 +136,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
         self.savedGameStore = savedGameStore
+        self.onPresentBoard = onPresentBoard
     }
 
     @MainActor
@@ -149,6 +161,17 @@ public struct LiveRouteFactory: RouteFactory {
             // Was unreachable (no AppRoute case). Now reachable from Home.
             return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
         case .board(let difficulty, let seed, let mode):
+            // SDD-003 Epic 1: when `onPresentBoard` is wired (production), redirect
+            // to the fullScreenCover modal. Legacy push path kept for tests / previews.
+            if let onPresentBoard {
+                return AnyView(
+                    GameBoardRedirect(
+                        route: route,
+                        path: path,
+                        onPresent: onPresentBoard
+                    )
+                )
+            }
             return AnyView(
                 MinesweeperBoardView(
                     difficulty: difficulty,
@@ -176,6 +199,16 @@ public struct LiveRouteFactory: RouteFactory {
             // snapshot + rebuilds the exact board; without a store (preview /
             // test factories) the route is unreachable — fetchResume is only
             // wired in `.live()` — so an empty view is an honest fallback.
+            // SDD-003 Epic 1: when `onPresentBoard` is wired, redirect to modal.
+            if let onPresentBoard {
+                return AnyView(
+                    GameBoardRedirect(
+                        route: route,
+                        path: path,
+                        onPresent: onPresentBoard
+                    )
+                )
+            }
             guard let savedGameStore else { return AnyView(EmptyView()) }
             return AnyView(
                 MinesweeperBoardLoaderView(

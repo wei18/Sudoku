@@ -1,26 +1,14 @@
 // Live + Preview composition for MinesweeperAppComposition.
 //
-// Mirrors Sudoku's split (`AppComposition/Live.swift` + `Preview.swift`)
-// collapsed into one file — the Minesweeper bag is small enough to keep
-// both factories adjacent until Game Center / additional surfaces grow.
+// Mirrors Sudoku's AppComposition/Live.swift; both factories kept adjacent
+// until Game Center / additional surfaces warrant a split.
 //
-// `.live()` wires:
-//   - `Telemetry(sinks: [OSLogSink, NoOpTrackingSink])` — OSLog subsystem
-//     `com.wei18.minesweeper`. `LiveErrorReporter(telemetry:)`.
-//   - `LivePersistence(ckConfig: .minesweeper, ...)` (PR #257 namespace; the
-//     puzzle-loader stub never fires) + the #455 `MinesweeperSavedGameStore`
-//     over `PrivateCKGatewayFactory` (resume wiring in Live+Resume.swift).
-//   - `LiveStoreKit2IAPClient(knownProductIds: [...])` — MS Remove Ads SKU.
-//   - `LiveAdMobAdProvider` on iOS (DEBUG = Google universal test banner;
-//     prod id swap on the v1 release checklist — `minesweeper-admob-ids`);
-//     `NoopAdProvider` on macOS (the AdMob SDK is iOS-only). U15.
-//   - `AdGate(store: persistence.monetizationStateStore(), funnel)` +
-//     `MonetizationStateController(productId: minesweeperRemoveAdsProductId)`.
-//   - `ToastController()` — mounted on MinesweeperRoot via `.toastOverlay`.
+// `.live()` wires Telemetry (OSLog com.wei18.minesweeper) + LiveErrorReporter,
+// LivePersistence (#257 namespace, puzzle-loader stub) + MinesweeperSavedGameStore
+// (#455 resume), LiveStoreKit2IAPClient (MS Remove Ads), LiveAdMobAdProvider on iOS /
+// NoopAdProvider on macOS (U15), AdGate + MonetizationStateController, ToastController.
 //
-// `.preview()` wires fakes from MonetizationTesting + `FakePersistence`
-// (PersistenceTesting, zero-IO — #261) so no Preview path can trap on a real
-// CloudKit gateway. Mirrors Sudoku's AppComposition Preview.
+// `.preview()` wires MonetizationTesting fakes + FakePersistence (zero-IO, #261).
 
 internal import AdsAdMob
 internal import Foundation
@@ -283,6 +271,18 @@ extension MinesweeperAppComposition {
             telemetry: telemetry
         )
 
+        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
+        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
+        // Constructed before routeFactory so `onPresentBoard` can capture it
+        // without a forward-reference — mirrors Sudoku's `AppComposition.live()`.
+        let rootViewModel = MinesweeperRootViewModel(
+            gameCenter: gameCenter,
+            persistence: persistence,
+            errorReporter: errorReporter,
+            // #455 step 4: lights the Home resume pill (see Live+Resume.swift).
+            fetchResume: makeFetchResume(store: savedGameStore)
+        )
+
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
             adProvider: adProvider,
@@ -296,17 +296,17 @@ extension MinesweeperAppComposition {
             // #330 P2: gameplay audio + the shared Sound settings section.
             soundPlayer: soundPlayer,
             audioSettings: audioSettings,
-            savedGameStore: savedGameStore
-        )
-
-        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
-        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
-        let rootViewModel = MinesweeperRootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter,
-            // #455 step 4: lights the Home resume pill (see Live+Resume.swift).
-            fetchResume: makeFetchResume(store: savedGameStore)
+            savedGameStore: savedGameStore,
+            // SDD-003 Epic 1: wire board routes to the modal presentation path.
+            // iOS-only: `.fullScreenCover` is gated `#if os(iOS)` in GameRoot.
+            // On macOS nil → legacy push path until OQ-001 resolves Mac chrome.
+            onPresentBoard: {
+                #if os(iOS)
+                { [rootViewModel] route in rootViewModel.presentGame(route: route) }
+                #else
+                nil
+                #endif
+            }()
         )
 
         return MinesweeperAppComposition(
