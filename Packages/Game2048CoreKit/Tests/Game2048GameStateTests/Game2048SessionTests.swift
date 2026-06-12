@@ -366,4 +366,3 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
         _ = didMove  // Either moved or not — just confirm no crash.
     }
 }
-
