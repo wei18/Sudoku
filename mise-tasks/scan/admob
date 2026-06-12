@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#MISE description="AdMob SDK isolation gate: exactly ONE file under Packages/ may `import GoogleMobileAds` (AdsAdMob/LiveAdMobBridge.swift). Replaces the retired .claude/workflows/admob-isolation-audit.js; invariant owned by the monetization-sdk-integration skill."
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+EXPECTED="Packages/AppMonetizationKit/Sources/AdsAdMob/LiveAdMobBridge.swift"
+
+cd "$REPO_ROOT"
+
+# Primary: any form of `import GoogleMobileAds` (incl. attributes / access modifiers).
+imports=$(grep -rnE '^[[:space:]]*(@[A-Za-z_]+[[:space:]]+)*(internal |private |public |fileprivate |package )*import[[:space:]]+GoogleMobileAds\b' \
+  --include='*.swift' Packages/ || true)
+# Secondary (warn-class): canImport(GoogleMobileAds) soft dependencies.
+canimports=$(grep -rnE 'canImport\([[:space:]]*GoogleMobileAds[[:space:]]*\)' \
+  --include='*.swift' Packages/ || true)
+
+violations=$(printf '%s\n' "$imports" | grep -v "^${EXPECTED}:" | grep -v '^$' || true)
+expected_found=$(printf '%s\n' "$imports" | grep -c "^${EXPECTED}:" || true)
+
+if [ -n "$violations" ]; then
+  echo "FAIL: import GoogleMobileAds outside ${EXPECTED}:" >&2
+  printf '%s\n' "$violations" >&2
+  echo "Move SDK access behind LiveAdMobBridge (see monetization-sdk-integration skill)." >&2
+  exit 1
+fi
+
+extra_canimport=$(printf '%s\n' "$canimports" | grep -v "^${EXPECTED}:" | grep -v '^$' || true)
+if [ -n "$extra_canimport" ]; then
+  echo "WARN: canImport(GoogleMobileAds) outside the bridge (soft dependency):"
+  printf '%s\n' "$extra_canimport"
+fi
+
+if [ "$expected_found" -eq 0 ]; then
+  echo "WARN: no import GoogleMobileAds found at all — bridge file moved/renamed, or AdMob not wired in this build."
+else
+  echo "PASS: AdMob isolation intact (bridge: ${EXPECTED})."
+fi

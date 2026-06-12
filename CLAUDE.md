@@ -1,6 +1,6 @@
 # CLAUDE.md — agent operating guide for this repo
 
-Two shipping Apple-platform games — **Sudoku** (v2.5) and **Minesweeper** (v1) — built
+Two shipping Apple-platform games — **Sudoku** and **Minesweeper** (both v2.6, synced versioning) — built
 spec-first by an AI Leader/Developer workflow. This file is the distilled operating
 knowledge for agents; deeper truth lives in the pointers below, not here.
 

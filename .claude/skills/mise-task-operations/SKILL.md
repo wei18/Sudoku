@@ -22,6 +22,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run scan:l10n` | L10n gate: 0 `<TRANSLATE>`, all 7 locales per key | safe (read-only gate) | [[ai-translated-localization]] |
 | `mise run scan:secrets` | gitleaks over staged files | safe | [[apple-public-repo-security]] |
 | `mise run scan:hygiene` | block secret-shaped files (`.p8`/`.p12`/`.pem`/`.env`) from history | safe | [[apple-public-repo-security]] |
+| `mise run scan:admob` | AdMob SDK isolation gate: only LiveAdMobBridge.swift may `import GoogleMobileAds` | safe (read-only gate) | [[monetization-sdk-integration]] |
 | `mise run lint:swift [files]` | SwiftLint, warn-only (lefthook pre-commit) | safe | [[mise-tool-management]] |
 | `mise run lint:swift_strict [files]` | SwiftLint, warnings-fail (PR CI) | safe | [[mise-tool-management]] |
 | `mise run new_app:provisioning` | render provisioning walkthrough HTML (public IDs only) | safe | [[asc-ops-handoff]] |
