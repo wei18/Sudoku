@@ -31,7 +31,7 @@ public import SettingsUI
 public import MonetizationUI
 public import SwiftUI
 
-public struct SettingsView: View {
+public struct SettingsView<Banner: View>: View {
     @Bindable private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
     // #287: optional so previews / tests mount a byte-identical Settings screen
@@ -48,6 +48,10 @@ public struct SettingsView: View {
     // `nil` in previews / tests → no audio section, byte-identical screen. Live
     // wiring injects one whose setters fan out to the running `LiveSoundPlayer`.
     private let audioSettings: AudioSettingsModel?
+    // Epic 5: optional banner slot below the Form. SettingsKit / GameShellUI
+    // must NOT import MonetizationUI; the actual BannerSlotView is injected by
+    // LiveRouteFactory. EmptyView default keeps previews/tests inert.
+    private let banner: Banner
     @Environment(\.theme) private var theme
 
     public init(
@@ -55,13 +59,15 @@ public struct SettingsView: View {
         monetizationController: MonetizationStateController? = nil,
         reminderSettings: ReminderSettingsEntry? = nil,
         notices: SettingsNoticesConfig? = nil,
-        audioSettings: AudioSettingsModel? = nil
+        audioSettings: AudioSettingsModel? = nil,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.viewModel = viewModel
         self.monetizationController = monetizationController
         self.reminderSettings = reminderSettings
         self.notices = notices
         self.audioSettings = audioSettings
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -111,7 +117,9 @@ public struct SettingsView: View {
             // shared Version row, preserving the prior order exactly.
             aboutExtraRows: {
                 AboutRow(systemImage: "gearshape", title: "Generator", value: generatorLabel)
-            }
+            },
+            // Epic 5: banner injected by LiveRouteFactory; EmptyView in previews/tests.
+            banner: { banner }
         )
         .task { await viewModel.bootstrap() }
         .task {

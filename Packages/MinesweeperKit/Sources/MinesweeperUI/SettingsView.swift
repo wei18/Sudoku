@@ -26,7 +26,7 @@ public import MonetizationUI
 // `MinesweeperReminderSettingsEntry`'s copy types appear in public signatures.
 public import SettingsUI
 
-public struct SettingsView: View {
+public struct SettingsView<Banner: View>: View {
     private let version: String
     private let clearCache: @MainActor () async -> Void
     private let monetizationController: MonetizationStateController?
@@ -42,6 +42,10 @@ public struct SettingsView: View {
     // Defaulted nil so previews / tests keep the byte-identical screen without the
     // section; the host (LiveRouteFactory) injects the live-player-backed model.
     private let audioSettings: AudioSettingsModel?
+    // Epic 5: optional banner slot below the Form. SettingsKit / GameShellUI
+    // must NOT import MonetizationUI; the actual BannerSlotView is injected by
+    // LiveRouteFactory. EmptyView default keeps previews/tests inert.
+    private let banner: Banner
 
     public init(
         version: String = "1.0.0",
@@ -49,7 +53,8 @@ public struct SettingsView: View {
         monetizationController: MonetizationStateController? = nil,
         notices: SettingsNoticesConfig? = nil,
         reminderSettings: MinesweeperReminderSettingsEntry? = nil,
-        audioSettings: AudioSettingsModel? = nil
+        audioSettings: AudioSettingsModel? = nil,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.version = version
         self.clearCache = clearCache
@@ -57,6 +62,7 @@ public struct SettingsView: View {
         self.notices = notices
         self.reminderSettings = reminderSettings
         self.audioSettings = audioSettings
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -99,6 +105,9 @@ public struct SettingsView: View {
                     )
                 }
             }
+        } banner: {
+            // Epic 5: banner injected by LiveRouteFactory; EmptyView in previews/tests.
+            banner
         }
         // No `aboutExtraRows` — MS has no generator row (EmptyView default).
         .task {

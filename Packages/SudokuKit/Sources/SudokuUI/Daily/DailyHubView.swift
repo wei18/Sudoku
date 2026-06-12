@@ -10,16 +10,22 @@
 // `.alert` stay on the caller (matches X4 / SettingsShellView precedent:
 // shells own no side-effect modifiers).
 
+public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 internal import SudokuEngine
 
-public struct DailyHubView: View {
+public struct DailyHubView<Banner: View>: View {
     @Bindable private var viewModel: DailyHubViewModel
     @Environment(\.theme) private var theme
+    private let banner: Banner
 
-    public init(viewModel: DailyHubViewModel) {
+    public init(
+        viewModel: DailyHubViewModel,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
+    ) {
         self.viewModel = viewModel
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -37,7 +43,8 @@ public struct DailyHubView: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
             },
-            onItemTap: { card in viewModel.cardTapped(card) }
+            onItemTap: { card in viewModel.cardTapped(card) },
+            banner: { banner }
         )
         .task { await viewModel.bootstrap() }
         .alert(

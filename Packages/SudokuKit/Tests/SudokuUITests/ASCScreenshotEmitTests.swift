@@ -82,7 +82,7 @@ struct ASCScreenshotEmitTests {
         return BoardView(viewModel: viewModel)
     }
 
-    private func dailyHubView() async -> DailyHubView {
+    private func dailyHubView() async -> some View {
         let provider = FakePuzzleProvider()
         await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
         let viewModel = DailyHubViewModel(

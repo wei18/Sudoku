@@ -10,13 +10,19 @@ public import SwiftUI
 internal import GameShellUI
 public import MinesweeperEngine
 
-public struct MinesweeperPracticeHubView: View {
+public struct MinesweeperPracticeHubView<Banner: View>: View {
     @Binding private var path: [AppRoute]
     @State private var difficulty: Difficulty
+    private let banner: Banner
 
-    public init(path: Binding<[AppRoute]>, initialDifficulty: Difficulty = .beginner) {
+    public init(
+        path: Binding<[AppRoute]>,
+        initialDifficulty: Difficulty = .beginner,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
+    ) {
         self._path = path
         self._difficulty = State(initialValue: initialDifficulty)
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -26,7 +32,8 @@ public struct MinesweeperPracticeHubView: View {
             filterHeader: "Difficulty",
             headerForeground: .primary,
             filter: { difficultyPicker },
-            cta: { startCard }
+            cta: { startCard },
+            banner: { banner }
         )
     }
 
