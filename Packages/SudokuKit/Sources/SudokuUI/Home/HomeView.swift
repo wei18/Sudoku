@@ -93,4 +93,3 @@ public struct HomeView<Header: View>: View {
         )
     }
 }
-
