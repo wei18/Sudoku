@@ -215,6 +215,10 @@ public actor MinesweeperSavedGameStore {
     /// distinct third state from `"completed"`) so the daily hub can surface a
     /// Failed card. `.won` stays `"completed"`. Everything else (idle / playing /
     /// paused) is a resumable `"inProgress"` save.
+    /// Migration note (v2.6 cutover): records saved BEFORE SDD-003 Epic 8
+    /// mapped .lost to "completed" — historical losses read back as
+    /// completions. Accepted without migration: MS never shipped publicly
+    /// (TestFlight-internal records only). New saves are three-state.
     static func wireStatus(for status: MinesweeperSessionStatus) -> String {
         switch status {
         case .won: return "completed"
