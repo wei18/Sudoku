@@ -72,10 +72,10 @@ description: Default localization scope AND execution playbook for Apple-platfor
 
 Use when actually performing a translation pass. The flow is **source-pair seed → AI fan-out → tricky-case review → completeness check**.
 
-### Step 1 — Seed source pair (en + zh-TW)
+### Step 1 — Seed source pair (en + zh-Hant)
 
-- Source language for translation **must be English** (broader translator competence across all target locales than zh-TW).
-- Authors write English first; zh-TW is the project's primary native locale and is hand-written in parallel — *not* AI-translated from English. Both are written by the author with intent; the other 5 locales fan out from `en`.
+- Source language for translation **must be English** (broader translator competence across all target locales than zh-Hant).
+- Authors write English first; zh-Hant is the project's primary native locale and is hand-written in parallel — *not* AI-translated from English. Both are written by the author with intent; the other 5 locales fan out from `en`.
 - Each new key lands in xcstrings with **at minimum** `en` + `zh-Hant` populated and `extractionState: manual`.
 - Other 5 locales (`ja`, `zh-Hans`, `es`, `th`, `ko`) start either absent or with the placeholder string `<TRANSLATE>` so the fan-out pass can find them with a single grep.
 
