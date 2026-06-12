@@ -1,9 +1,9 @@
 locale: zh-Hans
 name: "数独 — 每日与练习"
 subtitle: "iPhone 与 Mac 的安静逻辑"
-promotional_text: |
+promotional_text: |-
   每天 UTC 00:00 三道新题（简单／中等／困难）。iPhone、Mac 同一个 iCloud 账号自动接续进度。我们不做第一方画像；广告只在你同意下保持相关性——可拒绝，也可一次购买永久移除。
-description: |
+description: |-
   数独，留给思考，不留给嘈杂。
 
   每天 UTC 00:00，三道题准时出现：简单、中等、困难。全球玩家同题，你的时间属于自己，排行榜告诉你跟其他人比起来如何。
@@ -42,7 +42,7 @@ description: |
 
   需要 iOS 26 或 macOS 26 以上。
 keywords: "sudoku,益智,逻辑,推理,脑力,离线,ipad,mac,笔记,数字游戏,解谜,填数字,九宫格,数独游戏,数字逻辑"
-whats_new: |
+whats_new: |-
   版本 2.6
 
   每日挑战、排行榜、成就——以及比以前更安静。

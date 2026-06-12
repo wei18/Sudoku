@@ -1,9 +1,9 @@
 locale: es-ES
 name: "Buscaminas — Clásico"
 subtitle: "Lógica limpia en iPhone y Mac"
-promotional_text: |
+promotional_text: |-
   El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. No te perfilamos; anuncios relevantes solo con permiso, o quítalos.
-description: |
+description: |-
   Buscaminas, hecho para pensar, no para el ruido.
 
   Las reglas que ya conoces: descubre celdas, lee los números, marca las minas y limpia el tablero sin pisar ninguna. Tres dificultades clásicas: Principiante (9×9, 10 minas), Intermedio (16×16, 40 minas) y Experto (16×30, 99 minas).
@@ -42,7 +42,7 @@ description: |
 
   Requiere iOS 26 o macOS 26.
 keywords: "minas,logica,puzle,clasico,mente,sin conexion,ipad,mac,bandera,numero,bomba,campo minado,buscamin"
-whats_new: |
+whats_new: |-
   Versión 1.0
 
   Primera versión.

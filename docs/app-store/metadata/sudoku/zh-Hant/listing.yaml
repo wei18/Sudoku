@@ -1,9 +1,9 @@
 locale: zh-Hant
 name: "數獨 — 每日與練習"
 subtitle: "iPhone 與 Mac 的安靜邏輯"
-promotional_text: |
+promotional_text: |-
   每天 UTC 00:00 三道新題（簡單／中等／困難）。iPhone、Mac 同一個 iCloud 帳號自動接續進度。我們不做第一方剖析；廣告只在你同意下保持相關性——可拒絕，也可一次購買永久移除。
-description: |
+description: |-
   數獨，留給思考，不留給雜訊。
 
   每天 UTC 00:00，三道題準時出現：簡單、中等、困難。全球玩家同題，你的時間屬於你自己，排行榜告訴你跟其他人比起來如何。
@@ -42,7 +42,7 @@ description: |
 
   需要 iOS 26 或 macOS 26 以上。
 keywords: "sudoku,益智,邏輯,推理,動腦,離線,ipad,mac,筆記,數字遊戲,解謎,填數字,九宮格,數字邏輯,數獨遊戲,腦力"
-whats_new: |
+whats_new: |-
   版本 2.6
 
   每日挑戰、排行榜、成就——以及比以前更安靜。

@@ -1,9 +1,9 @@
 locale: en-US
 name: "Minesweeper — Classic"
 subtitle: "Calm logic for iPhone & Mac"
-promotional_text: |
+promotional_text: |-
   The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. We don't profile you; ads tailor only with your OK — decline or remove.
-description: |
+description: |-
   Minesweeper, made for thinking — not for noise.
 
   The rules you already know: reveal cells, read the numbers, flag the mines, and clear the board without setting one off. Three classic difficulties — Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), and Expert (16×30, 99 mines).
@@ -42,7 +42,7 @@ description: |
 
   Requires iOS 26 or macOS 26.
 keywords: "mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board,bomb,sweeper,mine sweeper,sapper"
-whats_new: |
+whats_new: |-
   Version 1.0
 
   First release.

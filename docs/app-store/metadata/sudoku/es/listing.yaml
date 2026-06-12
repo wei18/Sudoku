@@ -1,9 +1,9 @@
 locale: es
 name: "Sudoku — Diario y Práctica"
 subtitle: "Lógica serena en iPhone y Mac"
-promotional_text: |
+promotional_text: |-
   Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. No te perfilamos; los anuncios se adaptan solo con tu permiso: recházalos o quítalos.
-description: |
+description: |-
   Sudoku, hecho para pensar, no para hacer ruido.
 
   Cada día a las 00:00 UTC llegan tres puzles: Fácil, Medio y Difícil. Los mismos para todos los jugadores del mundo. Tu tiempo es tuyo; el ranking te muestra cómo se compara.
@@ -42,7 +42,7 @@ description: |
 
   Requiere iOS 26 o macOS 26.
 keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,lapiz,notas,rompecabezas,sudoko,solver,clasico"
-whats_new: |
+whats_new: |-
   Versión 2.6
 
   Puzles diarios, rankings, logros — y más serena que nunca.

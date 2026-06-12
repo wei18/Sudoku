@@ -1,9 +1,9 @@
 locale: en-US
 name: "Sudoku — Daily & Practice"
 subtitle: "Calm logic for iPhone and Mac"
-promotional_text: |
+promotional_text: |-
   Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
-description: |
+description: |-
   Sudoku, made for thinking — not for noise.
 
   Every day at midnight UTC, three new puzzles arrive: Easy, Medium, and Hard. The same three for every player, everywhere. Your time is yours; the leaderboard tells you how it compared.
@@ -42,7 +42,7 @@ description: |
 
   Requires iOS 26 or macOS 26.
 keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,killer,solver,board,classic"
-whats_new: |
+whats_new: |-
   Version 2.6
 
   Daily puzzles, leaderboards, achievements — and quieter than ever.
