@@ -95,9 +95,9 @@ internal enum Config {
     /// the `achievementPrefix` literal in GameCenterSink.swift.
     internal static let achievementPrefix = "com.wei18.sudoku.achievement."
 
-    /// 13 achievements: 8 v1 + 5 v2.6 batch.
-    /// v1 total = 500 pts; v2.6 adds 240 pts → grand total = 740 pts.
-    /// Apple's per-app GC cap = 1000 pts; 740 is within budget.
+    /// 11 achievements: 8 v1 + 3 v2.6 batch.
+    /// v1 total = 500 pts; v2.6 adds 180 pts → grand total = 680 pts.
+    /// Apple's per-app GC cap = 1000 pts; 680 is within budget.
     ///
     /// ASC enforces a per-achievement points range of 0-100 (round-8 apply
     /// rejected `hard.master = 150` with `INVALID_POINTS_RANGE: points

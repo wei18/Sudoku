@@ -140,6 +140,27 @@ struct AchievementEvaluatorTests {
         #expect(first == second)
     }
 
+    @Test func dailyStreak30DoesNotFireOnTwentyNineDays() async throws {
+        let persistence = StubPersistence()
+        var calendar = Calendar(identifier: .gregorian)
+        // swiftlint:disable:next force_unwrapping
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let anchor = utcDate("2026-05-19T12:00:00Z")
+        // 29 consecutive days only — the 30-day boundary must NOT fire.
+        for dayOffset in 0..<29 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: anchor) else { continue }
+            let key = UTCDay.string(from: day)
+            await persistence.setDailyIds(forDay: key, ids: ["\(key)-easy"])
+        }
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let result = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, mistakeCount: 0, today: anchor
+        )
+        #expect(progress(result, "daily.streak_30") == nil, "streak_30 must not fire on a 29-day streak")
+        // The 7-day tier still fires.
+        #expect(progress(result, "daily.streak_7")?.percentComplete == 100)
+    }
+
     @Test func dailyStreak30UnlocksOnThirtyConsecutiveDays() async throws {
         let persistence = StubPersistence()
         // Mark 30 consecutive UTC days (May 19 back to April 20).

@@ -17,7 +17,7 @@
 //
 // v2.6 additions:
 //   - `perfect_run` / `daily.streak_30` / `expert_solver`
-//     / `expert_solver` — each consumes existing Persistence reads where
+//     — each consumes existing Persistence reads where
 //     possible. `perfect_run` requires `mistakeCount` to be threaded in
 //     from the completion event (carried in GameStateEvent.sessionCompleted
 //     → TelemetryEvent.puzzleCompleted → GameCenterSink.receive).
