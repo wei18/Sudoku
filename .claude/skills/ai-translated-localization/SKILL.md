@@ -1,6 +1,6 @@
 ---
 name: ai-translated-localization
-description: Default localization scope AND execution playbook for Apple-platform Apps — 7 locales (zh-TW, en, ja, zh-CN, es, th, ko) translated via AI agent flow using `Localizable.xcstrings`. Minimum set zh-TW + en. Invoke when (1) deciding L10n scope / catalog format / translation flow at project setup, OR (2) actually executing a translation pass to add or refresh strings.
+description: Default localization scope AND execution playbook for Apple-platform Apps — 7 locales (en, zh-Hant, zh-Hans, ja, ko, es, th) translated via AI agent flow using `Localizable.xcstrings`. Source = en, primary = zh-Hant. Minimum set zh-Hant + en. Invoke when (1) deciding L10n scope / catalog format / translation flow at project setup, OR (2) actually executing a translation pass to add or refresh strings.
 ---
 
 # AI-Translated Localization
@@ -24,20 +24,22 @@ description: Default localization scope AND execution playbook for Apple-platfor
 
 | Locale | Code | Notes |
 |---|---|---|
-| Traditional Chinese (Taiwan) | `zh-TW` | Primary language, source of truth |
-| English | `en` | International standard |
+| English | `en` | Catalog `sourceLanguage`; translation source for the fan-out |
+| Traditional Chinese | `zh-Hant` | Primary language — author-written alongside `en`, never AI-translated |
 | Japanese | `ja` | Largest adjacent market outside the Chinese sphere |
-| Simplified Chinese | `zh-CN` | Auto-converted from zh-TW + manual / AI review of phrasing |
+| Simplified Chinese | `zh-Hans` | Converted from `zh-Hant` + Mainland phrasing review |
 | Spanish | `es` | World's second largest native-speaker base |
 | Thai | `th` | Southeast Asia representative |
 | Korean | `ko` | High-penetration Asian market |
 
-- **Minimum set**: zh-TW + en (every project includes at least these two).
-- Per-project locale lists can be adjusted, but **English and zh-TW are always included**.
+- Locale codes are the **script-based BCP-47 forms** (`zh-Hant` / `zh-Hans`), not region
+  forms (`zh-TW` / `zh-CN`) — matches the committed catalogs and the `scan:l10n` gate.
+- **Minimum set**: zh-Hant + en (every project includes at least these two).
+- Per-project locale lists can be adjusted, but **English and zh-Hant are always included**.
 
 ### Translation flow
 
-- **Handled by an AI agent**, recorded as a step in `plan.md`: "use zh-TW as source, produce the other 6 locales' strings, write into `Localizable.xcstrings`".
+- **Handled by an AI agent**, recorded as a step in `plan.md`: "author `en` + `zh-Hant` by hand, fan out the other 5 locales from `en`, write into `Localizable.xcstrings`" (see Execution playbook Step 1).
 - Covers:
   - In-app strings
   - Game Center leaderboard / achievement names (for games)
@@ -56,12 +58,13 @@ description: Default localization scope AND execution playbook for Apple-platfor
 - 7 locales cover most of the global market while remaining a polish scope a solo developer can sustain.
 - AI translation quality for App UI strings (short, clear context) is at commercial level; long marketing copy is still recommended for human review.
 - xcstrings JSON structure is naturally friendly to AI / diff / version control.
-- zh-TW as source reflects the author's native-language accuracy.
+- `zh-Hant` as primary reflects the author's native-language accuracy; `en` is the
+  fan-out source because translator competence is broader from English (see Field notes).
 
 ## Deviation considerations
 
-- **Focused target market**: shrink to zh-TW + en + one target-market locale.
-- **No budget / no time**: ship zh-TW + en first; mark others as `extractionState: stale` for later.
+- **Focused target market**: shrink to zh-Hant + en + one target-market locale.
+- **No budget / no time**: ship zh-Hant + en first; mark others as `extractionState: stale` for later.
 - **Regulated / sensitive content** (medical / financial / kids): **mandatory human review** after AI translation; add a review step to `plan.md`.
 - **Special scripts / RTL** (Arabic / Hebrew): UI needs additional layout verification, not just translation.
 

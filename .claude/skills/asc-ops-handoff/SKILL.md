@@ -7,15 +7,16 @@ description: Use when planning, scoping, or executing user-owned App Store Conne
 
 ## When to invoke
 
-- Planning a v2.5.x / v2.5.3 ship → which steps are user vs Leader-orderable
+- Planning a release ship (current target: **v2.6 first App Store release**, both apps) → which steps are user vs Leader-orderable
 - Subagent asks "should I do X" where X involves ASC web UI
-- Drafting a v2.5.x readiness checklist for user
+- Drafting a release readiness checklist for user
 - User says "I'm about to submit to App Store — what do I need to check"
 - Code Reviewer flags an Apple-platform-ops question
+- An `ASCRegister apply` run returns `ENTITY_ERROR.<CODE>` → see [`asc-entity-error-recipes.md`](asc-entity-error-recipes.md)
 
 ## Canonical doc
 
-`docs/v2/v2.5-readiness.md` is the authoritative ops checklist for this project. This skill explains WHO does WHAT and HOW; the readiness doc is WHAT'S DONE / OUTSTANDING.
+`docs/v2/v2.5-readiness.md` is the authoritative ops checklist as of v2.5 (a v2.6 readiness doc should supersede it at submission time). This skill explains WHO does WHAT and HOW; the readiness doc is WHAT'S DONE / OUTSTANDING.
 
 ## Operation taxonomy
 
