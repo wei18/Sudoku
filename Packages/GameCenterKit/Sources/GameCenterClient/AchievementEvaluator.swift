@@ -1,5 +1,6 @@
-// AchievementEvaluator — computes the 8 v1 achievements from Persistence
-// counts (docs/v1/design.md §How.3.2 + §How.3.3 Sink pseudocode).
+// AchievementEvaluator — computes the 11 achievements (8 v1 + 3 v2.6)
+// from Persistence counts (docs/v1/design.md §How.3.2 + §How.3.3 Sink
+// pseudocode).
 //
 // Design rationale: achievements are re-derived from persisted state on
 // each completion rather than incrementally tracked in memory. This
@@ -13,6 +14,14 @@
 // per day, with the request-day cached internally). Acceptable: a
 // completion is at most once per minute and Persistence reads from the
 // local SwiftData mirror anyway (§How.6.5 not a network round trip).
+//
+// v2.6 additions:
+//   - `perfect_run` / `daily.streak_30` / `expert_solver`
+//     — each consumes existing Persistence reads where
+//     possible. `perfect_run` requires `mistakeCount` to be threaded in
+//     from the completion event (carried in GameStateEvent.sessionCompleted
+//     → TelemetryEvent.puzzleCompleted → GameCenterSink.receive).
+//   - `daily.streak_30` extends `consecutiveDailyStreak(maxDays:)` to 30.
 //
 // Achievement ID prefix `com.wei18.sudoku.achievement.` is NOT applied
 // here — the evaluator emits the short ids from `AchievementID` (#466:
@@ -31,13 +40,15 @@ public actor AchievementEvaluator: Sendable {
         self.persistence = persistence
     }
 
-    /// Evaluate all 8 v1 achievements for the just-completed puzzle.
-    /// `today` is the wall-clock instant of completion; the evaluator
-    /// re-derives the calendar UTC day from it.
+    /// Evaluate all 11 achievements (8 v1 + 3 v2.6) for the just-completed puzzle.
+    /// `today` is the wall-clock instant of completion; the evaluator re-derives
+    /// the calendar UTC day from it. `mistakeCount` is the cumulative count of
+    /// conflicting digit placements in this session, used only by `perfect_run`.
     public func evaluateForCompletion(
         puzzleId: String,
         mode: Mode,
         difficulty: Difficulty,
+        mistakeCount: Int,
         today: Date
     ) async throws -> [AchievementProgress] {
         var results: [AchievementProgress] = []
@@ -51,8 +62,8 @@ public actor AchievementEvaluator: Sendable {
         }
 
         // 3 + 4. Streaks — count consecutive UTC days (incl. today) with
-        // at least one daily completion.
-        let streak = try await consecutiveDailyStreak(endingOn: today, maxDays: 7)
+        // at least one daily completion. Cap at 30 to cover streak_30.
+        let streak = try await consecutiveDailyStreak(endingOn: today, maxDays: 30)
         if streak >= 3 {
             results.append(AchievementProgress(achievementId: AchievementID.dailyStreak3, percentComplete: 100))
         }
@@ -91,7 +102,25 @@ public actor AchievementEvaluator: Sendable {
             results.append(AchievementProgress(achievementId: AchievementID.dailySweep, percentComplete: 100))
         }
 
-        _ = (puzzleId, difficulty) // referenced through the puzzleId in higher-level logging
+        // v2.6 batch — 5 new achievements.
+
+        // 10. perfect_run — 100% when the completed session had zero mistakes.
+        if mistakeCount == 0 {
+            results.append(AchievementProgress(achievementId: AchievementID.perfectRun, percentComplete: 100))
+        }
+
+        // 11 + 12. 7-day and 30-day streaks — reuse the `streak` computed above
+        // (maxDays=30 already covers both thresholds).
+        if streak >= 30 {
+            results.append(AchievementProgress(achievementId: AchievementID.dailyStreak30, percentComplete: 100))
+        }
+
+        // 13. expert_solver — 100% when the completed puzzle is Hard difficulty.
+        if difficulty == .hard {
+            results.append(AchievementProgress(achievementId: AchievementID.expertSolver, percentComplete: 100))
+        }
+
+        _ = puzzleId // referenced through puzzleId in higher-level logging
         return results
     }
 

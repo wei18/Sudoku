@@ -49,14 +49,15 @@ public enum LeaderboardID {
 
 // MARK: - Achievement IDs (design.md §How.3.2)
 
-/// 8 v1 achievements. Short IDs are emitted by `AchievementEvaluator`;
-/// the `prefix` is applied at submit time by `GameCenterSink` and as the
-/// full ASC resource ID by `ASCRegister`.
+/// 11 achievements (8 v1 + 3 v2.6 batch — SDD backlog's "First Win" and "7 Day Streak" are already covered by v1 first_puzzle / daily.streak_7). Short IDs are emitted by
+/// `AchievementEvaluator`; the `prefix` is applied at submit time by
+/// `GameCenterSink` and as the full ASC resource ID by `ASCRegister`.
 public enum AchievementID {
 
     /// Achievement ID prefix per §How.3.2. Applied at submit time.
     public static let prefix = "com.wei18.sudoku.achievement."
 
+    // MARK: v1 achievements
     public static let firstPuzzle = "first_puzzle"
     public static let dailyCompleteOne = "daily.complete_one"
     public static let dailyStreak3 = "daily.streak_3"
@@ -66,7 +67,15 @@ public enum AchievementID {
     public static let hardMaster = "hard.master"
     public static let dailySweep = "daily.sweep"
 
-    /// All 8 short IDs in design.md §How.3.2 table order.
+    // MARK: v2.6 batch (5 new)
+    /// Perfect Run — awarded when any puzzle is completed with zero mistakes.
+    public static let perfectRun = "perfect_run"
+    /// 30 consecutive UTC days each with at least one daily completion.
+    public static let dailyStreak30 = "daily.streak_30"
+    /// Expert Solver — complete any puzzle at Hard difficulty.
+    public static let expertSolver = "expert_solver"
+
+    /// All 13 short IDs in table order (v1 first, v2.6 appended).
     public static let allShortIds: [String] = [
         firstPuzzle,
         dailyCompleteOne,
@@ -76,6 +85,9 @@ public enum AchievementID {
         practiceComplete100,
         hardMaster,
         dailySweep,
+        perfectRun,
+        dailyStreak30,
+        expertSolver,
     ]
 
     /// Prepends `prefix` to a short id to produce the full ASC resource id.

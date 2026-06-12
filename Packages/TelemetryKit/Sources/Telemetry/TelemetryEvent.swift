@@ -25,7 +25,7 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     case sessionStarted(puzzleId: String, mode: Mode, difficulty: Difficulty)
     case sessionPaused
     case sessionResumed
-    case puzzleCompleted(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int)
+    case puzzleCompleted(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int, mistakeCount: Int)
     case sessionAbandoned(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int)
     case errorOccurred(source: String, code: String, message: String)
     /// Successful Persistence save (Phase 5.4). Emitted after a SavedGame

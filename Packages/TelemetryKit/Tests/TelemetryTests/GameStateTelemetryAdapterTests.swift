@@ -32,13 +32,14 @@ struct GameStateTelemetryAdapterTests {
 
     @Test func sessionCompletedMapsToPuzzleCompletedWithElapsed() async {
         let (adapter, recorder) = await makeAdapter()
-        await adapter.dispatch(.sessionCompleted(elapsedSeconds: 321))
+        await adapter.dispatch(.sessionCompleted(elapsedSeconds: 321, mistakeCount: 2))
         let received = await recorder.received
         #expect(received == [.puzzleCompleted(
             puzzleId: "2026-05-19-easy",
             mode: .daily,
             difficulty: .easy,
-            elapsedSeconds: 321
+            elapsedSeconds: 321,
+            mistakeCount: 2
         )])
     }
 

@@ -182,8 +182,9 @@ internal struct ReconcilerTests {
             strings: [:], // no localizations
             remote: RemoteState()
         )
-        // With empty strings: 3 leaderboard creates + 8 achievement creates = 11.
-        #expect(actions.count == 11)
+        // With empty strings: 3 leaderboard creates + 11 achievement creates = 14
+        // (8 original + 3 net-new from the SDD-003 backlog batch).
+        #expect(actions.count == 14)
         // First 3 must all be leaderboard-related.
         for i in 0..<3 {
             switch actions[i] {

@@ -61,15 +61,14 @@ public struct OSLogSink: TelemetrySink {
             logger.log(level: .info, message: "sessionPaused", privacy: .privateValue)
         case .sessionResumed:
             logger.log(level: .info, message: "sessionResumed", privacy: .privateValue)
-        case .puzzleCompleted(let puzzleId, let mode, let difficulty, let elapsedSeconds):
+        case .puzzleCompleted(let puzzleId, let mode, let difficulty, let elapsedSeconds, let mistakeCount):
             logger.log(
                 level: .notice,
-                // elapsedSeconds is .privateValue per default; embed it in
-                // the same line but flag the WHOLE message as publicValue —
+                // elapsedSeconds + mistakeCount are .privateValue per default;
+                // embed in the same line but flag the WHOLE message as publicValue —
                 // mixed-privacy interpolation is not modelled at the seam.
-                // For v1 this trade is acceptable because elapsedSeconds is
-                // not PII either (it is bounded gameplay timing).
-                message: "puzzleCompleted puzzleId=\(puzzleId) mode=\(mode) difficulty=\(difficulty) elapsed=\(elapsedSeconds)",
+                // For v1 this trade is acceptable (bounded gameplay timing, not PII).
+                message: "puzzleCompleted puzzleId=\(puzzleId) mode=\(mode) difficulty=\(difficulty) elapsed=\(elapsedSeconds) mistakes=\(mistakeCount)",
                 privacy: .publicValue
             )
         case .sessionAbandoned(let puzzleId, let mode, let difficulty, let elapsedSeconds):

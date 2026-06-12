@@ -54,9 +54,10 @@ internal struct ConfigConsistencyTests {
         }
     }
 
-    @Test("8 achievement short IDs match the AchievementEvaluator emitted set")
+    @Test("11 achievement short IDs match the AchievementEvaluator emitted set (8 v1 + 3 v2.6)")
     internal func achievementShortIDs() {
         let expected: Set<String> = [
+            // v1
             "first_puzzle",
             "daily.complete_one",
             "daily.streak_3",
@@ -65,9 +66,13 @@ internal struct ConfigConsistencyTests {
             "practice.complete_100",
             "hard.master",
             "daily.sweep",
+            // v2.6 batch
+            "perfect_run",
+            "daily.streak_30",
+            "expert_solver",
         ]
         #expect(Set(Config.allAchievementShortIds) == expected)
-        #expect(Config.allAchievementShortIds.count == 8)
+        #expect(Config.allAchievementShortIds.count == 11)
     }
 
     @Test("Achievement prefix matches GameCenterSink.achievementPrefix")
@@ -75,9 +80,9 @@ internal struct ConfigConsistencyTests {
         #expect(Config.achievementPrefix == "com.wei18.sudoku.achievement.")
     }
 
-    @Test("Total achievement points sum to 500 (§How.3.2 budget; ASC 0-100 cap, issue #40)")
+    @Test("Total achievement points sum to 680 (v1 500 + v2.6 180; ASC 0-100 cap per entry, total cap 1000)")
     internal func pointsBudget() {
-        #expect(Config.totalAchievementPoints == 500)
+        #expect(Config.totalAchievementPoints == 680)
     }
 
     @Test("Every achievement's points respect ASC's 0-100 per-entry range (issue #40)")

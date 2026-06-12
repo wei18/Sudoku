@@ -24,7 +24,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
         )
         let first = progress(result, "first_puzzle")
         #expect(first?.percentComplete == 100)
@@ -39,7 +39,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, today: today
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, mistakeCount: 0, today: today
         )
         #expect(progress(result, "daily.streak_3")?.percentComplete == 100)
         #expect(progress(result, "daily.streak_7") == nil)
@@ -51,7 +51,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
         )
         // 70 / 10 capped at 100; 70 / 100 == 70.
         #expect(progress(result, "practice.complete_10")?.percentComplete == 100)
@@ -67,14 +67,14 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, today: today
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, mistakeCount: 0, today: today
         )
         #expect(progress(result, "daily.sweep")?.percentComplete == 100)
 
         // Missing one difficulty → not awarded.
         await persistence.setDailyIds(forDay: "2026-05-19", ids: ["2026-05-19-easy", "2026-05-19-medium"])
         let partial = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-medium", mode: .daily, difficulty: .medium, today: today
+            puzzleId: "2026-05-19-medium", mode: .daily, difficulty: .medium, mistakeCount: 1, today: today
         )
         #expect(progress(partial, "daily.sweep") == nil)
     }
@@ -85,7 +85,7 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let result = try await evaluator.evaluateForCompletion(
-            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, today: today
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, mistakeCount: 5, today: today
         )
         #expect(progress(result, "hard.master")?.percentComplete == 40)
     }
@@ -98,10 +98,124 @@ struct AchievementEvaluatorTests {
         let evaluator = AchievementEvaluator(persistence: persistence)
         let today = utcDate("2026-05-19T12:00:00Z")
         let first = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
         )
         let second = try await evaluator.evaluateForCompletion(
-            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, today: today
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
+        )
+        #expect(first == second)
+    }
+
+    // MARK: - v2.6 batch: 5 new achievements
+
+    @Test func perfectRunUnlocksWhenZeroMistakes() async throws {
+        let persistence = StubPersistence()
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let today = utcDate("2026-05-19T12:00:00Z")
+
+        // Zero mistakes → awarded.
+        let perfect = try await evaluator.evaluateForCompletion(
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
+        )
+        #expect(progress(perfect, "perfect_run")?.percentComplete == 100)
+
+        // One or more mistakes → not awarded.
+        let imperfect = try await evaluator.evaluateForCompletion(
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 1, today: today
+        )
+        #expect(progress(imperfect, "perfect_run") == nil, "perfect_run must not fire when mistakeCount > 0")
+    }
+
+    @Test func perfectRunIdempotency() async throws {
+        // Calling evaluator twice with mistakeCount=0 returns identical results.
+        let persistence = StubPersistence()
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let today = utcDate("2026-05-19T12:00:00Z")
+        let first = try await evaluator.evaluateForCompletion(
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
+        )
+        let second = try await evaluator.evaluateForCompletion(
+            puzzleId: "practice-AB-easy", mode: .practice, difficulty: .easy, mistakeCount: 0, today: today
+        )
+        #expect(first == second)
+    }
+
+    @Test func dailyStreak30DoesNotFireOnTwentyNineDays() async throws {
+        let persistence = StubPersistence()
+        var calendar = Calendar(identifier: .gregorian)
+        // swiftlint:disable:next force_unwrapping
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let anchor = utcDate("2026-05-19T12:00:00Z")
+        // 29 consecutive days only — the 30-day boundary must NOT fire.
+        for dayOffset in 0..<29 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: anchor) else { continue }
+            let key = UTCDay.string(from: day)
+            await persistence.setDailyIds(forDay: key, ids: ["\(key)-easy"])
+        }
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let result = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, mistakeCount: 0, today: anchor
+        )
+        #expect(progress(result, "daily.streak_30") == nil, "streak_30 must not fire on a 29-day streak")
+        // The 7-day tier still fires.
+        #expect(progress(result, "daily.streak_7")?.percentComplete == 100)
+    }
+
+    @Test func dailyStreak30UnlocksOnThirtyConsecutiveDays() async throws {
+        let persistence = StubPersistence()
+        // Mark 30 consecutive UTC days (May 19 back to April 20).
+        var calendar = Calendar(identifier: .gregorian)
+        // swiftlint:disable:next force_unwrapping
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let anchor = utcDate("2026-05-19T12:00:00Z")
+        for dayOffset in 0..<30 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: anchor) else { continue }
+            let key = UTCDay.string(from: day)
+            await persistence.setDailyIds(forDay: key, ids: ["\(key)-easy"])
+        }
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let result = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, mistakeCount: 0, today: anchor
+        )
+        #expect(progress(result, "daily.streak_30")?.percentComplete == 100)
+        // streak_7 (v1) must also fire when streak ≥ 30.
+        #expect(progress(result, "daily.streak_7")?.percentComplete == 100)
+    }
+
+    @Test func expertSolverUnlocksOnHardDifficulty() async throws {
+        let persistence = StubPersistence()
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let today = utcDate("2026-05-19T12:00:00Z")
+
+        // Hard completion → awarded.
+        let hardResult = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, mistakeCount: 0, today: today
+        )
+        #expect(progress(hardResult, "expert_solver")?.percentComplete == 100)
+
+        // Easy completion → not awarded.
+        let easyResult = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy, mistakeCount: 0, today: today
+        )
+        #expect(progress(easyResult, "expert_solver") == nil, "expert_solver must not fire on Easy difficulty")
+
+        // Medium completion → not awarded.
+        let medResult = try await evaluator.evaluateForCompletion(
+            puzzleId: "practice-AB-medium", mode: .practice, difficulty: .medium, mistakeCount: 0, today: today
+        )
+        #expect(progress(medResult, "expert_solver") == nil, "expert_solver must not fire on Medium difficulty")
+    }
+
+    @Test func expertSolverIdempotency() async throws {
+        // Idempotency: two hard completions yield identical achievement sets.
+        let persistence = StubPersistence()
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let today = utcDate("2026-05-19T12:00:00Z")
+        let first = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, mistakeCount: 0, today: today
+        )
+        let second = try await evaluator.evaluateForCompletion(
+            puzzleId: "2026-05-19-hard", mode: .daily, difficulty: .hard, mistakeCount: 0, today: today
         )
         #expect(first == second)
     }

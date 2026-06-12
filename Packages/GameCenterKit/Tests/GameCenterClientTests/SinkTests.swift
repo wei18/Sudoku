@@ -42,7 +42,8 @@ struct GameCenterSinkTests {
             puzzleId: "2026-05-19-easy",
             mode: .daily,
             difficulty: .easy,
-            elapsedSeconds: 180
+            elapsedSeconds: 180,
+            mistakeCount: 0
         )
         await stack.sink.receive(event)
 
@@ -64,7 +65,8 @@ struct GameCenterSinkTests {
             puzzleId: "practice-AB-easy",
             mode: .practice,
             difficulty: .easy,
-            elapsedSeconds: 200
+            elapsedSeconds: 200,
+            mistakeCount: 0
         ))
         let ops = await stack.client.operations
         var sawPrefixed = false
@@ -81,7 +83,8 @@ struct GameCenterSinkTests {
             puzzleId: "2026-05-19-easy",
             mode: .daily,
             difficulty: .easy,
-            elapsedSeconds: 180
+            elapsedSeconds: 180,
+            mistakeCount: 0
         ))
         let ops = await stack.client.operations
         #expect(ops.isEmpty, "no GC interactions when unauthenticated")
@@ -93,7 +96,8 @@ struct GameCenterSinkTests {
             puzzleId: "2026-05-19-easy",
             mode: .daily,
             difficulty: .easy,
-            elapsedSeconds: 180
+            elapsedSeconds: 180,
+            mistakeCount: 0
         ))
         let ops = await stack.client.operations
         #expect(ops.isEmpty)
@@ -106,7 +110,8 @@ struct GameCenterSinkTests {
             puzzleId: "practice-ZZ-medium",
             mode: .practice,
             difficulty: .medium,
-            elapsedSeconds: 240
+            elapsedSeconds: 240,
+            mistakeCount: 3
         ))
         let ops = await stack.client.operations
         let submitCount = ops.filter {

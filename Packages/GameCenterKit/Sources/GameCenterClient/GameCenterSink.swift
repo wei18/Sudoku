@@ -56,7 +56,7 @@ public actor GameCenterSink: TelemetrySink {
     }
 
     public func receive(_ event: TelemetryEvent) async {
-        guard case let .puzzleCompleted(puzzleId, mode, difficulty, elapsedSeconds) = event else {
+        guard case let .puzzleCompleted(puzzleId, mode, difficulty, elapsedSeconds, mistakeCount) = event else {
             return
         }
         let authState = await authStateProvider()
@@ -69,7 +69,7 @@ public actor GameCenterSink: TelemetrySink {
             difficulty: difficulty,
             elapsedSeconds: elapsedSeconds
         )
-        await reportAchievements(puzzleId: puzzleId, mode: mode, difficulty: difficulty)
+        await reportAchievements(puzzleId: puzzleId, mode: mode, difficulty: difficulty, mistakeCount: mistakeCount)
     }
 
     private func submitScoreIfEligible(
@@ -105,12 +105,13 @@ public actor GameCenterSink: TelemetrySink {
         }
     }
 
-    private func reportAchievements(puzzleId: String, mode: Mode, difficulty: Difficulty) async {
+    private func reportAchievements(puzzleId: String, mode: Mode, difficulty: Difficulty, mistakeCount: Int) async {
         do {
             let progresses = try await achievements.evaluateForCompletion(
                 puzzleId: puzzleId,
                 mode: mode,
                 difficulty: difficulty,
+                mistakeCount: mistakeCount,
                 today: clock()
             )
             for progress in progresses {

@@ -56,12 +56,13 @@ public struct GameStateTelemetryAdapter: GameStateTelemetry {
             return .sessionPaused
         case .sessionResumed:
             return .sessionResumed
-        case .sessionCompleted(let elapsedSeconds):
+        case .sessionCompleted(let elapsedSeconds, let mistakeCount):
             return .puzzleCompleted(
                 puzzleId: puzzleId,
                 mode: mode,
                 difficulty: difficulty,
-                elapsedSeconds: elapsedSeconds
+                elapsedSeconds: elapsedSeconds,
+                mistakeCount: mistakeCount
             )
         case .sessionAbandoned:
             // GameStateEvent.sessionAbandoned does not carry elapsedSeconds;
