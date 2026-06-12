@@ -7,9 +7,6 @@
 // Indexing is row-major: index(row:col:) = row * 4 + col, same convention as
 // MinesweeperEngine.
 
-// swiftlint:disable identifier_name
-// `r`, `c`, `i` are idiomatic for tight grid traversal.
-
 internal import Foundation
 
 public struct Board: Sendable, Equatable, Hashable, Codable {
@@ -69,5 +66,3 @@ public struct Board: Sendable, Equatable, Hashable, Codable {
         tiles[index] = value
     }
 }
-
-// swiftlint:enable identifier_name

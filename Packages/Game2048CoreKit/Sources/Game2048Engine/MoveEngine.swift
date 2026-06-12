@@ -12,9 +12,6 @@
 // Purely functional: `apply(_:to:)` returns a `MoveResult` with the new board
 // and score delta, or nil if illegal.
 
-// swiftlint:disable identifier_name
-// `r`, `c`, `i`, `j` are idiomatic for tight grid traversal.
-
 public struct MoveResult: Sendable, Equatable {
     public let board: Board
     /// Points gained this move (sum of all merged tile values).
@@ -28,45 +25,12 @@ public enum MoveEngine {
     /// Attempt to slide `board` in `direction`. Returns a `MoveResult` if any tile
     /// moved or merged, or `nil` if the move is illegal (board unchanged).
     public static func apply(_ direction: Direction, to board: Board) -> MoveResult? {
-        var result = board
-        var scoreDelta = 0
-        var changed = false
-
         switch direction {
-        case .left:
-            for row in 0..<Board.size {
-                let line = extractRow(row, from: board)
-                let (next, delta) = slideLine(line)
-                if next != line { changed = true; insertRow(row, line: next, into: &result) }
-                scoreDelta += delta
-            }
-        case .right:
-            for row in 0..<Board.size {
-                let line = extractRow(row, from: board)
-                let (next, delta) = slideLine(line.reversed())
-                let back = Array(next.reversed())
-                if back != line { changed = true; insertRow(row, line: back, into: &result) }
-                scoreDelta += delta
-            }
-        case .up:
-            for col in 0..<Board.size {
-                let line = extractCol(col, from: board)
-                let (next, delta) = slideLine(line)
-                if next != line { changed = true; insertCol(col, line: next, into: &result) }
-                scoreDelta += delta
-            }
-        case .down:
-            for col in 0..<Board.size {
-                let line = extractCol(col, from: board)
-                let (next, delta) = slideLine(line.reversed())
-                let back = Array(next.reversed())
-                if back != line { changed = true; insertCol(col, line: back, into: &result) }
-                scoreDelta += delta
-            }
+        case .left:  return applyRows(to: board, reversed: false)
+        case .right: return applyRows(to: board, reversed: true)
+        case .up:    return applyCols(to: board, reversed: false)
+        case .down:  return applyCols(to: board, reversed: true)
         }
-
-        guard changed else { return nil }
-        return MoveResult(board: result, scoreDelta: scoreDelta)
     }
 
     /// Returns true if any legal move exists (used for stuck detection).
@@ -84,6 +48,34 @@ public enum MoveEngine {
         return false
     }
 
+    // MARK: - Axis helpers
+
+    private static func applyRows(to board: Board, reversed: Bool) -> MoveResult? {
+        var result = board
+        var total = 0
+        var changed = false
+        for row in 0..<Board.size {
+            let line = extractRow(row, from: board)
+            let (next, delta) = reversed ? slideReversed(line) : slideLine(line)
+            if next != line { changed = true; insertRow(row, line: next, into: &result) }
+            total += delta
+        }
+        return changed ? MoveResult(board: result, scoreDelta: total) : nil
+    }
+
+    private static func applyCols(to board: Board, reversed: Bool) -> MoveResult? {
+        var result = board
+        var total = 0
+        var changed = false
+        for col in 0..<Board.size {
+            let line = extractCol(col, from: board)
+            let (next, delta) = reversed ? slideReversed(line) : slideLine(line)
+            if next != line { changed = true; insertCol(col, line: next, into: &result) }
+            total += delta
+        }
+        return changed ? MoveResult(board: result, scoreDelta: total) : nil
+    }
+
     // MARK: - Line operations
 
     /// Slide and merge a 4-element line toward index 0.
@@ -96,27 +88,30 @@ public enum MoveEngine {
     ///      them with their sum and skip the second (prevents double-merge).
     ///   3. Pad: append nils to restore length to Board.size.
     static func slideLine(_ line: some Collection<Int?>) -> (result: [Int?], scoreDelta: Int) {
-        // Step 1: compact
         let nonNil = line.compactMap { $0 }
-        // Step 2: merge (left-to-right, each position merges once)
         var merged: [Int] = []
         var scoreDelta = 0
-        var idx = 0
-        while idx < nonNil.count {
-            if idx + 1 < nonNil.count && nonNil[idx] == nonNil[idx + 1] {
-                let value = nonNil[idx] * 2
+        var pos = 0
+        while pos < nonNil.count {
+            if pos + 1 < nonNil.count && nonNil[pos] == nonNil[pos + 1] {
+                let value = nonNil[pos] * 2
                 merged.append(value)
                 scoreDelta += value
-                idx += 2
+                pos += 2
             } else {
-                merged.append(nonNil[idx])
-                idx += 1
+                merged.append(nonNil[pos])
+                pos += 1
             }
         }
-        // Step 3: pad to Board.size with nil
         var result: [Int?] = merged.map { Optional($0) }
         while result.count < Board.size { result.append(nil) }
         return (result, scoreDelta)
+    }
+
+    /// Slide toward the high end (right/down): reverse, slide, reverse back.
+    private static func slideReversed(_ line: [Int?]) -> (result: [Int?], scoreDelta: Int) {
+        let (slid, delta) = slideLine(line.reversed())
+        return (Array(slid.reversed()), delta)
     }
 
     // MARK: - Row / column extraction
@@ -137,5 +132,3 @@ public enum MoveEngine {
         for row in 0..<Board.size { board[row, col] = line[row] }
     }
 }
-
-// swiftlint:enable identifier_name

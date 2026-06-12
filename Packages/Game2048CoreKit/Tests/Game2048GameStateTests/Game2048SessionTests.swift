@@ -1,6 +1,3 @@
-// swiftlint:disable identifier_name
-// `s` is idiomatic shorthand for session in tight test code.
-
 import Testing
 import Foundation
 @testable import Game2048GameState
@@ -370,4 +367,3 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
     }
 }
 
-// swiftlint:enable identifier_name
