@@ -104,7 +104,6 @@ public actor AchievementEvaluator: Sendable {
 
         // v2.6 batch — 5 new achievements.
 
-
         // 10. perfect_run — 100% when the completed session had zero mistakes.
         if mistakeCount == 0 {
             results.append(AchievementProgress(achievementId: AchievementID.perfectRun, percentComplete: 100))
