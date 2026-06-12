@@ -115,7 +115,8 @@ struct DailyPuzzleCard: View {
         // `.contentShape(Rectangle())` makes the entire card frame
         // tap-hittable. Must come BEFORE `.glassEffect(...)` so the glass
         // material's own hit-test doesn't override us — mirrors HomeView's
-        // working ModeCard / RemoveAdsCard ordering (issue #15 / #197).
+        // working ModeCard ordering (issue #15 / #197; the RemoveAds card itself
+        // left Home in SDD-003 Epic 7).
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
