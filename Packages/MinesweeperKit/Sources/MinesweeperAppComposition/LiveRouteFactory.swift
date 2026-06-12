@@ -1,3 +1,11 @@
+// swiftlint:disable file_length cyclomatic_complexity
+// Over the 400-line / complexity-10 limits. The SDD-003 Epic 8 addition of
+// `.replayDailyBoard` pushed the file over the line ceiling and the
+// `view(for:)` switch to 7 cases (complexity 11); the function is a
+// straightforward route→view mapping that reads as one cohesive unit and
+// extracting a helper for a single case would obscure the pattern. Mirrors
+// the `MinesweeperBoardView` precedent for the same lint ceiling exception.
+
 // LiveRouteFactory — Minesweeper's concrete `RouteFactory<AppRoute>`.
 //
 // Mirrors `SudokuKit.LiveRouteFactory` but slimmer — Standard tier still
@@ -422,3 +430,5 @@ public struct LiveRouteFactory: RouteFactory {
         path?.wrappedValue.removeAll()
     }
 }
+
+// swiftlint:enable file_length cyclomatic_complexity
