@@ -119,7 +119,7 @@ struct DailyHubViewModelInteractionTests {
         await viewModel.openCompleted(completedCard)
 
         #expect(box.routes == [
-            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742, mistakeCount: 0)
         ])
     }
 
@@ -158,7 +158,7 @@ struct DailyHubViewModelInteractionTests {
         await waitForRouteCount(box, atLeast: 1)
 
         #expect(box.routes == [
-            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742, mistakeCount: 0)
         ])
     }
 
@@ -189,7 +189,7 @@ struct DailyHubViewModelInteractionTests {
         await Task.yield()
 
         #expect(box.routes == [
-            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742)
+            .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742, mistakeCount: 0)
         ])
     }
 
@@ -217,7 +217,7 @@ struct DailyHubViewModelInteractionTests {
         await waitForRouteCount(box, atLeast: 2)
 
         let expected: AppRoute = .completion(
-            puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742
+            puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742, mistakeCount: 0
         )
         #expect(box.routes == [expected, expected])
     }

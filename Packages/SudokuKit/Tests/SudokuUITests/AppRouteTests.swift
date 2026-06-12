@@ -19,7 +19,7 @@ struct AppRouteTests {
             .daily,
             .practice,
             .board(puzzleId: "2026-05-19-easy"),
-            .completion(puzzleId: "2026-05-19-easy", elapsedSeconds: 251),
+            .completion(puzzleId: "2026-05-19-easy", elapsedSeconds: 251, mistakeCount: 0),
             .settings
         ]
         let set = Set(routes)
@@ -33,7 +33,7 @@ struct AppRouteTests {
         // round-tripping is now Board → Completion.
         let source: [AppRoute] = [
             .board(puzzleId: "2026-05-19-medium"),
-            .completion(puzzleId: "2026-05-19-medium", elapsedSeconds: 720)
+            .completion(puzzleId: "2026-05-19-medium", elapsedSeconds: 720, mistakeCount: 3)
         ]
         let encoded = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode([AppRoute].self, from: encoded)

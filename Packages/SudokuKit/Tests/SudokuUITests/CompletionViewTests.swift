@@ -14,10 +14,11 @@ import SudokuKitTesting
 @Suite("CompletionView — state snapshots + deep link")
 struct CompletionViewTests {
 
-    private func makeViewModel() -> CompletionViewModel {
+    private func makeViewModel(mistakeCount: Int = 2) -> CompletionViewModel {
         CompletionViewModel(
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 251,
+            mistakeCount: mistakeCount,
             leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
             gameCenter: FakeGameCenterClient()
         )
@@ -75,6 +76,7 @@ struct CompletionViewTests {
         let viewModel = CompletionViewModel(
             puzzleId: "practice-7Z9K-medium",
             elapsedSeconds: 251,
+            mistakeCount: 0,
             leaderboardId: nil,
             gameCenter: FakeGameCenterClient()
         )
@@ -124,6 +126,7 @@ struct CompletionViewTests {
         let viewModel = CompletionViewModel(
             puzzleId: "p",
             elapsedSeconds: 100,
+            mistakeCount: 0,
             leaderboardId: "lb",
             gameCenter: fake
         )

@@ -206,21 +206,26 @@ public struct LiveRouteFactory: RouteFactory {
                     path: path
                 )
             )
-        case .completion(let puzzleId, let elapsedSeconds):
+        case .completion(let puzzleId, let elapsedSeconds, let mistakeCount):
             // #287 Phase 2: offer the daily-ready primer ONLY on a Daily solve
             // (flow S02). Practice solves pass `reminderPrimer: nil` → no change.
             let reminderPrimer = Self.isDaily(puzzleId: puzzleId)
                 ? makeDailyReminderPrimer?()
                 : nil
+            // SDD-003 Epic 4: Close pops the last route entry so the player
+            // returns to the board (which is already dismissed) or the Hub.
+            let closePath = path
             return AnyView(
                 CompletionView(
                     viewModel: CompletionViewModel(
                         puzzleId: puzzleId,
                         elapsedSeconds: elapsedSeconds,
+                        mistakeCount: mistakeCount,
                         leaderboardId: Self.leaderboardId(forPuzzleId: puzzleId),
                         gameCenter: gameCenter
                     ),
-                    reminderPrimer: reminderPrimer
+                    reminderPrimer: reminderPrimer,
+                    onClose: closePath.map { pathBinding in { pathBinding.wrappedValue.removeLast() } }
                 )
             )
         case .settings:

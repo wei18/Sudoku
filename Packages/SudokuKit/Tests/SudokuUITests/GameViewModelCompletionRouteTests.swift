@@ -60,7 +60,8 @@ struct GameViewModelCompletionRouteTests {
             viewModel.completionRoute
                 == .completion(
                     puzzleId: Self.identity.puzzleId,
-                    elapsedSeconds: viewModel.elapsedSeconds
+                    elapsedSeconds: viewModel.elapsedSeconds,
+                    mistakeCount: viewModel.mistakeCount
                 )
         )
     }

@@ -46,6 +46,7 @@ struct CompletionLeaderboardMappingTests {
         let viewModel = CompletionViewModel(
             puzzleId: "practice-7Z9K-medium",
             elapsedSeconds: 100,
+            mistakeCount: 0,
             leaderboardId: nil,
             gameCenter: fake
         )
@@ -67,6 +68,7 @@ struct CompletionLeaderboardMappingTests {
         let viewModel = CompletionViewModel(
             puzzleId: "practice-7Z9K-medium",
             elapsedSeconds: 100,
+            mistakeCount: 0,
             leaderboardId: nil,
             gameCenter: fake
         )
@@ -83,6 +85,7 @@ struct CompletionLeaderboardMappingTests {
         let viewModel = CompletionViewModel(
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 100,
+            mistakeCount: 0,
             leaderboardId: LeaderboardID.dailyEasy,
             gameCenter: fake
         )

@@ -23,8 +23,16 @@
 // Board routes that previously pushed onto `path` now use `presentGame(route:)`
 // from the per-game RouteFactory or hub VMs; `GameRoot` presents them as a
 // `fullScreenCover`. The `[X]` close button calls `requestLeave()` → dialog →
-// `confirmLeave()` dismisses (save already happens via the board's `onDisappear`
-// flush, which fires before `activeGameRoute` is cleared).
+// `confirmLeave()` dismisses.
+//
+// SDD-003 Epic 2/3 rider (flush-before-leave): the board's `onDisappear` runs a
+// bare `Task` which races with the 500ms debounce window. `confirmLeave()` now
+// awaits an optional `onBeforeLeave` closure first so callers can inject a
+// `flush()` / `persistCurrentState()` call before the modal tears down.
+// Tradeoff: GameShellKit zero-dep rule requires the flush to be injected here
+// rather than called directly — each game wires its own closure at construction
+// time. If a game omits it, the existing `onDisappear` bare-Task remains the
+// sole save point (same behaviour as before this rider).
 
 public import Foundation
 public import GameCenterClient
@@ -61,17 +69,24 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     private let persistence: any PersistenceProtocol
     private let errorReporter: any ErrorReporter
     private let fetchResume: (() async throws -> ResumeCandidate<Route>?)?
+    /// Called at the start of `confirmLeave()` before the modal is dismissed.
+    /// Games inject a flush here so the last debounce window is reliably flushed
+    /// even when the player confirms Leave within 500ms of the last move.
+    /// `nil` → no pre-dismiss flush (same behaviour as before this rider).
+    private let onBeforeLeave: (() async -> Void)?
 
     public init(
         gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        fetchResume: (() async throws -> ResumeCandidate<Route>?)? = nil
+        fetchResume: (() async throws -> ResumeCandidate<Route>?)? = nil,
+        onBeforeLeave: (() async -> Void)? = nil
     ) {
         self.gameCenter = gameCenter
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.fetchResume = fetchResume
+        self.onBeforeLeave = onBeforeLeave
     }
 
     /// Idempotent: only the first call performs IO; subsequent calls return
@@ -166,11 +181,21 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
         isShowingLeaveConfirmation = false
     }
 
-    /// User chose Leave. Save happens via the board view's `onDisappear` flush
-    /// (already wired in both Sudoku `BoardView` and MS `MinesweeperBoardView`).
-    /// This method only dismisses the modal; `onDisappear` fires first.
+    /// User chose Leave. If `onBeforeLeave` is wired, awaits it first in a Task
+    /// (SDD-003 rider: prevents the 500ms debounce window from being dropped on
+    /// a fast Leave), then dismisses the modal. When no flush is injected the
+    /// dismiss is synchronous — same behaviour as before this rider — so the
+    /// existing test contract holds for nil-closure callers.
+    /// The board's `.onDisappear` bare Task still fires afterward as a safety net.
     public func confirmLeave() {
         isShowingLeaveConfirmation = false
-        dismissGame()
+        if let onBeforeLeave {
+            Task {
+                await onBeforeLeave()
+                dismissGame()
+            }
+        } else {
+            dismissGame()
+        }
     }
 }

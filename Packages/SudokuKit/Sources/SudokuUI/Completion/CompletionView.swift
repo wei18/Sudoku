@@ -8,6 +8,10 @@
 // affordance + sheet (#287). The leaderboard/Game Center coupling stays here:
 // the shared shell never imports GameCenterClient.
 //
+// SDD-003 Epic 4: actions now inject ONLY a Close button (Retry / New Game /
+// Leaderboard removed from this injection site per spec note). The close action
+// pops the navigation stack via `onClose`, supplied by RouteFactory.
+//
 // State variants (mapped onto the shared body):
 //   .loading              → ProgressView
 //   .loaded(slice)        → hero + leaderboard rows + "View full" CTA
@@ -32,12 +36,19 @@ public struct CompletionView: View {
     // renders byte-identically (no affordance, no sheet).
     @State private var reminderPrimer: ReminderPrimerCoordinator?
 
+    // SDD-003 Epic 4: dismiss this screen. On the pushed `.completion` route
+    // this removes the last stack entry. Supplied by RouteFactory / parent.
+    // `nil` in previews / snapshot tests that don't need the action wired.
+    private let onClose: (() -> Void)?
+
     public init(
         viewModel: CompletionViewModel,
-        reminderPrimer: ReminderPrimerCoordinator? = nil
+        reminderPrimer: ReminderPrimerCoordinator? = nil,
+        onClose: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self._reminderPrimer = State(initialValue: reminderPrimer)
+        self.onClose = onClose
     }
 
     public var body: some View {
@@ -49,13 +60,15 @@ public struct CompletionView: View {
                 accessibilityLabel: Text("Solved in \(elapsedLabel)")
             ),
             elapsedLabel: elapsedLabel,
+            mistakeCount: viewModel.mistakeCount,
             state: screenState,
             onSignIn: { viewModel.viewLeaderboardTapped() },
             onRetryLeaderboard: { Task { await viewModel.retry() } },
             loadedAccessory: { viewLeaderboardButton },
+            actions: { closeButton },
             footer: { reminderAffordance }
         )
-        .task { await viewModel.bootstrap() }
+        .onAppear { Task { await viewModel.bootstrap() } }
         .sheet(isPresented: reminderSheetBinding) {
             if let reminderPrimer {
                 ReminderPrimerSheet(
@@ -138,6 +151,23 @@ public struct CompletionView: View {
             get: { reminderPrimer?.isPrimerPresented ?? false },
             set: { reminderPrimer?.isPrimerPresented = $0 }
         )
+    }
+
+    // SDD-003 Epic 4: only Close is injected into actions; Retry / New Game /
+    // Leaderboard CTAs removed at this injection site (not from the shared
+    // component). `nil` in snapshot tests → button simply absent.
+    @ViewBuilder
+    private var closeButton: some View {
+        if let onClose {
+            Button {
+                onClose()
+            } label: {
+                Text("completion.close")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
     }
 
     private var viewLeaderboardButton: some View {

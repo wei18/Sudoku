@@ -58,8 +58,7 @@ struct MinesweeperCompletionSnapshotTests {
         viewModel.setStateForTesting(state)
         return MinesweeperCompletionView(
             viewModel: viewModel,
-            onNewGame: {},
-            onRetry: {}
+            onClose: {}
         )
     }
 
@@ -82,8 +81,7 @@ struct MinesweeperCompletionSnapshotTests {
         viewModel.setStateForTesting(.loaded(Self.sampleSlice))
         let view = MinesweeperCompletionView(
             viewModel: viewModel,
-            onNewGame: {},
-            onRetry: nil,
+            onClose: {},
             showsElapsedTime: false
         )
         assertUISnapshot(

@@ -96,6 +96,11 @@ public struct CompletionScreen: View {
     /// leaderboard slice. Every has-time caller (Sudoku, MS in-game overlay)
     /// passes a real label, so their layout is unchanged.
     private let elapsedLabel: String?
+    /// Number of mistakes made during the game. `nil` for games that have no
+    /// mistake concept (Minesweeper) — the row is OMITTED entirely when nil.
+    /// Sudoku passes `GameViewModel.mistakeCount`; the popup renders it below
+    /// the time row in the hero card (SDD-003 Epic 4).
+    private let mistakeCount: Int?
     private let state: CompletionScreenState
     /// Optional sign-in CTA shown under the `.unauthenticated` copy (Sudoku wires
     /// it; Minesweeper passes `nil` → copy only, matching its prior surface).
@@ -109,9 +114,9 @@ public struct CompletionScreen: View {
     /// "View full leaderboard" CTA sits here. MS leaves it empty (its CTA lives
     /// in the always-on `actions` stack instead).
     private let loadedAccessory: AnyView
-    /// Trailing action buttons (View leaderboard / Retry game / New Game). Each
-    /// app supplies its own stack; renders after the state content, separated by
-    /// the outer 24pt group spacing.
+    /// Action buttons injected by the host app. SDD-003 Epic 4: each app now
+    /// injects ONLY a Close button here (Retry / New Game / Leaderboard removed
+    /// at the injection sites). Renders after the state content.
     private let actions: AnyView
     /// Optional extra content appended after the actions (Sudoku's reminder
     /// affordance). `nil` for apps that don't use it.
@@ -120,6 +125,7 @@ public struct CompletionScreen: View {
     public init(
         outcome: CompletionOutcome,
         elapsedLabel: String?,
+        mistakeCount: Int? = nil,
         state: CompletionScreenState,
         onSignIn: (() -> Void)? = nil,
         onRetryLeaderboard: @escaping () -> Void,
@@ -129,6 +135,7 @@ public struct CompletionScreen: View {
     ) {
         self.outcome = outcome
         self.elapsedLabel = elapsedLabel
+        self.mistakeCount = mistakeCount
         self.state = state
         self.onSignIn = onSignIn
         self.onRetryLeaderboard = onRetryLeaderboard
@@ -139,6 +146,11 @@ public struct CompletionScreen: View {
     }
 
     public var body: some View {
+        // SDD-003 Epic 4: popup/card shape. The host app still owns the
+        // presentation (Sudoku: pushed route; MS: full-board overlay) but
+        // CompletionScreen itself now renders as a centered card rather than a
+        // bare full-screen fill. `.padding` + max-width cap give the card its
+        // inset appearance; the host's background bleeds around it.
         ScrollView {
             VStack(spacing: 24) {
                 hero
@@ -147,7 +159,7 @@ public struct CompletionScreen: View {
                 if let footer { footer }
             }
             .padding(20)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: 480)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
@@ -171,6 +183,24 @@ public struct CompletionScreen: View {
                     .font(.title3)
                     .foregroundStyle(theme.text.secondary.resolved)
                     .monospacedDigit()
+            }
+            // Mistakes row — only shown when the game tracks mistakes (Sudoku).
+            // Minesweeper passes `nil` and the row is fully absent (no height,
+            // no empty space). The label uses the key "completion.mistakes"
+            // (static label, 7-locale) concatenated with the count so no
+            // format-string substitution is needed in xcstrings. (SDD-003 Epic 4)
+            if let mistakeCount {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle")
+                        .foregroundStyle(mistakeCount == 0 ? theme.status.success.resolved : theme.status.error.resolved)
+                    Text("completion.mistakes")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                    + Text(verbatim: ": \(mistakeCount)")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                        .monospacedDigit()
+                }
             }
         }
         .frame(maxWidth: .infinity)

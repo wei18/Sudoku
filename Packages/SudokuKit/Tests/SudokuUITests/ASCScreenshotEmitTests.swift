@@ -98,6 +98,7 @@ struct ASCScreenshotEmitTests {
         let viewModel = CompletionViewModel(
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 251,
+            mistakeCount: 2,
             leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
             gameCenter: FakeGameCenterClient()
         )

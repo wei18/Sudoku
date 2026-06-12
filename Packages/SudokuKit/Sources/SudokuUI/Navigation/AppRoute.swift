@@ -17,6 +17,6 @@ public enum AppRoute: Hashable, Sendable, Codable {
     case daily
     case practice
     case board(puzzleId: String)
-    case completion(puzzleId: String, elapsedSeconds: Int)
+    case completion(puzzleId: String, elapsedSeconds: Int, mistakeCount: Int)
     case settings
 }
