@@ -83,4 +83,22 @@ import MinesweeperEngine
         #expect(lhs == rhs)
         #expect(lhs != other)
     }
+
+    // Epic 8 (SDD-003): .replayDailyBoard carries difficulty + seed and is
+    // distinct from a scored .board with the same payload.
+    @Test func replayDailyBoardCarriesDifficultyAndSeed() {
+        let route = AppRoute.replayDailyBoard(difficulty: .beginner, seed: 42)
+        guard case .replayDailyBoard(let difficulty, let seed) = route else {
+            Issue.record("expected .replayDailyBoard case")
+            return
+        }
+        #expect(difficulty == .beginner)
+        #expect(seed == 42)
+    }
+
+    @Test func replayDailyBoardIsDistinctFromScoredBoard() {
+        let replay = AppRoute.replayDailyBoard(difficulty: .beginner, seed: 42)
+        let scored = AppRoute.board(difficulty: .beginner, seed: 42, mode: .daily)
+        #expect(replay != scored)
+    }
 }

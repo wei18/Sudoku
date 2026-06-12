@@ -25,6 +25,14 @@ public enum AppRoute: Hashable, Sendable {
     // `MinesweeperGameViewModel` can gate the GC daily-board submit to daily
     // wins only — mirroring how Sudoku threads its mode to `GameCenterSink`.
     case board(difficulty: Difficulty, seed: UInt64, mode: GameMode)
+    // Epic 8 (SDD-003): free replay of a failed daily. The seed is the same
+    // daily board the player lost on. This route is NEVER scored, NEVER submitted
+    // to Game Center, and NEVER saves a new record (no store/recordName). The
+    // Failed record from the first attempt is untouched — replay is cosmetic.
+    // Separate case (not `.board(mode: .dailyReplay)`) to keep `GameMode` stable
+    // and to make the "no persistence, no submit" contract explicit at the route
+    // layer rather than a hidden flag on the board VM.
+    case replayDailyBoard(difficulty: Difficulty, seed: UInt64)
     // #386: re-tapping an already-SOLVED daily card pushes this instead of a
     // fresh `.board` — it re-surfaces the player's result (win hero + the
     // daily's leaderboard slice) rather than starting a dead replay (mirrors

@@ -211,13 +211,37 @@ public actor MinesweeperSavedGameStore {
 
     // MARK: - Mapping
 
-    /// `.won` / `.lost` are archival-complete; everything else (idle /
-    /// playing / paused) is a resumable in-progress save.
+    /// Status wire values. Epic 8 (SDD-003): `.lost` maps to `"failed"` (a
+    /// distinct third state from `"completed"`) so the daily hub can surface a
+    /// Failed card. `.won` stays `"completed"`. Everything else (idle / playing /
+    /// paused) is a resumable `"inProgress"` save.
     static func wireStatus(for status: MinesweeperSessionStatus) -> String {
         switch status {
-        case .won, .lost: return "completed"
+        case .won: return "completed"
+        case .lost: return "failed"
         default: return "inProgress"
         }
+    }
+
+    /// puzzleIds of `mode == "daily" && status == "failed"` records for the
+    /// given UTC date. Feeds `MinesweeperDailyHubViewModel.bootstrap()` so
+    /// failed cards render a third distinct state. Mirrors `fetchCompletedDailyIds`
+    /// structure: graceful-degrade on query failure is the caller's responsibility.
+    public func fetchFailedDailyIds(for date: Date) async throws -> Set<String> {
+        let today = UTCDay.string(from: date)
+        let payloads = try await gateway.query(
+            .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "failed")
+        )
+        return Set(
+            payloads
+                .compactMap(Self.summary(from:))
+                .filter { summary in
+                    guard summary.modeRaw == GameModeRaw.daily else { return false }
+                    guard let day = Self.dailyDay(fromRecordName: summary.recordName) else { return false }
+                    return day == today
+                }
+                .map(\.recordName)
+        )
     }
 
     static func summary(from payload: RecordPayload) -> MinesweeperSavedGameSummary? {

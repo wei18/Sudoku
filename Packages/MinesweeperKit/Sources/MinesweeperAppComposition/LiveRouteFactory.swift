@@ -145,15 +145,17 @@ public struct LiveRouteFactory: RouteFactory {
         case .daily:
             // #290: date-seeded daily trio + completion overlay. The hub VM
             // pulls the three boards from `LiveMinesweeperDailyProvider`
-            // (pure, deterministic per UTC day) and marks completed cards via
-            // `PersistenceProtocol.fetchCompletedDailyIds` (parity-only until
-            // MS daily save-flow lands — returns [] today).
+            // (pure, deterministic per UTC day), marks completed cards via
+            // `PersistenceProtocol.fetchCompletedDailyIds`, and marks failed
+            // cards via `MinesweeperSavedGameStore.fetchFailedDailyIds`
+            // (Epic 8 / SDD-003).
             return AnyView(
                 MinesweeperDailyHubView(
                     viewModel: MinesweeperDailyHubViewModel(
                         path: path ?? .constant([]),
                         provider: LiveMinesweeperDailyProvider(),
-                        persistence: persistence
+                        persistence: persistence,
+                        savedGameStore: savedGameStore
                     ),
                     banner: { bannerSlot() }
                 )
@@ -229,6 +231,38 @@ public struct LiveRouteFactory: RouteFactory {
                     onNewGame: { Self.popToNewGame(path: path) }
                 )
             )
+        case .replayDailyBoard(let difficulty, let seed):
+            // Epic 8 (SDD-003): unscored free replay after a failed daily. The
+            // board is built WITHOUT a `store` or `recordName` (no persistence
+            // side-effects) and WITHOUT `gameCenter` scoring (the `mode` is
+            // `.practice` so the GC daily-submit guard in MinesweeperGameViewModel
+            // fires). The Failed record from the first attempt is untouched.
+            // `onPresentBoard` redirect applies the same as `.board`.
+            if let onPresentBoard {
+                return AnyView(
+                    GameBoardRedirect(
+                        route: .replayDailyBoard(difficulty: difficulty, seed: seed),
+                        path: path,
+                        onPresent: onPresentBoard
+                    )
+                )
+            }
+            return AnyView(
+                MinesweeperBoardView(
+                    difficulty: difficulty,
+                    seed: seed,
+                    mode: .practice,
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    gameCenter: nil,
+                    errorReporter: errorReporter,
+                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
+                    onNewGame: { Self.popToNewGame(path: path) }
+                    // store: nil, recordName: nil — intentionally omitted so no
+                    // save is written and the Failed record stays intact.
+                )
+            )
+
         case .completion(let difficulty, _):
             // #386: re-viewing an already-solved daily. Build the same
             // `MinesweeperCompletionView` the live board overlay uses, but

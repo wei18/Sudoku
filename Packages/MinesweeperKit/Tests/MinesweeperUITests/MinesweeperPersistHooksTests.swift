@@ -55,13 +55,15 @@ struct MinesweeperPersistHooksTests {
     }
 
     @Test
-    func terminalRevealPersistsCompleted() async throws {
+    func terminalRevealPersistsTerminalStatus() async throws {
         let gateway = FakePrivateCKGateway()
         let viewModel = makeVM(gateway: gateway)
         await viewModel.reveal(row: 4, col: 4)
 
-        // Reveal a known mine → .lost → the terminal hook saves "completed",
-        // which removes the record from the resume-candidate set.
+        // Reveal a known mine → .lost → the terminal hook saves "failed"
+        // (Epic 8 / SDD-003: `.lost` → `"failed"` wire status, distinct from
+        // `"completed"`). Either way the record exits the resume-candidate set
+        // (`latestInProgress` queries `status == "inProgress"` only).
         outer: for row in 0..<viewModel.rows {
             for col in 0..<viewModel.columns {
                 let cell = viewModel.cell(row: row, col: col)
@@ -74,7 +76,7 @@ struct MinesweeperPersistHooksTests {
         #expect(viewModel.status == .lost)
 
         let payload = try #require(await gateway.fetch(recordName: "practice-beginner"))
-        #expect(payload.fields["status"] == .string("completed"))
+        #expect(payload.fields["status"] == .string("failed"))
         let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
         #expect(try await store.latestInProgress() == nil)
     }

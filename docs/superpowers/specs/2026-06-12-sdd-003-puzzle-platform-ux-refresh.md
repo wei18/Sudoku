@@ -154,7 +154,15 @@ First Win · Perfect Run · 7 Day Streak · 30 Day Streak · Expert Solver。
 - **OQ-001 ✅ RESOLVED（user，2026-06-12）**：是 — Game View Timer 改為
   Navigation Bar Item（與 `[X]` 同列右上角）。實作為 Epic 1 的 follow-up
   （第一版先維持現況 Timer，nav-bar-item 化獨立 PR）。
-- **OQ-002** Daily Challenge Failure 最終規則？（Owner: CR/PM）
+- **OQ-002 ✅ RESOLVED（user，2026-06-13）**：Option B suite 確認：
+  (1) 失敗 daily 記錄 `"failed"` 狀態（第三態，區別於 completed / not-played）。
+  (2) 失敗定義：MS = 踩雷（即時 terminal loss）；Sudoku = 無 in-game failure（無錯誤上限，刻意不引入）。
+  (3) Streak 不變：只計 completion，失敗/未玩自然斷 streak，不加失敗專用邏輯。
+  (4) Leaderboard：失敗 daily 不送分至 Game Center（零分不送）；現有 loss path 已不送，加
+      測試文件確認。
+  (5) Replay：失敗後可自由重玩同一棋盤，但重玩不計分／不送 GC，不覆蓋 Failed 記錄。
+  實作：`MinesweeperSavedGameStore.wireStatus(.lost)` → `"failed"`；新增
+  `fetchFailedDailyIds`；`AppRoute.replayDailyBoard` 承載無計分重玩。
 - **OQ-003 ✅ RESOLVED（user，2026-06-12）**：是 — Banner 涵蓋所有 Modal / Sheet
   （含 modal 化後的 Game View、Reminder sheet）。唯一例外維持 AD-003：
   Completion Popup 不顯示 Banner，由底層畫面承載。

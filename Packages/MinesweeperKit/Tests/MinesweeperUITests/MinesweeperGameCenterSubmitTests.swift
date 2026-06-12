@@ -200,6 +200,34 @@ struct MinesweeperGameCenterSubmitTests {
         #expect(MinesweeperLeaderboardID.daily(for: .expert)
                 == MinesweeperLeaderboardID.hardDaily)
     }
+
+    // Epic 8 (SDD-003): replay of a failed daily routes through .practice mode
+    // (no store, no GC client — see LiveRouteFactory.replayDailyBoard).
+    // This test verifies the VM-level invariant: a practice-mode VM never
+    // submits to Game Center regardless of outcome, so replay wins are safe.
+    @Test func practiceModeBoardNeverSubmitsEvenOnWin() async {
+        // This is the practiceWinNeverSubmits test re-stated for the replay
+        // context: the route factory wires replayDailyBoard with mode .practice
+        // and gameCenter: nil. A nil client is a no-op; a practice-mode client
+        // is also a no-op (#329 gate). Both invariants together guarantee no GC
+        // submit from replay. The nil-client path:
+        let vmNoClient = MinesweeperGameViewModel(difficulty: .beginner, seed: 42)
+        await driveToWin(vmNoClient)
+        #expect(vmNoClient.status == .won)
+        // The practice-mode + GC client path (belt-and-suspenders):
+        let fake = FakeGameCenterClient()
+        let vmPractice = MinesweeperGameViewModel(
+            difficulty: .beginner,
+            seed: 42,
+            mode: .practice,
+            gameCenter: fake
+        )
+        await driveToWin(vmPractice)
+        #expect(vmPractice.status == .won)
+        let ops = await fake.operations
+        let submitted = ops.contains { if case .submitRawScore = $0 { return true }; return false }
+        #expect(submitted == false, "replay (practice mode) must never submit to GC")
+    }
 }
 
 // swiftlint:enable identifier_name
