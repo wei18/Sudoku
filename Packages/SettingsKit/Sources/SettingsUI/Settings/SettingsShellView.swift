@@ -52,9 +52,15 @@ public struct SettingsShellView<Sections: View, Banner: View>: View {
             // defaults to grouped in NavigationStack already, so this is a
             // no-op on iPhone. (Sudoku issue #197, carried into the shell.)
             .formStyle(.grouped)
-            .navigationTitle(title)
+            // Explicit fill so the Form claims the height above the banner on
+            // macOS (matches the hub shells; a detail pane at arbitrary window
+            // heights must not squash the form).
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             banner
         }
+        // On the outer container (matches DailyHub/PracticeHub shells) so the
+        // NavigationSplitView title preference reads from the pane root.
+        .navigationTitle(title)
     }
 }

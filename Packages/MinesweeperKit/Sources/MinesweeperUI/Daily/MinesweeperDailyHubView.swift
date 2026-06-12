@@ -13,7 +13,6 @@
 // `PersistenceProtocol.fetchCompletedDailyIds`; parity-only until MS daily
 // save-flow lands).
 
-public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 internal import MinesweeperEngine

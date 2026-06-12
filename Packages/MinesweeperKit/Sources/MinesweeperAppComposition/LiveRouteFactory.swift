@@ -289,6 +289,10 @@ public struct LiveRouteFactory: RouteFactory {
     /// are nil (preview / test), the slot itself is not created — the caller
     /// passes EmptyView via the `banner: {}` default instead.
     @MainActor
+    // Uses BannerSlotView's system-default colors, which today coincide with
+    // Sudoku's themedBanner() values. If MS adopts per-theme accents, pass
+    // theme tokens here like Sudoku's RouteFactory.themedBanner() (#468 Epic 5
+    // theming note) so hub/settings banners match the themed Home banner.
     private func bannerSlot() -> some View {
         if let adProvider, let adGate {
             AnyView(

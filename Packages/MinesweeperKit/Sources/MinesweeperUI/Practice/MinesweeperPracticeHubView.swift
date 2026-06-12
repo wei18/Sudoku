@@ -6,7 +6,6 @@
 // machine — MS has no async generator today, so the CTA pushes the route
 // synchronously.
 
-public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 public import MinesweeperEngine
