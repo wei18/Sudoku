@@ -266,7 +266,11 @@ public struct MinesweeperBoardView: View {
             while !Task.isCancelled {
                 if viewModel.status == .playing {
                     await viewModel.refresh()
-                    gameChrome?.updateElapsed("\(viewModel.elapsedSeconds)")
+                    gameChrome?.updateElapsed(String(
+                        // Shared chrome is cross-game surface: mm:ss like Sudoku
+                        // (the in-board status bar keeps MS's raw-seconds idiom).
+                        format: "%d:%02d", viewModel.elapsedSeconds / 60, viewModel.elapsedSeconds % 60
+                    ))
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
