@@ -129,6 +129,10 @@ struct GameRootViewModelLeaveTests {
         #expect(sut.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
     }
 
+    // AC 2.3 note: this verifies only the dismiss leg. The save leg is
+    // fulfilled cross-package by the board views' .onDisappear hooks
+    // (MinesweeperBoardView.persistCurrentState #455, Sudoku BoardView.flush
+    // #413) — not by the VM. See the load-bearing comment in GameRoot.swift.
     @Test func confirmLeaveHidesConfirmationAndDismissesGame() {
         let sut = makeVM()
         sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))

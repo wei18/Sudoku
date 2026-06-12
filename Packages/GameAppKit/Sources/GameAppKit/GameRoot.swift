@@ -140,7 +140,7 @@ private struct GameModalContent: View {
                     .padding(10)
                     .background(.regularMaterial, in: Circle())
             }
-            .accessibilityLabel(Text("Close"))
+            .accessibilityLabel(Text("leave.game.close", bundle: .main))
             .padding(.top, 56)
             .padding(.trailing, 20)
         }
@@ -154,9 +154,12 @@ private struct GameModalContent: View {
             isPresented: $isShowingLeaveConfirmation,
             titleVisibility: .visible
         ) {
-            // AC 2.3: Leave → save + dismiss. The board view's existing
-            // `.onDisappear` flush runs first (before the modal fully closes),
-            // so the save happens before `activeGameRoute` is cleared.
+            // AC 2.3: Leave → save + dismiss. LOAD-BEARING cross-package
+            // dependency: the save is performed by the board views' .onDisappear
+            // hooks — MinesweeperBoardView.persistCurrentState (#455) and Sudoku
+            // BoardView.flush (#413) — both bare `Task` so they outlive teardown.
+            // If either hook is removed, `leave.game.message` ("will be saved
+            // automatically") becomes false. The VM itself does not save.
             Button(role: .destructive) {
                 onConfirmLeave()
             } label: {
