@@ -1,7 +1,7 @@
 // HomeScreen — the shared Home scaffold + mode-card grid BODY (#410).
 //
 // Extracted from SudokuUI.HomeView + MinesweeperUI.MinesweeperHomeView, whose
-// `ScrollView { header ; LazyVGrid(mode cards + RemoveAds) ; banner }` body and
+// `ScrollView { header ; LazyVGrid(mode cards) ; banner }` body and
 // `ModeCard` rendering were byte-identical save for per-app strings and an
 // accessibility identifier set on the Button wrapper. This is the shared
 // *body* + the single source of truth for the 4 common modes
@@ -9,7 +9,8 @@
 //
 // Everything app-specific is INJECTED:
 //   - the header slot (Sudoku's ResumePill / Minesweeper's nothing),
-//   - the RemoveAds card slot — kept app-side so MonetizationUI never leaks
+//   - the removeAdsCard slot — retained for API stability (apps stopped
+//     injecting it in SDD-003 Epic 7; defaults to EmptyView) so MonetizationUI never leaks
 //     into GameShellUI (the shell stays game- and commerce-agnostic),
 //   - the banner slot — likewise app-side (AdProvider / AdGate live in each Kit),
 //   - the per-mode `onTap` (Daily/Practice/Settings push the app's AppRoute;
