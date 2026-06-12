@@ -47,7 +47,13 @@ mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
 
 ## Pipeline (per app + platform)
 
-0. **acknowledgements** — `tuist install` (resolve SwiftPM) → `mise run gen:acknowledgements` → THEN `tuist generate`. Order matters (#433): `gen:acknowledgements` needs resolved checkouts to enumerate deps, and Tuist globs the `Settings.bundle` at *generate* time — so the bundle must be populated before generate or the installed build ships an EMPTY Acknowledgements page. See [[acknowledgements-generation]].
+0. **admob render** — if `secrets/.env` carries `<APP>_ADMOB_APP_ID` +
+   `<APP>_ADMOB_BANNER_UNIT_ID` (SUDOKU_*/MINESWEEPER_*), the task (re)writes
+   `Tuist/AdMob.xcconfig` for the app being built — local parity with XCC's
+   `ci_post_clone.sh` §3.1b. Absent keys → existing file used unchanged. Debug
+   builds force Google's test ad unit in code, so prod values here never serve
+   live ads from a dev run.
+0.5. **acknowledgements** — `tuist install` (resolve SwiftPM) → `mise run gen:acknowledgements` → THEN `tuist generate`. Order matters (#433): `gen:acknowledgements` needs resolved checkouts to enumerate deps, and Tuist globs the `Settings.bundle` at *generate* time — so the bundle must be populated before generate or the installed build ships an EMPTY Acknowledgements page. See [[acknowledgements-generation]].
 1. **generate** — `tuist generate` (the `Game.xcworkspace` is gitignored).
 2. **archive** — `xcodebuild archive` → `build/testflight/<app>-<plat>.xcarchive`.
 3. **bump** — PlistBuddy `Set :CFBundleVersion` on the **archived app's** embedded
