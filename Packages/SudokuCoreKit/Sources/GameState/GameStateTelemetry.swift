@@ -28,7 +28,7 @@ public enum GameStateEvent: Sendable, Equatable, Hashable {
     case sessionStarted
     case sessionPaused
     case sessionResumed
-    case sessionCompleted(elapsedSeconds: Int)
+    case sessionCompleted(elapsedSeconds: Int, mistakeCount: Int)
     case sessionAbandoned
     case digitPlaced(row: Int, col: Int, digit: Int, previous: Int?)
     case noteToggled(row: Int, col: Int, digit: Int, added: Bool)

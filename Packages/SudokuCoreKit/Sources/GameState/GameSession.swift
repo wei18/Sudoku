@@ -120,7 +120,7 @@ public actor GameSession {
     public func complete() async throws {
         try transition(.complete)
         freezeRunningClock()
-        await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds))
+        await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds, mistakeCount: mistakeCount))
     }
 
     public func abandon() async throws {
@@ -169,7 +169,7 @@ public actor GameSession {
         if currentBoard.cells == puzzle.solution.cells {
             try transition(.complete)
             freezeRunningClock()
-            await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds))
+            await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds, mistakeCount: mistakeCount))
         }
     }
 

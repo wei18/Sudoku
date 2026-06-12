@@ -23,8 +23,9 @@
 // above are stripped from the JSON object below — everything from the
 // opening `{` to the matching closing `}` is valid JSON.
 //
-// Total: 30 keys × 7 locales = 210 string units (27 Sudoku gc.* + 3 MS
-// gc.minesweeper.leaderboard.*). 30 × 2 = 60 filled, 30 × 5 = 150 <TRANSLATE>.
+// Total: 45 keys × 7 locales = 315 string units (27 Sudoku gc.* v1 +
+// 15 v2.6 achievement keys + 3 MS gc.minesweeper.leaderboard.*).
+// 45 × 2 = 90 filled (en + zh-Hant), 45 × 5 = 225 <TRANSLATE>.
 
 {
   "strings" : {
@@ -360,6 +361,110 @@
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete Easy, Medium, and Hard Daily puzzles on the same UTC day." } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於同一 UTC 日完成簡單、中等、困難三道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+
+    "gc.achievement.perfect_run.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Perfect Run" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完美一局" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.perfect_run.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed a puzzle without any mistakes." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "零錯誤完成一道題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.perfect_run.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete any puzzle without placing a single incorrect digit." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一道題，且過程中未填入任何錯誤數字。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+
+    "gc.achievement.daily.streak_30.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "30-Day Streak" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "三十日連線" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_30.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Kept a Daily streak going for 30 days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 30 天完成每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.daily.streak_30.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete a Daily puzzle on 30 consecutive UTC days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 30 個 UTC 日各完成至少 1 道每日挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.achievement.expert_solver.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Expert Solver" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "解題高手" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.expert_solver.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed a Hard difficulty puzzle." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成一道困難題。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.achievement.expert_solver.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete any Hard difficulty puzzle to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一道困難題即可獲得。" } },
         "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },

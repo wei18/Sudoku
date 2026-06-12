@@ -60,7 +60,8 @@ struct OSLogSinkTests {
             puzzleId: "2026-05-19-hard",
             mode: .daily,
             difficulty: .hard,
-            elapsedSeconds: 444
+            elapsedSeconds: 444,
+            mistakeCount: 0
         ))
 
         await logger.settle()

@@ -154,7 +154,11 @@ struct GameSessionSnapshotTests {
             digit: Int(puzzle.solution.cells[Board.index(row: 0, column: 0)])
         )
         let events = await spy.events
-        #expect(events.contains(.sessionCompleted(elapsedSeconds: 42)))
+        // The nearSolved fixture uses a shifted Latin square (not a valid Sudoku),
+        // so placing digit 1 at (0,0) conflicts with digit 1 already present in
+        // column 0 (row 2 of the Latin square). mistakeCount is 1, not 0.
+        // The test proves elapsedSeconds + mistakeCount are both forwarded.
+        #expect(events.contains(.sessionCompleted(elapsedSeconds: 42, mistakeCount: 1)))
     }
 
     @Test("undo / redo emit moveUndone / moveRedone")

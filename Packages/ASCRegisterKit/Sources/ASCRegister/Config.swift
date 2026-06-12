@@ -1,10 +1,10 @@
 // Config — single-source-of-truth for ASCRegister content.
 //
-// Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (8 achievements,
-// 500 total points; ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
+// Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (13 achievements,
+// 680 total points (v1 500 + v2.6 batch 180); ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
 //   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
 //   - GameCenterClient/GameCenterSink.swift  (achievement prefix)
-//   - GameCenterClient/AchievementEvaluator.swift (8 short IDs emitted)
+//   - GameCenterClient/AchievementEvaluator.swift (13 short IDs emitted, v2.6)
 //
 // ConfigConsistencyTests enforces that equality. If you change an ID here
 // you MUST change it in the production target — and bump the leaderboard
@@ -95,14 +95,15 @@ internal enum Config {
     /// the `achievementPrefix` literal in GameCenterSink.swift.
     internal static let achievementPrefix = "com.wei18.sudoku.achievement."
 
-    /// 8 v1 achievements, total = 500 points (§How.3.2). Order matches
-    /// the design.md table top-to-bottom for review readability.
+    /// 13 achievements: 8 v1 + 5 v2.6 batch.
+    /// v1 total = 500 pts; v2.6 adds 240 pts → grand total = 740 pts.
+    /// Apple's per-app GC cap = 1000 pts; 740 is within budget.
     ///
     /// ASC enforces a per-achievement points range of 0-100 (round-8 apply
     /// rejected `hard.master = 150` with `INVALID_POINTS_RANGE: points
-    /// between 0 and 100`, issue #40). `hard.master` is capped at 100; total
-    /// budget drops 550 → 500.
+    /// between 0 and 100`, issue #40). All entries respect this constraint.
     internal static let achievements: [AchievementConfig] = [
+        // v1 (8)
         AchievementConfig(shortId: "first_puzzle", points: 10, isHidden: false),
         AchievementConfig(shortId: "daily.complete_one", points: 20, isHidden: false),
         AchievementConfig(shortId: "daily.streak_3", points: 50, isHidden: false),
@@ -110,7 +111,11 @@ internal enum Config {
         AchievementConfig(shortId: "practice.complete_10", points: 30, isHidden: false),
         AchievementConfig(shortId: "practice.complete_100", points: 100, isHidden: false),
         AchievementConfig(shortId: "hard.master", points: 100, isHidden: false),
-        AchievementConfig(shortId: "daily.sweep", points: 90, isHidden: false)
+        AchievementConfig(shortId: "daily.sweep", points: 90, isHidden: false),
+        // v2.6 batch (5)
+        AchievementConfig(shortId: "perfect_run", points: 50, isHidden: false),
+        AchievementConfig(shortId: "daily.streak_30", points: 100, isHidden: false),
+        AchievementConfig(shortId: "expert_solver", points: 30, isHidden: false),
     ]
 
     internal static var allAchievementShortIds: [String] {
