@@ -6,6 +6,7 @@
 
 public import MonetizationCore
 public import SwiftUI
+internal import GameAppKit
 import GameShellUI
 import MonetizationUI
 import SudokuEngine
@@ -21,6 +22,11 @@ public struct BoardView: View {
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
+    // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the
+    // modal hierarchy, this is non-nil and we (a) push the elapsed label
+    // to the chrome on every tick and (b) hide the in-board header timer
+    // to avoid showing two clocks on screen.
+    @Environment(\.gameChrome) private var gameChrome
     @FocusState private var keyboardFocus: Bool
     /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
     /// freely, so guard the push to fire EXACTLY once.
@@ -65,9 +71,12 @@ public struct BoardView: View {
             // the session once per second while the game is live; cancel
             // automatically when paused / finished or when the view goes
             // away (`.task` lifecycle handles both).
+            // SDD-003 OQ-001: also push to chrome on every tick so the modal
+            // top-chrome timer stays in sync with the board session clock.
             while !Task.isCancelled {
                 if viewModel.status == .playing {
                     await viewModel.refreshElapsed()
+                    gameChrome?.updateElapsed(elapsedLabel)
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
@@ -213,10 +222,16 @@ public struct BoardView: View {
                     )
             }
             Spacer()
-            Label(elapsedLabel, systemImage: "timer")
-                .monospacedDigit()
-                .foregroundStyle(theme.text.secondary.resolved)
-                .accessibilityLabel("Elapsed time \(elapsedLabel)")
+            // SDD-003 OQ-001: suppress the in-board timer when the modal
+            // chrome is showing it (gameChrome != nil). On macOS push
+            // navigation / snapshot tests (gameChrome == nil) the timer
+            // stays here as before.
+            if gameChrome == nil {
+                Label(elapsedLabel, systemImage: "timer")
+                    .monospacedDigit()
+                    .foregroundStyle(theme.text.secondary.resolved)
+                    .accessibilityLabel("Elapsed time \(elapsedLabel)")
+            }
             Button {
                 Task {
                     if viewModel.isPaused {

@@ -23,6 +23,7 @@
 public import SwiftUI
 public import GameAudio
 public import GameCenterClient
+internal import GameAppKit
 import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
@@ -44,6 +45,11 @@ public struct MinesweeperBoardView: View {
     // and terminal reveal, both inside the VM). Mirrors Sudoku's
     // scenePhase-triggered flush (§How.5.5).
     @Environment(\.scenePhase) private var scenePhase
+    // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the modal
+    // hierarchy, this is non-nil and we (a) push the elapsed label to the
+    // chrome on every tick and (b) hide the in-board status-bar clock to
+    // avoid showing two timers. Mirrors Sudoku BoardView.gameChrome pattern.
+    @Environment(\.gameChrome) private var gameChrome
 
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
@@ -255,9 +261,12 @@ public struct MinesweeperBoardView: View {
             // label re-renders because `refresh()` republishes the @Observable
             // snapshot. Stop polling once terminal (the clock is frozen) but
             // keep the task alive so cancellation stays tied to the view.
+            // SDD-003 OQ-001: also push to chrome on every tick so the modal
+            // top-chrome timer stays in sync with the board session clock.
             while !Task.isCancelled {
                 if viewModel.status == .playing {
                     await viewModel.refresh()
+                    gameChrome?.updateElapsed("\(viewModel.elapsedSeconds)")
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
@@ -363,8 +372,14 @@ public struct MinesweeperBoardView: View {
             Text(statusText)
                 .font(.headline)
             Spacer()
-            Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
-                .monospacedDigit()
+            // SDD-003 OQ-001: suppress the in-board clock when the modal
+            // chrome is showing it (gameChrome != nil). On macOS push
+            // navigation / snapshot tests (gameChrome == nil) the clock
+            // stays here as before.
+            if gameChrome == nil {
+                Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
+                    .monospacedDigit()
+            }
             pauseToggle
         }
         .font(.subheadline)
