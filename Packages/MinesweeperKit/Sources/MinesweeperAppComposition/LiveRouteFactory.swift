@@ -1,11 +1,3 @@
-// swiftlint:disable file_length cyclomatic_complexity
-// Over the 400-line / complexity-10 limits. The SDD-003 Epic 8 addition of
-// `.replayDailyBoard` pushed the file over the line ceiling and the
-// `view(for:)` switch to 7 cases (complexity 11); the function is a
-// straightforward route→view mapping that reads as one cohesive unit and
-// extracting a helper for a single case would obscure the pattern. Mirrors
-// the `MinesweeperBoardView` precedent for the same lint ceiling exception.
-
 // LiveRouteFactory — Minesweeper's concrete `RouteFactory<AppRoute>`.
 //
 // Mirrors `SudokuKit.LiveRouteFactory` but slimmer — Standard tier still
@@ -148,6 +140,9 @@ public struct LiveRouteFactory: RouteFactory {
     }
 
     @MainActor
+    // The route→view switch reads as one cohesive mapping; extracting a helper
+    // per case would obscure the route table (7 cases post-SDD-003 Epic 8).
+    // swiftlint:disable:next cyclomatic_complexity
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
         case .daily:
@@ -352,83 +347,4 @@ public struct LiveRouteFactory: RouteFactory {
     }
 
     /// #331: builds the MS Notices section config. Mirrors Sudoku — the
-    /// acknowledgements row deep-links to the app's iOS Settings page where
-    /// LicensePlist's `Settings.bundle` surfaces (omitted on macOS, no
-    /// deep-link); copyright derived locally; privacy/support URLs unwired
-    /// pending a canonical public URL (see #331 meeting note).
-    @MainActor
-    private static func makeSettingsNotices() -> SettingsNoticesConfig {
-        let year = Calendar.current.component(.year, from: Date())
-        var onAcknowledgements: (@MainActor () -> Void)?
-        #if canImport(UIKit)
-        onAcknowledgements = {
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
-            }
-        }
-        #endif
-        return SettingsNoticesConfig(
-            onAcknowledgements: onAcknowledgements,
-            copyright: "© \(year) Wei"
-        )
-    }
-
-    /// Deletes the active in-progress saved game, mirroring Sudoku's
-    /// `SettingsViewModel.clearCache()`, and surfaces user feedback (#284).
-    ///
-    /// On success → a success toast ("Cache cleared"). On a thrown delete
-    /// error → the error funnels through `errorReporter` (same channel Sudoku
-    /// uses) AND a failure toast tells the user it didn't clear. Parity-only
-    /// until MS save-flow lands: `latestInProgress()` returns nil today so the
-    /// delete is a safe no-op and the success path is cosmetic, but it
-    /// exercises the real `PersistenceProtocol` path and the error path is the
-    /// real future-proofing.
-    ///
-    /// `internal` (not `private`) so `LiveRouteFactoryTests` can drive the
-    /// success / failure branches directly with a fake persistence — there is
-    /// no MS Settings ViewModel to host the logic (the Sudoku home).
-    @MainActor
-    static func clearCache(
-        persistence: (any PersistenceProtocol)?,
-        errorReporter: (any ErrorReporter)?,
-        toastController: ToastController?
-    ) async {
-        guard let persistence else { return }
-        do {
-            if let candidate = try await persistence.latestInProgress() {
-                try await persistence.deleteAbandoned(recordName: candidate.recordName)
-            }
-            // Localized via the app catalog (Bundle.main) — `Toast.message` is a
-            // plain String rendered verbatim by `Text`, so the lookup happens
-            // here, not at the view layer.
-            toastController?.show(
-                Toast(
-                    style: .success,
-                    message: String(localized: "Cache cleared", bundle: .main)
-                )
-            )
-        } catch {
-            await errorReporter?.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "LiveRouteFactory.clearCache"
-            )
-            toastController?.show(
-                Toast(
-                    style: .failure,
-                    message: String(localized: "Couldn't clear cache", bundle: .main)
-                )
-            )
-        }
-    }
-
-    /// Empties the navigation path so the root content (MinesweeperHomeView) becomes
-    /// visible again. Safe against any path depth, empty path, and nil
-    /// binding. Extracted for unit testing — see `LiveRouteFactoryTests`.
-    @MainActor
-    internal static func popToNewGame(path: Binding<[AppRoute]>?) {
-        path?.wrappedValue.removeAll()
-    }
 }
-
-// swiftlint:enable file_length cyclomatic_complexity
