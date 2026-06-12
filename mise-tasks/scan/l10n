@@ -30,6 +30,15 @@ import json, sys
 path, name = sys.argv[1], sys.argv[2]
 locales = set(sys.argv[3:])
 d = json.load(open(path, encoding="utf-8"))
+# 2a) Structural guard: string entries appended at the JSON root (outside
+# "strings") are valid JSON but invisible to Xcode at runtime — the key
+# renders raw in the UI. Caught live in PR #474; only allow the three
+# top-level keys the xcstrings schema defines.
+extra = sorted(set(d.keys()) - {"sourceLanguage", "strings", "version"})
+if extra:
+    print(f"FAIL [{name}]: keys outside the 'strings' object (Xcode will never "
+          f"resolve them): {extra}", file=sys.stderr)
+    sys.exit(1)
 bad = []
 for key, entry in d.get("strings", {}).items():
     if entry.get("shouldTranslate") is False:
