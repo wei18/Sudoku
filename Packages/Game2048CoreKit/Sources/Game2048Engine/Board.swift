@@ -10,6 +10,9 @@
 internal import Foundation
 
 public struct Board: Sendable, Equatable, Hashable, Codable {
+    /// Explicit key: `tiles` is the persisted wire name (CR #490 F4).
+    private enum CodingKeys: String, CodingKey { case tiles }
+
 
     // MARK: - Constants
 

@@ -13,6 +13,9 @@
 public import Foundation
 internal import TimeKit
 
+/// Recipe note: identical StableHash (FNV-1a, length-framed) and framing as
+/// MinesweeperDaily, but the inputs are (generatorVersion, "daily", utcDay) —
+/// THREE inputs, not four: 2048 has no difficulty dimension (CR #490 F5).
 public enum Game2048Daily {
 
     /// Bumped if the seed→spawn derivation changes in a way that should roll

@@ -126,6 +126,14 @@ private func rows(_ brd: Board) -> [[Int?]] {
         #expect(delta == 16)
     }
 
+    @Test func leadingNonPairThenPair() {
+        // [4,2,2,nil] left → [4,4,nil,nil] (CR #490 F2 — pair behind a
+        // non-matching leader still merges; no chain into the leader)
+        let (result, delta) = MoveEngine.slideLine([4, 2, 2, nil])
+        #expect(result == [4, 4, nil, nil])
+        #expect(delta == 4)
+    }
+
     @Test func threeOfSame() {
         // [2,2,2,nil] left → [4,2,nil,nil] (first pair merges; third slides)
         let (result, delta) = MoveEngine.slideLine([2, 2, 2, nil])

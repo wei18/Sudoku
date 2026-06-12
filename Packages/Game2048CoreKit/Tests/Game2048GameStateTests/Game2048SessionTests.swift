@@ -93,8 +93,9 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
         #expect(after.score == before.score)
     }
 
-    @Test func slideWhileStuckIsNoop() async {
-        // Construct a stuck board directly via restore.
+    // Stuck is detected POST-spawn inside slide(); an illegal slide on a packed
+    // board is simply a no-op and does NOT flip status (CR #490 F1 semantics).
+    @Test func illegalSlideOnPackedBoardIsNoop() async {
         let stuckBoard = Board(tiles: [
             2, 4, 2, 4,
             4, 2, 4, 2,
@@ -111,11 +112,40 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
             reachedTarget: false
         )
         let session = await Game2048Session.restore(from: snap, clock: FakeClock())
-        _ = await session.resume()  // resume → playing; board is actually stuck
-        // Force the stuck state by trying a slide.
+        _ = await session.resume()
         let after = await session.slide(.left)
-        // Board had no legal moves even after resume — status should now be .stuck or unchanged
-        #expect(after.status == .stuck || after.moveCount == 0)
+        #expect(after.moveCount == 0)
+        #expect(after.score == 0)
+        #expect(after.board == stuckBoard)
+    }
+
+    // CR #490 F6 — the stuck-entry path must fire deterministically. Crafted so
+    // that .left merges row 0, leaving exactly one empty cell at (0,3) whose
+    // neighbors ((0,2)=32, (1,3)=8) cannot pair with EITHER spawn value (2 or 4),
+    // and no other adjacent equals exist post-move → stuck regardless of spawn.
+    @Test func legalMoveIntoFullBoardEntersStuck() async {
+        let nearStuck = Board(tiles: [
+            2, 2, 8, 32,
+            8, 4, 16, 8,
+            4, 8, 4, 16,
+            8, 4, 16, 4,
+        ])
+        let snap = Game2048SessionSnapshot(
+            seed: 7,
+            board: nearStuck,
+            score: 0,
+            moveCount: 0,
+            status: .playing,
+            elapsedSeconds: 0,
+            reachedTarget: false
+        )
+        let session = await Game2048Session.restore(from: snap, clock: FakeClock())
+        _ = await session.resume()
+        let after = await session.slide(.left)
+        #expect(after.moveCount == 1)
+        #expect(after.score == 4)
+        #expect(after.board.emptyIndices.isEmpty)
+        #expect(after.status == .stuck, "post-spawn full board with no adjacent pairs must enter .stuck")
     }
 }
 

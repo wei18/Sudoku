@@ -19,6 +19,12 @@ public struct Game2048SessionSnapshot: Sendable, Equatable, Hashable, Codable {
     /// Set once and stays true for the rest of the session (play continues).
     public let reachedTarget: Bool
 
+    /// Explicit keys: these names are load-bearing for persistence round-trips
+    /// (CloudKit blob in Milestone 4) — renames must be deliberate (CR #490 F4).
+    private enum CodingKeys: String, CodingKey {
+        case seed, board, score, moveCount, status, elapsedSeconds, reachedTarget
+    }
+
     public init(
         seed: UInt64,
         board: Board,
