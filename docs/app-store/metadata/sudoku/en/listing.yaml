@@ -1,9 +1,9 @@
 locale: en-US
 name: "Sudoku — Daily & Practice"
 subtitle: "Calm logic for iPhone and Mac"
-promotional_text: |
+promotional_text: |-
   Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
-description: |
+description: |-
   Sudoku, made for thinking — not for noise.
 
   Every day at midnight UTC, three new puzzles arrive: Easy, Medium, and Hard. The same three for every player, everywhere. Your time is yours; the leaderboard tells you how it compared.
@@ -42,16 +42,17 @@ description: |
 
   Requires iOS 26 or macOS 26.
 keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,killer,solver,board,classic"
-whats_new: |
-  Version 2.5
+whats_new: |-
+  Version 2.6
 
-  Quiet logic, now ad-free if you want it.
+  Daily puzzles, leaderboards, achievements — and quieter than ever.
 
-  • Remove Ads — a one-time, non-consumable purchase clears the banner everywhere, forever. No subscription, no recurring charge.
-  • Restore Purchases — already bought it? Restore your Remove Ads entitlement on any of your devices in a tap.
-  • Family Sharing — one purchase covers your whole Family Sharing group.
+  • Daily mode — three new puzzles every day at midnight UTC (Easy / Medium / Hard), the same set for every player worldwide.
+  • Game Center — three recurring daily leaderboards and eight achievements, 500 points total. Sign-in optional.
+  • Resume any time — saves are automatic; one tap from the home screen picks up where you left off.
+  • Remove Ads — a one-time, non-consumable purchase removes the banner everywhere, forever. Family Sharing included.
 
-  Privacy stays the way it should be: we run no first-party analytics, so nothing of ours builds a profile of you. If you keep the free banner, ads tailor only with your permission — and you can decline. Removing ads removes the ad library's identifier use entirely.
+  Privacy stays the way it should be: no first-party analytics, no profile built on you. Ads tailor only with your permission — or remove them entirely.
 
   Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null
