@@ -50,11 +50,12 @@ public struct MinesweeperCompletionView: View {
             outcome: outcome,
             elapsedLabel: elapsedLabel,
             mistakeCount: nil,
-            state: screenState,
-            onRetryLeaderboard: { Task { await viewModel.retry() } },
+            // SDD-003 Epic 4: no leaderboard zone in the popup (mirror of
+            // Sudoku's CompletionView). VM fetch machinery left unrendered.
+            state: .hidden,
+            onRetryLeaderboard: {},
             actions: { closeButton }
         )
-        .onAppear { Task { await viewModel.bootstrap() } }
     }
 
     // MARK: - Outcome (win / loss)
@@ -80,28 +81,6 @@ public struct MinesweeperCompletionView: View {
         }
     }
 
-    // MARK: - State mapping
-
-    // MS has no `.noLeaderboard` today; the shared body still handles it.
-    private var screenState: CompletionScreenState {
-        switch viewModel.state {
-        case .loading:
-            .loading
-        case .loaded(let slice):
-            .loaded(slice.entries.map { entry in
-                CompletionLeaderboardRow(
-                    rank: entry.rank,
-                    displayName: entry.player.displayName,
-                    score: timeLabel(entry.score)
-                )
-            })
-        case .unauthenticated:
-            .unauthenticated
-        case .failed:
-            .failed
-        }
-    }
-
     // MARK: - CTAs (SDD-003 Epic 4: Close only)
 
     // View Leaderboard, Retry, and New Game removed at this injection site per
@@ -113,7 +92,7 @@ public struct MinesweeperCompletionView: View {
             Button {
                 onClose()
             } label: {
-                Text("completion.close")
+                Text("Close")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

@@ -82,6 +82,10 @@ public enum CompletionScreenState: Equatable {
     /// "not ranked" copy, no sign-in CTA.
     case noLeaderboard
     case failed
+    /// SDD-003 Epic 4: the completion popup shows no leaderboard zone at all
+    /// (Success/Failed · Time · Mistakes · Close only). Renders nothing.
+    /// Both apps pass this since v2.6; the other cases remain for reuse.
+    case hidden
 }
 
 // MARK: - Screen
@@ -186,17 +190,14 @@ public struct CompletionScreen: View {
             }
             // Mistakes row — only shown when the game tracks mistakes (Sudoku).
             // Minesweeper passes `nil` and the row is fully absent (no height,
-            // no empty space). The label uses the key "completion.mistakes"
-            // (static label, 7-locale) concatenated with the count so no
-            // format-string substitution is needed in xcstrings. (SDD-003 Epic 4)
+            // no empty space). Key follows the repo's literal-as-key convention
+            // ("Mistakes: %lld" ×7 locales in the app catalogs, resolved via
+            // Bundle.main at runtime — readable English in snapshots). (Epic 4)
             if let mistakeCount {
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.circle")
                         .foregroundStyle(mistakeCount == 0 ? theme.status.success.resolved : theme.status.error.resolved)
-                    Text("completion.mistakes")
-                        .font(.subheadline)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                    + Text(verbatim: ": \(mistakeCount)")
+                    Text("Mistakes: \(mistakeCount)")
                         .font(.subheadline)
                         .foregroundStyle(theme.text.secondary.resolved)
                         .monospacedDigit()
@@ -235,6 +236,8 @@ public struct CompletionScreen: View {
             noLeaderboardBlock
         case .failed:
             failedBlock
+        case .hidden:
+            EmptyView()
         }
     }
 
