@@ -387,9 +387,8 @@ public actor GameSession {
         }
     }
 
-    /// Redo re-executes a move that was already counted at original placement
-    /// time, so it deliberately does NOT re-increment `mistakeCount` — the
-    /// counter is cumulative over ORIGINAL placements (SDD-003 AC-3.4).
+    /// Redo re-executes an already-counted move, so it deliberately does NOT
+    /// re-increment `mistakeCount` (cumulative over ORIGINAL placements).
     private func reapply(_ move: Move) throws {
         switch move {
         case let .placeDigit(row, col, digit, _):
