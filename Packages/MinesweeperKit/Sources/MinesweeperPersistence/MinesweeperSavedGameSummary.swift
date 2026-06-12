@@ -36,8 +36,9 @@ public struct MinesweeperSavedGameSummary: Sendable, Equatable, Hashable, Codabl
     public let modeRaw: String
     public let elapsedSeconds: Int
     public let lastModifiedAt: Date
-    /// `"inProgress"` or `"completed"` — the 2-state wire shape, mirroring
-    /// Sudoku's `SavedGameSummary.status`.
+    /// `"inProgress"`, `"completed"`, or `"failed"` — three-state wire shape.
+    /// `"failed"` is Epic 8 (SDD-003): a daily board where the player hit a mine
+    /// (`.lost`) — distinct from completed (won) and from not-yet-played.
     public let status: String
 
     public init(

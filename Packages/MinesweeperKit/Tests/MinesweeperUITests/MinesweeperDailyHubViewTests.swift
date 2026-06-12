@@ -103,6 +103,64 @@ import MinesweeperEngine
         #expect(path == [.board(difficulty: unsolved.difficulty, seed: unsolved.seed, mode: .daily)])
     }
 
+    // MARK: - Epic 8: failed-card state and replay routing
+
+    // mergeCards marks a card failed when its puzzleId is in the failed set
+    // and NOT in the completed set (completed win takes priority).
+    @Test func mergeMarkesFailedCard() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let trio = LiveMinesweeperDailyProvider().dailyTrio(date: date)
+        let failedId = trio[0].puzzleId
+        let cards = MinesweeperDailyHubViewModel.mergeCards(
+            trio: trio,
+            completed: [],
+            failed: [failedId]
+        )
+        #expect(cards[0].isFailed == true)
+        #expect(cards[1].isFailed == false)
+        #expect(cards[2].isFailed == false)
+    }
+
+    // A completed (won) card takes priority over failed even if both sets
+    // contain the same id (belt-and-suspenders: shouldn't happen in prod).
+    @Test func completedTakesPriorityOverFailed() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let trio = LiveMinesweeperDailyProvider().dailyTrio(date: date)
+        let bothId = trio[1].puzzleId
+        let cards = MinesweeperDailyHubViewModel.mergeCards(
+            trio: trio,
+            completed: [bothId],
+            failed: [bothId]
+        )
+        #expect(cards[1].isCompleted == true)
+        #expect(cards[1].isFailed == false)
+    }
+
+    // A failed card tap pushes `.replayDailyBoard` (unscored, no persistence).
+    @Test func failedCardTapPushesReplayRoute() {
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
+        let failedCard = MinesweeperDailyCard(entry: entry, isCompleted: false, isFailed: true)
+        viewModel.cardTapped(failedCard)
+        #expect(path == [.replayDailyBoard(difficulty: entry.difficulty, seed: entry.seed)])
+    }
+
+    // A failed-card replay route is distinct from the scored daily route.
+    @Test func replayRouteIsDistinctFromScoredDaily() {
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
+        let failedCard = MinesweeperDailyCard(entry: entry, isCompleted: false, isFailed: true)
+        viewModel.cardTapped(failedCard)
+        let scoredRoute = AppRoute.board(difficulty: entry.difficulty, seed: entry.seed, mode: .daily)
+        #expect(path.first != scoredRoute)
+    }
+
     @Test func bootstrapIsIdempotent() async {
         let counter = Counter()
         let counting = CountingProvider(onFetch: { counter.increment() })

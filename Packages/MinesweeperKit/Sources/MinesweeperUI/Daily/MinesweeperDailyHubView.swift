@@ -83,6 +83,17 @@ private struct MinesweeperDailyCardView: View {
                         .foregroundStyle(theme.status.success.resolved)
                         .font(.callout)
                         .accessibilityLabel("Completed")
+                } else if card.isFailed {
+                    // Epic 8 (SDD-003): third state — mine hit on this daily.
+                    // "Replay" affordance is communicated by the tap action.
+                    Label {
+                        Text("Failed")
+                    } icon: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(theme.status.warning.resolved)
+                    .accessibilityLabel("Failed")
                 } else {
                     Text("—")
                         .font(.callout)

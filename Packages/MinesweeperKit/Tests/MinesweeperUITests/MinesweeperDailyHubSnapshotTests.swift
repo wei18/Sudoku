@@ -26,10 +26,10 @@ import MinesweeperEngine
 @Suite("MinesweeperDailyHubView — themed snapshots")
 struct MinesweeperDailyHubSnapshotTests {
 
-    /// A fixed daily trio — one card per difficulty, with the Intermediate row
-    /// marked completed so the checkmark vs em-dash branch is both exercised in
-    /// the same frame. Entries are hand-built (not date-derived) so the fixture
-    /// is fully deterministic.
+    /// A fixed daily trio — all three card states exercised in the same frame:
+    /// Beginner = not-played (em-dash), Intermediate = completed (checkmark),
+    /// Expert = failed (xmark, Epic 8 / SDD-003). Hand-built (not date-derived)
+    /// so the fixture is fully deterministic.
     private static let loadedTrio: [MinesweeperDailyCard] = [
         MinesweeperDailyCard(
             entry: MinesweeperDailyEntry(
@@ -37,7 +37,8 @@ struct MinesweeperDailyHubSnapshotTests {
                 difficulty: .beginner,
                 seed: 1
             ),
-            isCompleted: false
+            isCompleted: false,
+            isFailed: false
         ),
         MinesweeperDailyCard(
             entry: MinesweeperDailyEntry(
@@ -45,7 +46,8 @@ struct MinesweeperDailyHubSnapshotTests {
                 difficulty: .intermediate,
                 seed: 2
             ),
-            isCompleted: true
+            isCompleted: true,
+            isFailed: false
         ),
         MinesweeperDailyCard(
             entry: MinesweeperDailyEntry(
@@ -53,7 +55,8 @@ struct MinesweeperDailyHubSnapshotTests {
                 difficulty: .expert,
                 seed: 3
             ),
-            isCompleted: false
+            isCompleted: false,
+            isFailed: true
         ),
     ]
 
