@@ -39,6 +39,10 @@ public final class GameViewModel {
     public private(set) var notes: NotesGrid
     public private(set) var status: GameSessionStatus
     public private(set) var elapsedSeconds: Int
+    /// Cumulative count of conflicting digit placements (AC-3.4 / SDD-003
+    /// Epic 3). Restored from the saved game snapshot so Resume shows the
+    /// same value the player had when they left.
+    public private(set) var mistakeCount: Int
     public private(set) var canUndo: Bool = false
     public private(set) var canRedo: Bool = false
 
@@ -103,6 +107,7 @@ public final class GameViewModel {
         initialNotes: NotesGrid = NotesGrid(),
         initialStatus: GameSessionStatus = .idle,
         initialElapsedSeconds: Int = 0,
+        initialMistakeCount: Int = 0,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -115,6 +120,7 @@ public final class GameViewModel {
         self.notes = initialNotes
         self.status = initialStatus
         self.elapsedSeconds = initialElapsedSeconds
+        self.mistakeCount = initialMistakeCount
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -131,6 +137,7 @@ public final class GameViewModel {
         notes: NotesGrid = NotesGrid(),
         status: GameSessionStatus = .playing,
         elapsedSeconds: Int = 0,
+        mistakeCount: Int = 0,
         errorIndices: Set<Int> = [],
         selection: GridCoordinate? = nil,
         pencilMode: Bool = false,
@@ -148,6 +155,7 @@ public final class GameViewModel {
         self.notes = notes
         self.status = status
         self.elapsedSeconds = elapsedSeconds
+        self.mistakeCount = mistakeCount
         self.errorIndices = errorIndices
         self.selection = selection
         self.pencilMode = pencilMode
@@ -189,6 +197,7 @@ public final class GameViewModel {
         notes: NotesGrid? = nil,
         status: GameSessionStatus? = nil,
         elapsedSeconds: Int? = nil,
+        mistakeCount: Int? = nil,
         errorIndices: Set<Int>? = nil,
         selection: GridCoordinate? = nil,
         pencilMode: Bool? = nil,
@@ -199,6 +208,7 @@ public final class GameViewModel {
         if let notes { self.notes = notes }
         if let status { self.status = status }
         if let elapsedSeconds { self.elapsedSeconds = elapsedSeconds }
+        if let mistakeCount { self.mistakeCount = mistakeCount }
         if let errorIndices { self.errorIndices = errorIndices }
         if let selection { self.selection = selection }
         if let pencilMode { self.pencilMode = pencilMode }
@@ -580,6 +590,7 @@ public final class GameViewModel {
         self.notes = snap.notes
         self.status = snap.status
         self.elapsedSeconds = snap.elapsedSeconds
+        self.mistakeCount = snap.mistakeCount
         self.canUndo = !snap.undoMoves.isEmpty
         self.canRedo = !snap.redoMoves.isEmpty
         recomputeErrors()

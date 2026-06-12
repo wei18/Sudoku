@@ -26,6 +26,15 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
     /// Single source of truth for the `SavedGame.startedAt` CloudKit field
     /// (per impl-notes 2026-05-20_wave-2-blocker-fixes §B4).
     public let startedAt: Date?
+    /// Cumulative count of digit placements that immediately created a board
+    /// conflict at the moment of placement. Increments on each conflicting
+    /// `placeDigit`; never decrements (correcting a mistake is progress, not
+    /// forgiveness). Persisted in the `SavedGame` CloudKit record so Resume
+    /// returns the exact count the player had when they left (SDD-003 AC-3.4).
+    /// Backward compat: the init default (0) covers in-memory call sites, and
+    /// `SavedGameMapper` maps an absent CloudKit field to 0 for records saved
+    /// before this field existed.
+    public let mistakeCount: Int
 
     public init(
         puzzle: Puzzle,
@@ -35,7 +44,8 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
         undoMoves: [Move],
         redoMoves: [Move],
         notes: NotesGrid,
-        startedAt: Date? = nil
+        startedAt: Date? = nil,
+        mistakeCount: Int = 0
     ) {
         self.puzzle = puzzle
         self.currentBoard = currentBoard
@@ -45,5 +55,6 @@ public struct GameSessionSnapshot: Sendable, Equatable, Hashable, Codable {
         self.redoMoves = redoMoves
         self.notes = notes
         self.startedAt = startedAt
+        self.mistakeCount = mistakeCount
     }
 }

@@ -133,6 +133,7 @@ public struct BoardLoaderView: View {
                 initialNotes: snapshot.notes,
                 initialStatus: snapshot.status,
                 initialElapsedSeconds: snapshot.elapsedSeconds,
+                initialMistakeCount: snapshot.mistakeCount,
                 persistence: persistence,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer
