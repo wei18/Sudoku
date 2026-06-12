@@ -13,16 +13,22 @@
 // `PersistenceProtocol.fetchCompletedDailyIds`; parity-only until MS daily
 // save-flow lands).
 
+public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 internal import MinesweeperEngine
 
-public struct MinesweeperDailyHubView: View {
+public struct MinesweeperDailyHubView<Banner: View>: View {
     @Bindable private var viewModel: MinesweeperDailyHubViewModel
     @Environment(\.theme) private var theme
+    private let banner: Banner
 
-    public init(viewModel: MinesweeperDailyHubViewModel) {
+    public init(
+        viewModel: MinesweeperDailyHubViewModel,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
+    ) {
         self.viewModel = viewModel
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -40,7 +46,8 @@ public struct MinesweeperDailyHubView: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
             },
-            onItemTap: { card in viewModel.cardTapped(card) }
+            onItemTap: { card in viewModel.cardTapped(card) },
+            banner: { banner }
         )
         .task { await viewModel.bootstrap() }
     }

@@ -171,13 +171,15 @@ public struct LiveRouteFactory: RouteFactory {
                         persistence: persistence,
                         errorReporter: errorReporter,
                         path: path
-                    )
+                    ),
+                    banner: { themedBanner() }
                 )
             )
         case .practice:
             return AnyView(
                 PracticeHubView(
-                    viewModel: PracticeHubViewModel(provider: puzzleProvider, path: path)
+                    viewModel: PracticeHubViewModel(provider: puzzleProvider, path: path),
+                    banner: { themedBanner() }
                 )
             )
         case .board:
@@ -239,9 +241,32 @@ public struct LiveRouteFactory: RouteFactory {
                     monetizationController: monetizationController,
                     reminderSettings: makeReminderSettings?(),
                     notices: settingsNotices,
-                    audioSettings: audioSettings
+                    audioSettings: audioSettings,
+                    banner: { themedBanner() }
                 )
             )
         }
+    }
+
+    // MARK: - Banner helper
+
+    /// Epic 5: themed `BannerSlotView` for all non-Home, non-Board screens.
+    /// Same theme tokens as HomeView's `bannerSlot` — no per-screen override.
+    /// Board never calls this; it owns its own `themedBanner` method.
+    /// The cast from `AdProvider` → `BannerViewProviding` follows the same
+    /// pattern as HomeView and BoardView (§9.1: keeps SudokuUI off AdsAdMob).
+    @MainActor
+    private func themedBanner() -> some View {
+        BannerSlotView(
+            adProvider: adProvider,
+            adGate: adGate,
+            bannerHost: adProvider as? any BannerViewProviding,
+            backgroundColor: Color.secondary.opacity(0.12),
+            progressTint: .accentColor,
+            captionColor: .secondary,
+            dismissTint: Color.secondary.opacity(0.7)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }

@@ -6,6 +6,9 @@
 //   - the state switch over `HubLoadState<Item>` (idle / loading / loaded /
 //     empty / failed)
 //   - the `Button { onItemTap } label: { card }`.buttonStyle(.plain) wrapper
+//   - the optional `banner` slot below the scroll region (Epic 5 — Banner
+//     Coverage Expansion). GameShellKit is zero-dep: the actual `BannerSlotView`
+//     is injected by each app at the RouteFactory level; the default is EmptyView.
 //
 // The caller supplies:
 //   - the title (as `LocalizedStringKey`)
@@ -17,6 +20,8 @@
 //   - the failure overlay builder (`@ViewBuilder failure`); kept caller-
 //     provided so each game owns its own warning copy + tinting tokens
 //   - the per-item tap action
+//   - the `banner` slot (injected by each app; EmptyView default for
+//     previews/tests; the actual BannerSlotView is never imported here)
 //
 // `.task { bootstrap() }` and the empty-state `.alert(...)` are NOT owned
 // by the shell — same precedent as X4 (SettingsShellView owns no side-
@@ -24,14 +29,15 @@
 
 public import SwiftUI
 
-public struct DailyHubShellView<Item, Card, Failure>: View
-where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View {
+public struct DailyHubShellView<Item, Card, Failure, Banner>: View
+where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Banner: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let state: HubLoadState<Item>
     private let card: (Item) -> Card
     private let failure: (String) -> Failure
     private let onItemTap: (Item) -> Void
+    private let banner: Banner
 
     public init(
         title: LocalizedStringKey,
@@ -39,7 +45,8 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View {
         state: HubLoadState<Item>,
         @ViewBuilder card: @escaping (Item) -> Card,
         @ViewBuilder failure: @escaping (String) -> Failure,
-        onItemTap: @escaping (Item) -> Void
+        onItemTap: @escaping (Item) -> Void,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.title = title
         self.backgroundColor = backgroundColor
@@ -47,13 +54,17 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View {
         self.card = card
         self.failure = failure
         self.onItemTap = onItemTap
+        self.banner = banner()
     }
 
     public var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(backgroundColor)
-            .navigationTitle(title)
+        VStack(spacing: 0) {
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            banner
+        }
+        .background(backgroundColor)
+        .navigationTitle(title)
     }
 
     @ViewBuilder
@@ -61,6 +72,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View {
         switch state {
         case .idle, .loading:
             ProgressView().controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .loaded(let items):
             cardList(items)
         case .empty:
@@ -70,6 +82,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View {
             Color.clear
         case .failed(let reason):
             failure(reason)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

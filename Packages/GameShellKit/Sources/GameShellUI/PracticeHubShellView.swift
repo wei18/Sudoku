@@ -7,6 +7,9 @@
 //   - the chrome triple (`.background(Color)` + `.navigationTitle`)
 //   - the inline section header `Text` for the filter slot, with caller-
 //     supplied foreground color (`headerForeground`)
+//   - the optional `banner` slot pinned below the scrollable content (Epic 5).
+//     GameShellKit is zero-dep: the actual `BannerSlotView` is injected by
+//     each app at the RouteFactory level; the default is EmptyView.
 //
 // Caller supplies:
 //   - `title` and `filterHeader` (both `LocalizedStringKey`)
@@ -16,6 +19,8 @@
 //     glassEffect / padding decoration — none of which the shell touches)
 //   - the `cta` slot (the game's draw/start affordance — Sudoku's `drawCard`
 //     with its shimmer + glassEffect, or Minesweeper's simpler Start button)
+//   - the `banner` slot (injected by each app; EmptyView default for
+//     previews/tests; the actual BannerSlotView is never imported here)
 //
 // Loading state (Sudoku's `PracticeHubLoadingState`) deliberately stays in
 // the caller's CTA — the shell carries no state machine. Lets Minesweeper
@@ -23,14 +28,15 @@
 
 public import SwiftUI
 
-public struct PracticeHubShellView<Filter, CTA>: View
-where Filter: View, CTA: View {
+public struct PracticeHubShellView<Filter, CTA, Banner>: View
+where Filter: View, CTA: View, Banner: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let filterHeader: LocalizedStringKey
     private let headerForeground: Color
     private let filter: () -> Filter
     private let cta: () -> CTA
+    private let banner: Banner
 
     public init(
         title: LocalizedStringKey,
@@ -38,7 +44,8 @@ where Filter: View, CTA: View {
         filterHeader: LocalizedStringKey,
         headerForeground: Color,
         @ViewBuilder filter: @escaping () -> Filter,
-        @ViewBuilder cta: @escaping () -> CTA
+        @ViewBuilder cta: @escaping () -> CTA,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.title = title
         self.backgroundColor = backgroundColor
@@ -46,22 +53,27 @@ where Filter: View, CTA: View {
         self.headerForeground = headerForeground
         self.filter = filter
         self.cta = cta
+        self.banner = banner()
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text(filterHeader)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(headerForeground)
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 24) {
+                Text(filterHeader)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(headerForeground)
 
-            filter()
+                filter()
 
-            cta()
+                cta()
 
-            Spacer()
+                Spacer()
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            banner
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(backgroundColor)
         .navigationTitle(title)
     }

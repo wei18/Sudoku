@@ -154,12 +154,18 @@ public struct LiveRouteFactory: RouteFactory {
                         path: path ?? .constant([]),
                         provider: LiveMinesweeperDailyProvider(),
                         persistence: persistence
-                    )
+                    ),
+                    banner: { bannerSlot() }
                 )
             )
         case .practice:
             // Was unreachable (no AppRoute case). Now reachable from Home.
-            return AnyView(MinesweeperPracticeHubView(path: path ?? .constant([])))
+            return AnyView(
+                MinesweeperPracticeHubView(
+                    path: path ?? .constant([]),
+                    banner: { bannerSlot() }
+                )
+            )
         case .board(let difficulty, let seed, let mode):
             // SDD-003 Epic 1: when `onPresentBoard` is wired (production), redirect
             // to the fullScreenCover modal. Legacy push path kept for tests / previews.
@@ -268,9 +274,34 @@ public struct LiveRouteFactory: RouteFactory {
                     reminderSettings: makeReminderSettings?(),
                     // #330 P2: the shared Sound section (nil in preview/test → no
                     // section, byte-identical screen).
-                    audioSettings: audioSettings
+                    audioSettings: audioSettings,
+                    banner: { bannerSlot() }
                 )
             )
+        }
+    }
+
+    // MARK: - Banner helper
+
+    /// Epic 5: banner slot for non-Home, non-Board screens. The cast from
+    /// `AdProvider` → `BannerViewProviding` follows the §9.1 pattern (keeps
+    /// MinesweeperAppComposition off GoogleMobileAds). When adProvider / adGate
+    /// are nil (preview / test), the slot itself is not created — the caller
+    /// passes EmptyView via the `banner: {}` default instead.
+    @MainActor
+    private func bannerSlot() -> some View {
+        if let adProvider, let adGate {
+            AnyView(
+                BannerSlotView(
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    bannerHost: adProvider as? any BannerViewProviding
+                )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            )
+        } else {
+            AnyView(EmptyView())
         }
     }
 

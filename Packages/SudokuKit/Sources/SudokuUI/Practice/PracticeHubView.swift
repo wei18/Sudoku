@@ -12,16 +12,22 @@
 // preserves the previous `theme.text.primary.resolved` rendering →
 // byte-identical to pre-U12 snapshots.
 
+public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 internal import SudokuEngine
 
-public struct PracticeHubView: View {
+public struct PracticeHubView<Banner: View>: View {
     @Bindable private var viewModel: PracticeHubViewModel
     @Environment(\.theme) private var theme
+    private let banner: Banner
 
-    public init(viewModel: PracticeHubViewModel) {
+    public init(
+        viewModel: PracticeHubViewModel,
+        @ViewBuilder banner: () -> Banner = { EmptyView() }
+    ) {
         self.viewModel = viewModel
+        self.banner = banner()
     }
 
     public var body: some View {
@@ -31,7 +37,8 @@ public struct PracticeHubView: View {
             filterHeader: "Difficulty",
             headerForeground: theme.text.primary.resolved,
             filter: { difficultyPicker },
-            cta: { drawCard }
+            cta: { drawCard },
+            banner: { banner }
         )
     }
 

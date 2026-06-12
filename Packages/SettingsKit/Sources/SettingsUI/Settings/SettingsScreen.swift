@@ -19,6 +19,9 @@
 //     leaderboard-as-value-type decoupling).
 //   - `aboutExtraRows` (@ViewBuilder, default EmptyView) — Sudoku injects its
 //     Sudoku-only "Generator" row here; Minesweeper injects nothing.
+//   - `banner` (@ViewBuilder, default EmptyView) — the app-injected
+//     `BannerSlotView` (Epic 5). SettingsKit must NOT import MonetizationUI /
+//     AppMonetizationKit; the actual slot is injected at the RouteFactory level.
 //   - `version`, `reminderSettings`, `notices`, `clearCache`, `tint` — injected
 //     config exactly as the prior wrappers passed them.
 //
@@ -28,7 +31,7 @@
 
 public import SwiftUI
 
-public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
+public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View>: View {
     private let purchases: () -> Purchases
     private let reminderSettings: SettingsScreenReminderConfig?
     private let audioSettings: AudioSettingsModel?
@@ -37,6 +40,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
     private let notices: SettingsNoticesConfig?
     private let clearCache: @MainActor () async -> Void
     private let tint: Color
+    private let banner: () -> Banner
 
     public init(
         version: String,
@@ -46,7 +50,8 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
         audioSettings: AudioSettingsModel? = nil,
         notices: SettingsNoticesConfig? = nil,
         @ViewBuilder purchases: @escaping () -> Purchases,
-        @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() }
+        @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() },
+        @ViewBuilder banner: @escaping () -> Banner = { EmptyView() }
     ) {
         self.version = version
         self.tint = tint
@@ -56,10 +61,11 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
         self.notices = notices
         self.purchases = purchases
         self.aboutExtraRows = aboutExtraRows
+        self.banner = banner
     }
 
     public var body: some View {
-        SettingsShellView(title: "Settings") {
+        SettingsShellView(title: "Settings", sections: {
             // 1. Purchases — injected MonetizationUI rows. The slot is the whole
             // `Section("Purchases") { ... }` (or EmptyView when no controller),
             // built by the host, so the conditional + the IAP coupling stay in
@@ -101,7 +107,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
 
             // 5. Storage — shared section. Wires the host-supplied clearCache.
             SettingsStorageSection(clearCache: clearCache)
-        }
+        }, banner: banner)
     }
 }
 
