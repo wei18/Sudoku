@@ -53,6 +53,14 @@ public actor GameSession {
     /// see the original session-open time, not "time of last save".
     public private(set) var startedAt: Date?
 
+    // MARK: - mistakeCount
+
+    /// Cumulative count of conflicting `placeDigit` calls. Increments when the
+    /// newly placed digit immediately conflicts with another cell in the same
+    /// row, column, or 3×3 box. Never decrements — correcting a wrong digit
+    /// does not reduce the count. Restored from snapshot on `restore(from:)`.
+    public private(set) var mistakeCount: Int = 0
+
     // MARK: - Elapsed-time accounting
 
     /// Wall-clock instant (seconds) when the current .playing span began.
@@ -146,6 +154,12 @@ public actor GameSession {
 
         try currentBoard.setDigit(digit, atRow: row, column: col)
         undoStack.push(.placeDigit(row: row, col: col, digit: digit, previous: previous))
+
+        // SDD-003 AC-3.4: increment mistake counter when the newly placed digit
+        // conflicts with another cell in the same row / column / 3×3 box.
+        if Self.hasConflict(digit: digit, row: row, col: col, board: currentBoard) {
+            mistakeCount += 1
+        }
 
         await telemetry.dispatch(.digitPlaced(row: row, col: col, digit: digit, previous: previous))
 
@@ -258,7 +272,8 @@ public actor GameSession {
             undoMoves: undoStack.undoStack,
             redoMoves: undoStack.redoStack,
             notes: notes,
-            startedAt: startedAt
+            startedAt: startedAt,
+            mistakeCount: mistakeCount
         )
     }
 
@@ -301,6 +316,7 @@ public actor GameSession {
         accumulatedSeconds = snapshot.elapsedSeconds
         runningSince = nil
         startedAt = snapshot.startedAt
+        mistakeCount = snapshot.mistakeCount
 
         // Reconstruct the undo/redo split using only the public API
         // (`push` / `undo`). Strategy: push undoMoves in order, then push
@@ -337,6 +353,28 @@ public actor GameSession {
             throw GameSessionError.illegalTransition(from: status, applying: transition)
         }
         status = next
+    }
+
+    /// Returns `true` when `digit` at (`row`, `col`) conflicts with any
+    /// other cell in the same row, column, or 3×3 box. Used at placement
+    /// time to decide whether to increment `mistakeCount`. Mirrors the
+    /// logic in `GameViewModel.hasConflict` but lives here at the actor
+    /// level so it is available without the MainActor VM dependency.
+    private static func hasConflict(digit: Int, row: Int, col: Int, board: Board) -> Bool {
+        for col2 in 0..<Board.dimension where col2 != col {
+            if board.digit(atRow: row, column: col2) == digit { return true }
+        }
+        for row2 in 0..<Board.dimension where row2 != row {
+            if board.digit(atRow: row2, column: col) == digit { return true }
+        }
+        let boxRowOrigin = (row / 3) * 3
+        let boxColOrigin = (col / 3) * 3
+        for row2 in boxRowOrigin..<boxRowOrigin + 3 {
+            for col2 in boxColOrigin..<boxColOrigin + 3 where !(row2 == row && col2 == col) {
+                if board.digit(atRow: row2, column: col2) == digit { return true }
+            }
+        }
+        return false
     }
 
     private func revert(_ move: Move) throws {

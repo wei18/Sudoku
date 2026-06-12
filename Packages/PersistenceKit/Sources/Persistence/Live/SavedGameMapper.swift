@@ -72,7 +72,9 @@ internal enum SavedGameMapper {
             SavedGameStore.Field.schemaVersion: .int(schemaVersion),
             // Cache the full GameSessionStatus enum separately so we can
             // restore states beyond "inProgress / completed" (e.g. `.paused`).
-            "statusEnvelope": .data(statusData)
+            "statusEnvelope": .data(statusData),
+            // SDD-003 Epic 3: cumulative conflicting-placement counter.
+            SavedGameStore.Field.mistakeCount: .int(snapshot.mistakeCount)
         ]
         return RecordPayload(
             recordType: PrivateCKConstants.savedGameRecordType,
@@ -121,6 +123,16 @@ internal enum SavedGameMapper {
             startedAt = nil
         }
 
+        // SDD-003 Epic 3: restore the mistake counter. Absent in older records
+        // (saved before this field existed) → default to 0, which is correct
+        // (those sessions had no mistake tracking).
+        let mistakeCount: Int
+        if case .int(let value) = payload.fields[SavedGameStore.Field.mistakeCount] {
+            mistakeCount = value
+        } else {
+            mistakeCount = 0
+        }
+
         return GameSessionSnapshot(
             puzzle: puzzle,
             currentBoard: board,
@@ -129,7 +141,8 @@ internal enum SavedGameMapper {
             undoMoves: undo.undo,
             redoMoves: undo.redo,
             notes: notes,
-            startedAt: startedAt
+            startedAt: startedAt,
+            mistakeCount: mistakeCount
         )
     }
 

@@ -49,6 +49,7 @@ DEFINE SCHEMA
         elapsedSeconds   INT64 QUERYABLE SORTABLE,
         generatorVersion INT64 QUERYABLE SORTABLE,
         lastModifiedAt   TIMESTAMP QUERYABLE SORTABLE,
+        mistakeCount     INT64 QUERYABLE SORTABLE,
         mode             STRING QUERYABLE SEARCHABLE SORTABLE,
         notesState       BYTES QUERYABLE SORTABLE,
         puzzleId         STRING QUERYABLE SEARCHABLE SORTABLE,

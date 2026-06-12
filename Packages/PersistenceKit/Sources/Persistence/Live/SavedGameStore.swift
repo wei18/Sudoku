@@ -35,6 +35,8 @@ internal actor SavedGameStore: Sendable {
         static let status = "status"
         static let generatorVersion = "generatorVersion"
         static let schemaVersion = "schemaVersion"
+        /// SDD-003 Epic 3 — cumulative conflicting-placement counter.
+        static let mistakeCount = "mistakeCount"
     }
 
     static let currentSchemaVersion = 1
