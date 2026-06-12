@@ -17,7 +17,8 @@ description: |
   • Three classic difficulties — Beginner, Intermediate, Expert.
   • First-click safety — the opening tap can never lose.
   • Tap to reveal, long-press to flag (right-click or control-click on Mac).
-  • A daily set of boards to play.
+  • Daily mode — three difficulties every day, recurring leaderboards that reset at UTC 00:00.
+  • Three Game Center daily leaderboards (Easy / Medium / Hard). Sign-in optional.
 
   Truly cross-platform
 
@@ -42,14 +43,16 @@ description: |
   Requires iOS 26 or macOS 26.
 keywords: "mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board,bomb,sweeper,mine sweeper,sapper"
 whats_new: |
-  Version 2.3.5
+  Version 1.0
 
-  • Classic Minesweeper with three difficulties: Beginner, Intermediate, Expert.
-  • First-click safety — the opening tap is never a mine.
-  • Tap to reveal, long-press to flag; right-click flagging on Mac.
-  • Remove Ads: a one-time purchase that removes the banner forever.
+  First release.
+
+  • Classic Minesweeper — Beginner, Intermediate, Expert. First tap is always safe.
+  • Daily mode — three puzzles every day at midnight UTC, with Game Center leaderboards.
+  • Remove Ads — a one-time, non-consumable purchase removes the banner everywhere, forever.
+  • iCloud sync — game data lives in your own iCloud Private Database.
   • Seven languages: English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, Korean.
-  • Mac native build, not Catalyst.
+  • Mac native — not Catalyst.
 
   Thank you for playing. Issues and feature requests are welcome at the support link.
 marketing_url: null

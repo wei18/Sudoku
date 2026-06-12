@@ -105,6 +105,8 @@ cleanup if the ASCRegister `metadata` mode wants a single source).
 
 Counts are taken with Unicode grapheme clusters (i.e. the way Apple counts them in ASC). Each `listing.yaml` is hand-verified once at creation; re-verify on any edit.
 
+### Sudoku (v2.6)
+
 | Locale   | name | subtitle | promotional_text | keywords |
 |----------|------|----------|------------------|----------|
 | en       | 17   | 28       | 152              | 95       |
@@ -115,7 +117,22 @@ Counts are taken with Unicode grapheme clusters (i.e. the way Apple counts them 
 | th       | 14   | 25       | 88               | 88       |
 | ko       | 9    | 14       | 60               | 82       |
 
-(Long fields `description` and `whats_new` stay well under 4000 chars in every locale.)
+### Minesweeper (v1.0)
+
+| Locale   | name | subtitle | promotional_text | keywords |
+|----------|------|----------|------------------|----------|
+| en       | 21   | 27       | 167              | 97       |
+| zh-Hant  | 7    | 13       | 55               | 70       |
+| ja       | 12   | 14       | 63               | 78       |
+| zh-Hans  | 5    | 13       | 55               | 70       |
+| es       | 20   | 27       | 162              | 93       |
+| th       | 17   | 22       | 168              | 86       |
+| ko       | 9    | 19       | 61               | 77       |
+
+(Long fields `description` and `whats_new` stay well under 4000 chars in every locale.
+`whats_new` is authored but will be skipped by ASC on a first-ever platform submission —
+see `app-meta.yaml` §whatsNew-on-first-version gate. Minesweeper v1.0 must leave
+What's New blank for both iOS and macOS in ASC.)
 
 ## Brand voice rules these files follow
 

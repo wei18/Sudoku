@@ -17,7 +17,8 @@ description: |
   • Tres dificultades clásicas: Principiante, Intermedio, Experto.
   • Seguridad en el primer toque: la jugada inicial nunca pierde.
   • Toca para revelar, mantén pulsado para marcar (clic derecho o control-clic en Mac).
-  • Un conjunto diario de tableros para jugar.
+  • Modo Diario: tres dificultades cada día, rankings recurrentes que resetean a las 00:00 UTC.
+  • Tres rankings diarios de Game Center (Principiante / Intermedio / Experto). Inicio de sesión opcional.
 
   Realmente multiplataforma
 
@@ -42,14 +43,16 @@ description: |
   Requiere iOS 26 o macOS 26.
 keywords: "minas,logica,puzle,clasico,mente,sin conexion,ipad,mac,bandera,numero,bomba,campo minado,buscamin"
 whats_new: |
-  Versión 2.3.5
+  Versión 1.0
 
-  • Buscaminas clásico con tres dificultades: Principiante, Intermedio, Experto.
-  • Seguridad en el primer toque: la jugada inicial nunca es una mina.
-  • Toca para revelar, mantén pulsado para marcar; clic derecho en Mac.
-  • Quitar anuncios: una compra única que elimina el banner para siempre.
+  Primera versión.
+
+  • Buscaminas clásico: Principiante, Intermedio, Experto. El primer toque siempre es seguro.
+  • Modo Diario: tres puzles cada día a las 00:00 UTC, con rankings de Game Center.
+  • Quitar anuncios: una compra única, no consumible, elimina el banner para siempre. Compartir en Familia incluido.
+  • Sincronización iCloud: tus datos viven en tu propia base de datos privada de iCloud.
   • Siete idiomas: inglés, chino tradicional, japonés, chino simplificado, español, tailandés, coreano.
-  • Versión nativa de Mac, no Catalyst.
+  • Mac nativo, no Catalyst.
 
   Gracias por jugar. Las incidencias y sugerencias son bienvenidas en el enlace de soporte.
 marketing_url: null
