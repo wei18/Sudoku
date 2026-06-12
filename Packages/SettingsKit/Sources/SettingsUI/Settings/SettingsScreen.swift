@@ -41,6 +41,12 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
     private let clearCache: @MainActor () async -> Void
     private let tint: Color
     private let banner: () -> Banner
+    // Game Center entry point: when non-nil the shared `Section("Game Center")`
+    // row is rendered. The action is injected per-app so SettingsKit never
+    // imports GameKit. Sudoku passes `{ GameCenterDashboard.present() }`;
+    // Minesweeper passes `{ MinesweeperGameCenterDashboard.present() }`.
+    // `nil` (default) keeps previews / tests byte-identical.
+    private let onGameCenter: (@MainActor () -> Void)?
 
     public init(
         version: String,
@@ -49,6 +55,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         reminderSettings: SettingsScreenReminderConfig? = nil,
         audioSettings: AudioSettingsModel? = nil,
         notices: SettingsNoticesConfig? = nil,
+        onGameCenter: (@MainActor () -> Void)? = nil,
         @ViewBuilder purchases: @escaping () -> Purchases,
         @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() },
         @ViewBuilder banner: @escaping () -> Banner = { EmptyView() }
@@ -59,6 +66,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         self.reminderSettings = reminderSettings
         self.audioSettings = audioSettings
         self.notices = notices
+        self.onGameCenter = onGameCenter
         self.purchases = purchases
         self.aboutExtraRows = aboutExtraRows
         self.banner = banner
@@ -71,6 +79,20 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
             // built by the host, so the conditional + the IAP coupling stay in
             // the app and out of GameShellUI.
             purchases()
+
+            // 1b. Game Center — shared section; action injected per-app so
+            // SettingsKit never imports GameKit. Omitted when `onGameCenter`
+            // is nil (previews / tests).
+            if let onGameCenter {
+                Section("Game Center") {
+                    Button(action: onGameCenter) {
+                        Label("Game Center", systemImage: "trophy")
+                            .foregroundStyle(tint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.gameCenter")
+                }
+            }
 
             // 2. Reminders — shared section (enable / prime permission / fire
             // time). Same building block both apps mount; injected copy.

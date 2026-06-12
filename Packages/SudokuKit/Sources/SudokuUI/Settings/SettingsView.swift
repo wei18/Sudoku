@@ -92,6 +92,10 @@ public struct SettingsView<Banner: View>: View {
             // #330 P2: the shared audio section (renders only when non-nil).
             audioSettings: audioSettings,
             notices: notices,
+            // Game Center entry: present Apple's native GC dashboard (no leaderboard
+            // focus — opens the full listing). `GameCenterDashboard` lives in this
+            // module (SudokuUI/Leaderboard/GameCenterDashboard.swift); no extra import.
+            onGameCenter: { GameCenterDashboard.present() },
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
             purchases: {

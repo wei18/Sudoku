@@ -80,6 +80,35 @@ struct SettingsScreenTests {
         _ = screen.body
     }
 
+    // MARK: - Game Center slot
+
+    @Test func gameCenterSlot_rendersWhenInjected() {
+        // When `onGameCenter` is non-nil the shared Game Center section is
+        // included in the Form. Sentinel: body builds without crashing.
+        var tapped = false
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            onGameCenter: { tapped = true },
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+        _ = tapped // silence unused-variable warning
+    }
+
+    @Test func gameCenterSlot_omittedWhenNil() {
+        // `onGameCenter` defaults to nil — no Game Center section rendered.
+        // Byte-identical to minimalConstruction; previews / tests stay inert.
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+    }
+
     // MARK: - MS path with a Purchases slot but no About extra rows
 
     @Test func purchasesSlotNoAboutExtras() {

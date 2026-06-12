@@ -85,7 +85,11 @@ public struct SettingsView<Banner: View>: View {
                 )
             },
             audioSettings: audioSettings,
-            notices: notices
+            notices: notices,
+            // Game Center entry: present Apple's native GC dashboard (no leaderboard
+            // focus). `MinesweeperGameCenterDashboard` lives in this module
+            // (MinesweeperUI/Leaderboard/); no extra import needed.
+            onGameCenter: { MinesweeperGameCenterDashboard.present() }
         ) {
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
