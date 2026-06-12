@@ -116,7 +116,10 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                             set: { _ in }   // mutations go through VM methods only
                         ),
                         onCancelLeave: { viewModel.cancelLeave() },
-                        onConfirmLeave: { viewModel.confirmLeave() }
+                        // Reset chrome synchronously at confirmation rather than
+                        // relying solely on the cover binding's dismiss-animation
+                        // setter (CR #489 F1 — robust against cancelled animations).
+                        onConfirmLeave: { viewModel.confirmLeave(); chromeState.reset() }
                     )
                     // SDD-003 OQ-001: inject the chrome state into the modal
                     // hierarchy so the board view can find it via

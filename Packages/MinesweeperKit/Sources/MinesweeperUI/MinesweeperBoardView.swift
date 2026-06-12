@@ -254,6 +254,11 @@ public struct MinesweeperBoardView: View {
             // into a finished state); `.onChange` only fires on a transition,
             // so seed the completion VM here too.
             await viewModel.refresh()
+            // Push the restored elapsed into the chrome before the first 1s tick
+            // (CR #489 F4 — symmetric with Sudoku's loop-entry push).
+            gameChrome?.updateElapsed(String(
+                format: "%d:%02d", viewModel.elapsedSeconds / 60, viewModel.elapsedSeconds % 60
+            ))
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
             }
