@@ -77,6 +77,22 @@ struct GameSessionMistakeCountTests {
         #expect(await session.mistakeCount == 1)
     }
 
+    @Test("redo of a conflicting move does NOT re-increment mistakeCount")
+    func redoDoesNotReincrement() async throws {
+        let session = GameSession(puzzle: TestPuzzles.simple)
+        try await session.start()
+        // Create a conflict (counted once at original placement).
+        try await session.placeDigit(row: 0, col: 1, digit: 5)
+        try await session.placeDigit(row: 0, col: 2, digit: 5)
+        #expect(await session.mistakeCount == 1)
+        // Undo keeps the count (never decrements)…
+        try await session.undo()
+        #expect(await session.mistakeCount == 1)
+        // …and redo re-executes an already-counted move: still 1, not 2.
+        try await session.redo()
+        #expect(await session.mistakeCount == 1)
+    }
+
     @Test("mistakeCount survives snapshot round-trip")
     func mistakeCountRoundTripsInSnapshot() async throws {
         let session = GameSession(puzzle: TestPuzzles.simple)

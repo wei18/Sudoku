@@ -357,9 +357,10 @@ public actor GameSession {
 
     /// Returns `true` when `digit` at (`row`, `col`) conflicts with any
     /// other cell in the same row, column, or 3×3 box. Used at placement
-    /// time to decide whether to increment `mistakeCount`. Mirrors the
-    /// logic in `GameViewModel.hasConflict` but lives here at the actor
-    /// level so it is available without the MainActor VM dependency.
+    /// time to decide whether to increment `mistakeCount`. Logic is identical
+    /// to `GameViewModel.hasConflict` — that VM method is the UI-layer
+    /// duplicate (MainActor) which cannot call into this actor; CoreKit is
+    /// the authoritative copy.
     private static func hasConflict(digit: Int, row: Int, col: Int, board: Board) -> Bool {
         for col2 in 0..<Board.dimension where col2 != col {
             if board.digit(atRow: row, column: col2) == digit { return true }
@@ -386,6 +387,9 @@ public actor GameSession {
         }
     }
 
+    /// Redo re-executes a move that was already counted at original placement
+    /// time, so it deliberately does NOT re-increment `mistakeCount` — the
+    /// counter is cumulative over ORIGINAL placements (SDD-003 AC-3.4).
     private func reapply(_ move: Move) throws {
         switch move {
         case let .placeDigit(row, col, digit, _):

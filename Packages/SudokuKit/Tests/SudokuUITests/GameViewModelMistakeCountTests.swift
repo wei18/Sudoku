@@ -134,6 +134,10 @@ private final class SettableClock2: MonotonicClock, @unchecked Sendable {
 /// free cells. Suitable for VM-level conflict tests where multiple non-given
 /// cells must be writable.
 private enum SudokuKitTestPuzzles {
+    /// Intentionally NOT a valid Sudoku solution (row-shifted Latin square —
+    /// columns/boxes repeat digits). These tests exercise conflict detection,
+    /// not completion; `Puzzle` performs no solution validation. Replace with
+    /// a real solution if `Puzzle` ever gains stricter validation.
     static let manyFreeCells: Puzzle = {
         let cluesEncoded = "1" + String(repeating: ".", count: 80)
         // swiftlint:disable:next force_try
