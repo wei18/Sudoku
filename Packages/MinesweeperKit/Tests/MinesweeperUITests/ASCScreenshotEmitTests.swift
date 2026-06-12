@@ -117,7 +117,7 @@ struct ASCScreenshotEmitTests {
             gameCenter: FakeGameCenterClient()
         )
         viewModel.setStateForTesting(.loaded(Self.completionSlice))
-        return MinesweeperCompletionView(viewModel: viewModel, onNewGame: {}, onRetry: {})
+        return MinesweeperCompletionView(viewModel: viewModel, onClose: {})
     }
 
     // MARK: - iPhone 6.9" (1290×2796) — Home / Daily / Board / Completion

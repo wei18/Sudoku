@@ -165,7 +165,11 @@ public final class DailyHubViewModel {
                 mode: .daily,
                 difficulty: card.difficulty
             )
-            path.append(.completion(puzzleId: puzzleId, elapsedSeconds: snapshot.elapsedSeconds))
+            path.append(.completion(
+                puzzleId: puzzleId,
+                elapsedSeconds: snapshot.elapsedSeconds,
+                mistakeCount: snapshot.mistakeCount
+            ))
         } catch {
             await errorReporter.report(
                 UserFacingError.classify(error),

@@ -542,31 +542,13 @@ public struct MinesweeperBoardView: View {
     // first reveal, so the layout is determined by seed + opening tap — an
     // identical first tap reproduces the same board, a different one does not.
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
+        // SDD-003 Epic 4: Close dismisses the overlay by clearing the VM.
+        // Retry / New Game / Leaderboard CTAs removed at this injection site
+        // (spec note: "移除發生在各 app 的注入點"). The board stays live
+        // underneath the overlay — the player can restart via the home route.
         MinesweeperCompletionView(
             viewModel: completionViewModel,
-            onNewGame: onNewGame,
-            onRetry: {
-                let difficulty = viewModel.session.difficulty
-                let seed = viewModel.session.seed
-                self.completionViewModel = nil
-                viewModel = MinesweeperGameViewModel(
-                    difficulty: difficulty,
-                    seed: seed,
-                    mode: mode,
-                    gameCenter: gameCenter,
-                    // #465 CR: re-thread the funnel + persistence seams (same
-                    // class of bug as the #330 soundPlayer omission below) —
-                    // a retried board must keep saving to its original slot,
-                    // or pause/background/terminal hooks silently die.
-                    errorReporter: viewModel.errorReporter,
-                    // #330 P2: re-thread the audio seam so the retried board keeps
-                    // firing gameplay audio (the rebuilt VM would otherwise default
-                    // to Noop).
-                    soundPlayer: soundPlayer,
-                    store: viewModel.store,
-                    recordName: viewModel.recordName
-                )
-            }
+            onClose: { self.completionViewModel = nil }
         )
     }
 }

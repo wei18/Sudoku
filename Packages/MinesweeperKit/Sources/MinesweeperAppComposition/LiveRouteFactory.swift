@@ -232,6 +232,8 @@ public struct LiveRouteFactory: RouteFactory {
             // the player's real ranked time shows in the leaderboard slice. New
             // Game pops to the picker; no Retry (replaying the same daily is the
             // dead-replay #386 avoids).
+            // SDD-003 Epic 4: Close pops back to the hub (same as the old
+            // New Game CTA). Retry removed at this injection site.
             return AnyView(
                 MinesweeperCompletionView(
                     viewModel: MinesweeperCompletionViewModel(
@@ -240,8 +242,7 @@ public struct LiveRouteFactory: RouteFactory {
                         leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty),
                         gameCenter: gameCenter
                     ),
-                    onNewGame: { Self.popToNewGame(path: path) },
-                    onRetry: nil,
+                    onClose: { Self.popToNewGame(path: path) },
                     showsElapsedTime: false
                 )
             )

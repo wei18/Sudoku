@@ -2,21 +2,17 @@
 // `GameShellUI.CompletionScreen` body (#418).
 //
 // Sudoku owns its PRESENTATION: this view is rendered inside the pushed
-// `.completion` AppRoute (RouteFactory). It maps the leaderboard-fetch VM state
-// onto the shared `CompletionScreenState`, injects the solve-only success hero,
-// the "View full leaderboard" CTA, and (Daily-only) the reminder primer
-// affordance + sheet (#287). The leaderboard/Game Center coupling stays here:
-// the shared shell never imports GameCenterClient.
+// `.completion` AppRoute (RouteFactory). It injects the solve-only success
+// hero, the Mistakes count, and (Daily-only) the reminder primer affordance +
+// sheet (#287).
 //
-// State variants (mapped onto the shared body):
-//   .loading              → ProgressView
-//   .loaded(slice)        → hero + leaderboard rows + "View full" CTA
-//   .unauthenticated      → hero + sign-in CTA
-//   .noLeaderboard        → hero + neutral "not ranked" note (Practice, #383)
-//   .failed               → hero + retry CTA
+// SDD-003 Epic 4: the popup is Success/Failed · Time · Mistakes · Close only —
+// `state: .hidden` renders no leaderboard zone, and `actions` injects ONLY a
+// Close button (Retry / New Game / Leaderboard removed at this injection
+// site). The VM's leaderboard fetch/mapping machinery is left intact but
+// unrendered; GC entry-point relocation is an open product question (#468).
 
 public import SwiftUI
-import GameCenterClient
 import GameShellUI
 // refactor/settingskit-target: `ReminderPrimerSheet` moved out of GameShellUI
 // into SettingsUI. Used only inside the view body, so the import is internal.
@@ -32,12 +28,19 @@ public struct CompletionView: View {
     // renders byte-identically (no affordance, no sheet).
     @State private var reminderPrimer: ReminderPrimerCoordinator?
 
+    // SDD-003 Epic 4: dismiss this screen. On the pushed `.completion` route
+    // this removes the last stack entry. Supplied by RouteFactory / parent.
+    // `nil` in previews / snapshot tests that don't need the action wired.
+    private let onClose: (() -> Void)?
+
     public init(
         viewModel: CompletionViewModel,
-        reminderPrimer: ReminderPrimerCoordinator? = nil
+        reminderPrimer: ReminderPrimerCoordinator? = nil,
+        onClose: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self._reminderPrimer = State(initialValue: reminderPrimer)
+        self.onClose = onClose
     }
 
     public var body: some View {
@@ -49,13 +52,17 @@ public struct CompletionView: View {
                 accessibilityLabel: Text("Solved in \(elapsedLabel)")
             ),
             elapsedLabel: elapsedLabel,
-            state: screenState,
-            onSignIn: { viewModel.viewLeaderboardTapped() },
-            onRetryLeaderboard: { Task { await viewModel.retry() } },
-            loadedAccessory: { viewLeaderboardButton },
+            mistakeCount: viewModel.mistakeCount,
+            // SDD-003 Epic 4: the popup carries no leaderboard zone (spec:
+            // Success/Failed · Time · Mistakes · Close only). The VM's
+            // leaderboard fetch/mapping machinery is intentionally left in
+            // place but unrendered; GC entry-point relocation is an open
+            // product question on #468.
+            state: .hidden,
+            onRetryLeaderboard: {},
+            actions: { closeButton },
             footer: { reminderAffordance }
         )
-        .task { await viewModel.bootstrap() }
         .sheet(isPresented: reminderSheetBinding) {
             if let reminderPrimer {
                 ReminderPrimerSheet(
@@ -66,30 +73,6 @@ public struct CompletionView: View {
                 )
                 .presentationDetents([.medium, .large])
             }
-        }
-    }
-
-    // Maps the leaderboard-fetch VM state onto the shared screen state. The
-    // `LeaderboardSlice` (a GameCenterClient type) is flattened to plain
-    // `CompletionLeaderboardRow` values here so the shared shell stays GC-free.
-    private var screenState: CompletionScreenState {
-        switch viewModel.state {
-        case .loading:
-            .loading
-        case .loaded(let slice):
-            .loaded(slice.entries.map { entry in
-                CompletionLeaderboardRow(
-                    rank: entry.rank,
-                    displayName: entry.player.displayName,
-                    score: scoreLabel(entry.score)
-                )
-            })
-        case .unauthenticated:
-            .unauthenticated
-        case .noLeaderboard:
-            .noLeaderboard
-        case .failed:
-            .failed
         }
     }
 
@@ -140,15 +123,22 @@ public struct CompletionView: View {
         )
     }
 
-    private var viewLeaderboardButton: some View {
-        Button {
-            viewModel.viewLeaderboardTapped()
-        } label: {
-            Label("View full leaderboard", systemImage: "trophy.fill")
-                .frame(maxWidth: .infinity)
+    // SDD-003 Epic 4: only Close is injected into actions; Retry / New Game /
+    // Leaderboard CTAs removed at this injection site (not from the shared
+    // component). `nil` in snapshot tests → button simply absent. "Close" is
+    // a literal-as-key catalog entry (×7 locales), repo convention.
+    @ViewBuilder
+    private var closeButton: some View {
+        if let onClose {
+            Button {
+                onClose()
+            } label: {
+                Text("Close")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
     }
 
     private var elapsedLabel: String {
@@ -158,9 +148,4 @@ public struct CompletionView: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    private func scoreLabel(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let rem = seconds % 60
-        return String(format: "%d:%02d", minutes, rem)
-    }
 }

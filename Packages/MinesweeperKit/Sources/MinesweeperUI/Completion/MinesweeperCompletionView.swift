@@ -9,10 +9,12 @@
 // route-pushed MS Completion deferred — #386).
 //
 // It maps the leaderboard-fetch VM state onto the shared `CompletionScreenState`,
-// injects the win/loss hero outcome, and supplies the always-on action stack:
-//   - View leaderboard → Apple's native GC dashboard.
-//   - Retry            → replay the same difficulty (injected closure).
-//   - New Game         → back to root (injected closure).
+// injects the win/loss hero outcome, and supplies the action stack.
+//
+// SDD-003 Epic 4: actions now inject ONLY a Close button (View Leaderboard /
+// Retry / New Game removed at this injection site per spec note). `onClose`
+// dismisses the overlay (MinesweeperBoardView sets `completionViewModel = nil`).
+// Minesweeper has no mistake concept → `mistakeCount: nil` (row absent).
 // The Game Center coupling stays here; the shared shell never imports
 // GameCenterClient. Themed via `\.theme` tokens.
 
@@ -23,10 +25,9 @@ import GameShellUI
 public struct MinesweeperCompletionView: View {
     @Bindable private var viewModel: MinesweeperCompletionViewModel
 
-    /// New Game → dismiss to root. `nil` in previews / standalone board.
-    private let onNewGame: (() -> Void)?
-    /// Retry → replay the same difficulty in place.
-    private let onRetry: (() -> Void)?
+    /// SDD-003 Epic 4: dismiss the completion overlay. Wired by
+    /// MinesweeperBoardView to `completionViewModel = nil`.
+    private let onClose: (() -> Void)?
     /// #386: when re-viewing an already-solved daily there is no stored elapsed
     /// (MS has no save-flow, #284), so the hero OMITS the time row entirely (the
     /// player's real ranked time still appears in the leaderboard slice). The
@@ -36,13 +37,11 @@ public struct MinesweeperCompletionView: View {
 
     public init(
         viewModel: MinesweeperCompletionViewModel,
-        onNewGame: (() -> Void)? = nil,
-        onRetry: (() -> Void)? = nil,
+        onClose: (() -> Void)? = nil,
         showsElapsedTime: Bool = true
     ) {
         self.viewModel = viewModel
-        self.onNewGame = onNewGame
-        self.onRetry = onRetry
+        self.onClose = onClose
         self.showsElapsedTime = showsElapsedTime
     }
 
@@ -50,11 +49,13 @@ public struct MinesweeperCompletionView: View {
         CompletionScreen(
             outcome: outcome,
             elapsedLabel: elapsedLabel,
-            state: screenState,
-            onRetryLeaderboard: { Task { await viewModel.retry() } },
-            actions: { actions }
+            mistakeCount: nil,
+            // SDD-003 Epic 4: no leaderboard zone in the popup (mirror of
+            // Sudoku's CompletionView). VM fetch machinery left unrendered.
+            state: .hidden,
+            onRetryLeaderboard: {},
+            actions: { closeButton }
         )
-        .task { await viewModel.bootstrap() }
     }
 
     // MARK: - Outcome (win / loss)
@@ -80,63 +81,22 @@ public struct MinesweeperCompletionView: View {
         }
     }
 
-    // MARK: - State mapping
+    // MARK: - CTAs (SDD-003 Epic 4: Close only)
 
-    // MS has no `.noLeaderboard` today; the shared body still handles it.
-    private var screenState: CompletionScreenState {
-        switch viewModel.state {
-        case .loading:
-            .loading
-        case .loaded(let slice):
-            .loaded(slice.entries.map { entry in
-                CompletionLeaderboardRow(
-                    rank: entry.rank,
-                    displayName: entry.player.displayName,
-                    score: timeLabel(entry.score)
-                )
-            })
-        case .unauthenticated:
-            .unauthenticated
-        case .failed:
-            .failed
-        }
-    }
-
-    // MARK: - CTAs (always-on action stack)
-
+    // View Leaderboard, Retry, and New Game removed at this injection site per
+    // the spec note: "移除發生在各 app 的注入點". GC entry-point relocation is an
+    // open product question (see section 7 of the impl report / OQ-GC-001).
     @ViewBuilder
-    private var actions: some View {
-        VStack(spacing: 12) {
+    private var closeButton: some View {
+        if let onClose {
             Button {
-                viewModel.viewLeaderboardTapped()
+                onClose()
             } label: {
-                Label("View leaderboard", systemImage: "trophy.fill")
+                Text("Close")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
-
-            if let onRetry {
-                Button {
-                    onRetry()
-                } label: {
-                    Label("Retry", systemImage: "arrow.counterclockwise")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            }
-
-            if let onNewGame {
-                Button {
-                    onNewGame()
-                } label: {
-                    Label("New Game", systemImage: "plus.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
         }
     }
 

@@ -69,7 +69,11 @@ public final class GameViewModel {
     /// leaderboard submission, not the completion screen.
     public var completionRoute: AppRoute? {
         guard status == .completed else { return nil }
-        return .completion(puzzleId: identity.puzzleId, elapsedSeconds: elapsedSeconds)
+        return .completion(
+            puzzleId: identity.puzzleId,
+            elapsedSeconds: elapsedSeconds,
+            mistakeCount: mistakeCount
+        )
     }
 
     // MARK: - Collaborators

@@ -26,6 +26,9 @@ public final class CompletionViewModel {
 
     public let puzzleId: String
     public let elapsedSeconds: Int
+    /// Cumulative mistake count forwarded from `GameViewModel.mistakeCount`
+    /// (SDD-003 Epic 4). Displayed in the completion popup hero card.
+    public let mistakeCount: Int
     /// Leaderboard this solve belongs to, or `nil` when the puzzle has no
     /// associated board (Practice solves — issue #381). A `nil` id makes
     /// `bootstrap()` and `viewLeaderboardTapped()` no-op rather than fetch /
@@ -42,11 +45,13 @@ public final class CompletionViewModel {
     public init(
         puzzleId: String,
         elapsedSeconds: Int,
+        mistakeCount: Int,
         leaderboardId: String?,
         gameCenter: any GameCenterClient
     ) {
         self.puzzleId = puzzleId
         self.elapsedSeconds = elapsedSeconds
+        self.mistakeCount = mistakeCount
         self.leaderboardId = leaderboardId
         self.gameCenter = gameCenter
     }

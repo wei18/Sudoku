@@ -72,7 +72,7 @@ struct RouteFactoryTests {
     }
 
     @Test func completionRouteReturnsCompletionView() {
-        let view = makeFactory().view(for: .completion(puzzleId: "p1", elapsedSeconds: 60))
+        let view = makeFactory().view(for: .completion(puzzleId: "p1", elapsedSeconds: 60, mistakeCount: 0))
         let dump = String(describing: view)
         #expect(dump.contains("CompletionView"))
     }
