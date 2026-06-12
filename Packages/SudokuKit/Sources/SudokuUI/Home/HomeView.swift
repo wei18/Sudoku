@@ -1,18 +1,18 @@
 // HomeView — Sudoku's 4 mode cards (Daily / Practice / Leaderboard / Settings).
 //
 // Thin wrapper over `GameShellUI.HomeScreen` (#410). The shared scaffold owns
-// the `ScrollView { header ; LazyVGrid(cards + RemoveAds) ; banner }` body, the
-// column sizeClass logic, the mode card rendering, and the themed background.
+// the `ScrollView { header ; LazyVGrid(cards) ; banner }` body, the column
+// sizeClass logic, the mode card rendering, and the themed background.
 // HomeView keeps only the Sudoku-specific bits:
 //   - the per-mode subtitles + tap routing (via `HomeViewModel.modeItems`),
-//   - the optional 5th "Remove Ads" card (MonetizationUI — kept app-side so it
-//     never leaks into GameShellUI),
 //   - the banner slot (`BannerSlotView` — AdProvider / AdGate live here),
 //   - the navigation title + the monetization bootstrap `.task`.
 //
 // #387: an optional `header` slot renders as the first child INSIDE the scroll
 // region (RootView passes its ResumePill here so the pill scrolls with the mode
 // cards). RootView still owns the resume-candidate state + tap closure.
+//
+// SDD-003 Epic 7: "Remove Ads" home card removed; Settings Purchases entry preserved.
 
 public import MonetizationCore
 public import MonetizationUI
@@ -55,18 +55,6 @@ public struct HomeView<Header: View>: View {
         HomeScreen(
             items: viewModel.modeItems,
             header: { header },
-            removeAdsCard: {
-                if let controller = monetizationController, !controller.hasPurchasedRemoveAds {
-                    Button {
-                        Task { await controller.purchaseRemoveAds() }
-                    } label: {
-                        RemoveAdsCard(controller: controller)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(controller.purchaseInFlight)
-                    .accessibilityIdentifier("HomeView.RemoveAdsCard")
-                }
-            },
             banner: {
                 if let adProvider, let adGate {
                     bannerSlot(adProvider: adProvider, adGate: adGate)
@@ -106,44 +94,3 @@ public struct HomeView<Header: View>: View {
     }
 }
 
-/// 5th mode-card slot for Remove Ads. Tinted with `difficulty.medium` to
-/// signal commerce intent (per v2.3.6 brief: not a difficulty cue; reuses
-/// the medium clay accent token from PR #78). Layout mirrors the shared
-/// `HomeModeCard` so the grid row height stays consistent.
-struct RemoveAdsCard: View {
-    @Bindable var controller: MonetizationStateController
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "sparkles")
-                .font(.title2)
-                .foregroundStyle(theme.difficulty.medium.resolved)
-                .frame(width: 36, height: 36)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Remove Ads")
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(theme.text.primary.resolved)
-                Text("One-time purchase")
-                    .font(.caption)
-                    .foregroundStyle(theme.text.secondary.resolved)
-            }
-            Spacer()
-            if controller.purchaseInFlight {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                Text(controller.removeAdsDisplayPrice)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(theme.difficulty.medium.resolved)
-            }
-        }
-        .padding(16)
-        .frame(minHeight: 72)
-        .contentShape(Rectangle())
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
-        .accessibilityAddTraits(.isButton)
-    }
-}
