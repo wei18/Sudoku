@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 #MISE description="Sync App Store screenshot previews from committed snapshot-test baselines via symlinks. PREVIEW-ONLY: baselines are NOT ASC submission-spec (see docs/app-store/screenshot-strategy.md §Snapshot-sourced pipeline)."
+#USAGE arg "<subcommand>" help="Operation to run" {
+#USAGE   choices "list" "sync" "clean"
+#USAGE }
+#USAGE flag "--app <app>" help="Filter by app (default: all)" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
 #
 # Maps selected snapshot-test baseline PNGs → a staging tree
 #   docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png
@@ -56,17 +62,9 @@ MAP=(
   "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_regular_light.Daily-mac-light-regular.png"
 )
 
-# ── Arg parsing ───────────────────────────────────────────────────────────────
-SUBCMD="${1:-}"; shift || true
-APP_FILTER="all"
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --app) APP_FILTER="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'; exit 0 ;;
-    *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
-  esac
-done
-case "$APP_FILTER" in all|sudoku|minesweeper) ;; *) echo "error: --app must be sudoku|minesweeper|all" >&2; exit 1 ;; esac
+# ── Args (parsed by mise via #USAGE spec above; available as usage_* vars) ────
+SUBCMD="${usage_subcommand?}"
+APP_FILTER="${usage_app?}"   # default="all" in spec
 
 row_matches_filter() { [[ "$APP_FILTER" == "all" || "$1" == "$APP_FILTER" ]]; }
 
@@ -123,10 +121,6 @@ case "$SUBCMD" in
     # Prune now-empty dirs under OUT_ROOT (keep README.md if present).
     find "$OUT_ROOT" -mindepth 1 -type d -empty -delete 2>/dev/null || true
     echo "==> removed $removed symlink(s)."
-    ;;
-
-  ""|-h|--help)
-    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     ;;
 
   *)

@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="CloudKit schema tool — export / validate / deploy-to-Development via xcrun cktool. Production promote is Console-only (user-owned); the production subcommand prints the steps and exits."
+#USAGE arg "<subcommand>" help="Operation to run" {
+#USAGE   choices "export" "validate" "deploy"
+#USAGE }
+#USAGE flag "--app <app>" help="App whose CloudKit container to target" {
+#USAGE   choices "sudoku" "minesweeper"
+#USAGE }
+#USAGE flag "--env <env>" help="CloudKit environment (validate/deploy only)" default="development" {
+#USAGE   choices "development" "production"
+#USAGE }
+#USAGE flag "--i-am-sure" help="Accepted for backwards-compat (deploy to production is Console-only regardless)"
 #
 # Wraps `xcrun cktool` so the CloudKit Development→Production schema deploy becomes
 # a commit-trackable, Leader-orderable step — mirroring how ASCRegister made the
@@ -46,23 +56,10 @@ usage() {
     exit "${1:-1}"
 }
 
-# ── Arg parsing ──────────────────────────────────────────────────────────────
-SUBCMD="${1:-}"; shift || true
-APP=""; ENV="development"; SURE=0
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --app)        APP="${2:-}"; shift 2 ;;
-        --env)        ENV="${2:-}"; shift 2 ;;
-        # Legacy flag: production import was removed (Console-only); accepted
-        # so old documented commands degrade to the instructions, not an error.
-        --i-am-sure)  SURE=1; shift ;;
-        -h|--help)    usage 0 ;;
-        *) echo "error: unknown argument '$1'" >&2; usage ;;
-    esac
-done
-
-[[ -n "$SUBCMD" ]] || { echo "error: missing subcommand (export|validate|deploy)" >&2; usage; }
-[[ -n "$APP" ]]    || { echo "error: --app is required (sudoku|minesweeper)" >&2; usage; }
+# ── Args (parsed by mise via #USAGE spec above; available as usage_* vars) ────
+SUBCMD="${usage_subcommand?}"
+APP="${usage_app:?--app is required (sudoku|minesweeper)}"
+ENV="${usage_env?}"          # default="development" in spec
 CONTAINER="$(container_for "$APP")"
 [[ -n "$CONTAINER" ]] || { echo "error: unknown --app '$APP' (expected: sudoku|minesweeper)" >&2; exit 1; }
 

@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="LOCAL archive → export → TestFlight upload (temporary Xcode-Cloud substitute while XCC quota is exhausted). archive/export are safe; the upload step is USER-OWNED and gated behind --i-am-sure. Reads ASC API creds from secrets/.env — never hardcoded."
+#USAGE arg "<app>" help="App to archive and upload" {
+#USAGE   choices "sudoku" "minesweeper"
+#USAGE }
+#USAGE arg "<platform>" help="Target platform" {
+#USAGE   choices "ios" "macos" "all"
+#USAGE }
+#USAGE flag "--archive-only" help="Archive + export only; never upload (safe default)"
+#USAGE flag "--build <number>" help="Explicit CFBundleVersion; default = UTC timestamp (YYYYMMDDhhmm)"
+#USAGE flag "--config <name>" help="xcodebuild configuration" default="Release"
+#USAGE flag "--i-am-sure" help="REQUIRED to actually upload to TestFlight (user-owned, irreversible)"
 #
 # Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
 # §4 table: Build + Archive + upload internal TestFlight) for the window where the
@@ -51,34 +61,13 @@ set -euo pipefail
 scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
-usage() {
-    sed -n '2,47p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
-    exit "${1:-1}"
-}
-
-# ── Arg parsing ───────────────────────────────────────────────────────────────
-# Positionals: <app> <platform>, then optional flags.
-APP="${1:-}";  shift || true
-PLAT="${1:-}"; shift || true
-
-CONFIG="Release"
-BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"   # unique-by-minute default; --build overrides
-ARCHIVE_ONLY=0
-SURE=0
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --archive-only) ARCHIVE_ONLY=1; shift ;;
-        --i-am-sure)    SURE=1; shift ;;
-        --build)        BUILD_NUMBER="${2:-}"; shift 2 ;;
-        --config)       CONFIG="${2:-}"; shift 2 ;;
-        -h|--help)      usage 0 ;;
-        *) echo "error: unknown argument '$1'" >&2; usage ;;
-    esac
-done
-
-case "$APP" in sudoku|minesweeper) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper (got '$APP')" >&2; usage ;; esac
-case "$PLAT" in ios|macos|all) ;; *) echo "error: platform must be ios|macos|all (got '$PLAT')" >&2; usage ;; esac
-[[ -n "$BUILD_NUMBER" ]] || { echo "error: --build value is empty" >&2; exit 1; }
+# ── Args (parsed by mise via #USAGE spec above; available as usage_* vars) ────
+APP="${usage_app?}"
+PLAT="${usage_platform?}"
+CONFIG="${usage_config?}"                             # default="Release" in spec
+BUILD_NUMBER="${usage_build:-$(date -u +%Y%m%d%H%M)}" # default = UTC timestamp
+ARCHIVE_ONLY="${usage_archive_only:-false}"
+SURE="${usage_i_am_sure:-false}"
 
 SCHEME="$(scheme_for "$APP")"
 BUNDLE="$(bundle_for "$APP")"
@@ -225,7 +214,7 @@ run_platform() {
     echo "==> exported: $pkg"
 
     # 4) upload (GATED) ---------------------------------------------------------
-    if [[ "$ARCHIVE_ONLY" -eq 1 ]]; then
+    if [[ "$ARCHIVE_ONLY" == "true" ]]; then
         echo "==> --archive-only: stopping before upload. Package is at:"
         echo "    $pkg"
         return 0
@@ -240,7 +229,7 @@ run_platform() {
     echo " number is unique for $BUNDLE @ this marketing version before"
     echo " proceeding (duplicates are rejected by ASC)."
     echo "────────────────────────────────────────────────────────────────"
-    if [[ "$SURE" -ne 1 ]]; then
+    if [[ "$SURE" != "true" ]]; then
         echo "Refusing to upload without --i-am-sure. (Re-run with --archive-only to" >&2
         echo "just produce the package, or add --i-am-sure to upload.)" >&2
         exit 2
