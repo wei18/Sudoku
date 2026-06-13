@@ -172,9 +172,11 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .board(let difficulty, let seed, let mode):
-            // SDD-003 Epic 1: when `onPresentBoard` is wired (production), redirect
-            // to the fullScreenCover modal. Legacy push path kept for tests / previews.
-            if let onPresentBoard {
+            // SDD-003 Epic 1 / #491: two-context contract (mirrors SudokuKit):
+            //   push context  (path != nil): redirect → modal via onPresentBoard.
+            //   modal context (path == nil): GameRoot builds modal content here;
+            //     the redirect must NOT fire or the modal is blank (Color.clear).
+            if let onPresentBoard, path != nil {
                 return AnyView(
                     GameBoardRedirect(
                         route: route,
@@ -210,8 +212,10 @@ public struct LiveRouteFactory: RouteFactory {
             // snapshot + rebuilds the exact board; without a store (preview /
             // test factories) the route is unreachable — fetchResume is only
             // wired in `.live()` — so an empty view is an honest fallback.
-            // SDD-003 Epic 1: when `onPresentBoard` is wired, redirect to modal.
-            if let onPresentBoard {
+            // SDD-003 Epic 1 / #491: same two-context contract as `.board`:
+            //   push context  (path != nil): redirect → modal.
+            //   modal context (path == nil): return real loader, not redirect.
+            if let onPresentBoard, path != nil {
                 return AnyView(
                     GameBoardRedirect(
                         route: route,
@@ -240,8 +244,8 @@ public struct LiveRouteFactory: RouteFactory {
             // side-effects) and WITHOUT `gameCenter` scoring (the `mode` is
             // `.practice` so the GC daily-submit guard in MinesweeperGameViewModel
             // fires). The Failed record from the first attempt is untouched.
-            // `onPresentBoard` redirect applies the same as `.board`.
-            if let onPresentBoard {
+            // #491: same two-context contract — redirect only in push context.
+            if let onPresentBoard, path != nil {
                 return AnyView(
                     GameBoardRedirect(
                         route: .replayDailyBoard(difficulty: difficulty, seed: seed),

@@ -71,6 +71,59 @@ struct RouteFactoryTests {
         #expect(dump.contains("BoardLoaderView"))
     }
 
+    // MARK: - #491 modal vs push context
+
+    /// #491: with `onPresentBoard` wired, calling `view(for:path:nil)` (the modal
+    /// path used by GameRoot's fullScreenCover) must return the real board view,
+    /// not the zero-content `GameBoardRedirect`.
+    @Test func boardRouteWithOnPresentBoardAndNilPathReturnsBoardLoader() {
+        var presented: AppRoute?
+        let adGateStore = FakeAdGateStateStore(
+            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+        )
+        let factory = LiveRouteFactory(
+            puzzleProvider: FakePuzzleProvider(),
+            persistence: FakePersistence(),
+            gameCenter: FakeGameCenterClient(),
+            telemetry: Telemetry(sinks: []),
+            adProvider: FakeAdProvider(),
+            iapClient: FakeIAPClient(),
+            adGate: AdGate(store: adGateStore),
+            onPresentBoard: { presented = $0 }
+        )
+        let view = factory.view(for: .board(puzzleId: "2026-05-21-easy"), path: nil)
+        let dump = String(describing: view)
+        // Modal context (path: nil) must render the real board, not the redirect.
+        #expect(dump.contains("BoardLoaderView"), "Expected BoardLoaderView but got: \(dump)")
+        // onPresentBoard must NOT have been invoked from this factory call.
+        #expect(presented == nil)
+    }
+
+    /// #491: with `onPresentBoard` wired, calling `view(for:path:<non-nil>)` (the
+    /// push context used by NavigationStackHost's .navigationDestination) must
+    /// still return the `GameBoardRedirect` so the stack→modal hand-off fires.
+    @Test func boardRouteWithOnPresentBoardAndNonNilPathReturnsRedirect() {
+        let adGateStore = FakeAdGateStateStore(
+            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+        )
+        var path: [AppRoute] = [.board(puzzleId: "2026-05-21-easy")]
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let factory = LiveRouteFactory(
+            puzzleProvider: FakePuzzleProvider(),
+            persistence: FakePersistence(),
+            gameCenter: FakeGameCenterClient(),
+            telemetry: Telemetry(sinks: []),
+            adProvider: FakeAdProvider(),
+            iapClient: FakeIAPClient(),
+            adGate: AdGate(store: adGateStore),
+            onPresentBoard: { _ in }
+        )
+        let view = factory.view(for: .board(puzzleId: "2026-05-21-easy"), path: binding)
+        let dump = String(describing: view)
+        // Push context (path: non-nil) must get the redirect so the modal fires.
+        #expect(dump.contains("GameBoardRedirect"), "Expected GameBoardRedirect but got: \(dump)")
+    }
+
     @Test func completionRouteReturnsCompletionView() {
         let view = makeFactory().view(for: .completion(puzzleId: "p1", elapsedSeconds: 60, mistakeCount: 0))
         let dump = String(describing: view)

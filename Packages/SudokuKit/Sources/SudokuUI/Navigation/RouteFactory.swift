@@ -183,10 +183,15 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .board:
-            // SDD-003 Epic 1: when `onPresentBoard` is wired (production),
-            // redirect to the fullScreenCover modal. Legacy push path is kept
-            // for tests / previews that don't inject `onPresentBoard`.
-            if let onPresentBoard {
+            // SDD-003 Epic 1 / #491: two-context contract for board routes:
+            //   push context  (path != nil): return `GameBoardRedirect`, which pops the
+            //     push entry and fires `onPresentBoard` → fullScreenCover modal.
+            //   modal context (path == nil): GameRoot calls `view(for:path:nil)` to
+            //     build the modal content; the redirect must NOT fire here or the
+            //     modal renders Color.clear (blank screen). Fall through to the real
+            //     board view.
+            // Legacy push path (onPresentBoard == nil) is kept for tests / previews.
+            if let onPresentBoard, path != nil {
                 return AnyView(
                     GameBoardRedirect(
                         route: route,
