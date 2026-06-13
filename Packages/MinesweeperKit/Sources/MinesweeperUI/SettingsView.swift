@@ -85,30 +85,36 @@ public struct SettingsView<Banner: View>: View {
                 )
             },
             audioSettings: audioSettings,
-            notices: notices
-        ) {
-            // Purchases slot — the app's MonetizationUI rows. GameShellUI never
-            // imports MonetizationUI; the whole conditional Section lives here.
-            if let controller = monetizationController {
-                Section("Purchases") {
-                    if controller.hasPurchasedRemoveAds {
-                        AdsRemovedRow(tintColor: .accentColor)
-                    } else {
-                        RemoveAdsRow(
+            notices: notices,
+            // Game Center entry: present Apple's native GC dashboard (no leaderboard
+            // focus). `MinesweeperGameCenterDashboard` lives in this module
+            // (MinesweeperUI/Leaderboard/); no extra import needed.
+            onGameCenter: { MinesweeperGameCenterDashboard.present() },
+            purchases: {
+                // Purchases slot — the app's MonetizationUI rows. GameShellUI never
+                // imports MonetizationUI; the whole conditional Section lives here.
+                if let controller = monetizationController {
+                    Section("Purchases") {
+                        if controller.hasPurchasedRemoveAds {
+                            AdsRemovedRow(tintColor: .accentColor)
+                        } else {
+                            RemoveAdsRow(
+                                controller: controller,
+                                tintColor: .accentColor
+                            )
+                        }
+                        RestorePurchasesRow(
                             controller: controller,
                             tintColor: .accentColor
                         )
                     }
-                    RestorePurchasesRow(
-                        controller: controller,
-                        tintColor: .accentColor
-                    )
                 }
+            },
+            banner: {
+                // Epic 5: banner injected by LiveRouteFactory; EmptyView in previews/tests.
+                self.banner
             }
-        } banner: {
-            // Epic 5: banner injected by LiveRouteFactory; EmptyView in previews/tests.
-            banner
-        }
+        )
         // No `aboutExtraRows` — MS has no generator row (EmptyView default).
         .task {
             if let controller = monetizationController {

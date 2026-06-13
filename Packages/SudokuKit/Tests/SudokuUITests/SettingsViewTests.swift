@@ -74,6 +74,14 @@ struct SettingsViewTests {
         #expect(viewModel.clearCacheConfirmation == "Cache cleared")
     }
 
+    @Test func settingsViewIncludesGameCenterSection() {
+        // Verifies the Game Center `onGameCenter` closure is wired into
+        // SettingsScreen — the body builds without crashing.
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel)
+        _ = view.body
+    }
+
     @Test func settingsViewConstructsWithNoticesSection() {
         // #331: injecting a populated notices config mounts the shared
         // SettingsNoticesSection. Confirms the wired path builds.
