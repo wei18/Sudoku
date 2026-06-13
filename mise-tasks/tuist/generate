@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE description="Resolve packages and regenerate Game.xcworkspace via Tuist (tuist install + tuist generate). Run after modifying Project.swift, adding packages, or when the workspace is missing."
+#USAGE flag "--open" help="Open the generated workspace in Xcode after generation (default: no-open)"
+#USAGE flag "--no-install" help="Skip tuist install (package resolution); use when checkouts are already up to date"
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WORKSPACE="$REPO_ROOT/Game.xcworkspace"
+
+if [ "${usage_no_install:-false}" != "true" ]; then
+    echo "==> tuist install"
+    mise exec -- tuist install
+fi
+
+if [ "${usage_open:-false}" = "true" ]; then
+    echo "==> tuist generate"
+    mise exec -- tuist generate
+else
+    echo "==> tuist generate --no-open"
+    mise exec -- tuist generate --no-open
+fi
+
+echo "==> workspace ready: $WORKSPACE"
