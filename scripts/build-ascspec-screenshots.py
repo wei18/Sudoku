@@ -140,19 +140,55 @@ SLOTS = {
 LOCALES = ["en", "zh-Hant"]
 
 # ── Font resolution ────────────────────────────────────────────────────────────
+#
+# CRITICAL: SFNS.ttf (San Francisco) has NO CJK glyphs — rendering Chinese /
+# Japanese / Korean with it produces .notdef "tofu" boxes (every missing char
+# draws the SAME empty rectangle). The original pass only validated pixel
+# dimensions, so the tofu went unnoticed for zh-Hant (#311 CR fail).
+#
+# Fix: pick a font per locale. CJK locales use Hiragino Sans GB (covers
+# TC/SC + Latin, so mixed strings like "20 步 undo" render correctly);
+# Latin-script locales keep SFNS.
 
-def load_font(size: int) -> ImageFont.FreeTypeFont:
-    """Load SFNS (SF system font on macOS); falls back to Helvetica."""
-    candidates = [
-        "/System/Library/Fonts/SFNS.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/HelveticaNeue.ttc",
-    ]
-    for path in candidates:
+# CJK locales need a font with Han glyph coverage.
+CJK_LOCALES = {"zh-Hant", "zh-Hans", "ja", "ko"}
+
+# Hiragino Sans GB .ttc faces: index 0 = W3 (regular), index 2 = W6 (semibold).
+_HIRAGINO = "/System/Library/Fonts/Hiragino Sans GB.ttc"
+_PINGFANG = "/System/Library/Fonts/PingFang.ttc"  # preferred if present (not on all macOS)
+
+
+def _cjk_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
+    """A CJK-capable font (PingFang if available, else Hiragino Sans GB)."""
+    if os.path.exists(_PINGFANG):
+        # PingFang.ttc faces: 0=Regular .. weights vary; use a mid weight.
+        index = 4 if bold else 2
+        try:
+            return ImageFont.truetype(_PINGFANG, size, index=index)
+        except (OSError, ValueError):
+            pass
+    if os.path.exists(_HIRAGINO):
+        # index 0 = W3 (regular), index 2 = W6 (semibold).
+        return ImageFont.truetype(_HIRAGINO, size, index=(2 if bold else 0))
+    # Last resort — Latin-only; CJK will tofu but the run won't crash.
+    return _latin_font(size)
+
+
+def _latin_font(size: int) -> ImageFont.FreeTypeFont:
+    """SFNS (SF system font on macOS); falls back to Helvetica."""
+    for path in ("/System/Library/Fonts/SFNS.ttf",
+                 "/System/Library/Fonts/Helvetica.ttc",
+                 "/System/Library/Fonts/HelveticaNeue.ttc"):
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
-    # Pillow built-in bitmap font — always available but no size control
     return ImageFont.load_default()
+
+
+def font_for(locale: str, size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Return a glyph-complete font for *locale* (CJK-aware)."""
+    if locale in CJK_LOCALES:
+        return _cjk_font(size, bold)
+    return _latin_font(size)
 
 
 # ── Compositing helpers ────────────────────────────────────────────────────────
@@ -179,7 +215,8 @@ def make_frame(app: str) -> tuple:
 def build_asc_image(baseline_path: Path,
                     headline: str,
                     subhead: str,
-                    app: str) -> Image.Image:
+                    app: str,
+                    locale: str) -> Image.Image:
     """
     Compose one ASC-spec 1290×2796 RGB PNG.
 
@@ -222,25 +259,40 @@ def build_asc_image(baseline_path: Path,
     CAPTION_WIDTH     = ASC_W - 120  # 60px margin on each side
     CAPTION_LEFT      = 60
 
-    font_headline = load_font(72)
-    font_subhead  = load_font(44)
+    font_headline = font_for(locale, 72, bold=True)
+    font_subhead  = font_for(locale, 44, bold=False)
 
     # Measure text to size the panel dynamically
     tmp_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
 
-    # Wrap headline (≤ 5 words so rarely wraps, but guard at CAPTION_WIDTH)
+    def text_w(s: str, font: ImageFont.FreeTypeFont) -> int:
+        bbox = tmp_draw.textbbox((0, 0), s, font=font)
+        return bbox[2] - bbox[0]
+
+    # Wrap by words (Latin) and fall back to per-character wrapping for any
+    # token that itself overflows (CJK has no spaces, so a whole clause is one
+    # "word" — without this it would never wrap and could overrun the panel).
     def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
-        words = text.split()
         lines, current = [], ""
-        for word in words:
+        for word in text.split():
             test = (current + " " + word).strip()
-            bbox = tmp_draw.textbbox((0, 0), test, font=font)
-            if bbox[2] - bbox[0] <= max_width:
+            if text_w(test, font) <= max_width:
                 current = test
-            else:
-                if current:
-                    lines.append(current)
+                continue
+            if current:
+                lines.append(current)
+                current = ""
+            if text_w(word, font) <= max_width:
                 current = word
+            else:
+                # Word longer than the panel: break it character by character.
+                for ch in word:
+                    test = current + ch
+                    if text_w(test, font) <= max_width or not current:
+                        current = test
+                    else:
+                        lines.append(current)
+                        current = ch
         if current:
             lines.append(current)
         return lines or [""]
@@ -392,7 +444,7 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                 if not dry_run:
                     out_dir.mkdir(parents=True, exist_ok=True)
                     headline, subhead = copy_block
-                    img = build_asc_image(baseline_path, headline, subhead, app)
+                    img = build_asc_image(baseline_path, headline, subhead, app, locale)
                     img.save(str(out_path), "PNG", optimize=False)
 
                 results.append({
