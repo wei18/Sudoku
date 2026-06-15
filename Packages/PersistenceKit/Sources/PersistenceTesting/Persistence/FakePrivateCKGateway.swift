@@ -37,6 +37,12 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public var failureMode: FailureMode = .none
 
+    /// When non-nil, every `fetch(recordName:)` call throws this error.
+    /// Models iCloud-signed-out / network-unavailable fetch failures for
+    /// `loadOrCreate` offline resilience tests. Mutated only via
+    /// `setFetchError(_:)` (Swift 6 actor isolation).
+    private var fetchError: (any Error & Sendable)?
+
     /// Per-recordName conflict counter: each save against the recorded
     /// recordName throws `PersistenceError.syncConflict(recordName:)` and
     /// decrements the counter; when it hits zero the save proceeds normally.
@@ -48,6 +54,10 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public func setFailureMode(_ mode: FailureMode) {
         self.failureMode = mode
+    }
+
+    public func setFetchError(_ error: (any Error & Sendable)?) {
+        self.fetchError = error
     }
 
     /// Schedule the next `times` saves against `recordName` to throw
@@ -72,6 +82,7 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public func fetch(recordName: String) async throws -> RecordPayload? {
         operations.append(.fetch(recordName: recordName))
+        if let error = fetchError { throw error }
         return records[recordName]
     }
 
