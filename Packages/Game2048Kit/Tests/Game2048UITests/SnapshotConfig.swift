@@ -1,8 +1,8 @@
 // SnapshotConfig — 2048 snapshot harness for Game2048UITests.
 //
 // A 1:1 mirror of MinesweeperKit's SnapshotConfig.swift, differing only in
-// the injected theme: 2048 fixtures get `NeutralTheme()` (the shared fallback
-// from GameShellUI — Game2048Theme doesn't exist yet at M3; M4 adds it).
+// the injected theme: 2048 fixtures get `Game2048Theme()` (M4 warm-tile
+// palette, landed in SDD-004 M4).
 //
 // `swift test` on the host runs macOS tests; we render SwiftUI Views through
 // `NSHostingView` (size-pinned to a canonical device size) and snapshot as
@@ -99,8 +99,8 @@ func assertUISnapshot<Value, Format>(
 }
 
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot.
-/// Uses `NeutralTheme` (GameShellUI's shared fallback) as the injected theme
-/// at M3 — Game2048Theme lands in M4 and this helper will be updated then.
+/// Injects `Game2048Theme()` (M4 warm-tile palette) so board baselines
+/// reflect the shipped brand rather than the neutral fallback.
 @MainActor
 func hostingView<ViewType: SwiftUI.View>(
     _ view: ViewType,
@@ -110,7 +110,7 @@ func hostingView<ViewType: SwiftUI.View>(
     sizeClass: UserInterfaceSizeClass = .compact
 ) -> NSView {
     let wrapped = view
-        .environment(\.theme, NeutralTheme())
+        .environment(\.theme, Game2048Theme())
         .environment(\.horizontalSizeClass, Optional(sizeClass))
         .environment(\.locale, locale ?? .current)
         .preferredColorScheme(colorScheme)
