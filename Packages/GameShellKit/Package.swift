@@ -19,9 +19,8 @@ let swiftSettings: [SwiftSetting] = [
 // gameplay UI (BoardView, engine-facing ViewModels) and the bits that
 // genuinely diverge.
 //
-// Extraction is incremental — see `meetings/2026-06-01_minesweeper-dev-roadmap.md`
-// for the Phase X PR ordering. X1 (this) opens the package and moves
-// `NavigationStackHost` over. Each subsequent X PR extracts one more piece
+// Extraction is incremental, in `Phase X` PRs: X1 (this) opens the package and
+// moves `NavigationStackHost` over. Each subsequent X PR extracts one more piece
 // while keeping Sudoku byte-identical.
 
 let productionTargets: [Target] = [

@@ -351,7 +351,6 @@ let package = Package(
         // GameShellKit so MinesweeperKit + a future third game's Kit can
         // host the same navigation / settings / hub shapes. SudokuKit only
         // ships gameplay UI + Sudoku-specific composition.
-        // See `meetings/2026-06-01_minesweeper-dev-roadmap.md` Phase X.
         .package(name: "GameShellKit", path: "../GameShellKit"),
         // #448 step 1a: app-level shell sitting above GameShellUI, hosting the
         // generic `GameRootViewModel<Route>`. Unlike the zero-dep GameShellKit,
