@@ -65,20 +65,46 @@ alpha — so ASC rejects them at the dimension/alpha check **before** review:
 |---|---|---|---|
 | iPhone snapshot | 786 × 1704, RGBA | 6.9": 1290×2796 / 1320×2868, no alpha | ✗ size + alpha |
 | Mac snapshot | 1800 × 1200, RGBA | ≥ 1280×800, no alpha | ✗ alpha |
-| iPad | *(no baselines exist)* | 13": 2048×2732 / 2064×2752 | ✗ unwired |
+| iPad | 1032×1376 baselines exist (#506) | 13": 2048×2732 / 2064×2752 | ✗ size + alpha (use build-ascspec) |
 
 The symlinked tree is for eyeballing the storyline from one source — **it is not
 an upload path.**
+
+## The marketing-frame pass NOW EXISTS — and is the real upload path (#311 / #506)
+
+The "separate pass" below is no longer hypothetical. `mise run store:screenshots
+build-ascspec` (→ `scripts/build-ascspec-screenshots.py`) composites the baselines
+into ASC-exact **1290×2796 (iPhone 6.9") + 2064×2752 (iPad 13") RGB, no-alpha** PNGs
+with on-brand frames + the strategy-doc caption copy, written to their OWN tree:
+
+```
+docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-screen.png
+```
+
+This path is separate from the preview symlinks (so it never clobbers them) AND
+matches the uploader contract `<app>/<device>/<locale>` exactly. Key facts:
+- **Per-locale fonts:** CJK locales (zh-Hant/zh-Hans/ja/ko) load Hiragino/PingFang —
+  SFNS has zero CJK glyphs and renders Chinese as tofu (the #504 regression).
+- **iPad baselines now exist** (#506 added iPad-13 snapshot configs + the generator's
+  `ipad-13` arm) — the "unwired" row above is historical.
+- **Upload (Leader-orderable, gated):**
+  `ASCRegister metadata screenshots --app <app> --app-id <id> --platform ios
+  --locale <repo-code> --screenshots-dir docs/app-store/screenshots-ascspec --i-am-sure`
+  (run per locale; device auto-detected from the dir; iPhone+iPad both picked up,
+  already-present slots skipped). Other locales fall back to en in ASC.
+- **EYEBALL the output per locale** (esp. CJK) before upload — the dimension/mode
+  check passed even while every zh-Hant caption was tofu (#504). See [[interactive-sim-ux-audit]]
+  discipline: verify content, not just dims.
 
 ## Known footguns
 
 - **Do not upload the symlinked PNGs to App Store Connect.** They fail the
   dimension + alpha pre-check. The `sync` output and `list` both reprint this.
-- **The gap to submission-ready is a separate pass** (tracked under #236): a
-  marketing-frame / upscale step consumes these baselines and emits ASC-exact RGB
-  (no-alpha) PNGs at the required dimensions, applying the overlay copy tabled in
-  `screenshot-strategy.md`, plus adding **iPad snapshot fixtures**. #311 delivered
-  the wiring + the honest gap doc only.
+- **The gap to submission-ready is now CLOSED** by `build-ascspec` (see the section
+  above). Do not upload the *preview symlinks*; do upload the `screenshots-ascspec/`
+  tree. #311 delivered the marketing-frame pass + CJK-font fix + uploader-contract
+  path; #506 added the iPad-13 arm. Both apps' iPhone 6.9" + iPad 13" (en + zh-Hant)
+  are uploaded to ASC as of 2026-06-15.
 - **Missing baseline ≠ error.** `sync` skips a slot whose source PNG is absent and
   reports it; that's expected when a snapshot hasn't been recorded yet.
 - **Re-record refreshes automatically.** Because the previews are symlinks, you
