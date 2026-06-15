@@ -1,26 +1,18 @@
 // AppRoute — Tiles2048's navigation destination enum.
 //
-// SDD-004 Milestone 2: skeleton shell. Only `.board` is declared as a
-// placeholder so the RouteFactory stub compiles. Real board parameters
-// (seed, mode — Classic vs. Daily) will be added in Milestone 3 when
-// Game2048CoreKit is wired into the UI layer.
+// M3: `.board` now carries seed + mode so the game session is deterministic.
+//   Classic (practice) mode: a fresh UInt64 seed chosen at navigation time.
+//   Daily mode:              Game2048Daily.seed(forDate: .now), derived in
+//                            Game2048Root before pushing the route.
 //
-// Milestone 3 will expand this to mirror MinesweeperKit/AppRoute.swift:
-//   case board(seed: UInt64, mode: GameMode)
-//   case daily
-//   case practice
-//   case settings
-//   case completion(mode: GameMode)
+// M4 will add:
 //   case resumeBoard(recordName: String, mode: GameMode)
 //
-// `Hashable + Sendable` is the minimum SwiftUI's `.navigationDestination(for:)`
-// + GameShellUI's `RouteFactory` require.
+// `Hashable + Sendable` required by SwiftUI `.navigationDestination(for:)`
+// + GameShellUI's `RouteFactory`.
 
 public enum AppRoute: Hashable, Sendable {
-    // Placeholder board route — parameters (seed, mode) land in M3 once
-    // Game2048CoreKit's `Game2048Engine` + `Game2048GameState` are wired.
-    case board
-    case daily
-    case practice
+    /// Launch a new game session with the given seed and mode.
+    case board(seed: UInt64, mode: GameMode)
     case settings
 }
