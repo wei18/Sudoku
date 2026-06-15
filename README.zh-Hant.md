@@ -18,7 +18,7 @@
 | | **Sudoku**（主要） | **Minesweeper**（第二款 App） |
 |---|---|---|
 | 一句話 | iPhone 與 Mac 上的每日 & 練習邏輯遊戲 | 經典玩法，化繁為靜——iPhone 與 Mac |
-| 狀態 | 功能完整；v2.5 monetization（banner + Remove-Ads IAP）送審中 | 除棋盤外每一層皆鏡像 Sudoku——已建置並測試；等待自己的 App Store 送審 |
+| 狀態 | 功能完整；v2.6 monetization（banner + Remove-Ads IAP）；App Store 送審進行中 | 除棋盤外每一層皆鏡像 Sudoku——已建置並測試；v2.6，App Store 送審進行中 |
 | 模式 | Daily（每日 3 題、全球同題、進排行）+ Practice（隨機、不計排行） | Beginner / Intermediate / Expert，首次點擊必安全 |
 | 跨裝置 | 存檔與紀錄經 iCloud Private DB 同步 | 設定與購買狀態經 iCloud 同步；尚無存檔續玩流程 |
 | 平台 | iOS 26 / macOS 26，真正的 SwiftUI Mac App（非 Catalyst） | 同上 |

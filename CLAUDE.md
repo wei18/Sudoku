@@ -1,7 +1,8 @@
 # CLAUDE.md — agent operating guide for this repo
 
 Two shipping Apple-platform games — **Sudoku** and **Minesweeper** (both v2.6, synced versioning) — built
-spec-first by an AI Leader/Developer workflow. This file is the distilled operating
+spec-first by an AI Leader/Developer workflow, with a third game (**Tiles2048**) in progress on the same
+shared modules (SDD-004, pre-ship). This file is the distilled operating
 knowledge for agents; deeper truth lives in the pointers below, not here.
 
 ## Prime directive: the mirror principle
@@ -22,6 +23,7 @@ seams (restricted framework imports):    PersistenceKit(CloudKit) · GameCenterK
 shared UI (GameShellKit = ZERO deps):    GameShellUI · SettingsUI(SettingsKit)
 shared composition (deps allowed):       GameAppKit — GameRootViewModel<Route> · GameRoot · ResumePill · ResumeCandidate
 apps (thin shells):                      SudokuKit · MinesweeperKit  →  App/Sudoku · App/Minesweeper (Tuist-generated)
+in progress (pre-ship):                  Game2048CoreKit (Game2048Engine · Game2048GameState) + Game2048Kit — SDD-004 game 3
 tooling:                                 ASCRegisterKit (standalone CLI; deliberately does NOT depend on the cores)
 ```
 
