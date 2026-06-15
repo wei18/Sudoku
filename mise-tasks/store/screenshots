@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
-#MISE description="Sync App Store screenshot previews from committed snapshot-test baselines via symlinks. PREVIEW-ONLY: baselines are NOT ASC submission-spec (see docs/app-store/screenshot-strategy.md §Snapshot-sourced pipeline)."
+#MISE description="Sync App Store screenshot previews (symlinks) from snapshot baselines, OR build ASC-submission-spec marketing frames. PREVIEW-ONLY for list/sync/clean; build-ascspec emits 1290×2796 RGB PNGs."
 #USAGE arg "<subcommand>" help="Operation to run" {
-#USAGE   choices "list" "sync" "clean"
+#USAGE   choices "list" "sync" "clean" "build-ascspec"
 #USAGE }
-#USAGE flag "--app <app>" help="Filter by app (default: all)" default="all" {
+#USAGE flag "--app <app>" help="Filter by app (default: all; applies to list/sync/clean only)" default="all" {
 #USAGE   choices "sudoku" "minesweeper" "all"
 #USAGE }
+#USAGE flag "--verify-only" help="For build-ascspec: skip generation, only verify existing outputs" default="false"
+#
+# Subcommands:
+#   list          — print the baseline→slot mapping + gaps (PREVIEW-ONLY)
+#   sync          — create/refresh relative symlinks under docs/app-store/screenshots/
+#   clean         — remove the symlinks and prune empty dirs
+#   build-ascspec — run scripts/build-ascspec-screenshots.py to produce ASC-exact
+#                   1290×2796 RGB (no alpha) marketing-frame PNGs for iPhone 6.9",
+#                   both apps, en + zh-Hant locales. Outputs go to:
+#                     docs/app-store/screenshots/<app>/iphone-6.9/ascspec/<locale>/NN-screen.png
+#                   Never clobbers the preview symlinks (different path: ascspec/ sibling dir).
+#                   Requires: Python 3 + Pillow (already installed on this machine).
 #
 # Maps selected snapshot-test baseline PNGs → a staging tree
 #   docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png
@@ -14,19 +26,19 @@
 # store preview with no copy step. Mirrors the scriptable-ops precedent set by
 # `mise-tasks/ck/schema` (#337) and the ASCRegister CLI.
 #
-# ── IMPORTANT — these are PREVIEW assets, NOT submission-ready ─────────────────
+# ── IMPORTANT — list/sync/clean are PREVIEW assets, NOT submission-ready ──────
 # The baseline PNGs are raw NSHostingView renders at the snapshot layout sizes
 # (iPhone 786×1704, Mac 1800×1200) WITH an alpha channel. App Store Connect
 # requires exact pixel dimensions (iPhone 6.9" = 1290×2796+, zero tolerance) and
-# NO alpha channel. So the symlinked PNGs let reviewers/Leader eyeball the store
-# storyline from a single source, but a separate marketing-frame / upscale pass
-# (snapshot → ASC-exact RGB, optional device frame + overlay copy) is still
-# required before any real ASC upload. See screenshot-strategy.md §gap.
+# NO alpha channel. Use `build-ascspec` for the real submission assets.
+# See docs/app-store/screenshot-strategy.md §Snapshot-sourced pipeline.
 #
 # Usage:
-#   mise run store:screenshots list                     # print the mapping + gaps
+#   mise run store:screenshots list                              # print mapping + gaps
 #   mise run store:screenshots sync  [--app sudoku|minesweeper|all]
 #   mise run store:screenshots clean [--app sudoku|minesweeper|all]
+#   mise run store:screenshots build-ascspec                     # build + verify ASC-spec PNGs
+#   mise run store:screenshots build-ascspec --verify-only       # verify only
 #
 set -euo pipefail
 
@@ -65,10 +77,12 @@ MAP=(
 # ── Arg parsing ───────────────────────────────────────────────────────────────
 SUBCMD="${1:-}"; shift || true
 APP_FILTER="all"
+VERIFY_ONLY=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --app) APP_FILTER="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'; exit 0 ;;
+    --verify-only) VERIFY_ONLY="--verify-only"; shift ;;
+    -h|--help) sed -n '2,41p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'; exit 0 ;;
     *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
   esac
 done
@@ -131,12 +145,20 @@ case "$SUBCMD" in
     echo "==> removed $removed symlink(s)."
     ;;
 
+  build-ascspec)
+    SCRIPT="$REPO_ROOT/scripts/build-ascspec-screenshots.py"
+    if [[ ! -f "$SCRIPT" ]]; then
+      echo "error: script not found at $SCRIPT" >&2; exit 1
+    fi
+    python3 "$SCRIPT" $VERIFY_ONLY
+    ;;
+
   ""|-h|--help)
-    sed -n '2,33p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,41p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     ;;
 
   *)
-    echo "error: unknown subcommand '$SUBCMD' (expected: list|sync|clean)" >&2
+    echo "error: unknown subcommand '$SUBCMD' (expected: list|sync|clean|build-ascspec)" >&2
     exit 1
     ;;
 esac
