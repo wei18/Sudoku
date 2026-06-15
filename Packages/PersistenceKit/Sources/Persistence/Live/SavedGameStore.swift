@@ -106,15 +106,17 @@ internal actor SavedGameStore: Sendable {
         let recordName = Self.recordName(for: puzzleId, mode: mode)
         // Local-first: iCloud unavailability must never prevent puzzle load.
         // Any fetch error (notAuthenticated, network, zoneNotProvisioned) is
-        // treated as "no existing save" so the deterministic puzzleLoader path
-        // is always reachable. The swallowed error is reported via telemetry
-        // so the iCloud-out event remains observable in OSLog (#512).
+        // treated as "could not confirm an existing save" so the deterministic
+        // puzzleLoader path is always reachable. The swallowed error is
+        // reported via telemetry so the event stays observable in OSLog (#512).
         let existing: RecordPayload?
+        var fetchFailed = false
         do {
             existing = try await gateway.fetch(recordName: recordName)
         } catch {
-            await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: "fetchFailed"))
+            await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: Self.fetchFailedReason))
             existing = nil
+            fetchFailed = true
         }
         if let existing {
             let puzzle = try await puzzleLoader(puzzleId)
@@ -123,17 +125,24 @@ internal actor SavedGameStore: Sendable {
         let puzzle = try await puzzleLoader(puzzleId)
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        // Best-effort: a save failure (e.g. iCloud signed out) must not
-        // prevent the caller from receiving the fresh local snapshot.
-        // The private save(_:...:recordName:) already emits gameSaveFailed
-        // telemetry on error, so no additional observation is needed here.
-        try? await save(
-            snapshot,
-            puzzleId: puzzleId,
-            mode: mode,
-            difficulty: difficulty,
-            recordName: recordName
-        )
+        // Data-loss guard (#512 CR): when the fetch failed we CANNOT confirm a
+        // remote record is absent. A transient blip (network, not signed-out)
+        // could hide a real in-progress save; persisting the fresh idle
+        // snapshot here would clobber it. So skip the initial save entirely on
+        // fetch failure — just return the snapshot for play. The VM persists on
+        // the first move through the conflict-resolved save path, so a genuinely
+        // new offline game still survives once the user acts.
+        if !fetchFailed {
+            // Best-effort seed of the new record; a save failure must not
+            // prevent the caller from receiving the fresh local snapshot.
+            try? await save(
+                snapshot,
+                puzzleId: puzzleId,
+                mode: mode,
+                difficulty: difficulty,
+                recordName: recordName
+            )
+        }
         return snapshot
     }
 
@@ -305,6 +314,11 @@ internal actor SavedGameStore: Sendable {
     static func recordName(for puzzleId: String, mode: Mode) -> String {
         "\(mode.rawValue)-\(puzzleId)"
     }
+
+    /// Telemetry `reason` token emitted when `loadOrCreate`'s fetch fails and
+    /// the load falls back to a local-only snapshot (#512). Greppable contract,
+    /// distinct from the `reason(for:)` mapping of save-time errors.
+    private static let fetchFailedReason = "fetchFailed"
 
     private static func reason(for error: PersistenceError) -> String {
         switch error {

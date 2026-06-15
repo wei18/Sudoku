@@ -170,18 +170,52 @@ struct SavedGameCRUDTests {
         #expect(received.contains(.gameSaveFailed(puzzleId: "practice-offline-easy", reason: "fetchFailed")))
     }
 
-    /// When `gateway.fetch` throws, `loadOrCreate` must not throw even if
-    /// the subsequent best-effort `save` also fails (both errors swallowed).
-    @Test func loadOrCreate_fetchAndSaveError_returnsFreshLocalSnapshot() async throws {
+    /// DATA-LOSS REGRESSION (#512 CR): a saved in-progress game EXISTS, but the
+    /// fetch fails *transiently* (network blip, not signed-out). `loadOrCreate`
+    /// must (a) return a fresh playable snapshot without throwing, AND (b) NOT
+    /// overwrite the existing record — because a failed fetch cannot confirm the
+    /// record's absence, persisting a blank idle board here would clobber the
+    /// player's real progress. The store must skip the initial save entirely on
+    /// the fetch-failed path; the VM persists later on the first move.
+    @Test func loadOrCreate_fetchErrorWithExistingSave_doesNotOverwrite() async throws {
         let (store, gateway, _) = await makeStore()
-        await gateway.setFetchError(PersistenceError.iCloudNotSignedIn)
-        await gateway.setFailureMode(.alwaysOnSave(.iCloudNotSignedIn))
-        // Both fetch and save fail — caller still gets the fresh snapshot.
-        let snapshot = try await store.loadOrCreate(
-            puzzleId: "practice-both-fail-easy",
+
+        // Seed a real in-progress save (digit placed, elapsed advanced).
+        let puzzle = PuzzleFixtures.latinSquarePuzzle()
+        let session = GameSession(puzzle: puzzle)
+        try await session.start()
+        try await session.placeDigit(row: 0, col: 0, digit: 1)
+        let inProgress = await session.snapshot()
+        try await store.save(inProgress, puzzleId: "practice-existing-easy", mode: .practice, difficulty: .easy)
+
+        let recordName = SavedGameStore.recordName(for: "practice-existing-easy", mode: .practice)
+        let before = try await gateway.fetch(recordName: recordName)
+        #expect(before != nil)
+
+        // Inject a *transient* fetch error and forget prior ops so the save
+        // assertion only counts ops from the load path under test.
+        await gateway.setFetchError(PersistenceError.underlying(domain: "Persistence", code: -1009, description: "network blip"))
+        await gateway.resetOperations()
+
+        // Load must not throw and must hand back a fresh playable snapshot.
+        let loaded = try await store.loadOrCreate(
+            puzzleId: "practice-existing-easy",
             mode: .practice,
             difficulty: .easy
         )
-        #expect(snapshot.status == .idle)
+        #expect(loaded.status == .idle)
+
+        // (b) NO save occurred on the fetch-failed load path → no clobber.
+        let ops = await gateway.operations
+        let saveOps = ops.filter {
+            if case .save = $0 { return true }
+            return false
+        }
+        #expect(saveOps.isEmpty)
+
+        // The original record is byte-identical (clear the error to read back).
+        await gateway.setFetchError(nil)
+        let after = try await gateway.fetch(recordName: recordName)
+        #expect(after == before)
     }
 }
