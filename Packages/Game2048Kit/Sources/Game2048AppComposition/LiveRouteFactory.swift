@@ -65,7 +65,6 @@ public struct LiveRouteFactory: RouteFactory {
     }
 
     @MainActor
-    // swiftlint:disable:next cyclomatic_complexity
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
         case .daily:
