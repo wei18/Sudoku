@@ -29,22 +29,16 @@ private enum TilePalette {
         return Entry(background: background(for: value), text: textColor(for: value))
     }
 
-    // Split into two smaller functions so cyclomatic complexity stays ≤ 10.
+    // Lookup table avoids a high-complexity switch (one entry per power of two).
+    private static let backgroundHex: [Int: UInt32] = [
+        2: 0xEEE4DA, 4: 0xEDE0C8, 8: 0xF2B179,
+        16: 0xF59563, 32: 0xF67C5F, 64: 0xF65E3B,
+        128: 0xEDCF72, 256: 0xEDCC61, 512: 0xEDC850,
+        1024: 0xEDC53F, 2048: 0xEDC22E,
+    ]
+
     private static func background(for value: Int) -> Color {
-        switch value {
-        case 2:    return Color(hex: 0xEEE4DA)
-        case 4:    return Color(hex: 0xEDE0C8)
-        case 8:    return Color(hex: 0xF2B179)
-        case 16:   return Color(hex: 0xF59563)
-        case 32:   return Color(hex: 0xF67C5F)
-        case 64:   return Color(hex: 0xF65E3B)
-        case 128:  return Color(hex: 0xEDCF72)
-        case 256:  return Color(hex: 0xEDCC61)
-        case 512:  return Color(hex: 0xEDC850)
-        case 1024: return Color(hex: 0xEDC53F)
-        case 2048: return Color(hex: 0xEDC22E)
-        default:   return Color(hex: 0x3C3A32)
-        }
+        Color(hex: backgroundHex[value] ?? 0x3C3A32)
     }
 
     private static func textColor(for value: Int) -> Color {
