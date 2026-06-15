@@ -13,10 +13,9 @@ let swiftSettings: [SwiftSetting] = [
 // MARK: - Production targets
 //
 // MinesweeperKit is the UI + composition shell for the Minesweeper app target,
-// siblings to SudokuKit. PR D scope is skeleton-only — both modules ship as
-// placeholders so `Project.swift`'s Minesweeper target links a real product
-// and `tuist generate` produces both schemes. Real navigation, BoardView, and
-// AppComposition wiring land in follow-up PRs.
+// sibling to SudokuKit. Fully implemented (shipped, v2.6): MinesweeperUI hosts
+// navigation + BoardView + Daily/Practice; MinesweeperAppComposition wires the
+// live persistence / Game Center / monetization / audio stack.
 //
 // Module names `MinesweeperUI` and `MinesweeperAppComposition` avoid the
 // `SudokuUI` / `AppComposition` collision that would otherwise occur when

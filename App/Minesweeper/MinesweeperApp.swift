@@ -4,7 +4,7 @@ import MinesweeperAppComposition
 // Standard navigation wire (2026-06-02 Track c.1) — `MinesweeperAppComposition.live()`
 // constructs the LiveRouteFactory + top-level `MinesweeperRoot` view (sidebar
 // + Home mode-card root + board / settings destinations). Persistence,
-// monetization, Daily / Practice are deferred (see follow-up issues).
+// monetization, Daily and Practice are all wired live (shipped, v2.6).
 
 @main
 struct MinesweeperApp: App {

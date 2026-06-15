@@ -7,9 +7,9 @@ import ProjectDescription
 //
 //     mise exec aqua:tuist/tuist -- tuist generate
 //
-// The project name is `Game` so a future second app (Minesweeper — see
-// `meetings/2026-05-31_minesweeper-rfc.md`) can join as a sibling target
-// under the same umbrella rather than guest in a project named after Sudoku.
+// The project name is `Game` so sibling app targets — Minesweeper (shipped,
+// v2.6) and Tiles2048 (in progress, SDD-004) — live under one umbrella rather
+// than guesting in a project named after Sudoku.
 //
 // foundations.md §1: Swift 6 language mode + complete concurrency checking.
 // foundations.md §2: App target is thin — depends on the local SwiftPM package
@@ -87,11 +87,11 @@ let sudokuTarget = Target.target(
     settings: .settings(base: appTargetSettings)
 )
 
-// Minesweeper app target — PR D skeleton. Mirrors `sudokuTarget`'s shape with
+// Minesweeper app target (shipped, v2.6). Mirrors `sudokuTarget`'s shape with
 // per-app values: bundleId `com.wei18.minesweeper`, source/resource paths
 // under `Minesweeper/`, entitlements with the separate iCloud container
-// `iCloud.com.wei18.minesweeper`. Only depends on the local MinesweeperKit
-// products today — monetization wiring (banner / IAP) lands in follow-up.
+// `iCloud.com.wei18.minesweeper`. Carries the same live monetization +
+// audio stack as Sudoku — the explicit App-target links below mirror Sudoku's.
 let minesweeperTarget = Target.target(
     name: "Minesweeper",
     destinations: [.iPhone, .iPad, .mac],
@@ -123,6 +123,14 @@ let minesweeperTarget = Target.target(
     dependencies: [
         .package(product: "MinesweeperUI"),
         .package(product: "MinesweeperAppComposition"),
+        // v2.3.2 (mirrors sudokuTarget): explicit App-target links so Google
+        // Mobile Ads + StoreKit2 bridge binaries are embedded in the .app
+        // bundle. MinesweeperAppComposition already pulls these transitively,
+        // but Tuist surfaces them at the App target so the linker discovers the
+        // .xcframework slices.
+        .package(product: "MonetizationCore"),
+        .package(product: "AdsAdMob"),
+        .package(product: "IAPStoreKit2"),
         // #330 P1: explicit App-target link so the GameAudioKit engine is in the
         // bundle. P1 only defines the package; gameplay triggers + composition
         // wiring land in P2.
