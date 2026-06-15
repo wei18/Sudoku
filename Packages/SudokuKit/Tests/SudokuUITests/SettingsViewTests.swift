@@ -220,6 +220,21 @@ struct SettingsViewTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshot_iPad_light_purchased() async {
+        let controller = await makeMonetizationController(purchased: true)
+        let host = makeSettingsHost(
+            purchased: true,
+            controller: controller,
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "SettingsView-fullpage-iPad-light-purchased")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshot_iPhone_dark_unpurchased() async {
         let controller = await makeMonetizationController(purchased: false)
         let host = makeSettingsHost(

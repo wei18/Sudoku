@@ -41,6 +41,18 @@ struct HomeViewTests {
         }
     }
 
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPadLight() {
+        let host = hostingView(
+            HomeView(viewModel: HomeViewModel()),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-iPad-light")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLight() {
         let host = hostingView(
             HomeView(viewModel: HomeViewModel()),

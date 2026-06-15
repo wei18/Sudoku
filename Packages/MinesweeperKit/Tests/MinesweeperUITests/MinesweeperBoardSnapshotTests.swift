@@ -48,5 +48,16 @@ struct MinesweeperBoardSnapshotTests {
             record: SnapshotMode.recordMode
         )
     }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotBeginnerCovered_iPad_light() {
+        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42)
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
+            as: .tolerantImage,
+            named: "Board-iPad-light-beginner-covered",
+            record: SnapshotMode.recordMode
+        )
+    }
 }
 #endif

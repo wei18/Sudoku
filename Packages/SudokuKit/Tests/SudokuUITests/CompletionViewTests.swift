@@ -53,6 +53,20 @@ struct CompletionViewTests {
         }
     }
 
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPadLight() async {
+        let viewModel = makeViewModel()
+        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
+        let host = hostingView(
+            CompletionView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Completion-iPad-light-loaded")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_unauthenticated_iPhoneLight_zhTW() async {
         // zh-TW locale variant for hero copy.
         let viewModel = makeViewModel()

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-build-ascspec-screenshots.py — Marketing-frame pass for ASC iPhone 6.9" screenshots.
+build-ascspec-screenshots.py — Marketing-frame pass for ASC screenshots.
 
-Consumes committed snapshot-test baselines (786×1704 RGBA) and emits
-ASC-submission-spec PNGs (1290×2796, RGB, no alpha) for both apps in
-en + zh-Hant locales.
+Consumes committed snapshot-test baselines (RGBA, rendered at each device's
+exact ASC pixel size) and emits ASC-submission-spec PNGs (RGB, no alpha) for
+both apps in en + zh-Hant locales, for each device family:
+  - iphone-6.9 : 1290×2796
+  - ipad-13    : 2064×2752 (#506)
 
-Outputs:  docs/app-store/screenshots-ascspec/<app>/iphone-6.9/<locale>/NN-<screen>.png
+Outputs:  docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-<screen>.png
           (own tree — matches the uploader's <app>/<device>/<locale> contract;
            leaves the preview symlinks under docs/app-store/screenshots/ untouched)
           (sibling to the preview symlinks; never clobbers them)
@@ -36,8 +38,16 @@ from PIL import Image, ImageDraw, ImageFont
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
+# iPhone 6.9" canvas (default; kept as module-level for back-compat references).
 ASC_W = 1290
 ASC_H = 2796
+
+# Per-device ASC canvas (exact pixel size ASC requires for that family).
+# `dir` is the output device folder under <app>/<device>/<locale>/.
+DEVICES = {
+    "iphone-6.9": {"w": 1290, "h": 2796},
+    "ipad-13":    {"w": 2064, "h": 2752},
+}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -119,29 +129,58 @@ COPY = {
 
 # ── Baseline → output slot mapping (matches mise-tasks/store/screenshots MAP) ──
 
+# SLOTS[device][app] = [(slot_name, baseline_path), ...]. The iPad arm reuses
+# the SAME slot storyline as iPhone (#506), sourced from the iPad-13 snapshot
+# baselines recorded at 2064×2752.
 SLOTS = {
-    "sudoku": [
-        ("01-home",
-         BASELINES_SUDOKU / "HomeViewTests/snapshotIPhoneLight.HomeView-iPhone-light.png"),
-        ("02-daily",
-         BASELINES_SUDOKU / "DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"),
-        ("03-board",
-         BASELINES_SUDOKU / "BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"),
-        ("04-completion",
-         BASELINES_SUDOKU / "CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"),
-        ("05-settings",
-         BASELINES_SUDOKU / "SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"),
-    ],
-    "minesweeper": [
-        ("01-home",
-         BASELINES_MS / "MinesweeperHomeSnapshotTests/snapshotHome_iPhone_light.Home-iPhone-light-compact.png"),
-        ("02-daily",
-         BASELINES_MS / "MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"),
-        ("03-board",
-         BASELINES_MS / "MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"),
-        ("04-completion",
-         BASELINES_MS / "MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"),
-    ],
+    "iphone-6.9": {
+        "sudoku": [
+            ("01-home",
+             BASELINES_SUDOKU / "HomeViewTests/snapshotIPhoneLight.HomeView-iPhone-light.png"),
+            ("02-daily",
+             BASELINES_SUDOKU / "DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"),
+            ("03-board",
+             BASELINES_SUDOKU / "BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"),
+            ("04-completion",
+             BASELINES_SUDOKU / "CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"),
+            ("05-settings",
+             BASELINES_SUDOKU / "SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"),
+        ],
+        "minesweeper": [
+            ("01-home",
+             BASELINES_MS / "MinesweeperHomeSnapshotTests/snapshotHome_iPhone_light.Home-iPhone-light-compact.png"),
+            ("02-daily",
+             BASELINES_MS / "MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"),
+            ("03-board",
+             BASELINES_MS / "MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"),
+            ("04-completion",
+             BASELINES_MS / "MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"),
+        ],
+    },
+    "ipad-13": {
+        "sudoku": [
+            ("01-home",
+             BASELINES_SUDOKU / "HomeViewTests/snapshotIPadLight.HomeView-iPad-light.png"),
+            ("02-daily",
+             BASELINES_SUDOKU / "DailyHubViewTests/snapshotUnfinishedIPadLight.DailyHub-iPad-light-unfinished.png"),
+            ("03-board",
+             BASELINES_SUDOKU / "BoardViewTests/snapshotInProgress_iPad_light.Board-iPad-light-inProgress.png"),
+            ("04-completion",
+             BASELINES_SUDOKU / "CompletionViewTests/snapshot_authenticatedLoaded_iPadLight.Completion-iPad-light-loaded.png"),
+            ("05-settings",
+             BASELINES_SUDOKU / "SettingsViewTests/snapshot_iPad_light_purchased.SettingsView-fullpage-iPad-light-purchased.png"),
+        ],
+        "minesweeper": [
+            ("01-home",
+             BASELINES_MS / "MinesweeperHomeSnapshotTests/snapshotHome_iPad_light.Home-iPad-light-regular.png"),
+            ("02-daily",
+             BASELINES_MS / "MinesweeperDailyHubSnapshotTests/snapshotDaily_iPad_light.Daily-iPad-light-regular.png"),
+            ("03-board",
+             BASELINES_MS / "MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPad_light.Board-iPad-light-beginner-covered.png"),
+            ("04-completion",
+             BASELINES_MS / "MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPad_light.Completion-iPad-light-win-loaded.png"),
+        ],
+    },
 }
 
 LOCALES = ["en", "zh-Hant"]
@@ -223,9 +262,16 @@ def build_asc_image(baseline_path: Path,
                     headline: str,
                     subhead: str,
                     app: str,
-                    locale: str) -> Image.Image:
+                    locale: str,
+                    asc_w: int = ASC_W,
+                    asc_h: int = ASC_H) -> Image.Image:
     """
-    Compose one ASC-spec 1290×2796 RGB PNG.
+    Compose one ASC-spec RGB PNG at the given canvas size.
+
+    `asc_w`/`asc_h` default to the iPhone 6.9" canvas (1290×2796); pass the
+    iPad-13 canvas (2064×2752) for the iPad arm. All layout constants below are
+    derived from the canvas size, so the same bezel/caption/compositing logic
+    scales to the larger iPad frame.
 
     Layout (top → bottom):
       - Opaque brand background (full canvas)
@@ -237,12 +283,12 @@ def build_asc_image(baseline_path: Path,
     """
     bg_color, accent_color, accent_muted = make_frame(app)
 
-    canvas = Image.new("RGB", (ASC_W, ASC_H), bg_color)
+    canvas = Image.new("RGB", (asc_w, asc_h), bg_color)
     draw = ImageDraw.Draw(canvas, "RGBA")
 
     # ── Background gradient band (subtle, same hue family) ────────────────────
     # Blend a slightly darker strip at top to give the caption area contrast.
-    top_band_h = ASC_H // 3
+    top_band_h = asc_h // 3
     top_r = max(0, bg_color[0] - 10)
     top_g = max(0, bg_color[1] - 10)
     top_b = max(0, bg_color[2] - 8)
@@ -251,7 +297,7 @@ def build_asc_image(baseline_path: Path,
         r = int(top_r + t * (bg_color[0] - top_r))
         g = int(top_g + t * (bg_color[1] - top_g))
         b = int(top_b + t * (bg_color[2] - top_b))
-        draw.line([(0, y), (ASC_W, y)], fill=(r, g, b))
+        draw.line([(0, y), (asc_w, y)], fill=(r, g, b))
 
     # ── Caption block ─────────────────────────────────────────────────────────
     #
@@ -263,7 +309,7 @@ def build_asc_image(baseline_path: Path,
     # Caption panel background: warm-paper at ~92% opacity blended over bg
     CAPTION_PADDING   = 60           # px padding inside panel
     CAPTION_TOP       = 140          # px from top of canvas
-    CAPTION_WIDTH     = ASC_W - 120  # 60px margin on each side
+    CAPTION_WIDTH     = asc_w - 120  # 60px margin on each side
     CAPTION_LEFT      = 60
 
     font_headline = font_for(locale, 72, bold=True)
@@ -360,14 +406,14 @@ def build_asc_image(baseline_path: Path,
     #
     BEZEL_TOP     = CAPTION_TOP + panel_h + 60
     BEZEL_MARGIN  = 60               # px on each side
-    BEZEL_W       = ASC_W - BEZEL_MARGIN * 2
+    BEZEL_W       = asc_w - BEZEL_MARGIN * 2
     BEZEL_CORNER  = 64               # bezel corner radius
     BEZEL_BORDER  = 12               # bezel border thickness
     BEZEL_PAD     = 20               # inner padding between bezel border and screen
 
     # Available height for the screen image
     screen_inner_w = BEZEL_W - BEZEL_BORDER * 2 - BEZEL_PAD * 2
-    screen_inner_h_max = ASC_H - BEZEL_TOP - 80 - BEZEL_BORDER * 2 - BEZEL_PAD * 2
+    screen_inner_h_max = asc_h - BEZEL_TOP - 80 - BEZEL_BORDER * 2 - BEZEL_PAD * 2
 
     # Load and fit baseline
     src = Image.open(baseline_path).convert("RGBA")
@@ -414,7 +460,7 @@ def build_asc_image(baseline_path: Path,
 
     # ── Final sanity: canvas must be RGB (no alpha) ───────────────────────────
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
-    assert canvas.size == (ASC_W, ASC_H), f"Expected {ASC_W}×{ASC_H}, got {canvas.size}"
+    assert canvas.size == (asc_w, asc_h), f"Expected {asc_w}×{asc_h}, got {canvas.size}"
 
     return canvas
 
@@ -422,57 +468,64 @@ def build_asc_image(baseline_path: Path,
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def generate_all(dry_run: bool = False) -> list[dict]:
-    """Generate all ASC-spec PNGs; return a list of result dicts for reporting."""
+    """Generate all ASC-spec PNGs (every device × app × slot × locale)."""
     results = []
 
-    for app, slots in SLOTS.items():
-        for slot_name, baseline_path in slots:
-            for locale in LOCALES:
-                copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
-                if copy_block is None:
+    for device, apps in SLOTS.items():
+        dev = DEVICES[device]
+        for app, slots in apps.items():
+            for slot_name, baseline_path in slots:
+                for locale in LOCALES:
+                    copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
+                    if copy_block is None:
+                        results.append({
+                            "device": device, "app": app, "slot": slot_name,
+                            "locale": locale, "status": "SKIPPED-NO-COPY", "path": None,
+                        })
+                        continue
+
+                    if not baseline_path.exists():
+                        results.append({
+                            "device": device, "app": app, "slot": slot_name,
+                            "locale": locale, "status": "SKIPPED-MISSING-BASELINE",
+                            "baseline": str(baseline_path), "path": None,
+                        })
+                        continue
+
+                    out_dir = OUT_ASCSPEC / app / device / locale
+                    out_path = out_dir / f"{slot_name}.png"
+
+                    if not dry_run:
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        headline, subhead = copy_block
+                        img = build_asc_image(
+                            baseline_path, headline, subhead, app, locale,
+                            asc_w=dev["w"], asc_h=dev["h"],
+                        )
+                        img.save(str(out_path), "PNG", optimize=False)
+
                     results.append({
-                        "app": app, "slot": slot_name, "locale": locale,
-                        "status": "SKIPPED-NO-COPY", "path": None,
+                        "device": device, "app": app, "slot": slot_name,
+                        "locale": locale,
+                        "status": "OK" if not dry_run else "DRY-RUN",
+                        "path": out_path,
                     })
-                    continue
-
-                if not baseline_path.exists():
-                    results.append({
-                        "app": app, "slot": slot_name, "locale": locale,
-                        "status": "SKIPPED-MISSING-BASELINE",
-                        "baseline": str(baseline_path),
-                        "path": None,
-                    })
-                    continue
-
-                out_dir = OUT_ASCSPEC / app / "iphone-6.9" / locale
-                out_path = out_dir / f"{slot_name}.png"
-
-                if not dry_run:
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    headline, subhead = copy_block
-                    img = build_asc_image(baseline_path, headline, subhead, app, locale)
-                    img.save(str(out_path), "PNG", optimize=False)
-
-                results.append({
-                    "app": app, "slot": slot_name, "locale": locale,
-                    "status": "OK" if not dry_run else "DRY-RUN",
-                    "path": out_path,
-                })
 
     return results
 
 
 def verify_outputs(results: list[dict]) -> list[dict]:
     """
-    Verify every generated PNG is exactly 1290×2796 with no alpha.
-    Annotates each result dict with 'verified' / 'fail_reason'.
+    Verify every generated PNG matches its device's exact ASC pixel size with
+    no alpha. Annotates each result dict with 'verified' / 'fail_reason'.
     Returns only the FAIL entries.
     """
     failures = []
     for r in results:
         if r["status"] != "OK" or r["path"] is None:
             continue
+        dev = DEVICES[r["device"]]
+        exp_w, exp_h = dev["w"], dev["h"]
         path = r["path"]
         if not path.exists():
             r["verified"] = False
@@ -483,13 +536,13 @@ def verify_outputs(results: list[dict]) -> list[dict]:
             img = Image.open(path)
             w, h = img.size
             mode = img.mode
-            ok = (w == ASC_W and h == ASC_H and mode == "RGB")
+            ok = (w == exp_w and h == exp_h and mode == "RGB")
             r["verified"] = ok
             r["dims"] = f"{w}×{h}"
             r["mode"] = mode
             r["md5"] = hashlib.md5(path.read_bytes()).hexdigest()[:8]
             if not ok:
-                r["fail_reason"] = f"got {w}×{h} {mode}, expected {ASC_W}×{ASC_H} RGB"
+                r["fail_reason"] = f"got {w}×{h} {mode}, expected {exp_w}×{exp_h} RGB"
                 failures.append(r)
         except Exception as exc:
             r["verified"] = False
@@ -501,8 +554,8 @@ def verify_outputs(results: list[dict]) -> list[dict]:
 def print_report(results: list[dict], failures: list[dict]) -> None:
     print()
     print("── ASC-spec screenshot build report ──────────────────────────────────────────")
-    print(f"{'App':<14} {'Locale':<8} {'Slot':<16} {'Status':<26} {'Dims / Mode'}")
-    print("─" * 90)
+    print(f"{'Device':<12} {'App':<14} {'Locale':<8} {'Slot':<16} {'Status':<26} {'Dims / Mode'}")
+    print("─" * 100)
     for r in results:
         path_str = ""
         if r.get("dims"):
@@ -511,7 +564,7 @@ def print_report(results: list[dict], failures: list[dict]) -> None:
             path_str = str(r["path"]).replace(str(REPO_ROOT), "")
         status_str = r["status"] + (" ✓" if r.get("verified") else
                                     (" ✗ " + r.get("fail_reason","") if "fail_reason" in r else ""))
-        print(f"{r['app']:<14} {r['locale']:<8} {r['slot']:<16} {status_str:<30} {path_str}")
+        print(f"{r['device']:<12} {r['app']:<14} {r['locale']:<8} {r['slot']:<16} {status_str:<30} {path_str}")
 
     print()
     print(f"Total: {len(results)} slots processed  |  "
@@ -521,10 +574,10 @@ def print_report(results: list[dict], failures: list[dict]) -> None:
     if failures:
         print("\n⚠️  VERIFICATION FAILURES:")
         for f in failures:
-            print(f"  {f['app']}/{f['locale']}/{f['slot']}: {f.get('fail_reason')}")
+            print(f"  {f['device']}/{f['app']}/{f['locale']}/{f['slot']}: {f.get('fail_reason')}")
         sys.exit(1)
     else:
-        print("\nAll generated PNGs are 1290×2796 RGB (no alpha). Spec: ✓")
+        print("\nAll generated PNGs match their device ASC pixel size, RGB (no alpha). Spec: ✓")
 
 
 def main() -> None:
@@ -538,22 +591,27 @@ def main() -> None:
     if args.verify_only:
         print("Verify-only mode: checking existing outputs…")
         results = []
-        for app, slots in SLOTS.items():
-            for slot_name, _ in slots:
-                for locale in LOCALES:
-                    out_path = OUT_ASCSPEC / app / "iphone-6.9" / locale / f"{slot_name}.png"
-                    copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
-                    results.append({
-                        "app": app, "slot": slot_name, "locale": locale,
-                        "status": "OK" if out_path.exists() and copy_block else "SKIPPED-NO-COPY",
-                        "path": out_path if out_path.exists() else None,
-                    })
+        for device, apps in SLOTS.items():
+            for app, slots in apps.items():
+                for slot_name, _ in slots:
+                    for locale in LOCALES:
+                        out_path = OUT_ASCSPEC / app / device / locale / f"{slot_name}.png"
+                        copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
+                        results.append({
+                            "device": device, "app": app, "slot": slot_name,
+                            "locale": locale,
+                            "status": "OK" if out_path.exists() and copy_block else "SKIPPED-NO-COPY",
+                            "path": out_path if out_path.exists() else None,
+                        })
         failures = verify_outputs(results)
         print_report(results, failures)
         return
 
-    print(f"Building ASC-spec screenshots → {OUT_ASCSPEC}/<app>/iphone-6.9/<locale>/")
-    print(f"Canvas: {ASC_W}×{ASC_H} RGB (no alpha)  |  Baselines: 786×1704 RGBA  |  Pillow compositing")
+    print(f"Building ASC-spec screenshots → {OUT_ASCSPEC}/<app>/<device>/<locale>/")
+    device_summary = ", ".join(
+        "{} ({}×{})".format(d, v["w"], v["h"]) for d, v in DEVICES.items()
+    )
+    print(f"Devices: {device_summary}  |  RGB (no alpha)  |  Pillow compositing")
     print()
 
     results = generate_all()

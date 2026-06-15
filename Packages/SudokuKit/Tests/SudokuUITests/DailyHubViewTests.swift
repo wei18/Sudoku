@@ -119,5 +119,19 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }
     }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPadLight() async {
+        let viewModel = await makeViewModel()
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished")
+        }
+    }
     #endif
 }
