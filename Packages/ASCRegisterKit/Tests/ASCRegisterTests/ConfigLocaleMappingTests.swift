@@ -36,14 +36,16 @@ internal struct ConfigLocaleMappingTests {
         #expect(Config.ascLocaleCode(for: "es") == "es-ES")
     }
 
-    @Test("th → th-TH")
+    // GC rejects region-suffixed th-TH / ko-KR (live LOCALE_INVALID 2026-06-15);
+    // it wants bare th / ko — same as IAP + metadata.
+    @Test("th → th")
     internal func th() {
-        #expect(Config.ascLocaleCode(for: "th") == "th-TH")
+        #expect(Config.ascLocaleCode(for: "th") == "th")
     }
 
-    @Test("ko → ko-KR")
+    @Test("ko → ko")
     internal func ko() {
-        #expect(Config.ascLocaleCode(for: "ko") == "ko-KR")
+        #expect(Config.ascLocaleCode(for: "ko") == "ko")
     }
 
     @Test("Unknown code passes through unchanged")
@@ -56,22 +58,22 @@ internal struct ConfigLocaleMappingTests {
 }
 
 // IAP localizations use ASC's app-level locale catalog (like metadata), which
-// wants bare `th` / `ko` — NOT the GC-tuned `th-TH` / `ko-KR`. A live `iap
-// apply` (#432, 2026-06-09) got IAP_LOCALIZATION_UNSUPPORTED_LOCALE_CODE for
-// `th-TH`; this suite pins the IAP variant so the two paths can't re-converge.
+// wants bare `th` / `ko`. As of 2026-06-15 Game Center was proven to want the
+// same bare codes (live LOCALE_INVALID on th-TH/ko-KR), so the IAP variant now
+// fully converges with `ascLocaleCode` — this suite pins that they match.
 @Suite("Config.ascIAPLocaleCode")
 internal struct ConfigIAPLocaleMappingTests {
 
-    @Test("th → th (NOT th-TH, unlike Game Center)")
+    @Test("th → th (matches Game Center)")
     internal func th() {
         #expect(Config.ascIAPLocaleCode(for: "th") == "th")
-        #expect(Config.ascLocaleCode(for: "th") == "th-TH")  // GC path unchanged
+        #expect(Config.ascLocaleCode(for: "th") == "th")
     }
 
-    @Test("ko → ko (NOT ko-KR, unlike Game Center)")
+    @Test("ko → ko (matches Game Center)")
     internal func ko() {
         #expect(Config.ascIAPLocaleCode(for: "ko") == "ko")
-        #expect(Config.ascLocaleCode(for: "ko") == "ko-KR")  // GC path unchanged
+        #expect(Config.ascLocaleCode(for: "ko") == "ko")
     }
 
     @Test("Other locales delegate to ascLocaleCode")

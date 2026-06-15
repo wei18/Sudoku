@@ -195,25 +195,24 @@ internal enum Config {
         case "zh-Hans": return "zh-Hans"
         case "ja":      return "ja"
         case "es":      return "es-ES"
-        case "th":      return "th-TH"
-        case "ko":      return "ko-KR"
+        // Game Center rejects the region-suffixed th-TH / ko-KR with
+        // ENTITY_ERROR.LOCALE_INVALID (live leaderboard-loc apply 2026-06-15);
+        // ASC GC wants the bare th / ko (same as IAP + metadata). es-ES / en-US
+        // region forms ARE accepted by GC, so only th / ko are special.
+        case "th":      return "th"
+        case "ko":      return "ko"
         default:        return xcstringsCode
         }
     }
 
-    /// IAP-localization variant of `ascLocaleCode`. ASC's **in-app-purchase**
-    /// localization catalog (like App Store *metadata* — see `MetadataConfig`)
-    /// uses the bare `"th"` / `"ko"` codes, NOT the region-suffixed
-    /// `"th-TH"` / `"ko-KR"` that `ascLocaleCode` returns for Game Center. A
-    /// live `iap apply` (2026-06-09, #432) got
-    /// `IAP_LOCALIZATION_UNSUPPORTED_LOCALE_CODE` for `th-TH`. All other
-    /// locales match `ascLocaleCode` (e.g. `es` → `es-ES`, `en` → `en-US`).
+    /// IAP-localization variant of `ascLocaleCode`. Now identical for all locales
+    /// — both GC and IAP use bare `"th"` / `"ko"` (the earlier assumption that GC
+    /// used `"th-TH"` / `"ko-KR"` was disproven by a live LOCALE_INVALID on
+    /// 2026-06-15; IAP's `IAP_LOCALIZATION_UNSUPPORTED_LOCALE_CODE` for `th-TH`
+    /// on 2026-06-09 #432 was the same root cause). Kept as a named alias for
+    /// call-site clarity; delegates entirely to `ascLocaleCode`.
     internal static func ascIAPLocaleCode(for xcstringsCode: String) -> String {
-        switch xcstringsCode {
-        case "th": return "th"
-        case "ko": return "ko"
-        default:   return ascLocaleCode(for: xcstringsCode)
-        }
+        ascLocaleCode(for: xcstringsCode)
     }
 }
 
