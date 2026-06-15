@@ -39,7 +39,8 @@ struct Game2048BoardSnapshotTests {
         status: Game2048SessionStatus = .playing,
         elapsedSeconds: Int = 30,
         reachedTarget: Bool = false,
-        seed: UInt64 = 42
+        seed: UInt64 = 42,
+        stuckOverlayForSnapshot: Bool = false
     ) -> Game2048BoardView {
         let board = Board(tiles: tiles)
         let snap = Game2048SessionSnapshot(
@@ -53,7 +54,8 @@ struct Game2048BoardSnapshotTests {
         )
         return Game2048BoardView(
             viewModel: Game2048GameViewModel(seeded: snap),
-            suppressTickerForSnapshot: true
+            suppressTickerForSnapshot: true,
+            stuckOverlayForSnapshot: stuckOverlayForSnapshot
         )
     }
 
@@ -147,7 +149,8 @@ struct Game2048BoardSnapshotTests {
             moveCount: 200,
             status: .stuck,
             elapsedSeconds: 600,
-            reachedTarget: true
+            reachedTarget: true,
+            stuckOverlayForSnapshot: true
         )
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light),
@@ -165,7 +168,8 @@ struct Game2048BoardSnapshotTests {
             moveCount: 200,
             status: .stuck,
             elapsedSeconds: 600,
-            reachedTarget: true
+            reachedTarget: true,
+            stuckOverlayForSnapshot: true
         )
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark),

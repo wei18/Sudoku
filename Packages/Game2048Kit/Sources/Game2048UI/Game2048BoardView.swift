@@ -4,7 +4,9 @@
 //   - @Environment(\.gameChrome): pushes elapsed to the modal top chrome.
 //   - @Environment(\.horizontalSizeClass): compact (iPhone) / regular (Mac) layout.
 //   - @Environment(\.scenePhase): background → save point (M4 stub wired here).
-//   - .onAppear { Task {} } not .task — Xcode 26 arm64 Release link bug (#361).
+//   - .task(id: ObjectIdentifier(viewModel)) not .onAppear — the ticker is a
+//     long-lived loop that must cancel on disappear (structured cancellation);
+//     the #361 arm64 Release link bug applies only to Root one-shot bootstraps.
 //   - Ticker loop: one `while !Task.isCancelled { sleep }` owned task, keyed on
 //     the VM's identity so Retry (VM swap) restarts it.
 //   - Terminal state: stuck board shows an inline "No moves" banner; full
@@ -17,6 +19,9 @@
 //   - adProvider / adGate / onNewGame are nil placeholders (M4).
 //   - CompletionScreen from GameShellKit replaces the inline stuck banner (M4).
 //   - GameRoot modal flow (present + [X] + Leave Confirmation) is M4.
+//
+// M4: extract user-visible strings to Localizable.xcstrings (7 locales) —
+// RFC SDD-004 M4 L10n; scan:l10n can't catch these (see #487).
 
 // Board view + gesture wiring + stuck overlay + pause cover in one cohesive file.
 // Extracting helpers for the sub-400 line count would increase indirection
@@ -36,9 +41,14 @@ public struct Game2048BoardView: View {
     @Environment(\.gameChrome) private var gameChrome
 
     @State private var viewModel: Game2048GameViewModel
-    // #297 mirror: seeded boards skip the in-body ticker + stuck overlay so
-    // the snapshot fixture survives NSHostingView capture.
+    // #297 mirror: seeded boards skip the in-body ticker so the snapshot
+    // fixture survives NSHostingView capture.
     private let suppressTickerForSnapshot: Bool
+    // Snapshot seam: mirrors MinesweeperBoardView's `completionViewModelForSnapshot`
+    // pattern (#388 / #315). When true the stuck overlay IS rendered even though
+    // `suppressTickerForSnapshot` is also true — so stuck baselines show the
+    // "Game Over" card as the test comment claims. Production never sets this.
+    private let stuckOverlayForSnapshot: Bool
 
     // M4 seams (nil at M3):
     // private let adProvider: (any AdProvider)?
@@ -50,16 +60,19 @@ public struct Game2048BoardView: View {
     /// Construct from an existing view model (previews, snapshot tests, resume).
     public init(
         viewModel: Game2048GameViewModel,
-        suppressTickerForSnapshot: Bool = false
+        suppressTickerForSnapshot: Bool = false,
+        stuckOverlayForSnapshot: Bool = false
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
+        self.stuckOverlayForSnapshot = stuckOverlayForSnapshot
     }
 
     /// Convenience: construct a fresh session from seed + mode.
     public init(seed: UInt64 = 0, mode: GameMode = .practice) {
         self._viewModel = State(initialValue: Game2048GameViewModel(seed: seed, mode: mode))
         self.suppressTickerForSnapshot = false
+        self.stuckOverlayForSnapshot = false
     }
 
     // MARK: - Body
@@ -75,9 +88,12 @@ public struct Game2048BoardView: View {
         .padding(theme.spacing.medium)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Stuck overlay: covers the board with a "no moves" surface when stuck.
+        // `stuckOverlayForSnapshot` lets stuck snapshot tests pre-seed the overlay
+        // even when `suppressTickerForSnapshot` is also true (mirrors MS
+        // `completionViewModelForSnapshot` seam — #388 / #315).
         // M4: replace with the shared CompletionScreen injection.
         .overlay {
-            if viewModel.isTerminal, !suppressTickerForSnapshot {
+            if viewModel.isTerminal, (!suppressTickerForSnapshot || stuckOverlayForSnapshot) {
                 stuckOverlay
                     .ignoresSafeArea()
             }
@@ -96,33 +112,13 @@ public struct Game2048BoardView: View {
         // surface is swipe-sensitive, not just the grid cells.
         .gesture(swipeGesture)
         // Ticker: pull snapshot once per second while playing; push elapsed to chrome.
-        // Uses .onAppear { Task { } } not .task per #361 (arm64 Release link bug).
-        // The task is started once on appear and loops until cancellation —
-        // but Swift structured concurrency doesn't allow cancellation here
-        // via .onAppear. Instead we replicate the MS pattern with a @State task
-        // that is cancelled on disappear via .onDisappear.
-        .onAppear {
-            startTickerIfNeeded()
-        }
-        .onDisappear {
-            tickerTask?.cancel()
-            tickerTask = nil
-        }
-    }
-
-    // MARK: - Ticker state
-
-    /// The running ticker task. Held in @State-adjacent storage via a class
-    /// wrapper so it can be cancelled on disappear. SwiftUI @State is value-type
-    /// so we use a private reference-type wrapper approach: hold the Task directly
-    /// in an actor-isolated nonisolated(unsafe) stored property, which is safe
-    /// here because all access is on @MainActor.
-    @State private var tickerTask: Task<Void, Never>?
-
-    private func startTickerIfNeeded() {
-        guard !suppressTickerForSnapshot else { return }
-        tickerTask?.cancel()
-        tickerTask = Task { @MainActor in
+        // Mirrors MinesweeperBoardView + Sudoku BoardView: a single .task(id:) owns
+        // a `while !Task.isCancelled { sleep }` loop and is cancelled automatically
+        // on disappear. Keyed on the VM's identity so a VM swap (Retry) restarts it.
+        // NOTE: .task(id:) is correct here — the #361 arm64 link bug applies only
+        // to Root one-shot bootstraps, NOT to long-lived ticker loops.
+        .task(id: ObjectIdentifier(viewModel)) {
+            guard !suppressTickerForSnapshot else { return }
             // Pull once immediately so first frame isn't stale.
             await viewModel.refresh()
             gameChrome?.updateElapsed(elapsedString)
