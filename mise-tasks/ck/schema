@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="CloudKit schema tool — export / validate / deploy-to-Development via xcrun cktool. Production promote is Console-only (user-owned); the production subcommand prints the steps and exits."
+#USAGE arg "<subcommand>" help="Operation to run" {
+#USAGE   choices "export" "validate" "deploy"
+#USAGE }
+#USAGE flag "--app <app>" help="App whose CloudKit container to target" {
+#USAGE   choices "sudoku" "minesweeper"
+#USAGE }
+#USAGE flag "--env <env>" help="CloudKit environment (validate/deploy only)" default="development" {
+#USAGE   choices "development" "production"
+#USAGE }
+#USAGE flag "--i-am-sure" help="Accepted for backwards-compat (deploy to production is Console-only regardless)"
 #
 # Wraps `xcrun cktool` so the CloudKit Development→Production schema deploy becomes
 # a commit-trackable, Leader-orderable step — mirroring how ASCRegister made the

@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="LOCAL archive → export → TestFlight upload (temporary Xcode-Cloud substitute while XCC quota is exhausted). archive/export are safe; the upload step is USER-OWNED and gated behind --i-am-sure. Reads ASC API creds from secrets/.env — never hardcoded."
+#USAGE arg "<app>" help="App to archive and upload" {
+#USAGE   choices "sudoku" "minesweeper" "tiles2048"
+#USAGE }
+#USAGE arg "<platform>" help="Target platform" {
+#USAGE   choices "ios" "macos" "all"
+#USAGE }
+#USAGE flag "--archive-only" help="Archive + export only; never upload (safe default)"
+#USAGE flag "--build <number>" help="Explicit CFBundleVersion; default = UTC timestamp (YYYYMMDDhhmm)"
+#USAGE flag "--config <name>" help="xcodebuild configuration" default="Release"
+#USAGE flag "--i-am-sure" help="REQUIRED to actually upload to TestFlight (user-owned, irreversible)"
 #
 # Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
 # §4 table: Build + Archive + upload internal TestFlight) for the window where the
