@@ -1,70 +1,80 @@
-// Game2048Root — top-level navigation root for the Tiles2048 app.
+// Game2048Root — Tiles2048's app-entry container.
 //
-// M3: wires NavigationStack + `.navigationDestination(for: AppRoute.self)`
-// so tapping Daily / Classic on the home screen launches a real board.
+// M4: replaces M3's plain NavigationStack push with `GameAppKit.GameRoot`
+// (shared GameRoot modal + bootstrap + toast — #448 step 3 pattern). Mirrors
+// MinesweeperRoot exactly in shape.
 //
-// M3 navigation shape: plain NavigationStack push (no modal GameRoot).
-// M4 will replace this with the shared `GameRoot` / `GameRootViewModel<AppRoute>`
-// pattern (#474 modal flow) — the M3→M4 transition is additive:
-//   1. Wrap this NavigationStack in GameRoot (modal).
-//   2. Inject GameRootViewModel<AppRoute> (GC auth + resume poll).
-//   3. Add theme injection (.environment(\.theme, Game2048Theme())).
-//   4. Add banner slot + toast overlay (AppMonetizationKit / MonetizationUI).
+// Theme: `Game2048Theme()` warm-tile palette is injected at the Root so every
+// mounted view resolves the amber/sand tokens. Mirrors Minesweeper's
+// `.environment(\.theme, MinesweeperTheme())` in `MinesweeperAppComposition.rootView`.
 //
-// Seed derivation:
-//   Daily    → Game2048Daily.seed(forDate: .now) at navigation time.
-//   Practice → seconds since epoch cast to UInt64 (varied, no CSPRNG dependency).
+// Navigation: `Game2048HomeViewModel` drives BOTH the Home cards and the
+// sidebar (single source), bound to Root's `viewModel.path`. Mirrors
+// `MinesweeperRoot`'s `MinesweeperHomeViewModel` shape.
 
 public import SwiftUI
-internal import Game2048Engine
-internal import GameShellUI
+public import GameShellUI
+public import MonetizationCore
+public import MonetizationUI
+public import GameAppKit
 
-@MainActor
 public struct Game2048Root: View {
+    @State private var viewModel: Game2048RootViewModel
+    @Environment(\.theme) private var theme
 
-    @State private var navigationPath = NavigationPath()
+    private let routeFactory: any RouteFactory<AppRoute>
+    private let toastController: ToastController?
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
+    private let monetizationController: MonetizationStateController?
 
-    public init() {}
+    public init(
+        viewModel: Game2048RootViewModel,
+        routeFactory: any RouteFactory<AppRoute>,
+        toastController: ToastController? = nil,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil,
+        monetizationController: MonetizationStateController? = nil
+    ) {
+        self._viewModel = State(initialValue: viewModel)
+        self.routeFactory = routeFactory
+        self.toastController = toastController
+        self.adProvider = adProvider
+        self.adGate = adGate
+        self.monetizationController = monetizationController
+    }
+
+    // One `Game2048HomeViewModel` drives BOTH the Home cards and the sidebar.
+    // Bound to Root's `path` — mirrors MinesweeperRoot's homeViewModel shape.
+    private var homeViewModel: Game2048HomeViewModel {
+        Game2048HomeViewModel(path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }))
+    }
 
     public var body: some View {
-        NavigationStack(path: $navigationPath) {
+        // GameRoot (#448 step 3): shared RootShellView + bootstrap + toast.
+        // `.onAppear { Task { … } }` inside GameRoot — fixes the latent arm64
+        // device-Release link risk from Xcode 26 `.task` lowering (#361).
+        GameRoot(
+            viewModel: viewModel,
+            title: "2048 Tiles",
+            sidebarItems: HomeModeItem.sidebarItems(from: homeViewModel.modeItems),
+            routeFactory: routeFactory,
+            toastController: toastController,
+            successTint: theme.status.success.resolved,
+            failureTint: theme.status.error.resolved
+        ) {
             Game2048HomeView(
-                onDailyTap: { pushDaily() },
-                onPracticeTap: { pushPractice() },
-                onSettingsTap: { navigationPath.append(AppRoute.settings) }
+                viewModel: homeViewModel,
+                adProvider: adProvider,
+                adGate: adGate,
+                monetizationController: monetizationController
             )
-            .navigationDestination(for: AppRoute.self) { route in
-                routeDestination(route)
-            }
         }
-    }
-
-    // MARK: - Route destinations
-
-    @ViewBuilder
-    private func routeDestination(_ route: AppRoute) -> some View {
-        switch route {
-        case .board(let seed, let mode):
-            Game2048BoardView(seed: seed, mode: mode)
-                .navigationTitle(mode == .daily ? "Daily" : "Classic")
-        case .settings:
-            // M4: wire Game2048SettingsView (mirrors MinesweeperSettingsView).
-            Text("Settings — coming in M4")
-                .navigationTitle("Settings")
-        }
-    }
-
-    // MARK: - Navigation helpers
-
-    private func pushDaily() {
-        let seed = Game2048Daily.seed(forDate: .now)
-        navigationPath.append(AppRoute.board(seed: seed, mode: .daily))
-    }
-
-    private func pushPractice() {
-        // Varied seed: seconds-since-epoch gives a new board each tap without
-        // a true CSPRNG dependency at this layer (M4 may use SystemRandomNumberGenerator).
-        let seed = UInt64(abs(Date.now.timeIntervalSince1970))
-        navigationPath.append(AppRoute.board(seed: seed, mode: .practice))
     }
 }
+
+// No root-level #Preview — constructing Game2048RootViewModel requires a
+// GameCenterClient; mirroring MinesweeperRoot (which also has no #Preview
+// for the same reason). Individual surfaces (HomeView, hubs, board) have
+// their own previews. Use Game2048AppComposition.preview() to exercise the
+// full composition.

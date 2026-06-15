@@ -1,57 +1,67 @@
 // Game2048HomeView — Tiles2048 home screen.
 //
-// Adopts the shared `HomeScreen` scaffold from GameShellKit. Tapping Daily or
-// Classic fires the injected callback; Game2048Root converts these into
-// `.board(seed:mode:)` route pushes.
-//
-// M4 will add: ResumePill via GameAppKit, banner slot via AppMonetizationKit,
-// real Game Center leaderboard action, and Game2048Theme injection.
+// Thin wrapper over `GameShellUI.HomeScreen`. Mirrors MinesweeperHomeView.
+// M4 additions vs M3:
+//   - Banner slot (adProvider + adGate → BannerSlotView injection)
+//   - Monetization bootstrap task
+//   - ViewModel-driven navigation (replaces callback closures from M3)
 
 public import SwiftUI
+public import MonetizationCore
+public import MonetizationUI
 internal import GameShellUI
 
-@MainActor
 public struct Game2048HomeView: View {
-    private let onDailyTap: @MainActor () -> Void
-    private let onPracticeTap: @MainActor () -> Void
-    private let onSettingsTap: @MainActor () -> Void
+    @Bindable private var viewModel: Game2048HomeViewModel
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
+    private let monetizationController: MonetizationStateController?
+    @Environment(\.theme) private var theme
 
     public init(
-        onDailyTap: @escaping @MainActor () -> Void,
-        onPracticeTap: @escaping @MainActor () -> Void,
-        onSettingsTap: @escaping @MainActor () -> Void
+        viewModel: Game2048HomeViewModel,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil,
+        monetizationController: MonetizationStateController? = nil
     ) {
-        self.onDailyTap = onDailyTap
-        self.onPracticeTap = onPracticeTap
-        self.onSettingsTap = onSettingsTap
+        self.viewModel = viewModel
+        self.adProvider = adProvider
+        self.adGate = adGate
+        self.monetizationController = monetizationController
     }
 
     public var body: some View {
         HomeScreen(
-            items: [
-                HomeModeItem(
-                    mode: .daily,
-                    subtitleKey: "Today's seeded board",
-                    onTap: onDailyTap
-                ),
-                HomeModeItem(
-                    mode: .practice,
-                    subtitleKey: "Unlimited classic play",
-                    onTap: onPracticeTap
-                ),
-                HomeModeItem(
-                    mode: .leaderboard,
-                    // M4: wire real Game Center dashboard action (#291 pattern).
-                    subtitleKey: "Top daily scores",
-                    onTap: { /* M4: gameCenter.presentDashboard() */ }
-                ),
-                HomeModeItem(
-                    mode: .settings,
-                    subtitleKey: "Preferences",
-                    onTap: onSettingsTap
-                ),
-            ]
+            items: viewModel.modeItems,
+            cardAccessibilityIdentifier: { mode in "Game2048HomeView.\(mode.rawValue)Card" },
+            banner: {
+                if let adProvider, let adGate {
+                    BannerSlotView(
+                        adProvider: adProvider,
+                        adGate: adGate,
+                        bannerHost: adProvider as? any BannerViewProviding,
+                        backgroundColor: theme.surface.placeholder.resolved,
+                        progressTint: theme.accent.primary.resolved,
+                        captionColor: theme.text.secondary.resolved,
+                        dismissTint: theme.accent.muted.resolved.opacity(0.7)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            }
         )
         .navigationTitle("2048 Tiles")
+        .task {
+            if let controller = monetizationController {
+                await controller.bootstrap()
+            }
+        }
+    }
+}
+
+#Preview("Game2048Home") {
+    NavigationStack {
+        Game2048HomeView(viewModel: Game2048HomeViewModel())
+            .environment(\.theme, Game2048Theme())
     }
 }

@@ -3,31 +3,22 @@
 // Mirrors MinesweeperBoardView exactly in structure:
 //   - @Environment(\.gameChrome): pushes elapsed to the modal top chrome.
 //   - @Environment(\.horizontalSizeClass): compact (iPhone) / regular (Mac) layout.
-//   - @Environment(\.scenePhase): background → save point (M4 stub wired here).
+//   - @Environment(\.scenePhase): background → save point.
 //   - .task(id: ObjectIdentifier(viewModel)) not .onAppear — the ticker is a
 //     long-lived loop that must cancel on disappear (structured cancellation);
 //     the #361 arm64 Release link bug applies only to Root one-shot bootstraps.
 //   - Ticker loop: one `while !Task.isCancelled { sleep }` owned task, keyed on
 //     the VM's identity so Retry (VM swap) restarts it.
-//   - Terminal state: stuck board shows an inline "No moves" banner; full
-//     CompletionScreen is M4 (same deferral as MS's completion overlay seam).
+//   - Terminal state: stuck board shows `Game2048CompletionView` overlay (M4).
 //   - Swipe gestures in all 4 directions calling viewModel.slide(_:).
-//   - Tile animation via withAnimation on snap update, no over-engineering.
-//
-// M3→M4 seams:
-//   - persistCurrentState() is a no-op stub (see Game2048GameViewModel).
-//   - adProvider / adGate / onNewGame are nil placeholders (M4).
-//   - CompletionScreen from GameShellKit replaces the inline stuck banner (M4).
-//   - GameRoot modal flow (present + [X] + Leave Confirmation) is M4.
-//
-// M4: extract user-visible strings to Localizable.xcstrings (7 locales) —
-// RFC SDD-004 M4 L10n; scan:l10n can't catch these (see #487).
+//   - Tile animation via withAnimation on snap update.
 
-// Board view + gesture wiring + stuck overlay + pause cover in one cohesive file.
+// Board view + gesture wiring + completion overlay + pause cover.
 // Extracting helpers for the sub-400 line count would increase indirection
-// without simplification — file_length disable is intentionally absent at M3.
+// without simplification; file_length disable absent (currently under 400).
 
 public import SwiftUI
+public import MonetizationCore
 internal import Game2048Engine
 internal import Game2048GameState
 internal import GameShellUI
@@ -41,19 +32,14 @@ public struct Game2048BoardView: View {
     @Environment(\.gameChrome) private var gameChrome
 
     @State private var viewModel: Game2048GameViewModel
-    // #297 mirror: seeded boards skip the in-body ticker so the snapshot
-    // fixture survives NSHostingView capture.
+    @State private var completionViewModel: Game2048CompletionViewModel?
+
     private let suppressTickerForSnapshot: Bool
-    // Snapshot seam: mirrors MinesweeperBoardView's `completionViewModelForSnapshot`
-    // pattern (#388 / #315). When true the stuck overlay IS rendered even though
-    // `suppressTickerForSnapshot` is also true — so stuck baselines show the
-    // "Game Over" card as the test comment claims. Production never sets this.
     private let stuckOverlayForSnapshot: Bool
 
-    // M4 seams (nil at M3):
-    // private let adProvider: (any AdProvider)?
-    // private let adGate: AdGate?
-    // private let onNewGame: (() -> Void)?
+    // M4 seams (optional — nil when monetization not wired):
+    private let adProvider: (any AdProvider)?
+    private let adGate: AdGate?
 
     // MARK: - Public inits
 
@@ -61,11 +47,15 @@ public struct Game2048BoardView: View {
     public init(
         viewModel: Game2048GameViewModel,
         suppressTickerForSnapshot: Bool = false,
-        stuckOverlayForSnapshot: Bool = false
+        stuckOverlayForSnapshot: Bool = false,
+        adProvider: (any AdProvider)? = nil,
+        adGate: AdGate? = nil
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         self.stuckOverlayForSnapshot = stuckOverlayForSnapshot
+        self.adProvider = adProvider
+        self.adGate = adGate
     }
 
     /// Convenience: construct a fresh session from seed + mode.
@@ -73,6 +63,8 @@ public struct Game2048BoardView: View {
         self._viewModel = State(initialValue: Game2048GameViewModel(seed: seed, mode: mode))
         self.suppressTickerForSnapshot = false
         self.stuckOverlayForSnapshot = false
+        self.adProvider = nil
+        self.adGate = nil
     }
 
     // MARK: - Body
@@ -87,18 +79,18 @@ public struct Game2048BoardView: View {
         }
         .padding(theme.spacing.medium)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Stuck overlay: covers the board with a "no moves" surface when stuck.
-        // `stuckOverlayForSnapshot` lets stuck snapshot tests pre-seed the overlay
-        // even when `suppressTickerForSnapshot` is also true (mirrors MS
-        // `completionViewModelForSnapshot` seam — #388 / #315).
-        // M4: replace with the shared CompletionScreen injection.
+        // M4: CompletionScreen overlay replaces the M3 inline stuckOverlay.
         .overlay {
-            if viewModel.isTerminal, !suppressTickerForSnapshot || stuckOverlayForSnapshot {
-                stuckOverlay
-                    .ignoresSafeArea()
+            if let cvm = completionViewModel,
+               !suppressTickerForSnapshot || stuckOverlayForSnapshot {
+                Game2048CompletionView(
+                    viewModel: cvm,
+                    onClose: { completionViewModel = nil }
+                )
+                .ignoresSafeArea()
             }
         }
-        // Save point: background → persist (M4: will call real store).
+        // Save point: background → persist.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 Task { await viewModel.persistCurrentState() }
@@ -107,19 +99,22 @@ public struct Game2048BoardView: View {
         .onDisappear {
             Task { await viewModel.persistCurrentState() }
         }
-        // Swipe gestures in all 4 directions.
-        // Note: gestures are attached at the outer frame so the whole board
-        // surface is swipe-sensitive, not just the grid cells.
+        // Watch for stuck to mount the completion overlay.
+        .onChange(of: viewModel.isTerminal) { _, isNow in
+            if isNow {
+                completionViewModel = Game2048CompletionViewModel(
+                    score: viewModel.score,
+                    moveCount: viewModel.moveCount,
+                    elapsedSeconds: viewModel.elapsedSeconds,
+                    reachedTarget: viewModel.reachedTarget
+                )
+            }
+        }
+        // Swipe gestures.
         .gesture(swipeGesture)
-        // Ticker: pull snapshot once per second while playing; push elapsed to chrome.
-        // Mirrors MinesweeperBoardView + Sudoku BoardView: a single .task(id:) owns
-        // a `while !Task.isCancelled { sleep }` loop and is cancelled automatically
-        // on disappear. Keyed on the VM's identity so a VM swap (Retry) restarts it.
-        // NOTE: .task(id:) is correct here — the #361 arm64 link bug applies only
-        // to Root one-shot bootstraps, NOT to long-lived ticker loops.
+        // Ticker: pull snapshot once per second while playing.
         .task(id: ObjectIdentifier(viewModel)) {
             guard !suppressTickerForSnapshot else { return }
-            // Pull once immediately so first frame isn't stale.
             await viewModel.refresh()
             gameChrome?.updateElapsed(elapsedString)
             while !Task.isCancelled {
@@ -128,6 +123,18 @@ public struct Game2048BoardView: View {
                     gameChrome?.updateElapsed(elapsedString)
                 }
                 try? await Task.sleep(for: .seconds(1))
+            }
+        }
+        // Snapshot seam: pre-mount the completion overlay when the seeded
+        // snapshot is stuck and stuckOverlayForSnapshot is true.
+        .onAppear {
+            if stuckOverlayForSnapshot, viewModel.isTerminal, completionViewModel == nil {
+                completionViewModel = Game2048CompletionViewModel(
+                    score: viewModel.score,
+                    moveCount: viewModel.moveCount,
+                    elapsedSeconds: viewModel.elapsedSeconds,
+                    reachedTarget: viewModel.reachedTarget
+                )
             }
         }
     }
@@ -144,7 +151,6 @@ public struct Game2048BoardView: View {
             .onEnded { value in
                 let horizontal = value.translation.width
                 let vertical = value.translation.height
-                // Resolve to the dominant axis.
                 if abs(horizontal) > abs(vertical) {
                     Task { await viewModel.slide(horizontal > 0 ? .right : .left) }
                 } else {
@@ -153,7 +159,7 @@ public struct Game2048BoardView: View {
             }
     }
 
-    // MARK: - Layouts (mirrors MinesweeperBoardView compact/mac split)
+    // MARK: - Layouts
 
     private var compactLayout: some View {
         VStack(spacing: 12) {
@@ -192,7 +198,7 @@ public struct Game2048BoardView: View {
         .frame(width: Self.macRailWidth)
     }
 
-    // MARK: - Status bar (mirrors MinesweeperBoardView statusBar)
+    // MARK: - Status bar
 
     private var statusBar: some View {
         HStack {
@@ -216,7 +222,6 @@ public struct Game2048BoardView: View {
                     .foregroundStyle(theme.text.primary.resolved)
             }
             Spacer()
-            // SDD-003 OQ-001 pattern: suppress in-board clock when chrome shows it.
             if gameChrome == nil {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Time")
@@ -233,7 +238,7 @@ public struct Game2048BoardView: View {
         .font(.subheadline)
     }
 
-    // MARK: - Pause toggle (mirrors MinesweeperBoardView pauseToggle)
+    // MARK: - Pause toggle
 
     @ViewBuilder
     private var pauseToggle: some View {
@@ -285,7 +290,6 @@ public struct Game2048BoardView: View {
             }
         }
         .aspectRatio(1, contentMode: .fit)
-        // Pause cover: mirrors MinesweeperBoardView's PauseOverlayView pattern.
         .overlay {
             if viewModel.isPaused {
                 PauseOverlayView(onResume: {
@@ -304,7 +308,6 @@ public struct Game2048BoardView: View {
                             value: viewModel.board[row, col],
                             side: cellSide
                         )
-                        // Tile pop animation on value change.
                         .animation(.spring(response: 0.15, dampingFraction: 0.7), value: viewModel.board[row, col])
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(tileLabel(row: row, col: col))
@@ -320,38 +323,6 @@ public struct Game2048BoardView: View {
             return "\(location), \(value)"
         }
         return "\(location), empty"
-    }
-
-    // MARK: - Stuck overlay (M3 inline; M4 → shared CompletionScreen)
-    //
-    // M3 decision: the GameShellKit CompletionScreen is injection-API (M4
-    // wires it). For M3 we show a simple full-cover card with the score and
-    // a "Game Over" label so the board is usable / testable. M4 replaces this
-    // with the shared completion overlay exactly as MS does.
-
-    private var stuckOverlay: some View {
-        ZStack {
-            theme.surface.primary.resolved
-                .opacity(0.92)
-            VStack(spacing: 24) {
-                Text("Game Over")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(theme.text.primary.resolved)
-                Text("Score: \(viewModel.score)")
-                    .font(.title2)
-                    .foregroundStyle(theme.text.secondary.resolved)
-                if viewModel.reachedTarget {
-                    Label("2048 reached!", systemImage: "star.fill")
-                        .foregroundStyle(theme.accent.primary.resolved)
-                }
-                // M4: replace with "New Game" → navigate to hub + "Share" CTAs.
-                Text("Swipe to close and return.")
-                    .font(.caption)
-                    .foregroundStyle(theme.text.tertiary.resolved)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(32)
-        }
     }
 }
 
