@@ -98,6 +98,55 @@ func assertUISnapshot<Value, Format>(
     )
 }
 
+// MARK: - View-structure text assertion (#487)
+//
+// Same mechanism as MinesweeperKit and SudokuKit — see those files for the
+// full rationale. Keep all three copies in sync (separate packages, no shared
+// test-helper target).
+
+/// Snapshot the structural type shape of a hosted SwiftUI view as a text
+/// baseline alongside the image baseline, catching added/removed content
+/// nodes independently of pixel tolerance.
+@MainActor
+func assertViewStructure(
+    of host: NSView,
+    named name: String,
+    record: SnapshotTestingConfiguration.Record? = nil,
+    fileID: StaticString = #fileID,
+    file filePath: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    let raw = host.perform(Selector(("_subtreeDescription")))?.retain()
+        .takeUnretainedValue() as? String ?? ""
+    let sanitised = raw.replacingOccurrences(
+        of: ":?\\s*0x[\\da-f]+(\\s*)", with: "$1", options: .regularExpression)
+    let failure = verifySnapshot(
+        of: sanitised,
+        as: .lines,
+        named: name,
+        record: record,
+        snapshotDirectory: SnapshotPaths.directory(forTestFile: filePath),
+        timeout: 5,
+        fileID: fileID,
+        file: filePath,
+        testName: testName,
+        line: line,
+        column: column
+    )
+    guard let message = failure else { return }
+    Issue.record(
+        Comment(rawValue: message),
+        sourceLocation: SourceLocation(
+            fileID: "\(fileID)",
+            filePath: "\(filePath)",
+            line: Int(line),
+            column: Int(column)
+        )
+    )
+}
+
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot.
 /// Injects `Game2048Theme()` (M4 warm-tile palette) so board baselines
 /// reflect the shipped brand rather than the neutral fallback.

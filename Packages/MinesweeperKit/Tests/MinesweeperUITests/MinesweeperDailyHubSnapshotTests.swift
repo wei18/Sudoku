@@ -74,81 +74,91 @@ struct MinesweeperDailyHubSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_iPhone_light() {
+        let host = hostingView(
+            dailyHubView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
         assertUISnapshot(
-            of: hostingView(
-                dailyHubView(),
-                size: SnapshotLayouts.iPhone,
-                colorScheme: .light,
-                sizeClass: .compact
-            ),
+            of: host,
             as: .tolerantImage,
             named: "Daily-iPhone-light-compact",
             record: SnapshotMode.recordMode
         )
+        assertViewStructure(of: host, named: "Daily-iPhone-light-compact", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_iPhone_dark() {
+        let host = hostingView(
+            dailyHubView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .dark,
+            sizeClass: .compact
+        )
         assertUISnapshot(
-            of: hostingView(
-                dailyHubView(),
-                size: SnapshotLayouts.iPhone,
-                colorScheme: .dark,
-                sizeClass: .compact
-            ),
+            of: host,
             as: .tolerantImage,
             named: "Daily-iPhone-dark-compact",
             record: SnapshotMode.recordMode
         )
+        assertViewStructure(of: host, named: "Daily-iPhone-dark-compact", record: SnapshotMode.recordMode)
     }
 
     // MARK: - iPad 13" (regular, 1032×1376 pt)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_iPad_light() {
+        let host = hostingView(
+            dailyHubView(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
         assertUISnapshot(
-            of: hostingView(
-                dailyHubView(),
-                size: SnapshotLayouts.iPad,
-                colorScheme: .light,
-                sizeClass: .regular
-            ),
+            of: host,
             as: .tolerantImage,
             named: "Daily-iPad-light-regular",
             record: SnapshotMode.recordMode
         )
+        assertViewStructure(of: host, named: "Daily-iPad-light-regular", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Regular (Mac width, 3-column)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_regular_light() {
+        let host = hostingView(
+            dailyHubView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
         assertUISnapshot(
-            of: hostingView(
-                dailyHubView(),
-                size: SnapshotLayouts.mac,
-                colorScheme: .light,
-                sizeClass: .regular
-            ),
+            of: host,
             as: .tolerantImage,
             named: "Daily-mac-light-regular",
             record: SnapshotMode.recordMode
         )
+        assertViewStructure(of: host, named: "Daily-mac-light-regular", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_regular_dark() {
+        let host = hostingView(
+            dailyHubView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .dark,
+            sizeClass: .regular
+        )
         assertUISnapshot(
-            of: hostingView(
-                dailyHubView(),
-                size: SnapshotLayouts.mac,
-                colorScheme: .dark,
-                sizeClass: .regular
-            ),
+            of: host,
             as: .tolerantImage,
             named: "Daily-mac-dark-regular",
             record: SnapshotMode.recordMode
         )
+        assertViewStructure(of: host, named: "Daily-mac-dark-regular", record: SnapshotMode.recordMode)
     }
 }
 #endif

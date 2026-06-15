@@ -51,6 +51,7 @@ struct CompletionViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-loaded")
         }
+        assertViewStructure(of: host, named: "Completion-iPhone-light-loaded", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPadLight() async {
@@ -65,6 +66,7 @@ struct CompletionViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPad-light-loaded")
         }
+        assertViewStructure(of: host, named: "Completion-iPad-light-loaded", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_unauthenticated_iPhoneLight_zhTW() async {
@@ -81,6 +83,7 @@ struct CompletionViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-unauthenticated-zhTW")
         }
+        assertViewStructure(of: host, named: "Completion-iPhone-light-unauthenticated-zhTW", record: SnapshotMode.recordMode)
     }
 
     // #383: Practice solve (nil leaderboard) → `.noLeaderboard`. Neutral
@@ -104,6 +107,7 @@ struct CompletionViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-noLeaderboard")
         }
+        assertViewStructure(of: host, named: "Completion-iPhone-light-noLeaderboard", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_fetchFailed_iPhoneLight() async {
@@ -118,6 +122,7 @@ struct CompletionViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed")
         }
+        assertViewStructure(of: host, named: "Completion-iPhone-light-failed", record: SnapshotMode.recordMode)
     }
     #endif
 

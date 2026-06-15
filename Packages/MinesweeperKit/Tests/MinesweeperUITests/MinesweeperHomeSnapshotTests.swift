@@ -34,81 +34,66 @@ struct MinesweeperHomeSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_iPhone_light() {
-        assertUISnapshot(
-            of: hostingView(
-                homeView(),
-                size: SnapshotLayouts.iPhone,
-                colorScheme: .light,
-                sizeClass: .compact
-            ),
-            as: .tolerantImage,
-            named: "Home-iPhone-light-compact",
-            record: SnapshotMode.recordMode
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
         )
+        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_iPhone_dark() {
-        assertUISnapshot(
-            of: hostingView(
-                homeView(),
-                size: SnapshotLayouts.iPhone,
-                colorScheme: .dark,
-                sizeClass: .compact
-            ),
-            as: .tolerantImage,
-            named: "Home-iPhone-dark-compact",
-            record: SnapshotMode.recordMode
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .dark,
+            sizeClass: .compact
         )
+        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPhone-dark-compact", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-iPhone-dark-compact", record: SnapshotMode.recordMode)
     }
 
     // MARK: - iPad 13" (regular, 1032×1376 pt)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_iPad_light() {
-        assertUISnapshot(
-            of: hostingView(
-                homeView(),
-                size: SnapshotLayouts.iPad,
-                colorScheme: .light,
-                sizeClass: .regular
-            ),
-            as: .tolerantImage,
-            named: "Home-iPad-light-regular",
-            record: SnapshotMode.recordMode
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
         )
+        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Regular (Mac width, 2-column)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_regular_light() {
-        assertUISnapshot(
-            of: hostingView(
-                homeView(),
-                size: SnapshotLayouts.mac,
-                colorScheme: .light,
-                sizeClass: .regular
-            ),
-            as: .tolerantImage,
-            named: "Home-mac-light-regular",
-            record: SnapshotMode.recordMode
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
         )
+        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-mac-light-regular", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-mac-light-regular", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_regular_dark() {
-        assertUISnapshot(
-            of: hostingView(
-                homeView(),
-                size: SnapshotLayouts.mac,
-                colorScheme: .dark,
-                sizeClass: .regular
-            ),
-            as: .tolerantImage,
-            named: "Home-mac-dark-regular",
-            record: SnapshotMode.recordMode
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .dark,
+            sizeClass: .regular
         )
+        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
     }
 }
 #endif
