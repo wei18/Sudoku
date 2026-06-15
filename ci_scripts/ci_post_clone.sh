@@ -52,8 +52,12 @@ if [[ ! -f "Tuist/AdMob.xcconfig" ]]; then
             APP_ID_VAR="MINESWEEPER_ADMOB_APP_ID"
             BANNER_VAR="MINESWEEPER_ADMOB_BANNER_UNIT_ID"
             ;;
+        Tiles2048)
+            APP_ID_VAR="TILES2048_ADMOB_APP_ID"
+            BANNER_VAR="TILES2048_ADMOB_BANNER_UNIT_ID"
+            ;;
         *)
-            echo "ERROR: cannot determine AdMob env-var prefix — CI_PRODUCT/CI_XCODE_SCHEME='${SCHEME}' (expected Sudoku or Minesweeper)"
+            echo "ERROR: cannot determine AdMob env-var prefix — CI_PRODUCT/CI_XCODE_SCHEME='${SCHEME}' (expected Sudoku, Minesweeper, or Tiles2048)"
             exit 1
             ;;
     esac
@@ -94,8 +98,11 @@ case "${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}" in
     Minesweeper)
         mise run gen:acknowledgements --config-path App/Minesweeper/license_plist.yml
         ;;
+    Tiles2048)
+        mise run gen:acknowledgements --config-path App/Tiles2048/license_plist.yml
+        ;;
     *)
-        echo "ERROR: cannot determine acknowledgements config — CI_PRODUCT/CI_XCODE_SCHEME='${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}' (expected Sudoku or Minesweeper)"
+        echo "ERROR: cannot determine acknowledgements config — CI_PRODUCT/CI_XCODE_SCHEME='${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}' (expected Sudoku, Minesweeper, or Tiles2048)"
         exit 1
         ;;
 esac
