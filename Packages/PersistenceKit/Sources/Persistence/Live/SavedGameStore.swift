@@ -104,14 +104,30 @@ internal actor SavedGameStore: Sendable {
         difficulty: Difficulty
     ) async throws -> GameSessionSnapshot {
         let recordName = Self.recordName(for: puzzleId, mode: mode)
-        if let existing = try await gateway.fetch(recordName: recordName) {
+        // Local-first: iCloud unavailability must never prevent puzzle load.
+        // Any fetch error (notAuthenticated, network, zoneNotProvisioned) is
+        // treated as "no existing save" so the deterministic puzzleLoader path
+        // is always reachable. The swallowed error is reported via telemetry
+        // so the iCloud-out event remains observable in OSLog (#512).
+        let existing: RecordPayload?
+        do {
+            existing = try await gateway.fetch(recordName: recordName)
+        } catch {
+            await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: "fetchFailed"))
+            existing = nil
+        }
+        if let existing {
             let puzzle = try await puzzleLoader(puzzleId)
             return try SavedGameMapper.snapshot(from: existing, puzzle: puzzle)
         }
         let puzzle = try await puzzleLoader(puzzleId)
         let session = GameSession(puzzle: puzzle)
         let snapshot = await session.snapshot()
-        try await save(
+        // Best-effort: a save failure (e.g. iCloud signed out) must not
+        // prevent the caller from receiving the fresh local snapshot.
+        // The private save(_:...:recordName:) already emits gameSaveFailed
+        // telemetry on error, so no additional observation is needed here.
+        try? await save(
             snapshot,
             puzzleId: puzzleId,
             mode: mode,
