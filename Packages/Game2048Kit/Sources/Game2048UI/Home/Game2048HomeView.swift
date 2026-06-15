@@ -1,12 +1,11 @@
-// Game2048HomeView — Tiles2048 Home stub (SDD-004 Milestone 2).
+// Game2048HomeView — Tiles2048 home screen.
 //
-// Adopts the shared `HomeScreen` scaffold from GameShellKit. Milestone 3
-// will wire real subtitles from the app's Localizable.xcstrings, the
-// ResumePill via GameAppKit, the banner slot via AppMonetizationKit, and
-// the Game Center leaderboard action.
+// Adopts the shared `HomeScreen` scaffold from GameShellKit. Tapping Daily or
+// Classic fires the injected callback; Game2048Root converts these into
+// `.board(seed:mode:)` route pushes.
 //
-// Mode-card taps push placeholder routes into the navigation stack; the
-// real RouteFactory destination views land in Milestone 3.
+// M4 will add: ResumePill via GameAppKit, banner slot via AppMonetizationKit,
+// real Game Center leaderboard action, and Game2048Theme injection.
 
 public import SwiftUI
 internal import GameShellUI
@@ -32,21 +31,19 @@ public struct Game2048HomeView: View {
             items: [
                 HomeModeItem(
                     mode: .daily,
-                    // M3: replace with localized subtitle from Localizable.xcstrings.
                     subtitleKey: "Today's seeded board",
                     onTap: onDailyTap
                 ),
                 HomeModeItem(
                     mode: .practice,
-                    // M3: replace with localized subtitle from Localizable.xcstrings.
                     subtitleKey: "Unlimited classic play",
                     onTap: onPracticeTap
                 ),
                 HomeModeItem(
                     mode: .leaderboard,
-                    // M3: wire real Game Center dashboard action (#291 pattern).
+                    // M4: wire real Game Center dashboard action (#291 pattern).
                     subtitleKey: "Top daily scores",
-                    onTap: { /* M3: gameCenter.presentDashboard() */ }
+                    onTap: { /* M4: gameCenter.presentDashboard() */ }
                 ),
                 HomeModeItem(
                     mode: .settings,
