@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="Render provisioning walkthrough HTML (ASC / AdMob / CloudKit) for an app from shared templates. Substitutes only PUBLIC ids — no secrets. Mirrors mise-tasks/ck/schema conventions."
+#USAGE arg "<topic>" help="Walkthrough(s) to render" {
+#USAGE   choices "asc" "admob" "cloudkit" "all"
+#USAGE }
+#USAGE flag "--app <name>" help="Known app (sudoku|minesweeper) or new slug — required"
+#USAGE flag "--bundle-id <id>" help="Override bundle id (e.g. com.acme.foo)"
+#USAGE flag "--container-id <id>" help="Override iCloud container (e.g. iCloud.com.acme.foo)"
+#USAGE flag "--iap-product-id <id>" help="Override IAP product id"
+#USAGE flag "--live-composition <type>" help="Override AppComposition.Live type name"
+#USAGE flag "--out <dir>" help="Output directory" default="~/GitHub/Wei18/tmp"
+#USAGE flag "--open" help="Open rendered file(s) in the browser after render"
 #
 # Renders the human-facing provisioning walkthroughs that used to live as
 # hand-edited one-off HTML files in ~/GitHub/Wei18/tmp/. They are now generated

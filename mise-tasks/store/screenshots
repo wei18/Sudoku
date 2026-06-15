@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 #MISE description="Sync App Store screenshot previews from committed snapshot-test baselines via symlinks. PREVIEW-ONLY: baselines are NOT ASC submission-spec (see docs/app-store/screenshot-strategy.md §Snapshot-sourced pipeline)."
+#USAGE arg "<subcommand>" help="Operation to run" {
+#USAGE   choices "list" "sync" "clean"
+#USAGE }
+#USAGE flag "--app <app>" help="Filter by app (default: all)" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
 #
 # Maps selected snapshot-test baseline PNGs → a staging tree
 #   docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png
