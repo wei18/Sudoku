@@ -29,7 +29,7 @@ Cannot be subagent-driven. Document in `v2.5-readiness.md` as `- [ ]` items; tra
 | Apple Developer Program enrolment / annual renewal | developer.apple.com | One-time + yearly |
 | Generate ASC API Key (.p8 + Key ID + Issuer ID) | App Store Connect → Users and Access → Keys | Required for ASCRegister + Xcode Cloud signing |
 | App Privacy questionnaire | ASC web UI → My Apps → Sudoku → App Privacy | No REST API exists (verified 2026-05-23) — must align manually with PrivacyInfo.xcprivacy |
-| Create IAP product (e.g. `com.wei18.sudoku.iap.remove_ads`) | ASC → My Apps → Sudoku → In-App Purchases | Reference Name + Display Name + Pricing tier + Family Sharing toggle; status → `Ready to Submit` before TestFlight build resolves |
+| IAP pricing tier + review screenshot + `Ready to Submit` | ASC → My Apps → … → In-App Purchases | Product creation + per-locale localization are now automated (`ASCRegister iap apply`, see Leader-orderable table); what remains web-UI is the price/availability, the IAP review screenshot, and flipping status to `Ready to Submit` |
 | Sandbox tester account | ASC → Users and Access → Sandbox | One per region you want to test |
 | AdMob console linkage | apps.admob.com | Link to ASC App ID; create banner ad unit |
 | App Store nutrition labels | ASC web UI → App Privacy | Must align with PrivacyInfo |
@@ -45,8 +45,9 @@ Subagent-driveable. Document as "automated by ASCRegister X mode".
 |---|---|---|
 | Register Game Center leaderboards (3) | `tools/ASCRegister` | ✅ shipped (v1) |
 | Register Game Center achievements (8) | `tools/ASCRegister` | ✅ shipped (v1) |
-| Register IAP product | `ASCRegister --iap` mode | ❌ **CANCELLED** (`docs/v2/design.md §Backlog`, 2026-05-26) — ROI not justified at 1 IAP |
-| Upload App Metadata (description / keywords / screenshots / what's new) | `ASCRegister app-metadata` mode | 📅 BACKLOG (`docs/foundations.md §Backlog`, 2026-05-26) — when 7-locale manual sync becomes painful |
+| Register IAP product | `ASCRegister iap plan\|apply` | ✅ **SHIPPED** — `iap` subcommand creates/updates the IAP from metadata xcstrings (the 2026-05-26 cancellation was later reversed; confirm via `ASCRegister --help`). Requires the ASC app record to already exist (`--app-id`). |
+| Upload App Metadata (description / keywords / screenshots / what's new) | `ASCRegister metadata plan\|apply\|set-version\|screenshots` | ✅ **SHIPPED** — `metadata` subcommand uploads listings + screenshots per locale (the 2026-05-26 backlog item was implemented; `screenshots` gated behind `--i-am-sure`). |
+| Create the ASC app record itself | — (none) | 🙋 **USER-OWNED** — ASCRegister consumes `--app-id`, it cannot create the app. Register the bundle id (Developer Portal) + create the app in ASC web UI, then feed its app-id to the tools. |
 
 ### 🤝 Hybrid (Leader prepares; user pushes the button)
 
@@ -65,16 +66,16 @@ Cross-reference the taxonomy above. If user-owned → respond "this is user step
 - **`docs/v2/v2.5-readiness.md`** — current ship checklist; user-owned items as `- [ ]`
 - **`docs/v2/plan.md` §v2.5** — phase summary; defers to readiness doc for detail
 - **`tools/ASCRegister/`** (project source: `Packages/ASCRegisterKit/Sources/ASCRegister/`) — existing CLI
-- **`docs/app-store/metadata/README.md`** — yaml schema for future ASCRegister app-metadata mode
+- **`docs/app-store/metadata/README.md`** — yaml schema consumed by ASCRegister metadata mode (shipped)
 - **`docs/foundations.md §Backlog`** — ASC API ops backlog entries
-- **`docs/v2/design.md §Backlog`** — CANCELLED ASC ops (e.g. IAP mode)
+- **`docs/v2/design.md §Backlog`** — historical CANCELLED/BACKLOG ASC ops (note: the IAP + metadata modes listed there were later implemented — `ASCRegister --help` is current truth)
 
 ## Anti-patterns
 
-- **"Subagent should just do the IAP registration"** — NO. ASC IAP product creation requires Apple ID 2FA + web UI per-product. Even ASC API requires the user to first have created the product in the UI for many fields.
+- **"IAP is fully automated, no user step"** — NO. `ASCRegister iap apply` creates the product + localizations via the API, but pricing/availability, the IAP review screenshot, and the final `Ready to Submit` flip remain web-UI (user-owned). Automate the creation; hand the rest to the user.
 - **"We'll fill App Privacy questionnaire later via API"** — NO. There is no API. Verified 2026-05-23.
 - **Shipping with test AdMob IDs in production**: paired flip exists for a reason. Per RCA #149 Fix N1, Release build with test app ID + production ad unit ID will silently no-fill at best.
-- **Conflating "ASCRegister handles Game Center" with "ASCRegister handles everything"**: explicit mode-by-mode tracking required. IAP mode CANCELLED. App Metadata mode BACKLOG. Game Center mode SHIPPED.
+- **Conflating "ASCRegister handles Game Center" with "ASCRegister handles everything"**: explicit mode-by-mode tracking required. Game Center / IAP / metadata modes are all SHIPPED (`ASCRegister --help` is the source of truth). The one thing ASCRegister does NOT do is create the app record — it consumes `--app-id`, so the ASC app must be created in the web UI first (user-owned).
 
 ## Example application
 

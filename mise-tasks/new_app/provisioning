@@ -3,7 +3,7 @@
 #USAGE arg "<topic>" help="Walkthrough(s) to render" {
 #USAGE   choices "asc" "admob" "cloudkit" "all"
 #USAGE }
-#USAGE flag "--app <name>" help="Known app (sudoku|minesweeper) or new slug — required"
+#USAGE flag "--app <name>" help="Known app (sudoku|minesweeper|tiles2048) or new slug — required"
 #USAGE flag "--bundle-id <id>" help="Override bundle id (e.g. com.acme.foo)"
 #USAGE flag "--container-id <id>" help="Override iCloud container (e.g. iCloud.com.acme.foo)"
 #USAGE flag "--iap-product-id <id>" help="Override IAP product id"
@@ -27,7 +27,7 @@
 # Usage:
 #   mise run new_app:provisioning <asc|admob|cloudkit|all> --app <name> [opts]
 #
-#   --app <name>          known app (sudoku|minesweeper) → defaults from case-map,
+#   --app <name>          known app (sudoku|minesweeper|tiles2048) → defaults from case-map,
 #                         or a brand-new name (then pass the --*-id flags below)
 #   --bundle-id <id>      override / supply bundle id        (e.g. com.acme.foo)
 #   --container-id <id>   override / supply iCloud container (e.g. iCloud.com.acme.foo)
@@ -69,6 +69,13 @@ apply_app_defaults() {
             CONTAINER_ID="${CONTAINER_ID:-iCloud.com.wei18.minesweeper}"
             IAP_PRODUCT_ID="${IAP_PRODUCT_ID:-com.wei18.minesweeper.iap.remove_ads}"
             LIVE_COMPOSITION="${LIVE_COMPOSITION:-MinesweeperAppComposition.Live}"
+            ;;
+        tiles2048)
+            APP_NAME="${APP_NAME:-2048 Tiles}"
+            BUNDLE_ID="${BUNDLE_ID:-com.wei18.tiles2048}"
+            CONTAINER_ID="${CONTAINER_ID:-iCloud.com.wei18.tiles2048}"
+            IAP_PRODUCT_ID="${IAP_PRODUCT_ID:-com.wei18.tiles2048.iap.remove_ads}"
+            LIVE_COMPOSITION="${LIVE_COMPOSITION:-Game2048AppComposition.Live}"
             ;;
         *)
             # Brand-new app not in the map: title-case the slug for the display
