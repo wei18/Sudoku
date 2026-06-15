@@ -1,6 +1,6 @@
 ---
 name: asc-ops-handoff
-description: Use when planning, scoping, or executing user-owned App Store Connect / TestFlight / Apple Developer operations for Sudoku app — IAP product registration, App Privacy questionnaire, AdMob console linkage, sandbox tester provisioning, TestFlight upload + review, ASC submission, App Metadata uploads. Codifies which steps are user-owned (require Apple ID / 2FA / web UI) vs Leader-orderable (via ASC API + ASCRegister CLI), and the canonical doc + verification checklist for each.
+description: Use when planning, scoping, or executing user-owned App Store Connect / TestFlight / Apple Developer operations for the repo apps (Sudoku / Minesweeper / Tiles2048) — IAP product registration, App Privacy questionnaire, AdMob console linkage, sandbox tester provisioning, TestFlight upload + review, ASC submission, App Metadata uploads. Codifies which steps are user-owned (require Apple ID / 2FA / web UI) vs Leader-orderable (via ASC API + ASCRegister CLI), and the canonical doc + verification checklist for each.
 ---
 
 # ASC Ops Handoff
@@ -32,6 +32,7 @@ Cannot be subagent-driven. Document in `v2.5-readiness.md` as `- [ ]` items; tra
 | IAP pricing tier + review screenshot + `Ready to Submit` | ASC → My Apps → … → In-App Purchases | Product creation + per-locale localization are now automated (`ASCRegister iap apply`, see Leader-orderable table); what remains web-UI is the price/availability, the IAP review screenshot, and flipping status to `Ready to Submit` |
 | Sandbox tester account | ASC → Users and Access → Sandbox | One per region you want to test |
 | AdMob console linkage | apps.admob.com | Link to ASC App ID; create banner ad unit |
+| Create the ASC app record | Developer Portal (App ID) + ASC web UI (My Apps → +) | ASCRegister consumes `--app-id` — it cannot create the app; do this first, then feed the app-id to the tools |
 | App Store nutrition labels | ASC web UI → App Privacy | Must align with PrivacyInfo |
 | TestFlight build promotion to production | ASC → TestFlight → Build → Distribute | Tap "Submit for Review" |
 | Apple Review response (rejection / approval) | ASC → App Store → Submission | Reply to Apple's notes |
@@ -47,7 +48,6 @@ Subagent-driveable. Document as "automated by ASCRegister X mode".
 | Register Game Center achievements (8) | `tools/ASCRegister` | ✅ shipped (v1) |
 | Register IAP product | `ASCRegister iap plan\|apply` | ✅ **SHIPPED** — `iap` subcommand creates/updates the IAP from metadata xcstrings (the 2026-05-26 cancellation was later reversed; confirm via `ASCRegister --help`). Requires the ASC app record to already exist (`--app-id`). |
 | Upload App Metadata (description / keywords / screenshots / what's new) | `ASCRegister metadata plan\|apply\|set-version\|screenshots` | ✅ **SHIPPED** — `metadata` subcommand uploads listings + screenshots per locale (the 2026-05-26 backlog item was implemented; `screenshots` gated behind `--i-am-sure`). |
-| Create the ASC app record itself | — (none) | 🙋 **USER-OWNED** — ASCRegister consumes `--app-id`, it cannot create the app. Register the bundle id (Developer Portal) + create the app in ASC web UI, then feed its app-id to the tools. |
 
 ### 🤝 Hybrid (Leader prepares; user pushes the button)
 
@@ -59,7 +59,7 @@ Subagent-driveable. Document as "automated by ASCRegister X mode".
 
 ## When subagent asks "can I do X for ASC?"
 
-Cross-reference the taxonomy above. If user-owned → respond "this is user step, add to `v2.5-readiness.md` checklist and surface to user". If Leader-orderable → confirm tool exists or scope the CLI extension. If hybrid → split the work in dispatch prompt.
+Cross-reference the taxonomy above. If user-owned → respond "this is user step, add to the appropriate *-readiness.md checklist and surface to user". If Leader-orderable → confirm tool exists or scope the CLI extension. If hybrid → split the work in dispatch prompt.
 
 ## Documentation pointers
 
