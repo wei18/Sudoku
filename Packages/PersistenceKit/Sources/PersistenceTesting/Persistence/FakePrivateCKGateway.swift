@@ -40,7 +40,7 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     /// When non-nil, every `fetch(recordName:)` call throws this error.
     /// Models iCloud-signed-out / network-unavailable fetch failures for
     /// `loadOrCreate` offline resilience tests.
-    public var fetchError: (any Error & Sendable)? = nil
+    public var fetchError: (any Error & Sendable)?
 
     /// Per-recordName conflict counter: each save against the recorded
     /// recordName throws `PersistenceError.syncConflict(recordName:)` and
