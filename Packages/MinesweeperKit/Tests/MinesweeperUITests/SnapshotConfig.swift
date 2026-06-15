@@ -107,6 +107,105 @@ func assertUISnapshot<Value, Format>(
     )
 }
 
+// MARK: - View-structure text assertion (#487)
+//
+// WHY a text baseline alongside the image baseline:
+// The `tolerantImage` strategy (precision 0.95 / perceptualPrecision 0.95)
+// absorbs rendering drift across machines but can also silently absorb
+// added/removed content (e.g. a new "Failed" badge that falls within the 5%
+// pixel tolerance window). The text baseline guards the *structural* shape of
+// the SwiftUI view tree: it records the mangled type name of the `NSHostingView`
+// generic, which encodes every visible node (Text, Label, Image, HStack, etc.)
+// as part of its generic parameter chain. Adding or removing a content-bearing
+// SwiftUI node changes the type name and therefore the baseline.
+//
+// Mechanism: `NSView._subtreeDescription()` (the same private method that
+// SnapshotTesting's `.recursiveDescription` uses) returns a one-line string
+// whose class name is the full Swift mangled type — e.g.
+//   NSHostingView<ModifiedContent<HStack<TupleView<(Text,Text)>>,…>>
+// vs
+//   NSHostingView<ModifiedContent<HStack<Text>,…>>
+// — different when a node is added. Memory addresses are stripped by
+// `purgePointers` (same regex as SnapshotTesting), so the baseline is stable
+// across runs on the same OS/Swift toolchain.
+//
+// SCOPE — what this gate covers and what it does NOT:
+// - COVERS: interactive list/grid rows that surface as their own AppKit nodes
+//   (DailyHub cards, Home mode cards render as `_FocusRingView` children, so
+//   add/remove of a row changes the subtree text). This is the surface #487
+//   was filed for, and the gate is genuinely effective there.
+// - DOES NOT COVER: scroll-hosted content views (e.g. CompletionView). Their
+//   SwiftUI content lives inside `HostingScrollView`'s `DocumentView f=(0,0,0,0)`
+//   with NO child nodes in `_subtreeDescription`, so the baseline is identical
+//   across states (a new "Failed" badge inside the scroll view does NOT change
+//   it). Wiring those suites would record vacuous always-passing baselines —
+//   the exact false-confidence anti-pattern #487 targets — so they are NOT
+//   wired. That gap is tracked in #517.
+//
+// Caveats:
+// - The mangled type name IS toolchain-version-sensitive. If the Swift ABI
+//   mangle changes across a major Xcode upgrade, baselines need re-recording —
+//   which is expected and preferable to silent regressions.
+// - This check is local-only (gated `.enabled(if: !SnapshotEnv.isXcodeCloud)`)
+//   just like the image baselines, for the same reasons (headless XCC doesn't
+//   have a window server). It adds no new CI gate requirements.
+// - Keep in sync with SudokuKit/Tests/.../SnapshotStructureHelper.swift
+//   (separate packages, no shared test-helper target).
+
+/// Snapshot the structural type shape of a hosted SwiftUI view as a text
+/// baseline. Call immediately after `assertUISnapshot(... as: .tolerantImage
+/// ...)` so adding/removing an interactive list/grid row fails the test
+/// independently of pixel tolerance.
+///
+/// ONLY wire suites whose content surfaces as distinct AppKit nodes (DailyHub /
+/// Home cards). Do NOT wire scroll-hosted content views (CompletionView): their
+/// content collapses into an empty `DocumentView` and the baseline is vacuous —
+/// see the SCOPE note above and #517.
+///
+/// The baseline file is named `<testName>.<named>.txt` and lives beside the
+/// PNG in `__Snapshots__/<TestClass>/`. Pass the same `named` label used for
+/// the image snapshot.
+@MainActor
+func assertViewStructure(
+    of host: NSView,
+    named name: String,
+    record: SnapshotTestingConfiguration.Record? = nil,
+    fileID: StaticString = #fileID,
+    file filePath: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    let raw = host.perform(Selector(("_subtreeDescription")))?
+        .takeUnretainedValue() as? String ?? ""
+    // Strip memory addresses (mirrors SnapshotTesting's purgePointers regex).
+    let sanitised = raw.replacingOccurrences(
+        of: ":?\\s*0x[\\da-f]+(\\s*)", with: "$1", options: .regularExpression)
+    let failure = verifySnapshot(
+        of: sanitised,
+        as: .lines,
+        named: name,
+        record: record,
+        snapshotDirectory: SnapshotPaths.directory(forTestFile: filePath),
+        timeout: 5,
+        fileID: fileID,
+        file: filePath,
+        testName: testName,
+        line: line,
+        column: column
+    )
+    guard let message = failure else { return }
+    Issue.record(
+        Comment(rawValue: message),
+        sourceLocation: SourceLocation(
+            fileID: "\(fileID)",
+            filePath: "\(filePath)",
+            line: Int(line),
+            column: Int(column)
+        )
+    )
+}
+
 /// Wrap a SwiftUI View in an `NSHostingView` sized to `size` for snapshot,
 /// injecting the MS theme + cell tokens to mirror the live root.
 @MainActor

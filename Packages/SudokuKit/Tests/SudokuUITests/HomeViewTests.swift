@@ -39,6 +39,7 @@ struct HomeViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light")
         }
+        assertViewStructure(of: host, named: "HomeView-iPhone-light", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPadLight() {
@@ -51,6 +52,7 @@ struct HomeViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "HomeView-iPad-light")
         }
+        assertViewStructure(of: host, named: "HomeView-iPad-light", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLight() {
@@ -63,6 +65,7 @@ struct HomeViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "HomeView-Mac-light")
         }
+        assertViewStructure(of: host, named: "HomeView-Mac-light", record: SnapshotMode.recordMode)
     }
     #endif
 }

@@ -86,6 +86,7 @@ struct DailyHubViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-unfinished")
         }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-unfinished", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEasyCompletedIPhoneLight() async {
@@ -102,6 +103,7 @@ struct DailyHubViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-easyDone")
         }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-easyDone", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedIPhoneLight() async {
@@ -118,6 +120,7 @@ struct DailyHubViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-allDone", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPadLight() async {
@@ -132,6 +135,7 @@ struct DailyHubViewTests {
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished")
         }
+        assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
     }
     #endif
 }
