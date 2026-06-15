@@ -93,7 +93,7 @@ public struct Game2048BoardView: View {
         // `completionViewModelForSnapshot` seam — #388 / #315).
         // M4: replace with the shared CompletionScreen injection.
         .overlay {
-            if viewModel.isTerminal, (!suppressTickerForSnapshot || stuckOverlayForSnapshot) {
+            if viewModel.isTerminal, !suppressTickerForSnapshot || stuckOverlayForSnapshot {
                 stuckOverlay
                     .ignoresSafeArea()
             }
