@@ -1,13 +1,18 @@
 // SnapshotStructureHelper — view-tree text assertion gate (#487).
 //
 // Extracted from SnapshotConfig.swift to keep that file under the 400-line
-// SwiftLint threshold. This helper records NSHostingView `_subtreeDescription`
-// as a `.txt` baseline alongside the PNG. The mangled generic type name encodes
-// every SwiftUI node, so adding/removing a Text/Label fails the baseline
+// SwiftLint threshold. Records NSHostingView `_subtreeDescription` as a `.txt`
+// baseline alongside the PNG. The mangled generic type name encodes the SwiftUI
+// node tree, so adding/removing an interactive list/grid row fails the baseline
 // independently of the 0.95/0.95 pixel tolerance.
 //
-// Keep in sync with MinesweeperKit/Tests/.../SnapshotConfig.swift (separate
-// packages, no shared test-helper target).
+// SCOPE: COVERS interactive list/grid rows that surface as distinct AppKit
+// nodes (DailyHub / Home cards render as `_FocusRingView` children). DOES NOT
+// COVER scroll-hosted content views (CompletionView) — their content collapses
+// into an empty `DocumentView f=(0,0,0,0)`, so the baseline is identical across
+// states and the gate is vacuous. Those suites are deliberately NOT wired; that
+// gap is tracked in #517. See MinesweeperKit's SnapshotConfig SCOPE note for
+// the full rationale. Keep in sync with that file (no shared test-helper target).
 
 #if canImport(AppKit)
 import AppKit
@@ -16,8 +21,8 @@ import Testing
 
 /// Assert that the SwiftUI view-tree structure of `host` matches a recorded
 /// `.txt` baseline. Call alongside `assertUISnapshot(... as: .tolerantImage)`.
-/// Adding or removing a content-bearing node (Text, Label, Image) changes the
-/// mangled generic type and fails this baseline without touching the PNG.
+/// Only wire suites whose content surfaces as distinct AppKit nodes (DailyHub /
+/// Home cards); do NOT wire scroll-hosted views (CompletionView) — see #517.
 @MainActor
 func assertViewStructure(
     of host: NSView,
@@ -29,8 +34,9 @@ func assertViewStructure(
     line: UInt = #line,
     column: UInt = #column
 ) {
-    let raw = host.perform(Selector(("_subtreeDescription")))?.retain()
+    let raw = host.perform(Selector(("_subtreeDescription")))?
         .takeUnretainedValue() as? String ?? ""
+    // Strip memory addresses (mirrors SnapshotTesting's purgePointers regex).
     let sanitised = raw.replacingOccurrences(
         of: ":?\\s*0x[\\da-f]+(\\s*)", with: "$1", options: .regularExpression)
     let failure = verifySnapshot(

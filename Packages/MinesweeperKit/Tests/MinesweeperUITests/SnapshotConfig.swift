@@ -129,6 +129,19 @@ func assertUISnapshot<Value, Format>(
 // `purgePointers` (same regex as SnapshotTesting), so the baseline is stable
 // across runs on the same OS/Swift toolchain.
 //
+// SCOPE — what this gate covers and what it does NOT:
+// - COVERS: interactive list/grid rows that surface as their own AppKit nodes
+//   (DailyHub cards, Home mode cards render as `_FocusRingView` children, so
+//   add/remove of a row changes the subtree text). This is the surface #487
+//   was filed for, and the gate is genuinely effective there.
+// - DOES NOT COVER: scroll-hosted content views (e.g. CompletionView). Their
+//   SwiftUI content lives inside `HostingScrollView`'s `DocumentView f=(0,0,0,0)`
+//   with NO child nodes in `_subtreeDescription`, so the baseline is identical
+//   across states (a new "Failed" badge inside the scroll view does NOT change
+//   it). Wiring those suites would record vacuous always-passing baselines —
+//   the exact false-confidence anti-pattern #487 targets — so they are NOT
+//   wired. That gap is tracked in #517.
+//
 // Caveats:
 // - The mangled type name IS toolchain-version-sensitive. If the Swift ABI
 //   mangle changes across a major Xcode upgrade, baselines need re-recording —
@@ -136,13 +149,18 @@ func assertUISnapshot<Value, Format>(
 // - This check is local-only (gated `.enabled(if: !SnapshotEnv.isXcodeCloud)`)
 //   just like the image baselines, for the same reasons (headless XCC doesn't
 //   have a window server). It adds no new CI gate requirements.
-// - Keep in sync with SudokuKit/Tests/.../SnapshotConfig.swift (separate
-//   packages, no shared test-helper target).
+// - Keep in sync with SudokuKit/Tests/.../SnapshotStructureHelper.swift
+//   (separate packages, no shared test-helper target).
 
 /// Snapshot the structural type shape of a hosted SwiftUI view as a text
 /// baseline. Call immediately after `assertUISnapshot(... as: .tolerantImage
-/// ...)` in any content-bearing test so that adding or removing a visible node
-/// fails the test independently of pixel tolerance.
+/// ...)` so adding/removing an interactive list/grid row fails the test
+/// independently of pixel tolerance.
+///
+/// ONLY wire suites whose content surfaces as distinct AppKit nodes (DailyHub /
+/// Home cards). Do NOT wire scroll-hosted content views (CompletionView): their
+/// content collapses into an empty `DocumentView` and the baseline is vacuous —
+/// see the SCOPE note above and #517.
 ///
 /// The baseline file is named `<testName>.<named>.txt` and lives beside the
 /// PNG in `__Snapshots__/<TestClass>/`. Pass the same `named` label used for
@@ -158,7 +176,7 @@ func assertViewStructure(
     line: UInt = #line,
     column: UInt = #column
 ) {
-    let raw = host.perform(Selector(("_subtreeDescription")))?.retain()
+    let raw = host.perform(Selector(("_subtreeDescription")))?
         .takeUnretainedValue() as? String ?? ""
     // Strip memory addresses (mirrors SnapshotTesting's purgePointers regex).
     let sanitised = raw.replacingOccurrences(
