@@ -125,10 +125,9 @@ let minesweeperTarget = Target.target(
         .package(product: "MinesweeperAppComposition"),
         // v2.3.2 (mirrors sudokuTarget): explicit App-target links so Google
         // Mobile Ads + StoreKit2 bridge binaries are embedded in the .app
-        // bundle. MinesweeperAppComposition pulls these transitively, but Tuist
-        // surfaces them at the App target so the linker discovers the
-        // .xcframework slices (without this MS risks the v2.3.2 non-embedding
-        // failure Sudoku was patched against).
+        // bundle. MinesweeperAppComposition already pulls these transitively,
+        // but Tuist surfaces them at the App target so the linker discovers the
+        // .xcframework slices.
         .package(product: "MonetizationCore"),
         .package(product: "AdsAdMob"),
         .package(product: "IAPStoreKit2"),
