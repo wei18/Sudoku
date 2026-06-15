@@ -62,6 +62,23 @@ struct MinesweeperHomeSnapshotTests {
         )
     }
 
+    // MARK: - iPad 13" (regular, 1032×1376 pt)
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotHome_iPad_light() {
+        assertUISnapshot(
+            of: hostingView(
+                homeView(),
+                size: SnapshotLayouts.iPad,
+                colorScheme: .light,
+                sizeClass: .regular
+            ),
+            as: .tolerantImage,
+            named: "Home-iPad-light-regular",
+            record: SnapshotMode.recordMode
+        )
+    }
+
     // MARK: - Regular (Mac width, 2-column)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

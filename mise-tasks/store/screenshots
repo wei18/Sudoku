@@ -13,9 +13,10 @@
 #   sync          — create/refresh relative symlinks under docs/app-store/screenshots/
 #   clean         — remove the symlinks and prune empty dirs
 #   build-ascspec — run scripts/build-ascspec-screenshots.py to produce ASC-exact
-#                   1290×2796 RGB (no alpha) marketing-frame PNGs for iPhone 6.9",
-#                   both apps, en + zh-Hant locales. Outputs go to:
-#                     docs/app-store/screenshots-ascspec/<app>/iphone-6.9/<locale>/NN-screen.png
+#                   RGB (no alpha) marketing-frame PNGs: iPhone 6.9" (1290×2796)
+#                   and iPad 13" (2064×2752), both apps, en + zh-Hant locales.
+#                   Outputs go to:
+#                     docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-screen.png
 #                   Own tree (matches uploader's <app>/<device>/<locale> contract);
 #                   leaves the preview symlinks under docs/app-store/screenshots/ untouched.
 #                   Upload with: ASCRegister metadata screenshots
@@ -63,6 +64,12 @@ MAP=(
   "sudoku|iphone-6.9|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"
   "sudoku|iphone-6.9|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"
   "sudoku|iphone-6.9|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"
+  # ── Sudoku · iPad 13" (#506) ──────────────────────────────────────────────────
+  "sudoku|ipad-13|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/HomeViewTests/snapshotIPadLight.HomeView-iPad-light.png"
+  "sudoku|ipad-13|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPadLight.DailyHub-iPad-light-unfinished.png"
+  "sudoku|ipad-13|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPad_light.Board-iPad-light-inProgress.png"
+  "sudoku|ipad-13|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPadLight.Completion-iPad-light-loaded.png"
+  "sudoku|ipad-13|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPad_light_purchased.SettingsView-fullpage-iPad-light-purchased.png"
   # ── Sudoku · Mac ────────────────────────────────────────────────────────────
   "sudoku|mac|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/HomeViewTests/snapshotMacLight.HomeView-Mac-light.png"
   "sudoku|mac|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_Mac_light.Board-Mac-light-inProgress.png"
@@ -72,6 +79,11 @@ MAP=(
   "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"
   "minesweeper|iphone-6.9|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"
   "minesweeper|iphone-6.9|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"
+  # ── Minesweeper · iPad 13" (#506) ─────────────────────────────────────────────
+  "minesweeper|ipad-13|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperHomeSnapshotTests/snapshotHome_iPad_light.Home-iPad-light-regular.png"
+  "minesweeper|ipad-13|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPad_light.Daily-iPad-light-regular.png"
+  "minesweeper|ipad-13|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPad_light.Board-iPad-light-beginner-covered.png"
+  "minesweeper|ipad-13|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPad_light.Completion-iPad-light-win-loaded.png"
   # ── Minesweeper · Mac ───────────────────────────────────────────────────────
   "minesweeper|mac|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperHomeSnapshotTests/snapshotHome_regular_light.Home-mac-light-regular.png"
   "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_regular_light.Daily-mac-light-regular.png"
@@ -111,7 +123,7 @@ case "$SUBCMD" in
     done
     echo
     echo "Reminder: PREVIEW-ONLY. Not ASC submission-spec (dimensions + alpha)."
-    echo "Known gap: no iPad baselines exist; iPad ASC slot is unwired."
+    echo "iPad 13\" slots are wired (#506): build-ascspec emits 2064×2752 RGB."
     ;;
 
   sync)

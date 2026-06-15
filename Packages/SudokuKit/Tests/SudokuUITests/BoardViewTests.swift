@@ -153,6 +153,26 @@ struct BoardViewTests {
         }
     }
 
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPad_light() throws {
+        let viewModel = try makeViewModel(
+            clues: Self.inProgressClues,
+            userCells: [
+                (row: 0, col: 2, digit: 4),
+                (row: 0, col: 3, digit: 6),
+                (row: 4, col: 4, digit: 5),
+            ],
+            errorCells: [
+                (row: 0, col: 2)
+            ],
+            selection: GridCoordinate(row: 4, column: 4),
+            elapsedSeconds: 201
+        )
+        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Board-iPad-light-inProgress")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPhone_dark() throws {
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
