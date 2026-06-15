@@ -269,9 +269,12 @@ def build_asc_image(baseline_path: Path,
     Compose one ASC-spec RGB PNG at the given canvas size.
 
     `asc_w`/`asc_h` default to the iPhone 6.9" canvas (1290×2796); pass the
-    iPad-13 canvas (2064×2752) for the iPad arm. All layout constants below are
-    derived from the canvas size, so the same bezel/caption/compositing logic
-    scales to the larger iPad frame.
+    iPad-13 canvas (2064×2752) for the iPad arm. Bezel and caption-panel WIDTHS
+    derive from `asc_w` and the top band / screen height derive from `asc_h`, but
+    the caption/font pixel constants (padding, corner radius, 72pt headline /
+    44pt subhead) are fixed and were tuned for the iPhone canvas — at iPad scale
+    the text block is proportionally smaller, which was accepted for the v1 iPad
+    slot. Retune these constants per-device if a denser iPad caption is wanted.
 
     Layout (top → bottom):
       - Opaque brand background (full canvas)

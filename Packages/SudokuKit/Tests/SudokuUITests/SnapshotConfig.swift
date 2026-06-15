@@ -35,6 +35,8 @@ enum SnapshotLayouts {
     /// iPhone 16 / 15 canonical compact size class.
     static let iPhone = CGSize(width: 393, height: 852)
     /// iPad 13" regular size class — 1032×1376 pt @2x → 2064×2752 px (ASC iPad 13").
+    /// Keep in sync with MinesweeperKit/Tests/.../SnapshotConfig.swift (separate
+    /// packages, no shared test-helper target).
     static let iPad = CGSize(width: 1032, height: 1376)
     /// Mac regular size class — matches the design preview frame
     /// (`#Preview` width 900 × height 600).

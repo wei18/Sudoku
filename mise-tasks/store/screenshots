@@ -13,9 +13,10 @@
 #   sync          — create/refresh relative symlinks under docs/app-store/screenshots/
 #   clean         — remove the symlinks and prune empty dirs
 #   build-ascspec — run scripts/build-ascspec-screenshots.py to produce ASC-exact
-#                   1290×2796 RGB (no alpha) marketing-frame PNGs for iPhone 6.9",
-#                   both apps, en + zh-Hant locales. Outputs go to:
-#                     docs/app-store/screenshots-ascspec/<app>/iphone-6.9/<locale>/NN-screen.png
+#                   RGB (no alpha) marketing-frame PNGs: iPhone 6.9" (1290×2796)
+#                   and iPad 13" (2064×2752), both apps, en + zh-Hant locales.
+#                   Outputs go to:
+#                     docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-screen.png
 #                   Own tree (matches uploader's <app>/<device>/<locale> contract);
 #                   leaves the preview symlinks under docs/app-store/screenshots/ untouched.
 #                   Upload with: ASCRegister metadata screenshots
