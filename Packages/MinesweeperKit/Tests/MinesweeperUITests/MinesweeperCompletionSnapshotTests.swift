@@ -100,7 +100,12 @@ struct MinesweeperCompletionSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPad_light() {
-        let host = hostingView(completionView(didWin: true, state: .loaded(Self.sampleSlice)), size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(
+            completionView(didWin: true, state: .loaded(Self.sampleSlice)),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
         assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPad-light-win-loaded", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Completion-iPad-light-win-loaded", record: SnapshotMode.recordMode)
     }
