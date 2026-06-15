@@ -15,8 +15,11 @@
 #   build-ascspec — run scripts/build-ascspec-screenshots.py to produce ASC-exact
 #                   1290×2796 RGB (no alpha) marketing-frame PNGs for iPhone 6.9",
 #                   both apps, en + zh-Hant locales. Outputs go to:
-#                     docs/app-store/screenshots/<app>/iphone-6.9/ascspec/<locale>/NN-screen.png
-#                   Never clobbers the preview symlinks (different path: ascspec/ sibling dir).
+#                     docs/app-store/screenshots-ascspec/<app>/iphone-6.9/<locale>/NN-screen.png
+#                   Own tree (matches uploader's <app>/<device>/<locale> contract);
+#                   leaves the preview symlinks under docs/app-store/screenshots/ untouched.
+#                   Upload with: ASCRegister metadata screenshots
+#                     --screenshots-dir docs/app-store/screenshots-ascspec --i-am-sure
 #                   Requires: Python 3 + Pillow (already installed on this machine).
 #
 # Maps selected snapshot-test baseline PNGs → a staging tree

@@ -6,7 +6,9 @@ Consumes committed snapshot-test baselines (786×1704 RGBA) and emits
 ASC-submission-spec PNGs (1290×2796, RGB, no alpha) for both apps in
 en + zh-Hant locales.
 
-Outputs:  docs/app-store/screenshots/<app>/iphone-6.9/ascspec/<locale>/NN-<screen>.png
+Outputs:  docs/app-store/screenshots-ascspec/<app>/iphone-6.9/<locale>/NN-<screen>.png
+          (own tree — matches the uploader's <app>/<device>/<locale> contract;
+           leaves the preview symlinks under docs/app-store/screenshots/ untouched)
           (sibling to the preview symlinks; never clobbers them)
 
 Tooling:  Python 3 + Pillow (PIL) — already present on this machine.
@@ -43,6 +45,11 @@ BASELINES_SUDOKU = REPO_ROOT / "Packages/SudokuKit/Tests/SudokuUITests/__Snapsho
 BASELINES_MS = REPO_ROOT / "Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__"
 
 OUT_BASE = REPO_ROOT / "docs/app-store/screenshots"
+# ASC-spec assets live in their OWN tree so the layout matches the uploader's
+# contract exactly: <screenshots-dir>/<app>/<device>/<locale>/NN.png (no extra
+# segment). Keeping them out of OUT_BASE leaves the preview symlinks untouched.
+# Point `ASCRegister metadata screenshots --screenshots-dir` here.
+OUT_ASCSPEC = REPO_ROOT / "docs/app-store/screenshots-ascspec"
 
 # ── Theme colors (from DefaultTheme.swift / MinesweeperTheme.swift) ───────────
 
@@ -438,7 +445,7 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                     })
                     continue
 
-                out_dir = OUT_BASE / app / "iphone-6.9" / "ascspec" / locale
+                out_dir = OUT_ASCSPEC / app / "iphone-6.9" / locale
                 out_path = out_dir / f"{slot_name}.png"
 
                 if not dry_run:
@@ -534,7 +541,7 @@ def main() -> None:
         for app, slots in SLOTS.items():
             for slot_name, _ in slots:
                 for locale in LOCALES:
-                    out_path = OUT_BASE / app / "iphone-6.9" / "ascspec" / locale / f"{slot_name}.png"
+                    out_path = OUT_ASCSPEC / app / "iphone-6.9" / locale / f"{slot_name}.png"
                     copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
                     results.append({
                         "app": app, "slot": slot_name, "locale": locale,
@@ -545,7 +552,7 @@ def main() -> None:
         print_report(results, failures)
         return
 
-    print(f"Building ASC-spec screenshots → {OUT_BASE}/<app>/iphone-6.9/ascspec/<locale>/")
+    print(f"Building ASC-spec screenshots → {OUT_ASCSPEC}/<app>/iphone-6.9/<locale>/")
     print(f"Canvas: {ASC_W}×{ASC_H} RGB (no alpha)  |  Baselines: 786×1704 RGBA  |  Pillow compositing")
     print()
 
