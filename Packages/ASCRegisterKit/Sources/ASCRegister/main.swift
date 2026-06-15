@@ -102,22 +102,24 @@ internal enum ASCRegisterCLI {
         let url = URL(fileURLWithPath: xcstringsPath)
         let parsed = try XCStringsParser.parse(fileURL: url)
 
-        // Validate Config sanity.
+        // Validate Config sanity (app-scoped).
         let leaderboards = Config.leaderboards(for: gcApp)
+        let achievements: [AchievementConfig] = (gcApp == .tiles2048)
+            ? Config.tiles2048Achievements
+            : Config.achievements
         let lbIds = leaderboards.map(\.id)
-        let achIds = Config.allAchievementShortIds
-        let pointsSum = Config.totalAchievementPoints
+        let pointsSum = achievements.reduce(0) { $0 + $1.points }
 
         print("Config (\(gcApp.rawValue)):")
         print("  leaderboards (\(lbIds.count)):")
         for id in lbIds { print("    - \(id)") }
-        print("  achievements (\(achIds.count), points=\(pointsSum)):")
-        for ach in Config.achievements {
+        print("  achievements (\(achievements.count), points=\(pointsSum)):")
+        for ach in achievements {
             print("    - \(ach.fullId)  [\(ach.points)pt]")
         }
 
         // Validate xcstrings coverage for en + zh-Hant on every expected key.
-        let expectedKeys = expectedXCStringsKeys(leaderboards: leaderboards)
+        let expectedKeys = expectedXCStringsKeys(leaderboards: leaderboards, achievements: achievements)
         var missing: [(String, String)] = []  // (locale, key)
         for locale in ["en", "zh-Hant"] {
             for key in expectedKeys {
@@ -204,11 +206,12 @@ internal enum ASCRegisterCLI {
         }
 
         // 3. Plan. `--app` selects the leaderboard set; the achievement / IAP
-        // slices are app-agnostic (see Config.GCApp). For `--app minesweeper`
-        // the reconciler will also emit achievement actions from the (Sudoku)
-        // achievement config — but MS's GC detail has none, so they surface as
-        // CREATE actions. To keep `--app minesweeper` strictly leaderboard-
-        // scoped, filter to leaderboard actions when targeting a non-sudoku app.
+        // slices vary by app (see ConfigSnapshot.live(for:)). For non-sudoku
+        // apps the reconciler emits achievement actions from the app's own
+        // achievement list; to keep `plan/apply` strictly leaderboard-scoped
+        // for MS + tiles2048 (achievements are a separate future pass), filter
+        // to leaderboard actions only. Sudoku drives all resource types in one
+        // pass (historical behaviour, unchanged).
         let allActions = Reconciler.plan(
             config: .live(for: gcApp),
             strings: strings,
@@ -340,13 +343,14 @@ internal enum ASCRegisterCLI {
     }
 
     private static func expectedXCStringsKeys(
-        leaderboards: [LeaderboardConfig] = Config.leaderboards
+        leaderboards: [LeaderboardConfig] = Config.leaderboards,
+        achievements: [AchievementConfig] = Config.achievements
     ) -> [String] {
         var keys: [String] = []
         for lb in leaderboards {
             keys.append(lb.titleKey)
         }
-        for ach in Config.achievements {
+        for ach in achievements {
             keys.append(ach.titleKey)
             keys.append(ach.descriptionKey)
             keys.append(ach.unearnedDescriptionKey)
@@ -362,9 +366,9 @@ internal enum ASCRegisterCLI {
     private static func printUsage() {
         print("""
         Usage:
-          ASCRegister validate  --xcstrings <path> [--app <sudoku|minesweeper>]
-          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
-          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
+          ASCRegister validate  --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
+          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
+          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>

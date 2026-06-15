@@ -16,8 +16,9 @@
 //   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
 //     translation-agent flow (foundations.md §L10n).
 //
-// Total: 2 keys × 7 locales = 14 string units. 2 × 2 = 4 filled,
-// 2 × 5 = 10 marked <TRANSLATE>.
+// Total: 4 keys × 7 locales = 28 string units (2 Sudoku + 2 Tiles2048;
+// Minesweeper keys are in a separate ms-iap-strings.xcstrings.patch).
+// 4 × 2 = 8 filled (en + zh-Hant), 4 × 5 = 20 marked <TRANSLATE>.
 //
 // File extension `.xcstrings.patch` mirrors gc-strings.xcstrings.patch
 // precedent — Xcode will NOT try to parse this as a string catalog. The
@@ -38,6 +39,29 @@
       }
     },
     "iap.remove_ads.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Remove all in-app ads forever. Family Sharing." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "永久移除 App 內所有廣告。支援「家人共享」。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "iap.tiles2048.remove_ads.name" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Remove Ads" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "移除廣告" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "iap.tiles2048.remove_ads.description" : {
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Remove all in-app ads forever. Family Sharing." } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "永久移除 App 內所有廣告。支援「家人共享」。" } },

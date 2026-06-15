@@ -26,25 +26,29 @@ internal enum Config {
     internal enum GCApp: String, Sendable, CaseIterable {
         case sudoku
         case minesweeper
+        case tiles2048
 
         /// Bundle-id-rooted leaderboard prefix for this app. Must equal the
         /// app's runtime constant (`LeaderboardID.dailyPrefix` /
-        /// `MinesweeperLeaderboardID.prefix`) — pinned by ConfigConsistencyTests.
+        /// `MinesweeperLeaderboardID.prefix` / `Game2048LeaderboardID.prefix`)
+        /// — pinned by ConfigConsistencyTests.
         internal var leaderboardPrefix: String {
             switch self {
             case .sudoku:      return "com.wei18.sudoku.leaderboard"
             case .minesweeper: return "com.wei18.minesweeper.leaderboard"
+            case .tiles2048:   return "com.wei18.tiles2048.leaderboard"
             }
         }
 
         /// xcstrings key namespace for this app's leaderboard titles. Sudoku
         /// keeps the original un-namespaced `gc.leaderboard.*` keys (shipped);
-        /// MS gets an `gc.minesweeper.leaderboard.*` namespace so both apps'
-        /// titles can coexist in one catalog.
+        /// other apps get an app-scoped namespace so all titles coexist in one
+        /// catalog.
         internal var leaderboardTitleKeyPrefix: String {
             switch self {
             case .sudoku:      return "gc.leaderboard"
             case .minesweeper: return "gc.minesweeper.leaderboard"
+            case .tiles2048:   return "gc.tiles2048.leaderboard"
             }
         }
     }
@@ -60,23 +64,43 @@ internal enum Config {
     /// 2-hour upper bound for valid completion times, per §How.3.1 score range.
     internal static let leaderboardScoreMaxMilliseconds: Int64 = 7_200_000
 
-    /// The 3 daily leaderboards for `app`. Same recurring-daily shape across
-    /// apps (elapsed-time formatter, low-to-high sort, P1D recurrence); only
-    /// the id prefix + title-key namespace differ. Difficulty segments are
-    /// `easy/medium/hard` for BOTH apps (MS's engine `beginner/intermediate/
-    /// expert` are mapped to these segments at the runtime call site, mirroring
-    /// Sudoku's id shape — see `MinesweeperLeaderboardID`).
+    /// The daily leaderboard(s) for `app`.
+    ///
+    /// Sudoku + Minesweeper: 3 difficulty-based boards
+    /// (elapsed-time formatter, low-to-high sort, recurring daily).
+    /// MS difficulty segments `easy/medium/hard` mirror Sudoku's id shape —
+    /// see `MinesweeperLeaderboardID`.
+    ///
+    /// Tiles2048: 1 single daily board (INTEGER formatter, high-to-low sort,
+    /// recurring daily). The leaderboard metric is the game score (higher =
+    /// better), not elapsed time. OQ-GC-2048-1 resolved: `scoreSortType =
+    /// "DESC"`, `scoreFormat = "INTEGER"`. ID must equal
+    /// `Game2048LeaderboardID.daily`.
     internal static func leaderboards(for app: GCApp) -> [LeaderboardConfig] {
         let prefix = app.leaderboardPrefix
         let keyPrefix = app.leaderboardTitleKeyPrefix
-        let titleCase: (String) -> String = { $0.prefix(1).uppercased() + $0.dropFirst() }
-        return ["easy", "medium", "hard"].map { difficulty in
-            LeaderboardConfig(
-                id: "\(prefix).\(difficulty).daily.\(leaderboardVersionSuffix)",
-                referenceName: "Daily \(titleCase(difficulty)) v1",
-                difficulty: difficulty,
-                titleKey: "\(keyPrefix).\(difficulty).daily.title"
-            )
+        switch app {
+        case .tiles2048:
+            return [
+                LeaderboardConfig(
+                    id: "\(prefix).daily.\(leaderboardVersionSuffix)",
+                    referenceName: "Daily v1",
+                    difficulty: "",
+                    titleKey: "\(keyPrefix).daily.title",
+                    scoreFormat: "INTEGER",
+                    sortOrder: "DESC"
+                )
+            ]
+        default:
+            let titleCase: (String) -> String = { $0.prefix(1).uppercased() + $0.dropFirst() }
+            return ["easy", "medium", "hard"].map { difficulty in
+                LeaderboardConfig(
+                    id: "\(prefix).\(difficulty).daily.\(leaderboardVersionSuffix)",
+                    referenceName: "Daily \(titleCase(difficulty)) v1",
+                    difficulty: difficulty,
+                    titleKey: "\(keyPrefix).\(difficulty).daily.title"
+                )
+            }
         }
     }
 
@@ -168,11 +192,58 @@ internal enum Config {
                 by purchasing in Settings → Pro → Remove Ads. After \
                 purchase, ads should not appear anywhere in the app.
                 """
+        ),
+        IAPProduct(
+            productId: "com.wei18.tiles2048.iap.remove_ads",
+            referenceName: "Remove Ads v1",
+            familyShareable: true,
+            reviewNote: """
+                This non-consumable IAP removes banner ads app-wide. Test \
+                by purchasing in Settings → Pro → Remove Ads. After \
+                purchase, ads should not appear anywhere in the app.
+                """
         )
     ]
 
     internal static var allIAPProductIds: [String] {
         iaps.map(\.productId)
+    }
+
+    // MARK: - Tiles2048 Game Center (OQ-GC-2048-1, SDD-004 M5)
+
+    /// Achievement prefix for Tiles2048. Must equal the runtime constant in
+    /// Game2048AppComposition's GameCenterSink (to be wired at M5).
+    internal static let tiles2048AchievementPrefix = "com.wei18.tiles2048.achievement."
+
+    /// Tiles2048 achievements: only those M4 code actually reports.
+    ///
+    /// M4 analysis: `Game2048SessionSnapshot.reachedTarget` is the sole
+    /// achievement signal in Game2048Kit (flows through
+    /// `Game2048GameViewModel` → `Game2048CompletionViewModel`). No other
+    /// achievement shortIds are emitted. Do NOT add achievements the code
+    /// does not report.
+    ///
+    /// `reached_2048`: awarded when the 2048 tile is reached in a run.
+    /// Points: 50 (respects ASC 0–100 cap per entry, issue #40).
+    internal static let tiles2048Achievements: [AchievementConfig] = [
+        AchievementConfig(
+            shortId: "reached_2048",
+            points: 50,
+            isHidden: false,
+            achievementPrefix: tiles2048AchievementPrefix
+        )
+    ]
+
+    internal static var allTiles2048AchievementShortIds: [String] {
+        tiles2048Achievements.map(\.shortId)
+    }
+
+    internal static var allTiles2048AchievementFullIds: [String] {
+        tiles2048Achievements.map(\.fullId)
+    }
+
+    internal static var totalTiles2048AchievementPoints: Int {
+        tiles2048Achievements.reduce(0) { $0 + $1.points }
     }
 
     // MARK: - Locale code mapping (issue #31)
@@ -229,30 +300,37 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// so Sudoku (`gc.leaderboard.<d>.daily.title`) and Minesweeper
     /// (`gc.minesweeper.leaderboard.<d>.daily.title`) coexist in one catalog.
     internal let titleKey: String
+    /// ASC score formatter. Defaults to `"ELAPSED_TIME_CENTISECOND"` (Sudoku/MS).
+    /// Tiles2048 passes `"INTEGER"` (OQ-GC-2048-1: score is a raw integer, not time).
+    internal let scoreFormat: String
+    /// ASC `scoreSortType` token. Defaults to `"ASC"` (lower elapsed-time = better).
+    /// Tiles2048 passes `"DESC"` (higher score = better). Confirmed tokens: "ASC" / "DESC"
+    /// (round-2 409 2026-05-20, issue #19).
+    internal let sortOrder: String
 
     /// Back-compat initializer defaulting `titleKey` to the original
-    /// un-namespaced Sudoku key. Used by tests that build synthetic configs.
+    /// un-namespaced Sudoku key, `scoreFormat` to elapsed-time, and `sortOrder`
+    /// to ascending. Used by tests that build synthetic configs.
     internal init(
         id: String,
         referenceName: String,
         difficulty: String,
-        titleKey: String? = nil
+        titleKey: String? = nil,
+        scoreFormat: String = "ELAPSED_TIME_CENTISECOND",
+        sortOrder: String = "ASC"
     ) {
         self.id = id
         self.referenceName = referenceName
         self.difficulty = difficulty
         self.titleKey = titleKey ?? "gc.leaderboard.\(difficulty).daily.title"
+        self.scoreFormat = scoreFormat
+        self.sortOrder = sortOrder
     }
 
     /// ASC score formatter (plain string attribute on `gameCenterLeaderboards`).
     /// `ELAPSED_TIME_CENTISECOND` is Apple's highest-precision elapsed-time formatter
     /// (`mm:ss.SS`, 2 decimals). Confirmed by ASC 409 response 2026-05-20, issue #17.
-    internal var defaultFormatter: String { "ELAPSED_TIME_CENTISECOND" }
-
-    /// Low-to-high (ascending = better), per §How.3.1. ASC's `scoreSortType` enum
-    /// expects the short token `"ASC"` (confirmed by round-2 409 response 2026-05-20,
-    /// issue #19: "Expected one of: 'ASC', 'DESC'").
-    internal var sortOrder: String { "ASC" }
+    internal var defaultFormatter: String { scoreFormat }
 
     /// ASC recurrence cadence (plain string). Round-5 409 response 2026-05-20
     /// (issue #26) revealed the attribute is an iCalendar RFC 5545 RRULE string
@@ -317,14 +395,38 @@ internal struct AchievementConfig: Sendable, Equatable {
     internal let points: Int
     /// All v1 achievements are visible (§How.3.2: "皆 visible").
     internal let isHidden: Bool
+    /// Per-instance achievement prefix. Defaults to `Config.achievementPrefix`
+    /// (Sudoku). Tiles2048 passes `Config.tiles2048AchievementPrefix` so both
+    /// games' achievements coexist without a per-app config struct split.
+    private let achievementPrefix: String
 
-    /// Full ASC achievement ID (with prefix).
-    internal var fullId: String { Config.achievementPrefix + shortId }
+    internal init(
+        shortId: String,
+        points: Int,
+        isHidden: Bool,
+        achievementPrefix: String = Config.achievementPrefix
+    ) {
+        self.shortId = shortId
+        self.points = points
+        self.isHidden = isHidden
+        self.achievementPrefix = achievementPrefix
+    }
 
-    /// Localization keys (mirrored in `Strings/gc-strings.xcstrings.patch`).
-    internal var titleKey: String { "gc.achievement.\(shortId).title" }
-    internal var descriptionKey: String { "gc.achievement.\(shortId).description" }
-    internal var unearnedDescriptionKey: String { "gc.achievement.\(shortId).unearnedDescription" }
+    /// Full ASC achievement ID (bundle-id-rooted, with prefix).
+    internal var fullId: String { achievementPrefix + shortId }
+
+    /// Localization key namespace. Sudoku uses `gc.achievement.<shortId>.*`;
+    /// Tiles2048 uses `gc.tiles2048.achievement.<shortId>.*` so both games'
+    /// achievement strings coexist in one xcstrings catalog.
+    private var locKeyPrefix: String {
+        achievementPrefix == Config.achievementPrefix
+            ? "gc.achievement"
+            : "gc.tiles2048.achievement"
+    }
+
+    internal var titleKey: String { "\(locKeyPrefix).\(shortId).title" }
+    internal var descriptionKey: String { "\(locKeyPrefix).\(shortId).description" }
+    internal var unearnedDescriptionKey: String { "\(locKeyPrefix).\(shortId).unearnedDescription" }
 
     /// Progress percent step (1 = report whole percents; 100 = boolean).
     /// Per §How.3.2: quantitative ones report percent; streak/sweep are boolean.
