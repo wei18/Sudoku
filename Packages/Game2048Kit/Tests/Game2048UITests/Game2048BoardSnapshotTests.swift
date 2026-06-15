@@ -70,10 +70,10 @@ struct Game2048BoardSnapshotTests {
     /// Score 1024, 12 moves.
     private func midGameTiles() -> [Int?] {
         [
-            256,  128,  64,  32,
-            16,   8,    nil, 2,
-            nil,  4,    nil, nil,
-            nil,  nil,  nil, 2,
+            256, 128, 64, 32,
+            16, 8, nil, 2,
+            nil, 4, nil, nil,
+            nil, nil, nil, 2,
         ]
     }
 
@@ -82,10 +82,10 @@ struct Game2048BoardSnapshotTests {
     private func stuckTiles() -> [Int?] {
         // Alternating pattern that has no legal merge in any direction.
         [
-            2,    4,    2,   4,
-            4,    2,    4,   2,
-            2,    4,    2,   4,
-            4,    2,    4,   2,
+            2, 4, 2, 4,
+            4, 2, 4, 2,
+            2, 4, 2, 4,
+            4, 2, 4, 2,
         ]
     }
 

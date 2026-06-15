@@ -18,10 +18,9 @@
 //   - CompletionScreen from GameShellKit replaces the inline stuck banner (M4).
 //   - GameRoot modal flow (present + [X] + Leave Confirmation) is M4.
 
-// swiftlint:disable file_length
-// M3 board view + gesture wiring + stuck overlay + pause cover pushes this file
-// near the limit. The structure is cohesive (one board renderer + chrome + layout);
-// extracting helpers would increase indirection without simplification.
+// Board view + gesture wiring + stuck overlay + pause cover in one cohesive file.
+// Extracting helpers for the sub-400 line count would increase indirection
+// without simplification — file_length disable is intentionally absent at M3.
 
 public import SwiftUI
 internal import Game2048Engine
@@ -366,4 +365,3 @@ public struct Game2048BoardView: View {
     Game2048BoardView(seed: 42, mode: .practice)
         .frame(minWidth: 360, minHeight: 520)
 }
-// swiftlint:enable file_length

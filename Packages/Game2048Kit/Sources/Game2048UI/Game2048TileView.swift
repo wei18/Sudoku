@@ -22,28 +22,34 @@ private enum TilePalette {
         let text: Color
     }
 
-    // swiftlint:disable identifier_name
     static func entry(for value: Int?) -> Entry {
         guard let value else {
-            // Empty cell — warm neutral placeholder.
             return Entry(background: Color(hex: 0xCDC1B4), text: .clear)
         }
+        return Entry(background: background(for: value), text: textColor(for: value))
+    }
+
+    // Split into two smaller functions so cyclomatic complexity stays ≤ 10.
+    private static func background(for value: Int) -> Color {
         switch value {
-        case 2:    return Entry(background: Color(hex: 0xEEE4DA), text: Color(hex: 0x776E65))
-        case 4:    return Entry(background: Color(hex: 0xEDE0C8), text: Color(hex: 0x776E65))
-        case 8:    return Entry(background: Color(hex: 0xF2B179), text: Color(hex: 0xF9F6F2))
-        case 16:   return Entry(background: Color(hex: 0xF59563), text: Color(hex: 0xF9F6F2))
-        case 32:   return Entry(background: Color(hex: 0xF67C5F), text: Color(hex: 0xF9F6F2))
-        case 64:   return Entry(background: Color(hex: 0xF65E3B), text: Color(hex: 0xF9F6F2))
-        case 128:  return Entry(background: Color(hex: 0xEDCF72), text: Color(hex: 0xF9F6F2))
-        case 256:  return Entry(background: Color(hex: 0xEDCC61), text: Color(hex: 0xF9F6F2))
-        case 512:  return Entry(background: Color(hex: 0xEDC850), text: Color(hex: 0xF9F6F2))
-        case 1024: return Entry(background: Color(hex: 0xEDC53F), text: Color(hex: 0xF9F6F2))
-        case 2048: return Entry(background: Color(hex: 0xEDC22E), text: Color(hex: 0xF9F6F2))
-        default:   return Entry(background: Color(hex: 0x3C3A32), text: Color(hex: 0xF9F6F2))
+        case 2:    return Color(hex: 0xEEE4DA)
+        case 4:    return Color(hex: 0xEDE0C8)
+        case 8:    return Color(hex: 0xF2B179)
+        case 16:   return Color(hex: 0xF59563)
+        case 32:   return Color(hex: 0xF67C5F)
+        case 64:   return Color(hex: 0xF65E3B)
+        case 128:  return Color(hex: 0xEDCF72)
+        case 256:  return Color(hex: 0xEDCC61)
+        case 512:  return Color(hex: 0xEDC850)
+        case 1024: return Color(hex: 0xEDC53F)
+        case 2048: return Color(hex: 0xEDC22E)
+        default:   return Color(hex: 0x3C3A32)
         }
     }
-    // swiftlint:enable identifier_name
+
+    private static func textColor(for value: Int) -> Color {
+        value <= 4 ? Color(hex: 0x776E65) : Color(hex: 0xF9F6F2)
+    }
 }
 
 // MARK: - Tile view
