@@ -191,22 +191,31 @@ public struct MinesweeperBoardView: View {
         // on win/lose with the result hero + leaderboard slice + CTAs. Mounted
         // as a full-cover overlay (not a pushed route) because the board owns its
         // terminal state inline and has no completion AppRoute (route-pushed
-        // Completion deferred — #386). `.ignoresSafeArea()` lets it bleed past the
-        // status bar / home indicator so nothing of the live board peeks through.
+        // Completion deferred — #386).
+        // #518: `.ignoresSafeArea()` removed from the overlay call-site. The
+        // background-only safe-area extension is now handled inside
+        // `completionSurface()` via a `ZStack` split (background ignores safe
+        // area; content remains within it). This keeps the hero icon below the
+        // Dynamic Island / status bar safe area while the background colour still
+        // fills behind the status bar and home indicator.
         .overlay {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
-                    .ignoresSafeArea()
             }
         }
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
+        // #518: also signal chromeState to hide/show the modal top-chrome row
+        // (timer chip + ✕) so it doesn't bleed through on top of the completion
+        // card (the chrome HStack lives in GameModalContent, which is ABOVE this
+        // board in the view hierarchy).
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
             if isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
             } else if !isTerminal {
                 completionViewModel = nil
             }
+            gameChrome?.setHidingChrome(isTerminal)
         }
         // #455 step 4: view-lifecycle save points. The VM's
         // `persistCurrentState()` self-guards (nil store / seeded / .idle), so
@@ -261,6 +270,10 @@ public struct MinesweeperBoardView: View {
             ))
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
+                // #518: a board that mounts already-terminal (e.g. restored) must
+                // also hide the chrome immediately, because .onChange only fires on
+                // a transition (it missed the initial-already-terminal case).
+                gameChrome?.setHidingChrome(true)
             }
             // Then poll once per second while the game is live. The elapsed
             // label re-renders because `refresh()` republishes the @Observable
@@ -565,15 +578,34 @@ public struct MinesweeperBoardView: View {
     // state rebuilds a fresh slice. Note: mine placement is deferred to the
     // first reveal, so the layout is determined by seed + opening tap — an
     // identical first tap reproduces the same board, a different one does not.
+    //
+    // #518: Background/content split for safe-area correctness (swiftui-interaction-
+    // footguns: `.ignoresSafeArea` must wrap only the background layer, not the
+    // content, to avoid the hero icon bleeding under the Dynamic Island). The ZStack
+    // lets the background colour fill behind the status bar and home indicator while
+    // the CompletionView content stays within the top/bottom safe area, centering
+    // the card in the visible screen region.
+    // #518: also signals chromeState to hide the GameModalContent top-chrome row
+    // (timer chip + ✕) which sits above this overlay in the GameRoot ZStack.
+    // The hide/show signal is sent in the .onChange(of: viewModel.isTerminal) above.
+    @ViewBuilder
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
         // SDD-003 Epic 4: Close dismisses the overlay by clearing the VM.
         // Retry / New Game / Leaderboard CTAs removed at this injection site
         // (spec note: "移除發生在各 app 的注入點"). The board stays live
         // underneath the overlay — the player can restart via the home route.
-        MinesweeperCompletionView(
-            viewModel: completionViewModel,
-            onClose: { self.completionViewModel = nil }
-        )
+        ZStack {
+            // Background layer: extends into status bar / home indicator so no
+            // board content peeks through at the edges (#388 fill requirement).
+            theme.surface.background.resolved
+                .ignoresSafeArea()
+            // Content layer: stays within the safe area so the hero icon is
+            // fully below the Dynamic Island (#518 root fix).
+            MinesweeperCompletionView(
+                viewModel: completionViewModel,
+                onClose: { self.completionViewModel = nil }
+            )
+        }
     }
 }
 
