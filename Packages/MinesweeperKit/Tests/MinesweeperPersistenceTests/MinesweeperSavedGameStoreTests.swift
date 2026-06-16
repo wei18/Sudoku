@@ -298,4 +298,100 @@ struct MinesweeperSavedGameStoreTests {
             _ = try await store.loadInProgress(recordName: "corrupt")
         }
     }
+
+    // MARK: - #515: iCloud-signed-out degrades gracefully
+
+    /// `loadInProgress` must return `nil` (not throw) when the gateway throws
+    /// a not-authenticated / iCloud-signed-out error — so the Home resume pill
+    /// degrades gracefully offline instead of dead-ending.
+    @Test
+    func loadInProgressReturnsNilOnICloudSignedOutError() async throws {
+        let gateway = ThrowingQueryGateway(
+            fetchError: NSError(domain: "CKErrorDomain", code: 9)  // .notAuthenticated
+        )
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
+        let result = try await store.loadInProgress(recordName: "any-record")
+        #expect(result == nil)
+    }
+
+    /// `latestInProgress` must return `nil` (not throw) when the gateway query
+    /// throws a not-authenticated error — same offline-degrade contract.
+    @Test
+    func latestInProgressReturnsNilOnICloudSignedOutError() async throws {
+        let gateway = ThrowingQueryGateway(
+            queryError: NSError(domain: "CKErrorDomain", code: 9)  // .notAuthenticated
+        )
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
+        let result = try await store.latestInProgress()
+        #expect(result == nil)
+    }
+
+    /// Regression guard (#463 contract): `loadInProgress` must STILL throw on
+    /// schema-too-new errors even when the iCloud-signed-out guard is in place.
+    @Test
+    func loadInProgressStillThrowsOnSchemaVersionTooNew() async throws {
+        let gateway = FakePrivateCKGateway()
+        let store = makeStore(gateway)
+        let snapshot = try await midPlaySnapshot()
+        try await store.save(snapshot, modeRaw: "practice", recordName: "future2")
+
+        var payload = try #require(await gateway.fetch(recordName: "future2"))
+        payload.fields["schemaVersion"] = .int(MinesweeperSavedGameStore.currentSchemaVersion + 1)
+        await gateway.seed(payload)
+
+        await #expect(throws: PersistenceError.self) {
+            _ = try await store.loadInProgress(recordName: "future2")
+        }
+    }
+
+    /// Regression guard (#463 contract): a corrupt JSON blob must still throw
+    /// a decode error (not silently return nil) when signed in.
+    @Test
+    func loadInProgressStillThrowsOnDecodeError() async throws {
+        let gateway = FakePrivateCKGateway()
+        let store = makeStore(gateway)
+        let snapshot = try await midPlaySnapshot()
+        try await store.save(snapshot, modeRaw: "practice", recordName: "corrupt2")
+
+        var payload = try #require(await gateway.fetch(recordName: "corrupt2"))
+        payload.fields["stateBlob"] = .data(Data("bad json".utf8))
+        await gateway.seed(payload)
+
+        await #expect(throws: (any Error).self) {
+            _ = try await store.loadInProgress(recordName: "corrupt2")
+        }
+    }
+}
+
+// MARK: - Fakes for #515 tests
+
+/// Gateway fake that throws configurable errors from `fetch` and/or `query`.
+/// Used to test the not-authenticated degrade path without standing up live CK.
+private actor ThrowingQueryGateway: PrivateCKGateway {
+    private let fetchError: (any Error & Sendable)?
+    private let queryError: (any Error & Sendable)?
+
+    init(
+        fetchError: (any Error & Sendable)? = nil,
+        queryError: (any Error & Sendable)? = nil
+    ) {
+        self.fetchError = fetchError
+        self.queryError = queryError
+    }
+
+    func provisionZone() async throws {}
+    func installSubscriptionIfNeeded() async throws {}
+
+    func fetch(recordName: String) async throws -> RecordPayload? {
+        if let error = fetchError { throw error }
+        return nil
+    }
+
+    func save(_ payload: RecordPayload) async throws {}
+    func delete(recordName: String) async throws {}
+
+    func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
+        if let error = queryError { throw error }
+        return []
+    }
 }
