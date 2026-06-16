@@ -130,7 +130,7 @@
 </dialog>
 
 <script>
-const STORE = "phase3-ux-testplan-v4";
+const STORE = "phase3-ux-testplan-v5";
 const KEYSTORE = "phase3-anthropic-key"; // gitleaks:allow — localStorage key name (where the user's key is stored), not a secret
 
 const DEFAULT_ROWS = [
@@ -175,7 +175,7 @@ const DEFAULT_ROWS = [
   { desc: "VoiceOver — Minesweeper 格有意義 a11y label（非空白）\n方式：VoiceOver → MS 棋盤 → 逐格讀\n驗證：每格 label 描述狀態（Unrevealed / Flagged / Revealed empty 或數字）；不讀空字串或重複 index", result: "pend", note: "需 VoiceOver 或 describe-all AXLabel 欄位驗證。Minesweeper-only。" },
   { desc: "ATT 同意彈窗 — 首次廣告觸發 ATT primer sheet（Sudoku）\n方式：全新安裝（simctl erase）→ 啟動 → banner adGate 觸發 onAdContext\n驗證：ATTPrimerSheet（.presentationDetents [.medium,.large]）底部滑出；tap「繼續」→ ATT 系統彈窗；選擇後 sheet dismiss；banner 續載入不 crash", result: "pend", note: "ATTPrimerCoordinator.maybePresentOnAdContext()；primer 掛根層 .sheet()。" },
   { desc: "Reminder 提醒 — Daily 完成後「Remind me」affordance，tap 開 primer sheet\n方式：Daily 完成 → CompletionView → 確認 reminderAffordance（bell.badge）→ tap\n驗證：ReminderPrimerSheet 底部滑出（.medium/.large）；tap「接受」→ 系統通知授權彈窗；tap「拒絕」→ sheet dismiss、affordance 續顯示（notDetermined 未變）", result: "pend", note: "只在 reminderPrimer != nil && status==.notDetermined 顯示（僅 Daily route 注入）；Practice 不顯示。" },
-  { desc: "safe-area — Minesweeper Boom/Win 完成畫面被 Dynamic Island 裁切（#518）\n方式：MS Practice 開局 → 點格直到踩雷 → 截圖 Boom 完成畫面\n驗證：爆炸 icon 不被 island 裁切；無 board chrome（計時膠囊/✕）透出；內容置中、非頂部錨定", result: "fail", note: "已驗 FAIL（sim, iPhone 17 Pro）：icon 畫進 island 被裁、計時膠囊+✕ 透出、頂部錨定下方大片空白。根因＝MS 完成用 .overlay+.ignoresSafeArea（route-push 延後到 #386），Sudoku push 則乾淨。#518 open，修復中。" },
+  { desc: "safe-area — Minesweeper Boom/Win 完成畫面被 Dynamic Island 裁切（#518）\n方式：MS Practice 開局 → 點格直到踩雷 → 截圖 Boom 完成畫面\n驗證：爆炸 icon 不被 island 裁切；無 board chrome（計時膠囊/✕）透出；內容置中、非頂部錨定", result: "pass", note: "已驗 PASS（sim, #534 修正後）：icon 在 island 下方、無 chrome 透出；Close 揭露棋盤後 ✕ 恢復可離開（no trap）。置中為共用 CompletionScreen 既有版面（Sudoku 同），非此 drift 範圍。" },
   { desc: "導航 — Leaderboard 點擊（GC 登出）顯示 Sign in to Game Center alert（#513）\n方式：首頁（無 iCloud/GC）→ tap Leaderboard\n驗證：彈出「Sign in to Game Center」alert + message + OK", result: "pass", note: "已驗（sim, #531 修正後）：a11y 顯示 alert title+message+OK。flag 移到穩定 GameRootViewModel（#529 第一版設在 transient VM、alert 不彈，已修）。" },
 ];
 
