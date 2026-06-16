@@ -119,7 +119,7 @@ internal enum ASCRegisterCLI {
         }
 
         // Validate xcstrings coverage for en + zh-Hant on every expected key.
-        let expectedKeys = expectedXCStringsKeys(leaderboards: leaderboards, achievements: achievements)
+        let expectedKeys = expectedXCStringsKeys(leaderboards: leaderboards, achievements: achievements, gcApp: gcApp)
         var missing: [(String, String)] = []  // (locale, key)
         for locale in ["en", "zh-Hant"] {
             for key in expectedKeys {
@@ -342,9 +342,21 @@ internal enum ASCRegisterCLI {
         }
     }
 
+    /// `internal` testing entry point — wraps `expectedXCStringsKeys` so
+    /// `ConfigConsistencyTests` can verify the IAP-filter logic without CLI
+    /// bootstrapping (issue #522).
+    internal static func expectedXCStringsKeysForTesting(
+        leaderboards: [LeaderboardConfig],
+        achievements: [AchievementConfig],
+        gcApp: Config.GCApp
+    ) -> [String] {
+        expectedXCStringsKeys(leaderboards: leaderboards, achievements: achievements, gcApp: gcApp)
+    }
+
     private static func expectedXCStringsKeys(
         leaderboards: [LeaderboardConfig] = Config.leaderboards,
-        achievements: [AchievementConfig] = Config.achievements
+        achievements: [AchievementConfig] = Config.achievements,
+        gcApp: Config.GCApp = .sudoku
     ) -> [String] {
         var keys: [String] = []
         for lb in leaderboards {
@@ -355,7 +367,11 @@ internal enum ASCRegisterCLI {
             keys.append(ach.descriptionKey)
             keys.append(ach.unearnedDescriptionKey)
         }
-        for iap in Config.iaps {
+        // Filter IAP keys to the target app so `validate --app minesweeper`
+        // does not expect the Sudoku or Tiles2048 IAP keys in the MS catalog
+        // (issue #522).
+        let appBundlePrefix = "com.wei18.\(gcApp.rawValue)."
+        for iap in Config.iaps where iap.productId.hasPrefix(appBundlePrefix) {
             keys.append(iap.nameKey)
             keys.append(iap.descriptionKey)
         }

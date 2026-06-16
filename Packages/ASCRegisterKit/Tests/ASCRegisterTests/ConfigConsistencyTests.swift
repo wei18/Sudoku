@@ -234,4 +234,67 @@ internal struct ConfigConsistencyTests {
         // Sudoku prefix unchanged.
         #expect(Config.achievementPrefix == "com.wei18.sudoku.achievement.")
     }
+
+    // MARK: - #521: locKeyPrefix derivation (no hardcoded game name in else-branch)
+
+    @Test("locKeyPrefix derives namespace from achievementPrefix — hypothetical 4th game gets its own namespace, not tiles2048's (#521)")
+    internal func achievementLocKeyPrefixDerived() {
+        // Sudoku keeps the original un-namespaced key shape (back-compat).
+        let sudokuAch = AchievementConfig(
+            shortId: "first_puzzle", points: 10, isHidden: false,
+            achievementPrefix: "com.wei18.sudoku.achievement."
+        )
+        #expect(sudokuAch.titleKey == "gc.achievement.first_puzzle.title")
+
+        // Tiles2048 uses its derived namespace — same as the existing shipped keys.
+        let tilesAch = AchievementConfig(
+            shortId: "reached_2048", points: 50, isHidden: false,
+            achievementPrefix: "com.wei18.tiles2048.achievement."
+        )
+        #expect(tilesAch.titleKey == "gc.tiles2048.achievement.reached_2048.title")
+
+        // Hypothetical 4th game must derive its OWN namespace — NOT tiles2048's.
+        let game4Ach = AchievementConfig(
+            shortId: "first_win", points: 20, isHidden: false,
+            achievementPrefix: "com.wei18.supergame4.achievement."
+        )
+        #expect(game4Ach.titleKey == "gc.supergame4.achievement.first_win.title")
+        // Confirm the 4th-game key does NOT accidentally use the tiles2048 namespace.
+        #expect(!game4Ach.titleKey.contains("tiles2048"))
+    }
+
+    // MARK: - #522: expectedXCStringsKeys IAP filter
+
+    @Test("expectedXCStringsKeys filters IAP keys to the target app — minesweeper excludes sudoku + tiles2048 IAPs (#522)")
+    internal func expectedXCStringsKeysIAPFilter() {
+        // Sudoku validate: expects sudoku IAP keys only.
+        let sudokuKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
+            leaderboards: Config.leaderboards(for: .sudoku),
+            achievements: Config.achievements,
+            gcApp: .sudoku
+        )
+        #expect(sudokuKeys.contains("iap.remove_ads.name"))
+        #expect(!sudokuKeys.contains("iap.minesweeper.remove_ads.name"))
+        #expect(!sudokuKeys.contains("iap.tiles2048.remove_ads.name"))
+
+        // Minesweeper validate: expects minesweeper IAP keys only.
+        let msKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
+            leaderboards: Config.leaderboards(for: .minesweeper),
+            achievements: Config.achievements,
+            gcApp: .minesweeper
+        )
+        #expect(msKeys.contains("iap.minesweeper.remove_ads.name"))
+        #expect(!msKeys.contains("iap.remove_ads.name"))
+        #expect(!msKeys.contains("iap.tiles2048.remove_ads.name"))
+
+        // Tiles2048 validate: expects tiles2048 IAP keys only.
+        let tilesKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
+            leaderboards: Config.leaderboards(for: .tiles2048),
+            achievements: Config.tiles2048Achievements,
+            gcApp: .tiles2048
+        )
+        #expect(tilesKeys.contains("iap.tiles2048.remove_ads.name"))
+        #expect(!tilesKeys.contains("iap.remove_ads.name"))
+        #expect(!tilesKeys.contains("iap.minesweeper.remove_ads.name"))
+    }
 }
