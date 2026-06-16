@@ -45,16 +45,27 @@ public final class HomeViewModel {
     /// on it without the VM owning a GC client directly.
     public var authState: GameCenterAuthState
 
-    /// #513: `true` while the "Sign in to Game Center" alert is visible.
-    /// Set by `select(.leaderboard)` when `authState != .authenticated`.
-    public var showGameCenterSignedOutAlert: Bool = false
+    /// #513 fix: binding to the stable `GameRootViewModel.showGameCenterSignedOutAlert`.
+    /// Using a Binding ensures the flag lives on the long-lived GameRootViewModel
+    /// rather than on this per-render HomeViewModel instance, so the SwiftUI
+    /// `.alert` binding survives re-renders (the "computed property" footgun from
+    /// swiftui-interaction-footguns — alert bound to transient VM state never fires).
+    private var showAlertBinding: Binding<Bool>?
+
+    /// Exposed for tests / previews where no external binding is injected.
+    public var showGameCenterSignedOutAlert: Bool {
+        get { showAlertBinding?.wrappedValue ?? false }
+        set { showAlertBinding?.wrappedValue = newValue }
+    }
 
     public init(
         path: Binding<[AppRoute]>? = nil,
-        authState: GameCenterAuthState = .unknown
+        authState: GameCenterAuthState = .unknown,
+        showGameCenterSignedOutAlert: Binding<Bool>? = nil
     ) {
         self.routePath = RoutePath(path)
         self.authState = authState
+        self.showAlertBinding = showGameCenterSignedOutAlert
     }
 
     /// The 4 shared modes bound to Sudoku's subtitles + tap actions. Single

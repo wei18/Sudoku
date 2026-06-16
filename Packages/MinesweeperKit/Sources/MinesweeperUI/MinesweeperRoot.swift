@@ -64,10 +64,16 @@ public struct MinesweeperRoot: View {
     // sidebar, so the mode list (Daily / Practice / Leaderboard / Settings) +
     // their tap actions come from a single source. Bound to Root's `path`.
     // #513: `authState` forwarded so the leaderboard card can gate on it.
+    // #513 fix: `showGameCenterSignedOutAlert` binding threaded to the stable
+    // `GameRootViewModel` flag so the `.alert` survives re-renders.
     private var homeViewModel: MinesweeperHomeViewModel {
         MinesweeperHomeViewModel(
             path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
-            authState: viewModel.authState
+            authState: viewModel.authState,
+            showGameCenterSignedOutAlert: Binding(
+                get: { viewModel.showGameCenterSignedOutAlert },
+                set: { viewModel.showGameCenterSignedOutAlert = $0 }
+            )
         )
     }
 
@@ -93,6 +99,21 @@ public struct MinesweeperRoot: View {
                 adGate: adGate,
                 monetizationController: monetizationController
             )
+        }
+        // #513 fix: alert bound to the stable `GameRootViewModel` flag (not the
+        // per-render MinesweeperHomeViewModel). Mounting here keeps the binding
+        // alive across SwiftUI re-renders — the "computed-property HomeViewModel"
+        // footgun means any alert on MinesweeperHomeView's transient VM never fires.
+        .alert(
+            "Sign in to Game Center",
+            isPresented: Binding(
+                get: { viewModel.showGameCenterSignedOutAlert },
+                set: { viewModel.showGameCenterSignedOutAlert = $0 }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Sign in to Game Center to compare with others.")
         }
     }
 

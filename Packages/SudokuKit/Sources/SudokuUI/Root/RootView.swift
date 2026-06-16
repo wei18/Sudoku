@@ -70,10 +70,16 @@ public struct RootView: View {
     // sidebar, the Home cards, and `RootShellView`'s NavigationStack all share
     // one navigation array.
     // #513: `authState` forwarded so the leaderboard card can gate on it.
+    // #513 fix: `showGameCenterSignedOutAlert` binding threaded to the stable
+    // `GameRootViewModel` flag so the `.alert` survives re-renders.
     private var homeViewModel: HomeViewModel {
         HomeViewModel(
             path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
-            authState: viewModel.authState
+            authState: viewModel.authState,
+            showGameCenterSignedOutAlert: Binding(
+                get: { viewModel.showGameCenterSignedOutAlert },
+                set: { viewModel.showGameCenterSignedOutAlert = $0 }
+            )
         )
     }
 
@@ -93,6 +99,21 @@ public struct RootView: View {
             failureTint: theme.status.error.resolved
         ) {
             rootContent
+        }
+        // #513 fix: alert bound to the stable `GameRootViewModel` flag (not the
+        // per-render HomeViewModel). Mounting here keeps the binding alive across
+        // SwiftUI re-renders — the "computed-property HomeViewModel" footgun means
+        // any alert on HomeView's transient VM never fires in production.
+        .alert(
+            "Sign in to Game Center",
+            isPresented: Binding(
+                get: { viewModel.showGameCenterSignedOutAlert },
+                set: { viewModel.showGameCenterSignedOutAlert = $0 }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Sign in to Game Center to compare with others.")
         }
         .attPrimerSheet(attPrimer)
     }
