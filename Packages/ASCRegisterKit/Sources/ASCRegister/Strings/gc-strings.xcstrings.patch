@@ -23,9 +23,10 @@
 // above are stripped from the JSON object below — everything from the
 // opening `{` to the matching closing `}` is valid JSON.
 //
-// Total: 45 keys × 7 locales = 315 string units (27 Sudoku gc.* v1 +
-// 15 v2.6 achievement keys + 3 MS gc.minesweeper.leaderboard.*).
-// 45 × 2 = 90 filled (en + zh-Hant), 45 × 5 = 225 <TRANSLATE>.
+// Total: 49 keys × 7 locales = 343 string units (27 Sudoku gc.* v1 +
+// 15 v2.6 achievement keys + 3 MS gc.minesweeper.leaderboard.* +
+// 1 Tiles2048 gc.tiles2048.leaderboard.* + 3 Tiles2048 gc.tiles2048.achievement.*).
+// 49 × 2 = 98 filled (en + zh-Hant), 49 × 5 = 245 <TRANSLATE>.
 
 {
   "strings" : {
@@ -465,6 +466,52 @@
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Complete any Hard difficulty puzzle to earn this." } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一道困難題即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.tiles2048.leaderboard.daily.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Score" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日分數" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.tiles2048.achievement.reached_2048.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "2048 Reached" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "達成 2048" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.tiles2048.achievement.reached_2048.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Merged tiles to reach the 2048 tile." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "合併方塊，達成 2048 格。" } },
+        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
+        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+    "gc.tiles2048.achievement.reached_2048.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Merge tiles until you create the 2048 tile to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "持續合併方塊，直到出現 2048 格即可獲得。" } },
         "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
