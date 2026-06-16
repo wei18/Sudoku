@@ -26,7 +26,12 @@ import Telemetry
 /// session where all cells are filled in except `emptyIndex`. The caller mounts
 /// `BoardView(viewModel:)` directly and a single digit entry completes the game.
 @MainActor
-public struct SudokuNearWinBoard {
+public struct SudokuNearWinBoard: Identifiable {
+    /// Stable identity so the cover can be presented via
+    /// `fullScreenCover(item:)` — atomic with the data, avoiding the
+    /// `isPresented` + separate-optional-state presentation race (#523).
+    /// `emptyIndex` is unique within the single presented board.
+    public nonisolated var id: Int { emptyIndex }
     public let viewModel: GameViewModel
     /// The flat board index (0…80) of the ONE remaining empty cell.
     public let emptyIndex: Int

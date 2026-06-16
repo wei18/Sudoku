@@ -65,6 +65,10 @@ A class of bugs that look fine in code but break at runtime. Phase 8 shipped two
 
 - Branching between `if A { ViewA } else { ViewB }` gives the two branches distinct identities; state (`@State`, `.task` latches, focus) resets on switch. Use a single view with conditional modifiers when identity preservation matters.
 
+### Sheet / fullScreenCover presentation vs data race
+
+- `fullScreenCover(isPresented: $bool)` / `sheet(isPresented:)` driven by a **separate** optional `@State` for the content, set back-to-back (`data = x; isPresented = true`), races: the cover presents from the Bool before the optional propagates into the content closure, so `if let data { … }` renders the **empty branch** → a **blank cover**. Looks correct in code; only a runtime drive (not snapshots, not unit tests) catches it. **Fix:** make the payload `Identifiable` and use `fullScreenCover(item: $data) { data in … }` — presentation and data are then atomic. (`@MainActor` payload → mark `id` `nonisolated`.)
+
 ### `@Observable` + `@Bindable`
 
 - Reading an `@Observable` model via `let vm = …` does not establish a binding scope; passing `vm` into a child that needs `@Bindable var vm` requires the child to redeclare with `@Bindable`. Forgetting this silently breaks two-way bindings (TextField, Toggle).
@@ -79,6 +83,7 @@ A class of bugs that look fine in code but break at runtime. Phase 8 shipped two
 
 - **Issue #15 Bug 1** — HomeView ModeCard: `Button { } label: { card-with-Spacer }` `.buttonStyle(.plain)` shrank tap target to drawn content. Caught by macOS smoke test, **not** by Code Reviewer. Fix: `.contentShape(Rectangle())`.
 - **Issue #15 Bug 2** — Mac `NavigationSplitView` sidebar items were bare `Label`s with no `NavigationLink` / `Button`, so clicking did nothing. Same review-blind-spot path.
+- **Issue #523** — `-uitest-near-win` hook (#520) presented a **blank** `fullScreenCover`: `fullScreenCover(isPresented: $bool)` + a separate optional `@State` board, set back-to-back, raced → content closure's `if let` rendered the empty branch (a11y tree = 1 element vs 99 for a real board). Dual-model CR + unit tests passed; only the idb interactive audit caught it. Fix: `fullScreenCover(item:)` with an `Identifiable` payload.
 - (Future: append as more are caught.)
 
 ## Related skills
