@@ -5,9 +5,12 @@
 // the external-`Binding` branch (the real RootView wiring) so a regression that
 // stopped writing through the injected path — leaving cards as no-op taps —
 // would fail here.
+//
+// #513: extended with signed-out GC leaderboard behaviour tests.
 
 import SwiftUI
 import Testing
+import GameCenterClient
 @testable import SudokuUI
 
 @MainActor
@@ -52,11 +55,55 @@ struct HomeViewModelInteractionTests {
         #expect(box.routes == [.daily, .practice])
     }
 
-    // `.leaderboard` is intentionally NOT exercised here: `select(.leaderboard)`
-    // reaches `GameCenterDashboard.present()` → Apple's `GKAccessPoint.shared`
-    // singleton, which can't be faked from unit-test scope without a UI host.
-    // Same precedent as CompletionViewTests (issue #49). The invariant we *can*
-    // assert is that the four push-modes never present GC and that the
-    // leaderboard branch performs no path push — but asserting the latter
-    // requires invoking the singleton, so it stays a manual-validation item.
+    // MARK: - #513: Leaderboard signed-out affordance
+
+    // When GC is unauthenticated, `select(.leaderboard)` must NOT push a route
+    // and must set `showGameCenterSignedOutAlert = true`.
+    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() {
+        let viewModel = HomeViewModel(authState: .unauthenticated)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+    }
+
+    @Test func selectLeaderboardWhenUnknownSetsAlertFlag() {
+        let viewModel = HomeViewModel(authState: .unknown)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func selectLeaderboardWhenRestrictedSetsAlertFlag() {
+        let viewModel = HomeViewModel(authState: .restricted)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() {
+        // When authenticated, the leaderboard tap should open the GC dashboard
+        // (a side-effect that is inert in the test host) and NOT show the alert.
+        let player = PlayerSummary(teamPlayerId: "P001", displayName: "Tester")
+        let viewModel = HomeViewModel(authState: .authenticated(player))
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
+        #expect(viewModel.path.isEmpty, "leaderboard never pushes a route")
+    }
+
+    @Test func alertFlagDefaultsToFalse() {
+        let viewModel = HomeViewModel()
+        #expect(viewModel.showGameCenterSignedOutAlert == false)
+    }
+
+    // `.leaderboard` when authenticated reaches `GameCenterDashboard.present()`
+    // → Apple's `GKAccessPoint.shared` singleton, which is inert in the test
+    // host. The signed-out path is now fully unit-testable via the alert flag.
 }

@@ -10,10 +10,15 @@
 // supplies the Sudoku-specific subtitles + tap actions via `modeItems`, the
 // single source for both the Home cards (HomeScreen) and the sidebar
 // (RootView derives `SidebarItem`s from the same list).
+//
+// #513: `authState` is injected by `RootView` (which reads it from the shared
+// `GameRootViewModel`) so the leaderboard tap can guard against unauthenticated
+// GC and surface an alert instead of silently no-oping.
 
 public import Foundation
 public import SwiftUI
 public import GameShellUI
+public import GameCenterClient
 
 /// The shared 4-mode enum. Sudoku has no extra modes, so this is exactly the
 /// shared set — kept as a typealias so existing `select(_:)` call sites and
@@ -35,8 +40,21 @@ public final class HomeViewModel {
         set { routePath.effectivePath = newValue }
     }
 
-    public init(path: Binding<[AppRoute]>? = nil) {
+    /// #513: Current Game Center auth state. `RootView` writes this from the
+    /// shared `GameRootViewModel.authState` so the leaderboard card can gate
+    /// on it without the VM owning a GC client directly.
+    public var authState: GameCenterAuthState
+
+    /// #513: `true` while the "Sign in to Game Center" alert is visible.
+    /// Set by `select(.leaderboard)` when `authState != .authenticated`.
+    public var showGameCenterSignedOutAlert: Bool = false
+
+    public init(
+        path: Binding<[AppRoute]>? = nil,
+        authState: GameCenterAuthState = .unknown
+    ) {
         self.routePath = RoutePath(path)
+        self.authState = authState
     }
 
     /// The 4 shared modes bound to Sudoku's subtitles + tap actions. Single
@@ -54,6 +72,7 @@ public final class HomeViewModel {
     public func select(_ mode: HomeMode) {
         // `.leaderboard` is a side-effect (presents Apple's native Game Center
         // dashboard) rather than a stack push — issue #49 (2026-05-20).
+        // #513: guard on auth state; surface an alert when GC is signed out.
         switch mode {
         case .daily:
             path.append(.daily)
@@ -62,7 +81,11 @@ public final class HomeViewModel {
         case .settings:
             path.append(.settings)
         case .leaderboard:
-            GameCenterDashboard.present()
+            if case .authenticated = authState {
+                GameCenterDashboard.present()
+            } else {
+                showGameCenterSignedOutAlert = true
+            }
         }
     }
 }

@@ -11,10 +11,15 @@
 // REMOVED — MS reaches its difficulty picker through Practice, like Sudoku.
 // This VM supplies MS-specific subtitles + tap actions via `modeItems`, the
 // single source for both the Home cards (HomeScreen) and the sidebar.
+//
+// #513: `authState` is injected by `MinesweeperRoot` (from `GameRootViewModel`)
+// so the leaderboard tap can guard against unauthenticated GC and surface an
+// alert instead of silently no-oping. Mirrors `SudokuUI.HomeViewModel`.
 
 public import Foundation
 public import SwiftUI
 public import GameShellUI
+public import GameCenterClient
 
 /// The shared 4-mode enum — identical to Sudoku after the #410 New Game
 /// removal. Kept as a typealias so existing `select(_:)` call sites and tests
@@ -36,8 +41,21 @@ public final class MinesweeperHomeViewModel {
         set { routePath.effectivePath = newValue }
     }
 
-    public init(path: Binding<[AppRoute]>? = nil) {
+    /// #513: Current Game Center auth state. `MinesweeperRoot` writes this from
+    /// the shared `GameRootViewModel.authState` so the leaderboard card can gate
+    /// on it without the VM owning a GC client directly.
+    public var authState: GameCenterAuthState
+
+    /// #513: `true` while the "Sign in to Game Center" alert is visible.
+    /// Set by `select(.leaderboard)` when `authState != .authenticated`.
+    public var showGameCenterSignedOutAlert: Bool = false
+
+    public init(
+        path: Binding<[AppRoute]>? = nil,
+        authState: GameCenterAuthState = .unknown
+    ) {
         self.routePath = RoutePath(path)
+        self.authState = authState
     }
 
     /// The 4 shared modes bound to MS's subtitles + tap actions. Single source
@@ -65,7 +83,12 @@ public final class MinesweeperHomeViewModel {
             // Sudoku (#49), Leaderboard is a modal GC side-effect, never a
             // stack push — so there is no `.leaderboard` route. Passing `nil`
             // opens the full leaderboards listing (all 3 best-time boards).
-            MinesweeperGameCenterDashboard.present(leaderboardId: nil)
+            // #513: guard on auth state; show alert when GC is signed out.
+            if case .authenticated = authState {
+                MinesweeperGameCenterDashboard.present(leaderboardId: nil)
+            } else {
+                showGameCenterSignedOutAlert = true
+            }
         }
     }
 }

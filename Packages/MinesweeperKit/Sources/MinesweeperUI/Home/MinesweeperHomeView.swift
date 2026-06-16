@@ -66,6 +66,15 @@ public struct MinesweeperHomeView: View {
             }
         )
         .navigationTitle("Minesweeper")
+        // #513: shown when the leaderboard card is tapped with GC signed out.
+        .alert(
+            "Sign in to Game Center",
+            isPresented: $viewModel.showGameCenterSignedOutAlert
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Sign in to Game Center to compare with others.")
+        }
         .task {
             if let controller = monetizationController {
                 await controller.bootstrap()

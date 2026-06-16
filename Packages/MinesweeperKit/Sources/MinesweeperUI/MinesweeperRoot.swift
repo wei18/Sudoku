@@ -63,8 +63,12 @@ public struct MinesweeperRoot: View {
     // #410: one `MinesweeperHomeViewModel` drives BOTH the Home cards and the
     // sidebar, so the mode list (Daily / Practice / Leaderboard / Settings) +
     // their tap actions come from a single source. Bound to Root's `path`.
+    // #513: `authState` forwarded so the leaderboard card can gate on it.
     private var homeViewModel: MinesweeperHomeViewModel {
-        MinesweeperHomeViewModel(path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }))
+        MinesweeperHomeViewModel(
+            path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
+            authState: viewModel.authState
+        )
     }
 
     public var body: some View {
