@@ -170,29 +170,36 @@ private struct GameModalContent: View {
             // Timer sits at leading; [X] sits at trailing.
             // Padding (.top 56) places the row below the status bar safe area
             // (mirrors the prior single-button vertical placement).
-            HStack {
-                // Timer capsule — visible only once the board starts ticking.
-                if let label = chromeState.elapsedLabel {
-                    Label(label, systemImage: "timer")
-                        .font(.system(.subheadline, design: .monospaced).monospacedDigit())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.regularMaterial, in: Capsule())
-                        .accessibilityLabel(Text("Elapsed time \(label)"))
-                        .transition(.opacity)
+            // #518: hidden when the board signals terminal state via
+            // `chromeState.isHidingChrome` so the completion overlay (which is
+            // a child of `view`) can cover the full screen without the chrome
+            // row bleeding through on top of the result card.
+            if !chromeState.isHidingChrome {
+                HStack {
+                    // Timer capsule — visible only once the board starts ticking.
+                    if let label = chromeState.elapsedLabel {
+                        Label(label, systemImage: "timer")
+                            .font(.system(.subheadline, design: .monospaced).monospacedDigit())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.regularMaterial, in: Capsule())
+                            .accessibilityLabel(Text("Elapsed time \(label)"))
+                            .transition(.opacity)
+                    }
+                    Spacer()
+                    // Close button — always visible.
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .padding(10)
+                            .background(.regularMaterial, in: Circle())
+                    }
+                    .accessibilityLabel(Text("leave.game.close", bundle: .main))
                 }
-                Spacer()
-                // Close button — always visible.
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 17, weight: .semibold))
-                        .padding(10)
-                        .background(.regularMaterial, in: Circle())
-                }
-                .accessibilityLabel(Text("leave.game.close", bundle: .main))
+                .padding(.top, 56)
+                .padding(.horizontal, 20)
+                .transition(.opacity)
             }
-            .padding(.top, 56)
-            .padding(.horizontal, 20)
         }
         // SDD-003 Epic 2: "Leave Game?" confirmation dialog (AC 2.1).
         // Using confirmationDialog (action sheet on iPhone, alert on Mac) per

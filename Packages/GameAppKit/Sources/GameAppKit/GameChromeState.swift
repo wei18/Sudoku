@@ -30,6 +30,11 @@ public final class GameChromeState {
     /// `nil` means the board hasn't started ticking yet (e.g. still loading).
     public private(set) var elapsedLabel: String?
 
+    /// When `true`, `GameModalContent` suppresses the timer chip + ✕ chrome row.
+    /// Board views set this when the game reaches a terminal state so the
+    /// completion overlay can cover the full screen without chrome bleeding through.
+    public private(set) var isHidingChrome: Bool = false
+
     public init() {}
 
     /// Called by the board view's timer loop to refresh the chrome label.
@@ -37,10 +42,18 @@ public final class GameChromeState {
         elapsedLabel = label
     }
 
+    /// Called by the board view when the game enters / exits a terminal state so
+    /// `GameModalContent` can suppress the chrome row while the completion overlay
+    /// is visible. Passing `true` hides the timer chip + ✕; `false` restores them.
+    public func setHidingChrome(_ hiding: Bool) {
+        isHidingChrome = hiding
+    }
+
     /// Reset when the modal is dismissed so a stale label never bleeds into
     /// the next modal presentation.
     public func reset() {
         elapsedLabel = nil
+        isHidingChrome = false
     }
 }
 
