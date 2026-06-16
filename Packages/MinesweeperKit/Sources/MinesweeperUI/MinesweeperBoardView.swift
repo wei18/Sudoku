@@ -205,17 +205,25 @@ public struct MinesweeperBoardView: View {
         }
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
-        // #518: also signal chromeState to hide/show the modal top-chrome row
-        // (timer chip + ✕) so it doesn't bleed through on top of the completion
-        // card (the chrome HStack lives in GameModalContent, which is ABOVE this
-        // board in the view hierarchy).
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
             if isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
             } else if !isTerminal {
                 completionViewModel = nil
             }
-            gameChrome?.setHidingChrome(isTerminal)
+        }
+        // #518: hide the modal top-chrome row (timer chip + ✕) ONLY while the
+        // completion overlay is actually presented, so it doesn't bleed through
+        // on top of the result card (the chrome HStack lives in GameModalContent,
+        // which is ABOVE this board in the view hierarchy). Keyed on overlay
+        // presence (`completionViewModel != nil`), NOT `isTerminal` (CR #518-R2):
+        // Close dismisses the overlay (sets the VM to nil) WITHOUT clearing the
+        // terminal state, so a terminal-keyed hide would leave the ✕ hidden over
+        // the revealed boomed board → no way to leave (trapped). With the overlay
+        // gone the restored chrome has no card to overlap — it shows over the
+        // revealed board like normal.
+        .onChange(of: completionViewModel != nil) { _, overlayPresented in
+            gameChrome?.setHidingChrome(overlayPresented)
         }
         // #455 step 4: view-lifecycle save points. The VM's
         // `persistCurrentState()` self-guards (nil store / seeded / .idle), so
@@ -270,9 +278,13 @@ public struct MinesweeperBoardView: View {
             ))
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
-                // #518: a board that mounts already-terminal (e.g. restored) must
-                // also hide the chrome immediately, because .onChange only fires on
-                // a transition (it missed the initial-already-terminal case).
+                // #518: a board that mounts already-terminal (e.g. restored) seeds
+                // the overlay HERE, so hide the chrome immediately to match the
+                // overlay's presence — `.onChange(of: completionViewModel != nil)`
+                // doesn't fire for a value set during this initial `.task` pass.
+                // Keyed on overlay presence (not isTerminal): Close later clears
+                // the VM and the .onChange restores the chrome so the user can
+                // leave the revealed board (CR #518-R2).
                 gameChrome?.setHidingChrome(true)
             }
             // Then poll once per second while the game is live. The elapsed
@@ -585,9 +597,11 @@ public struct MinesweeperBoardView: View {
     // lets the background colour fill behind the status bar and home indicator while
     // the CompletionView content stays within the top/bottom safe area, centering
     // the card in the visible screen region.
-    // #518: also signals chromeState to hide the GameModalContent top-chrome row
-    // (timer chip + ✕) which sits above this overlay in the GameRoot ZStack.
-    // The hide/show signal is sent in the .onChange(of: viewModel.isTerminal) above.
+    // #518: the GameModalContent top-chrome row (timer chip + ✕) is hidden while
+    // this overlay is visible. That signal is driven by overlay presence via
+    // `.onChange(of: completionViewModel != nil)` above — NOT isTerminal — so the
+    // Close action (which clears the VM but leaves the game terminal) restores the
+    // chrome and the user can leave the revealed board (CR #518-R2).
     @ViewBuilder
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
         // SDD-003 Epic 4: Close dismisses the overlay by clearing the VM.

@@ -1,9 +1,38 @@
 # Impl Notes — fix(minesweeper): completion screen safe area + chrome overlay fix #518 (2026-06-16)
 
-Status: IN_PROGRESS
+Status: COMPLETE
 Owner: Developer (Sonnet 4.6)
 Dispatched by: Leader
 Started: 2026-06-16T00:00:00Z
+
+## R2 — navigation-trap regression fix (2026-06-16 16:20)
+
+- **Root cause of regression** — R1 keyed `gameChrome?.setHidingChrome(...)` off
+  `viewModel.isTerminal`. MS completion "Close" sets `completionViewModel = nil`
+  (dismisses overlay → reveals boomed board) WITHOUT changing `isTerminal` (stays
+  `true`). So after Close: board revealed, game still terminal, chrome ✕ stays
+  hidden → no exit (no ✕, no Pause). Trapped. Leader sim-confirmed; my own CR had
+  flagged the same nuance.
+- **Fix** — Drive chrome-hiding off OVERLAY PRESENCE, not terminal state. Replaced
+  the `gameChrome?.setHidingChrome(isTerminal)` call inside `.onChange(of:
+  viewModel.isTerminal)` with a dedicated `.onChange(of: completionViewModel !=
+  nil) { _, overlayPresented in gameChrome?.setHidingChrome(overlayPresented) }`.
+  When the overlay shows → hide chrome; when Close clears the VM (true→false
+  transition) → the same `.onChange` restores chrome → ✕ returns → user can leave.
+  Single source of truth; no imperative set needed in `onClose` (the VM mutation
+  there fires the `.onChange`).
+- **Restored-terminal `.task` path** — kept the explicit `setHidingChrome(true)`
+  but ONLY inside the `if viewModel.isTerminal, completionViewModel == nil` branch
+  that actually seeds the overlay (`.onChange` doesn't fire for a value set during
+  the initial `.task` pass). Default `isHidingChrome` is `false`, covering the
+  not-seeded case. Comment updated to the overlay-presence rationale.
+- **Bleed-free after Close** — confirmed logically: overlay gone → no completion
+  card for the restored chrome to overlap → ✕ shows over the revealed board normally.
+- **Verification** — `swift test --package-path Packages/MinesweeperKit
+  --no-parallel` → 179/179 green; GameAppKit → 18/18 green. snapshot baselines
+  unchanged (no rendered-tree change for the snapshot composition — the chrome row
+  lives in GameModalContent, not exercised by the board snapshot harness).
+  swiftlint + git are Bash-blocked in this worktree → Leader to run lint + commit/push.
 
 ## 設計決定 (Design decisions)
 
