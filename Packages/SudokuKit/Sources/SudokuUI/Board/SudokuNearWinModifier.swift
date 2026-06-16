@@ -43,7 +43,6 @@ import SudokuEngine
 private struct SudokuNearWinIOSModifier: ViewModifier {
 
     @State private var nearWinBoard: SudokuNearWinBoard?
-    @State private var isPresented: Bool = false
 
     func body(content: Content) -> some View {
         let isNearWinLaunch = ProcessInfo.processInfo.arguments
@@ -52,15 +51,15 @@ private struct SudokuNearWinIOSModifier: ViewModifier {
             .onAppear {
                 guard isNearWinLaunch else { return }
                 Task { @MainActor in
-                    guard let board = try? await SudokuNearWinBoard.build() else { return }
-                    nearWinBoard = board
-                    isPresented = true
+                    nearWinBoard = try? await SudokuNearWinBoard.build()
                 }
             }
-            .fullScreenCover(isPresented: $isPresented) {
-                if let board = nearWinBoard {
-                    SudokuNearWinCoverView(board: board)
-                }
+            // item: (not isPresented:) — the cover is driven by the board
+            // itself, so the content closure always receives the built board.
+            // Splitting presentation (Bool) from data (optional) raced: the
+            // cover presented before the board propagated → blank cover (#523).
+            .fullScreenCover(item: $nearWinBoard) { board in
+                SudokuNearWinCoverView(board: board)
             }
     }
 }

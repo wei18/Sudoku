@@ -42,7 +42,6 @@ import MinesweeperGameState
 private struct MinesweeperNearWinIOSModifier: ViewModifier {
 
     @State private var nearWinSession: MinesweeperNearWinSession?
-    @State private var isPresented: Bool = false
 
     func body(content: Content) -> some View {
         let isNearWinLaunch = ProcessInfo.processInfo.arguments
@@ -51,15 +50,15 @@ private struct MinesweeperNearWinIOSModifier: ViewModifier {
             .onAppear {
                 guard isNearWinLaunch else { return }
                 Task { @MainActor in
-                    let nearWin = await MinesweeperNearWinSession.build()
-                    nearWinSession = nearWin
-                    isPresented = true
+                    nearWinSession = await MinesweeperNearWinSession.build()
                 }
             }
-            .fullScreenCover(isPresented: $isPresented) {
-                if let nearWin = nearWinSession {
-                    MinesweeperNearWinCoverView(nearWin: nearWin)
-                }
+            // item: (not isPresented:) — the cover is driven by the session
+            // itself, so the content closure always receives the built session.
+            // Splitting presentation (Bool) from data (optional) raced: the
+            // cover presented before the session propagated → blank cover (#523).
+            .fullScreenCover(item: $nearWinSession) { nearWin in
+                MinesweeperNearWinCoverView(nearWin: nearWin)
             }
     }
 }

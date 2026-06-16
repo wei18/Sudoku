@@ -27,7 +27,11 @@ import MinesweeperGameState
 /// `viewModel` has a paused session where all safe cells are revealed except
 /// `lastSafeRow`/`lastSafeCol`. A single tap on that cell wins the game.
 @MainActor
-public struct MinesweeperNearWinSession {
+public struct MinesweeperNearWinSession: Identifiable {
+    /// Stable identity so the cover can be presented via
+    /// `fullScreenCover(item:)` — atomic with the data, avoiding the
+    /// `isPresented` + separate-optional-state presentation race (#523).
+    public nonisolated var id: Int { lastSafeRow * 1_000 + lastSafeCol }
     public let viewModel: MinesweeperGameViewModel
     /// Row of the ONE remaining unrevealed safe cell.
     public let lastSafeRow: Int
