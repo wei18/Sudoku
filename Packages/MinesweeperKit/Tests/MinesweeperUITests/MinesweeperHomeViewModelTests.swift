@@ -5,9 +5,12 @@
 // local-stub branch (no binding) and the external-`Binding` branch (the real
 // MinesweeperRoot wiring) so a regression that stopped writing through the
 // injected path — leaving cards as no-op taps — would fail here.
+//
+// #513: extended with signed-out GC leaderboard behaviour tests.
 
 import SwiftUI
 import Testing
+import GameCenterClient
 @testable import MinesweeperUI
 
 @MainActor
@@ -38,6 +41,7 @@ struct MinesweeperHomeViewModelTests {
     // (#291 / #49) — it must NOT push a route. The present call bottoms out in
     // GameKit / GKAccessPoint, which is inert in the test host, so we assert
     // the navigation invariant: `select(.leaderboard)` leaves the path empty.
+    // #513: when unauthenticated, the alert flag is set instead of calling GK.
     @Test func selectLeaderboardPushesNoRoute() {
         let viewModel = MinesweeperHomeViewModel()
         viewModel.select(.leaderboard)
@@ -51,6 +55,50 @@ struct MinesweeperHomeViewModelTests {
         // Modal side-effect only — the injected nav binding stays untouched.
         #expect(box.routes.isEmpty)
         #expect(viewModel.path.isEmpty)
+    }
+
+    // MARK: - #513: Leaderboard signed-out affordance
+
+    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() {
+        let viewModel = MinesweeperHomeViewModel(authState: .unauthenticated)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+    }
+
+    @Test func selectLeaderboardWhenUnknownSetsAlertFlag() {
+        let viewModel = MinesweeperHomeViewModel(authState: .unknown)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func selectLeaderboardWhenRestrictedSetsAlertFlag() {
+        let viewModel = MinesweeperHomeViewModel(authState: .restricted)
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+        #expect(viewModel.path.isEmpty)
+    }
+
+    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() {
+        let player = PlayerSummary(teamPlayerId: "P001", displayName: "Tester")
+        let viewModel = MinesweeperHomeViewModel(authState: .authenticated(player))
+
+        viewModel.select(.leaderboard)
+
+        #expect(viewModel.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
+        #expect(viewModel.path.isEmpty, "leaderboard never pushes a route")
+    }
+
+    @Test func alertFlagDefaultsToFalse() {
+        let viewModel = MinesweeperHomeViewModel()
+        #expect(viewModel.showGameCenterSignedOutAlert == false)
     }
 
     // MARK: - External-binding branch (real MinesweeperRoot wiring)

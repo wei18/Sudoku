@@ -1964,6 +1964,54 @@
         }
       }
     },
+    "Sign in to Game Center" : {
+      "comment" : "#513 Home leaderboard card — alert title when GC is signed out (matches Sudoku key spelling).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to Game Center"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en Game Center"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center にサインイン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Center에 로그인"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลงชื่อเข้าใช้ Game Center"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请登录 Game Center"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請登入 Game Center"
+          }
+        }
+      }
+    },
     "Sign in to Game Center to compare with others." : {
       "comment" : "#421 Completion screen — shared CompletionScreen unauthenticated label (matches Sudoku key spelling).",
       "extractionState" : "manual",

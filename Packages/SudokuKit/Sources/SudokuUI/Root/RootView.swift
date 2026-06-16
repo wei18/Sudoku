@@ -69,8 +69,12 @@ public struct RootView: View {
     // actions come from a single source. Bound to RootViewModel's path so the
     // sidebar, the Home cards, and `RootShellView`'s NavigationStack all share
     // one navigation array.
+    // #513: `authState` forwarded so the leaderboard card can gate on it.
     private var homeViewModel: HomeViewModel {
-        HomeViewModel(path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }))
+        HomeViewModel(
+            path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
+            authState: viewModel.authState
+        )
     }
 
     public var body: some View {
