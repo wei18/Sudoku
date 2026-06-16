@@ -269,6 +269,7 @@ struct DailyHubViewModelInteractionTests {
         let count = await reporter.reportCount
         #expect(count == 1)
     }
+
 }
 
 /// Records `report(_:underlying:source:)` calls so the failure-path test can
