@@ -120,10 +120,21 @@ public actor MinesweeperSavedGameStore {
     /// unreachable, nothing writes them) and any practice save are the
     /// candidates. Mirrors Sudoku's #228 fix; the day rides in the
     /// `daily-<YYYY-MM-DD>-<difficulty>` recordName scheme.
+    ///
+    /// iCloud-signed-out / not-authenticated fetch failures are mapped to `nil`
+    /// (no resumable game) so the Home resume pill degrades gracefully offline
+    /// (#515). Schema / decode errors are NOT caught here — they propagate so
+    /// the caller can hide or delete a broken candidate (per #463 CR contract).
     public func latestInProgress() async throws -> MinesweeperSavedGameSummary? {
-        let payloads = try await gateway.query(
-            .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "inProgress")
-        )
+        let payloads: [RecordPayload]
+        do {
+            payloads = try await gateway.query(
+                .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "inProgress")
+            )
+        } catch {
+            if UserFacingError.classify(error) == .iCloudSignedOut { return nil }
+            throw error
+        }
         let todayUTC = UTCDay.string(from: clock())
         return payloads
             .compactMap(Self.summary(from:))
@@ -148,14 +159,22 @@ public actor MinesweeperSavedGameStore {
     }
 
     /// Decode the full snapshot for a known record; nil only when the record
-    /// is genuinely absent. A blob written by a NEWER schema throws
-    /// `.schemaVersionTooNew`; a corrupt blob propagates its decode error —
-    /// both distinguishable from "no save", so step 4 can hide/delete the
-    /// candidate instead of surfacing a resume pill that loads nothing
-    /// (#463 CR). The caller rebuilds the live board via
-    /// `MinesweeperSession.restore(from:)`.
+    /// is genuinely absent or iCloud is signed out (#515 — signed-out fetch
+    /// degrades to "no resumable game" so the Home/resume UI doesn't dead-end).
+    /// A blob written by a NEWER schema throws `.schemaVersionTooNew`; a corrupt
+    /// blob propagates its decode error — both distinguishable from "no save",
+    /// so the caller can hide/delete a broken candidate instead of surfacing a
+    /// resume pill that loads nothing (#463 CR). The caller rebuilds the live
+    /// board via `MinesweeperSession.restore(from:)`.
     public func loadInProgress(recordName: String) async throws -> MinesweeperSessionSnapshot? {
-        guard let payload = try await gateway.fetch(recordName: recordName) else { return nil }
+        let payload: RecordPayload?
+        do {
+            payload = try await gateway.fetch(recordName: recordName)
+        } catch {
+            if UserFacingError.classify(error) == .iCloudSignedOut { return nil }
+            throw error
+        }
+        guard let payload else { return nil }
         if case .int(let version) = payload.fields[Field.schemaVersion],
            version > Self.currentSchemaVersion {
             throw PersistenceError.schemaVersionTooNew(
