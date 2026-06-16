@@ -116,5 +116,10 @@ public struct MinesweeperAppComposition {
         // Board-cell tokens are MS-shaped, so they ride their own `\.minesweeperCell`
         // env key (out of the generic `Theme`, same split as `\.sudokuCell`).
         .environment(\.minesweeperCell, MinesweeperTheme().cell)
+        // #510: DEBUG-only near-win hook. Mirrors Sudoku's `SudokuNearWinModifier`.
+        // Compiled out of Release builds by the `#if DEBUG` guard.
+        #if DEBUG
+        .modifier(MinesweeperNearWinModifier())
+        #endif
     }
 }

@@ -112,6 +112,13 @@ public struct AppComposition {
             // ad gate opens.
             await bootMonetization()
         } }
+        // #510: DEBUG-only near-win hook. When launched with `-uitest-near-win`,
+        // present a board that is one digit entry from winning immediately over
+        // the normal root — bypasses persistence, GameCenter, and monetization
+        // entirely. Compiled out of Release builds by the `#if DEBUG` guard.
+        #if DEBUG
+        .modifier(SudokuNearWinModifier())
+        #endif
     }
 
     public init(
