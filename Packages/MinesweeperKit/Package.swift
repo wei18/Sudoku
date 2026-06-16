@@ -195,6 +195,10 @@ let testTargets: [Target] = [
             // #448: MinesweeperRootViewModelTests inject `FakePersistence`
             // (zero-IO) for the launch-bootstrap `persistence.bootstrap()` call.
             .product(name: "PersistenceTesting", package: "PersistenceKit"),
+            // #530: offline-hub fake actors implement PersistenceProtocol, whose
+            // method signatures use `Mode` / `GameSessionSnapshot` from SudokuCoreKit.
+            .product(name: "GameState", package: "SudokuCoreKit"),
+            .product(name: "SudokuEngine", package: "SudokuCoreKit"),
             // #455 step 4: persist-hook tests drive the VM's saved-game seam
             // against the fake gateway.
             "MinesweeperPersistence",
@@ -268,6 +272,11 @@ let package = Package(
         // #448 step 1b: shared app-launch coordinator `GameRootViewModel<Route>`.
         // `MinesweeperUI.MinesweeperRootViewModel` is a typealias over it.
         .package(name: "GameAppKit", path: "../GameAppKit"),
+        // #530: MinesweeperUITests offline-hub fakes conform PersistenceProtocol,
+        // which uses `Mode` / `GameSessionSnapshot` from SudokuCoreKit. Already
+        // an indirect dep via PersistenceKit; promoted to direct so MinesweeperUITests
+        // can `import GameState` / `import SudokuEngine` under InternalImportsByDefault.
+        .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

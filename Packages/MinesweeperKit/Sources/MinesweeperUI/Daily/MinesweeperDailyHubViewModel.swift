@@ -94,41 +94,61 @@ public final class MinesweeperDailyHubViewModel {
         hasBootstrapped = true
         state = .loading
         let today = dateProvider()
+        // `dailyTrio` is synchronous and non-throwing — no CK dependency here.
         let trio = provider.dailyTrio(date: today)
 
-        // Both completion and failure fetches must degrade gracefully —
-        // the Daily hub must never block (mirror Sudoku's M10 principle).
-        // Completed ids come from the shared `PersistenceProtocol` seam;
-        // failed ids from the MS-native `MinesweeperSavedGameStore` (Epic 8).
+        // Phase 1: render immediately with overlays unknown (#530).
+        // M10: the hub must never block on a CloudKit call — when iCloud is
+        // signed out, the fetch may hang indefinitely rather than throwing,
+        // so the previous single-phase pattern blocked `.loaded` forever.
+        // Fix: render three un-marked cards right after the trio arrives,
+        // then fill completion + failure overlays asynchronously.
+        // If the fills hang or error, the hub stays loaded with cards showing
+        // as un-completed / un-failed (graceful-degrade, §How.6.1 p1).
+        state = .loaded(Self.mergeCards(trio: trio, completed: [], failed: []))
+
+        // Phase 2: fill completion + failure overlays — non-blocking, best-effort.
+        await fillCompletionAndFailureOverlay(trio: trio, date: today)
+    }
+
+    /// Phase-2 overlay fill: fetches completed and failed daily ids, then
+    /// re-merges them with the already-rendered cards. Called after `state` is
+    /// already `.loaded`, so a hang or failure here cannot block the initial
+    /// render. Errors are funneled through `errorReporter` (OSLog-observable)
+    /// and degrade silently to "no cards marked" — same M10 contract as #526.
+    private func fillCompletionAndFailureOverlay(trio: [MinesweeperDailyEntry], date: Date) async {
+        guard case .loaded = state else { return }
+
         var completed: Set<String> = []
         if let persistence {
             do {
-                completed = try await persistence.fetchCompletedDailyIds(for: today)
+                completed = try await persistence.fetchCompletedDailyIds(for: date)
             } catch {
                 await errorReporter.report(
                     UserFacingError.classify(error),
                     underlying: error,
                     source: "MinesweeperDailyHubViewModel.fetchCompletedDailyIds"
                 )
-                completed = []
             }
         }
 
         var failed: Set<String> = []
         if let savedGameStore {
             do {
-                failed = try await savedGameStore.fetchFailedDailyIds(for: today)
+                failed = try await savedGameStore.fetchFailedDailyIds(for: date)
             } catch {
                 await errorReporter.report(
                     UserFacingError.classify(error),
                     underlying: error,
                     source: "MinesweeperDailyHubViewModel.fetchFailedDailyIds"
                 )
-                failed = []
             }
         }
 
-        state = .loaded(Self.mergeCards(trio: trio, completed: completed, failed: failed))
+        guard case .loaded = state else { return }
+        if !completed.isEmpty || !failed.isEmpty {
+            state = .loaded(Self.mergeCards(trio: trio, completed: completed, failed: failed))
+        }
     }
 
     /// Route for a tapped daily card:
