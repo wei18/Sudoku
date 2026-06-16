@@ -59,6 +59,15 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     /// the route is cleared.
     public private(set) var isGamePresented: Bool = false
 
+    // MARK: - Game Center signed-out alert (#513 fix)
+
+    /// `true` while the "Sign in to Game Center" alert is visible.
+    /// Set by `HomeViewModel` / `MinesweeperHomeViewModel` (via injected binding)
+    /// when the leaderboard card is tapped with GC signed out.
+    /// Lives here (stable shared object) — not on the per-render HomeViewModel —
+    /// so the SwiftUI `.alert` binding survives re-renders.
+    public var showGameCenterSignedOutAlert: Bool = false
+
     // MARK: - Epic 2: Leave confirmation (SDD-003)
 
     /// `true` while the "Leave Game?" confirmation dialog is showing.
