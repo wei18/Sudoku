@@ -16,7 +16,12 @@ internal import GameShellUI
 internal import SudokuEngine
 
 public struct DailyHubView<Banner: View>: View {
-    @Bindable private var viewModel: DailyHubViewModel
+    // #536: @State (first-value-wins) so a re-render that mints a fresh idle
+    // VM from the factory does not replace the bootstrapped instance. The view
+    // keeps the same SwiftUI identity across re-renders, so @State retains the
+    // first VM. @Bindable was a plain assignment — a re-render would swap it out
+    // and leave the hub stuck at .idle (banner WebView re-render trigger).
+    @State private var viewModel: DailyHubViewModel
     @Environment(\.theme) private var theme
     private let banner: Banner
 
@@ -24,7 +29,7 @@ public struct DailyHubView<Banner: View>: View {
         viewModel: DailyHubViewModel,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
-        self.viewModel = viewModel
+        _viewModel = State(wrappedValue: viewModel)
         self.banner = banner()
     }
 
