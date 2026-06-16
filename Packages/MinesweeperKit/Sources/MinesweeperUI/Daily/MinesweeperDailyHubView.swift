@@ -18,7 +18,10 @@ internal import GameShellUI
 internal import MinesweeperEngine
 
 public struct MinesweeperDailyHubView<Banner: View>: View {
-    @Bindable private var viewModel: MinesweeperDailyHubViewModel
+    // #536: @State (first-value-wins) so a re-render that mints a fresh idle
+    // VM from the factory does not replace the bootstrapped instance. Mirrors
+    // the Sudoku fix in DailyHubView — both share the same @Bindable bug class.
+    @State private var viewModel: MinesweeperDailyHubViewModel
     @Environment(\.theme) private var theme
     private let banner: Banner
 
@@ -26,7 +29,7 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
         viewModel: MinesweeperDailyHubViewModel,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
-        self.viewModel = viewModel
+        _viewModel = State(wrappedValue: viewModel)
         self.banner = banner()
     }
 
