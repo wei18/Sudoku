@@ -134,13 +134,22 @@ internal struct AchievementConfig: Sendable, Equatable {
     /// Full ASC achievement ID (bundle-id-rooted, with prefix).
     internal var fullId: String { achievementPrefix + shortId }
 
-    /// Localization key namespace. Sudoku uses `gc.achievement.<shortId>.*`;
-    /// Tiles2048 uses `gc.tiles2048.achievement.<shortId>.*` so both games'
-    /// achievement strings coexist in one xcstrings catalog.
+    /// Localization key namespace. Derived from the `achievementPrefix` itself
+    /// (mirrors how `GCApp.leaderboardTitleKeyPrefix` derives the leaderboard
+    /// key namespace). Sudoku (`com.wei18.sudoku.achievement.`) keeps the
+    /// original un-namespaced `gc.achievement` for back-compat with shipped
+    /// xcstrings keys. Any other app (e.g. Tiles2048 →
+    /// `com.wei18.tiles2048.achievement.`) gets a scoped namespace
+    /// `gc.<app>.achievement` — no hardcoded game name in the else-branch.
     private var locKeyPrefix: String {
-        achievementPrefix == Config.achievementPrefix
-            ? "gc.achievement"
-            : "gc.tiles2048.achievement"
+        let vendorPrefix = "com.wei18."
+        let achievementInfix = ".achievement."
+        guard achievementPrefix.hasPrefix(vendorPrefix),
+              let infixRange = achievementPrefix.range(of: achievementInfix)
+        else { return "gc.achievement" }
+        let appSegment = String(achievementPrefix[vendorPrefix.endIndex..<infixRange.lowerBound])
+        if appSegment == "sudoku" { return "gc.achievement" }
+        return "gc.\(appSegment).achievement"
     }
 
     internal var titleKey: String { "\(locKeyPrefix).\(shortId).title" }
