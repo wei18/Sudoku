@@ -84,30 +84,20 @@ public final class DailyHubViewModel {
         state = .loading
         let today = dateProvider()
         do {
-            async let trioCall = provider.fetchDailyTrio(date: today)
-            async let completedCall = persistence.fetchCompletedDailyIds(for: today)
-            let trio = try await trioCall
-            // M10 (issue #67): completion-list failure must still degrade
-            // gracefully to "no daily completed yet" (every card shows as
-            // un-completed) — design.md §How.6.1 principle 1, Daily hub
-            // must never block. Funnel reports the underlying error so a
-            // CloudKit fetch failure is observable in OSLog instead of
-            // silently rendering an inaccurate hub state.
-            let completed: Set<String>
-            do {
-                completed = try await completedCall
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "DailyHubViewModel.fetchCompletedDailyIds"
-                )
-                completed = []
-            }
-            let cards = trio.map { envelope in
-                DailyCard(envelope: envelope, isCompleted: completed.contains(envelope.identity.puzzleId))
-            }
+            let trio = try await provider.fetchDailyTrio(date: today)
+            // Phase 1: render immediately with completion unknown (#526).
+            // M10 (issue #67): the hub must never block on a CloudKit call —
+            // when iCloud is signed out, `database.records(matching:inZoneWith:)`
+            // hangs indefinitely rather than throwing, so the previous
+            // `async let completedCall` pattern blocked here forever.
+            // Fix: render the three cards right after the trio arrives (no
+            // CK dependency), then fill completion overlay asynchronously.
+            // If the fill hangs or errors, the hub stays loaded with every
+            // card showing as un-completed (graceful-degrade, §How.6.1 p1).
+            let cards = trio.map { DailyCard(envelope: $0, isCompleted: false) }
             state = .loaded(cards)
+            // Phase 2: completion overlay — non-blocking, best-effort.
+            await fillCompletionOverlay(trio: trio, date: today)
         } catch let error as PuzzleStoreError {
             switch error {
             case .generatorFailed:
@@ -128,6 +118,30 @@ public final class DailyHubViewModel {
             )
             state = .failed(String(describing: error))
         }
+    }
+
+    /// Phase-2 completion overlay: fetches completed daily ids and re-merges
+    /// them with the already-rendered cards. Called after `state` is already
+    /// `.loaded` so a hang or failure here cannot block the initial render.
+    /// Errors are funneled through `errorReporter` (OSLog-observable) and
+    /// degrade silently to "no cards completed" — same M10 contract as before.
+    private func fillCompletionOverlay(trio: [PuzzleEnvelope], date: Date) async {
+        let completed: Set<String>
+        do {
+            completed = try await persistence.fetchCompletedDailyIds(for: date)
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "DailyHubViewModel.fetchCompletedDailyIds"
+            )
+            return // degrade: cards remain un-completed
+        }
+        guard !completed.isEmpty else { return }
+        let cards = trio.map { envelope in
+            DailyCard(envelope: envelope, isCompleted: completed.contains(envelope.identity.puzzleId))
+        }
+        state = .loaded(cards)
     }
 
     /// Synchronous tap entry point (the DailyHubView shell closure is sync).
