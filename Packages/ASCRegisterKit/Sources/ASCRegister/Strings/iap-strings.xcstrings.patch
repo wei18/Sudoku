@@ -17,7 +17,9 @@
 //     translation-agent flow (foundations.md §L10n).
 //
 // Total: 4 keys × 7 locales = 28 string units (2 Sudoku + 2 Tiles2048;
-// Minesweeper keys are in a separate ms-iap-strings.xcstrings.patch).
+// Minesweeper IAP keys live directly in App/Minesweeper/Resources/
+// Localizable.xcstrings — no patch file — and the same applies to
+// Tiles2048 once this fragment is merged).
 // 4 × 2 = 8 filled (en + zh-Hant), 4 × 5 = 20 marked <TRANSLATE>.
 //
 // File extension `.xcstrings.patch` mirrors gc-strings.xcstrings.patch
