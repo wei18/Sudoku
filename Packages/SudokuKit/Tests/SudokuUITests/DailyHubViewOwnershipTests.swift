@@ -119,23 +119,23 @@ struct DailyHubViewOwnershipTests {
         )
         let persistence = FakePersistence()
 
-        let vm = DailyHubViewModel(
+        let viewModel = DailyHubViewModel(
             provider: provider,
             persistence: persistence,
             dateProvider: { Self.fixedDate }
         )
-        await vm.bootstrap()
-        guard case .loaded = vm.state else {
-            Issue.record("expected .loaded after bootstrap, got \(vm.state)")
+        await viewModel.bootstrap()
+        guard case .loaded = viewModel.state else {
+            Issue.record("expected .loaded after bootstrap, got \(viewModel.state)")
             return
         }
 
         // Second bootstrap call — simulates .task re-firing.
         // The hasBootstrapped latch must preserve .loaded, not reset to .idle.
-        await vm.bootstrap()
+        await viewModel.bootstrap()
 
-        guard case .loaded(let cards) = vm.state else {
-            Issue.record("second bootstrap must not reset state; got \(vm.state)")
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("second bootstrap must not reset state; got \(viewModel.state)")
             return
         }
         #expect(cards.count == 3, "second bootstrap must be a no-op on a loaded VM")
