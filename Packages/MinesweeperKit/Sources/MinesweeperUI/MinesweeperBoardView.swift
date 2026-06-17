@@ -226,14 +226,16 @@ public struct MinesweeperBoardView: View {
             gameChrome?.setHidingChrome(overlayPresented)
         }
         // #455 step 4: view-lifecycle save points.
-        // #539: also pause on any non-active transition so the elapsed clock
-        // does not accrue background time — mirrors Sudoku's BoardView fix.
-        // `pause()` already calls `persistCurrentState()` internally; when
-        // the game is not `.playing` we fall back to a plain persist so the
-        // save point is never skipped. VM self-guards (nil store / seeded /
-        // .idle), so these are no-ops where the persistence seam isn't wired.
+        // #539: also pause so the elapsed clock doesn't accrue background time
+        // (mirrors Sudoku). #548: pause ONLY on a real `.background` transition —
+        // a transient `.inactive` (Control Center / Notification Center peek)
+        // just persists, so a momentary glance doesn't force a tap-to-resume.
+        // `pause()` calls `persistCurrentState()` internally; when not `.playing`
+        // we fall back to a plain persist so the save point is never skipped.
+        // VM self-guards, so these are no-ops where the persistence seam isn't wired.
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active {
+            switch phase {
+            case .background:
                 Task {
                     if viewModel.status == .playing {
                         await viewModel.pause()
@@ -241,6 +243,10 @@ public struct MinesweeperBoardView: View {
                         await viewModel.persistCurrentState()
                     }
                 }
+            case .inactive:
+                Task { await viewModel.persistCurrentState() }
+            default:
+                break
             }
         }
         .onDisappear {

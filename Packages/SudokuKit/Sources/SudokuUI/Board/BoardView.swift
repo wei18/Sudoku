@@ -107,15 +107,16 @@ public struct BoardView: View {
             viewModel.stopMusic()
             Task { await viewModel.flush() }
         }
-        // #413: same hazard on app backgrounding — persist before suspension.
-        // #539: also pause the game on any non-active transition so the solve
-        // timer does not accrue background time. `pause()` already calls
-        // `flush()` internally, so we skip a redundant flush when pausing;
-        // when the game is already paused (or completed), only flush. This
-        // matches the in-app Pause button path exactly — the player must tap
-        // Resume on return, preserving consistent freeze behaviour.
+        // #413: persist before suspension. #539: also pause so the solve timer
+        // doesn't accrue background time. #548: pause ONLY on a real `.background`
+        // transition — a transient `.inactive` (Control Center / Notification
+        // Center pull-down, app-switcher peek) just flushes, so a momentary
+        // glance doesn't force a tap-to-resume. `pause()` flushes internally, so
+        // when pausing we skip the redundant flush; already-paused/completed only
+        // flushes. Matches the in-app Pause path: player taps Resume on return.
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase != .active {
+            switch newPhase {
+            case .background:
                 Task {
                     if viewModel.status == .playing {
                         await viewModel.pause()
@@ -123,6 +124,10 @@ public struct BoardView: View {
                         await viewModel.flush()
                     }
                 }
+            case .inactive:
+                Task { await viewModel.flush() }
+            default:
+                break
             }
         }
     }
