@@ -29,11 +29,36 @@ public struct RecordPayload: Sendable, Equatable, Hashable {
     public let recordType: String
     public let recordName: String
     public var fields: [String: RecordValue]
+    /// #544: the server record's archived `encodeSystemFields` (recordID +
+    /// etag/change-tag). Carried so an UPDATE re-uses the live etag instead of
+    /// re-inserting an etag-less record (which CloudKit rejects as
+    /// `serverRecordChanged`). `nil` for a brand-new, never-saved record.
+    /// Excluded from `Equatable`/`Hashable` (concurrency metadata, not record
+    /// identity) so existing field-equality assertions are unaffected.
+    public var encodedSystemFields: Data?
 
-    public init(recordType: String, recordName: String, fields: [String: RecordValue]) {
+    public init(
+        recordType: String,
+        recordName: String,
+        fields: [String: RecordValue],
+        encodedSystemFields: Data? = nil
+    ) {
         self.recordType = recordType
         self.recordName = recordName
         self.fields = fields
+        self.encodedSystemFields = encodedSystemFields
+    }
+
+    public static func == (lhs: RecordPayload, rhs: RecordPayload) -> Bool {
+        lhs.recordType == rhs.recordType
+            && lhs.recordName == rhs.recordName
+            && lhs.fields == rhs.fields
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(recordType)
+        hasher.combine(recordName)
+        hasher.combine(fields)
     }
 }
 

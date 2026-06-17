@@ -50,10 +50,28 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     /// tests without coupling the test surface to a separate spy gateway.
     private var conflictOnSaveRemaining: [String: Int] = [:]
 
+    /// #544: opt-in modelling of CloudKit optimistic concurrency. When enabled,
+    /// a save against an EXISTING record must carry the record's current etag
+    /// (in `payload.encodedSystemFields`) or it's rejected with `.syncConflict`
+    /// — reproducing the real `serverRecordChanged` an etag-less re-insert hits.
+    /// Off by default so existing tests (which don't thread etags) are
+    /// unaffected. `fetch`/`seed` stamp the stored payload with its etag.
+    private var enforceOptimisticConcurrency = false
+    private var versions: [String: Int] = [:]
+
+    private static func etag(forVersion version: Int) -> Data {
+        Data("etag-v\(version)".utf8)
+    }
+
     public init() {}
 
     public func setFailureMode(_ mode: FailureMode) {
         self.failureMode = mode
+    }
+
+    /// #544: turn on CloudKit-style etag enforcement for this fake.
+    public func setEnforceOptimisticConcurrency(_ enabled: Bool) {
+        self.enforceOptimisticConcurrency = enabled
     }
 
     public func setFetchError(_ error: (any Error & Sendable)?) {
@@ -96,7 +114,23 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
             throw PersistenceError.syncConflict(recordName: payload.recordName)
         }
         operations.append(.save(recordName: payload.recordName))
-        records[payload.recordName] = payload
+        guard enforceOptimisticConcurrency else {
+            records[payload.recordName] = payload
+            return
+        }
+        // CloudKit-style optimistic concurrency: an existing record requires a
+        // matching etag; a new record (no stored version) is accepted as an
+        // insert and stamped v1. Each accepted save bumps the version.
+        if let currentVersion = versions[payload.recordName] {
+            guard payload.encodedSystemFields == Self.etag(forVersion: currentVersion) else {
+                throw PersistenceError.syncConflict(recordName: payload.recordName)
+            }
+        }
+        let nextVersion = (versions[payload.recordName] ?? 0) + 1
+        versions[payload.recordName] = nextVersion
+        var stored = payload
+        stored.encodedSystemFields = Self.etag(forVersion: nextVersion)
+        records[payload.recordName] = stored
     }
 
     public func delete(recordName: String) async throws {
@@ -114,7 +148,14 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     /// Reach into the store directly without recording an op. Used by tests
     /// to seed fixtures.
     public func seed(_ payload: RecordPayload) {
-        records[payload.recordName] = payload
+        guard enforceOptimisticConcurrency else {
+            records[payload.recordName] = payload
+            return
+        }
+        versions[payload.recordName] = 1
+        var stored = payload
+        stored.encodedSystemFields = Self.etag(forVersion: 1)
+        records[payload.recordName] = stored
     }
 
     public func recordCount() -> Int { records.count }

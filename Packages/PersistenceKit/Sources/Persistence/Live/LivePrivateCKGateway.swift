@@ -132,8 +132,7 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
     // MARK: - CKRecord <-> RecordPayload
 
     private static func record(from payload: RecordPayload, zoneID: CKRecordZone.ID) -> CKRecord {
-        let id = CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
-        let record = CKRecord(recordType: payload.recordType, recordID: id)
+        let record = baseRecord(from: payload, zoneID: zoneID)
         for (key, value) in payload.fields {
             switch value {
             case .string(let string):
@@ -149,6 +148,23 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
             }
         }
         return record
+    }
+
+    /// #544: rehydrate the base `CKRecord` for a save. When the payload carries
+    /// archived system fields (a previously-fetched record), decode them so the
+    /// recordID + etag/change-tag are preserved and the save is an UPDATE; only
+    /// mint a fresh record (which CloudKit treats as an insert) for a payload
+    /// that was never fetched from the server.
+    private static func baseRecord(from payload: RecordPayload, zoneID: CKRecordZone.ID) -> CKRecord {
+        if let systemFields = payload.encodedSystemFields,
+           let unarchiver = try? NSKeyedUnarchiver(forReadingFrom: systemFields) {
+            unarchiver.requiresSecureCoding = true
+            if let restored = CKRecord(coder: unarchiver) {
+                return restored
+            }
+        }
+        let id = CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
+        return CKRecord(recordType: payload.recordType, recordID: id)
     }
 
     private static func payload(from record: CKRecord) -> RecordPayload {
@@ -167,10 +183,16 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
                 fields[key] = .int(number.intValue)
             }
         }
+        // #544: archive the record's system fields (recordID + etag) so a
+        // later save UPDATES this record with the live change-tag instead of
+        // re-inserting an etag-less copy (which CloudKit rejects).
+        let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+        record.encodeSystemFields(with: archiver)
         return RecordPayload(
             recordType: record.recordType,
             recordName: record.recordID.recordName,
-            fields: fields
+            fields: fields,
+            encodedSystemFields: archiver.encodedData
         )
     }
 

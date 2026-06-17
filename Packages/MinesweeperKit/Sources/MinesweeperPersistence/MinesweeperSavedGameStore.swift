@@ -87,7 +87,7 @@ public actor MinesweeperSavedGameStore {
     ) async throws {
         do {
             let blob = try JSONEncoder().encode(snapshot)
-            let payload = RecordPayload(
+            var payload = RecordPayload(
                 recordType: PrivateCKConstants.savedGameRecordType,
                 recordName: recordName,
                 fields: [
@@ -101,6 +101,15 @@ public actor MinesweeperSavedGameStore {
                     Field.stateBlob: .data(blob),
                 ]
             )
+            // #544: read-modify-write — carry the existing record's etag so an
+            // UPDATE re-uses the live change-tag instead of re-inserting an
+            // etag-less copy (which CloudKit rejects as `serverRecordChanged`,
+            // freezing the record at its first write → resume loses progress).
+            // MS keeps its bare last-write-wins model (no ConflictResolver — see
+            // the type doc); it only needs the etag for the update to land.
+            if let existing = try? await gateway.fetch(recordName: recordName) {
+                payload.encodedSystemFields = existing.encodedSystemFields
+            }
             try await gateway.save(payload)
             await telemetry?.observe(.gameSaved(puzzleId: recordName))
         } catch {

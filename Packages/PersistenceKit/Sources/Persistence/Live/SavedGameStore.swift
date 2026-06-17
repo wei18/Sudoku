@@ -273,6 +273,11 @@ internal actor SavedGameStore: Sendable {
         let serverSnapshot = conflictSnapshot(from: server)
         let resolved = ConflictResolver.resolve(local: localSnapshot, server: serverSnapshot)
         var merged = local
+        // #544: adopt the SERVER record's etag so the resubmit is an UPDATE
+        // against the current change-tag (the local side was an etag-less fresh
+        // payload, which is what triggered the conflict). Field values are
+        // newer-wins via ConflictResolver above.
+        merged.encodedSystemFields = server.encodedSystemFields
         merged.fields[Field.boardState] = .string(resolved.boardState)
         merged.fields[Field.notesState] = .data(resolved.notesState)
         merged.fields[Field.undoStack] = .data(resolved.undoStack)
