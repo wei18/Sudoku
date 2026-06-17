@@ -12,21 +12,24 @@ import MonetizationUI
 import SudokuEngine
 
 public struct BoardView: View {
-    @Bindable private var viewModel: GameViewModel
+    // Several members are `internal` (not `private`) because the header
+    // helpers in BoardView+AccessibilityHeader.swift read them across files
+    // within the same module.
+    @Bindable var viewModel: GameViewModel
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     /// Host navigation path. Optional so previews / snapshot tests (which mount
     /// `BoardView` directly, with no `NavigationStack`) keep working — `nil`
     /// makes the solve → completion push a graceful no-op.
     private let path: Binding<[AppRoute]>?
-    @Environment(\.theme) private var theme
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.theme) var theme
+    @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
     // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the
     // modal hierarchy, this is non-nil and we (a) push the elapsed label
     // to the chrome on every tick and (b) hide the in-board header timer
     // to avoid showing two clocks on screen.
-    @Environment(\.gameChrome) private var gameChrome
+    @Environment(\.gameChrome) var gameChrome
     @FocusState private var keyboardFocus: Bool
     /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
     /// freely, so guard the push to fire EXACTLY once.
@@ -215,57 +218,9 @@ public struct BoardView: View {
     }
 
     // MARK: - Layout
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            Text(LocalizedStringKey(viewModel.identity.difficulty.rawValue.capitalized))
-                .font(.headline)
-                .foregroundStyle(theme.text.primary.resolved)
-            // #228 option B: subtle marker when the user opens a past-day
-            // daily puzzle. `SubmitGuards` blocks the Game Center submission
-            // for these; this affordance lets the player know mid-game that
-            // the run won't score.
-            if viewModel.isLateCompletion {
-                Image(systemName: "clock.badge.exclamationmark")
-                    .foregroundStyle(theme.text.secondary.resolved)
-                    .accessibilityLabel(
-                        Text("Late completion — won't score on leaderboard")
-                    )
-            }
-            Spacer()
-            // SDD-003 OQ-001: suppress the in-board timer when the modal
-            // chrome is showing it (gameChrome != nil). On macOS push
-            // navigation / snapshot tests (gameChrome == nil) the timer
-            // stays here as before.
-            if gameChrome == nil {
-                Label(elapsedLabel, systemImage: "timer")
-                    .monospacedDigit()
-                    .foregroundStyle(theme.text.secondary.resolved)
-                    .accessibilityLabel("Elapsed time \(elapsedLabel)")
-            }
-            Button {
-                Task {
-                    if viewModel.isPaused {
-                        await viewModel.resume()
-                    } else {
-                        await viewModel.pause()
-                    }
-                }
-            } label: {
-                if sizeClass == .regular {
-                    // Mac: icon + text label per board-mac-redesign wireframe.
-                    Label(
-                        viewModel.isPaused ? "Resume" : "Pause",
-                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
-                    )
-                } else {
-                    // iPhone: icon-only for header compactness.
-                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
-                }
-            }
-            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
-        }
-    }
+    //
+    // The header (incl. the #540 Dynamic Type robustness via ViewThatFits)
+    // lives in the sibling file BoardView+AccessibilityHeader.swift.
 
     private var boardWithOverlay: some View {
         // GeometryReader reports the offered size to its children but takes
@@ -386,7 +341,9 @@ public struct BoardView: View {
         .accessibilityHidden(true)
     }
 
-    private var elapsedLabel: String {
+    // `internal` (not `private`) — the header's `timerLabel` in
+    // BoardView+AccessibilityHeader.swift reads this across files.
+    var elapsedLabel: String {
         let total = viewModel.elapsedSeconds
         let minutes = total / 60
         let seconds = total % 60

@@ -404,29 +404,69 @@ public struct MinesweeperBoardView: View {
 
     // MARK: - Status bar
 
+    // #540: mirror Sudoku's header fix — keep the status bar robust at large /
+    // accessibility text sizes WITHOUT reading `@Environment(\.dynamicTypeSize)`
+    // (unreliable inside the modal). `ViewThatFits(in: .horizontal)` picks the
+    // single-row HStack when it fits the actual offered width and falls back to
+    // a two-row VStack when the enlarged labels would overflow. At default
+    // sizes the single row always fits → snapshot baselines unchanged.
     private var statusBar: some View {
+        ViewThatFits(in: .horizontal) {
+            singleRowStatusBar
+            twoRowStatusBar
+        }
+        .font(.subheadline)
+    }
+
+    // Single row — identical structure to the pre-#540 status bar, so the
+    // recorded MS snapshots stay byte-identical when this branch is chosen.
+    private var singleRowStatusBar: some View {
         // #298 #9: plain HStack — the elapsed/flag/status fields are read
         // straight off the @Observable view model, which republishes when the
         // ticker loop (`.task(id:)` on the body) refreshes the snapshot each
         // second. No TimelineView, no nested `.task`.
         HStack {
-            Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
-                .monospacedDigit()
+            mineCountLabel
             Spacer()
-            Text(statusText)
-                .font(.headline)
+            statusLabel
             Spacer()
-            // SDD-003 OQ-001: suppress the in-board clock when the modal
-            // chrome is showing it (gameChrome != nil). On macOS push
-            // navigation / snapshot tests (gameChrome == nil) the clock
-            // stays here as before.
-            if gameChrome == nil {
-                Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
-                    .monospacedDigit()
-            }
+            clockLabel  // SDD-003: hidden when gameChrome != nil
             pauseToggle
         }
-        .font(.subheadline)
+    }
+
+    // Two-row fallback: row 1 = mine count + status; row 2 = clock + pause.
+    private var twoRowStatusBar: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack { mineCountLabel; Spacer(); statusLabel }
+            HStack { clockLabel; Spacer(); pauseToggle }
+        }
+    }
+
+    private var mineCountLabel: some View {
+        Label("\(viewModel.remainingMineCount)", systemImage: "flag.fill")
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+    }
+
+    private var statusLabel: some View {
+        Text(statusText)
+            .font(.headline)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+    }
+
+    // SDD-003 OQ-001: suppress the in-board clock when the modal chrome is
+    // showing it (gameChrome != nil). On macOS push navigation / snapshot
+    // tests (gameChrome == nil) the clock stays here as before.
+    @ViewBuilder private var clockLabel: some View {
+        if gameChrome == nil {
+            Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
     }
 
     // MARK: - Pause / resume toggle (#434)
