@@ -79,6 +79,20 @@ xcrun simctl io <udid> screenshot <path.png>   # capture; then Read the PNG and 
 
 - **Negative / offline:** iCloud signed out, no Game Center, airplane mode mid-game, Retry,
   Restore-with-nothing, IAP cancel. (Core gameplay must never gate on iCloud — #512.)
+- **Online + iCloud-signed-out ≠ offline — test BOTH.** For any CloudKit-dependent screen
+  (Daily Hub, ResumePill, leaderboard) these diverge: **offline**, CK calls fail-fast (throw
+  immediately); **online-but-signed-out**, CK calls can **HANG** (network round-trip stalls
+  with no authenticated container). A prior offline "pass" can mask an online hang — #536's
+  Daily Hub infinite spinner only reproduced online+signed-out (the AdMob banner's network
+  load triggered the re-render that exposed it). Drive the sim with network ON + iCloud OUT
+  and watch for a spinner that never resolves.
+- **Resume / save / Game Center cases need an iCloud-signed-in sim.** Signed out,
+  `latestInProgress()` returns nil by graceful-degrade design (#515) so no ResumePill ever
+  shows — #4(pill)/#12/#19/#20/#38 + GC completion are un-testable until the user signs a
+  **sandbox** Apple ID into Simulator → Settings → Apple Account (iCloud and Game Center are
+  SEPARATE sign-ins — GC alone does not enable CloudKit). GKGameCenterViewController is a
+  system overlay idb can't introspect; absence of the #513 sign-in alert is the signal GC is
+  recognized.
 - **Navigation / modals:** does the board actually appear after picking difficulty (#491);
   Close → Leave-Game confirmation; pause; back-stack pressure.
 - **Safe area / Dynamic Island:** completion/overlay content clipped or overlapping board

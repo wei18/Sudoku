@@ -38,10 +38,13 @@ A class of bugs that look fine in code but break at runtime. Phase 8 shipped two
 - `.task { await viewModel.bootstrap() }` re-fires on every view mount / identity change. If a test pre-seeds VM state, the task overwrites it back to `.loading`. **Fix:** `hasBootstrapped` latch in the VM + a separate `retry()` method for user-driven retry.
 - `.task(id:)` cancels and restarts when `id` changes — confirm that's the intent.
 
-### Dynamic Type / AX3
+### Dynamic Type / AX3–AX5
 
-- For "AX3 stacks vertical" patterns, `@Environment(\.dynamicTypeSize) >= .accessibility3` + conditional `VStack` vs `HStack` is enough. No custom `Layout` needed.
-- Timer/control text scales with Dynamic Type by default; keep fixed-size for grids and critical regions (e.g., 9×9 board uses fixed cell metrics).
+- **Do NOT gate layout on `@Environment(\.dynamicTypeSize)` inside a `fullScreenCover` / `sheet` modal.** The env value can read a **stale `.large`** there even while the Text views actually scale via UIFont metrics — so a `dynamicTypeSize.isAccessibilitySize ? VStack : HStack` reflow **never fires** and labels still clip off-screen (negative-x frame). (Proved by #540: the board is a modal; cells/labels enlarged but the gate read `.large`.) Use a **geometry-driven** layout instead — `ViewThatFits(in: .horizontal) { HStack; VStack }` picks the row/column from the *actual offered width*, no env read.
+- **`minimumScaleFactor` is WIDTH-driven** — it shrinks text too WIDE for its frame. It does **not** rescue a glyph that overflows **vertically**. A single digit "5" at AX5 is ~50–60pt tall in a 44pt pill → clipped top/bottom to a **blank** pill; `minimumScaleFactor` never engages and `.frame(maxHeight:)` alone just clips it.
+- **Fix for compact fixed-size controls** (digit pad, board chrome/header) that must stay legible without honoring full AX scaling: **cap the Dynamic Type** — `.dynamicTypeSize(...DynamicTypeSize.xLarge)`. The cap clamps only sizes ABOVE `.xLarge`, so default `.large` rendering — and committed snapshot baselines — stay **byte-identical**; surrounding content (e.g. 9×9 board cells) keeps scaling. Standard compact-numeric-control approach; geometry/UIFont-driven, so a modal's stale env can't defeat it.
+- **Snapshot tests do NOT prove a Dynamic Type fix.** A snapshot that injects `DynamicTypeSize.accessibility3` into an `NSHostingView` bypasses the modal env-propagation path and gives a **false pass** (#540: three rounds passed snapshots, all failed on device). **idb-sim-verify AX3 AND AX5 on a booted sim** (`simctl ui <udid> content_size accessibility-extra-extra-large` / `…-extra-extra-extra-large`), eyeball the screenshot — don't trust the injected-env snapshot.
+- Keep grids and critical regions fixed-metric (e.g. 9×9 board uses fixed cell metrics); let body/label text scale.
 
 ### Theme propagation to SwiftUI system controls
 
@@ -72,6 +75,10 @@ A class of bugs that look fine in code but break at runtime. Phase 8 shipped two
 ### `@Observable` + `@Bindable`
 
 - Reading an `@Observable` model via `let vm = …` does not establish a binding scope; passing `vm` into a child that needs `@Bindable var vm` requires the child to redeclare with `@Bindable`. Forgetting this silently breaks two-way bindings (TextField, Toggle).
+
+### View-model built inside a `navigationDestination` / factory closure
+
+- A view-model constructed **inline inside the `.navigationDestination(for:)` closure** (or a `RouteFactory.view(for:)` that the destination calls) and stored as `@Bindable` is **re-minted on every destination re-render** — any parent re-render (e.g. an AdMob banner WebView finishing its load) gives the view a **fresh `.idle` instance**, and because the view keeps the same SwiftUI identity its `.task { bootstrap() }` does **NOT re-fire**, so it's stuck loading forever while the original (already-`.loaded`) instance is orphaned. Symptom: a screen stuck on its spinner even though the VM reached `.loaded` (confirm by logging `ObjectIdentifier(self)` in `bootstrap()` vs `ObjectIdentifier(viewModel)` in `body` — a vmid mismatch = orphaned VM). (#536, same class as #529/#531's transient-VM-loses-state.) **Fix:** the destination view must **own** the VM via `@State` (first-value-wins: `_viewModel = State(wrappedValue: viewModel)`), so SwiftUI retains the first instance across destination re-invocations. Never `@Bindable` for a factory-built destination VM. This is a runtime-only bug — only an idb drive (often with network/ads active) catches it; offline it stays hidden.
 
 ## How to apply
 
