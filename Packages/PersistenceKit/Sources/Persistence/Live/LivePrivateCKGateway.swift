@@ -66,7 +66,25 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
     func save(_ payload: RecordPayload) async throws {
         let record = Self.record(from: payload, zoneID: zoneID)
         do {
-            _ = try await database.save(record)
+            // #544: last-write-wins. `database.save(record)` uses the default
+            // `.ifServerRecordUnchanged` policy, so writing a freshly-built
+            // (etag-less) `CKRecord` to a recordID that already exists is
+            // rejected with `serverRecordChanged` ("record to insert already
+            // exists"). That froze every move-save after the initial seed, so
+            // resume opened a blank board / ResumePill showed 0:00. A
+            // single-player resume save has no cross-device merge requirement,
+            // so use `.allKeys`, which overwrites the server record's fields
+            // regardless of its change-tag (creating it if absent) — the save
+            // always lands without a racy fetch-merge-retry.
+            let result = try await database.modifyRecords(
+                saving: [record],
+                deleting: [],
+                savePolicy: .allKeys,
+                atomically: true
+            )
+            if case .failure(let error) = result.saveResults[record.recordID] {
+                throw error
+            }
         } catch {
             throw Self.translate(error, recordName: record.recordID.recordName)
         }
