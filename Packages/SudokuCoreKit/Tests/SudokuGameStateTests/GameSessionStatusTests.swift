@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GameState
+ import SudokuGameState
 
 @Suite("GameSessionStatus state machine")
 struct GameSessionStatusTests {

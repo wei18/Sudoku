@@ -25,12 +25,12 @@ import Testing
 
 import GameCenterClient
 import GameCenterTesting
-import GameState
+import SudokuGameState
 import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
 import Persistence
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 

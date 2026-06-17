@@ -5,7 +5,7 @@
 
 import Foundation
 import Testing
-import GameState
+import SudokuGameState
 import SudokuEngine
 @testable import Persistence
 

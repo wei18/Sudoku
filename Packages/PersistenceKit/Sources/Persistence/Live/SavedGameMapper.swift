@@ -5,7 +5,7 @@
 // them via the injected `puzzleLoader` (a `puzzleId` is deterministic).
 
 internal import Foundation
-internal import GameState
+internal import SudokuGameState
 internal import SudokuEngine
 
 internal enum SavedGameMapper {

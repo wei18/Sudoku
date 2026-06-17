@@ -7,7 +7,7 @@ import Testing
 @testable import SudokuUI
 
 import Persistence
-import PuzzleStore
+import SudokuPersistence
 import SudokuKitTesting
 
 @MainActor

@@ -45,7 +45,7 @@ let package = Package(
             name: "Telemetry",
             dependencies: [
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
-                .product(name: "GameState", package: "SudokuCoreKit"),
+                .product(name: "SudokuGameState", package: "SudokuCoreKit"),
             ],
             swiftSettings: swiftSettings
         ),
@@ -67,7 +67,7 @@ let package = Package(
                 "Telemetry",
                 "TelemetryTesting",
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
-                .product(name: "GameState", package: "SudokuCoreKit"),
+                .product(name: "SudokuGameState", package: "SudokuCoreKit"),
             ],
             swiftSettings: swiftSettings
         ),

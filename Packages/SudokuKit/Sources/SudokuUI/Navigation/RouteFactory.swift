@@ -16,7 +16,7 @@ public import MonetizationCore
 public import MonetizationUI
 public import GameCenterClient
 public import Persistence
-public import PuzzleStore
+public import SudokuPersistence
 internal import SudokuEngine
 public import Telemetry
 public import GameShellUI

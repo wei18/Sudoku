@@ -11,7 +11,7 @@
 // returns empty defaults, which is all a zero-IO Preview/composition needs.
 
 public import Foundation
-public import GameState
+public import SudokuGameState
 public import Persistence
 public import SudokuEngine
 

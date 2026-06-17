@@ -13,7 +13,7 @@
 // Per impl-notes meetings/2026-05-20_wave-2-blocker-fixes.impl-notes.md §B2.
 
 import Foundation
-import GameState
+import SudokuGameState
 import SudokuEngine
 import Telemetry
 import Testing

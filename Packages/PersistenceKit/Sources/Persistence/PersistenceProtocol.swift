@@ -10,7 +10,7 @@
 // `any PersistenceProtocol` can cross actor boundaries (Phase 8 ViewModels).
 
 public import Foundation
-public import GameState
+public import SudokuGameState
 public import SudokuEngine
 
 public protocol PersistenceProtocol: Sendable {

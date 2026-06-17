@@ -9,7 +9,7 @@ import Foundation
 import Testing
 import SudokuEngine
 @testable import SudokuUI
-import PuzzleStore
+import SudokuPersistence
 
 @MainActor
 @Suite("GameViewModel — isLateCompletion (#228 B)")

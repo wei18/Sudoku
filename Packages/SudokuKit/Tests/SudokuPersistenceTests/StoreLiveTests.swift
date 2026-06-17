@@ -7,7 +7,7 @@
 
 import Foundation
 import Testing
-@testable import PuzzleStore
+ import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 

@@ -15,11 +15,11 @@
 public import MonetizationCore
 public import SwiftUI
 public import Persistence
-public import PuzzleStore
+public import SudokuPersistence
 public import Telemetry
 // #330 P2: the `SoundPlaying` seam forwarded into the live `GameViewModel`.
 public import GameAudio
-import GameState
+import SudokuGameState
 import SudokuEngine
 
 @MainActor

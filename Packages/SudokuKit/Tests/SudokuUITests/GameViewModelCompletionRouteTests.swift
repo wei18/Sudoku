@@ -9,10 +9,10 @@
 // observable data (the seam the host appends onto its navigation path).
 
 import Foundation
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 import Testing

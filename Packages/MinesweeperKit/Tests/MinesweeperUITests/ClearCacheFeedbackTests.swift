@@ -20,7 +20,7 @@ import Testing
 import MonetizationUI
 import Persistence
 import Telemetry
-import GameState
+import SudokuGameState
 import SudokuEngine
 
 @MainActor

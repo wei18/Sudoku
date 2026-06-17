@@ -257,7 +257,7 @@ duplicate → shared test covers it → snapshot gate green.
 
 ## 8. Open questions for the next session
 
-- **[OQ-A1]** file-naming inside `<Game>UI`: prefix-none vs prefix-all.
+- **[OQ-A1]** ~~file-naming inside `<Game>UI`: prefix-none vs prefix-all.~~ **RESOLVED: prefix-none.** Sudoku's `SudokuUI` source files carry no per-file prefix (e.g. `GameViewModel.swift`, not `SudokuGameViewModel.swift`). The `<Game>` prefix is already encoded at the *target/module* level (`SudokuUI`, `MinesweeperUI`). Adding a redundant per-file prefix inside the module would be verbose without adding disambiguation value. No file churn required for Pillar A; existing SudokuUI filenames are conformant.
 - **[OQ-B1]** audit which `Live.swift` injected values are genuinely per-game.
 - **[OQ-C1]** finalize `GameConfig` fields + keep it dep-clean (closures over deps).
 - Sequencing: land Pillar A (rename) early as a mechanical PR, or bundle per extraction?

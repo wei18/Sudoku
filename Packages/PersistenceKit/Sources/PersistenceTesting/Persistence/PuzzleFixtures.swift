@@ -5,7 +5,7 @@
 
 import Foundation
 public import SudokuEngine
-internal import GameState
+internal import SudokuGameState
 
 public enum PuzzleFixtures {
 

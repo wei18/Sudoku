@@ -19,9 +19,9 @@
 public import Foundation
 import IssueReporting
 public import GameAudio
-public import GameState
+public import SudokuGameState
 public import Persistence
-public import PuzzleStore
+public import SudokuPersistence
 public import SudokuEngine
 public import Telemetry
 

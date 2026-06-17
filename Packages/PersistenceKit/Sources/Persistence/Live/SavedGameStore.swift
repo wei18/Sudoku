@@ -12,7 +12,7 @@
 // `PuzzleStore.puzzle(for:)`.
 
 internal import Foundation
-internal import GameState
+internal import SudokuGameState
 internal import SudokuEngine
 internal import Telemetry
 

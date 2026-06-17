@@ -16,9 +16,9 @@
 #if DEBUG
 
 import Foundation
-import GameState
+import SudokuGameState
 import SudokuEngine
-import PuzzleStore
+import SudokuPersistence
 import Persistence
 import Telemetry
 

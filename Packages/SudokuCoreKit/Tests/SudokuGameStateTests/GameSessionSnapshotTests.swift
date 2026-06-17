@@ -1,7 +1,7 @@
 import Foundation
 import SudokuEngine
 import Testing
-@testable import GameState
+ import SudokuGameState
 
 @Suite("GameSession snapshot + telemetry coverage")
 struct GameSessionSnapshotTests {

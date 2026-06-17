@@ -23,7 +23,7 @@
 // M5 (issue #65): mode / difficulty are typed `Mode` / `Difficulty`
 // (no more `.rawValue` conversion at the construction site).
 
-public import GameState
+public import SudokuGameState
 public import SudokuEngine
 
 public struct GameStateTelemetryAdapter: GameStateTelemetry {

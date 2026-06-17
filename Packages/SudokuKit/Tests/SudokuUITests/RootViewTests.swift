@@ -17,7 +17,7 @@ import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTest
 import MonetizationCore
 import MonetizationTesting
 import Persistence
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 import Telemetry

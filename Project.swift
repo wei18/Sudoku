@@ -71,7 +71,7 @@ let sudokuTarget = Target.target(
     entitlements: .file(path: "App/Sudoku/Sudoku.entitlements"),
     dependencies: [
         .package(product: "SudokuUI"),
-        .package(product: "AppComposition"),
+        .package(product: "SudokuAppComposition"),
         // v2.3.2: explicit App-target links so Google Mobile Ads + StoreKit2
         // bridge binaries are embedded in the .app bundle. AppComposition
         // already pulls these transitively, but Tuist surfaces them at the

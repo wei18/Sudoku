@@ -12,7 +12,7 @@
 import Foundation
 import Testing
 import GameCenterClient
-import GameState
+import SudokuGameState
 import Persistence
 import SudokuEngine
 import Telemetry

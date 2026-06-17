@@ -5,10 +5,10 @@
 // Spec: docs/superpowers/specs/2026-06-12-sdd-003-puzzle-platform-ux-refresh.md §Epic 9
 
 import Foundation
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 import Testing

@@ -15,10 +15,10 @@ import Foundation
 import SwiftUI
 import Testing
 
-import GameState
+import SudokuGameState
 import MonetizationCore
 import MonetizationTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 @testable import SudokuUI
 

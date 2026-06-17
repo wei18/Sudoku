@@ -22,7 +22,7 @@ import MonetizationTesting
 import MonetizationUI
 @testable import SudokuUI
 import SudokuKitTesting
-import PuzzleStore
+import SudokuPersistence
 
 @MainActor
 @Suite("Hub + Settings screens — BannerSlotView wiring (Epic 5)")

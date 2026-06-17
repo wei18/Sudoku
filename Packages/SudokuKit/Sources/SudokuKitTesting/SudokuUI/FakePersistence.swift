@@ -5,7 +5,7 @@
 // upfront; no CloudKit involvement.
 
 public import Foundation
-public import GameState
+public import SudokuGameState
 public import Persistence
 public import SudokuEngine
 

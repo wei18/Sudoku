@@ -16,7 +16,7 @@
 import Foundation
 import Testing
 @testable import MinesweeperUI
-import GameState
+import SudokuGameState
 import MinesweeperEngine
 import Persistence
 import PersistenceTesting

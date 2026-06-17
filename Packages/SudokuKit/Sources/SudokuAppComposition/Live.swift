@@ -28,7 +28,7 @@ internal import IAPStoreKit2
 internal import MonetizationCore
 internal import MonetizationUI
 internal import Persistence
-internal import PuzzleStore
+internal import SudokuPersistence
 internal import Reminders
 // refactor/settingskit-target: `ReminderSettingsModel` / `ReminderPermissionModel`
 // + the primer/section/denied copy types + `SettingsNoticesConfig` moved out of
