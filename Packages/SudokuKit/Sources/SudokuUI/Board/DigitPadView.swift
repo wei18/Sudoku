@@ -93,37 +93,29 @@ struct DigitPadView: View {
         // Each digit shares the available horizontal width equally so the
         // 9-button row never exceeds the parent at iPhone compact widths.
         //
-        // #540: at large / accessibility text sizes the digit glyph rendered
-        // BLANK — empty pills. Root cause: the digit overflows VERTICALLY. At
-        // AX sizes the glyph is ~50–60 pt tall, but the `.bordered` pill is
-        // ~44 pt; the bare `frame(minHeight: 44)` set only a FLOOR (no ceiling)
-        // so the Text was proposed effectively unbounded height, never scaled,
-        // grew to full AX height, and was clipped top-and-bottom to nothing. A
-        // plain width-based `minimumScaleFactor` cannot fix a height overflow.
-        //
-        // Fix (no environment read): bound the glyph to a CEILING height
-        // (`maxHeight: 28`, comfortably inside the 44 pt pill) so
-        // `minimumScaleFactor` has a concrete box to scale the digit DOWN into,
-        // with a `0.3` floor so it always renders at a visible size. At default
-        // text size the digit's natural height is already < 28 pt, so no
-        // scaling occurs and the digit stays centred — snapshot baseline
-        // preserved. `.lineLimit(1)` is required for minimumScaleFactor to
-        // engage on a single-line label.
+        // #540: at accessibility text sizes the digit glyph rendered BLANK —
+        // empty pills. Root cause: a single digit overflows VERTICALLY (glyph
+        // ~50–60 pt tall in a ~44 pt `.bordered` pill) and gets clipped to
+        // nothing. `minimumScaleFactor` is WIDTH-driven and never engages for a
+        // 1-char string, so it can't rescue a height overflow. Fix: cap the
+        // pad's Dynamic Type at `.xLarge` so the digits stay legible inside the
+        // 44 pt pill regardless of the system AX setting (compact numeric
+        // control convention). The cap only clamps sizes ABOVE `.xLarge`, so
+        // the default `.large` rendering — and every committed snapshot — is
+        // byte-identical. The board CELLS are unaffected and keep scaling.
         HStack(spacing: 6) {
             ForEach(1...9, id: \.self) { digit in
                 Button {
                     onDigit(digit)
                 } label: {
                     Text("\(digit)")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.3)
-                        .frame(maxWidth: .infinity, maxHeight: 28)
-                        .frame(minHeight: 44)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Digit \(digit)")
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     // MARK: - Mac (regular) layout

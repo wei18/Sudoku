@@ -30,10 +30,18 @@ extension BoardView {
         // ViewThatFits proposes each candidate the offered width and renders
         // the FIRST that fits without overflow. Order matters: single-row
         // first (preferred + matches existing baseline), two-row fallback.
+        //
+        // #540: cap the chrome's Dynamic Type at `.xLarge` so the difficulty /
+        // timer labels can't scale tall enough to clip off the leading edge at
+        // accessibility sizes (the same compact-control cap the digit pad uses).
+        // The cap only clamps sizes ABOVE `.xLarge`, so default `.large` — and
+        // every committed snapshot — is byte-identical. The board CELLS keep
+        // scaling for puzzle readability; only this compact header is capped.
         ViewThatFits(in: .horizontal) {
             singleRowHeader
             twoRowHeader
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     // Single-row layout — identical structure to the pre-#540 header, so when

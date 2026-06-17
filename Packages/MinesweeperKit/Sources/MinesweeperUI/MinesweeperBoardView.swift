@@ -411,11 +411,17 @@ public struct MinesweeperBoardView: View {
     // a two-row VStack when the enlarged labels would overflow. At default
     // sizes the single row always fits → snapshot baselines unchanged.
     private var statusBar: some View {
+        // #540: cap the status bar's Dynamic Type at `.xLarge` so the mine
+        // count / status / elapsed fields can't scale tall enough to clip off
+        // the leading edge at accessibility sizes (mirrors Sudoku's board
+        // header + digit-pad cap). Clamps only ABOVE `.xLarge`, so default
+        // `.large` — and the committed MS snapshots — are byte-identical.
         ViewThatFits(in: .horizontal) {
             singleRowStatusBar
             twoRowStatusBar
         }
         .font(.subheadline)
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     // Single row — identical structure to the pre-#540 status bar, so the
