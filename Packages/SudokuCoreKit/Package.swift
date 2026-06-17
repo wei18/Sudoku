@@ -13,7 +13,7 @@ let swiftSettings: [SwiftSetting] = [
 // MARK: - Production targets
 //
 // SudokuCoreKit holds the pure-Swift core extracted from SudokuKit per the
-// 2026-05-26 module-split decision. Rationale: SudokuEngine + GameState only
+// 2026-05-26 module-split decision. Rationale: SudokuEngine + SudokuGameState only
 // import `Foundation`, have no Apple-framework dependencies, and are dep'd by
 // Telemetry. Hoisting them out of SudokuKit into a sibling local package
 // breaks the package-level coupling that previously prevented a future

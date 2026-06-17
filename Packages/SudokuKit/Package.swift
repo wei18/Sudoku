@@ -196,7 +196,7 @@ let productionTargets: [Target] = [
 
 func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
     // Generic helper for test targets without a `resources:` block.
-    // SudokuUITests + AppCompositionTests are carved out below because they
+    // SudokuUITests + SudokuAppCompositionTests are carved out below because they
     // need explicit `resources:` declarations (issue #188 — bundle snapshot
     // baselines via Bundle.module so XCC's distributed test runner can find
     // them at runtime).
@@ -263,7 +263,7 @@ let testTargets: [Target] = [
         resources: [.copy("__Snapshots__")],
         swiftSettings: swiftSettings
     ),
-    // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
+    // SudokuAppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
     // `MonetizationBootCoordinator` directly with recording bridges.
     //
     // Direct .testTarget (vs the `testTarget()` helper above) because we need
