@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-#MISE description="Regenerate the AppCompositionTests PrivacyInfo fixture as a byte-copy of the shipping Sudoku manifest (kills hand-maintained drift; issue #361 group C)."
+#MISE description="Regenerate the SudokuAppCompositionTests PrivacyInfo fixture as a byte-copy of the shipping Sudoku manifest (kills hand-maintained drift; issue #361 group C)."
 set -euo pipefail
 
-# The AppCompositionTests SwiftPM target lives OUTSIDE the App target, so
+# The SudokuAppCompositionTests SwiftPM target lives OUTSIDE the App target, so
 # PrivacyManifestTests reads its `PrivacyInfo.xcprivacy` via Bundle.module
 # (the source tree isn't present on the Xcode Cloud test runner). That bundled
 # copy must stay a byte-for-byte mirror of the shipping manifest, or the
@@ -12,7 +12,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SRC="$REPO_ROOT/App/Sudoku/Resources/PrivacyInfo.xcprivacy"
-DST="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/PrivacyInfo.xcprivacy"
+DST="$REPO_ROOT/Packages/SudokuKit/Tests/SudokuAppCompositionTests/Resources/PrivacyInfo.xcprivacy"
 
 cp "$SRC" "$DST"
 echo "Regenerated fixture: $DST (byte-copy of $SRC)"

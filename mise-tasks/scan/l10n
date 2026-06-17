@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="L10n completeness + AppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper + Tiles2048) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
+#MISE description="L10n completeness + SudokuAppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper + Tiles2048) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -58,10 +58,10 @@ check_catalog "$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings" "Sudoku"
 check_catalog "$REPO_ROOT/App/Minesweeper/Resources/Localizable.xcstrings" "Minesweeper"
 check_catalog "$REPO_ROOT/App/Tiles2048/Resources/Localizable.xcstrings" "Tiles2048"
 
-# 3) The AppCompositionTests SwiftPM fixture must be a byte-copy of the shipping
+# 3) The SudokuAppCompositionTests SwiftPM fixture must be a byte-copy of the shipping
 #    Sudoku catalog (no hand-edited drift). Regenerate via `mise run
 #    gen:l10n_fixture` if this fails.
-FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/Localizable.xcstrings.json"
+FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/SudokuAppCompositionTests/Resources/Localizable.xcstrings.json"
 SUDOKU="$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings"
 if [ -f "$FIXTURE" ] && [ -f "$SUDOKU" ]; then
   if ! cmp -s "$FIXTURE" "$SUDOKU"; then
@@ -76,7 +76,7 @@ fi
 # 4) Same byte-copy guard for the PrivacyInfo manifest fixture (PrivacyManifestTests
 #    reads the bundled copy via Bundle.module). Regenerate via `mise run
 #    gen:privacy_fixture` if this fails.
-PRIVACY_FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/AppCompositionTests/Resources/PrivacyInfo.xcprivacy"
+PRIVACY_FIXTURE="$REPO_ROOT/Packages/SudokuKit/Tests/SudokuAppCompositionTests/Resources/PrivacyInfo.xcprivacy"
 PRIVACY_SRC="$REPO_ROOT/App/Sudoku/Resources/PrivacyInfo.xcprivacy"
 if [ -f "$PRIVACY_FIXTURE" ] && [ -f "$PRIVACY_SRC" ]; then
   if ! cmp -s "$PRIVACY_FIXTURE" "$PRIVACY_SRC"; then
