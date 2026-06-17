@@ -80,6 +80,8 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
                 saving: [record],
                 deleting: [],
                 savePolicy: .allKeys,
+                // Single record → `atomically` is a no-op; kept so a future
+                // multi-record caller of this helper is atomic by default.
                 atomically: true
             )
             if case .failure(let error) = result.saveResults[record.recordID] {
