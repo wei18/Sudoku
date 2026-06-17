@@ -1,6 +1,6 @@
 import Testing
 @testable import Telemetry
-import GameState
+import SudokuGameState
 import SudokuEngine
 import TelemetryTesting
 

@@ -10,7 +10,7 @@
 import Foundation
 import SudokuEngine
 import Testing
-@testable import GameState
+ import SudokuGameState
 
 @Suite("GameSession mistakeCount (#SDD-003 Epic 3)")
 struct GameSessionMistakeCountTests {

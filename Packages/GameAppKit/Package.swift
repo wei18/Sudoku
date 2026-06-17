@@ -60,7 +60,7 @@ let testTargets: [Target] = [
             // construct a `SavedGameSummary` fixture; GameState for
             // `GameSessionSnapshot` in the inline `PersistenceProtocol` stub.
             .product(name: "SudokuEngine", package: "SudokuCoreKit"),
-            .product(name: "GameState", package: "SudokuCoreKit"),
+            .product(name: "SudokuGameState", package: "SudokuCoreKit"),
         ],
         swiftSettings: swiftSettings
     ),

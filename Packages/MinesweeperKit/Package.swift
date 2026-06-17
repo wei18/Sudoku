@@ -197,7 +197,7 @@ let testTargets: [Target] = [
             .product(name: "PersistenceTesting", package: "PersistenceKit"),
             // #530: offline-hub fake actors implement PersistenceProtocol, whose
             // method signatures use `Mode` / `GameSessionSnapshot` from SudokuCoreKit.
-            .product(name: "GameState", package: "SudokuCoreKit"),
+            .product(name: "SudokuGameState", package: "SudokuCoreKit"),
             .product(name: "SudokuEngine", package: "SudokuCoreKit"),
             // #455 step 4: persist-hook tests drive the VM's saved-game seam
             // against the fake gateway.
@@ -275,7 +275,7 @@ let package = Package(
         // #530: MinesweeperUITests offline-hub fakes conform PersistenceProtocol,
         // which uses `Mode` / `GameSessionSnapshot` from SudokuCoreKit. Already
         // an indirect dep via PersistenceKit; promoted to direct so MinesweeperUITests
-        // can `import GameState` / `import SudokuEngine` under InternalImportsByDefault.
+        // can `import SudokuGameState` / `import SudokuEngine` under InternalImportsByDefault.
         .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
         // #278 Tier-1 Phase 2b: snapshot baselines for the themed MS board.
         // Same version pin as SudokuKit/Package.swift.

@@ -11,7 +11,7 @@
 // facade is exposed.
 
 public import Foundation
-public import GameState
+public import SudokuGameState
 public import SudokuEngine
 public import Telemetry
 

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import GameCenterClient
 import Persistence
-import GameState
+import SudokuGameState
 import SudokuEngine
 import Telemetry
 import GameCenterTesting

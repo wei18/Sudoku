@@ -7,7 +7,7 @@
 public import Foundation
 public import SwiftUI
 import GameShellUI
-public import PuzzleStore
+public import SudokuPersistence
 public import Persistence
 public import SudokuEngine
 public import Telemetry

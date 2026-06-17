@@ -8,7 +8,7 @@
 // become `async` everywhere downstream just to satisfy the fake.
 
 internal import Foundation
-public import PuzzleStore
+public import SudokuPersistence
 public import SudokuEngine
 
 public final class FakeGenerator: PuzzleGenerating, @unchecked Sendable {

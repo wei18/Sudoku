@@ -5,7 +5,7 @@
 // `setDailyTrioResult` / `setPracticeResult`.
 
 public import Foundation
-public import PuzzleStore
+public import SudokuPersistence
 public import SudokuEngine
 internal import PersistenceTesting  // PuzzleFixtures (Stage 3 carve-out)
 

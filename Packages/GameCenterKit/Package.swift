@@ -69,7 +69,7 @@ let package = Package(
                 "GameCenterClient",
                 "GameCenterTesting",
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
-                .product(name: "GameState", package: "SudokuCoreKit"),
+                .product(name: "SudokuGameState", package: "SudokuCoreKit"),
                 .product(name: "Telemetry", package: "TelemetryKit"),
                 .product(name: "Persistence", package: "PersistenceKit"),
             ],

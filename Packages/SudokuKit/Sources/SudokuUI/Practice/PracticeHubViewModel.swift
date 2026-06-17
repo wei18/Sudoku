@@ -8,7 +8,7 @@
 public import Foundation
 public import SwiftUI
 import GameShellUI
-public import PuzzleStore
+public import SudokuPersistence
 public import SudokuEngine
 
 public enum PracticeHubLoadingState: Sendable, Equatable {

@@ -9,9 +9,9 @@ import Foundation
 import Testing
 @testable import SudokuUI
 
-import GameState
+import SudokuGameState
 import Persistence
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 import Telemetry

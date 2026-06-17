@@ -13,7 +13,7 @@ import os
 import AdsAdMob
 import MonetizationCore
 import Telemetry
-@testable import AppComposition
+ import SudokuAppComposition
 
 @Suite("MonetizationBootCoordinator — UMP → ATT → AdMob ordering")
 struct BootOrderTests {

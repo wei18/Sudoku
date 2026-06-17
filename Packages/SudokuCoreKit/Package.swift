@@ -13,21 +13,21 @@ let swiftSettings: [SwiftSetting] = [
 // MARK: - Production targets
 //
 // SudokuCoreKit holds the pure-Swift core extracted from SudokuKit per the
-// 2026-05-26 module-split decision. Rationale: SudokuEngine + GameState only
+// 2026-05-26 module-split decision. Rationale: SudokuEngine + SudokuGameState only
 // import `Foundation`, have no Apple-framework dependencies, and are dep'd by
 // Telemetry. Hoisting them out of SudokuKit into a sibling local package
 // breaks the package-level coupling that previously prevented a future
 // Telemetry-only extraction. See `docs/foundations.md §2`.
 //
 // Dep direction (inside SudokuCoreKit):
-//   SudokuEngine  → TimeKit (shared UTCDay leaf, #305),
-//                   DeterminismKit (shared SplitMix64/DeterministicRNG, #446)
-//   GameState     → SudokuEngine, TimeKit (shared MonotonicClock leaf, #446)
+//   SudokuEngine     → TimeKit (shared UTCDay leaf, #305),
+//                      DeterminismKit (shared SplitMix64/DeterministicRNG, #446)
+//   SudokuGameState  → SudokuEngine, TimeKit (shared MonotonicClock leaf, #446)
 //
 // SudokuEngine re-exports TimeKit's `UTCDay` and DeterminismKit's
 // `SplitMix64`/`DeterministicRNG` (`@_exported import`) so existing consumers
 // that `import SudokuEngine` keep reaching those symbols unchanged after the
-// #305 / #446 extractions. GameState re-exports TimeKit's `MonotonicClock`
+// #305 / #446 extractions. SudokuGameState re-exports TimeKit's `MonotonicClock`
 // for the same reason (#446).
 
 let productionTargets: [Target] = [
@@ -40,7 +40,7 @@ let productionTargets: [Target] = [
         swiftSettings: swiftSettings
     ),
     .target(
-        name: "GameState",
+        name: "SudokuGameState",
         dependencies: [
             "SudokuEngine",
             .product(name: "TimeKit", package: "TimeKit"),
@@ -53,8 +53,8 @@ let productionTargets: [Target] = [
 
 let testTargets: [Target] = [
     .testTarget(name: "SudokuEngineTests", dependencies: ["SudokuEngine"], swiftSettings: swiftSettings),
-    // SudokuEngine pulled in transitively via GameState — no need to list explicitly.
-    .testTarget(name: "GameStateTests", dependencies: ["GameState"], swiftSettings: swiftSettings),
+    // SudokuEngine pulled in transitively via SudokuGameState — no need to list explicitly.
+    .testTarget(name: "SudokuGameStateTests", dependencies: ["SudokuGameState"], swiftSettings: swiftSettings),
 ]
 
 // MARK: - Package
@@ -67,7 +67,7 @@ let package = Package(
     ],
     products: [
         .library(name: "SudokuEngine", targets: ["SudokuEngine"]),
-        .library(name: "GameState", targets: ["GameState"]),
+        .library(name: "SudokuGameState", targets: ["SudokuGameState"]),
     ],
     dependencies: [
         .package(path: "../TimeKit"),

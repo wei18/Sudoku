@@ -11,10 +11,10 @@
 // from the puzzleId string, so both formats flow through this same path).
 
 import Foundation
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import Testing
 @testable import SudokuUI

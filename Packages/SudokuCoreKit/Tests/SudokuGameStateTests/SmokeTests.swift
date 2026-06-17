@@ -1,5 +1,5 @@
 import Testing
-@testable import GameState
+ import SudokuGameState
 
 @Suite("GameState smoke")
 struct GameStateSmokeTests {

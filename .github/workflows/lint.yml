@@ -136,7 +136,7 @@ jobs:
   l10n:
     name: L10n catalogs complete (no <TRANSLATE>, all 7 locales)
     # Guards both shipping catalogs (Sudoku + Minesweeper) and the
-    # AppCompositionTests fixture sync. Reads the real source tree, so it
+    # SudokuAppCompositionTests fixture sync. Reads the real source tree, so it
     # catches placeholders the Xcode Cloud distributed test runner can't.
     runs-on: ubuntu-latest
     steps:

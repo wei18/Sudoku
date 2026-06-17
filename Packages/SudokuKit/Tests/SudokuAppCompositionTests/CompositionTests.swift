@@ -12,7 +12,7 @@ import GameCenterClient
 import MonetizationCore
 import Persistence
 import SudokuKitTesting
-@testable import AppComposition
+ import SudokuAppComposition
 
 @MainActor
 @Suite("AppComposition — live / preview / tests wiring")

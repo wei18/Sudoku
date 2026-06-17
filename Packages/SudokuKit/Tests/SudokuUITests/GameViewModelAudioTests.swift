@@ -13,10 +13,10 @@
 import Foundation
 import GameAudio
 import GameAudioTesting
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import Testing
 @testable import SudokuUI

@@ -6,7 +6,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
 

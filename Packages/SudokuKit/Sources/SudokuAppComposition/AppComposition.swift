@@ -25,7 +25,7 @@ public import GameShellUI
 public import MonetizationCore
 public import MonetizationUI
 public import Persistence
-public import PuzzleStore
+public import SudokuPersistence
 public import SudokuUI
 public import SwiftUI
 public import Telemetry

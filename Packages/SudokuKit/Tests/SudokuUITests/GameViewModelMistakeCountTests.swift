@@ -5,10 +5,10 @@
 // path restores it from the persisted snapshot.
 
 import Foundation
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import Testing
 @testable import SudokuUI

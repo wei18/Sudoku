@@ -11,8 +11,8 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
-import GameState
-import PuzzleStore
+import SudokuGameState
+import SudokuPersistence
 import SudokuEngine
 
 @MainActor

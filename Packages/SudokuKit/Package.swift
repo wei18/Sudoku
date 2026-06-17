@@ -18,7 +18,7 @@ let swiftSettings: [SwiftSetting] = [
 // `.product(name:package:)` from SudokuCoreKit.
 
 let sudokuEngineDep: Target.Dependency = .product(name: "SudokuEngine", package: "SudokuCoreKit")
-let gameStateDep: Target.Dependency = .product(name: "GameState", package: "SudokuCoreKit")
+let gameStateDep: Target.Dependency = .product(name: "SudokuGameState", package: "SudokuCoreKit")
 // Telemetry extracted into sibling TelemetryKit package on 2026-05-26
 // (Stage 2 of the module split). See `docs/foundations.md §2`.
 let telemetryDep: Target.Dependency = .product(name: "Telemetry", package: "TelemetryKit")
@@ -62,12 +62,12 @@ let gameAppDep: Target.Dependency = .product(name: "GameAppKit", package: "GameA
 // MARK: - Production targets
 
 let productionTargets: [Target] = [
-    .target(name: "PuzzleStore", dependencies: [sudokuEngineDep, telemetryDep], swiftSettings: swiftSettings),
+    .target(name: "SudokuPersistence", dependencies: [sudokuEngineDep, telemetryDep], swiftSettings: swiftSettings),
     .target(
         name: "SudokuUI",
         dependencies: [
             gameStateDep,
-            "PuzzleStore",
+            "SudokuPersistence",
             persistenceDep,
             gameCenterClientDep,
             telemetryDep,
@@ -123,7 +123,7 @@ let productionTargets: [Target] = [
         dependencies: [
             sudokuEngineDep,
             gameStateDep,
-            "PuzzleStore",
+            "SudokuPersistence",
             persistenceDep,
             .product(name: "PersistenceTesting", package: "PersistenceKit"),
             gameCenterClientDep,
@@ -136,11 +136,11 @@ let productionTargets: [Target] = [
     // its public surface). Keeps the DI plumbing inside the SwiftPM package
     // where it's testable.
     .target(
-        name: "AppComposition",
+        name: "SudokuAppComposition",
         dependencies: [
             sudokuEngineDep,
             gameStateDep,
-            "PuzzleStore",
+            "SudokuPersistence",
             persistenceDep,
             gameCenterClientDep,
             telemetryDep,
@@ -196,7 +196,7 @@ let productionTargets: [Target] = [
 
 func testTarget(_ name: String, dependencies: [Target.Dependency]) -> Target {
     // Generic helper for test targets without a `resources:` block.
-    // SudokuUITests + AppCompositionTests are carved out below because they
+    // SudokuUITests + SudokuAppCompositionTests are carved out below because they
     // need explicit `resources:` declarations (issue #188 — bundle snapshot
     // baselines via Bundle.module so XCC's distributed test runner can find
     // them at runtime).
@@ -221,7 +221,7 @@ let monetizationTestDeps: [Target.Dependency] = [
 ]
 
 let testTargets: [Target] = [
-    testTarget("PuzzleStore", dependencies: ["PuzzleStore", telemetryTestingDep]),
+    testTarget("SudokuPersistence", dependencies: ["SudokuPersistence", telemetryTestingDep]),
     // SudokuUITests carved out of the `testTarget()` helper because it needs
     // `__Snapshots__/` declared as a bundle resource. PR #185 wired the
     // Sudoku scheme's testAction via .xctestplan, surfacing that
@@ -263,7 +263,7 @@ let testTargets: [Target] = [
         resources: [.copy("__Snapshots__")],
         swiftSettings: swiftSettings
     ),
-    // AppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
+    // SudokuAppCompositionTests pulls in AdsAdMob so v2.3.7 BootOrderTests can drive
     // `MonetizationBootCoordinator` directly with recording bridges.
     //
     // Direct .testTarget (vs the `testTarget()` helper above) because we need
@@ -277,9 +277,9 @@ let testTargets: [Target] = [
     // them — see the `resources:` block below) lets
     // Bundle.module.url(forResource:) find them at runtime, anywhere.
     .testTarget(
-        name: "AppCompositionTests",
+        name: "SudokuAppCompositionTests",
         dependencies: [
-            "AppComposition",
+            "SudokuAppComposition",
             persistenceDep,
             gameCenterClientDep,
             gameCenterTestingDep,
@@ -315,10 +315,10 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "PuzzleStore", targets: ["PuzzleStore"]),
+        .library(name: "SudokuPersistence", targets: ["SudokuPersistence"]),
         .library(name: "SudokuUI", targets: ["SudokuUI"]),
         .library(name: "SudokuKitTesting", targets: ["SudokuKitTesting"]),
-        .library(name: "AppComposition", targets: ["AppComposition"]),
+        .library(name: "SudokuAppComposition", targets: ["SudokuAppComposition"]),
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),

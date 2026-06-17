@@ -18,10 +18,10 @@
 //   3. multiple pause/resume cycles keep elapsed monotonically correct (no jump)
 
 import Foundation
-import GameState
+import SudokuGameState
 import Persistence
 import PersistenceTesting
-import PuzzleStore
+import SudokuPersistence
 import SudokuEngine
 import Testing
 @testable import SudokuUI

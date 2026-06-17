@@ -1,5 +1,5 @@
 import Testing
-@testable import PuzzleStore
+ import SudokuPersistence
 
 @Suite("PuzzleStore smoke")
 struct PuzzleStoreSmokeTests {
