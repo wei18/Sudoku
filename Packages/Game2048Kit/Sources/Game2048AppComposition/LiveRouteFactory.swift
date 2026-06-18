@@ -84,24 +84,27 @@ public struct LiveRouteFactory: RouteFactory {
         case .board(let seed, let mode):
             // SDD-003 Epic 1 / #491 / #559: two-context board contract delegated
             // to shared `boardDestination` helper in GameAppKit.
-            // Build a fully-wired VM (with persistence + GC seams), then hand
-            // the VM to the view. This keeps Game2048BoardView's public surface
-            // minimal — it always takes a pre-built VM, not raw seed+mode+deps.
-            let recordName = Game2048SavedGameStore.recordName(modeRaw: mode.rawValue)
-            let viewModel = Game2048GameViewModel(
-                seed: seed,
-                mode: mode,
-                gameCenter: gameCenter,
-                errorReporter: errorReporter,
-                store: savedGameStore,
-                recordName: savedGameStore != nil ? recordName : nil
-            )
             return boardDestination(
                 route: route,
                 path: path,
                 onPresentBoard: onPresentBoard
             ) {
-                AnyView(
+                // Build the fully-wired VM ONLY on the inline path. CR #570 F1:
+                // `Game2048GameViewModel.init` spawns tiles via the RNG, so
+                // constructing it eagerly before `boardDestination` would waste
+                // that work on every redirect push — preserves main's
+                // lazy-construction invariant. Game2048BoardView always takes a
+                // pre-built VM (minimal public surface).
+                let recordName = Game2048SavedGameStore.recordName(modeRaw: mode.rawValue)
+                let viewModel = Game2048GameViewModel(
+                    seed: seed,
+                    mode: mode,
+                    gameCenter: self.gameCenter,
+                    errorReporter: self.errorReporter,
+                    store: self.savedGameStore,
+                    recordName: self.savedGameStore != nil ? recordName : nil
+                )
+                return AnyView(
                     Game2048BoardView(
                         viewModel: viewModel,
                         adProvider: self.adProvider,

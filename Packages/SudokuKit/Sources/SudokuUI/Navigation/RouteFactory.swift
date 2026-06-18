@@ -182,13 +182,12 @@ public struct LiveRouteFactory: RouteFactory {
                     banner: { themedBanner() }
                 )
             )
-        case .board:
+        case .board(let puzzleId):
             // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
             // the shared `boardDestination` helper in GameAppKit.
             //   push context  (path != nil): redirect → fullScreenCover modal.
             //   modal context (path == nil): fall through to real board view.
             // Legacy push path (onPresentBoard == nil) falls through to inline.
-            guard case .board(let puzzleId) = route else { return AnyView(EmptyView()) }
             return boardDestination(
                 route: route,
                 path: path,
