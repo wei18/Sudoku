@@ -42,6 +42,11 @@ let productionTargets: [Target] = [
             .product(name: "GameShellUI", package: "GameShellKit"),
             .product(name: "Reminders", package: "RemindersKit"),
             .product(name: "GameAudio", package: "GameAudioKit"),
+            // #556 SDD-005 Pillar B: `ReminderPrimerCoordinator` moved here from
+            // SudokuUI so GameAppKit can reference it in `GameDeps` without a
+            // module cycle. The coordinator emits `TelemetryEvent` via an injected
+            // closure — this dep is for the `TelemetryEvent` value type only.
+            .product(name: "Telemetry", package: "TelemetryKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -80,6 +85,9 @@ let package = Package(
         .package(name: "GameShellKit", path: "../GameShellKit"),
         .package(name: "RemindersKit", path: "../RemindersKit"),
         .package(name: "GameAudioKit", path: "../GameAudioKit"),
+        // #556 SDD-005 Pillar B: `ReminderPrimerCoordinator` moved here; it emits
+        // `TelemetryEvent` via an injected closure — TelemetryKit for the type only.
+        .package(name: "TelemetryKit", path: "../TelemetryKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

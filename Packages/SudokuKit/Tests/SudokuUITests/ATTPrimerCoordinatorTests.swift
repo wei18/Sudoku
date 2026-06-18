@@ -11,6 +11,8 @@
 import Foundation
 import Testing
 import os
+// #556: `ATTPrimerCoordinator` moved from SudokuUI to MonetizationUI.
+import MonetizationUI
 @testable import SudokuUI
 
 @MainActor

@@ -11,7 +11,11 @@
 // App/Sudoku/Resources/Localizable.xcstrings (7 locales). NOT in Minesweeper's
 // catalog — this sheet is Sudoku-only.
 
-public import SwiftUI
+internal import SwiftUI
+// #556 SDD-005 Pillar B: `ATTPrimerCoordinator` moved to `MonetizationUI` so
+// GameAppKit can reference it without a SudokuUI → GameAppKit → SudokuUI cycle.
+// Internal: nothing in this file is part of SudokuUI's public surface.
+internal import MonetizationUI
 
 @MainActor
 struct ATTPrimerSheet: View {

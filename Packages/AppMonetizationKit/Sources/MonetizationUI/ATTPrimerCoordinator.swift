@@ -1,21 +1,22 @@
-// ATTPrimerCoordinator — Sudoku ATT pre-prompt (priming) flow (#371 / #195).
+// ATTPrimerCoordinator — ATT pre-prompt (priming) coordinator.
+//
+// Moved from SudokuKit/Sources/SudokuUI/Monetization/ into MonetizationUI
+// (#556 SDD-005 Pillar B) so GameAppKit can reference it in `GameDeps` without
+// creating a SudokuUI → GameAppKit → SudokuUI module cycle.
 //
 // design.md §How.4: the ATT system dialog must NOT fire at cold launch. It must
 // appear after the user has seen Home AND at the first moment a personalized ad
-// would actually matter (lazy / contextual). The trigger seam is the Sudoku
+// would actually matter (lazy / contextual). The trigger seam is the game's
 // `BannerSlotView` load path (gate open == an ad is about to load == the first
 // ad-relevant moment), which calls `maybePresentOnAdContext()`.
 //
-// Path-B framing (docs/marketing/appstore-copy/path-b-copy-correction.md): the
-// priming sheet explains "ads stay relevant, not a profile; decline still works,
-// or remove ads", THEN "Continue" leads into the system ATT dialog. "Not now"
-// dismisses without requesting.
+// Path-B framing: the priming sheet explains "ads stay relevant, not a profile;
+// decline still works, or remove ads", THEN "Continue" leads into the system
+// ATT dialog. "Not now" dismisses without requesting.
 //
-// Isolation: SudokuUI must NOT import AdsAdMob (foundations.md §9.1 — only
-// `MonetizationCore`). The two ATT touch points (read status / present prompt)
-// are injected as closures; `AppComposition` (which depends on AdsAdMob) wires
-// them to `ATTPresenter`. Mirrors `ReminderPrimerCoordinator`'s closure-injected
-// telemetry seam.
+// Isolation: the two ATT touch points (read status / present prompt) are injected
+// as closures; `AppComposition` (which depends on AdsAdMob) wires them to
+// `ATTPresenter`. MonetizationUI itself never imports AppTrackingTransparency.
 
 public import SwiftUI
 
@@ -28,7 +29,7 @@ public final class ATTPrimerCoordinator {
     public var isPrimerPresented = false
 
     /// Returns `true` only while the system has not yet asked for ATT. Injected
-    /// so SudokuUI never imports AppTrackingTransparency / AdsAdMob.
+    /// so this type never imports AppTrackingTransparency / AdsAdMob.
     @ObservationIgnored private let isNotDetermined: @Sendable () async -> Bool
 
     /// Presents the system ATT dialog (no-op on any non-`.notDetermined` state).
