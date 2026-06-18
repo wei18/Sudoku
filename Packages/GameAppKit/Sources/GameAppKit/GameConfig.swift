@@ -147,6 +147,27 @@ public struct ReminderContentConfig {
     }
 }
 
+// MARK: - HomeModeContent
+
+/// Per-game content for one `HomeMode` card in `GameHomeView`.
+///
+/// `subtitleKey` resolves from `Bundle.main` (the app's own catalog), exactly
+/// as the prior per-game `HomeViewModel.subtitleKey` private extensions did.
+/// `route` is the navigation push for Daily / Practice / Settings; `nil` means
+/// the mode produces a side-effect rather than a push (Leaderboard → GC
+/// dashboard), so `GameHomeViewModel.select(_:)` handles it specially.
+public struct HomeModeContent<Route: Hashable & Sendable> {
+    /// App-specific subtitle shown below the mode title on the Home card.
+    public let subtitleKey: LocalizedStringKey
+    /// Navigation push for this mode, or `nil` for the leaderboard side-effect.
+    public let route: Route?
+
+    public init(subtitleKey: LocalizedStringKey, route: Route? = nil) {
+        self.subtitleKey = subtitleKey
+        self.route = route
+    }
+}
+
 // MARK: - GameConfig
 
 /// Per-game content bag + builder closures for `makeGameApp(config:)`.
@@ -185,6 +206,16 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// Optional `SettingsNoticesConfig` — wired by each game's composition root
     /// (some games may not have a Notices section yet).
     public let settingsNotices: SettingsNoticesConfig?
+    /// Per-mode home card content: subtitle copy + navigation route (or nil for
+    /// leaderboard side-effect). `GameHomeView` builds its `HomeModeItem` array
+    /// from this map. Missing modes fall back to an empty subtitle and no route.
+    public let homeModes: [HomeMode: HomeModeContent<Route>]
+    /// Presents the game's native Game Center leaderboard UI. Called by
+    /// `GameHomeViewModel.select(.leaderboard)` when GC is authenticated. Each
+    /// game supplies its own `GameCenterDashboard.present()` implementation since
+    /// the GK controller is not shared. `nil` → no-op (games without a leaderboard
+    /// surface, or during migration).
+    public let presentLeaderboard: (@MainActor () -> Void)?
 
     // MARK: Builder closures
 
@@ -198,6 +229,9 @@ public struct GameConfig<Route: Hashable & Sendable> {
 
     /// Builds the per-game home view, wrapped as `AnyView` for type erasure.
     /// Called once per root mount; captures the wired deps + rootVM.
+    /// Superseded by the universal `GameHomeView` built from `homeModes` in
+    /// `makeGameApp` (#557). Retained for API compatibility during migration of
+    /// MS and 2048; `makeGameApp` ignores this once `homeModes` is non-empty.
     public let makeHome: @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView
 
     /// Deep-link a tapped reminder. The param is the notification identifier
@@ -218,6 +252,8 @@ public struct GameConfig<Route: Hashable & Sendable> {
         audio: AudioConfig,
         reminders: ReminderContentConfig,
         settingsNotices: SettingsNoticesConfig? = nil,
+        homeModes: [HomeMode: HomeModeContent<Route>] = [:],
+        presentLeaderboard: (@MainActor () -> Void)? = nil,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
         makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
@@ -235,6 +271,8 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.audio = audio
         self.reminders = reminders
         self.settingsNotices = settingsNotices
+        self.homeModes = homeModes
+        self.presentLeaderboard = presentLeaderboard
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory
         self.makeHome = makeHome

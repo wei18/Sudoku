@@ -23,8 +23,10 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
+import GameAppKit
 import GameCenterClient
 import GameCenterTesting
+import GameShellUI
 import SudokuGameState
 import MonetizationCore
 import MonetizationTesting
@@ -137,12 +139,50 @@ struct ASCScreenshotEmitTests {
         .formStyle(.grouped)
     }
 
+    // MARK: - Fixtures
+
+    // #557: HomeView/HomeViewModel retired; home screenshot now uses GameHomeView
+    // constructed from the same Sudoku mode content as Live.swift.
+    private static let sudokuHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
+        .daily: HomeModeContent<AppRoute>(subtitleKey: "3 puzzles today", route: .daily),
+        .practice: HomeModeContent<AppRoute>(subtitleKey: "Mixed difficulty pool", route: .practice),
+        .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends"),
+        .settings: HomeModeContent<AppRoute>(subtitleKey: "Account / language", route: .settings)
+    ]
+
+    private func homeView() -> some View {
+        let rootVM = RootViewModel(
+            gameCenter: FakeGameCenterClient(),
+            persistence: FakePersistence()
+        )
+        let homeVM = GameHomeViewModel(
+            rootViewModel: rootVM,
+            homeModes: Self.sudokuHomeModes
+        )
+        return GameHomeView(
+            viewModel: homeVM,
+            rootViewModel: rootVM,
+            title: "Sudoku",
+            adProvider: FakeAdProvider(),
+            adGate: AdGate(store: FakeAdGateStateStore(
+                initial: AdGateState(
+                    firstLaunchAt: Date(timeIntervalSince1970: 0),
+                    hasPurchasedRemoveAds: true
+                )
+            )),
+            attPrimer: ATTPrimerCoordinator(
+                isNotDetermined: { false },
+                requestSystemPrompt: {}
+            )
+        )
+    }
+
     // MARK: - iPhone 6.9" (1290×2796) — Home / Daily / Board / Completion / Settings
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPhone_home() throws {
         try emitASCScreenshot(
-            HomeView(viewModel: HomeViewModel()),
+            homeView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "01-home", background: Self.background
         )
@@ -189,7 +229,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_home() throws {
         try emitASCScreenshot(
-            HomeView(viewModel: HomeViewModel()),
+            homeView(),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "01-home", background: Self.background
         )
@@ -209,7 +249,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_mac_home() throws {
         try emitASCScreenshot(
-            HomeView(viewModel: HomeViewModel()),
+            homeView(),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
             slot: "01-home", background: Self.background
         )

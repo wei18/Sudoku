@@ -7,16 +7,17 @@
 //   - `.preview()` — SwiftUI Preview fakes (no IO).
 //   - `.tests()`   — Unit / snapshot test fakes (no IO).
 //
-// The App target depends only on this product; `SudokuApp.body` reads
-// the bag's properties and hands them to `RootView`.
+// The App target depends only on this product; `SudokuApp.body` mounts
+// `composition.rootView`, which (since #557) returns the shared view assembled
+// by `GameAppKit.makeGameApp` — Sudoku's bespoke `RootView`/`HomeView` are retired.
 //
-// Stored shape (v2.3.3):
-//   - `rootViewModel` + `routeFactory` are what `RootView.init` reads.
+// Stored shape:
+//   - `rootViewModel` + `routeFactory` come from the `makeGameAppWithDeps` handle
+//     (#556/#557).
 //   - The remaining protocol deps (puzzleProvider / persistence / gameCenter
 //     / telemetry / adProvider / iapClient / adGate) stay accessible on the
-//     bag for callers that need direct references (e.g. App-level boot order
-//     in v2.3.7, individual destination views that escape the RouteFactory
-//     such as HomeView's Game Center modal callback in v2.3.4-6).
+//     bag for callers that need direct references (e.g. App-level boot order,
+//     CompositionTests / BootOrderTests).
 
 internal import AdsAdMob
 internal import Foundation
@@ -62,56 +63,32 @@ public struct AppComposition {
     // and restore (and on out-of-band `purchaseUpdates()` events).
     public let toastController: ToastController
     // #371 / #195: ATT pre-prompt coordinator. Built in `.live()` (wired to
-    // `ATTPresenter`); `nil` in `.preview()` / `.tests()`. RootView forwards it
-    // to HomeView's banner slot (the trigger) and binds the priming sheet.
-    // Sudoku-only — Minesweeper has no equivalent (it never prompts ATT).
+    // `ATTPresenter`); `nil` in `.preview()` / `.tests()`. After #557 the
+    // ATT priming sheet is applied universally by makeGameApp on wiredView.
     public let attPrimer: ATTPrimerCoordinator?
+    // #557: the fully-wired root view from makeGameApp — GameRoot + shared
+    // GameHomeView + ResumePill + ATT sheet + GC alert. Mounted by `rootView`.
+    private let wiredView: AnyView
 
-    // MARK: - Root view accessor (#244)
+    // MARK: - Root view accessor (#244, #557)
 
-    /// Composed root view ready to mount in `@main`'s `WindowGroup`. Wires
-    /// `RootView` with this bag's deps and attaches the v2.3.7 monetization
-    /// boot `.task`. Mirrors the shape `MinesweeperAppComposition.rootView`
-    /// uses in PR #242 — `SudokuApp.body` now reads as one expression.
+    /// Composed root view ready to mount in `@main`'s `WindowGroup`.
+    ///
+    /// After #557: `wiredView` (from `makeGameApp`) is the live mount point.
+    /// It carries the shared `GameHomeView` + universal ResumePill + ATT sheet
+    /// + GC-signed-out alert + monetization boot. Two Sudoku-specific layers
+    /// are still applied here (not in makeGameApp, which is game-agnostic):
+    ///   - `\.sudokuCell` environment (#278 Tier-1 Phase 2a — board cell tokens)
+    ///   - `SudokuNearWinModifier` (#510 DEBUG near-win test hook)
+    /// The theme injection (`.environment(\.theme, DefaultTheme())`) is now
+    /// applied inside `makeGameApp` via `config.theme` — not duplicated here.
     public var rootView: some View {
-        RootView(
-            viewModel: rootViewModel,
-            routeFactory: routeFactory,
-            adProvider: adProvider,
-            adGate: adGate,
-            monetizationController: monetizationController,
-            toastController: toastController,
-            attPrimer: attPrimer
-        )
-        // #278 Tier-1 Phase 1: the `@Environment(\.theme)` key moved to
-        // GameShellUI, whose neutral fallback default is intentionally NOT
-        // Sudoku's palette. Inject Sudoku's concrete `DefaultTheme` here at
-        // the composition root so every mounted view resolves the sage /
-        // warm-paper tokens exactly as before (zero visual change).
-        .environment(\.theme, DefaultTheme())
+        wiredView
         // #278 Tier-1 Phase 2a: cell tokens are Sudoku-shaped and were pulled
         // out of the generic `Theme` protocol into SudokuUI's `\.sudokuCell`
-        // env key. Inject the same concrete cell palette here so board cells
-        // render byte-identically. (Minesweeper injects its own in Phase 2b.)
+        // env key. `makeGameApp` injects `config.theme` but not `\.sudokuCell`
+        // (game-specific). Inject here so board cells render byte-identically.
         .environment(\.sudokuCell, DefaultTheme().cell)
-        // `.onAppear { Task { … } }` not `.task { … }`: Xcode 26 lowers every
-        // `.task` overload to `task(name:…)`, whose opaque descriptor links
-        // undefined in the arm64 device Release archive. This boot is one-shot
-        // (BannerSlotView is honest about deferred state), so disappear-
-        // cancellation isn't needed. See #361.
-        .onAppear { Task {
-            // v2.3.7: kick the boot sequence concurrent with the first frame.
-            // `BannerSlotView` is honest about deferred state (shows `.failed`
-            // if AdMob has not yet initialized) so this never blocks UI.
-            //
-            // #371 / #195: ATT no longer fires here. design.md §How.4 forbids a
-            // cold-launch ATT prompt — it must come after Home is seen and at
-            // the first ad-relevant moment. Boot now runs UMP (GDPR consent
-            // stays early, F4) → AdMob init only; ATT is deferred to the
-            // `ATTPrimerCoordinator`, triggered from BannerSlotView when the
-            // ad gate opens.
-            await bootMonetization()
-        } }
         // #510: DEBUG-only near-win hook. When launched with `-uitest-near-win`,
         // present a board that is one digit entry from winning immediately over
         // the normal root — bypasses persistence, GameCenter, and monetization
@@ -135,7 +112,8 @@ public struct AppComposition {
         monetizationStateStore: any AdGateStateStore,
         monetizationController: MonetizationStateController,
         toastController: ToastController,
-        attPrimer: ATTPrimerCoordinator? = nil
+        attPrimer: ATTPrimerCoordinator? = nil,
+        wiredView: AnyView = AnyView(EmptyView())
     ) {
         self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
@@ -151,6 +129,7 @@ public struct AppComposition {
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.attPrimer = attPrimer
+        self.wiredView = wiredView
     }
 
     // MARK: - v2.3.7 boot order

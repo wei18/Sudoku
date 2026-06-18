@@ -7,9 +7,9 @@
 // resume mapping (`SavedGameSummary → .board(puzzleId:)`) is injected at
 // construction in AppComposition via the `resumeRoute:` closure.
 //
-// RootView, RouteFactory, and the tests continue to use `RootViewModel`
-// unchanged — they only touch `path`, `resumeCandidate`, `authState`,
-// `bootstrap()`, and `resumeTapped()`, all preserved by the typealias.
+// #557: moved from Root/RootViewModel.swift to Navigation/ alongside AppRoute
+// after RootView was retired. All consumers (`AppComposition`, `RouteFactory`,
+// tests) use `RootViewModel` unchanged — the typealias is the only moved artifact.
 
 public import GameAppKit
 

@@ -91,9 +91,9 @@ extension AppComposition {
             },
             theme: DefaultTheme(),
             title: "Sudoku",
-            // Sudoku builds its sidebar from the live `HomeViewModel` inside
-            // `RootView`; the shared `GameRoot` path is not the mounted surface
-            // for Sudoku (see `rootView`), so an empty literal here is correct.
+            // #557: sidebarItems derived by makeGameApp from homeModes.modeItems —
+            // no longer set here. The empty literal is kept for the makeHome fallback
+            // path (MS / 2048 before their migration).
             sidebarItems: [],
             successTint: DefaultTheme().status.success.resolved,
             failureTint: DefaultTheme().status.error.resolved,
@@ -105,6 +105,18 @@ extension AppComposition {
                 settingsCopy: settingsCopy
             ),
             settingsNotices: makeSettingsNotices(),
+            // #557 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
+            // Byte-identical to the former `HomeViewModel.subtitleKey` literals
+            // so snapshot baselines do not move.
+            homeModes: [
+                .daily: HomeModeContent(subtitleKey: "3 puzzles today", route: .daily),
+                .practice: HomeModeContent(subtitleKey: "Mixed difficulty pool", route: .practice),
+                .leaderboard: HomeModeContent(subtitleKey: "Global / friends"),
+                .settings: HomeModeContent(subtitleKey: "Account / language", route: .settings)
+            ],
+            // Sudoku's Game Center dashboard presenter. Injected here (not inside
+            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            presentLeaderboard: { GameCenterDashboard.present() },
             // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
             // `ResumeCandidate` (the only layer that knows the Sudoku type).
             // Strings match the former `ResumePill` rendering exactly so snapshot
@@ -126,23 +138,10 @@ extension AppComposition {
                     puzzleStore: puzzleStore
                 )
             },
-            makeHome: { deps, rootViewModel in
-                AnyView(
-                    RootView(
-                        viewModel: rootViewModel,
-                        routeFactory: AppComposition.makeRouteFactory(
-                            deps: deps,
-                            rootViewModel: rootViewModel,
-                            puzzleStore: puzzleStore
-                        ),
-                        adProvider: deps.adProvider,
-                        adGate: deps.adGate,
-                        monetizationController: deps.monetizationController,
-                        toastController: deps.toastController,
-                        attPrimer: deps.attPrimer
-                    )
-                )
-            },
+            // makeHome is superseded by the universal GameHomeView built from
+            // homeModes in makeGameApp (#557). Kept for API stability; ignored
+            // by makeGameApp when homeModes is non-empty.
+            makeHome: { _, _ in AnyView(EmptyView()) },
             // A tapped `dailyReady` reminder deep-links to the Daily hub
             // (flow S07→S09), pushing `.daily` unless already on top. Mirrors
             // the former `ReminderDelegateRetainer` tap routing exactly.
@@ -154,16 +153,11 @@ extension AppComposition {
             }
         )
 
-        // Wire the shared live stack once. The returned `deps` bag + root VM +
-        // route factory are the single source of truth — no second construction
-        // (so `MonetizationStateController.startListeningForLifetimeOfApp()` runs
-        // exactly once, inside `makeGameApp`).
-        // NOTE: `wired.view` (the GameRoot makeGameApp assembles from
-        // `config.makeHome`) is intentionally UNUSED here — Sudoku still mounts
-        // its own `AppComposition.rootView` (which adds `.attPrimerSheet` + the
-        // ResumePill). #557 converges the Home/view path so a future game can
-        // mount `wired.view` directly; until then `config.makeHome` is the
-        // forward-looking seam, not the live mount point. (CR #564 A2/B1.)
+        // Wire the shared live stack once. The returned `wired.view` is the
+        // live mount point after #557: GameRoot + shared GameHomeView + universal
+        // ResumePill + ATT sheet + GC-signed-out alert, assembled by makeGameApp.
+        // `MonetizationStateController.startListeningForLifetimeOfApp()` runs
+        // exactly once inside makeGameApp.
         let wired = makeGameAppWithDeps(config: config)
         let deps = wired.deps
 
@@ -181,7 +175,8 @@ extension AppComposition {
             monetizationStateStore: deps.monetizationStateStore,
             monetizationController: deps.monetizationController,
             toastController: deps.toastController,
-            attPrimer: deps.attPrimer
+            attPrimer: deps.attPrimer,
+            wiredView: wired.view
         )
     }
 

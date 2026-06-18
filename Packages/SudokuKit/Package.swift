@@ -236,6 +236,7 @@ let testTargets: [Target] = [
         dependencies: [
             "SudokuUI",
             "SudokuKitTesting",
+            gameAppDep,
             persistenceDep,
             gameCenterClientDep,
             gameCenterTestingDep,
