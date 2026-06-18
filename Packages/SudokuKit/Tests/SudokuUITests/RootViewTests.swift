@@ -1,9 +1,14 @@
-// RootView — bootstrap behavior + snapshot baselines.
+// RootView — bootstrap behavior tests.
 //
-// Behavior: `authenticate()` is invoked exactly once on `.task`; resume
-// candidate from Persistence surfaces as the Resume pill.
-// Snapshots: empty state (no resume), iPhone + Mac, light only — Part 1
-// scope. Part 2 (8.11) doubles light↔dark + locale matrix.
+// #557: RootView retired (GameHomeView + makeGameApp replace it).
+// The snapshot baselines that were here snapshotted the full GameRoot
+// navigation shell + HomeView — a superset of what HomeViewTests covers.
+// HomeViewTests now snapshots GameHomeView (the inner content surface)
+// with identical mode cards and subtitle copy. The GameRoot navigation
+// shell is integration-tested via the live wired stack (AppComposition).
+//
+// Behavioral tests kept as-is — they test RootViewModel (= GameRootViewModel<AppRoute>)
+// directly and do not reference RootView.
 
 import Foundation
 import SnapshotTesting
@@ -13,7 +18,7 @@ import Testing
 
 import GameAppKit
 import GameCenterClient
-import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
+import GameCenterTesting
 import MonetizationCore
 import MonetizationTesting
 import Persistence
@@ -38,22 +43,6 @@ private func sudokuFetchResume(
             route: .board(puzzleId: summary.puzzleId)
         )
     }
-}
-
-@MainActor
-private func makeTestRouteFactory() -> LiveRouteFactory {
-    let store = FakeAdGateStateStore(
-        initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-    )
-    return LiveRouteFactory(
-        puzzleProvider: FakePuzzleProvider(),
-        persistence: FakePersistence(),
-        gameCenter: FakeGameCenterClient(),
-        telemetry: Telemetry(sinks: []),
-        adProvider: FakeAdProvider(),
-        iapClient: FakeIAPClient(),
-        adGate: AdGate(store: store)
-    )
 }
 
 @MainActor
@@ -141,80 +130,4 @@ struct RootViewTests {
 
         #expect(viewModel.authState == .unauthenticated)
     }
-
-    #if canImport(AppKit)
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateIPhoneLight() async {
-        let persistence = FakePersistence()
-        let viewModel = RootViewModel(
-            gameCenter: FakeGameCenterClient(),
-            persistence: persistence,
-            fetchResume: sudokuFetchResume(persistence)
-        )
-        await viewModel.bootstrap()
-
-        let view = RootView(
-            viewModel: viewModel,
-            routeFactory: makeTestRouteFactory()
-        )
-        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
-
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "RootView-iPhone-light-empty")
-        }
-    }
-
-    // #387: with a resume candidate the ResumePill must render as the FIRST
-    // child INSIDE HomeView's scroll region (above the mode cards), so it
-    // scrolls with the content instead of staying pinned at the top. This
-    // baseline pins that placement.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotResumeCandidateIPhoneLight() async {
-        let summary = SavedGameSummary(
-            recordName: "saved-2026-05-19-easy",
-            puzzleId: "2026-05-19-easy",
-            mode: .daily,
-            difficulty: .easy,
-            lastModifiedAt: Date(timeIntervalSince1970: 1_715_000_000),
-            elapsedSeconds: 201,
-            status: "inProgress",
-            generatorVersion: 1
-        )
-        let persistence = FakePersistence(resumeCandidate: summary)
-        let viewModel = RootViewModel(
-            gameCenter: FakeGameCenterClient(),
-            persistence: persistence,
-            fetchResume: sudokuFetchResume(persistence)
-        )
-        await viewModel.bootstrap()
-
-        let view = RootView(
-            viewModel: viewModel,
-            routeFactory: makeTestRouteFactory()
-        )
-        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
-
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "RootView-iPhone-light-resume")
-        }
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmptyStateMacLight() async {
-        let persistence = FakePersistence()
-        let viewModel = RootViewModel(
-            gameCenter: FakeGameCenterClient(),
-            persistence: persistence,
-            fetchResume: sudokuFetchResume(persistence)
-        )
-        await viewModel.bootstrap()
-
-        let view = RootView(
-            viewModel: viewModel,
-            routeFactory: makeTestRouteFactory()
-        )
-        let host = hostingView(view, size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
-
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "RootView-Mac-light-empty")
-        }
-    }
-    #endif
 }

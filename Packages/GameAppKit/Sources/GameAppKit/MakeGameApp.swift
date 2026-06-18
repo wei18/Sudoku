@@ -319,15 +319,45 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let routeFactory = config.makeRouteFactory(deps, rootViewModel)
 
-    let view = GameRoot(
+    // #557 SDD-005 Pillar C: build the universal GameHomeView when homeModes is
+    // configured. The homeVM holds a weak ref to rootViewModel for path/auth/alert
+    // forwarding. Sidebar items are derived from the same modeItems so home cards
+    // and the sidebar stay in sync from one source (per spec §sidebarItems).
+    let sidebarItems: [SidebarItem<Route>]
+    let rootContent: () -> AnyView
+    if !config.homeModes.isEmpty {
+        let homeViewModel = GameHomeViewModel(
+            rootViewModel: rootViewModel,
+            homeModes: config.homeModes,
+            presentLeaderboard: config.presentLeaderboard
+        )
+        sidebarItems = HomeModeItem.sidebarItems(from: homeViewModel.modeItems)
+        rootContent = {
+            AnyView(
+                GameHomeView(
+                    viewModel: homeViewModel,
+                    rootViewModel: rootViewModel,
+                    title: config.title,
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    attPrimer: attPrimer
+                )
+            )
+        }
+    } else {
+        sidebarItems = config.sidebarItems
+        rootContent = { config.makeHome(deps, rootViewModel) }
+    }
+
+    let gameRoot = GameRoot(
         viewModel: rootViewModel,
         title: config.title,
-        sidebarItems: config.sidebarItems,
+        sidebarItems: sidebarItems,
         routeFactory: routeFactory,
         toastController: toastController,
         successTint: config.successTint,
         failureTint: config.failureTint,
-        rootContent: { config.makeHome(deps, rootViewModel) }
+        rootContent: rootContent
     )
     .environment(\.theme, config.theme)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with
@@ -338,6 +368,15 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     .onAppear { Task {
         await bootMonetization(adProvider: adProvider, telemetry: telemetry)
     } }
+
+    // #557 / #513: universal modifiers (GC-signed-out alert + theme-tinted ATT
+    // primer sheet) applied on the returned GameRoot view. Extracted to
+    // `MakeGameApp+Modifiers.swift` to keep this file under the 400-line ceiling.
+    let view = gameRoot.universalRootModifiers(
+        rootViewModel: rootViewModel,
+        theme: config.theme,
+        attPrimer: attPrimer
+    )
 
     return GameAppHandle(
         view: AnyView(view),
