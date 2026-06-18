@@ -41,7 +41,10 @@ struct ReminderPrimerCoordinatorTests {
         ReminderPrimerCoordinator(
             permissionModel: ReminderPermissionModel(authorizer: authorizer),
             scheduler: scheduler,
-            settingsStore: store,
+            getFireTime: {
+                let time = store.dailyReadyFireTime
+                return (hour: time.hour, minute: time.minute)
+            },
             content: ReminderContent(title: "t", body: "b"),
             primerCopy: ReminderPrimerCopy(
                 title: "", lede: "", bullets: [], acceptCTA: "", declineCTA: "", fineprint: ""

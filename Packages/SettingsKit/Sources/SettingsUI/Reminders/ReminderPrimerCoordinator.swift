@@ -1,9 +1,13 @@
-// ReminderPrimerCoordinator — Sudoku U1 daily-ready primer flow (#287 Phase 2).
+// ReminderPrimerCoordinator — daily-ready reminder primer flow (#287 Phase 2).
 //
-// The value-moment glue between the shared GameShellUI primer chrome and the
+// Moved from SudokuKit/Sources/SudokuUI/Reminders/ into SettingsUI (#556
+// SDD-005 Pillar B) so GameAppKit can reference it in `GameDeps` without
+// creating a SudokuUI → GameAppKit → SudokuUI module cycle.
+//
+// The value-moment glue between the shared SettingsUI primer chrome and the
 // RemindersKit seams (proposal §5.1; design flow S02→S05). Owns:
-//   - the localized Sudoku copy (ReminderPrimerCopy / ReminderDeniedCopy)
-//   - the `ReminderPermissionModel` (GameShellUI) driving the system prompt
+//   - the localized game copy (ReminderPrimerCopy / ReminderDeniedCopy)
+//   - the `ReminderPermissionModel` (SettingsUI) driving the system prompt
 //   - the persisted fire time (#321 seam) + the `ReminderScheduler`
 //   - the telemetry emit closure (primer shown/accepted/declined, scheduled)
 //
@@ -15,11 +19,11 @@
 // re-exposes `permissionModel.status` / `.isRequesting` for the sheet bindings.
 
 public import SwiftUI
-// refactor/settingskit-target: `ReminderPermissionModel` + the primer/denied
-// copy types moved out of GameShellUI into SettingsUI. `public` because they
-// appear in this coordinator's API surface.
-public import SettingsUI
 public import Reminders
+// `public` (not `internal`): `TelemetryEvent` appears in this type's public
+// init signature (`emit: @Sendable (TelemetryEvent) -> Void`), so it is part of
+// the public API surface and must be public-imported. (CR #564 A1 — verified:
+// downgrading to `internal import` breaks the build.)
 public import Telemetry
 
 @MainActor
@@ -45,7 +49,9 @@ public final class ReminderPrimerCoordinator {
 
     @ObservationIgnored private let permissionModel: ReminderPermissionModel
     @ObservationIgnored private let scheduler: any ReminderScheduler
-    @ObservationIgnored private let settingsStore: ReminderSettingsStore
+    /// Returns the persisted fire time `(hour, minute)`. Injected so the
+    /// coordinator stays game-agnostic (the per-game store owns the keys).
+    @ObservationIgnored private let getFireTime: () -> (hour: Int, minute: Int)
     /// Localized daily-ready notification payload (title/body). Injected so the
     /// shared scheduler stays content-neutral (proposal §3.3).
     @ObservationIgnored private let content: ReminderContent
@@ -56,7 +62,7 @@ public final class ReminderPrimerCoordinator {
     public init(
         permissionModel: ReminderPermissionModel,
         scheduler: any ReminderScheduler,
-        settingsStore: ReminderSettingsStore,
+        getFireTime: @escaping () -> (hour: Int, minute: Int),
         content: ReminderContent,
         primerCopy: ReminderPrimerCopy,
         deniedCopy: ReminderDeniedCopy,
@@ -64,7 +70,7 @@ public final class ReminderPrimerCoordinator {
     ) {
         self.permissionModel = permissionModel
         self.scheduler = scheduler
-        self.settingsStore = settingsStore
+        self.getFireTime = getFireTime
         self.content = content
         self.primerCopy = primerCopy
         self.deniedCopy = deniedCopy
@@ -103,7 +109,7 @@ public final class ReminderPrimerCoordinator {
     /// Public so a foreground-reconcile path (S07: user flips Allow in Settings)
     /// can re-schedule without going through the primer.
     public func scheduleDailyReady() async {
-        let time = settingsStore.dailyReadyFireTime
+        let time = getFireTime()
         await scheduler.schedule(
             kind: .dailyReady,
             content: content,

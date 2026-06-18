@@ -139,32 +139,6 @@ public struct SettingsView<Banner: View>: View {
     }
 }
 
-// MARK: - Reminder settings entry
-
-/// #287: bundle of the shared `ReminderSettingsModel` + the Sudoku-localized
-/// copy the `ReminderSettingsSection` needs. Built at the composition root
-/// (`AppComposition.live()`) so all reminder wiring stays there; the view only
-/// receives a ready-to-mount value. Not `Sendable` — carries `LocalizedStringKey`
-/// copy built + consumed on `@MainActor`.
-public struct ReminderSettingsEntry {
-    public let model: ReminderSettingsModel
-    public let copy: ReminderSettingsCopy
-    public let primerCopy: ReminderPrimerCopy
-    public let deniedCopy: ReminderDeniedCopy
-
-    public init(
-        model: ReminderSettingsModel,
-        copy: ReminderSettingsCopy,
-        primerCopy: ReminderPrimerCopy,
-        deniedCopy: ReminderDeniedCopy
-    ) {
-        self.model = model
-        self.copy = copy
-        self.primerCopy = primerCopy
-        self.deniedCopy = deniedCopy
-    }
-}
-
 // MARK: - Rows
 
 /// Static About row matching the icon-left / label / spacer / value-right

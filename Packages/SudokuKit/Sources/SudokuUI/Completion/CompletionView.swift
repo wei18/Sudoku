@@ -15,8 +15,9 @@
 public import SwiftUI
 import GameShellUI
 // refactor/settingskit-target: `ReminderPrimerSheet` moved out of GameShellUI
-// into SettingsUI. Used only inside the view body, so the import is internal.
-internal import SettingsUI
+// into SettingsUI. #556: `ReminderPrimerCoordinator` also moved here and appears
+// in `CompletionView.init`'s public param, so this import is now public.
+public import SettingsUI
 
 public struct CompletionView: View {
     @Bindable private var viewModel: CompletionViewModel

@@ -1,42 +1,28 @@
-// swiftlint:disable file_length
-// (Composition root: crossed 400 lines once #287 reminders + #417 ATT wiring
-//  both landed here. A composition root legitimately aggregates every live impl;
-//  splitting it would scatter the single boot wiring. Matches the ASCClient /
-//  MetadataConfig file_length precedent.)
-//
 // Live composition — concrete impls for production. docs/v1/design.md §How.1.
 //
-// Wires:
-//   - LiveGameCenterClient(authDriver: GKAuthDriver())
-//   - LivePersistence(...) bound to a PuzzleStore puzzle loader
-//   - PuzzleStore() — default LivePuzzleGenerating
-//   - Telemetry(sinks: [OSLogSink, NoOpTrackingSink, MetricKitSink])
-//   - LiveAdMobAdProvider(bannerAdUnitID:) / LiveStoreKit2IAPClient(knownProductIds:) (v2.3.2)
-//   - AdGate(store: LivePersistence.monetizationStateStore()) (v2.3.2)
-//   - LiveRouteFactory composing all of the above (v2.3.3)
+// #556 SDD-005 Pillar B: the game-agnostic live wiring (Telemetry + MetricKit +
+// errorReporter + GameCenter + Persistence + monetization + audio + ATT +
+// reminders) now lives in `GameAppKit.makeGameApp`. `live()` builds a
+// `GameConfig<AppRoute>` carrying ONLY the Sudoku-specific values + builder
+// closures (puzzle loader, route factory, home, resume mapping, copy) and calls
+// `makeGameAppWithDeps`, which returns the wired `GameDeps` bag + root VM +
+// route factory. `AppComposition` is assembled from that bag so its public
+// field shape (consumed by tests + the App target) is unchanged.
+//
+// Behaviour-preserving: every Sudoku string + default flows through the config,
+// so the wired stack is byte-identical to the former hand-rolled wiring.
 
-internal import AdsAdMob
 internal import Foundation
-// #330 P2: the Live audio stack (`LiveAudioSession` + `LiveHaptics` +
-// `LiveSoundPlayer`) is constructed here — the only Sudoku layer that touches
-// the Live conformers (which reach AVFoundation inside GameAudioKit).
 internal import GameAppKit
-internal import GameAudio
 internal import GameCenterClient
 internal import GameShellUI
-internal import IAPStoreKit2
-internal import MonetizationCore
 internal import MonetizationUI
 internal import Persistence
 internal import SudokuPersistence
 internal import Reminders
-// refactor/settingskit-target: `ReminderSettingsModel` / `ReminderPermissionModel`
-// + the primer/section/denied copy types + `SettingsNoticesConfig` moved out of
-// GameShellUI into SettingsUI; `.live()` builds the reminders entry + notices here.
 internal import SettingsUI
 internal import SudokuUI
 internal import SwiftUI
-internal import Telemetry
 
 #if canImport(UIKit)
 internal import UIKit
@@ -45,192 +31,15 @@ internal import UIKit
 extension AppComposition {
 
     public static func live() -> AppComposition {
-        // Telemetry fan-out: OSLog + NoOp tracking. MetricKit projects its
-        // diagnostic payloads BACK INTO this same Telemetry instance via the
-        // process-wide retained sink below.
-        let telemetry = Telemetry(sinks: [
-            OSLogSink(subsystem: "com.wei18.sudoku", category: "Telemetry"),
-            NoOpTrackingSink()
-        ])
-        LiveMetricKitRetainer.install(downstream: telemetry)
-
-        // M10 (issue #67): unified error funnel. All VM / loader catch sites
-        // that previously `try?`-swallowed CloudKit / Persistence errors now
-        // route through this reporter, which fans into the same Telemetry
-        // facade as every other event (so OSLog + future tracking sinks both
-        // see the failure) and retains a bounded ring buffer of the most
-        // recent 20 reports for future diagnostic surfaces.
-        let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
-
-        // PuzzleStore (default generator, v1 version).
+        // PuzzleStore (default generator, v1 version). Kept here because the
+        // puzzle loader closure + the route factory both reference it.
         let puzzleStore = PuzzleStore()
 
-        // Persistence facade. The puzzle loader closure routes through the
-        // same PuzzleStore so SavedGameStore can re-derive a Puzzle from a
-        // stored puzzleId (no Puzzle blob in CloudKit).
-        let persistence = LivePersistence(
-            telemetry: telemetry,
-            ckConfig: .sudoku,
-            puzzleLoader: { puzzleId in
-                try await puzzleStore.puzzle(for: puzzleId)
-            }
-        )
-
-        // Game Center client.
-        let gameCenter = LiveGameCenterClient(authDriver: GKAuthDriver())
-
-        // v2 monetization deps.
-        let monetizationStateStore = persistence.monetizationStateStore()
-        // Route AdGate's CloudKit save failures into the same Telemetry
-        // facade other subsystems use. `AdGate` doesn't depend on Telemetry
-        // directly — the host injects the sink so MonetizationCore stays
-        // observability-stack-free (M2 from v2-audit-code-polish).
-        let adGate = AdGate(
-            store: monetizationStateStore,
-            onPersistenceError: { [telemetry] error in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "AdGate",
-                            code: "save_failed",
-                            message: String(describing: error)
-                        )
-                    )
-                }
-            }
-        )
-        // AdMob SDK ships iOS-only binaries — see AppMonetizationKit/Package.swift
-        // gating. On macOS we wire the `NoopAdProvider` (status always
-        // `.suppressed`, BannerSlotView collapses to EmptyView); on iOS we use
-        // the live AdMob-backed provider as before.
-        //
         // Sudoku-specific identifiers (banner ad unit + ASC product IDs) are
         // declared here, NOT inside AppMonetizationKit, so the package can be
         // linked by a second app (Minesweeper) without baking Sudoku IDs into
         // its binary. See `meetings/2026-05-31_minesweeper-rfc.md` §5.2.
-        //
         let sudokuRemoveAdsProductID = "com.wei18.sudoku.iap.remove_ads"
-
-        #if os(iOS)
-        // Banner ad unit ID via Info.plist `GADBannerUnitID` key, substituted
-        // at build time from `Tuist/AdMob.xcconfig` (gitignored; .example
-        // committed). XCC writes the xcconfig from per-workflow env vars;
-        // local builds use the .example sandbox values. Replaces the old
-        // DEBUG-vs-Release fatalError gate with smoke-test (key presence —
-        // `AppCompositionTests/InfoPlistAdMobKeysTests`) + runtime guard
-        // below (catches missing-key + empty + unresolved-`$()` token
-        // before AdMob SDK init).
-        guard
-            let sudokuBannerAdUnitID = Bundle.main
-                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
-            !sudokuBannerAdUnitID.isEmpty,
-            !sudokuBannerAdUnitID.hasPrefix("$(")
-        else {
-            preconditionFailure(
-                "GADBannerUnitID missing or unresolved — check"
-                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
-                    + " vars are set for Release builds."
-            )
-        }
-        let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: sudokuBannerAdUnitID)
-        #else
-        let adProvider: any AdProvider = NoopAdProvider()
-        #endif
-        // `LiveStoreKit2IAPClient` reports catalog-desync (post-purchase
-        // refetch returns empty) through the same Telemetry channel so the
-        // M3 placeholder substitution doesn't silently mask a backend issue.
-        let iapClient: any IAPClient = LiveStoreKit2IAPClient(
-            knownProductIds: [sudokuRemoveAdsProductID],
-            onCatalogDesync: { [telemetry] productId in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "LiveStoreKit2IAPClient",
-                            code: "catalog_desync_post_purchase",
-                            message: "post-purchase refetch returned empty for productId=\(productId)"
-                        )
-                    )
-                }
-            }
-        )
-
-        // v2.3.6: shared @Observable controller for Settings + HomeView's
-        // Remove Ads surfaces. Constructed eagerly so both views observe the
-        // same instance; `.bootstrap()` is invoked lazily inside each View's
-        // `.task` modifier.
-        // v2.4.5: shared toast surface. Constructed before the controller so
-        // we can inject it; RootView mounts the same instance as a bottom
-        // overlay.
-        let toastController = ToastController()
-
-        let monetizationController = MonetizationStateController(
-            iapClient: iapClient,
-            stateStore: monetizationStateStore,
-            adGate: adGate,
-            toastController: toastController
-        )
-        // Fix B (RCA 2026-05-25): bootstrap() no longer auto-subscribes
-        // to `purchaseUpdates()`. Production opts in here, exactly once,
-        // for the lifetime of the app. Tests opt in per-test + tear down
-        // via `FakeIAPClient.finishUpdates()`.
-        monetizationController.startListeningForLifetimeOfApp()
-
-        // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
-        // `ResumeCandidate` here (the only layer that knows the Sudoku type).
-        // Throwing — `GameRootViewModel.bootstrap` owns the error funnel.
-        // Strings match the former `ResumePill` rendering exactly so snapshot
-        // baselines do not move ("Resume Easy", "3:21" for 201s).
-        let rootViewModel = RootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter,
-            fetchResume: {
-                guard let summary = try await persistence.latestInProgress() else { return nil }
-                return ResumeCandidate(
-                    title: "Resume \(summary.difficulty.rawValue.capitalized)",
-                    subtitle: AppComposition.elapsed(summary.elapsedSeconds),
-                    route: .board(puzzleId: summary.puzzleId)
-                )
-            }
-        )
-
-        // #371 / #195: ATT pre-prompt coordinator. The two ATT touch points are
-        // injected here (the only layer that depends on AdsAdMob — SudokuUI must
-        // not, per foundations.md §9.1). `ATTPresenter.requestIfNeeded()` is
-        // idempotent (only prompts when `.notDetermined`); `currentStatus()`
-        // backs the "should we even offer?" check via the public outcome enum.
-        // The boot sequence no longer calls ATT — this coordinator owns it,
-        // triggered from BannerSlotView when the ad gate opens (post-Home,
-        // first ad-relevant moment).
-        let attPrimer = ATTPrimerCoordinator(
-            isNotDetermined: { await ATTPresenter.currentStatus() == .notDetermined },
-            requestSystemPrompt: { _ = await ATTPresenter.requestIfNeeded() }
-        )
-
-        // #287 Phase 2: reminder wiring. RemindersKit's Live conformers +
-        // `UNUserNotificationCenter` stay confined to this composition layer.
-        // `emit` bridges the (non-async) coordinator/delegate callbacks into the
-        // `Telemetry` actor's async `observe`.
-        let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in
-            Task { await telemetry.observe(event) }
-        }
-        let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: "com.wei18.sudoku")
-        let reminderScheduler = LiveReminderScheduler(subsystem: "com.wei18.sudoku")
-        let reminderSettingsStore = ReminderSettingsStore()
-
-        // Foreground-presentation + tap routing. A tapped `dailyReady` reminder
-        // deep-links to the Daily hub (flow S07→S09). Routing mutates the same
-        // `rootViewModel.path` the sidebar uses.
-        ReminderDelegateRetainer.install(
-            onTap: { identifier in
-                if identifier == ReminderKind.dailyReady.rawValue {
-                    if rootViewModel.path.last != .daily {
-                        rootViewModel.path.append(.daily)
-                    }
-                }
-            },
-            emit: emit
-        )
 
         // Shared daily-ready notification payload — used both by the primer
         // (initial schedule) and the #321 Settings time picker (reschedule on
@@ -239,170 +48,171 @@ extension AppComposition {
             title: "Today's Sudoku is ready",
             body: "Your daily puzzle is waiting — keep your streak going."
         )
-
-        // Builds a fresh daily-ready primer coordinator per Daily-completion
-        // mount. Copy is passed as `LocalizedStringKey` literals so the app
-        // bundle's `Localizable.xcstrings` localizes them (ai-translated-localization
-        // sweep adds the non-en locales). Body softened to "default 9 AM,
-        // adjustable in Settings" per the persisted-time seam (#321).
-        let makeDailyReminderPrimer: @MainActor () -> ReminderPrimerCoordinator = {
-            ReminderPrimerCoordinator(
-                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
-                scheduler: reminderScheduler,
-                settingsStore: reminderSettingsStore,
-                content: dailyReadyContent,
-                primerCopy: ReminderPrimerCopy(
-                    title: "Never miss a Daily",
-                    lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
-                    bullets: [
-                        "One gentle nudge a day, default 9 AM",
-                        "Adjustable anytime in Settings",
-                        "Turn it off whenever you like"
-                    ],
-                    acceptCTA: "Remind me",
-                    declineCTA: "Not now",
-                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
-                ),
-                deniedCopy: ReminderDeniedCopy(
-                    title: "Reminders are off",
-                    message: "Notifications are turned off for Sudoku in Settings, so we can't tell you when the Daily is ready.",
-                    openSettingsCTA: "Open Settings",
-                    dismissCTA: "Not now",
-                    macOSGuidance: "Enable notifications in System Settings → Notifications → Sudoku."
-                ),
-                emit: emit
-            )
-        }
-
-        // #287: builds the Settings Reminders entry per Settings mount — the
-        // shared `ReminderSettingsModel` (enable / prime permission / fire-time)
-        // + the Sudoku-localized copy. Reads/writes the SAME `reminderSettingsStore`
-        // the post-Daily primer uses (via get/set closures), so a time change here
-        // is honored by the next primer schedule and vice-versa. `reminderEmit`
-        // bridges the model's decoupled `Event` to the `Telemetry` facade.
-        let reminderEmit: @Sendable (ReminderSettingsModel.Event) -> Void = { [telemetry] event in
-            let telemetryEvent: TelemetryEvent?
-            switch event {
-            case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
-            case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
-            case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
-            // The user turned reminders off in-app — observe the on→off funnel.
-            case let .cancelled(kind): telemetryEvent = .reminderCancelled(kind: kind)
-            }
-            guard let telemetryEvent else { return }
-            Task { await telemetry.observe(telemetryEvent) }
-        }
-        let makeReminderSettings: @MainActor () -> ReminderSettingsEntry = {
-            let model = ReminderSettingsModel(
-                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
-                scheduler: reminderScheduler,
-                kind: .dailyReady,
-                content: dailyReadyContent,
-                getFireTime: {
-                    let time = reminderSettingsStore.dailyReadyFireTime
-                    return (hour: time.hour, minute: time.minute)
-                },
-                setFireTime: { time in
-                    reminderSettingsStore.dailyReadyFireTime = ReminderFireTime(
-                        hour: time.hour,
-                        minute: time.minute
-                    )
-                },
-                emit: reminderEmit
-            )
-            return ReminderSettingsEntry(
-                model: model,
-                copy: ReminderSettingsCopy(
-                    sectionTitle: "Reminders",
-                    enableTitle: "Daily reminder",
-                    enableCTA: "Turn On",
-                    enabledTitle: "Daily reminder",
-                    enabledStatus: "On",
-                    disableTitle: "Turn off reminders",
-                    timeTitle: "Time",
-                    deniedTitle: "Notifications are off",
-                    deniedCTA: "Fix"
-                ),
-                primerCopy: ReminderPrimerCopy(
-                    title: "Never miss a Daily",
-                    lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
-                    bullets: [
-                        "One gentle nudge a day, default 9 AM",
-                        "Adjustable anytime in Settings",
-                        "Turn it off whenever you like"
-                    ],
-                    acceptCTA: "Remind me",
-                    declineCTA: "Not now",
-                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
-                ),
-                deniedCopy: ReminderDeniedCopy(
-                    title: "Reminders are off",
-                    message: "Notifications are turned off for Sudoku in Settings, so we can't tell you when the Daily is ready.",
-                    openSettingsCTA: "Open Settings",
-                    dismissCTA: "Not now",
-                    macOSGuidance: "Enable notifications in System Settings → Notifications → Sudoku."
-                )
-            )
-        }
-
-        // #331: Notices / 宣告 section config. Acknowledgements live in the
-        // LicensePlist-generated `Settings.bundle` (iOS Settings.app → Sudoku →
-        // Acknowledgements), so the in-app row deep-links to the app's own iOS
-        // Settings page. On macOS there is no such deep-link → omit the row.
-        // Privacy-policy / support URLs are not wired yet (no canonical public
-        // URL committed to the repo — see meetings/2026-06-09_331-settingskit.md);
-        // copyright is derived locally, no fabrication.
-        let settingsNotices = makeSettingsNotices()
-
-        // #330 P2: Live audio stack. The session is configured for ambient
-        // mix-with-others at boot; the player wraps it + the haptics seam. P2
-        // ships SILENT (no assets until P3) — `LiveSoundPlayer` tolerates the
-        // missing files and no-ops. `AVFoundation` stays confined to
-        // GameAudioKit's Live files; this layer only names the seams.
-        let audioSession = LiveAudioSession(subsystem: "com.wei18.sudoku")
-        audioSession.configureAmbient()
-        let soundPlayer = LiveSoundPlayer(
-            session: audioSession,
-            haptics: LiveHaptics(),
-            subsystem: "com.wei18.sudoku"
+        // Copy passed as `LocalizedStringKey` literals so the app bundle's
+        // `Localizable.xcstrings` localizes them (ai-translated-localization
+        // sweep adds the non-en locales).
+        let primerCopy = ReminderPrimerCopy(
+            title: "Never miss a Daily",
+            lede: "We'll let you know the moment tomorrow's Daily Sudoku is ready.",
+            bullets: [
+                "One gentle nudge a day, default 9 AM",
+                "Adjustable anytime in Settings",
+                "Turn it off whenever you like"
+            ],
+            acceptCTA: "Remind me",
+            declineCTA: "Not now",
+            fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+        )
+        let deniedCopy = ReminderDeniedCopy(
+            title: "Reminders are off",
+            message: "Notifications are turned off for Sudoku in Settings, so we can't tell you when the Daily is ready.",
+            openSettingsCTA: "Open Settings",
+            dismissCTA: "Not now",
+            macOSGuidance: "Enable notifications in System Settings → Notifications → Sudoku."
+        )
+        let settingsCopy = ReminderSettingsCopy(
+            sectionTitle: "Reminders",
+            enableTitle: "Daily reminder",
+            enableCTA: "Turn On",
+            enabledTitle: "Daily reminder",
+            enabledStatus: "On",
+            disableTitle: "Turn off reminders",
+            timeTitle: "Time",
+            deniedTitle: "Notifications are off",
+            deniedCTA: "Fix"
         )
 
-        // Settings audio entry, persisted in `UserDefaults` under a Sudoku key
-        // prefix (no shared store type → no cross-app key collision with
-        // Minesweeper). Defaults match the spec: BGM on, haptics on, not muted,
-        // volumes 0.7. Each setter fans out to the running `soundPlayer`. The
-        // model seeds the live player's volumes/flags from the persisted values
-        // on construction below.
-        let audioSettings = makeAudioSettings(player: soundPlayer)
-        // Push the persisted state into the just-built player so the running
-        // session matches what the Settings screen shows from first launch.
-        soundPlayer.setSFXVolume(Float(audioSettings.sfxVolume))
-        soundPlayer.setMusicVolume(Float(audioSettings.musicVolume))
-        soundPlayer.setMuted(audioSettings.isMuted)
-        soundPlayer.setMusicEnabled(audioSettings.musicEnabled)
-        soundPlayer.setHapticsEnabled(audioSettings.hapticsEnabled)
+        let config = GameConfig<AppRoute>(
+            subsystem: "com.wei18.sudoku",
+            ckConfig: .sudoku,
+            removeAdsProductId: sudokuRemoveAdsProductID,
+            puzzleLoader: { puzzleId in
+                try await puzzleStore.puzzle(for: puzzleId)
+            },
+            theme: DefaultTheme(),
+            title: "Sudoku",
+            // Sudoku builds its sidebar from the live `HomeViewModel` inside
+            // `RootView`; the shared `GameRoot` path is not the mounted surface
+            // for Sudoku (see `rootView`), so an empty literal here is correct.
+            sidebarItems: [],
+            successTint: DefaultTheme().status.success.resolved,
+            failureTint: DefaultTheme().status.error.resolved,
+            audio: AudioConfig(keyPrefix: "com.wei18.sudoku.audio"),
+            reminders: ReminderContentConfig(
+                dailyReadyContent: dailyReadyContent,
+                primerCopy: primerCopy,
+                deniedCopy: deniedCopy,
+                settingsCopy: settingsCopy
+            ),
+            settingsNotices: makeSettingsNotices(),
+            // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
+            // `ResumeCandidate` (the only layer that knows the Sudoku type).
+            // Strings match the former `ResumePill` rendering exactly so snapshot
+            // baselines do not move ("Resume Easy", "3:21" for 201s).
+            fetchResume: { deps in
+                { [persistence = deps.persistence] in
+                    guard let summary = try await persistence.latestInProgress() else { return nil }
+                    return ResumeCandidate(
+                        title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                        subtitle: AppComposition.elapsed(summary.elapsedSeconds),
+                        route: .board(puzzleId: summary.puzzleId)
+                    )
+                }
+            },
+            makeRouteFactory: { deps, rootViewModel in
+                AppComposition.makeRouteFactory(
+                    deps: deps,
+                    rootViewModel: rootViewModel,
+                    puzzleStore: puzzleStore
+                )
+            },
+            makeHome: { deps, rootViewModel in
+                AnyView(
+                    RootView(
+                        viewModel: rootViewModel,
+                        routeFactory: AppComposition.makeRouteFactory(
+                            deps: deps,
+                            rootViewModel: rootViewModel,
+                            puzzleStore: puzzleStore
+                        ),
+                        adProvider: deps.adProvider,
+                        adGate: deps.adGate,
+                        monetizationController: deps.monetizationController,
+                        toastController: deps.toastController,
+                        attPrimer: deps.attPrimer
+                    )
+                )
+            },
+            // A tapped `dailyReady` reminder deep-links to the Daily hub
+            // (flow S07→S09), pushing `.daily` unless already on top. Mirrors
+            // the former `ReminderDelegateRetainer` tap routing exactly.
+            reminderTapRoute: { identifier, rootViewModel in
+                guard identifier == ReminderKind.dailyReady.rawValue else { return }
+                if rootViewModel.path.last != .daily {
+                    rootViewModel.path.append(.daily)
+                }
+            }
+        )
 
-        let routeFactory = LiveRouteFactory(
+        // Wire the shared live stack once. The returned `deps` bag + root VM +
+        // route factory are the single source of truth — no second construction
+        // (so `MonetizationStateController.startListeningForLifetimeOfApp()` runs
+        // exactly once, inside `makeGameApp`).
+        // NOTE: `wired.view` (the GameRoot makeGameApp assembles from
+        // `config.makeHome`) is intentionally UNUSED here — Sudoku still mounts
+        // its own `AppComposition.rootView` (which adds `.attPrimerSheet` + the
+        // ResumePill). #557 converges the Home/view path so a future game can
+        // mount `wired.view` directly; until then `config.makeHome` is the
+        // forward-looking seam, not the live mount point. (CR #564 A2/B1.)
+        let wired = makeGameAppWithDeps(config: config)
+        let deps = wired.deps
+
+        return AppComposition(
+            rootViewModel: wired.rootViewModel,
+            routeFactory: wired.routeFactory,
             puzzleProvider: puzzleStore,
-            persistence: persistence,
-            gameCenter: gameCenter,
-            telemetry: telemetry,
-            errorReporter: errorReporter,
-            adProvider: adProvider,
-            iapClient: iapClient,
-            adGate: adGate,
-            monetizationController: monetizationController,
-            toastController: toastController,
-            makeDailyReminderPrimer: makeDailyReminderPrimer,
-            makeReminderSettings: makeReminderSettings,
-            settingsNotices: settingsNotices,
-            soundPlayer: soundPlayer,
-            audioSettings: audioSettings,
+            persistence: deps.persistence,
+            gameCenter: deps.gameCenter,
+            telemetry: deps.telemetry,
+            errorReporter: deps.errorReporter,
+            adProvider: deps.adProvider,
+            iapClient: deps.iapClient,
+            adGate: deps.adGate,
+            monetizationStateStore: deps.monetizationStateStore,
+            monetizationController: deps.monetizationController,
+            toastController: deps.toastController,
+            attPrimer: deps.attPrimer
+        )
+    }
+
+    /// Builds Sudoku's `LiveRouteFactory` from the wired `GameDeps`. Shared by
+    /// the `GameConfig.makeRouteFactory` + `makeHome` closures so both produce a
+    /// factory wired to the same live seams. The reminder builder closures come
+    /// straight off the deps bag (assembled once inside `makeGameApp`).
+    @MainActor
+    private static func makeRouteFactory(
+        deps: GameDeps,
+        rootViewModel: GameRootViewModel<AppRoute>,
+        puzzleStore: PuzzleStore
+    ) -> any RouteFactory<AppRoute> {
+        LiveRouteFactory(
+            puzzleProvider: puzzleStore,
+            persistence: deps.persistence,
+            gameCenter: deps.gameCenter,
+            telemetry: deps.telemetry,
+            errorReporter: deps.errorReporter,
+            adProvider: deps.adProvider,
+            iapClient: deps.iapClient,
+            adGate: deps.adGate,
+            monetizationController: deps.monetizationController,
+            toastController: deps.toastController,
+            makeDailyReminderPrimer: deps.makeDailyReminderPrimer,
+            makeReminderSettings: deps.makeReminderSettings,
+            settingsNotices: makeSettingsNotices(),
+            soundPlayer: deps.soundPlayer,
+            audioSettings: deps.audioSettings,
             // SDD-003 Epic 1: wire board routes to the modal presentation path.
-            // `rootViewModel.presentGame(route:)` stores the route + sets
-            // `isGamePresented = true`; `GameRoot`'s `.fullScreenCover` reacts.
             // iOS-only: `.fullScreenCover` is gated `#if os(iOS)` in GameRoot.
-            // On macOS nil → legacy push path until OQ-001 resolves Mac chrome.
             onPresentBoard: {
                 #if os(iOS)
                 { [rootViewModel] route in rootViewModel.presentGame(route: route) }
@@ -410,62 +220,6 @@ extension AppComposition {
                 nil
                 #endif
             }()
-        )
-
-        return AppComposition(
-            rootViewModel: rootViewModel,
-            routeFactory: routeFactory,
-            puzzleProvider: puzzleStore,
-            persistence: persistence,
-            gameCenter: gameCenter,
-            telemetry: telemetry,
-            errorReporter: errorReporter,
-            adProvider: adProvider,
-            iapClient: iapClient,
-            adGate: adGate,
-            monetizationStateStore: monetizationStateStore,
-            monetizationController: monetizationController,
-            toastController: toastController,
-            attPrimer: attPrimer
-        )
-    }
-
-    /// #330 P2: builds the Sudoku audio settings model. Persistence is backed
-    /// by `UserDefaults.standard` under a `com.wei18.sudoku.audio.*` key prefix
-    /// (so Minesweeper's mirror never collides). Defaults match the spec: BGM
-    /// on, haptics on, not muted, volumes 0.7. Each setter fans out to the
-    /// injected live `player` so a slider move updates the running audio at once.
-    @MainActor
-    private static func makeAudioSettings(player: any SoundPlaying) -> AudioSettingsModel {
-        let defaults = UserDefaults.standard
-        let prefix = "com.wei18.sudoku.audio"
-        let musicVolumeKey = "\(prefix).musicVolume"
-        let sfxVolumeKey = "\(prefix).sfxVolume"
-        let mutedKey = "\(prefix).isMuted"
-        let hapticsKey = "\(prefix).hapticsEnabled"
-        let musicEnabledKey = "\(prefix).musicEnabled"
-
-        // `UserDefaults` returns 0 / false for an absent key; seed the spec
-        // defaults on first launch so the stored value is authoritative after.
-        func volume(_ key: String) -> Double {
-            defaults.object(forKey: key) == nil ? 0.7 : defaults.double(forKey: key)
-        }
-        func flag(_ key: String, default fallback: Bool) -> Bool {
-            defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key)
-        }
-
-        return AudioSettingsModel(
-            player: player,
-            getMusicVolume: { volume(musicVolumeKey) },
-            setMusicVolume: { defaults.set($0, forKey: musicVolumeKey) },
-            getSFXVolume: { volume(sfxVolumeKey) },
-            setSFXVolume: { defaults.set($0, forKey: sfxVolumeKey) },
-            getIsMuted: { flag(mutedKey, default: false) },
-            setMuted: { defaults.set($0, forKey: mutedKey) },
-            getHapticsEnabled: { flag(hapticsKey, default: true) },
-            setHapticsEnabled: { defaults.set($0, forKey: hapticsKey) },
-            getMusicEnabled: { flag(musicEnabledKey, default: true) },
-            setMusicEnabled: { defaults.set($0, forKey: musicEnabledKey) }
         )
     }
 
@@ -491,27 +245,4 @@ extension AppComposition {
         )
     }
 
-}
-
-/// Process-wide retainer for `MetricKitSink` — MXMetricManager's subscriber
-/// list holds a weak reference, so we must keep the sink alive ourselves
-/// for the lifetime of the App. Installation is idempotent.
-private enum LiveMetricKitRetainer {
-    nonisolated(unsafe) private static var sink: MetricKitSink?
-    private static let lock = NSLock()
-
-    static func install(downstream: Telemetry) {
-        lock.lock()
-        defer { lock.unlock() }
-        guard sink == nil else { return }
-        let metricSink = MetricKitSink(downstream: downstream)
-        // Skip system registration in test environments — MXMetricManager
-        // is unavailable outside a properly entitled app bundle and would
-        // crash the test process. Detection: swift-testing / XCTest sets
-        // `XCTestConfigurationFilePath`.
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
-            metricSink.startReceivingSystemReports()
-        }
-        sink = metricSink
-    }
 }

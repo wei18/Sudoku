@@ -41,6 +41,20 @@ let productionTargets: [Target] = [
             // deps live here, above it.)
             .product(name: "GameShellUI", package: "GameShellKit"),
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
+            // #556 SDD-005 Pillar B: `makeGameApp(config:)` wires the full live stack.
+            // MonetizationCore for AdGate/AdProvider/IAPClient seams (MonetizationUI
+            // re-exports ToastController + the `ATTPrimerCoordinator` moved there in
+            // #556; MonetizationCore for AdGate itself). AdsAdMob for
+            // LiveAdMobAdProvider + ATTPresenter. IAPStoreKit2 for
+            // LiveStoreKit2IAPClient. GameAudio for the audio stack. SettingsUI for
+            // ReminderPrimerCoordinator + ReminderSettingsEntry (moved there in
+            // #556) + AudioSettingsModel.
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            .product(name: "AdsAdMob", package: "AppMonetizationKit"),
+            .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
+            .product(name: "GameAudio", package: "GameAudioKit"),
+            .product(name: "SettingsUI", package: "SettingsKit"),
+            .product(name: "Reminders", package: "RemindersKit"),
         ],
         swiftSettings: swiftSettings
     ),
@@ -86,6 +100,10 @@ let package = Package(
         // zero-dep UI shell + the monetization toast overlay.
         .package(name: "GameShellKit", path: "../GameShellKit"),
         .package(name: "AppMonetizationKit", path: "../AppMonetizationKit"),
+        // #556 SDD-005 Pillar B: `makeGameApp(config:)` wires the full live stack.
+        .package(name: "GameAudioKit", path: "../GameAudioKit"),
+        .package(name: "SettingsKit", path: "../SettingsKit"),
+        .package(name: "RemindersKit", path: "../RemindersKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
