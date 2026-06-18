@@ -20,6 +20,10 @@
 
 public import SwiftUI
 public import Reminders
+// `public` (not `internal`): `TelemetryEvent` appears in this type's public
+// init signature (`emit: @Sendable (TelemetryEvent) -> Void`), so it is part of
+// the public API surface and must be public-imported. (CR #564 A1 — verified:
+// downgrading to `internal import` breaks the build.)
 public import Telemetry
 
 @MainActor

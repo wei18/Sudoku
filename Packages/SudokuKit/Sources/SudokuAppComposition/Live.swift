@@ -16,7 +16,6 @@ internal import Foundation
 internal import GameAppKit
 internal import GameCenterClient
 internal import GameShellUI
-internal import MonetizationCore
 internal import MonetizationUI
 internal import Persistence
 internal import SudokuPersistence
@@ -24,7 +23,6 @@ internal import Reminders
 internal import SettingsUI
 internal import SudokuUI
 internal import SwiftUI
-internal import Telemetry
 
 #if canImport(UIKit)
 internal import UIKit
@@ -160,6 +158,12 @@ extension AppComposition {
         // route factory are the single source of truth — no second construction
         // (so `MonetizationStateController.startListeningForLifetimeOfApp()` runs
         // exactly once, inside `makeGameApp`).
+        // NOTE: `wired.view` (the GameRoot makeGameApp assembles from
+        // `config.makeHome`) is intentionally UNUSED here — Sudoku still mounts
+        // its own `AppComposition.rootView` (which adds `.attPrimerSheet` + the
+        // ResumePill). #557 converges the Home/view path so a future game can
+        // mount `wired.view` directly; until then `config.makeHome` is the
+        // forward-looking seam, not the live mount point. (CR #564 A2/B1.)
         let wired = makeGameAppWithDeps(config: config)
         let deps = wired.deps
 
