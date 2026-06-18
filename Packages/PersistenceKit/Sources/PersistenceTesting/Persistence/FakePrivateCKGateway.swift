@@ -43,13 +43,6 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     /// `setFetchError(_:)` (Swift 6 actor isolation).
     private var fetchError: (any Error & Sendable)?
 
-    /// Per-recordName conflict counter: each save against the recorded
-    /// recordName throws `PersistenceError.syncConflict(recordName:)` and
-    /// decrements the counter; when it hits zero the save proceeds normally.
-    /// Models CloudKit's `serverRecordChanged` for ConflictResolver wiring
-    /// tests without coupling the test surface to a separate spy gateway.
-    private var conflictOnSaveRemaining: [String: Int] = [:]
-
     public init() {}
 
     public func setFailureMode(_ mode: FailureMode) {
@@ -58,12 +51,6 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public func setFetchError(_ error: (any Error & Sendable)?) {
         self.fetchError = error
-    }
-
-    /// Schedule the next `times` saves against `recordName` to throw
-    /// `.syncConflict`. After the counter drains the save behaves normally.
-    public func setConflictOnSaveTimes(_ times: Int, recordName: String) {
-        conflictOnSaveRemaining[recordName] = times
     }
 
     // MARK: - PrivateCKGateway
@@ -89,11 +76,6 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     public func save(_ payload: RecordPayload) async throws {
         if case .alwaysOnSave(let error) = failureMode {
             throw error
-        }
-        if let remaining = conflictOnSaveRemaining[payload.recordName], remaining > 0 {
-            conflictOnSaveRemaining[payload.recordName] = remaining - 1
-            operations.append(.save(recordName: payload.recordName))
-            throw PersistenceError.syncConflict(recordName: payload.recordName)
         }
         operations.append(.save(recordName: payload.recordName))
         records[payload.recordName] = payload

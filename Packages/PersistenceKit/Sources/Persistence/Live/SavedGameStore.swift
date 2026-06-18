@@ -213,11 +213,11 @@ internal actor SavedGameStore: Sendable {
         recordName: String
     ) async throws {
         do {
-            // §How.6.7: wrap the live save in RetryHarness; on a
-            // `serverRecordChanged`-equivalent (`.syncConflict` from the
-            // gateway) re-fetch, run ConflictResolver.resolve, and resubmit
-            // the merged record. Budget: 2 retries; 3rd → throw.
-            let initialPayload = SavedGameMapper.payload(
+            // #544: gateway uses `.allKeys` save policy (last-write-wins) so
+            // `CKError.serverRecordChanged` is never raised. The old
+            // RetryHarness + ConflictResolver merge path was unreachable in
+            // production and has been removed (SDD-005 §6).
+            let payload = SavedGameMapper.payload(
                 from: snapshot,
                 recordName: recordName,
                 puzzleId: puzzleId,
@@ -226,31 +226,7 @@ internal actor SavedGameStore: Sendable {
                 lastModifiedAt: clock(),
                 schemaVersion: Self.currentSchemaVersion
             )
-            // Holder isolates the retry-loop mutation from the Sendable
-            // closure (Swift 6 strict concurrency: captured vars cannot be
-            // mutated). The actor is the loop's effective owner so each
-            // body invocation is serialized via `self`.
-            let working = MutableRef(value: initialPayload)
-            let gatewayRef = gateway
-            let clockRef = clock
-            try await RetryHarness.run(recordName: recordName) { _ in
-                // Refresh `lastModifiedAt` per attempt so the resolver's
-                // newer-wins tie-break treats the local side as advancing.
-                var current = await working.get()
-                current.fields[Field.lastModifiedAt] = .date(clockRef())
-                await working.set(current)
-                do {
-                    try await gatewayRef.save(current)
-                    return .success(())
-                } catch PersistenceError.syncConflict {
-                    guard let serverPayload = try await gatewayRef.fetch(recordName: recordName) else {
-                        return .conflict
-                    }
-                    let merged = Self.merge(local: current, server: serverPayload)
-                    await working.set(merged)
-                    return .conflict
-                }
-            }
+            try await gateway.save(payload)
             await telemetry.observe(.gameSaved(puzzleId: puzzleId))
         } catch let error as PersistenceError {
             await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: Self.reason(for: error)))
@@ -259,54 +235,6 @@ internal actor SavedGameStore: Sendable {
             await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: "underlying"))
             throw error
         }
-    }
-
-    // MARK: - Conflict merge
-
-    /// Apply `ConflictResolver.resolve(local:server:)` at the payload layer.
-    /// Both inputs are projected into the resolver-shaped snapshot using the
-    /// existing wire encoding (see SavedGameMapper); the merged result is
-    /// written back into the local payload's fields (preserving non-LWW
-    /// fields like `puzzleId` / `mode` / `difficulty` / `startedAt`).
-    private static func merge(local: RecordPayload, server: RecordPayload) -> RecordPayload {
-        let localSnapshot = conflictSnapshot(from: local)
-        let serverSnapshot = conflictSnapshot(from: server)
-        let resolved = ConflictResolver.resolve(local: localSnapshot, server: serverSnapshot)
-        var merged = local
-        merged.fields[Field.boardState] = .string(resolved.boardState)
-        merged.fields[Field.notesState] = .data(resolved.notesState)
-        merged.fields[Field.undoStack] = .data(resolved.undoStack)
-        merged.fields[Field.elapsedSeconds] = .int(resolved.elapsedSeconds)
-        merged.fields[Field.status] = .string(resolved.status)
-        merged.fields[Field.lastModifiedAt] = .date(resolved.lastModifiedAt)
-        return merged
-    }
-
-    private static func conflictSnapshot(from payload: RecordPayload) -> ConflictResolver.SavedGameSnapshot {
-        let board: String
-        if case .string(let value) = payload.fields[Field.boardState] { board = value } else { board = "" }
-        let notes: Data
-        if case .data(let value) = payload.fields[Field.notesState] { notes = value } else { notes = Data() }
-        let undo: Data
-        if case .data(let value) = payload.fields[Field.undoStack] { undo = value } else { undo = Data() }
-        let elapsed: Int
-        if case .int(let value) = payload.fields[Field.elapsedSeconds] { elapsed = value } else { elapsed = 0 }
-        let status: String
-        if case .string(let value) = payload.fields[Field.status] { status = value } else { status = "inProgress" }
-        let lastModified: Date
-        if case .date(let value) = payload.fields[Field.lastModifiedAt] {
-            lastModified = value
-        } else {
-            lastModified = .distantPast
-        }
-        return ConflictResolver.SavedGameSnapshot(
-            boardState: board,
-            notesState: notes,
-            undoStack: undo,
-            elapsedSeconds: elapsed,
-            status: status,
-            lastModifiedAt: lastModified
-        )
     }
 
     // MARK: - Helpers
@@ -332,14 +260,4 @@ internal actor SavedGameStore: Sendable {
         case .underlying: return "underlying"
         }
     }
-}
-
-/// Tiny generic actor box so the RetryHarness's `@Sendable` closure can
-/// hold mutable per-attempt state without violating Swift 6 captured-var
-/// rules. Lives at file scope so it can be reused by sibling stores.
-internal actor MutableRef<Value: Sendable> {
-    private var value: Value
-    init(value: Value) { self.value = value }
-    func get() -> Value { value }
-    func set(_ newValue: Value) { value = newValue }
 }

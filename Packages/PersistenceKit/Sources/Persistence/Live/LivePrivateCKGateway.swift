@@ -128,17 +128,8 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     /// Project CloudKit-specific errors onto the `PersistenceError` taxonomy
     /// at the gateway boundary so callers (stores) never need to import
-    /// CloudKit and can `catch PersistenceError.syncConflict` deterministically.
-    ///
-    /// Per design.md §How.6.7: `CKError.serverRecordChanged` is the wire
-    /// signal that drives the LWW retry loop in `SavedGameStore` /
-    /// `PersonalRecordStore`. Without this translation the store's
-    /// `catch PersistenceError.syncConflict` clause is unreachable in
-    /// production (CKError propagates raw).
-    ///
-    /// `internal` (not private) so unit tests can assert the mapping without
-    /// stubbing a full CKDatabase — the issue #64 reviewer requested live
-    /// wiring proof for this seam.
+    /// CloudKit. `internal` (not private) so unit tests can assert the
+    /// mapping without stubbing a full CKDatabase.
     static func translate(_ error: any Error, recordName: String) -> any Error {
         guard let ckError = error as? CKError else { return error }
         switch ckError.code {

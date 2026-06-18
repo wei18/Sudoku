@@ -5,8 +5,8 @@
 // same puzzle for the same `(mode, difficulty)` is a no-op.
 //
 // `recordName` is deterministic (`{mode}-{difficulty}`) so first-completion
-// races collapse to a single record at the CloudKit layer (Phase 5.6 adds
-// the LWW retry loop on conflict).
+// races collapse to a single record at the CloudKit layer. The gateway uses
+// `.allKeys` save policy (#544) so no retry/merge loop is needed.
 
 internal import Foundation
 internal import SudokuEngine
@@ -47,28 +47,12 @@ internal actor PersonalRecordStore: Sendable {
     }
 
     func upsert(_ record: PersonalRecord) async throws {
-        // §How.6.7: wrap the live save in RetryHarness; on
-        // `.syncConflict` from the gateway, fetch the server record,
-        // run ConflictResolver.resolve(local:server:), and resubmit the
-        // merged record. Budget: 2 retries; 3rd → throw.
-        let working = MutableRef(value: record)
-        let gatewayRef = gateway
-        try await RetryHarness.run(recordName: record.recordName) { _ in
-            let current = await working.get()
-            let payload = PersonalRecordMapper.payload(from: current)
-            do {
-                try await gatewayRef.save(payload)
-                return .success(())
-            } catch PersistenceError.syncConflict {
-                guard let serverPayload = try await gatewayRef.fetch(recordName: current.recordName),
-                      let serverRecord = PersonalRecordMapper.record(from: serverPayload) else {
-                    return .conflict
-                }
-                let merged = ConflictResolver.resolve(local: current, server: serverRecord)
-                await working.set(merged)
-                return .conflict
-            }
-        }
+        // #544: gateway uses `.allKeys` save policy (last-write-wins) so
+        // `CKError.serverRecordChanged` is never raised. The old
+        // RetryHarness + ConflictResolver merge path was unreachable in
+        // production and has been removed (SDD-005 §6).
+        let payload = PersonalRecordMapper.payload(from: record)
+        try await gateway.save(payload)
     }
 
     /// High-level "record this completion" entry. Encodes the dedup rule:
