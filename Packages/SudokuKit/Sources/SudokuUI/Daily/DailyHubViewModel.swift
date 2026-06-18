@@ -81,43 +81,39 @@ public final class DailyHubViewModel {
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
-        state = .loading
         let today = dateProvider()
-        do {
-            let trio = try await provider.fetchDailyTrio(date: today)
-            // Phase 1: render immediately with completion unknown (#526).
-            // M10 (issue #67): the hub must never block on a CloudKit call —
-            // when iCloud is signed out, `database.records(matching:inZoneWith:)`
-            // hangs indefinitely rather than throwing, so the previous
-            // `async let completedCall` pattern blocked here forever.
-            // Fix: render the three cards right after the trio arrives (no
-            // CK dependency), then fill completion overlay asynchronously.
-            // If the fill hangs or errors, the hub stays loaded with every
-            // card showing as un-completed (graceful-degrade, §How.6.1 p1).
-            let cards = trio.map { DailyCard(envelope: $0, isCompleted: false) }
-            state = .loaded(cards)
-            // Phase 2: completion overlay — non-blocking, best-effort.
-            await fillCompletionOverlay(trio: trio, date: today)
-        } catch let error as PuzzleStoreError {
-            switch error {
-            case .generatorFailed:
-                state = .exhausted
-            default:
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "DailyHubViewModel.bootstrap"
-                )
-                state = .failed(String(describing: error))
+        // Two-phase orchestration delegated to the shared skeleton (#558).
+        // Phase-1 fetches the trio and renders immediately (no CK dependency).
+        // Phase-2 fills the completion overlay asynchronously — best-effort,
+        // never blocks the initial render (M10 / §How.6.1 p1).
+        await performDailyBootstrap(
+            setLoading: { state = .loading },
+            fetchPhase1: { try await self.provider.fetchDailyTrio(date: today) },
+            onPhase1: { trio in
+                // Phase 1: render immediately with completion unknown (#526).
+                let cards = trio.map { DailyCard(envelope: $0, isCompleted: false) }
+                state = .loaded(cards)
+            },
+            // async closures require explicit `self.` under Swift 6 strict
+            // concurrency (the sync closures above legitimately omit it).
+            onPhase1Error: { error in
+                if let puzzleError = error as? PuzzleStoreError,
+                   case .generatorFailed = puzzleError {
+                    self.state = .exhausted
+                } else {
+                    await self.errorReporter.report(
+                        UserFacingError.classify(error),
+                        underlying: error,
+                        source: "DailyHubViewModel.bootstrap"
+                    )
+                    self.state = .failed(String(describing: error))
+                }
+            },
+            fetchPhase2: { trio in
+                // Phase 2: completion overlay — non-blocking, best-effort.
+                await self.fillCompletionOverlay(trio: trio, date: today)
             }
-        } catch {
-            await errorReporter.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "DailyHubViewModel.bootstrap"
-            )
-            state = .failed(String(describing: error))
-        }
+        )
     }
 
     /// Phase-2 completion overlay: fetches completed daily ids and re-merges
