@@ -80,8 +80,13 @@ public final class GameHomeViewModel<Route: Hashable & Sendable> {
             rootViewModel.path.append(route)
             return
         }
-        // No route → leaderboard side-effect path (or misconfigured mode).
+        // No route → leaderboard side-effect path.
         if case .authenticated = authState {
+            // A game with a no-route (leaderboard) mode MUST inject
+            // `presentLeaderboard`; otherwise the card is silently inert.
+            // Assert in debug/test so a future game migration (MS / 2048)
+            // can't ship an inert leaderboard card unnoticed (CR #566).
+            assert(presentLeaderboard != nil, "leaderboard mode has no presentLeaderboard wired")
             presentLeaderboard?()
         } else {
             rootViewModel.showGameCenterSignedOutAlert = true

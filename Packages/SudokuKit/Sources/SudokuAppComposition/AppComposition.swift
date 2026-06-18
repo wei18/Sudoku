@@ -7,16 +7,17 @@
 //   - `.preview()` — SwiftUI Preview fakes (no IO).
 //   - `.tests()`   — Unit / snapshot test fakes (no IO).
 //
-// The App target depends only on this product; `SudokuApp.body` reads
-// the bag's properties and hands them to `RootView`.
+// The App target depends only on this product; `SudokuApp.body` mounts
+// `composition.rootView`, which (since #557) returns the shared view assembled
+// by `GameAppKit.makeGameApp` — Sudoku's bespoke `RootView`/`HomeView` are retired.
 //
-// Stored shape (v2.3.3):
-//   - `rootViewModel` + `routeFactory` are what `RootView.init` reads.
+// Stored shape:
+//   - `rootViewModel` + `routeFactory` come from the `makeGameAppWithDeps` handle
+//     (#556/#557).
 //   - The remaining protocol deps (puzzleProvider / persistence / gameCenter
 //     / telemetry / adProvider / iapClient / adGate) stay accessible on the
-//     bag for callers that need direct references (e.g. App-level boot order
-//     in v2.3.7, individual destination views that escape the RouteFactory
-//     such as HomeView's Game Center modal callback in v2.3.4-6).
+//     bag for callers that need direct references (e.g. App-level boot order,
+//     CompositionTests / BootOrderTests).
 
 internal import AdsAdMob
 internal import Foundation
