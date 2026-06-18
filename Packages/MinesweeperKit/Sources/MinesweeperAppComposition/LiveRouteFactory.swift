@@ -142,7 +142,6 @@ public struct LiveRouteFactory: RouteFactory {
     @MainActor
     // The route→view switch reads as one cohesive mapping; extracting a helper
     // per case would obscure the route table (7 cases post-SDD-003 Epic 8).
-    // swiftlint:disable:next cyclomatic_complexity
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
         case .daily:
@@ -172,103 +171,86 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .board(let difficulty, let seed, let mode):
-            // SDD-003 Epic 1 / #491: two-context contract (mirrors SudokuKit):
-            //   push context  (path != nil): redirect → modal via onPresentBoard.
-            //   modal context (path == nil): GameRoot builds modal content here;
-            //     the redirect must NOT fire or the modal is blank (Color.clear).
-            if let onPresentBoard, path != nil {
-                return AnyView(
-                    GameBoardRedirect(
-                        route: route,
-                        path: path,
-                        onPresent: onPresentBoard
+            // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
+            // shared `boardDestination` helper in GameAppKit.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                AnyView(
+                    MinesweeperBoardView(
+                        difficulty: difficulty,
+                        seed: seed,
+                        mode: mode,
+                        adProvider: self.adProvider,
+                        adGate: self.adGate,
+                        gameCenter: self.gameCenter,
+                        errorReporter: self.errorReporter,
+                        // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
+                        // #292: the Completion overlay's "New Game" CTA pops the
+                        // stack back to the difficulty picker.
+                        onNewGame: { Self.popToNewGame(path: path) },
+                        // #455 step 4: persistence seam. The save's identity is
+                        // derived ONCE here (today's date for a daily, a singleton
+                        // slot per practice difficulty) — see the store's
+                        // recordName helpers for the scheme rationale.
+                        store: self.savedGameStore,
+                        recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty)
                     )
                 )
             }
-            return AnyView(
-                MinesweeperBoardView(
-                    difficulty: difficulty,
-                    seed: seed,
-                    mode: mode,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    gameCenter: gameCenter,
-                    errorReporter: errorReporter,
-                    // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
-                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
-                    // #292: the Completion overlay's "New Game" CTA pops the
-                    // stack back to the difficulty picker.
-                    onNewGame: { Self.popToNewGame(path: path) },
-                    // #455 step 4: persistence seam. The save's identity is
-                    // derived ONCE here (today's date for a daily, a singleton
-                    // slot per practice difficulty) — see the store's
-                    // recordName helpers for the scheme rationale.
-                    store: savedGameStore,
-                    recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty)
-                )
-            )
         case .resumeBoard(let recordName, let mode):
-            // #455 step 4: restore a persisted board. Loader fetches the
-            // snapshot + rebuilds the exact board; without a store (preview /
-            // test factories) the route is unreachable — fetchResume is only
-            // wired in `.live()` — so an empty view is an honest fallback.
-            // SDD-003 Epic 1 / #491: same two-context contract as `.board`:
-            //   push context  (path != nil): redirect → modal.
-            //   modal context (path == nil): return real loader, not redirect.
-            if let onPresentBoard, path != nil {
+            // #455 step 4 / #491 / #559: same two-context contract as `.board`,
+            // delegated to shared `boardDestination` helper.
+            // Without a store (preview / test) the loader falls back to EmptyView.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                guard let savedGameStore = self.savedGameStore else { return AnyView(EmptyView()) }
                 return AnyView(
-                    GameBoardRedirect(
-                        route: route,
-                        path: path,
-                        onPresent: onPresentBoard
+                    MinesweeperBoardLoaderView(
+                        recordName: recordName,
+                        mode: mode,
+                        store: savedGameStore,
+                        adProvider: self.adProvider,
+                        adGate: self.adGate,
+                        gameCenter: self.gameCenter,
+                        errorReporter: self.errorReporter,
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
+                        onNewGame: { Self.popToNewGame(path: path) }
                     )
                 )
             }
-            guard let savedGameStore else { return AnyView(EmptyView()) }
-            return AnyView(
-                MinesweeperBoardLoaderView(
-                    recordName: recordName,
-                    mode: mode,
-                    store: savedGameStore,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    gameCenter: gameCenter,
-                    errorReporter: errorReporter,
-                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
-                    onNewGame: { Self.popToNewGame(path: path) }
-                )
-            )
         case .replayDailyBoard(let difficulty, let seed):
-            // Epic 8 (SDD-003): unscored free replay after a failed daily. The
-            // board is built WITHOUT a `store` or `recordName` (no persistence
-            // side-effects) and WITHOUT `gameCenter` scoring (the `mode` is
-            // `.practice` so the GC daily-submit guard in MinesweeperGameViewModel
-            // fires). The Failed record from the first attempt is untouched.
-            // #491: same two-context contract — redirect only in push context.
-            if let onPresentBoard, path != nil {
-                return AnyView(
-                    GameBoardRedirect(
-                        route: .replayDailyBoard(difficulty: difficulty, seed: seed),
-                        path: path,
-                        onPresent: onPresentBoard
+            // Epic 8 (SDD-003) / #491 / #559: unscored free replay after a failed
+            // daily. Built WITHOUT store/recordName (no persistence side-effects)
+            // and WITHOUT gameCenter (mode == .practice guards GC submit).
+            // Two-context contract delegated to shared `boardDestination` helper.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                AnyView(
+                    MinesweeperBoardView(
+                        difficulty: difficulty,
+                        seed: seed,
+                        mode: .practice,
+                        adProvider: self.adProvider,
+                        adGate: self.adGate,
+                        gameCenter: nil,
+                        errorReporter: self.errorReporter,
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
+                        onNewGame: { Self.popToNewGame(path: path) }
+                        // store: nil, recordName: nil — intentionally omitted so no
+                        // save is written and the Failed record stays intact.
                     )
                 )
             }
-            return AnyView(
-                MinesweeperBoardView(
-                    difficulty: difficulty,
-                    seed: seed,
-                    mode: .practice,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    gameCenter: nil,
-                    errorReporter: errorReporter,
-                    soundPlayer: soundPlayer ?? NoopSoundPlaying(),
-                    onNewGame: { Self.popToNewGame(path: path) }
-                    // store: nil, recordName: nil — intentionally omitted so no
-                    // save is written and the Failed record stays intact.
-                )
-            )
 
         case .completion(let difficulty, _):
             // #386: re-viewing an already-solved daily. Build the same
