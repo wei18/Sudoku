@@ -94,6 +94,8 @@ public final class DailyHubViewModel {
                 let cards = trio.map { DailyCard(envelope: $0, isCompleted: false) }
                 state = .loaded(cards)
             },
+            // async closures require explicit `self.` under Swift 6 strict
+            // concurrency (the sync closures above legitimately omit it).
             onPhase1Error: { error in
                 if let puzzleError = error as? PuzzleStoreError,
                    case .generatorFailed = puzzleError {
