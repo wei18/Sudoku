@@ -14,6 +14,42 @@
 
 public import SwiftUI
 
+// MARK: - boardDestination helper
+
+/// Shared #491 two-context board-redirect decision.
+///
+/// Every game's `RouteFactory.view(for:path:)` board cases share the same
+/// guard: when `onPresentBoard` is wired AND the route arrived via a
+/// NavigationStack push (`path != nil`), return a `GameBoardRedirect` that
+/// pops the stack entry and presents the board as a fullScreenCover modal.
+/// In the modal context (`path == nil`) GameRoot calls `view(for:path:nil)` to
+/// build the real board view — the redirect must NOT fire or the modal renders
+/// `Color.clear` (blank screen). The legacy push path (`onPresentBoard == nil`)
+/// falls straight through to `buildInline` for tests / previews.
+///
+/// Centralising the decision here means a future fix to the contract is
+/// one edit, not one per game.
+@MainActor
+public func boardDestination<Route: Hashable & Sendable>(
+    route: Route,
+    path: Binding<[Route]>?,
+    onPresentBoard: (@MainActor (Route) -> Void)?,
+    buildInline: () -> AnyView
+) -> AnyView {
+    if let onPresentBoard, path != nil {
+        return AnyView(
+            GameBoardRedirect(
+                route: route,
+                path: path,
+                onPresent: onPresentBoard
+            )
+        )
+    }
+    return buildInline()
+}
+
+// MARK: - GameBoardRedirect
+
 @MainActor
 public struct GameBoardRedirect<Route: Hashable & Sendable>: View {
     private let route: Route

@@ -182,37 +182,30 @@ public struct LiveRouteFactory: RouteFactory {
                     banner: { themedBanner() }
                 )
             )
-        case .board:
-            // SDD-003 Epic 1 / #491: two-context contract for board routes:
-            //   push context  (path != nil): return `GameBoardRedirect`, which pops the
-            //     push entry and fires `onPresentBoard` → fullScreenCover modal.
-            //   modal context (path == nil): GameRoot calls `view(for:path:nil)` to
-            //     build the modal content; the redirect must NOT fire here or the
-            //     modal renders Color.clear (blank screen). Fall through to the real
-            //     board view.
-            // Legacy push path (onPresentBoard == nil) is kept for tests / previews.
-            if let onPresentBoard, path != nil {
-                return AnyView(
-                    GameBoardRedirect(
-                        route: route,
-                        path: path,
-                        onPresent: onPresentBoard
+        case .board(let puzzleId):
+            // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
+            // the shared `boardDestination` helper in GameAppKit.
+            //   push context  (path != nil): redirect → fullScreenCover modal.
+            //   modal context (path == nil): fall through to real board view.
+            // Legacy push path (onPresentBoard == nil) falls through to inline.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                AnyView(
+                    BoardLoaderView(
+                        puzzleId: puzzleId,
+                        puzzleProvider: puzzleProvider,
+                        persistence: persistence,
+                        errorReporter: errorReporter,
+                        adProvider: adProvider,
+                        adGate: adGate,
+                        soundPlayer: soundPlayer,
+                        path: path
                     )
                 )
             }
-            guard case .board(let puzzleId) = route else { return AnyView(EmptyView()) }
-            return AnyView(
-                BoardLoaderView(
-                    puzzleId: puzzleId,
-                    puzzleProvider: puzzleProvider,
-                    persistence: persistence,
-                    errorReporter: errorReporter,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    soundPlayer: soundPlayer,
-                    path: path
-                )
-            )
         case .completion(let puzzleId, let elapsedSeconds, let mistakeCount):
             // #287 Phase 2: offer the daily-ready primer ONLY on a Daily solve
             // (flow S02). Practice solves pass `reminderPrimer: nil` → no change.

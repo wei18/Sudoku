@@ -82,58 +82,56 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .board(let seed, let mode):
-            // SDD-003 Epic 1: two-context board contract (mirrors MS #491).
-            if let onPresentBoard, path != nil {
-                return AnyView(
-                    GameBoardRedirect(
-                        route: route,
-                        path: path,
-                        onPresent: onPresentBoard
-                    )
-                )
-            }
-            // Build a fully-wired VM (with persistence + GC seams), then hand
-            // the VM to the view. This keeps Game2048BoardView's public surface
-            // minimal — it always takes a pre-built VM, not raw seed+mode+deps.
-            let recordName = Game2048SavedGameStore.recordName(modeRaw: mode.rawValue)
-            let viewModel = Game2048GameViewModel(
-                seed: seed,
-                mode: mode,
-                gameCenter: gameCenter,
-                errorReporter: errorReporter,
-                store: savedGameStore,
-                recordName: savedGameStore != nil ? recordName : nil
-            )
-            return AnyView(
-                Game2048BoardView(
-                    viewModel: viewModel,
-                    adProvider: adProvider,
-                    adGate: adGate
-                )
-            )
-        case .resumeBoard(let recordName, let mode):
-            // Same two-context contract as .board.
-            if let onPresentBoard, path != nil {
-                return AnyView(
-                    GameBoardRedirect(
-                        route: route,
-                        path: path,
-                        onPresent: onPresentBoard
-                    )
-                )
-            }
-            guard let savedGameStore else { return AnyView(EmptyView()) }
-            return AnyView(
-                Game2048BoardLoaderView(
-                    recordName: recordName,
+            // SDD-003 Epic 1 / #491 / #559: two-context board contract delegated
+            // to shared `boardDestination` helper in GameAppKit.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                // Build the fully-wired VM ONLY on the inline path. CR #570 F1:
+                // `Game2048GameViewModel.init` spawns tiles via the RNG, so
+                // constructing it eagerly before `boardDestination` would waste
+                // that work on every redirect push — preserves main's
+                // lazy-construction invariant. Game2048BoardView always takes a
+                // pre-built VM (minimal public surface).
+                let recordName = Game2048SavedGameStore.recordName(modeRaw: mode.rawValue)
+                let viewModel = Game2048GameViewModel(
+                    seed: seed,
                     mode: mode,
-                    store: savedGameStore,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    gameCenter: gameCenter,
-                    errorReporter: errorReporter
+                    gameCenter: self.gameCenter,
+                    errorReporter: self.errorReporter,
+                    store: self.savedGameStore,
+                    recordName: self.savedGameStore != nil ? recordName : nil
                 )
-            )
+                return AnyView(
+                    Game2048BoardView(
+                        viewModel: viewModel,
+                        adProvider: self.adProvider,
+                        adGate: self.adGate
+                    )
+                )
+            }
+        case .resumeBoard(let recordName, let mode):
+            // #491 / #559: same two-context contract as .board, delegated to helper.
+            return boardDestination(
+                route: route,
+                path: path,
+                onPresentBoard: onPresentBoard
+            ) {
+                guard let savedGameStore = self.savedGameStore else { return AnyView(EmptyView()) }
+                return AnyView(
+                    Game2048BoardLoaderView(
+                        recordName: recordName,
+                        mode: mode,
+                        store: savedGameStore,
+                        adProvider: self.adProvider,
+                        adGate: self.adGate,
+                        gameCenter: self.gameCenter,
+                        errorReporter: self.errorReporter
+                    )
+                )
+            }
         case .settings:
             let version = (Bundle.main
                 .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
