@@ -12,6 +12,7 @@
 
 public import Foundation
 public import SwiftUI
+import GameShellUI
 public import MinesweeperEngine
 public import MinesweeperPersistence
 public import Persistence
@@ -92,23 +93,25 @@ public final class MinesweeperDailyHubViewModel {
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
-        state = .loading
         let today = dateProvider()
-        // `dailyTrio` is synchronous and non-throwing — no CK dependency here.
-        let trio = provider.dailyTrio(date: today)
-
-        // Phase 1: render immediately with overlays unknown (#530).
-        // M10: the hub must never block on a CloudKit call — when iCloud is
-        // signed out, the fetch may hang indefinitely rather than throwing,
-        // so the previous single-phase pattern blocked `.loaded` forever.
-        // Fix: render three un-marked cards right after the trio arrives,
-        // then fill completion + failure overlays asynchronously.
-        // If the fills hang or error, the hub stays loaded with cards showing
-        // as un-completed / un-failed (graceful-degrade, §How.6.1 p1).
-        state = .loaded(Self.mergeCards(trio: trio, completed: [], failed: []))
-
-        // Phase 2: fill completion + failure overlays — non-blocking, best-effort.
-        await fillCompletionAndFailureOverlay(trio: trio, date: today)
+        // Two-phase orchestration delegated to the shared skeleton (#558).
+        // `dailyTrio` is synchronous and non-throwing — phase-1 wraps it in an
+        // async closure that can never throw, so onPhase1Error is unreachable.
+        // Phase-2 fills completion + failure overlays asynchronously — best-effort,
+        // never blocks the initial render (M10 / §How.6.1 p1).
+        await performDailyBootstrap(
+            setLoading: { state = .loading },
+            fetchPhase1: { self.provider.dailyTrio(date: today) },
+            onPhase1: { trio in
+                // Phase 1: render immediately with overlays unknown (#530).
+                state = .loaded(Self.mergeCards(trio: trio, completed: [], failed: []))
+            },
+            onPhase1Error: { _ in /* unreachable: dailyTrio is non-throwing */ },
+            fetchPhase2: { trio in
+                // Phase 2: fill completion + failure overlays — non-blocking, best-effort.
+                await self.fillCompletionAndFailureOverlay(trio: trio, date: today)
+            }
+        )
     }
 
     /// Phase-2 overlay fill: fetches completed and failed daily ids, then
