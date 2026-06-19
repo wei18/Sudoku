@@ -3163,6 +3163,198 @@
           }
         }
       }
+    },
+    "att.primer.body" : {
+      "comment" : "#195 ATT pre-prompt (priming) sheet — body. Path-B framing: relevance not a profile; decline still works; or remove ads. Shown before the system ATT dialog.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We don't build a profile of you. With your permission, ads can use your device's advertising identifier to stay relevant. Decline and ads still show — just less tailored. You can also remove ads entirely."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No creamos un perfil tuyo. Con tu permiso, los anuncios pueden usar el identificador de publicidad de tu dispositivo para seguir siendo relevantes. Si no aceptas, los anuncios se siguen mostrando, solo que menos personalizados. También puedes quitar los anuncios por completo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたのプロフィールを作成することはありません。許可すると、広告は端末の広告識別子を使って関連性を保ちます。許可しなくても広告は表示されますが、最適化は弱まります。広告を完全に削除することもできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용자의 프로필을 만들지 않아요. 허용하면 광고가 기기의 광고 식별자를 사용해 관련성을 유지해요. 거부해도 광고는 계속 표시되며, 맞춤 정도만 줄어들어요. 광고를 완전히 제거할 수도 있어요."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราไม่สร้างโปรไฟล์ของคุณ เมื่อคุณอนุญาต โฆษณาจะใช้ตัวระบุโฆษณาของอุปกรณ์เพื่อให้ตรงกับความสนใจ หากไม่อนุญาต โฆษณายังคงแสดงอยู่ เพียงแต่ปรับให้เหมาะกับคุณน้อยลง คุณยังนำโฆษณาออกทั้งหมดได้ด้วย"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我们不会建立你的个人档案。在你同意的情况下，广告可使用设备的广告标识符以保持相关性。拒绝后广告仍会显示，只是不那么贴合你的喜好。你也可以完全移除广告。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我們不會建立你的個人檔案。在你同意的情況下，廣告可使用裝置的廣告識別碼以維持相關性。拒絕後廣告仍會顯示，只是較不貼近你的喜好。你也可以完全移除廣告。"
+          }
+        }
+      }
+    },
+    "att.primer.continue" : {
+      "comment" : "#195 ATT pre-prompt sheet — primary CTA. Leads into the system ATT dialog. Keep short.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดำเนินการต่อ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續"
+          }
+        }
+      }
+    },
+    "att.primer.notNow" : {
+      "comment" : "#195 ATT pre-prompt sheet — secondary CTA. Dismisses without requesting; ATT stays not-determined. Keep short.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora no"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "後で"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나중에"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไว้ภายหลัง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂不"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫時不要"
+          }
+        }
+      }
+    },
+    "att.primer.title" : {
+      "comment" : "#195 ATT pre-prompt sheet — title. Path-B framing (relevance, not a profile).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep your ads relevant"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén tus anuncios relevantes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "広告を関連性のある内容に"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "관련성 있는 광고 유지하기"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ให้โฆษณาตรงกับความสนใจของคุณ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让广告更贴近你"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讓廣告更貼近你"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
