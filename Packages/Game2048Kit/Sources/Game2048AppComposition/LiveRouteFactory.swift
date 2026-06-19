@@ -1,9 +1,8 @@
 // LiveRouteFactory — Tiles2048's concrete `RouteFactory<AppRoute>`.
 //
-// Mirrors MinesweeperKit.LiveRouteFactory. Thinner than MS (no audio, no
-// reminders in M4) but identical structure and optionality discipline. The
-// factory exists for the same shape reason: keep `Game2048Root.init` at one
-// argument (the factory) even as destination construction grows.
+// Mirrors MinesweeperKit.LiveRouteFactory. After #479 (SDD-005 Pillar C)
+// the factory receives audio + reminder deps from GameDeps (via the
+// makeRouteFactory closure) and threads them into Game2048SettingsView.
 //
 // SDD-003 Epic 1 two-context board contract (mirrors MinesweeperKit #491):
 //   push context  (path != nil): GameBoardRedirect → modal via onPresentBoard.
@@ -21,6 +20,11 @@ public import Game2048Persistence
 public import Persistence
 public import Telemetry
 public import SettingsUI
+// #479: reminder + audio deps threaded from GameDeps into Settings.
+// GameAudio must be public because SoundPlaying appears in the public init.
+// Reminders must be public because ReminderSettingsEntry appears in the public init.
+public import GameAudio
+public import Reminders
 
 internal import Foundation
 #if canImport(UIKit)
@@ -41,6 +45,12 @@ public struct LiveRouteFactory: RouteFactory {
     private let savedGameStore: Game2048SavedGameStore?
     // SDD-003 Epic 1: closure that modal-presents a board route.
     private let onPresentBoard: (@MainActor (AppRoute) -> Void)?
+    // #479: reminder settings builder (from GameDeps). Optional so previews
+    // and tests that omit it compile unchanged.
+    private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
+    // #479: audio deps (from GameDeps). Optional for the same reason.
+    private let soundPlayer: (any SoundPlaying)?
+    private let audioSettings: AudioSettingsModel?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -50,6 +60,9 @@ public struct LiveRouteFactory: RouteFactory {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         toastController: ToastController? = nil,
+        makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
+        soundPlayer: (any SoundPlaying)? = nil,
+        audioSettings: AudioSettingsModel? = nil,
         savedGameStore: Game2048SavedGameStore? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
     ) {
@@ -60,6 +73,9 @@ public struct LiveRouteFactory: RouteFactory {
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.toastController = toastController
+        self.makeReminderSettings = makeReminderSettings
+        self.soundPlayer = soundPlayer
+        self.audioSettings = audioSettings
         self.savedGameStore = savedGameStore
         self.onPresentBoard = onPresentBoard
     }
@@ -150,6 +166,8 @@ public struct LiveRouteFactory: RouteFactory {
                         )
                     },
                     monetizationController: monetizationController,
+                    reminderSettings: makeReminderSettings?(),
+                    audioSettings: audioSettings,
                     notices: Self.makeSettingsNotices(),
                     banner: { bannerSlot() }
                 )

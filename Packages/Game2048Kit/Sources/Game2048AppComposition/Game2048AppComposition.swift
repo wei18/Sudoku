@@ -1,18 +1,17 @@
 // Game2048AppComposition — DI composition root for the Tiles2048 app.
 //
-// M4 fully wires all Live seams, mirroring MinesweeperAppComposition:
-//   - `persistence`: LivePersistence(ckConfig: .tiles2048, ...)
-//   - `iapClient`: LiveStoreKit2IAPClient(knownProductIds: [...remove_ads])
-//   - `adProvider`: LiveAdMobAdProvider (iOS) / NoopAdProvider (macOS)
-//   - `adGate` + `monetizationStateStore` + `monetizationController`
-//   - `toastController`: shared toast surface (mirrors MS §U15)
-//   - `gameCenter`: LiveGameCenterClient(authDriver: GKAuthDriver())
-//   - `routeFactory`: LiveRouteFactory wired into Game2048Root
-//   - `rootViewModel`: Game2048RootViewModel (GameRootViewModel<AppRoute> alias)
+// #479 SDD-005 Pillar C: migrated to GameConfig/makeGameApp (mirrors
+// MinesweeperAppComposition post-#572). The public field shape is preserved
+// so existing tests and the App target compile unchanged.
 //
-// Note: no audio in M4 (Tiles2048 v1.0 defers audio to a later milestone,
-// unlike Minesweeper which wired #330 P2). No reminders in M4 (no
-// daily-ready fire-time concept yet for a daily-tile game).
+// The App target reads `bag.rootView` and hands it to `WindowGroup`. After
+// #479 `rootView` returns `wiredView` (from `makeGameApp`) — the shared
+// GameRoot + GameHomeView + universal ResumePill + ATT sheet + GC alert,
+// assembled by makeGameApp. The theme injection (`\.theme, Game2048Theme()`)
+// is now applied inside `makeGameApp` via `config.theme`.
+//
+// Deleted by this PR: Live+Resume.swift, Game2048Root.swift,
+// Game2048HomeView.swift, Game2048HomeViewModel.swift.
 //
 // Public surface:
 //   - `Game2048AppComposition.live()`    — production bag (Live.swift).
@@ -28,6 +27,7 @@ public import Telemetry
 public import Persistence
 public import MonetizationCore
 public import MonetizationUI
+public import GameAppKit
 
 /// ASC product ID for Tiles2048's "Remove Ads" non-consumable.
 /// Mirrors `minesweeperRemoveAdsProductId` — distinct so the two apps'
@@ -37,6 +37,10 @@ public let tiles2048RemoveAdsProductId: String = "com.wei18.tiles2048.iap.remove
 
 @MainActor
 public struct Game2048AppComposition {
+    // #479: rootViewModel comes from makeGameAppWithDeps. Type is
+    // GameRootViewModel<AppRoute> — identical to Game2048RootViewModel
+    // (which is a typealias over it). Kept as the typealias type for
+    // backward compatibility with tests that use Game2048RootViewModel.
     public let rootViewModel: Game2048RootViewModel
     public let routeFactory: any RouteFactory<AppRoute>
     public let telemetry: Telemetry
@@ -49,6 +53,22 @@ public struct Game2048AppComposition {
     public let monetizationStateStore: any AdGateStateStore
     public let monetizationController: MonetizationStateController
     public let toastController: ToastController
+    // #479: the fully-wired root view from makeGameApp — GameRoot + shared
+    // GameHomeView + ResumePill + ATT sheet + GC alert. Mounted by `rootView`.
+    private let wiredView: AnyView
+
+    // MARK: - Root view accessor (#479)
+
+    /// Composed root view ready to mount in `@main`'s `WindowGroup`.
+    ///
+    /// After #479: `wiredView` (from `makeGameApp`) is the live mount point.
+    /// It carries the shared `GameHomeView` + universal ResumePill + ATT sheet
+    /// + GC-signed-out alert + monetization boot. The theme injection
+    /// (`.environment(\.theme, Game2048Theme())`) is applied inside
+    /// `makeGameApp` via `config.theme` — not duplicated here.
+    public var rootView: some View {
+        wiredView
+    }
 
     public init(
         rootViewModel: Game2048RootViewModel,
@@ -62,7 +82,8 @@ public struct Game2048AppComposition {
         adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
         monetizationController: MonetizationStateController,
-        toastController: ToastController
+        toastController: ToastController,
+        wiredView: AnyView = AnyView(EmptyView())
     ) {
         self.rootViewModel = rootViewModel
         self.routeFactory = routeFactory
@@ -76,27 +97,6 @@ public struct Game2048AppComposition {
         self.monetizationStateStore = monetizationStateStore
         self.monetizationController = monetizationController
         self.toastController = toastController
-    }
-
-    /// Convenience accessor — constructs the top-level `Game2048Root` view
-    /// bound to this composition's `routeFactory`. The App target just calls
-    /// `composition.rootView` inside its `WindowGroup`.
-    public var rootView: some View {
-        Game2048Root(
-            viewModel: rootViewModel,
-            routeFactory: routeFactory,
-            toastController: toastController,
-            // Home is the root content and mounts the banner slot + Remove
-            // Ads card directly (not a RouteFactory destination), so Root
-            // threads these in — mirrors MinesweeperAppComposition.rootView.
-            adProvider: adProvider,
-            adGate: adGate,
-            monetizationController: monetizationController
-        )
-        // Inject Tiles2048's warm-tile palette at the composition root.
-        // GameShellUI's `\.theme` default is a palette-neutral fallback (NOT
-        // any app's brand), so every mounted view resolves amber/sand tokens
-        // here. Mirrors Minesweeper's `.environment(\.theme, MinesweeperTheme())`.
-        .environment(\.theme, Game2048Theme())
+        self.wiredView = wiredView
     }
 }
