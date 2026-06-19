@@ -11,6 +11,8 @@
 public import SwiftUI
 public import MonetizationUI
 public import SettingsUI
+// #560: shared `GameCenterDashboard.present()` (was the per-app copy).
+internal import GameCenterClient
 
 public struct Game2048SettingsView<Banner: View>: View {
     private let version: String
@@ -44,7 +46,7 @@ public struct Game2048SettingsView<Banner: View>: View {
             audioSettings: nil,
             notices: notices,
             // Game Center entry: present native GC dashboard (#492 pattern).
-            onGameCenter: { Game2048GameCenterDashboard.present() },
+            onGameCenter: { GameCenterDashboard.present() },
             purchases: {
                 if let controller = monetizationController {
                     Section("Purchases") {

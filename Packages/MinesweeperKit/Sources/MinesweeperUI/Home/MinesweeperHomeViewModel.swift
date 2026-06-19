@@ -96,7 +96,7 @@ public final class MinesweeperHomeViewModel {
             // opens the full leaderboards listing (all 3 best-time boards).
             // #513: guard on auth state; show alert when GC is signed out.
             if case .authenticated = authState {
-                MinesweeperGameCenterDashboard.present(leaderboardId: nil)
+                GameCenterDashboard.present(leaderboardId: nil)
             } else {
                 showGameCenterSignedOutAlert = true
             }

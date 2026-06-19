@@ -1,12 +1,14 @@
 // GameCenterDashboard — present Apple's native Game Center leaderboards UI.
 //
-// Per issue #49 / docs/designs/07-leaderboard.md (2026-05-20 rewrite). The custom
-// SwiftUI `LeaderboardView` has been retired; full leaderboard browsing now
-// delegates to Apple's native dashboard (scope toggle, time-range filter,
-// player profile drill-through, AX3 stacking, sign-in affordance — all
-// handled by Apple).
+// Shared across all games (#560 / SDD-005 Pillar C). The three byte-identical
+// per-game copies (SudokuUI/MinesweeperUI/Game2048UI) collapse into this one
+// implementation, co-located with the GameKit seam it depends on. Per issue
+// #49 / docs/designs/07-leaderboard.md (2026-05-20 rewrite). Full leaderboard
+// browsing delegates to Apple's native dashboard (scope toggle, time-range
+// filter, player profile drill-through, AX3 stacking, sign-in affordance —
+// all handled by Apple).
 //
-// API choice: hybrid (see impl-notes §設計決定 Decision 1).
+// API choice: hybrid.
 //   - `leaderboardId == nil` → `GKAccessPoint.shared.trigger(state: .leaderboards)`.
 //     The public `GameCenterViewControllerState.leaderboards` case has no
 //     associated values, so this is the only path for the "open the full
@@ -20,7 +22,9 @@
 //     so macOS collapses to the generic leaderboards listing (issue #180).
 //
 // The iOS path bottoms out in UIKit, so we drop the SwiftUI representable
-// bridge entirely and reach the active UIWindowScene directly.
+// bridge entirely and reach the active UIWindowScene directly. GameKit/UIKit
+// stay encapsulated inside this package (the GameKit seam), never leaking to
+// the zero-dep GameShellUI.
 
 import Foundation
 

@@ -5,7 +5,7 @@
 // observable states: `.loading` → `.loaded(slice)` / `.unauthenticated` /
 // `.failed`. The embedded mini-slice is the post-game "炫耀面" affordance; the
 // "View leaderboard" CTA presents Apple's native Game Center dashboard
-// (`MinesweeperGameCenterDashboard`) instead of pushing a custom view.
+// (the shared `GameCenterDashboard`, #560) instead of pushing a custom view.
 //
 // Deviation from Sudoku (#292 spec): the slice is centred on the LOCAL PLAYER
 // (`aroundLocalPlayer: true`, the #150 path) rather than top-of-the-world, so a
@@ -97,6 +97,6 @@ public final class MinesweeperCompletionViewModel {
     /// difficulty's best-time leaderboard (mirrors Sudoku #49). Modal side
     /// effect: no route push, no path mutation.
     public func viewLeaderboardTapped() {
-        MinesweeperGameCenterDashboard.present(leaderboardId: leaderboardId)
+        GameCenterDashboard.present(leaderboardId: leaderboardId)
     }
 }

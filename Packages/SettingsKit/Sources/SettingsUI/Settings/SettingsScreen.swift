@@ -43,8 +43,8 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
     private let banner: () -> Banner
     // Game Center entry point: when non-nil the shared `Section("Game Center")`
     // row is rendered. The action is injected per-app so SettingsKit never
-    // imports GameKit. Sudoku passes `{ GameCenterDashboard.present() }`;
-    // Minesweeper passes `{ MinesweeperGameCenterDashboard.present() }`.
+    // imports GameKit. Every game passes `{ GameCenterDashboard.present() }`
+    // (the shared dashboard from GameCenterClient, #560).
     // `nil` (default) keeps previews / tests byte-identical.
     private let onGameCenter: (@MainActor () -> Void)?
 

@@ -174,7 +174,7 @@ struct MinesweeperCompletionViewModelTests {
 
     // MARK: - CTA route
     //
-    // `viewLeaderboardTapped()` reaches `MinesweeperGameCenterDashboard.present`,
+    // `viewLeaderboardTapped()` reaches the shared `GameCenterDashboard.present`,
     // which hits Apple's `GKAccessPoint.shared` singleton — not faked / asserted
     // from unit scope without a UI host (it would actually trigger the system
     // dashboard on macOS). Exercised manually in sandbox validation, mirroring

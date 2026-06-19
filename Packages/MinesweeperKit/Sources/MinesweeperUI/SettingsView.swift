@@ -25,6 +25,8 @@ public import MonetizationUI
 // SettingsUI. `public` because `SettingsNoticesConfig` +
 // `MinesweeperReminderSettingsEntry`'s copy types appear in public signatures.
 public import SettingsUI
+// #560: shared `GameCenterDashboard.present()` (was the per-app copy).
+internal import GameCenterClient
 
 public struct SettingsView<Banner: View>: View {
     private let version: String
@@ -87,9 +89,8 @@ public struct SettingsView<Banner: View>: View {
             audioSettings: audioSettings,
             notices: notices,
             // Game Center entry: present Apple's native GC dashboard (no leaderboard
-            // focus). `MinesweeperGameCenterDashboard` lives in this module
-            // (MinesweeperUI/Leaderboard/); no extra import needed.
-            onGameCenter: { MinesweeperGameCenterDashboard.present() },
+            // focus). #560: shared `GameCenterDashboard` in GameCenterClient.
+            onGameCenter: { GameCenterDashboard.present() },
             purchases: {
                 // Purchases slot — the app's MonetizationUI rows. GameShellUI never
                 // imports MonetizationUI; the whole conditional Section lives here.
