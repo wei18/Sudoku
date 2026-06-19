@@ -107,7 +107,6 @@ extension MinesweeperAppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
-            settingsNotices: makeSettingsNotices(),
             // #572 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
             // Byte-identical to the former MinesweeperHomeViewModel.subtitleKey
             // literals so snapshot baselines do not move.
@@ -199,24 +198,6 @@ extension MinesweeperAppComposition {
                 nil
                 #endif
             }()
-        )
-    }
-
-    /// #331: builds the MS Notices section config. Mirrors Sudoku's shape.
-    @MainActor
-    private static func makeSettingsNotices() -> SettingsNoticesConfig {
-        let year = Calendar.current.component(.year, from: Date())
-        var onAcknowledgements: (@MainActor () -> Void)?
-        #if canImport(UIKit)
-        onAcknowledgements = {
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
-            }
-        }
-        #endif
-        return SettingsNoticesConfig(
-            onAcknowledgements: onAcknowledgements,
-            copyright: "© \(year) Wei"
         )
     }
 
