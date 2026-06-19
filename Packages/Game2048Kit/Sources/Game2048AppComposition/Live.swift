@@ -1,157 +1,204 @@
 // Live + Preview composition for Game2048AppComposition.
 //
-// Mirrors MinesweeperAppComposition/Live.swift; deferred items vs MS:
-//   - No audio (#330-equivalent deferred for Tiles2048 post-M4)
-//   - No reminders (no daily-ready fire-time concept for 2048 yet)
-//   - No `.live()` puzzle loader (2048 has no PuzzleProvider; resume goes
-//     through Game2048Persistence, not Sudoku-shaped SavedGameStore.loadOrCreate)
+// #479 SDD-005 Pillar C (2048): the game-agnostic live wiring (Telemetry +
+// MetricKit + errorReporter + GameCenter + Persistence + monetization + audio +
+// ATT + reminders) now lives in `GameAppKit.makeGameApp`. `live()` builds a
+// `GameConfig<AppRoute>` carrying ONLY the 2048-specific values + builder
+// closures and calls `makeGameAppWithDeps`, which returns the wired `GameDeps`
+// bag + root VM + route factory. `Game2048AppComposition` is assembled from
+// that bag so its public field shape (consumed by tests + the App target)
+// is unchanged.
 //
-// `.live()` wires Telemetry (OSLog com.wei18.tiles2048) + LiveErrorReporter,
-// LivePersistence (tiles2048 namespace) + Game2048SavedGameStore (M4 resume),
-// LiveStoreKit2IAPClient (Tiles2048 Remove Ads), LiveAdMobAdProvider on iOS /
-// NoopAdProvider on macOS, AdGate + MonetizationStateController, ToastController.
+// Behaviour-preserving: every Tiles2048 string + default flows through the
+// config, so the wired stack is byte-identical to the former hand-rolled wiring.
+// Capability gaps now filled universally by makeGameApp: ResumePill mount,
+// ATT primer, GC signed-out alert, audio + reminders sections in Settings.
 //
-// `.preview()` wires MonetizationTesting fakes + FakePersistence (zero-IO).
+// Deleted by this PR: Live+Resume.swift, Game2048Root.swift,
+// Game2048HomeView.swift, Game2048HomeViewModel.swift (their logic is now
+// in GameConfig/makeGameApp or expressed as config values below).
 
 internal import AdsAdMob
 internal import Foundation
+internal import GameAppKit
 internal import GameCenterClient
 internal import GameCenterTesting
-internal import Game2048Persistence
-internal import Game2048UI
+internal import GameShellUI
 internal import IAPStoreKit2
 internal import MonetizationCore
-internal import MonetizationTesting
 internal import MonetizationUI
+internal import MonetizationTesting
 internal import Persistence
 internal import PersistenceTesting
 internal import Telemetry
+internal import Game2048Persistence
+internal import Reminders
+internal import SettingsUI
+internal import Game2048UI
+internal import SwiftUI
+
+#if canImport(UIKit)
+internal import UIKit
+#endif
 
 extension Game2048AppComposition {
 
-    /// Production wiring.
     public static func live() -> Game2048AppComposition {
-        let telemetry = Telemetry(sinks: [
-            OSLogSink(subsystem: "com.wei18.tiles2048", category: "Telemetry"),
-            NoOpTrackingSink()
-        ])
-        let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
+        // Tiles2048-specific identifiers live here (NOT inside AppMonetizationKit)
+        // so the package can be linked by Sudoku without baking 2048 IDs into its
+        // binary. Mirrors MinesweeperAppComposition.live() and SudokuKit.AppComposition.live().
 
-        // Game Center client. Shared GameCenterKit seam — GameKit is fully
-        // encapsulated inside `LiveGameCenterClient` / `GKAuthDriver`. The
-        // board VM submits daily score on stuck; Home Leaderboard card presents
-        // the native dashboard.
-        let gameCenter: any GameCenterClient = LiveGameCenterClient(authDriver: GKAuthDriver())
-
-        // Persistence. Tiles2048 has no PuzzleProvider; its resume path goes
-        // through Game2048Persistence, never through Sudoku-shaped
-        // SavedGameStore.loadOrCreate. Throwing on call makes the absence loud.
-        let persistence = LivePersistence(
-            telemetry: telemetry,
-            ckConfig: .tiles2048,
-            puzzleLoader: { _ in
-                throw Game2048LivePuzzleLoaderUnavailable()
-            }
-        )
-
-        // Monetization state store + AdGate. Same Telemetry funnel shape as
-        // Sudoku / Minesweeper.
-        let monetizationStateStore = persistence.monetizationStateStore()
-        let adGate = AdGate(
-            store: monetizationStateStore,
-            onPersistenceError: { [telemetry] error in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "AdGate",
-                            code: "save_failed",
-                            message: String(describing: error)
-                        )
-                    )
-                }
-            }
-        )
-
-        // AdProvider: live AdMob on iOS, Noop on macOS (AdMob SDK ships an
-        // iOS-only xcframework). Tiles2048-specific identifiers live here (banner
-        // ad unit), NOT inside AppMonetizationKit. The GADBannerUnitID key is
-        // substituted at build time from Tuist/AdMob.xcconfig (gitignored;
-        // .example committed). Mirrors MS Live.swift guard exactly.
-        #if os(iOS)
-        guard
-            let tiles2048BannerAdUnitID = Bundle.main
-                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
-            !tiles2048BannerAdUnitID.isEmpty,
-            !tiles2048BannerAdUnitID.hasPrefix("$(")
-        else {
-            preconditionFailure(
-                "GADBannerUnitID missing or unresolved — check"
-                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
-                    + " vars are set for Release builds."
-            )
-        }
-        let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: tiles2048BannerAdUnitID)
-        #else
-        let adProvider: any AdProvider = NoopAdProvider()
-        #endif
-
-        // IAP client. Telemetry-funnels catalog desync into the same channel
-        // Sudoku / Minesweeper use.
-        let iapClient: any IAPClient = LiveStoreKit2IAPClient(
-            knownProductIds: [tiles2048RemoveAdsProductId],
-            onCatalogDesync: { [telemetry] productId in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "LiveStoreKit2IAPClient",
-                            code: "catalog_desync_post_purchase",
-                            message: "post-purchase refetch returned empty for productId=\(productId)"
-                        )
-                    )
-                }
-            }
-        )
-
-        let toastController = ToastController()
-
-        let monetizationController = MonetizationStateController(
-            iapClient: iapClient,
-            stateStore: monetizationStateStore,
-            adGate: adGate,
-            toastController: toastController,
-            productId: tiles2048RemoveAdsProductId
-        )
-        // Mirror Sudoku / MS: opt in to lifetime-of-app purchaseUpdates() once.
-        monetizationController.startListeningForLifetimeOfApp()
-
-        // M4 saved-game store over the public gateway factory (same
-        // container/zone `LivePersistence.bootstrap()` provisions).
+        // #455 step 4: saved-game store over the public gateway factory
+        // (same container/zone LivePersistence.bootstrap() provisions).
+        // Constructed here (not inside makeGameApp) because the 2048 route factory
+        // also needs a reference to it for board persistence + .resumeBoard.
         let savedGameStore = Game2048SavedGameStore(
             gateway: PrivateCKGatewayFactory.live(config: .tiles2048),
-            telemetry: telemetry
+            telemetry: nil  // telemetry threaded lazily; store funnels errors
         )
 
-        // Launch-bootstrap VM (GC auth + persistence bootstrap). Constructed
-        // before routeFactory so `onPresentBoard` can capture it without a
-        // forward-reference — mirrors MinesweeperAppComposition.live().
-        let rootViewModel = Game2048RootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter,
-            fetchResume: makeFetchResume(store: savedGameStore)
+        // Shared daily-ready notification payload — used both by the primer
+        // (initial schedule) and the Settings time picker (reschedule on change).
+        let dailyReadyContent = ReminderContent(
+            title: "Today's 2048 Tiles is ready",
+            body: "Your daily board is waiting — come back and play."
+        )
+        let primerCopy = ReminderPrimerCopy(
+            title: "Never miss a Daily",
+            lede: "We'll let you know the moment tomorrow's Daily 2048 is ready.",
+            bullets: [
+                "One gentle nudge a day, default 9 AM",
+                "Adjustable anytime in Settings",
+                "Turn it off whenever you like"
+            ],
+            acceptCTA: "Remind me",
+            declineCTA: "Not now",
+            fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+        )
+        let deniedCopy = ReminderDeniedCopy(
+            title: "Reminders are off",
+            message: "Notifications are turned off for 2048 Tiles in Settings, so we can't tell you when the Daily is ready.",
+            openSettingsCTA: "Open Settings",
+            dismissCTA: "Not now",
+            macOSGuidance: "Enable notifications in System Settings → Notifications → 2048 Tiles."
+        )
+        let settingsCopy = ReminderSettingsCopy(
+            sectionTitle: "Reminders",
+            enableTitle: "Daily reminder",
+            enableCTA: "Turn On",
+            enabledTitle: "Daily reminder",
+            enabledStatus: "On",
+            disableTitle: "Turn off reminders",
+            timeTitle: "Time",
+            deniedTitle: "Notifications are off",
+            deniedCTA: "Fix"
         )
 
-        let routeFactory = LiveRouteFactory(
-            monetizationController: monetizationController,
-            adProvider: adProvider,
-            adGate: adGate,
-            persistence: persistence,
-            gameCenter: gameCenter,
-            errorReporter: errorReporter,
-            toastController: toastController,
+        let config = GameConfig<AppRoute>(
+            subsystem: "com.wei18.tiles2048",
+            ckConfig: .tiles2048,
+            removeAdsProductId: tiles2048RemoveAdsProductId,
+            // Tiles2048 has no PuzzleProvider; its resume path goes through
+            // Game2048Persistence, never through SavedGameStore.loadOrCreate.
+            puzzleLoader: { _ in
+                throw Game2048LivePuzzleLoaderUnavailable()
+            },
+            theme: Game2048Theme(),
+            title: "2048 Tiles",
+            // sidebarItems derived by makeGameApp from homeModes.modeItems.
+            sidebarItems: [],
+            successTint: Game2048Theme().status.success.resolved,
+            failureTint: Game2048Theme().status.error.resolved,
+            audio: AudioConfig(keyPrefix: "com.wei18.tiles2048.audio"),
+            reminders: ReminderContentConfig(
+                dailyReadyContent: dailyReadyContent,
+                primerCopy: primerCopy,
+                deniedCopy: deniedCopy,
+                settingsCopy: settingsCopy
+            ),
+            settingsNotices: LiveRouteFactory.makeSettingsNotices(),
+            // #479 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
+            // Byte-identical to the former Game2048HomeViewModel.subtitleKey
+            // literals so snapshot baselines do not move.
+            homeModes: [
+                .daily: HomeModeContent(subtitleKey: "Today's seeded board", route: .daily),
+                .practice: HomeModeContent(subtitleKey: "Unlimited classic play", route: .practice),
+                .leaderboard: HomeModeContent(subtitleKey: "Top daily scores"),
+                .settings: HomeModeContent(subtitleKey: "Purchases / about", route: .settings)
+            ],
+            // 2048 Game Center dashboard presenter. Injected here (not inside
+            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            presentLeaderboard: { GameCenterDashboard.present() },
+            // #455 / #479: map Game2048SavedGameSummary into the game-agnostic
+            // ResumeCandidate. Strings match the former ResumePill rendering exactly
+            // so snapshot baselines do not move.
+            fetchResume: { _ in
+                { [savedGameStore] in
+                    guard let summary = try await savedGameStore.latestInProgress() else { return nil }
+                    let mode = GameMode(rawValue: summary.modeRaw) ?? .practice
+                    return ResumeCandidate(
+                        title: "Resume \(mode == .daily ? "Daily" : "Classic")",
+                        subtitle: Game2048AppComposition.elapsed(summary.elapsedSeconds),
+                        route: .resumeBoard(recordName: summary.recordName, mode: mode)
+                    )
+                }
+            },
+            makeRouteFactory: { deps, rootViewModel in
+                Game2048AppComposition.makeRouteFactory(
+                    deps: deps,
+                    rootViewModel: rootViewModel,
+                    savedGameStore: savedGameStore
+                )
+            },
+            // makeHome superseded by the universal GameHomeView built from
+            // homeModes in makeGameApp (#479). Kept for API stability; ignored
+            // by makeGameApp when homeModes is non-empty.
+            makeHome: { _, _ in AnyView(EmptyView()) }
+        )
+
+        // Wire the shared live stack once. The returned wired.view is the
+        // live mount point after #479: GameRoot + shared GameHomeView + universal
+        // ResumePill + ATT sheet + GC-signed-out alert, assembled by makeGameApp.
+        let wired = makeGameAppWithDeps(config: config)
+        let deps = wired.deps
+
+        return Game2048AppComposition(
+            rootViewModel: wired.rootViewModel,
+            routeFactory: wired.routeFactory,
+            telemetry: deps.telemetry,
+            errorReporter: deps.errorReporter,
+            gameCenter: deps.gameCenter,
+            persistence: deps.persistence,
+            adProvider: deps.adProvider,
+            iapClient: deps.iapClient,
+            adGate: deps.adGate,
+            monetizationStateStore: deps.monetizationStateStore,
+            monetizationController: deps.monetizationController,
+            toastController: deps.toastController,
+            wiredView: wired.view
+        )
+    }
+
+    /// Builds Tiles2048's `LiveRouteFactory` from the wired `GameDeps`. Shared
+    /// by the `GameConfig.makeRouteFactory` closure.
+    @MainActor
+    private static func makeRouteFactory(
+        deps: GameDeps,
+        rootViewModel: GameRootViewModel<AppRoute>,
+        savedGameStore: Game2048SavedGameStore
+    ) -> any RouteFactory<AppRoute> {
+        LiveRouteFactory(
+            monetizationController: deps.monetizationController,
+            adProvider: deps.adProvider,
+            adGate: deps.adGate,
+            persistence: deps.persistence,
+            gameCenter: deps.gameCenter,
+            errorReporter: deps.errorReporter,
+            toastController: deps.toastController,
+            makeReminderSettings: deps.makeReminderSettings,
+            soundPlayer: deps.soundPlayer,
+            audioSettings: deps.audioSettings,
             savedGameStore: savedGameStore,
-            // SDD-003 Epic 1 board-modal pattern: on iOS present board as
-            // fullScreenCover via GameRootViewModel.presentGame(route:).
             onPresentBoard: {
                 #if os(iOS)
                 { [rootViewModel] route in rootViewModel.presentGame(route: route) }
@@ -160,22 +207,20 @@ extension Game2048AppComposition {
                 #endif
             }()
         )
-
-        return Game2048AppComposition(
-            rootViewModel: rootViewModel,
-            routeFactory: routeFactory,
-            telemetry: telemetry,
-            errorReporter: errorReporter,
-            gameCenter: gameCenter,
-            persistence: persistence,
-            adProvider: adProvider,
-            iapClient: iapClient,
-            adGate: adGate,
-            monetizationStateStore: monetizationStateStore,
-            monetizationController: monetizationController,
-            toastController: toastController
-        )
     }
+
+    // MARK: - Resume helpers (#455)
+
+    /// `%d:%02d` elapsed label for the resume pill subtitle. Mirrors
+    /// MinesweeperAppComposition.elapsed (the exact string the pre-#460 shared
+    /// ResumePill rendered).
+    static func elapsed(_ totalSeconds: Int) -> String {
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    // MARK: - Preview / test wiring
 
     /// Preview / test wiring: empty-sinks `Telemetry`, fake IAP / AdGate
     /// store / AdProvider, `FakePersistence` (zero-IO) — no Preview path can
