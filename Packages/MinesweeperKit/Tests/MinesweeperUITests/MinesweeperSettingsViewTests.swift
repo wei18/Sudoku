@@ -72,7 +72,8 @@ import Reminders
             getFireTime: { (hour: 9, minute: 0) },
             setFireTime: { _ in }
         )
-        let entry = MinesweeperReminderSettingsEntry(
+        // #572: MinesweeperReminderSettingsEntry deleted; use shared ReminderSettingsEntry.
+        let entry = ReminderSettingsEntry(
             model: model,
             copy: ReminderSettingsCopy(
                 sectionTitle: "Reminders",

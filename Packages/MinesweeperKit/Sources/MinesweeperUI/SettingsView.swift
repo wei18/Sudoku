@@ -17,13 +17,16 @@
 // Clear-cache is parity-only until MS save-flow lands (latestInProgress()
 // returns nil today), but it IS wired to the real protocol method, not a
 // fake button. Tint is `.accentColor` — MS has no theme.
+//
+// #572: `MinesweeperReminderSettingsEntry` deleted; `SettingsView` now uses
+// the shared `ReminderSettingsEntry` from SettingsUI (same fields, same behavior).
 
 public import SwiftUI
 public import MonetizationUI
 // refactor/settingskit-target (2026-06-09): `SettingsScreen` /
 // `SettingsNoticesConfig` + the reminders UI types moved out of GameShellUI into
-// SettingsUI. `public` because `SettingsNoticesConfig` +
-// `MinesweeperReminderSettingsEntry`'s copy types appear in public signatures.
+// SettingsUI. `public` because `SettingsNoticesConfig` + copy types appear in
+// public signatures.
 public import SettingsUI
 // #560: shared `GameCenterDashboard.present()` (was the per-app copy).
 internal import GameCenterClient
@@ -35,11 +38,12 @@ public struct SettingsView<Banner: View>: View {
     // #331: shared Notices section inputs, app-injected by the host. Defaulted
     // nil so previews / tests keep the byte-identical screen.
     private let notices: SettingsNoticesConfig?
-    // #287: shared Reminders entry (enable / prime permission / fire-time),
-    // mirroring Sudoku. Defaulted nil so previews / tests mount a byte-identical
-    // screen without the section; the host (LiveRouteFactory) injects one wired
-    // to the RemindersKit Live conformers.
-    private let reminderSettings: MinesweeperReminderSettingsEntry?
+    // #287 / #572: shared Reminders entry (enable / prime permission / fire-time).
+    // Migrated from `MinesweeperReminderSettingsEntry` to the shared
+    // `ReminderSettingsEntry` (SettingsUI). Same fields — byte-identical screen.
+    // Defaulted nil so previews / tests mount a byte-identical screen without the
+    // section; the host (LiveRouteFactory) injects one wired to RemindersKit Live.
+    private let reminderSettings: ReminderSettingsEntry?
     // #330 P2: shared Sound section model (mute / volumes / BGM / haptics).
     // Defaulted nil so previews / tests keep the byte-identical screen without the
     // section; the host (LiveRouteFactory) injects the live-player-backed model.
@@ -54,7 +58,7 @@ public struct SettingsView<Banner: View>: View {
         clearCache: @escaping @MainActor () async -> Void = {},
         monetizationController: MonetizationStateController? = nil,
         notices: SettingsNoticesConfig? = nil,
-        reminderSettings: MinesweeperReminderSettingsEntry? = nil,
+        reminderSettings: ReminderSettingsEntry? = nil,
         audioSettings: AudioSettingsModel? = nil,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
@@ -77,8 +81,9 @@ public struct SettingsView<Banner: View>: View {
             tint: .accentColor,
             clearCache: clearCache,
             reminderSettings: reminderSettings.map {
-                // #287: same building block Sudoku mounts; map the MS entry into
-                // the shell's config.
+                // #287: same building block Sudoku mounts; map the entry into
+                // the shell's config. After #572 this is a direct pass-through
+                // since ReminderSettingsEntry == SettingsScreenReminderConfig fields.
                 SettingsScreenReminderConfig(
                     model: $0.model,
                     copy: $0.copy,
@@ -122,30 +127,6 @@ public struct SettingsView<Banner: View>: View {
                 await controller.bootstrap()
             }
         }
-    }
-}
-
-/// #287: bundle of the shared `ReminderSettingsModel` + the MS-localized copy the
-/// `ReminderSettingsSection` needs. Built at the composition root
-/// (`LiveRouteFactory`) so all reminder wiring stays there; the view receives a
-/// ready-to-mount value. Mirrors `SudokuUI.ReminderSettingsEntry`. Not
-/// `Sendable` — carries `LocalizedStringKey` copy built + consumed on `@MainActor`.
-public struct MinesweeperReminderSettingsEntry {
-    public let model: ReminderSettingsModel
-    public let copy: ReminderSettingsCopy
-    public let primerCopy: ReminderPrimerCopy
-    public let deniedCopy: ReminderDeniedCopy
-
-    public init(
-        model: ReminderSettingsModel,
-        copy: ReminderSettingsCopy,
-        primerCopy: ReminderPrimerCopy,
-        deniedCopy: ReminderDeniedCopy
-    ) {
-        self.model = model
-        self.copy = copy
-        self.primerCopy = primerCopy
-        self.deniedCopy = deniedCopy
     }
 }
 

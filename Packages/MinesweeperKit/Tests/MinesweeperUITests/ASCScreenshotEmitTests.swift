@@ -14,14 +14,28 @@
 
 #if canImport(AppKit)
 import Foundation
+import GameAppKit
+import GameCenterClient
+import GameCenterTesting
+import GameShellUI
+import MinesweeperEngine
+import MinesweeperGameState
+import MonetizationCore
+import MonetizationTesting
+import MonetizationUI
+import PersistenceTesting
 import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-import GameCenterClient
-import GameCenterTesting
-import MinesweeperEngine
-import MinesweeperGameState
+// MS home mode config — byte-identical to Live.swift subtitles.
+@MainActor
+private let minesweeperAscHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
+    .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
+    .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Best times"),
+    .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
+]
 
 @MainActor
 @Suite("ASC screenshots — Minesweeper (emit; gated on ASC_EMIT_SCREENSHOTS)")
@@ -96,9 +110,34 @@ struct ASCScreenshotEmitTests {
     }
 
     private func homeView() -> some View {
-        NavigationStack {
-            MinesweeperHomeView(viewModel: MinesweeperHomeViewModel())
+        // #572: migrated from MinesweeperHomeView to shared GameHomeView.
+        let rootVM = MinesweeperRootViewModel(
+            gameCenter: FakeGameCenterClient(),
+            persistence: FakePersistence()
+        )
+        let homeVM = GameHomeViewModel<AppRoute>(
+            rootViewModel: rootVM,
+            homeModes: minesweeperAscHomeModes
+        )
+        return NavigationStack {
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Minesweeper",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                )
+            )
         }
+        .environment(\.theme, MinesweeperTheme())
     }
 
     private func dailyHubView() -> some View {

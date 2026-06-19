@@ -1,214 +1,131 @@
 // MinesweeperHomeViewModelTests — drive the mode-card taps and assert each one
-// pushes the right route through an injected navigation binding (#288 / #289).
+// pushes the right route through the shared `GameHomeViewModel` / `GameRootViewModel`.
 //
-// Mirror of Sudoku's `HomeViewModelInteractionTests`. Covers both the
-// local-stub branch (no binding) and the external-`Binding` branch (the real
-// MinesweeperRoot wiring) so a regression that stopped writing through the
-// injected path — leaving cards as no-op taps — would fail here.
+// #572 SDD-005 Pillar C: `MinesweeperHomeViewModel` retired; tests migrated to
+// `GameHomeViewModel<AppRoute>`. `GameHomeViewModel` routes through
+// `GameRootViewModel.path`; assertions compare `rootVM.path` (same semantics).
+// The `MinesweeperHomeMode` typealias (`= HomeMode`) stays available from
+// `@testable import MinesweeperUI` for the mode-enum assertion tests.
 //
-// #513: extended with signed-out GC leaderboard behaviour tests.
-// #513 fix: alert tests now inject an external Binding<Bool> (mirroring the
-// stable GameRootViewModel flag) so the assertion proves the flag is written
-// to the external source, not just a local transient VM field.
+// #513: signed-out GC leaderboard behaviour preserved — alert flag lives on the
+// stable `GameRootViewModel.showGameCenterSignedOutAlert` (not a transient VM).
 
+import GameAppKit
+import GameCenterClient
+import GameCenterTesting
+import GameShellUI
+import PersistenceTesting
 import SwiftUI
 import Testing
-import GameCenterClient
 @testable import MinesweeperUI
+
+// MS per-mode subtitle copy — byte-identical to the former subtitleKey extension.
+@MainActor
+private let minesweeperHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
+    .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
+    .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Best times"),
+    .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
+]
+
+/// Build VMs with a given auth state.
+@MainActor
+private func makeVMs(
+    authResult: Result<GameCenterAuthState, GameCenterError>? = nil
+) async -> (rootVM: MinesweeperRootViewModel, homeVM: GameHomeViewModel<AppRoute>) {
+    let gameCenter = FakeGameCenterClient()
+    if let result = authResult {
+        await gameCenter.setAuthResult(result)
+    }
+    let rootVM = MinesweeperRootViewModel(
+        gameCenter: gameCenter,
+        persistence: FakePersistence()
+    )
+    if authResult != nil {
+        await rootVM.bootstrap()
+    }
+    let homeVM = GameHomeViewModel<AppRoute>(
+        rootViewModel: rootVM,
+        homeModes: minesweeperHomeModes,
+        presentLeaderboard: { GameCenterDashboard.present(leaderboardId: nil) }
+    )
+    return (rootVM, homeVM)
+}
 
 @MainActor
 @Suite("MinesweeperHomeViewModel — interaction")
 struct MinesweeperHomeViewModelTests {
 
-    // MARK: - Local-stub branch (no injected binding)
-
-    @Test func selectDailyPushesDailyRouteLocalStub() {
-        let viewModel = MinesweeperHomeViewModel()
-        viewModel.select(.daily)
-        #expect(viewModel.path == [.daily])
+    @Test func selectDailyPushesDailyRoute() async {
+        let (rootVM, homeVM) = await makeVMs()
+        homeVM.select(.daily)
+        #expect(rootVM.path == [.daily])
     }
 
-    @Test func selectPracticePushesPracticeRouteLocalStub() {
-        let viewModel = MinesweeperHomeViewModel()
-        viewModel.select(.practice)
-        #expect(viewModel.path == [.practice])
+    @Test func selectPracticePushesPracticeRoute() async {
+        let (rootVM, homeVM) = await makeVMs()
+        homeVM.select(.practice)
+        #expect(rootVM.path == [.practice])
     }
 
-    @Test func selectSettingsPushesSettingsRouteLocalStub() {
-        let viewModel = MinesweeperHomeViewModel()
-        viewModel.select(.settings)
-        #expect(viewModel.path == [.settings])
+    @Test func selectSettingsPushesSettingsRoute() async {
+        let (rootVM, homeVM) = await makeVMs()
+        homeVM.select(.settings)
+        #expect(rootVM.path == [.settings])
     }
 
     // Leaderboard presents the native GC dashboard as a modal side-effect
-    // (#291 / #49) — it must NOT push a route. The present call bottoms out in
-    // GameKit / GKAccessPoint, which is inert in the test host, so we assert
-    // the navigation invariant: `select(.leaderboard)` leaves the path empty.
-    // #513: when unauthenticated, the alert flag is set instead of calling GK.
-    @Test func selectLeaderboardPushesNoRoute() {
-        let viewModel = MinesweeperHomeViewModel()
-        viewModel.select(.leaderboard)
-        #expect(viewModel.path.isEmpty)
-    }
-
-    @Test func selectLeaderboardThroughInjectedBindingPushesNoRoute() {
-        let box = RoutePathBox()
-        let viewModel = MinesweeperHomeViewModel(path: box.binding)
-        viewModel.select(.leaderboard)
-        // Modal side-effect only — the injected nav binding stays untouched.
-        #expect(box.routes.isEmpty)
-        #expect(viewModel.path.isEmpty)
+    // (#291 / #49) — it must NOT push a route.
+    @Test func selectLeaderboardPushesNoRoute() async {
+        let (rootVM, homeVM) = await makeVMs()
+        homeVM.select(.leaderboard)
+        #expect(rootVM.path.isEmpty)
     }
 
     // MARK: - #513: Leaderboard signed-out affordance
-    //
-    // Tests inject a `Binding<Bool>` to mirror the stable `GameRootViewModel`
-    // flag wiring in production. The fix moves alert state out of the transient
-    // per-render MinesweeperHomeViewModel onto the long-lived GameRootViewModel;
-    // tests prove the flag is written to the *external* binding.
 
-    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() {
-        let alertBox = AlertFlagBox()
-        let viewModel = MinesweeperHomeViewModel(
-            authState: .unauthenticated,
-            showGameCenterSignedOutAlert: alertBox.binding
+    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() async {
+        let (rootVM, homeVM) = await makeVMs(
+            authResult: .failure(.notAuthenticated)
         )
-
-        viewModel.select(.leaderboard)
-
-        #expect(alertBox.value == true)
-        #expect(viewModel.showGameCenterSignedOutAlert == true)
-        #expect(viewModel.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+        homeVM.select(.leaderboard)
+        #expect(rootVM.showGameCenterSignedOutAlert == true)
+        #expect(rootVM.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
     }
 
-    @Test func selectLeaderboardWhenUnknownSetsAlertFlag() {
-        let alertBox = AlertFlagBox()
-        let viewModel = MinesweeperHomeViewModel(
-            authState: .unknown,
-            showGameCenterSignedOutAlert: alertBox.binding
+    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() async {
+        let player = PlayerSummary(teamPlayerId: "P001", displayName: "Sweeper")
+        let (rootVM, homeVM) = await makeVMs(
+            authResult: .success(.authenticated(player))
         )
-
-        viewModel.select(.leaderboard)
-
-        #expect(alertBox.value == true)
-        #expect(viewModel.path.isEmpty)
+        homeVM.select(.leaderboard)
+        #expect(rootVM.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
+        #expect(rootVM.path.isEmpty, "leaderboard never pushes a route")
     }
 
-    @Test func selectLeaderboardWhenRestrictedSetsAlertFlag() {
-        let alertBox = AlertFlagBox()
-        let viewModel = MinesweeperHomeViewModel(
-            authState: .restricted,
-            showGameCenterSignedOutAlert: alertBox.binding
-        )
-
-        viewModel.select(.leaderboard)
-
-        #expect(alertBox.value == true)
-        #expect(viewModel.path.isEmpty)
+    @Test func sequentialSelectionsAppendInOrder() async {
+        let (rootVM, homeVM) = await makeVMs()
+        homeVM.select(.daily)
+        homeVM.select(.practice)
+        homeVM.select(.settings)
+        #expect(rootVM.path == [.daily, .practice, .settings])
     }
 
-    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() {
-        let alertBox = AlertFlagBox()
-        let player = PlayerSummary(teamPlayerId: "P001", displayName: "Tester")
-        let viewModel = MinesweeperHomeViewModel(
-            authState: .authenticated(player),
-            showGameCenterSignedOutAlert: alertBox.binding
-        )
-
-        viewModel.select(.leaderboard)
-
-        #expect(alertBox.value == false, "alert must not show when authenticated")
-        #expect(viewModel.showGameCenterSignedOutAlert == false)
-        #expect(viewModel.path.isEmpty, "leaderboard never pushes a route")
-    }
-
-    @Test func alertFlagDefaultsToFalse() {
-        // No binding injected — fallback returns false (no stable source wired).
-        let viewModel = MinesweeperHomeViewModel()
-        #expect(viewModel.showGameCenterSignedOutAlert == false)
-    }
-
-    // MARK: - External-binding branch (real MinesweeperRoot wiring)
-
-    @Test func selectDailyPushesDailyRouteThroughInjectedBinding() {
-        let box = RoutePathBox()
-        let viewModel = MinesweeperHomeViewModel(path: box.binding)
-
-        viewModel.select(.daily)
-
-        #expect(box.routes == [.daily])
-        #expect(viewModel.path == [.daily])
-    }
-
-    @Test func selectPracticePushesPracticeRouteThroughInjectedBinding() {
-        let box = RoutePathBox()
-        let viewModel = MinesweeperHomeViewModel(path: box.binding)
-
-        viewModel.select(.practice)
-
-        #expect(box.routes == [.practice])
-    }
-
-    @Test func sequentialSelectionsAppendInOrder() {
-        let box = RoutePathBox()
-        let viewModel = MinesweeperHomeViewModel(path: box.binding)
-
-        viewModel.select(.daily)
-        viewModel.select(.practice)
-        viewModel.select(.settings)
-
-        #expect(box.routes == [.daily, .practice, .settings])
-    }
-
-    // #410: the erroneous "New Game" mode was removed — MS's mode set is now
-    // identical to Sudoku's: Daily / Practice / Leaderboard / Settings, in that
-    // order. Guards the card list against accidental shrinkage AND against the
-    // New Game mode creeping back in.
+    // #410: the mode set is the 4 shared modes (Daily / Practice / Leaderboard /
+    // Settings) — no New Game. Guards against accidental shrinkage.
+    // #572: MinesweeperHomeMode typealias deleted; use shared HomeMode directly.
     @Test func allModesAreEnumeratedWithoutNewGame() {
-        #expect(MinesweeperHomeMode.allCases == [
+        #expect(HomeMode.allCases == [
             .daily, .practice, .leaderboard, .settings,
         ])
-        // No `newGame` case exists on the shared enum at all.
-        #expect(!MinesweeperHomeMode.allCases.contains { $0.id == "newGame" })
+        #expect(!HomeMode.allCases.contains { $0.id == "newGame" })
     }
 
-    // #410: the Home mode-items list (single source for cards + sidebar) carries
-    // no New Game entry, so neither the Home grid nor the sidebar can show one.
-    @Test func modeItemsHaveNoNewGameEntry() {
-        let viewModel = MinesweeperHomeViewModel()
-        let ids = viewModel.modeItems.map(\.id)
+    // #410: the Home mode-items list carries no New Game entry.
+    @Test func modeItemsHaveNoNewGameEntry() async {
+        let (_, homeVM) = await makeVMs()
+        let ids = homeVM.modeItems.map(\.id)
         #expect(ids == ["daily", "practice", "leaderboard", "settings"])
         #expect(!ids.contains("newGame"))
-    }
-}
-
-/// Mutable, `@MainActor`-isolated holder exposing a `Binding<[AppRoute]>` that
-/// records every route the VM writes. Mirrors the role a host `NavigationStack`
-/// path plays in production (parallels Sudoku's `RoutePathBox` test seam).
-@MainActor
-final class RoutePathBox {
-    private(set) var routes: [AppRoute] = []
-
-    var binding: Binding<[AppRoute]> {
-        Binding(
-            get: { self.routes },
-            set: { self.routes = $0 }
-        )
-    }
-}
-
-/// Mutable holder exposing a `Binding<Bool>` that records the alert flag written
-/// by `MinesweeperHomeViewModel`. Mirrors the role of
-/// `GameRootViewModel.showGameCenterSignedOutAlert` in production — the stable
-/// external flag the alert is bound to.
-@MainActor
-final class AlertFlagBox {
-    private(set) var value: Bool = false
-
-    var binding: Binding<Bool> {
-        Binding(
-            get: { self.value },
-            set: { self.value = $0 }
-        )
     }
 }
