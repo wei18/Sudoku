@@ -1,21 +1,56 @@
 // MinesweeperHomeSnapshotTests — mode-card entry-surface baselines (#303).
 //
-// From #288 CR: the Home surface (5 mode cards, MS-theme-tinted, 1-col compact /
+// From #288 CR: the Home surface (4 mode cards, MS-theme-tinted, 1-col compact /
 // 2-col regular) had VM navigation tests but no rendered baseline. These guard
 // theme + layout drift on the most-seen screen.
 //
-// No production seam needed: `MinesweeperHomeView(viewModel:)` with no
-// ad/monetization injectors renders the static 5-card grid (no banner, no
-// Remove-Ads card) and its `.task` is a no-op when `monetizationController` is
-// nil — so the surface is deterministic at NSHostingView capture without any
-// pre-seeding. Mirrors the harness in MinesweeperBoardSnapshotTests.
+// #572 SDD-005 Pillar C: migrated from `MinesweeperHomeView(viewModel:)` to
+// the shared `GameHomeView(viewModel:rootViewModel:title:adProvider:adGate:attPrimer:)`.
+// Pixel content is byte-identical (same HomeScreen scaffold, same MS theme, same
+// 4-mode card layout). Only the view-structure `.txt` baseline changes:
+// `MinesweeperUI.MinesweeperHomeView` → `GameAppKit.GameHomeView` (same as the
+// Sudoku #557 migration). PNGs must NOT change.
 
 #if canImport(AppKit)
 import Foundation
+import GameAppKit
+import GameCenterTesting
+import GameShellUI
+import MonetizationCore
+import MonetizationTesting
+import MonetizationUI
+import PersistenceTesting
 import SnapshotTesting
 import SwiftUI
 import Testing
 @testable import MinesweeperUI
+
+/// Build a minimal rootVM + GameHomeViewModel with MS defaults.
+@MainActor
+private func makeMSHomeViewModels() -> (
+    rootVM: MinesweeperRootViewModel,
+    homeVM: GameHomeViewModel<AppRoute>
+) {
+    let rootVM = MinesweeperRootViewModel(
+        gameCenter: FakeGameCenterClient(),
+        persistence: FakePersistence()
+    )
+    let homeVM = GameHomeViewModel(
+        rootViewModel: rootVM,
+        homeModes: minesweeperHomeModes
+    )
+    return (rootVM, homeVM)
+}
+
+/// MS per-mode subtitle copy — byte-identical to the former
+/// `MinesweeperHomeMode.subtitleKey` private extension.
+@MainActor
+private let minesweeperHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
+    .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
+    .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Best times"),
+    .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
+]
 
 @MainActor
 @Suite("MinesweeperHomeView — themed snapshots")
@@ -25,9 +60,26 @@ struct MinesweeperHomeSnapshotTests {
     /// provider / monetization controller, wrapped in a NavigationStack so the
     /// `.navigationTitle` chrome renders.
     private func homeView() -> some View {
-        NavigationStack {
-            MinesweeperHomeView(viewModel: MinesweeperHomeViewModel())
+        let (rootVM, homeVM) = makeMSHomeViewModels()
+        return NavigationStack {
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Minesweeper",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                )
+            )
         }
+        .environment(\.theme, MinesweeperTheme())
     }
 
     // MARK: - Compact (iPhone, 1-column)

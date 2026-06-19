@@ -85,12 +85,12 @@ public struct LiveRouteFactory: RouteFactory {
     // preview / test callsites that pass no controller keep compiling — when
     // nil, clear-cache still runs (and still reports errors) but shows no toast.
     private let toastController: ToastController?
-    // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
-    // MS copy) per Settings mount. Injected as a closure (not the raw Reminders
-    // seams) so ALL reminder wiring stays in `.live()`. `nil` in previews / tests
-    // → no reminder section, byte-identical Settings screen. Mirrors Sudoku's
-    // `makeReminderSettings`.
-    private let makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)?
+    // #572: builds the Settings Reminders entry per Settings mount. Injected as
+    // a closure so ALL reminder wiring stays in composition. `nil` in previews /
+    // tests → no reminder section, byte-identical Settings screen. Mirrors Sudoku's
+    // `makeReminderSettings`. Type changed from `MinesweeperReminderSettingsEntry`
+    // to the shared `ReminderSettingsEntry` (SettingsUI) as part of #572 cleanup.
+    private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
     // #330 P2: gameplay-audio player, threaded into every `MinesweeperBoardView`
     // so the VM fires sfx + haptics and the board starts BGM. Optional so
     // preview / test callsites stay silent — when nil, the board defaults to
@@ -119,7 +119,7 @@ public struct LiveRouteFactory: RouteFactory {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         toastController: ToastController? = nil,
-        makeReminderSettings: (@MainActor () -> MinesweeperReminderSettingsEntry)? = nil,
+        makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,

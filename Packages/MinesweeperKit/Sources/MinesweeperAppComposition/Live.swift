@@ -1,305 +1,197 @@
-// Live + Preview composition for MinesweeperAppComposition.
+// Live composition — concrete impls for production. docs/v1/design.md §How.1.
 //
-// Mirrors Sudoku's AppComposition/Live.swift; both factories kept adjacent
-// until Game Center / additional surfaces warrant a split.
+// #572 SDD-005 Pillar C (MS): the game-agnostic live wiring (Telemetry +
+// MetricKit + errorReporter + GameCenter + Persistence + monetization + audio +
+// ATT + reminders) now lives in `GameAppKit.makeGameApp`. `live()` builds a
+// `GameConfig<AppRoute>` carrying ONLY the MS-specific values + builder closures
+// and calls `makeGameAppWithDeps`, which returns the wired `GameDeps` bag + root
+// VM + route factory. `MinesweeperAppComposition` is assembled from that bag so
+// its public field shape (consumed by tests + the App target) is unchanged.
 //
-// `.live()` wires Telemetry (OSLog com.wei18.minesweeper) + LiveErrorReporter,
-// LivePersistence (#257 namespace, puzzle-loader stub) + MinesweeperSavedGameStore
-// (#455 resume), LiveStoreKit2IAPClient (MS Remove Ads), LiveAdMobAdProvider on iOS /
-// NoopAdProvider on macOS (U15), AdGate + MonetizationStateController, ToastController.
+// Behaviour-preserving: every Minesweeper string + default flows through the
+// config, so the wired stack is byte-identical to the former hand-rolled wiring.
+// Capability gaps now filled universally by makeGameApp: ResumePill mount (#554),
+// ATT primer, GC signed-out alert.
 //
-// `.preview()` wires MonetizationTesting fakes + FakePersistence (zero-IO, #261).
+// Deleted by this PR: Live+Resume.swift, Live+Audio.swift (their logic is now
+// in GameConfig/makeGameApp or expressed as config values below).
 
-internal import AdsAdMob
 internal import Foundation
-// #330 P2: `.live()` builds `LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`
-// and `AudioSettingsModel`; `.preview()` wires `NoopSoundPlaying`. `AVFoundation`
-// stays inside GameAudioKit's Live files — composition sees only the seams.
-internal import GameAudio
+internal import GameAppKit
 internal import GameCenterClient
-internal import GameCenterTesting
-// #313: `MinesweeperRootViewModel` (launch-bootstrap VM) lives in MinesweeperUI.
-internal import MinesweeperPersistence
-internal import MinesweeperUI
-internal import IAPStoreKit2
-internal import MonetizationCore
-internal import MonetizationTesting
+internal import GameShellUI
 internal import MonetizationUI
 internal import Persistence
-internal import PersistenceTesting
+internal import MinesweeperPersistence
 internal import Reminders
-internal import Telemetry
-// refactor/settingskit-target (2026-06-09): `ReminderSettingsModel` /
-// `ReminderPermissionModel` + the primer/section/denied copy types moved out of
-// GameShellUI into SettingsUI; `MinesweeperReminderSettingsEntry` lives in
-// MinesweeperUI. `.live()` builds the reminders entry here.
 internal import SettingsUI
+internal import MinesweeperUI
+internal import SwiftUI
+
+#if canImport(UIKit)
+internal import UIKit
+#endif
 
 extension MinesweeperAppComposition {
 
-    /// Production wiring.
     public static func live() -> MinesweeperAppComposition {
-        let telemetry = Telemetry(sinks: [
-            OSLogSink(subsystem: "com.wei18.minesweeper", category: "Telemetry"),
-            NoOpTrackingSink()
-        ])
-        let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
+        // MS-specific identifiers live here (NOT inside AppMonetizationKit) so
+        // the package can be linked by Sudoku without baking MS IDs into its
+        // binary (and vice-versa). Mirrors Sudoku's AppComposition.live().
 
-        // Game Center client (#291). Shared GameCenterKit seam — GameKit is
-        // fully encapsulated inside `LiveGameCenterClient` / `GKAuthDriver`.
-        // The board VM submits a best-time on win; the Home Leaderboard card
-        // presents the native dashboard. Mirrors Sudoku's `AppComposition.Live`.
-        let gameCenter: any GameCenterClient = LiveGameCenterClient(authDriver: GKAuthDriver())
-
-        // Audio stack (#330 P2). Mirrors the monetization / reminder wiring shape:
-        // every framework-touching conformer is constructed here and only the
-        // `SoundPlaying` seam leaves the composition root.
-        //   - `LiveAudioSession.configureAmbient()` runs once at boot so game audio
-        //     mixes with other apps (the user's podcast keeps playing).
-        //   - `LiveSoundPlayer` reads sfx/music assets from `Bundle.main` by
-        //     `soundKey`. P2 ships NO assets (P3 adds the zen-wood set), so every
-        //     `play` / `playMusic` tolerates the missing file and no-ops (silent).
-        //   - `AudioSettingsModel` persists mute / volumes / BGM / haptics in a
-        //     device-local MS-namespaced `UserDefaults` pair, and pushes every
-        //     change to the live player. Defaults per spec: BGM on, haptics on, not
-        //     muted, volumes 0.7. Like reminders, the fire-time is device-local
-        //     (NOT CloudKit-synced) — audio preference is a per-device setting.
-        let audioSession = LiveAudioSession(subsystem: "com.wei18.minesweeper")
-        audioSession.configureAmbient()
-        let soundPlayer: any SoundPlaying = LiveSoundPlayer(
-            session: audioSession,
-            haptics: LiveHaptics(),
-            subsystem: "com.wei18.minesweeper"
-        )
-        let audioDefaults = UserDefaults.standard
-        let audioKeyPrefix = "com.wei18.minesweeper.audio."
-        let audioSettings = MinesweeperAppComposition.makeAudioSettings(
-            player: soundPlayer,
-            defaults: audioDefaults,
-            keyPrefix: audioKeyPrefix
+        // #455 step 4: saved-game store over the public gateway factory
+        // (same container/zone LivePersistence.bootstrap() provisions).
+        // Constructed here (not inside makeGameApp) because MS route factory
+        // also needs a reference to it for board persistence + .resumeBoard.
+        let savedGameStore = MinesweeperSavedGameStore(
+            gateway: PrivateCKGatewayFactory.live(config: .minesweeper),
+            telemetry: nil  // telemetry threaded lazily; store funnels errors
         )
 
-        // Persistence. Puzzle loader is a no-op stub — MS has no
-        // PuzzleProvider yet and SavedGameStore.fetch never fires for MS
-        // until the save-flow lands (separate dispatch). Throwing on call
-        // makes the absence loud if something does call into it.
-        let persistence = LivePersistence(
-            telemetry: telemetry,
-            ckConfig: .minesweeper,
-            puzzleLoader: { _ in
-                throw MinesweeperLivePuzzleLoaderUnavailable()
-            }
-        )
-
-        // Monetization state store + AdGate. Same Telemetry funnel shape as
-        // Sudoku — `AdGate` doesn't depend on Telemetry directly; we inject
-        // the sink via `onPersistenceError`.
-        let monetizationStateStore = persistence.monetizationStateStore()
-        let adGate = AdGate(
-            store: monetizationStateStore,
-            onPersistenceError: { [telemetry] error in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "AdGate",
-                            code: "save_failed",
-                            message: String(describing: error)
-                        )
-                    )
-                }
-            }
-        )
-
-        // AdProvider: live AdMob on iOS, Noop on macOS (AdMob SDK ships an
-        // iOS-only xcframework — see AppMonetizationKit/Package.swift gating).
-        // Mirrors Sudoku's `Live.swift` shape exactly. MS-specific identifiers
-        // live here (banner ad unit), NOT inside AppMonetizationKit, so the
-        // package can be linked by Sudoku without baking MS IDs into its
-        // binary (and vice-versa). The DEBUG-gate keeps debug builds on
-        // Google's universal test banner so real-device verification never
-        // accidentally serves production creatives. Release builds use MS's
-        // production banner unit registered with the AdMob console.
-        #if os(iOS)
-        // Banner ad unit ID via Info.plist `GADBannerUnitID` key, substituted
-        // at build time from `Tuist/AdMob.xcconfig` (gitignored; .example
-        // committed). XCC writes the xcconfig from per-workflow env vars;
-        // local builds use the .example sandbox values. Replaces the old
-        // DEBUG-vs-Release fatalError gate with smoke-test (key presence —
-        // `MinesweeperUITests/InfoPlistAdMobKeysTests`) + runtime guard
-        // below (catches missing-key + empty + unresolved-`$()` token
-        // before AdMob SDK init).
-        guard
-            let minesweeperBannerAdUnitID = Bundle.main
-                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
-            !minesweeperBannerAdUnitID.isEmpty,
-            !minesweeperBannerAdUnitID.hasPrefix("$(")
-        else {
-            preconditionFailure(
-                "GADBannerUnitID missing or unresolved — check"
-                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
-                    + " vars are set for Release builds."
-            )
-        }
-        let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: minesweeperBannerAdUnitID)
-        #else
-        let adProvider: any AdProvider = NoopAdProvider()
-        #endif
-
-        // IAP client. Telemetry-funnels catalog desync into the same channel
-        // Sudoku uses so the M3 placeholder substitution doesn't silently
-        // mask backend issues.
-        let iapClient: any IAPClient = LiveStoreKit2IAPClient(
-            knownProductIds: [minesweeperRemoveAdsProductId],
-            onCatalogDesync: { [telemetry] productId in
-                Task {
-                    await telemetry.observe(
-                        .errorOccurred(
-                            source: "LiveStoreKit2IAPClient",
-                            code: "catalog_desync_post_purchase",
-                            message: "post-purchase refetch returned empty for productId=\(productId)"
-                        )
-                    )
-                }
-            }
-        )
-
-        let toastController = ToastController()
-
-        let monetizationController = MonetizationStateController(
-            iapClient: iapClient,
-            stateStore: monetizationStateStore,
-            adGate: adGate,
-            toastController: toastController,
-            productId: minesweeperRemoveAdsProductId
-        )
-        // Mirror Sudoku: opt in to lifetime-of-app purchaseUpdates() exactly
-        // once at composition.
-        monetizationController.startListeningForLifetimeOfApp()
-
-        // #287: reminder wiring — mirrors Sudoku's AppComposition. RemindersKit's
-        // Live conformers + `UNUserNotificationCenter` stay confined here. The
-        // Settings Reminders entry is the user-initiated permission-priming path
-        // (MS has no post-Daily primer flow). The fire-time persists in a
-        // device-local `UserDefaults` pair under an MS-namespaced key prefix
-        // (`com.wei18.minesweeper.reminder.*`) — a reminder fires on the device
-        // that scheduled it, so it is NOT CloudKit-synced. `reminderEmit` bridges
-        // the model's decoupled `Event` to the `Telemetry` facade.
-        let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: "com.wei18.minesweeper")
-        let reminderScheduler = LiveReminderScheduler(subsystem: "com.wei18.minesweeper")
-        let reminderEmit: @Sendable (ReminderSettingsModel.Event) -> Void = { [telemetry] event in
-            let telemetryEvent: TelemetryEvent?
-            switch event {
-            case let .scheduled(kind): telemetryEvent = .reminderScheduled(kind: kind)
-            case let .primerAccepted(kind): telemetryEvent = .reminderPrimerAccepted(kind: kind)
-            case let .primerDeclined(kind): telemetryEvent = .reminderPrimerDeclined(kind: kind)
-            // The user turned reminders off in-app — observe the on→off funnel.
-            case let .cancelled(kind): telemetryEvent = .reminderCancelled(kind: kind)
-            }
-            guard let telemetryEvent else { return }
-            Task { await telemetry.observe(telemetryEvent) }
-        }
-        let reminderDefaults = UserDefaults.standard
-        let reminderHourKey = "com.wei18.minesweeper.reminder.dailyReadyHour"
-        let reminderMinuteKey = "com.wei18.minesweeper.reminder.dailyReadyMinute"
-        let reminderContent = ReminderContent(
+        // Shared daily-ready notification payload — used both by the primer
+        // (initial schedule) and the Settings time picker (reschedule on change).
+        let dailyReadyContent = ReminderContent(
             title: "Today's Minesweeper is ready",
             body: "Your daily boards are waiting — keep your streak going."
         )
-        let makeReminderSettings: @MainActor () -> MinesweeperReminderSettingsEntry = {
-            let model = ReminderSettingsModel(
-                permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
-                scheduler: reminderScheduler,
-                kind: .dailyReady,
-                content: reminderContent,
-                getFireTime: {
-                    // Missing key → 9:00 AM default (UserDefaults.integer returns 0
-                    // for absent keys, indistinguishable from midnight — gate on
-                    // presence). Mirrors Sudoku's ReminderSettingsStore default.
-                    guard reminderDefaults.object(forKey: reminderHourKey) != nil else {
-                        return (hour: 9, minute: 0)
-                    }
-                    return (
-                        hour: reminderDefaults.integer(forKey: reminderHourKey),
-                        minute: reminderDefaults.integer(forKey: reminderMinuteKey)
+        let primerCopy = ReminderPrimerCopy(
+            title: "Never miss a Daily",
+            lede: "We'll let you know the moment tomorrow's Daily Minesweeper is ready.",
+            bullets: [
+                "One gentle nudge a day, default 9 AM",
+                "Adjustable anytime in Settings",
+                "Turn it off whenever you like"
+            ],
+            acceptCTA: "Remind me",
+            declineCTA: "Not now",
+            fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
+        )
+        let deniedCopy = ReminderDeniedCopy(
+            title: "Reminders are off",
+            message: "Notifications are turned off for Minesweeper in Settings, so we can't tell you when the Daily is ready.",
+            openSettingsCTA: "Open Settings",
+            dismissCTA: "Not now",
+            macOSGuidance: "Enable notifications in System Settings → Notifications → Minesweeper."
+        )
+        let settingsCopy = ReminderSettingsCopy(
+            sectionTitle: "Reminders",
+            enableTitle: "Daily reminder",
+            enableCTA: "Turn On",
+            enabledTitle: "Daily reminder",
+            enabledStatus: "On",
+            disableTitle: "Turn off reminders",
+            timeTitle: "Time",
+            deniedTitle: "Notifications are off",
+            deniedCTA: "Fix"
+        )
+
+        let config = GameConfig<AppRoute>(
+            subsystem: "com.wei18.minesweeper",
+            ckConfig: .minesweeper,
+            removeAdsProductId: minesweeperRemoveAdsProductId,
+            // MS has no PuzzleProvider; its resume path goes through
+            // MinesweeperPersistence, never through SavedGameStore.loadOrCreate.
+            puzzleLoader: { _ in
+                throw MinesweeperLivePuzzleLoaderUnavailable()
+            },
+            theme: MinesweeperTheme(),
+            title: "Minesweeper",
+            // sidebarItems derived by makeGameApp from homeModes.modeItems.
+            sidebarItems: [],
+            successTint: MinesweeperTheme().status.success.resolved,
+            failureTint: MinesweeperTheme().status.error.resolved,
+            audio: AudioConfig(keyPrefix: "com.wei18.minesweeper.audio"),
+            reminders: ReminderContentConfig(
+                dailyReadyContent: dailyReadyContent,
+                primerCopy: primerCopy,
+                deniedCopy: deniedCopy,
+                settingsCopy: settingsCopy
+            ),
+            settingsNotices: makeSettingsNotices(),
+            // #572 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
+            // Byte-identical to the former MinesweeperHomeViewModel.subtitleKey
+            // literals so snapshot baselines do not move.
+            homeModes: [
+                .daily: HomeModeContent(subtitleKey: "3 boards today", route: .daily),
+                .practice: HomeModeContent(subtitleKey: "All difficulties", route: .practice),
+                .leaderboard: HomeModeContent(subtitleKey: "Best times"),
+                .settings: HomeModeContent(subtitleKey: "Purchases / about", route: .settings)
+            ],
+            // MS Game Center dashboard presenter. Injected here (not inside
+            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            presentLeaderboard: { GameCenterDashboard.present() },
+            // #455 / #572: map MinesweeperSavedGameSummary into the game-agnostic
+            // ResumeCandidate. Strings match the former ResumePill rendering exactly
+            // so snapshot baselines do not move.
+            fetchResume: { _ in
+                { [savedGameStore] in
+                    guard let summary = try await savedGameStore.latestInProgress() else { return nil }
+                    return ResumeCandidate(
+                        title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                        subtitle: MinesweeperAppComposition.elapsed(summary.elapsedSeconds),
+                        route: .resumeBoard(
+                            recordName: summary.recordName,
+                            mode: GameMode(rawValue: summary.modeRaw) ?? .practice
+                        )
                     )
-                },
-                setFireTime: { time in
-                    reminderDefaults.set(time.hour, forKey: reminderHourKey)
-                    reminderDefaults.set(time.minute, forKey: reminderMinuteKey)
-                },
-                emit: reminderEmit
-            )
-            return MinesweeperReminderSettingsEntry(
-                model: model,
-                copy: ReminderSettingsCopy(
-                    sectionTitle: "Reminders",
-                    enableTitle: "Daily reminder",
-                    enableCTA: "Turn On",
-                    enabledTitle: "Daily reminder",
-                    enabledStatus: "On",
-                    disableTitle: "Turn off reminders",
-                    timeTitle: "Time",
-                    deniedTitle: "Notifications are off",
-                    deniedCTA: "Fix"
-                ),
-                primerCopy: ReminderPrimerCopy(
-                    title: "Never miss a Daily",
-                    lede: "We'll let you know the moment tomorrow's Daily Minesweeper is ready.",
-                    bullets: [
-                        "One gentle nudge a day, default 9 AM",
-                        "Adjustable anytime in Settings",
-                        "Turn it off whenever you like"
-                    ],
-                    acceptCTA: "Remind me",
-                    declineCTA: "Not now",
-                    fineprint: "\"Not now\" keeps this for later — it does not ask iOS yet."
-                ),
-                deniedCopy: ReminderDeniedCopy(
-                    title: "Reminders are off",
-                    message: "Notifications are turned off for Minesweeper in Settings, so we can't tell you when the Daily is ready.",
-                    openSettingsCTA: "Open Settings",
-                    dismissCTA: "Not now",
-                    macOSGuidance: "Enable notifications in System Settings → Notifications → Minesweeper."
+                }
+            },
+            makeRouteFactory: { deps, rootViewModel in
+                MinesweeperAppComposition.makeRouteFactory(
+                    deps: deps,
+                    rootViewModel: rootViewModel,
+                    savedGameStore: savedGameStore
                 )
-            )
-        }
-
-        // #455 step 4: saved-game store over the public gateway factory
-        // (same container/zone `LivePersistence.bootstrap()` provisions).
-        let savedGameStore = MinesweeperSavedGameStore(
-            gateway: PrivateCKGatewayFactory.live(config: .minesweeper),
-            telemetry: telemetry
+            },
+            // makeHome superseded by the universal GameHomeView built from
+            // homeModes in makeGameApp (#572). Kept for API stability; ignored
+            // by makeGameApp when homeModes is non-empty.
+            makeHome: { _, _ in AnyView(EmptyView()) }
         )
 
-        // #313: launch-bootstrap VM (GC auth + persistence bootstrap); shares
-        // the bag's funnel. Mirrors Sudoku's `AppComposition.live()`.
-        // Constructed before routeFactory so `onPresentBoard` can capture it
-        // without a forward-reference — mirrors Sudoku's `AppComposition.live()`.
-        let rootViewModel = MinesweeperRootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter,
-            // #455 step 4: lights the Home resume pill (see Live+Resume.swift).
-            fetchResume: makeFetchResume(store: savedGameStore)
-        )
+        // Wire the shared live stack once. The returned wired.view is the
+        // live mount point after #572: GameRoot + shared GameHomeView + universal
+        // ResumePill (#554) + ATT sheet + GC-signed-out alert, assembled by makeGameApp.
+        let wired = makeGameAppWithDeps(config: config)
+        let deps = wired.deps
 
-        let routeFactory = LiveRouteFactory(
-            monetizationController: monetizationController,
-            adProvider: adProvider,
-            adGate: adGate,
-            persistence: persistence,
-            gameCenter: gameCenter,
-            errorReporter: errorReporter,
-            // #284: shared toast — clear-cache feedback lands on it.
-            toastController: toastController,
-            makeReminderSettings: makeReminderSettings,
-            // #330 P2: gameplay audio + the shared Sound settings section.
-            soundPlayer: soundPlayer,
-            audioSettings: audioSettings,
+        return MinesweeperAppComposition(
+            rootViewModel: wired.rootViewModel,
+            routeFactory: wired.routeFactory,
+            telemetry: deps.telemetry,
+            errorReporter: deps.errorReporter,
+            gameCenter: deps.gameCenter,
+            persistence: deps.persistence,
+            adProvider: deps.adProvider,
+            iapClient: deps.iapClient,
+            adGate: deps.adGate,
+            monetizationStateStore: deps.monetizationStateStore,
+            monetizationController: deps.monetizationController,
+            toastController: deps.toastController,
+            wiredView: wired.view
+        )
+    }
+
+    /// Builds Minesweeper's `LiveRouteFactory` from the wired `GameDeps`. Shared
+    /// by the `GameConfig.makeRouteFactory` closure.
+    @MainActor
+    private static func makeRouteFactory(
+        deps: GameDeps,
+        rootViewModel: GameRootViewModel<AppRoute>,
+        savedGameStore: MinesweeperSavedGameStore
+    ) -> any RouteFactory<AppRoute> {
+        LiveRouteFactory(
+            monetizationController: deps.monetizationController,
+            adProvider: deps.adProvider,
+            adGate: deps.adGate,
+            persistence: deps.persistence,
+            gameCenter: deps.gameCenter,
+            errorReporter: deps.errorReporter,
+            toastController: deps.toastController,
+            makeReminderSettings: deps.makeReminderSettings,
+            soundPlayer: deps.soundPlayer,
+            audioSettings: deps.audioSettings,
             savedGameStore: savedGameStore,
-            // SDD-003 Epic 1: wire board routes to the modal presentation path.
-            // iOS-only: `.fullScreenCover` is gated `#if os(iOS)` in GameRoot.
-            // On macOS nil → legacy push path until OQ-001 resolves Mac chrome.
             onPresentBoard: {
                 #if os(iOS)
                 { [rootViewModel] route in rootViewModel.presentGame(route: route) }
@@ -308,88 +200,35 @@ extension MinesweeperAppComposition {
                 #endif
             }()
         )
+    }
 
-        return MinesweeperAppComposition(
-            rootViewModel: rootViewModel,
-            routeFactory: routeFactory,
-            telemetry: telemetry,
-            errorReporter: errorReporter,
-            gameCenter: gameCenter,
-            persistence: persistence,
-            adProvider: adProvider,
-            iapClient: iapClient,
-            adGate: adGate,
-            monetizationStateStore: monetizationStateStore,
-            monetizationController: monetizationController,
-            toastController: toastController
+    /// #331: builds the MS Notices section config. Mirrors Sudoku's shape.
+    @MainActor
+    private static func makeSettingsNotices() -> SettingsNoticesConfig {
+        let year = Calendar.current.component(.year, from: Date())
+        var onAcknowledgements: (@MainActor () -> Void)?
+        #if canImport(UIKit)
+        onAcknowledgements = {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+        #endif
+        return SettingsNoticesConfig(
+            onAcknowledgements: onAcknowledgements,
+            copyright: "© \(year) Wei"
         )
     }
 
-    /// Preview / test wiring: empty-sinks `Telemetry`, fake IAP / AdGate
-    /// store / AdProvider, `FakePersistence` (zero-IO — #261) — no Preview
-    /// path can trap on a real CloudKit gateway (mirrors Sudoku's Preview).
-    public static func preview() -> MinesweeperAppComposition {
-        let telemetry = Telemetry(sinks: [])
-        let errorReporter: any ErrorReporter = NoopErrorReporter()
+    // MARK: - Resume helpers (#455)
 
-        // #291: fake GC client — zero-IO, never touches GameKit.
-        let gameCenter: any GameCenterClient = FakeGameCenterClient()
-
-        let persistence = FakePersistence()
-
-        let adProvider: any AdProvider = FakeAdProvider()
-        let iapClient: any IAPClient = FakeIAPClient()
-        let monetizationStateStore: any AdGateStateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
-        let adGate = AdGate(store: monetizationStateStore)
-
-        let toastController = ToastController()
-
-        let monetizationController = MonetizationStateController(
-            iapClient: iapClient,
-            stateStore: monetizationStateStore,
-            adGate: adGate,
-            toastController: toastController,
-            productId: minesweeperRemoveAdsProductId
-        )
-
-        let routeFactory = LiveRouteFactory(
-            monetizationController: monetizationController,
-            adProvider: adProvider,
-            adGate: adGate,
-            persistence: persistence,
-            gameCenter: gameCenter,
-            errorReporter: errorReporter,
-            toastController: toastController,
-            // #330 P2: preview audio is the silent Noop — zero-IO, never touches
-            // AVFoundation / the system audio session. `audioSettings` stays nil so
-            // the preview Settings screen is byte-identical (no Sound section).
-            soundPlayer: NoopSoundPlaying()
-        )
-
-        // #313: preview launch-bootstrap VM over the fake GC client + fake
-        // persistence — zero-IO.
-        let rootViewModel = MinesweeperRootViewModel(
-            gameCenter: gameCenter,
-            persistence: persistence,
-            errorReporter: errorReporter
-        )
-
-        return MinesweeperAppComposition(
-            rootViewModel: rootViewModel,
-            routeFactory: routeFactory,
-            telemetry: telemetry,
-            errorReporter: errorReporter,
-            gameCenter: gameCenter,
-            persistence: persistence,
-            adProvider: adProvider,
-            iapClient: iapClient,
-            adGate: adGate,
-            monetizationStateStore: monetizationStateStore,
-            monetizationController: monetizationController,
-            toastController: toastController
-        )
+    /// `%d:%02d` elapsed label for the resume pill subtitle. Mirrors Sudoku's
+    /// `AppComposition.elapsed` (the exact string the pre-#460 shared ResumePill
+    /// rendered).
+    static func elapsed(_ totalSeconds: Int) -> String {
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 
 }
