@@ -66,9 +66,9 @@ let productionTargets: [Target] = [
             .product(name: "Telemetry", package: "TelemetryKit"),
             // #291: Game Center seam. `MinesweeperGameViewModel` submits a
             // best-time on win via the game-agnostic `GameCenterClient`
-            // protocol; `MinesweeperGameCenterDashboard` presents the native
-            // GC modal. GameKit stays fully encapsulated inside GameCenterKit's
-            // Live target — MinesweeperUI sees only the GameKit-free protocol.
+            // protocol; the shared `GameCenterDashboard` (#560) presents the
+            // native GC modal. GameKit stays fully encapsulated inside
+            // GameCenterKit — MinesweeperUI sees only the GameKit-free surface.
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             // #178: invariant-reporting tool — mirrors SudokuUI. `reportIssue(_:)`
             // surfaces impossible-state catches (fails tests, purple-warns in

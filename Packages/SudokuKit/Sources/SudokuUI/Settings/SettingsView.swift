@@ -30,6 +30,8 @@ internal import GameShellUI
 public import SettingsUI
 public import MonetizationUI
 public import SwiftUI
+// #560: shared `GameCenterDashboard.present()` (was the per-app SudokuUI copy).
+internal import GameCenterClient
 
 public struct SettingsView<Banner: View>: View {
     @Bindable private var viewModel: SettingsViewModel
@@ -93,8 +95,8 @@ public struct SettingsView<Banner: View>: View {
             audioSettings: audioSettings,
             notices: notices,
             // Game Center entry: present Apple's native GC dashboard (no leaderboard
-            // focus — opens the full listing). `GameCenterDashboard` lives in this
-            // module (SudokuUI/Leaderboard/GameCenterDashboard.swift); no extra import.
+            // focus — opens the full listing). #560: shared `GameCenterDashboard`
+            // in GameCenterClient.
             onGameCenter: { GameCenterDashboard.present() },
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.

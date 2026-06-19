@@ -7,6 +7,9 @@
 public import Foundation
 public import SwiftUI
 public import GameShellUI
+// #560: shared `GameCenterDashboard.present()` (was the per-app copy).
+// GameKit stays encapsulated in GameCenterKit.
+internal import GameCenterClient
 
 public typealias Game2048HomeMode = GameShellUI.HomeMode
 
@@ -44,7 +47,7 @@ public final class Game2048HomeViewModel {
             path.append(.settings)
         case .leaderboard:
             // Present Apple's native GC dashboard (modal side-effect, never a route).
-            Game2048GameCenterDashboard.present(leaderboardId: nil)
+            GameCenterDashboard.present(leaderboardId: nil)
         }
     }
 }
