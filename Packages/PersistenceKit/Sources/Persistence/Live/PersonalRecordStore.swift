@@ -65,27 +65,9 @@ internal actor PersonalRecordStore: Sendable {
         elapsedSeconds: Int
     ) async throws -> PersonalRecord {
         let existing = try await fetch(mode: mode, difficulty: difficulty)
-        if existing.completedPuzzleIds.contains(puzzleId) {
-            return existing
-        }
-        var ids = existing.completedPuzzleIds
-        ids.insert(puzzleId)
-        let bestTime: Int
-        if let current = existing.bestTimeSeconds {
-            bestTime = min(current, elapsedSeconds)
-        } else {
-            bestTime = elapsedSeconds
-        }
-        let updated = PersonalRecord(
-            recordName: existing.recordName,
-            mode: existing.mode,
-            difficulty: existing.difficulty,
-            bestTimeSeconds: bestTime,
-            totalTimeSeconds: existing.totalTimeSeconds + elapsedSeconds,
-            completedCount: existing.completedCount + 1,
-            lastUpdatedAt: clock(),
-            completedPuzzleIds: ids
-        )
+        guard let updated = existing.recordingCompletion(
+            puzzleId: puzzleId, elapsedSeconds: elapsedSeconds, at: clock()
+        ) else { return existing }
         try await upsert(updated)
         return updated
     }

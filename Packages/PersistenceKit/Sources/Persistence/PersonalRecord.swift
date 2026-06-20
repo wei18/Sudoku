@@ -5,8 +5,10 @@
 // dedup key for "the same puzzle does not double-count".
 //
 // `recordName` is deterministic (`{mode.rawValue}-{difficulty.rawValue}`)
-// so concurrent first-completion races on two devices collapse to a
-// single record via `.ifServerRecordUnchanged` + retry (§How.6.7).
+// so concurrent first-completion races on two devices collapse to a single
+// record. The gateway save policy is `.allKeys` last-write-wins (#544); the
+// residual multi-device best-time clobber is tracked in #552 (low severity —
+// single-device is correct; this 6-record-per-user set rarely races).
 //
 // M5 (issue #65): `mode` / `difficulty` are typed `Mode` / `Difficulty`
 // at the API surface; the CK wire format encodes them as `.rawValue`.
@@ -61,6 +63,23 @@ public struct PersonalRecord: Sendable, Equatable, Hashable, Codable {
             completedCount: 0,
             lastUpdatedAt: date,
             completedPuzzleIds: []
+        )
+    }
+
+    /// Returns the record updated for one completion, or `nil` if `puzzleId` was
+    /// already counted (dedup, §How.2 «同 puzzleId 不重計分»). Pure — no IO.
+    public func recordingCompletion(puzzleId: String, elapsedSeconds: Int, at date: Date) -> PersonalRecord? {
+        guard !completedPuzzleIds.contains(puzzleId) else { return nil }
+        var ids = completedPuzzleIds
+        ids.insert(puzzleId)
+        let newBest = bestTimeSeconds.map { min($0, elapsedSeconds) } ?? elapsedSeconds
+        return PersonalRecord(
+            recordName: recordName, mode: mode, difficulty: difficulty,
+            bestTimeSeconds: newBest,
+            totalTimeSeconds: totalTimeSeconds + elapsedSeconds,
+            completedCount: completedCount + 1,
+            lastUpdatedAt: date,
+            completedPuzzleIds: ids
         )
     }
 }
