@@ -121,6 +121,85 @@ struct PersonalRecordRaceTests {
             )
         }
     }
+
+    // MARK: - conflict-ONCE then succeed (the real optimistic-concurrency path)
+
+    /// Drives a genuine first-attempt conflict: device A writes a FASTER time
+    /// concurrently AFTER device B has fetched (injected on B's first
+    /// `.ifUnchanged` save), so B's etag is stale → `.syncConflict` → B's retry
+    /// re-fetches the fresh record and re-mins. Proves the conflict→retry→
+    /// succeed path keeps A's faster best (not just sequential fresh-fetch merge).
+    @Test func staleFirstSaveConflictsThenRetrySucceedsKeepingFasterBest() async throws {
+        let inner = FakePrivateCKGateway()
+        // A's faster record that the decorator injects on B's first save.
+        let deviceARecord = PersonalRecord(
+            recordName: "daily-easy", mode: .daily, difficulty: .easy,
+            bestTimeSeconds: 100, totalTimeSeconds: 100, completedCount: 1,
+            lastUpdatedAt: Date(timeIntervalSince1970: 1_000),
+            completedPuzzleIds: ["p-A"]
+        )
+        let gateway = ConflictOnceGateway(
+            inner: inner,
+            injectedAPayload: PersonalRecordMapper.payload(from: deviceARecord)
+        )
+        let storeB = PersonalRecordStore(gateway: gateway, clock: clock)
+
+        // B records a SLOWER time (200s) for puzzle p-B. Its first save carries
+        // a nil/stale etag, but the decorator has just landed A's record →
+        // conflict → B retries against A's fresh record.
+        _ = try await storeB.recordCompletion(
+            puzzleId: "p-B", mode: .daily, difficulty: .easy, elapsedSeconds: 200
+        )
+
+        #expect(await gateway.sawConflict, "B's first .ifUnchanged save must have conflicted")
+        let final = try await storeB.fetch(mode: .daily, difficulty: .easy)
+        #expect(final.bestTimeSeconds == 100, "A's faster best must survive B's retry")
+        #expect(final.completedCount == 2, "A's p-A + B's p-B")
+        #expect(final.completedPuzzleIds == ["p-A", "p-B"], "union of both devices' puzzles")
+    }
+}
+
+// MARK: - ConflictOnceGateway
+
+/// Decorator over `FakePrivateCKGateway` that simulates a concurrent device-A
+/// write landing AFTER the caller fetched but BEFORE its first save: on the
+/// first `.ifUnchanged` save it injects `injectedAPayload` (last-write-wins,
+/// bumping the server version) and then forwards the now-stale save — which the
+/// Fake rejects with `.syncConflict`. Subsequent saves forward unchanged.
+private actor ConflictOnceGateway: PrivateCKGateway {
+    private let inner: FakePrivateCKGateway
+    private let injectedAPayload: RecordPayload
+    private var injected = false
+    private(set) var sawConflict = false
+
+    init(inner: FakePrivateCKGateway, injectedAPayload: RecordPayload) {
+        self.inner = inner
+        self.injectedAPayload = injectedAPayload
+    }
+
+    func provisionZone() async throws { try await inner.provisionZone() }
+    func installSubscriptionIfNeeded() async throws { try await inner.installSubscriptionIfNeeded() }
+    func fetch(recordName: String) async throws -> RecordPayload? {
+        try await inner.fetch(recordName: recordName)
+    }
+    func delete(recordName: String) async throws { try await inner.delete(recordName: recordName) }
+    func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
+        try await inner.query(predicate)
+    }
+
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {
+        if !injected, case .ifUnchanged = policy {
+            injected = true
+            // Device A's concurrent write lands first (bumps server version).
+            try await inner.save(injectedAPayload, policy: .lastWriteWins)
+        }
+        do {
+            try await inner.save(payload, policy: policy)
+        } catch PersistenceError.syncConflict {
+            sawConflict = true
+            throw PersistenceError.syncConflict(recordName: payload.recordName)
+        }
+    }
 }
 
 // MARK: - AlwaysConflictGateway
