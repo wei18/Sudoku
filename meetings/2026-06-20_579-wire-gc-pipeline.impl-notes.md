@@ -73,7 +73,27 @@ to `NoOpGameStateTelemetry` and `BoardLoaderView:128` passes none. `GameStateTel
   `@MainActor` sync `makeGameAppCore`) rather than an actor (actor would force `await` in a
   sync function).
 
-## Out of scope (follow-up PR)
+## CR outcome (dual-Sonnet, 2026-06-20)
+Reviewer A: ship-with-fixes (retain-cycle nit + `.unknown` auth window). Reviewer B (replacement,
+ran the tests): ship-with-fixes — surfaced two things A missed:
+- **Blocking completion path** (applied): `GameCenterSink.receive` runs `AchievementEvaluator`
+  (real CloudKit reads) on the `placeDigit → sessionCompleted → Telemetry.observe` gameplay path
+  → froze the board-completion animation. Fix: `DeferredSink.receive` now forwards on a detached,
+  order-preserving Task (chained on the previous task) + `awaitForwardingForTesting()` drain for
+  deterministic tests. Fast sinks (OSLog/NoOp) stay synchronous.
+- **GameKit terminal is a stub** (NOT fixable here → issue #580): `LiveGameCenterClient.submitScore`
+  calls a no-op hook and `reportAchievement` always throws → no score/achievement reaches GameKit
+  even with phases 1+2 wired. Device-gated (entitlement + real device + GC sandbox).
+- Retain-cycle nit applied: `[weak rootViewModel]` in `authStateProvider`.
+- `.unknown`-at-cold-boot auth window: documented as a known limitation, not fixed (practically
+  unreachable; §How.3.4 forbids a retry queue).
+
+**Disposition**: branch holds correct, green, CR'd plumbing but is NOT merged — it delivers no
+user-visible change until #580 (GameKit terminal) lands. Merge decision deferred to user.
+
+## Out of scope (follow-up PR / issues)
+- **#580** (GameKit terminal): real `GKLeaderboard.submitScore` + `reportAchievement` — the gating
+  user-facing piece, device-verified.
 - Phase 3 (#578): a `PersonalRecordSink` added to the same `makeCompletionSinks` array, calling
   a new facade `recordPuzzleCompletion(...)` → `PersonalRecordStore.recordCompletion`.
 - Phase 4 (#552): scoped etag layer + per-record save policy + bounded retry (ref `fc557b8`).
