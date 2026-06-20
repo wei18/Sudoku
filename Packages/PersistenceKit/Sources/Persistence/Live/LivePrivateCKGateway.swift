@@ -63,25 +63,25 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
         }
     }
 
-    func save(_ payload: RecordPayload) async throws {
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {
         let record = Self.record(from: payload, zoneID: zoneID)
+        let ckPolicy: CKModifyRecordsOperation.RecordSavePolicy
+        switch policy {
+        case .lastWriteWins:
+            // #544: always overwrites server record's fields regardless of
+            // change-tag — correct for SavedGame / MonetizationState where
+            // last-write-wins is the desired semantics.
+            ckPolicy = .allKeys
+        case .ifUnchanged:
+            // #552: PersonalRecord path — rehydrated record carries the live
+            // etag so CloudKit enforces optimistic concurrency.
+            ckPolicy = .ifServerRecordUnchanged
+        }
         do {
-            // #544: last-write-wins. `database.save(record)` uses the default
-            // `.ifServerRecordUnchanged` policy, so writing a freshly-built
-            // (etag-less) `CKRecord` to a recordID that already exists is
-            // rejected with `serverRecordChanged` ("record to insert already
-            // exists"). That froze every move-save after the initial seed, so
-            // resume opened a blank board / ResumePill showed 0:00. A
-            // single-player resume save has no cross-device merge requirement,
-            // so use `.allKeys`, which overwrites the server record's fields
-            // regardless of its change-tag (creating it if absent) — the save
-            // always lands without a racy fetch-merge-retry.
             let result = try await database.modifyRecords(
                 saving: [record],
                 deleting: [],
-                savePolicy: .allKeys,
-                // Single record → `atomically` is a no-op; kept so a future
-                // multi-record caller of this helper is atomic by default.
+                savePolicy: ckPolicy,
                 atomically: true
             )
             if case .failure(let error) = result.saveResults[record.recordID] {
@@ -142,26 +142,40 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     // MARK: - CKRecord <-> RecordPayload
 
+    /// #552: if `payload.encodedSystemFields` is present, rehydrate the
+    /// CKRecord from the archived system fields (preserving the server etag
+    /// and recordID). Otherwise construct a fresh CKRecord for an insert.
     private static func record(from payload: RecordPayload, zoneID: CKRecordZone.ID) -> CKRecord {
-        let id = CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
-        let record = CKRecord(recordType: payload.recordType, recordID: id)
+        let base: CKRecord
+        if let data = payload.encodedSystemFields,
+           let unarchived = try? NSKeyedUnarchiver.unarchivedObject(
+               ofClass: CKRecord.self, from: data
+           ) {
+            base = unarchived
+        } else {
+            let id = CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
+            base = CKRecord(recordType: payload.recordType, recordID: id)
+        }
         for (key, value) in payload.fields {
             switch value {
             case .string(let string):
-                record[key] = string as any CKRecordValue
+                base[key] = string as any CKRecordValue
             case .int(let int):
-                record[key] = NSNumber(value: int) as any CKRecordValue
+                base[key] = NSNumber(value: int) as any CKRecordValue
             case .date(let date):
-                record[key] = date as any CKRecordValue
+                base[key] = date as any CKRecordValue
             case .data(let data):
-                record[key] = data as any CKRecordValue
+                base[key] = data as any CKRecordValue
             case .stringSet(let strings):
-                record[key] = strings as any CKRecordValue
+                base[key] = strings as any CKRecordValue
             }
         }
-        return record
+        return base
     }
 
+    /// #552: archive the server record's system fields (etag + recordID) into
+    /// `encodedSystemFields` so a subsequent `.ifUnchanged` save can carry
+    /// the live etag back to CloudKit.
     private static func payload(from record: CKRecord) -> RecordPayload {
         var fields: [String: RecordValue] = [:]
         for key in record.allKeys() {
@@ -178,10 +192,14 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
                 fields[key] = .int(number.intValue)
             }
         }
+        let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+        record.encodeSystemFields(with: archiver)
+        let encodedSystemFields = archiver.encodedData
         return RecordPayload(
             recordType: record.recordType,
             recordName: record.recordID.recordName,
-            fields: fields
+            fields: fields,
+            encodedSystemFields: encodedSystemFields.isEmpty ? nil : encodedSystemFields
         )
     }
 

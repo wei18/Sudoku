@@ -55,13 +55,10 @@ private actor SpyPersistence: PersistenceProtocol {
 @Suite("PersonalRecordSink")
 struct PersonalRecordSinkTests {
 
-    private let fixedDate = Date(timeIntervalSince1970: 5_000)
-
     private func makeSink(persistence: any PersistenceProtocol) -> PersonalRecordSink {
         PersonalRecordSink(
             persistence: persistence,
-            errorReporter: NoopErrorReporter(),
-            clock: { [fixedDate] in fixedDate }
+            errorReporter: NoopErrorReporter()
         )
     }
 

@@ -52,8 +52,8 @@ private actor DeferredLiveGateway: PrivateCKGateway {
         try await gateway().fetch(recordName: recordName)
     }
 
-    func save(_ payload: RecordPayload) async throws {
-        try await gateway().save(payload)
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {
+        try await gateway().save(payload, policy: policy)
     }
 
     func delete(recordName: String) async throws {

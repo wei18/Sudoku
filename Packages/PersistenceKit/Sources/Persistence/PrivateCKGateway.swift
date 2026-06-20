@@ -29,11 +29,35 @@ public struct RecordPayload: Sendable, Equatable, Hashable {
     public let recordType: String
     public let recordName: String
     public var fields: [String: RecordValue]
+    /// #552: the server record's archived `encodeSystemFields` (recordID +
+    /// etag/change-tag). Carried so an `.ifUnchanged` save re-uses the live
+    /// etag. `nil` for a brand-new, never-saved record.
+    /// Excluded from `Equatable`/`Hashable` (concurrency metadata, not record
+    /// identity) so existing field-equality assertions are unaffected.
+    public var encodedSystemFields: Data?
 
-    public init(recordType: String, recordName: String, fields: [String: RecordValue]) {
+    public init(
+        recordType: String,
+        recordName: String,
+        fields: [String: RecordValue],
+        encodedSystemFields: Data? = nil
+    ) {
         self.recordType = recordType
         self.recordName = recordName
         self.fields = fields
+        self.encodedSystemFields = encodedSystemFields
+    }
+
+    public static func == (lhs: RecordPayload, rhs: RecordPayload) -> Bool {
+        lhs.recordType == rhs.recordType
+            && lhs.recordName == rhs.recordName
+            && lhs.fields == rhs.fields
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(recordType)
+        hasher.combine(recordName)
+        hasher.combine(fields)
     }
 }
 
@@ -44,6 +68,19 @@ public enum RecordPredicate: Sendable, Equatable, Hashable {
     case all(recordType: String)
     case statusEquals(recordType: String, status: String)
     case dailyCompletedOn(dayPrefix: String)   // puzzleId hasPrefix dayPrefix
+}
+
+/// #552: per-call save policy. PersonalRecord uses `.ifUnchanged` for
+/// optimistic concurrency (best-time race). SavedGame / MonetizationState
+/// keep `.lastWriteWins` (last-write-wins is correct for resume/entitlement).
+public enum RecordSavePolicy: Sendable {
+    /// CloudKit `.allKeys` — always overwrites server record. Use for
+    /// SavedGame / MonetizationState where last-write-wins is correct.
+    case lastWriteWins
+    /// CloudKit `.ifServerRecordUnchanged` — rejected on stale etag.
+    /// Caller must carry the fetched etag in `payload.encodedSystemFields`
+    /// and implement a retry loop on `.syncConflict`.
+    case ifUnchanged
 }
 
 public protocol PrivateCKGateway: Sendable {
@@ -59,9 +96,18 @@ public protocol PrivateCKGateway: Sendable {
     // MARK: - CRUD
 
     func fetch(recordName: String) async throws -> RecordPayload?
-    func save(_ payload: RecordPayload) async throws
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws
     func delete(recordName: String) async throws
     func query(_ predicate: RecordPredicate) async throws -> [RecordPayload]
+}
+
+public extension PrivateCKGateway {
+    /// Convenience overload: `save(_:)` defaults to `.lastWriteWins` so all
+    /// existing callers (SavedGame, MonetizationState, Game2048, Minesweeper)
+    /// need no change.
+    func save(_ payload: RecordPayload) async throws {
+        try await save(payload, policy: .lastWriteWins)
+    }
 }
 
 // MARK: - Constants

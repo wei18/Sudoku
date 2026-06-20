@@ -70,4 +70,32 @@ public protocol PersistenceProtocol: Sendable {
     /// Upsert. Implementations apply per-field LWW on server conflict
     /// (§How.6.7) and the "same puzzleId no rescore" dedup (§How.2 末段).
     func upsertPersonalRecord(_ record: PersonalRecord) async throws
+
+    /// #552: record one puzzle completion against the PersonalRecord for
+    /// `(mode, difficulty)`. Default impl does fetch → merge → upsert.
+    /// `LivePersistence` overrides with the optimistic retry path.
+    func recordPuzzleCompletion(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty,
+        elapsedSeconds: Int
+    ) async throws
+}
+
+public extension PersistenceProtocol {
+    /// Default implementation: fetch → recordingCompletion → upsert.
+    /// Suitable for fakes and test spies; does NOT use optimistic concurrency.
+    /// `LivePersistence` overrides this with the `.ifUnchanged` retry loop.
+    func recordPuzzleCompletion(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty,
+        elapsedSeconds: Int
+    ) async throws {
+        let existing = try await fetchPersonalRecord(mode: mode, difficulty: difficulty)
+        guard let updated = existing.recordingCompletion(
+            puzzleId: puzzleId, elapsedSeconds: elapsedSeconds, at: Date()
+        ) else { return }
+        try await upsertPersonalRecord(updated)
+    }
 }

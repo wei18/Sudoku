@@ -5,8 +5,11 @@
 // same puzzle for the same `(mode, difficulty)` is a no-op.
 //
 // `recordName` is deterministic (`{mode}-{difficulty}`) so first-completion
-// races collapse to a single record at the CloudKit layer. The gateway uses
-// `.allKeys` save policy (#544) so no retry/merge loop is needed.
+// races collapse to a single record at the CloudKit layer.
+//
+// #552: `recordCompletion` uses `.ifUnchanged` optimistic concurrency with a
+// bounded retry loop to prevent a stale device B from clobbering device A's
+// faster best-time. `upsert` remains `.lastWriteWins` (generic facade path).
 
 internal import Foundation
 internal import SudokuEngine
@@ -47,16 +50,18 @@ internal actor PersonalRecordStore: Sendable {
     }
 
     func upsert(_ record: PersonalRecord) async throws {
-        // #544: gateway uses `.allKeys` save policy (last-write-wins) so
-        // `CKError.serverRecordChanged` is never raised. The old
-        // RetryHarness + ConflictResolver merge path was unreachable in
-        // production and has been removed (SDD-005 §6).
+        // Generic facade path: `.lastWriteWins` (last-write-wins is correct
+        // for callers that have already resolved the merge externally).
         let payload = PersonalRecordMapper.payload(from: record)
-        try await gateway.save(payload)
+        try await gateway.save(payload, policy: .lastWriteWins)
     }
 
-    /// High-level "record this completion" entry. Encodes the dedup rule:
-    /// already-counted `puzzleId` → no-op.
+    /// High-level "record this completion" entry. Uses `.ifUnchanged`
+    /// optimistic concurrency with a bounded retry loop (#552):
+    ///   fetch (carries etag) → merge → save(.ifUnchanged)
+    ///   on .syncConflict: re-fetch → re-merge → retry
+    /// This prevents a stale device B from clobbering device A's faster
+    /// best-time. Dedup: already-counted `puzzleId` → returns existing.
     @discardableResult
     func recordCompletion(
         puzzleId: String,
@@ -64,12 +69,29 @@ internal actor PersonalRecordStore: Sendable {
         difficulty: Difficulty,
         elapsedSeconds: Int
     ) async throws -> PersonalRecord {
-        let existing = try await fetch(mode: mode, difficulty: difficulty)
-        guard let updated = existing.recordingCompletion(
-            puzzleId: puzzleId, elapsedSeconds: elapsedSeconds, at: clock()
-        ) else { return existing }
-        try await upsert(updated)
-        return updated
+        let name = Self.recordName(mode: mode, difficulty: difficulty)
+        let maxAttempts = 3
+        for _ in 0..<maxAttempts {
+            let existingPayload = try await gateway.fetch(recordName: name)
+            let existing = existingPayload.flatMap(PersonalRecordMapper.record) ??
+                PersonalRecord.empty(mode: mode, difficulty: difficulty, at: clock())
+            guard let updated = existing.recordingCompletion(
+                puzzleId: puzzleId, elapsedSeconds: elapsedSeconds, at: clock()
+            ) else {
+                // puzzleId already counted — dedup no-op
+                return existing
+            }
+            var payload = PersonalRecordMapper.payload(from: updated)
+            payload.encodedSystemFields = existingPayload?.encodedSystemFields
+            do {
+                try await gateway.save(payload, policy: .ifUnchanged)
+                return updated
+            } catch PersistenceError.syncConflict {
+                // Server record changed since our fetch — re-fetch and retry
+                continue
+            }
+        }
+        throw PersistenceError.syncConflict(recordName: name)
     }
 
     static func recordName(mode: Mode, difficulty: Difficulty) -> String {

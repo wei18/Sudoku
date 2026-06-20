@@ -133,6 +133,21 @@ public actor LivePersistence: PersistenceProtocol {
         try await personalRecordStore().upsert(record)
     }
 
+    /// #552: override default impl with the optimistic retry path.
+    public func recordPuzzleCompletion(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty,
+        elapsedSeconds: Int
+    ) async throws {
+        try await personalRecordStore().recordCompletion(
+            puzzleId: puzzleId,
+            mode: mode,
+            difficulty: difficulty,
+            elapsedSeconds: elapsedSeconds
+        )
+    }
+
     // MARK: - Monetization wiring helper (v2.3.1)
 
     /// Construct a `LiveMonetizationStateStore` that shares this facade's

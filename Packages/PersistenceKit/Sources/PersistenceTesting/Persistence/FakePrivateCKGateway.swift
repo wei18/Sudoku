@@ -53,6 +53,16 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
         self.fetchError = error
     }
 
+    // MARK: - Optimistic concurrency model (#552)
+
+    /// Per-record version counter. Present only when the record has been
+    /// saved at least once. Etag = `Data("etag-v\(version)".utf8)`.
+    private var versions: [String: Int] = [:]
+
+    private static func etag(forVersion version: Int) -> Data {
+        Data("etag-v\(version)".utf8)
+    }
+
     // MARK: - PrivateCKGateway
 
     public func provisionZone() async throws {
@@ -73,17 +83,39 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
         return records[recordName]
     }
 
-    public func save(_ payload: RecordPayload) async throws {
+    public func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {
         if case .alwaysOnSave(let error) = failureMode {
             throw error
         }
         operations.append(.save(recordName: payload.recordName))
-        records[payload.recordName] = payload
+        switch policy {
+        case .lastWriteWins:
+            // Always accept; stamp etag so future ifUnchanged saves can carry it.
+            let nextVersion = (versions[payload.recordName] ?? 0) + 1
+            versions[payload.recordName] = nextVersion
+            var stored = payload
+            stored.encodedSystemFields = Self.etag(forVersion: nextVersion)
+            records[payload.recordName] = stored
+        case .ifUnchanged:
+            // CloudKit-style optimistic concurrency: an existing record requires
+            // a matching etag; absent record is accepted as insert.
+            if let currentVersion = versions[payload.recordName] {
+                guard payload.encodedSystemFields == Self.etag(forVersion: currentVersion) else {
+                    throw PersistenceError.syncConflict(recordName: payload.recordName)
+                }
+            }
+            let nextVersion = (versions[payload.recordName] ?? 0) + 1
+            versions[payload.recordName] = nextVersion
+            var stored = payload
+            stored.encodedSystemFields = Self.etag(forVersion: nextVersion)
+            records[payload.recordName] = stored
+        }
     }
 
     public func delete(recordName: String) async throws {
         operations.append(.delete(recordName: recordName))
         records.removeValue(forKey: recordName)
+        versions.removeValue(forKey: recordName)
     }
 
     public func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
@@ -94,9 +126,13 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     // MARK: - Test helpers
 
     /// Reach into the store directly without recording an op. Used by tests
-    /// to seed fixtures.
+    /// to seed fixtures. Stamps v1 etag so subsequent `.ifUnchanged` saves
+    /// can carry the correct etag.
     public func seed(_ payload: RecordPayload) {
-        records[payload.recordName] = payload
+        versions[payload.recordName] = 1
+        var stored = payload
+        stored.encodedSystemFields = Self.etag(forVersion: 1)
+        records[payload.recordName] = stored
     }
 
     public func recordCount() -> Int { records.count }
