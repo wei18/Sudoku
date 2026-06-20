@@ -49,6 +49,9 @@ public struct BoardLoaderView: View {
     // Host navigation path, forwarded to `BoardView` so a solve can push the
     // `.completion` route. Optional → previews / tests mount without a stack.
     private let path: Binding<[AppRoute]>?
+    // #579 phase 1: Telemetry fan-out for per-session adapter. `nil` (default)
+    // → `NoOpGameStateTelemetry` so previews / tests are unaffected.
+    private let telemetry: Telemetry?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -61,7 +64,8 @@ public struct BoardLoaderView: View {
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        path: Binding<[AppRoute]>? = nil
+        path: Binding<[AppRoute]>? = nil,
+        telemetry: Telemetry? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
@@ -71,6 +75,7 @@ public struct BoardLoaderView: View {
         self.adGate = adGate
         self.soundPlayer = soundPlayer
         self.path = path
+        self.telemetry = telemetry
     }
 
     public var body: some View {
@@ -125,7 +130,17 @@ public struct BoardLoaderView: View {
                 mode: identity.kind,
                 difficulty: identity.difficulty
             )
-            let session = await GameSession.restore(from: snapshot)
+            // #579 phase 1: build a per-session adapter when Telemetry is wired;
+            // fall back to NoOp so previews / tests are unaffected.
+            let gameTelemetry: any GameStateTelemetry = telemetry.map {
+                GameStateTelemetryAdapter(
+                    telemetry: $0,
+                    puzzleId: puzzleId,
+                    mode: identity.kind,
+                    difficulty: identity.difficulty
+                )
+            } ?? NoOpGameStateTelemetry()
+            let session = await GameSession.restore(from: snapshot, telemetry: gameTelemetry)
             let viewModel = GameViewModel(
                 identity: identity,
                 session: session,

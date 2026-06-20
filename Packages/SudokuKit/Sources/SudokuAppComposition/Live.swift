@@ -150,6 +150,19 @@ extension AppComposition {
                 if rootViewModel.path.last != .daily {
                     rootViewModel.path.append(.daily)
                 }
+            },
+            // #579 phase 2: wire GameCenterSink as a late-bound completion sink.
+            // SubmitGuards seeded empty (see impl-notes §Decisions: within-session
+            // dedup holds; a once-per-launch re-submit of an already-submitted
+            // daily is harmless for best-score leaderboards).
+            makeCompletionSinks: { deps, rootViewModel in
+                [GameCenterSink(
+                    client: deps.gameCenter,
+                    guards: SubmitGuards(),
+                    achievements: AchievementEvaluator(persistence: deps.persistence),
+                    authStateProvider: { await MainActor.run { rootViewModel.authState } },
+                    errorReporter: deps.errorReporter
+                )]
             }
         )
 

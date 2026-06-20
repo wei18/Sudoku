@@ -239,6 +239,12 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// (e.g. Sudoku pushes `.daily`). `nil` → no tap routing (default).
     public let reminderTapRoute: (@MainActor (String, GameRootViewModel<Route>) -> Void)?
 
+    /// #579 phase 2: late-bound completion sinks (e.g. GameCenterSink) injected
+    /// into the live DeferredSink after rootVM is built. Called once at
+    /// composition time from makeGameApp. `nil` → empty downstream (Games that
+    /// don't yet use the shared pipeline — MS, 2048 — leave this nil).
+    public let makeCompletionSinks: (@MainActor @Sendable (GameDeps, GameRootViewModel<Route>) -> [any TelemetrySink])?
+
     public init(
         subsystem: String,
         ckConfig: PrivateCKConfig,
@@ -257,7 +263,8 @@ public struct GameConfig<Route: Hashable & Sendable> {
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
         makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
-        reminderTapRoute: (@MainActor (String, GameRootViewModel<Route>) -> Void)? = nil
+        reminderTapRoute: (@MainActor (String, GameRootViewModel<Route>) -> Void)? = nil,
+        makeCompletionSinks: (@MainActor @Sendable (GameDeps, GameRootViewModel<Route>) -> [any TelemetrySink])? = nil
     ) {
         self.subsystem = subsystem
         self.ckConfig = ckConfig
@@ -277,5 +284,6 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.makeRouteFactory = makeRouteFactory
         self.makeHome = makeHome
         self.reminderTapRoute = reminderTapRoute
+        self.makeCompletionSinks = makeCompletionSinks
     }
 }
