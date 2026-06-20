@@ -155,12 +155,21 @@ extension AppComposition {
             // SubmitGuards seeded empty (see impl-notes §Decisions: within-session
             // dedup holds; a once-per-launch re-submit of an already-submitted
             // daily is harmless for best-score leaderboards).
+            // Known limitation (#579): a completion landing in the sub-second
+            // before boot `authenticate()` resolves sees `authState == .unknown`
+            // and no-ops (no retry — §How.3.4 forbids an offline queue). The
+            // window is practically unreachable (a solve takes far longer).
+            // `[weak rootViewModel]` avoids the sink → rootVM → persistence →
+            // telemetry → sink retain cycle (both ends are process-lifetime, so
+            // benign, but the weak ref keeps the graph clean).
             makeCompletionSinks: { deps, rootViewModel in
                 [GameCenterSink(
                     client: deps.gameCenter,
                     guards: SubmitGuards(),
                     achievements: AchievementEvaluator(persistence: deps.persistence),
-                    authStateProvider: { await MainActor.run { rootViewModel.authState } },
+                    authStateProvider: { [weak rootViewModel] in
+                        await MainActor.run { rootViewModel?.authState ?? .unknown }
+                    },
                     errorReporter: deps.errorReporter
                 )]
             }
