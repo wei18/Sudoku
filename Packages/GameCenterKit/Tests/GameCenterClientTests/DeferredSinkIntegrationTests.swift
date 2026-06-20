@@ -11,7 +11,7 @@ import Testing
 import Persistence
 import SudokuGameState
 import SudokuEngine
-import Telemetry
+@testable import Telemetry
 import GameCenterTesting
 
 @Suite("DeferredSink — Telemetry integration with GameCenterSink")
@@ -52,6 +52,9 @@ struct DeferredSinkIntegrationTests {
             elapsedSeconds: 180,
             mistakeCount: 0
         ))
+        // #579: DeferredSink forwards on a detached task so the gameplay path
+        // never blocks; await quiescence before asserting the GC side effects.
+        await deferred.awaitForwardingForTesting()
 
         let ops = await client.operations
         let submitCount = ops.filter {

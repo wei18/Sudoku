@@ -11,6 +11,7 @@ struct DeferredSinkTests {
         let recorder = RecordingSink()
         deferred.setDownstream([recorder])
         await deferred.receive(.moveUndone)
+        await deferred.awaitForwardingForTesting() // forwarding is detached (#579)
         let received = await recorder.received
         #expect(received == [.moveUndone])
     }
@@ -37,6 +38,7 @@ struct DeferredSinkTests {
         deferred.setDownstream([first, second, third])
         await deferred.receive(.sessionStarted(puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy))
         await deferred.receive(.moveRedone)
+        await deferred.awaitForwardingForTesting() // drain the chained forwarding tasks (#579)
         let receivedFirst = await first.received
         let receivedSecond = await second.received
         let receivedThird = await third.received
