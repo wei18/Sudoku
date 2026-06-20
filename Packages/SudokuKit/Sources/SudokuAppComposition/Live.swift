@@ -163,15 +163,21 @@ extension AppComposition {
             // telemetry → sink retain cycle (both ends are process-lifetime, so
             // benign, but the weak ref keeps the graph clean).
             makeCompletionSinks: { deps, rootViewModel in
-                [GameCenterSink(
-                    client: deps.gameCenter,
-                    guards: SubmitGuards(),
-                    achievements: AchievementEvaluator(persistence: deps.persistence),
-                    authStateProvider: { [weak rootViewModel] in
-                        await MainActor.run { rootViewModel?.authState ?? .unknown }
-                    },
-                    errorReporter: deps.errorReporter
-                )]
+                [
+                    GameCenterSink(
+                        client: deps.gameCenter,
+                        guards: SubmitGuards(),
+                        achievements: AchievementEvaluator(persistence: deps.persistence),
+                        authStateProvider: { [weak rootViewModel] in
+                            await MainActor.run { rootViewModel?.authState ?? .unknown }
+                        },
+                        errorReporter: deps.errorReporter
+                    ),
+                    PersonalRecordSink(
+                        persistence: deps.persistence,
+                        errorReporter: deps.errorReporter
+                    )
+                ]
             }
         )
 

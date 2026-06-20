@@ -63,4 +63,21 @@ public struct PersonalRecord: Sendable, Equatable, Hashable, Codable {
             completedPuzzleIds: []
         )
     }
+
+    /// Returns the record updated for one completion, or `nil` if `puzzleId` was
+    /// already counted (dedup, §How.2 «同 puzzleId 不重計分»). Pure — no IO.
+    public func recordingCompletion(puzzleId: String, elapsedSeconds: Int, at date: Date) -> PersonalRecord? {
+        guard !completedPuzzleIds.contains(puzzleId) else { return nil }
+        var ids = completedPuzzleIds
+        ids.insert(puzzleId)
+        let newBest = bestTimeSeconds.map { min($0, elapsedSeconds) } ?? elapsedSeconds
+        return PersonalRecord(
+            recordName: recordName, mode: mode, difficulty: difficulty,
+            bestTimeSeconds: newBest,
+            totalTimeSeconds: totalTimeSeconds + elapsedSeconds,
+            completedCount: completedCount + 1,
+            lastUpdatedAt: date,
+            completedPuzzleIds: ids
+        )
+    }
 }
