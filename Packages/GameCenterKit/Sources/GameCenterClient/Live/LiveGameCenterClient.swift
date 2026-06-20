@@ -25,9 +25,9 @@ public import SudokuEngine
 public actor LiveGameCenterClient: GameCenterClient {
 
     /// Test seam: receives the post-conversion **centisecond** value the
-    /// client would hand to `GKLeaderboard.submitScore(...)`. Default
-    /// implementation is a no-op (Phase 10 manual integration will replace
-    /// this with the real GameKit call). Tests inject a spy to assert the
+    /// client would hand to `GKLeaderboard.submitScore(...)`. Default is a no-op
+    /// (so unit tests don't touch GameKit); production injects
+    /// `GKScoreSubmitter.live` (#580). Tests inject a spy to assert the
     /// `seconds × 100` conversion happens exactly once, at this boundary.
     public typealias SubmitScoreHook = @Sendable (
         _ leaderboardId: String,
