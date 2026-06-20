@@ -6,17 +6,18 @@
 // — this actor runs once per session, caches the last observed state, and
 // fans subsequent transitions out via `authStateUpdates()`.
 //
-// `reportAchievement`, `fetchLeaderboardSlice` and the friends-auth pair
-// are wired in subsequent phases. `submitScore` performs the canonical
-// **seconds → centiseconds** conversion at the GameKit boundary (per
-// docs/v1/design.md §How.3.1: `GameState.elapsedSeconds × 100 → Int64 centiseconds`,
-// `ELAPSED_TIME_CENTISECOND` ASC formatter, `mm:ss.SS` display). The actual
-// `GKLeaderboard.submitScore(...)` call remains a Phase 10 manual-device
-// integration task; the conversion is wired today via an injectable
-// `@Sendable (Int64) async throws -> Void` seam so the multiply is unit
+// `submitScore` performs the canonical **seconds → centiseconds** conversion
+// at the GameKit boundary (per docs/v1/design.md §How.3.1:
+// `GameState.elapsedSeconds × 100 → Int64 centiseconds`,
+// `ELAPSED_TIME_CENTISECOND` ASC formatter, `mm:ss.SS` display) and
+// `reportAchievement` forwards `(identifier, percentComplete)`. Both delegate
+// to injectable hooks: production wires `GKScoreSubmitter.live` /
+// `GKAchievementReporter.live` (the only files that touch the actual
+// `GKLeaderboard.submitScore` / `GKAchievement.report` calls — #580,
+// device-verified); unit tests inject spies so the conversion + forwarding are
 // tested in isolation. See impl-notes
-// `meetings/2026-05-20_submit-score-centisecond.impl-notes.md` and
-// GitHub issue (filed by Leader) for the issue context.
+// `meetings/2026-05-20_submit-score-centisecond.impl-notes.md`. `fetchLeaderboardSlice`
+// delegates to `LeaderboardSliceService` (+ `GKLeaderboardLoader`).
 
 internal import Foundation
 public import SudokuEngine
@@ -33,8 +34,19 @@ public actor LiveGameCenterClient: GameCenterClient {
         _ centiseconds: Int64
     ) async throws -> Void
 
+    /// Test seam: receives the `(identifier, percentComplete)` the client would
+    /// hand to `GKAchievement.report(...)`. Default is a no-op (so unit tests
+    /// constructing the client without GameKit don't fault); production injects
+    /// `GKAchievementReporter.live` (#580). Tests inject a spy to assert the
+    /// forwarding without standing up GameKit.
+    public typealias ReportAchievementHook = @Sendable (
+        _ identifier: String,
+        _ percentComplete: Double
+    ) async throws -> Void
+
     private let authDriver: any AuthDriver
     private let submitScoreHook: SubmitScoreHook
+    private let reportAchievementHook: ReportAchievementHook
     private let leaderboardLoader: any LeaderboardLoader
     private var cachedState: GameCenterAuthState = .unknown
     private var continuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
@@ -43,10 +55,12 @@ public actor LiveGameCenterClient: GameCenterClient {
     public init(
         authDriver: any AuthDriver,
         submitScoreHook: @escaping SubmitScoreHook = { _, _ in },
+        reportAchievementHook: @escaping ReportAchievementHook = { _, _ in },
         leaderboardLoader: any LeaderboardLoader = GKLeaderboardLoader()
     ) {
         self.authDriver = authDriver
         self.submitScoreHook = submitScoreHook
+        self.reportAchievementHook = reportAchievementHook
         self.leaderboardLoader = leaderboardLoader
     }
 
@@ -173,8 +187,9 @@ public actor LiveGameCenterClient: GameCenterClient {
     }
 
     public func reportAchievement(_ achievement: AchievementProgress) async throws {
-        _ = achievement
-        throw GameCenterError.notAuthenticated
+        // #580: forward to the GameKit reporter seam. The id is already
+        // prefixed by GameCenterSink; percentComplete is GameKit's 0–100 scale.
+        try await reportAchievementHook(achievement.achievementId, achievement.percentComplete)
     }
 
     public func fetchLeaderboardSlice(
