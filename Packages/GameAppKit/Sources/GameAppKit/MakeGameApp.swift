@@ -81,12 +81,15 @@ public struct GameAppHandle<Route: Hashable & Sendable> {
 private func makeGameAppCore<Route: Hashable & Sendable>(
     config: GameConfig<Route>
 ) -> GameAppHandle<Route> {
-    // 1. Telemetry fan-out: OSLog + NoOp tracking. MetricKit projects its
-    //    diagnostic payloads BACK INTO this same Telemetry instance via the
-    //    process-wide retained sink below.
+    // 1. Telemetry fan-out: OSLog + NoOp tracking + DeferredSink for late-bound
+    //    completion sinks (e.g. GameCenterSink — #579 phase 2). MetricKit
+    //    projects its diagnostic payloads BACK INTO this same Telemetry
+    //    instance via the process-wide retained sink below.
+    let completionSink = DeferredSink()
     let telemetry = Telemetry(sinks: [
         OSLogSink(subsystem: config.subsystem, category: "Telemetry"),
-        NoOpTrackingSink()
+        NoOpTrackingSink(),
+        completionSink
     ])
     LiveMetricKitRetainer.install(downstream: telemetry)
 
@@ -303,6 +306,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         errorReporter: errorReporter,
         fetchResume: fetchResumeClosure
     )
+
+    // #579 phase 2: late-bind real completion sinks into the DeferredSink now
+    // that rootVM is available (the GameCenterSink authStateProvider reads it).
+    // Empty downstream when the game does not supply makeCompletionSinks (MS/2048).
+    completionSink.setDownstream(config.makeCompletionSinks?(deps, rootViewModel) ?? [])
 
     // Install the reminder delegate after rootVM exists (tap routing mutates
     // rootVM.path). The `onTap` closure captures rootVM by reference (stable

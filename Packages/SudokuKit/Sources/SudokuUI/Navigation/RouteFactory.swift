@@ -202,7 +202,8 @@ public struct LiveRouteFactory: RouteFactory {
                         adProvider: adProvider,
                         adGate: adGate,
                         soundPlayer: soundPlayer,
-                        path: path
+                        path: path,
+                        telemetry: telemetry
                     )
                 )
             }
