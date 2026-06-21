@@ -1,6 +1,10 @@
 // MinesweeperBoardTerminalOverlaySnapshotTests — terminal board WITH the
 // Completion overlay mounted (#388 / #315).
 //
+// Keeps `.tolerantImage` (#487/#517): a COMPOSITION guard over a live AA-heavy
+// `.lost` board (strict would false-fail on cell antialiasing). The overlay's
+// TEXT content is gated strictly by MinesweeperCompletionSnapshotTests.
+//
 // The existing CompletionView baselines (MinesweeperCompletionSnapshotTests)
 // render the surface in ISOLATION. The existing loss-board baseline
 // (MinesweeperBoardRevealedSnapshotTests `mineHit`) renders the exploded board
