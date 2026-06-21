@@ -1,11 +1,10 @@
 // PersonalRecordSink — #578: writes PersonalRecord on completion.
 //
 // Fires regardless of Game Center auth (PersonalRecord is the durable source
-// of truth, independent of GC). Uses the existing facade methods
-// `fetchPersonalRecord` + `upsertPersonalRecord` via the pure merge method
-// `PersonalRecord.recordingCompletion` — no new PersistenceProtocol methods.
+// of truth, independent of GC). Delegates to `recordPuzzleCompletion` (#552)
+// which routes through the optimistic retry path on LivePersistence and
+// the simple fetch→merge→upsert default on fakes/tests.
 
-public import Foundation
 public import Telemetry
 internal import SudokuEngine
 
@@ -14,26 +13,26 @@ internal import SudokuEngine
 public actor PersonalRecordSink: TelemetrySink {
     private let persistence: any PersistenceProtocol
     private let errorReporter: any ErrorReporter
-    private let clock: @Sendable () -> Date
 
     public init(
         persistence: any PersistenceProtocol,
-        errorReporter: any ErrorReporter = NoopErrorReporter(),
-        clock: @escaping @Sendable () -> Date = { Date() }
+        errorReporter: any ErrorReporter = NoopErrorReporter()
     ) {
         self.persistence = persistence
         self.errorReporter = errorReporter
-        self.clock = clock
     }
 
     public func receive(_ event: TelemetryEvent) async {
         guard case let .puzzleCompleted(puzzleId, mode, difficulty, elapsedSeconds, _) = event else { return }
         do {
-            let existing = try await persistence.fetchPersonalRecord(mode: mode, difficulty: difficulty)
-            guard let updated = existing.recordingCompletion(
-                puzzleId: puzzleId, elapsedSeconds: elapsedSeconds, at: clock()
-            ) else { return }
-            try await persistence.upsertPersonalRecord(updated)
+            // #552: delegate to recordPuzzleCompletion which routes through
+            // the optimistic retry path on LivePersistence.
+            try await persistence.recordPuzzleCompletion(
+                puzzleId: puzzleId,
+                mode: mode,
+                difficulty: difficulty,
+                elapsedSeconds: elapsedSeconds
+            )
         } catch {
             await errorReporter.report(
                 UserFacingError.classify(error),
