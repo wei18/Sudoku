@@ -387,7 +387,7 @@ private actor ThrowingQueryGateway: PrivateCKGateway {
         return nil
     }
 
-    func save(_ payload: RecordPayload) async throws {}
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {}
     func delete(recordName: String) async throws {}
 
     func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
