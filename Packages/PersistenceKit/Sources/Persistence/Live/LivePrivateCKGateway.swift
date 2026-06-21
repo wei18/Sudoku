@@ -146,12 +146,23 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
     /// CKRecord from the archived system fields (preserving the server etag
     /// and recordID). Otherwise construct a fresh CKRecord for an insert.
     private static func record(from payload: RecordPayload, zoneID: CKRecordZone.ID) -> CKRecord {
+        // #544/#552: rehydrate the base CKRecord (recordID + etag) so an
+        // `.ifServerRecordUnchanged` save UPDATES instead of re-inserting.
+        // `encodeSystemFields(with:)` writes a PARTIAL (system-fields-only)
+        // archive whose root is NOT keyed as `NSKeyedArchiveRootObjectKey`, so
+        // the static `unarchivedObject(ofClass:from:)` convenience cannot decode
+        // it — `CKRecord(coder:)` reading from the unarchiver root is the only
+        // correct path (matches on-device-proven fc557b8). A wrong decode would
+        // silently drop the etag → every `.ifUnchanged` save conflicts forever.
         let base: CKRecord
-        if let data = payload.encodedSystemFields,
-           let unarchived = try? NSKeyedUnarchiver.unarchivedObject(
-               ofClass: CKRecord.self, from: data
-           ) {
-            base = unarchived
+        if let systemFields = payload.encodedSystemFields,
+           let unarchiver = try? NSKeyedUnarchiver(forReadingFrom: systemFields) {
+            unarchiver.requiresSecureCoding = true
+            base = CKRecord(coder: unarchiver)
+                ?? CKRecord(
+                    recordType: payload.recordType,
+                    recordID: CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
+                )
         } else {
             let id = CKRecord.ID(recordName: payload.recordName, zoneID: zoneID)
             base = CKRecord(recordType: payload.recordType, recordID: id)
