@@ -92,7 +92,7 @@ struct MinesweeperHomeSnapshotTests {
             colorScheme: .light,
             sizeClass: .compact
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
     }
 
@@ -104,7 +104,7 @@ struct MinesweeperHomeSnapshotTests {
             colorScheme: .dark,
             sizeClass: .compact
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPhone-dark-compact", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Home-iPhone-dark-compact", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-iPhone-dark-compact", record: SnapshotMode.recordMode)
     }
 
@@ -118,7 +118,7 @@ struct MinesweeperHomeSnapshotTests {
             colorScheme: .light,
             sizeClass: .regular
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
     }
 
@@ -132,7 +132,7 @@ struct MinesweeperHomeSnapshotTests {
             colorScheme: .light,
             sizeClass: .regular
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-mac-light-regular", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Home-mac-light-regular", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-mac-light-regular", record: SnapshotMode.recordMode)
     }
 
@@ -144,7 +144,7 @@ struct MinesweeperHomeSnapshotTests {
             colorScheme: .dark,
             sizeClass: .regular
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
     }
 }

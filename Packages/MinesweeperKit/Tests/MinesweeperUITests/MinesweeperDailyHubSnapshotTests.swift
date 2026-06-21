@@ -82,7 +82,7 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertUISnapshot(
             of: host,
-            as: .tolerantImage,
+            as: .image,
             named: "Daily-iPhone-light-compact",
             record: SnapshotMode.recordMode
         )
@@ -99,7 +99,7 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertUISnapshot(
             of: host,
-            as: .tolerantImage,
+            as: .image,
             named: "Daily-iPhone-dark-compact",
             record: SnapshotMode.recordMode
         )
@@ -118,7 +118,7 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertUISnapshot(
             of: host,
-            as: .tolerantImage,
+            as: .image,
             named: "Daily-iPad-light-regular",
             record: SnapshotMode.recordMode
         )
@@ -137,7 +137,7 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertUISnapshot(
             of: host,
-            as: .tolerantImage,
+            as: .image,
             named: "Daily-mac-light-regular",
             record: SnapshotMode.recordMode
         )
@@ -154,7 +154,7 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertUISnapshot(
             of: host,
-            as: .tolerantImage,
+            as: .image,
             named: "Daily-mac-dark-regular",
             record: SnapshotMode.recordMode
         )

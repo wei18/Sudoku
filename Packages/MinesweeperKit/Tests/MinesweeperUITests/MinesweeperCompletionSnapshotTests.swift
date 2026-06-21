@@ -85,7 +85,7 @@ struct MinesweeperCompletionSnapshotTests {
             showsElapsedTime: false
         )
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Win hero + loaded leaderboard slice
@@ -93,7 +93,7 @@ struct MinesweeperCompletionSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPhone_light() {
         let host = hostingView(completionView(didWin: true, state: .loaded(Self.sampleSlice)), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-light-win-loaded", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
@@ -104,13 +104,13 @@ struct MinesweeperCompletionSnapshotTests {
             colorScheme: .light,
             sizeClass: .regular
         )
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPad-light-win-loaded", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPad-light-win-loaded", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPhone_dark() {
         let host = hostingView(completionView(didWin: true, state: .loaded(Self.sampleSlice)), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-dark-win-loaded", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-win-loaded", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Loss hero (hero-only, unauthenticated affordance)
@@ -118,13 +118,13 @@ struct MinesweeperCompletionSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoss_iPhone_light() {
         let host = hostingView(completionView(didWin: false, state: .unauthenticated), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-light-loss", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-loss", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoss_iPhone_dark() {
         let host = hostingView(completionView(didWin: false, state: .unauthenticated), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-dark-loss", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-loss", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Slice states (loading / failed) — win hero
@@ -132,13 +132,13 @@ struct MinesweeperCompletionSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoading_iPhone_light() {
         let host = hostingView(completionView(didWin: true, state: .loading), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-light-loading", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-loading", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotFailed_iPhone_light() {
         let host = hostingView(completionView(didWin: true, state: .failed("network offline")), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-light-failed", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Slice states (loading / failed) — dark theme (#315)
@@ -151,13 +151,13 @@ struct MinesweeperCompletionSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoading_iPhone_dark() {
         let host = hostingView(completionView(didWin: true, state: .loading), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-dark-loading", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-loading", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotFailed_iPhone_dark() {
         let host = hostingView(completionView(didWin: true, state: .failed("network offline")), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .tolerantImage, named: "Completion-iPhone-dark-failed", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-failed", record: SnapshotMode.recordMode)
     }
 }
 #endif

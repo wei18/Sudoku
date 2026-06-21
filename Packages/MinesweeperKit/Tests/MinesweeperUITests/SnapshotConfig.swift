@@ -57,9 +57,18 @@ enum SnapshotPaths {
     }
 }
 
-/// Cross-machine-tolerant image strategy. Same calibration as Sudoku's
-/// (precision 0.95 / perceptualPrecision 0.95) — single source of truth here,
-/// do NOT override at call sites.
+/// Cross-machine-tolerant image strategy (precision 0.95 / perceptualPrecision
+/// 0.95) — single source of truth here, do NOT override at call sites.
+///
+/// SCOPE (#487/#517): use this ONLY for AA-heavy BOARD/grid suites
+/// (`MinesweeperBoard*`), where dozens of antialiased cells accumulate enough
+/// cross-machine hinting drift to false-fail strict equality. CONTENT suites
+/// (Completion / DailyHub / Home) use the default strict `.image` (precision
+/// 1.0) — mirroring Sudoku — so that ADDING a visible element (e.g. the #486
+/// "Failed" badge) changes pixels and FAILS the suite without a re-record. The
+/// loose tolerance used to absorb whole new labels (#487) and the view-tree
+/// structure gate is vacuous for scroll-hosted content (#517); strict pixels on
+/// content close both.
 extension Snapshotting where Value == NSView, Format == NSImage {
     static var tolerantImage: Snapshotting<NSView, NSImage> {
         .image(precision: 0.95, perceptualPrecision: 0.95)

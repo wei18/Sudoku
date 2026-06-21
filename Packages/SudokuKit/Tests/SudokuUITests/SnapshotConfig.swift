@@ -120,6 +120,12 @@ enum SnapshotPaths {
 /// If 0.95 / 0.95 still fails, the next move is to re-record baselines
 /// on an XCC runner (rather than weaken tolerance further), since
 /// weakening past ~5% starts blanketing real visual regressions.
+///
+/// SCOPE (#487/#517): `tolerantImage` is for AA-heavy BOARD suites only
+/// (`BoardViewTests`). CONTENT suites use strict `.image` (precision 1.0) so a
+/// newly-added visible element fails without re-record — loose tolerance
+/// absorbed whole labels (#487) and the structure gate is vacuous for
+/// scroll-hosted content (#517).
 extension Snapshotting where Value == NSView, Format == NSImage {
     static var tolerantImage: Snapshotting<NSView, NSImage> {
         .image(precision: 0.95, perceptualPrecision: 0.95)
