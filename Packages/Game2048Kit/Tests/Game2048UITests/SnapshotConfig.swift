@@ -1,8 +1,12 @@
 // SnapshotConfig — 2048 snapshot harness for Game2048UITests.
 //
-// A 1:1 mirror of MinesweeperKit's SnapshotConfig.swift, differing only in
-// the injected theme: 2048 fixtures get `Game2048Theme()` (M4 warm-tile
-// palette, landed in SDD-004 M4).
+// Mirrors MinesweeperKit's SnapshotConfig.swift in structure, but diverges in
+// two intentional ways:
+//   1. Injected theme: 2048 fixtures get `Game2048Theme()` (M4 warm-tile
+//      palette, landed in SDD-004 M4) instead of MS's `MinesweeperTheme()`.
+//   2. iPad/mac layout constants and the structural-baseline helper present in
+//      the MS file are omitted — Game2048UITests has no iPad/Mac layout variants
+//      and its suite is compact enough to not need the extracted helper.
 //
 // `swift test` on the host runs macOS tests; we render SwiftUI Views through
 // `NSHostingView` (size-pinned to a canonical device size) and snapshot as
