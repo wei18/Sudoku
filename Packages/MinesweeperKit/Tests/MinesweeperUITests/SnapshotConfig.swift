@@ -1,8 +1,16 @@
 // SnapshotConfig — MS snapshot harness (#278 Tier-1 Phase 2b).
 //
-// A 1:1 mirror of SudokuKit's `Tests/SudokuUITests/SnapshotConfig.swift`,
-// differing only in the injected theme: MS fixtures get `MinesweeperTheme()`
-// + `\.minesweeperCell` instead of Sudoku's `DefaultTheme()` + `\.sudokuCell`.
+// Mirrors SudokuKit's `Tests/SudokuUITests/SnapshotConfig.swift` in structure,
+// but diverges in three intentional ways:
+//   1. Injected theme: MS fixtures get `MinesweeperTheme()` + `\.minesweeperCell`
+//      instead of Sudoku's `DefaultTheme()` + `\.sudokuCell`.
+//   2. Structure-assertion helper: the `#487` structural-baseline helper is
+//      inlined here rather than extracted to a separate `SnapshotStructureHelper.swift`
+//      (Sudoku extracted it to stay under the 400-line SwiftLint limit; this file
+//      remains comfortably below that threshold).
+//   3. Mac harness omitted: Sudoku's file contains an `NSWindow` Form/SplitView
+//      harness for Mac-specific snapshot coverage; MS has no Mac-layout variants
+//      and omits it deliberately.
 //
 // `swift test` on the host can only run macOS tests; we render SwiftUI Views
 // through `NSHostingView` (size-pinned to a canonical device size) and snapshot

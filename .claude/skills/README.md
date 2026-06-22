@@ -4,7 +4,7 @@
 
 This directory is the project's self-contained set of agent skills. Every skill used or observed in this project lives here, with no dependency on project-specific entries under the user-level `~/.claude/skills/`.
 
-10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 21 process / security / ops skills distilled from this session — **31** skills in total.
+10 platform defaults split out from the user-level `~/.claude/skills/swift-platform-defaults`, plus 23 process / security / ops skills distilled from this session — **33** skills in total.
 
 ---
 
@@ -43,12 +43,14 @@ Distilled from collaboration / security patterns observed in this session.
 
 ---
 
-## Ops, review & process (14)
+## Ops, review & process (16)
 
-Workflow, review-discipline, monetization, ASC/icon ops, and mockup skills added as the project matured.
+Workflow, review-discipline, monetization, ASC/icon ops, mockup, and App Store ops skills added as the project matured.
 
 | Skill | One-liner |
 |---|---|
+| [`app-store-review-rejections`](app-store-review-rejections/SKILL.md) | Diagnose App Review rejections and harden submissions against the guideline classes (1.3 / 2.1 / 2.3 / 2.5.x / 3.1.1 / 4.x / 5.1.x) a free puzzle game with ads + IAP + CloudKit + Game Center actually hits |
+| [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | Drive the running game apps in the iOS Simulator with idb (tap / describe / screenshot) to find UX + layout bugs snapshot tests cannot — navigation, modals, back-stack, safe-area, offline/signed-out flows |
 | [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | Running `meetings/{date}_{topic}.impl-notes.md` during a sub-agent task — in-flight decisions, deviations, alternatives, open questions |
 | [`pr-diff-verification`](pr-diff-verification/SKILL.md) | Before push / PR, verify `git show --stat HEAD` matches what the commit message claims |
 | [`subagent-conflict-detection`](subagent-conflict-detection/SKILL.md) | Before dispatch, check the new sub-agent's target files don't overlap an in-flight sub-agent's worktree |

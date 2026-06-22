@@ -4,7 +4,7 @@
 
 本目錄為本專案自含（self-contained）的 agent skill 集合。所有在本專案中使用 / 觀察到的 skill 都放這裡，不依賴 user-level `~/.claude/skills/` 的 project-specific 條目。
 
-從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 21 條本 session 沉澱出的流程 / 安全 / 維運 skill，共 **31** 條。
+從 user-level `~/.claude/skills/swift-platform-defaults` 拆出的 10 條平台預設、加上 23 條本 session 沉澱出的流程 / 安全 / 維運 skill，共 **33** 條。
 
 ---
 
@@ -43,12 +43,14 @@
 
 ---
 
-## 維運、審查與流程 (14)
+## 維運、審查與流程 (16)
 
-專案成熟過程中加入的工作流、審查紀律、變現、ASC／圖示維運、以及 mockup skill。
+專案成熟過程中加入的工作流、審查紀律、變現、ASC／圖示維運、mockup，以及 App Store 維運 skill。
 
 | Skill | 一句話 |
 |---|---|
+| [`app-store-review-rejections`](app-store-review-rejections/SKILL.md) | 診斷 App Review 被拒案並針對含廣告 + IAP + CloudKit + Game Center 的免費解謎遊戲實際會踩的 guideline 類別（1.3 / 2.1 / 2.3 / 2.5.x / 3.1.1 / 4.x / 5.1.x）強化送審 |
+| [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | 用 idb 在 iOS Simulator 中實際驅動遊戲（點擊／描述／截圖），找出 snapshot 測試看不到的 UX + 版面 bug——導覽、modal、back-stack、安全區、離線 / 登出流程 |
 | [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | sub-agent 執行期間維護 `meetings/{date}_{topic}.impl-notes.md`——在途決策、偏離、替代方案、待決問題 |
 | [`pr-diff-verification`](pr-diff-verification/SKILL.md) | push／開 PR 前，確認 `git show --stat HEAD` 與 commit message 宣稱的內容一致 |
 | [`subagent-conflict-detection`](subagent-conflict-detection/SKILL.md) | 派發前檢查新 sub-agent 的目標檔案不與在途 sub-agent 的 worktree 重疊 |

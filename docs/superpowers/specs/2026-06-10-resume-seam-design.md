@@ -60,6 +60,8 @@ fetchResume: {                                     // async throws — VM catche
 **5. Minesweeper**
 *(As designed 2026-06-10 AM; superseded the same day.)* MS started at `fetchResume: nil`. **As-built (#463 + #465):** `MinesweeperSavedGameStore` shipped and `.live()` now injects `fetchResume` (Live+Resume.swift) mapping the MS-native summary onto a dedicated `.resumeBoard(recordName:mode:)` route (not `.board` — a restored board must replay saved state, not re-derive from the seed). The seam prediction held: **no further GameAppKit change was needed.**
 
+> **As-built update:** `Live+Resume.swift` no longer exists as a separate file. Its `fetchResume` closure was inlined directly into `MinesweeperKit/Sources/MinesweeperAppComposition/Live.swift` (deleted by the #572 migration PR alongside `Live+Audio.swift`). The logic is unchanged; only the file boundary moved.
+
 ## Data flow
 
 `bootstrap()` → (`fetchResume?()`) → `resumeCandidate: ResumeCandidate<Route>?` → game's `rootContent` renders `ResumePill(title, subtitle)` in the Home header → tap → `resumeTapped()` → `path.append(candidate.route)`.

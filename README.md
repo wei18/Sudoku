@@ -4,7 +4,7 @@ English | [繁體中文](README.zh-Hant.md)
 
 Two calm, privacy-respecting, cross-platform logic games — built in a single monorepo that doubles as a portfolio of (a) clean, modular **Swift 6** architecture and (b) a documented **human + Claude-agent engineering workflow**.
 
-- **Sudoku** is the primary, shipping app.
+- **Sudoku** is the primary app (feature-complete; App Store submission in progress).
 - **Minesweeper** is a second app that exists to prove the shared `GameShellKit` architecture composes a new game — it mirrors Sudoku in every layer except the gameplay screen.
 
 Both run on **iPhone and Mac** from one codebase, sync through the player's own iCloud, and keep a deliberately small footprint: no first-party analytics, no accounts beyond iCloud, no tracking — with ads limited to a single, removable banner in the monetized builds.

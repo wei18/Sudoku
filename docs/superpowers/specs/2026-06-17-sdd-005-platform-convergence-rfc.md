@@ -5,6 +5,13 @@
 **Author:** AI Leader (from a working session with the user)
 **Related:** SDD-003 (UX refresh), SDD-004 (game 3 / 2048), north-star memory `goal-many-small-games-platform`, the mirror principle (CLAUDE.md prime directive)
 
+> **AS-BUILT NOTE (2026-06-19) — SDD-005 COMPLETE.**
+> The Pillar B backbone (GameConfig / makeGameApp / shared GameHomeView) and the
+> Pillar A Sudoku renames shipped in PRs #556 / #557. SDD-005 was marked complete
+> on 2026-06-19. The "DRAFT / to-do" framing below is **historical** — it reflects
+> the design conversation as captured on 2026-06-17. Do not act on open items
+> or [OQ] markers without first verifying the current tree.
+
 > This doc is a captured snapshot of a design conversation. It is INTENTIONALLY a
 > draft: sections marked **[OQ]** are open questions for the next session. Verify
 > every code/file claim against the current tree before acting — line counts and

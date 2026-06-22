@@ -4,7 +4,7 @@
 
 兩款沉靜、尊重隱私、跨平台的邏輯遊戲——建構於單一 monorepo 中，這個 repo 同時是一份作品集，展示 (a) 乾淨、模組化的 **Swift 6** 架構，以及 (b) 一套有完整文件紀錄的**人類 + Claude agent 工程協作流程**。
 
-- **Sudoku** 是主要、已上架的 App。
+- **Sudoku** 是主要 App（功能完整、App Store 送審進行中）。
 - **Minesweeper** 是第二款 App，存在的目的是驗證共用的 `GameShellKit` 架構能組裝出一款新遊戲——它在每一層都鏡像 Sudoku，唯一不同的是玩法畫面。
 
 兩款 App 皆以單一 codebase 同時運行於 **iPhone 與 Mac**，透過玩家自己的 iCloud 同步，並刻意維持極小的足跡：無自家分析、除 iCloud 外無帳號、無追蹤——在含商業模式的 build 中，廣告也僅限於一個可移除的 banner。
