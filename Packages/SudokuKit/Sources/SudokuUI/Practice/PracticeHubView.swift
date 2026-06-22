@@ -110,7 +110,13 @@ public struct PracticeHubView<Banner: View>: View {
     private var hintRow: some View {
         switch viewModel.loadingState {
         case .idle, .drawingQuiet:
-            Text("\(viewModel.difficulty.rawValue.capitalized) · ready")
+            // #516: localize the difficulty (same `Easy/Medium/Hard` key the
+            // Picker uses) + a localized "ready"; the "·" separator is verbatim.
+            // Previously this interpolated the raw enum + literal "ready", so the
+            // whole hint stayed English in non-en locales.
+            (Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized))
+                + Text(verbatim: " · ")
+                + Text("ready"))
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         case .drawingShimmer:
@@ -120,7 +126,10 @@ public struct PracticeHubView<Banner: View>: View {
                 .accessibilityLabel("Loading")
                 .accessibilityAddTraits(.updatesFrequently)
         case .drawn(let envelope):
-            Text("\(viewModel.difficulty.rawValue.capitalized) · \(envelope.identity.puzzleId)")
+            // #516: localize the difficulty; the "·" separator + deterministic
+            // puzzleId (not user-facing copy) are verbatim.
+            (Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized))
+                + Text(verbatim: " · \(envelope.identity.puzzleId)"))
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         case .failed(let reason):
