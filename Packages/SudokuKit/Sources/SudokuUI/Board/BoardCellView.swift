@@ -38,7 +38,18 @@ struct BoardCellView: View {
         .overlay(borderOverlay)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
+        .accessibilityAddTraits(accessibilityTraits)
+    }
+
+    /// #473: a given (clue) cell is non-interactive — its tap is a no-op, so it
+    /// must NOT be a VoiceOver button. Drives both the a11y trait below and
+    /// `BoardView`'s decision to render givens without a `Button` wrapper.
+    var isInteractive: Bool { !isGiven }
+
+    private var accessibilityTraits: AccessibilityTraits {
+        var traits: AccessibilityTraits = isInteractive ? .isButton : .isStaticText
+        if isSelected { traits.insert(.isSelected) }
+        return traits
     }
 
     private var accessibilityLabel: String {

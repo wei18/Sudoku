@@ -262,6 +262,7 @@ public struct BoardView: View {
         .aspectRatio(1, contentMode: .fit)
     }
 
+    @ViewBuilder
     private func cell(row: Int, column: Int, side: CGFloat) -> some View {
         let index = Board.index(row: row, column: column)
         let digit = viewModel.board.digit(atIndex: index)
@@ -269,22 +270,30 @@ public struct BoardView: View {
         let isSelected = viewModel.selection.map { $0.row == row && $0.column == column } ?? false
         let isError = viewModel.errorIndices.contains(index)
         let noteMask = viewModel.notes.masks[index]
-        return Button {
-            viewModel.select(row: row, column: column)
-        } label: {
-            BoardCellView(
-                row: row,
-                column: column,
-                digit: digit,
-                isGiven: isGiven,
-                isSelected: isSelected,
-                isError: isError,
-                isPencilNotes: digit == nil,
-                noteMask: noteMask,
-                side: side
-            )
+        let cellView = BoardCellView(
+            row: row,
+            column: column,
+            digit: digit,
+            isGiven: isGiven,
+            isSelected: isSelected,
+            isError: isError,
+            isPencilNotes: digit == nil,
+            noteMask: noteMask,
+            side: side
+        )
+        if cellView.isInteractive {
+            Button {
+                viewModel.select(row: row, column: column)
+            } label: {
+                cellView
+            }
+            .buttonStyle(.plain)
+        } else {
+            // #473: given (clue) cells are non-interactive — no Button wrapper,
+            // so VoiceOver announces them as static text (a given's `select()` is
+            // already a no-op, #472). Arrow-key navigation still highlights them.
+            cellView
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Keyboard
