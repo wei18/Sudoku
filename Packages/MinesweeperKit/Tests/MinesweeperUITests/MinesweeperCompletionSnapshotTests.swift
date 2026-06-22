@@ -127,37 +127,15 @@ struct MinesweeperCompletionSnapshotTests {
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-loss", record: SnapshotMode.recordMode)
     }
 
-    // MARK: - Slice states (loading / failed) — win hero
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotLoading_iPhone_light() {
-        let host = hostingView(completionView(didWin: true, state: .loading), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-loading", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotFailed_iPhone_light() {
-        let host = hostingView(completionView(didWin: true, state: .failed("network offline")), size: SnapshotLayouts.iPhone, colorScheme: .light)
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - Slice states (loading / failed) — dark theme (#315)
+    // MARK: - Leaderboard-slice states are NOT snapshot-meaningful (#587)
     //
-    // The light loading/failed slices were already pinned; #315 asks for the
-    // four slice states across light + dark. These add the missing dark
-    // baselines so the slice section's dark-theme tints (spinner, warning text)
-    // are also guarded.
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotLoading_iPhone_dark() {
-        let host = hostingView(completionView(didWin: true, state: .loading), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-loading", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotFailed_iPhone_dark() {
-        let host = hostingView(completionView(didWin: true, state: .failed("network offline")), size: SnapshotLayouts.iPhone, colorScheme: .dark)
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-failed", record: SnapshotMode.recordMode)
-    }
+    // SDD-003 Epic 4 removed the leaderboard zone from the completion popup:
+    // `MinesweeperCompletionView` maps every leaderboard-fetch state to
+    // `CompletionScreen(state: .hidden)`, leaving the VM machinery unrendered.
+    // So `.loading` / `.failed` / `.loaded` render BYTE-IDENTICAL to the
+    // `win-loaded` hero above — the old per-state baselines (loading/failed,
+    // light+dark) asserted a distinction the view no longer makes (false
+    // confidence). They were removed in #587; `snapshotWinLoaded_*` is the
+    // single guard that the popup renders the hero with NO leaderboard zone.
 }
 #endif
