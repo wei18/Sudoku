@@ -67,21 +67,15 @@ struct CompletionViewTests {
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_unauthenticated_iPhoneLight_zhTW() async {
-        // zh-TW locale variant for hero copy.
-        let viewModel = makeViewModel()
-        viewModel.setStateForTesting(.unauthenticated)
-        let host = hostingView(
-            CompletionView(viewModel: viewModel),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            locale: .init(identifier: "zh-Hant"),
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-unauthenticated-zhTW")
-        }
-    }
+    // #587: removed `snapshot_unauthenticated_iPhoneLight_zhTW`. Two reasons:
+    // (1) `.environment(\.locale, "zh-Hant")` does NOT switch SwiftUI's
+    //     String-Catalog lookup (that follows the bundle's preferredLocalizations,
+    //     not the env locale), so the baseline rendered ENGLISH — false
+    //     localization confidence. zh-Hant string completeness is gated by
+    //     `mise run scan:l10n` (CI-enforced), not by a pixel snapshot.
+    // (2) `.unauthenticated` is not snapshot-distinct anyway — SDD-003 Epic 4
+    //     maps every leaderboard state to `CompletionScreen(state: .hidden)`, so
+    //     it rendered byte-identical to the `loaded` baseline below.
 
     // #383: Practice solve (nil leaderboard) → `.noLeaderboard`. Neutral
     // "not ranked" copy, NO sign-in button. The snapshot is the view-level
@@ -106,19 +100,11 @@ struct CompletionViewTests {
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_fetchFailed_iPhoneLight() async {
-        let viewModel = makeViewModel()
-        viewModel.setStateForTesting(.failed("network offline"))
-        let host = hostingView(
-            CompletionView(viewModel: viewModel),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-failed")
-        }
-    }
+    // #587: removed `snapshot_fetchFailed_iPhoneLight` — the popup hides the
+    // leaderboard zone (Epic 4, `state: .hidden`), so `.failed` rendered
+    // byte-identical to the `.loaded` baseline above; the per-state variant
+    // asserted a distinction the view no longer makes (false confidence).
+    // `snapshot_authenticatedLoaded_iPhoneLight` is the single hero/no-leaderboard guard.
     #endif
 
     // MARK: - Behavior
