@@ -14,7 +14,11 @@ swiftlint                       = "0.57"
 xcbeautify                      = "2"
 "aqua:gitleaks/gitleaks"        = "8.30.1"   # foundations.md §7.5 requires ≥ 8.18
 "aqua:evilmartians/lefthook"    = "1"
-"aqua:tuist/tuist"              = "4"        # generates Game.xcodeproj from Project.swift (Phase 1.4)
+# `os = ["macos"]`: tuist ships darwin-only via aqua (the registry now rejects
+# linux/amd64), and it's only used to generate the Xcode project on macOS (local
+# dev + Xcode Cloud). Without this guard `mise install` fails on the Linux CI
+# runners (L10n / SwiftLint gates). Mirrors the LicensePlist guard below.
+"aqua:tuist/tuist"              = { version = "4", os = ["macos"] }  # generates Game.xcodeproj from Project.swift (Phase 1.4)
 
 # LicensePlist — generates Settings.bundle/Acknowledgements page from the
 # SwiftPM dep graph (per `license_plist.yml`). Invoked from Xcode Cloud
