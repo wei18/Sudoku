@@ -58,6 +58,62 @@ check_catalog "$REPO_ROOT/App/Sudoku/Resources/Localizable.xcstrings" "Sudoku"
 check_catalog "$REPO_ROOT/App/Minesweeper/Resources/Localizable.xcstrings" "Minesweeper"
 check_catalog "$REPO_ROOT/App/Tiles2048/Resources/Localizable.xcstrings" "Tiles2048"
 
+# 2.5) Shared-code dotted-key consistency (#594). A dotted-namespace localization
+#    key (e.g. `leave.game.close`) referenced from a SHARED UI target — linked by
+#    ALL three apps and resolving against `bundle: .main` — must exist in EVERY
+#    app catalog, else it renders the raw key (caught live: Tiles2048's leave-game
+#    dialog + close button announced `leave.game.*` in VoiceOver). The per-catalog
+#    completeness check above can't see this: each catalog was "complete" for the
+#    keys it HAD. Scoped to dotted keys (unambiguous l10n keys, no app-conditional
+#    English-phrase false positives); "in >=1 catalog but not all" is the signal.
+REPO_ROOT="$REPO_ROOT" python3 - <<'PY' || fail=1
+import json, re, pathlib, sys, os
+repo = pathlib.Path(os.environ["REPO_ROOT"])
+shared_dirs = [
+    "Packages/GameAppKit/Sources",
+    "Packages/GameShellKit/Sources/GameShellUI",
+    "Packages/SettingsKit/Sources/SettingsUI",
+    "Packages/AppMonetizationKit/Sources/MonetizationUI",
+]
+# First string-literal arg of the common localized SwiftUI initializers /
+# modifiers (excludes `verbatim:` and interpolated `\(...)` literals).
+pat = re.compile(
+    r'(?:Text|LocalizedStringKey|Label|Button|Toggle|Picker)\(\s*"([^"\\]+)"'
+    r'|\.(?:navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue)'
+    r'\(\s*(?:Text\(\s*)?"([^"\\]+)"'
+)
+DOTTED = re.compile(r'^[a-z][a-z0-9]*(?:\.[a-z0-9]+)+$')
+ref = set()
+for d in shared_dirs:
+    p = repo / d
+    if not p.exists():
+        continue
+    for f in p.rglob("*.swift"):
+        for m in pat.finditer(f.read_text(encoding="utf-8")):
+            k = m.group(1) or m.group(2)
+            if k and DOTTED.match(k):
+                ref.add(k)
+apps = [
+    ("Sudoku", "App/Sudoku/Resources/Localizable.xcstrings"),
+    ("Minesweeper", "App/Minesweeper/Resources/Localizable.xcstrings"),
+    ("Tiles2048", "App/Tiles2048/Resources/Localizable.xcstrings"),
+]
+cats = {n: set(json.load(open(repo / p, encoding="utf-8"))["strings"].keys())
+        for n, p in apps}
+bad = False
+for k in sorted(ref):
+    present = [n for n in cats if k in cats[n]]
+    if present and len(present) < len(cats):
+        miss = [n for n in cats if k not in cats[n]]
+        print(f"FAIL [shared-key]: dotted key {k!r} is referenced from shared code "
+              f"(linked by all apps) and exists in {present} but is MISSING from "
+              f"{miss} — it will render the raw key there. Add it to those catalogs.",
+              file=sys.stderr)
+        bad = True
+if bad:
+    sys.exit(1)
+PY
+
 # 3) The SudokuAppCompositionTests SwiftPM fixture must be a byte-copy of the shipping
 #    Sudoku catalog (no hand-edited drift). Regenerate via `mise run
 #    gen:l10n_fixture` if this fails.
