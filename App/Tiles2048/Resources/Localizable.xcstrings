@@ -1,6 +1,54 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "leave.game.close": {
+      "comment": "Shared GameRoot modal close [X] accessibility label (GameAppKit). Mirrors Sudoku/Minesweeper; was missing here so VoiceOver read the raw key (#516 sim audit).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫기"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉"
+          }
+        }
+      }
+    },
     "\"Not now\" keeps this for later — it does not ask iOS yet.": {
       "extractionState": "manual",
       "localizations": {
