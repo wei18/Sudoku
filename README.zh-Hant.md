@@ -59,6 +59,8 @@ Packages/
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（第三方 SDK 隔離）
 ├── SudokuKit/               # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
 ├── MinesweeperKit/          # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition
+├── Game2048CoreKit/         # 純 Swift 核心：Game2048Engine + Game2048GameState（leaf，可移植）
+├── Game2048Kit/             # 2048 專屬：UI + AppComposition（pre-ship，SDD-004）
 └── ASCRegisterKit/          # macOS-only 的 App Store Connect dev CLI（不在任一 App binary 內）
 ```
 
