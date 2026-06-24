@@ -81,7 +81,7 @@ Audio / reminders / ATT / MetricKit **all** wire in `makeGameApp` for every game
 A game *missing* one (MS had no ATT; 2048 had no audio/reminders) is a **bug to
 fix during its migration**, NOT modelled as an `Optional` capability. Filling the
 gap means adding the seam wiring **and** its L10n keys (see the scan:l10n blind
-spot in `ai-translated-localization`).
+spot in `apple-dev-skills:ai-translated-localization`).
 
 ## The recurring lesson (5×: #558 / #559 / #560 / MS / 2048)
 
@@ -98,19 +98,19 @@ not blanket.
 - [ ] New `<Game>Core` (engine/state, Foundation-only) + `<Game>Kit` (UI/board/tokens).
 - [ ] Build a `GameConfig<Route>`: values + `makeRouteFactory` + `homeModes` +
       `fetchResume` (if it has a resume surface) + `makeCompletionSinks` (if it
-      uses the shared GC pipeline — see `telemetry-facade-pattern`).
+      uses the shared GC pipeline — see `apple-dev-skills:telemetry-facade-pattern`).
 - [ ] `AppComposition.live()` calls `makeGameAppWithDeps`, mounts `wired.view`;
       **no** per-game `Live+*` wrapper files.
 - [ ] All universal capabilities wired (audio/reminders/ATT) **with their L10n
       keys present in the game's catalog** — diff the key set vs an existing game.
 - [ ] One test target per new production target; snapshot suites follow the
-      strict-content / tolerant-board split (`swift-testing-baseline`).
+      strict-content / tolerant-board split (`apple-dev-skills:swift-testing-baseline`).
 - [ ] `mise run scan:l10n` green (incl. shared dotted-key parity).
 
 ## Related skills
 
-- `swiftpm-modularization`: the leaf-core / seam / shared-UI target layout this sits on.
-- `telemetry-facade-pattern`: how `makeCompletionSinks` + the GC pipeline wire in.
-- `swift-testing-baseline`: per-target test + snapshot-gate strategy for new games.
-- `ai-translated-localization`: the scan:l10n key-existence blind spot when a game
+- `apple-dev-skills:swiftpm-modularization`: the leaf-core / seam / shared-UI target layout this sits on.
+- `apple-dev-skills:telemetry-facade-pattern`: how `makeCompletionSinks` + the GC pipeline wire in.
+- `apple-dev-skills:swift-testing-baseline`: per-target test + snapshot-gate strategy for new games.
+- `apple-dev-skills:ai-translated-localization`: the scan:l10n key-existence blind spot when a game
   adopts a shared capability.

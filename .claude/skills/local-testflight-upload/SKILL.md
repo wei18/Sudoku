@@ -111,10 +111,10 @@ from project memory (`asc-api-credentials` + the Team ID).
 
 ## See also
 
-- [[xcode-cloud-single-track-ci]] — the **Main CI** workflow this task temporarily
+- [[apple-dev-skills:xcode-cloud-single-track-ci]] — the **Main CI** workflow this task temporarily
   substitutes; restore XCC once quota returns and retire local uploads.
 - [[asc-ops-handoff]] — user-owned vs Leader-orderable taxonomy; TestFlight
   upload + promotion sit on the user-owned side.
-- [[build-time-secret-injection]] — the `secrets/.env` + `.p8` handling pattern
+- [[apple-dev-skills:build-time-secret-injection]] — the `secrets/.env` + `.p8` handling pattern
   this task reuses.
 - [[mise-task-operations]] — the ops-task index this task belongs to.

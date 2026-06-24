@@ -117,5 +117,5 @@ matches the uploader contract `<app>/<device>/<locale>` exactly. Key facts:
   §"Snapshot-sourced pipeline" / §gap that this task implements.
 - [[asc-ops-handoff]] — uploading App Metadata (incl. screenshots) to ASC is a
   user-owned / future-ASCRegister-mode op; this task only stages previews.
-- [[swift-testing-baseline]] — the snapshot baselines that are the source of truth.
+- [[apple-dev-skills:swift-testing-baseline]] — the snapshot baselines that are the source of truth.
 - [[mise-task-operations]] — the ops-task index this task belongs to.
