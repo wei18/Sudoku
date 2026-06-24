@@ -60,7 +60,7 @@ The task has two modes:
 
 ## See also
 
-- [[monetization-sdk-integration]] — adding the AdMob / UMP deps that this page must disclose.
-- [[mise-tool-management]] — how LicensePlist is pinned in `.mise.toml`.
+- [[apple-dev-skills:monetization-sdk-integration]] — adding the AdMob / UMP deps that this page must disclose.
+- [[apple-dev-skills:mise-tool-management]] — how LicensePlist is pinned in `.mise.toml`.
 - [[mise-task-operations]] — the ops-task index this task belongs to.
 - `ci_scripts/ci_post_clone.sh §3.3` + `docs/foundations.md §4` — the CI wiring.

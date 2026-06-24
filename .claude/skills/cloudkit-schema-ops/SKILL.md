@@ -109,8 +109,8 @@ user-owned — the Leader prepares `.ckdb` + Dev deploy; the user clicks the but
 
 ## See also
 
-- [[build-time-secret-injection]] — the `secrets/.env` Layer-2 pattern the token reuses.
-- [[apple-public-repo-security]] — why the token is a per-deploy secret (stricter class than build-time IDs).
+- [[apple-dev-skills:build-time-secret-injection]] — the `secrets/.env` Layer-2 pattern the token reuses.
+- [[apple-dev-skills:apple-public-repo-security]] — why the token is a per-deploy secret (stricter class than build-time IDs).
 - [[asc-ops-handoff]] — sibling user-owned-vs-Leader-orderable deploy split for App Store Connect.
 - [[mise-task-operations]] — the ops-task index this task belongs to.
 - `cloudkit/README.md` + `docs/foundations.md §7.7.2` — the workflow + container/record-type table.

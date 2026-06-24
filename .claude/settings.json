@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "apple-dev-skills": {
+      "source": {
+        "source": "directory",
+        "path": "./.claude/skills/apple-dev-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "apple-dev-skills@apple-dev-skills": true
+  }
+}
