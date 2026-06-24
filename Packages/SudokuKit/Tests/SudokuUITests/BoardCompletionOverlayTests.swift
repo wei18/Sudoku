@@ -4,13 +4,14 @@
 //
 // Root cause of #610: pushCompletionIfNeeded() silently no-ops when
 // path == nil (modal fullScreenCover). Fix: mirror MS's in-board
-// overlay pattern.
+// overlay pattern, gated by `shouldPresentCompletionOverlay`.
 //
 // Tests in this file use the snapshot-init seam (GameViewModel(identity:board:...))
 // so they run without a live GameSession actor.
 
 import Testing
 @testable import SudokuUI
+import SwiftUI
 import GameCenterTesting
 import SudokuEngine
 import SudokuGameState
@@ -32,50 +33,39 @@ struct BoardCompletionOverlayTests {
         "287419635" +
         "345286179"
 
-    private static let identity = PuzzleIdentity(
+    private static let dailyIdentity = PuzzleIdentity(
         puzzleId: "2026-06-24-easy",
         kind: .daily,
         difficulty: .easy
     )
 
-    // MARK: - Tests
+    private static let practiceIdentity = PuzzleIdentity(
+        puzzleId: "practice-easy-abc123",
+        kind: .practice,
+        difficulty: .easy
+    )
 
-    // Asserts that a BoardView mounted with path == nil (modal context)
-    // DOES present a CompletionViewModel once the status reaches .completed.
-    // Before the fix, completionRoute existed but the overlay was never shown
-    // because pushCompletionIfNeeded() was a silent no-op (path == nil).
-    @Test("completed status with nil path shows completionViewModel overlay")
-    func completionOverlayPresentedWhenModalAndCompleted() throws {
+    // MARK: - shouldPresentCompletionOverlay predicate
+
+    // TRUE: modal context (path == nil) + completed status.
+    @Test("shouldPresentCompletionOverlay: true when completed + path==nil")
+    func overlayPredicateTrueForModalCompleted() throws {
         let board = try Board(clues: Self.solvedClues)
         let viewModel = GameViewModel(
-            identity: Self.identity,
+            identity: Self.dailyIdentity,
             board: board,
             status: .completed,
             elapsedSeconds: 123,
-            mistakeCount: 1
+            mistakeCount: 0
         )
-        // path == nil simulates the fullScreenCover (modal) context.
-        let boardView = BoardView(
-            viewModel: viewModel,
-            gameCenter: FakeGameCenterClient(),
-            path: nil
-        )
-        // The BoardView must surface a non-nil completionRoute when
-        // status == .completed and path == nil. We verify via the public
-        // seam: completionRoute on the GameViewModel must be non-nil,
-        // AND the BoardView must accept gameCenter so it can build the
-        // CompletionViewModel (compile-time check + runtime assertion).
-        #expect(viewModel.completionRoute != nil,
-                "completionRoute must be non-nil when status == .completed")
-        // Verify the BoardView was constructed without crashing — if the
-        // gameCenter init param doesn't exist, this won't compile.
-        _ = boardView
+        let boardView = BoardView(viewModel: viewModel, path: nil)
+        #expect(boardView.shouldPresentCompletionOverlay,
+                "overlay predicate must be true when path==nil and status==.completed")
     }
 
-    // Asserts that completionRoute is nil when the game is still playing —
-    // the overlay must NOT appear mid-game.
-    @Test("no overlay while status is .playing")
-    func noCompletionOverlayWhilePlaying() throws {
+    // FALSE: still playing — overlay must not appear mid-game.
+    @Test("shouldPresentCompletionOverlay: false when playing + path==nil")
+    func overlayPredicateFalseWhilePlaying() throws {
         let clues =
             ".34678912" +
             "672195348" +
@@ -88,13 +78,73 @@ struct BoardCompletionOverlayTests {
             "345286179"
         let board = try Board(clues: clues)
         let viewModel = GameViewModel(
-            identity: Self.identity,
+            identity: Self.dailyIdentity,
             board: board,
             status: .playing,
             elapsedSeconds: 50,
             mistakeCount: 0
         )
-        #expect(viewModel.completionRoute == nil,
-                "completionRoute must be nil while status == .playing")
+        let boardView = BoardView(viewModel: viewModel, path: nil)
+        #expect(!boardView.shouldPresentCompletionOverlay,
+                "overlay predicate must be false while status==.playing")
+    }
+
+    // FALSE: NavigationStack context (path != nil) + completed.
+    // This locks the macOS double-present regression: when a board is
+    // presented inline with a non-nil path, only pushCompletionIfNeeded()
+    // should fire — NOT the overlay.
+    @Test("shouldPresentCompletionOverlay: false when completed + path!=nil (macOS regression lock)")
+    func overlayPredicateFalseWhenPathNonNil() throws {
+        let board = try Board(clues: Self.solvedClues)
+        let viewModel = GameViewModel(
+            identity: Self.dailyIdentity,
+            board: board,
+            status: .completed,
+            elapsedSeconds: 90,
+            mistakeCount: 0
+        )
+        var routes: [AppRoute] = []
+        let path = Binding(get: { routes }, set: { routes = $0 })
+        let boardView = BoardView(viewModel: viewModel, path: path)
+        #expect(!boardView.shouldPresentCompletionOverlay,
+                "overlay predicate must be false when path!=nil — macOS uses push, not overlay")
+    }
+
+    // MARK: - makeCompletionViewModel content checks
+
+    // Daily puzzle → leaderboardId is non-nil.
+    @Test("makeCompletionViewModel: carries correct puzzleId for daily")
+    func completionVMCarriesCorrectPuzzleId() throws {
+        let board = try Board(clues: Self.solvedClues)
+        let viewModel = GameViewModel(
+            identity: Self.dailyIdentity,
+            board: board,
+            status: .completed,
+            elapsedSeconds: 120,
+            mistakeCount: 2
+        )
+        let boardView = BoardView(viewModel: viewModel, gameCenter: FakeGameCenterClient(), path: nil)
+        let cvm = boardView.makeCompletionViewModel()
+        #expect(cvm.puzzleId == Self.dailyIdentity.puzzleId,
+                "CompletionViewModel.puzzleId must match the board identity")
+        #expect(cvm.leaderboardId != nil,
+                "Daily solve must carry a non-nil leaderboardId for GC submission")
+    }
+
+    // Practice puzzle → leaderboardId must be nil (no GC leaderboard for practice).
+    @Test("makeCompletionViewModel: nil leaderboardId for practice puzzle")
+    func completionVMNilLeaderboardForPractice() throws {
+        let board = try Board(clues: Self.solvedClues)
+        let viewModel = GameViewModel(
+            identity: Self.practiceIdentity,
+            board: board,
+            status: .completed,
+            elapsedSeconds: 80,
+            mistakeCount: 0
+        )
+        let boardView = BoardView(viewModel: viewModel, path: nil)
+        let cvm = boardView.makeCompletionViewModel()
+        #expect(cvm.leaderboardId == nil,
+                "Practice solve must have nil leaderboardId — no GC leaderboard")
     }
 }
