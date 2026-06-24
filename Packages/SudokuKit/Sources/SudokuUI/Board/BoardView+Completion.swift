@@ -89,24 +89,55 @@ extension BoardView {
 
     /// Themed post-solve surface. Covers the whole board on solve.
     ///
-    /// Background/content split for safe-area correctness (mirrors MS #518):
-    /// background `.ignoresSafeArea()` so no board peeks through at edges;
-    /// CompletionView content stays within safe area so the hero icon sits
-    /// below the Dynamic Island.
+    /// Layout (#610 fix *1): result card is vertically centred; the Close button
+    /// is pinned to the BOTTOM safe area so content never crowds the top and the
+    /// CTA is always reachable with the thumb.
     ///
-    /// Close dismisses the overlay by setting `completionViewModel = nil`.
-    /// The session stays `.completed` — the macOS push path
-    /// (`hasNavigatedToCompletion` latch + `path.append`) is unaffected.
+    /// Background fills the whole screen via `.ignoresSafeArea()` so no board
+    /// peeks through at edges; the result card and close button stay within the
+    /// safe area. Mirrors MinesweeperBoardView.completionSurface (#292 / #518).
+    ///
+    /// Close dismisses the overlay AND the fullScreenCover so the user returns
+    /// to the hub (#610 fix *2). The dismiss closure is injected by the caller
+    /// (BoardView reads `@Environment(\.dismiss)`).
     @ViewBuilder
-    func completionSurface(_ cvm: CompletionViewModel) -> some View {
-        ZStack {
+    func completionSurface(
+        _ cvm: CompletionViewModel,
+        dismiss: DismissAction
+    ) -> some View {
+        ZStack(alignment: .bottom) {
             theme.surface.background.resolved
                 .ignoresSafeArea()
-            CompletionView(
-                viewModel: cvm,
-                reminderPrimer: completionReminderPrimer,
-                onClose: { self.completionViewModel = nil }
-            )
+            VStack(spacing: 0) {
+                Spacer()
+                // Result card — CompletionView with no injected close button;
+                // the button is rendered separately below, pinned to the bottom.
+                CompletionView(
+                    viewModel: cvm,
+                    reminderPrimer: completionReminderPrimer,
+                    onClose: nil
+                )
+                Spacer()
+                // Close button (#610 fix *1 + *4): full-width, ~52pt tall,
+                // terracotta accent (theme.accent.primary) instead of system blue.
+                // Pinned to the bottom safe area.
+                Button {
+                    // #610 fix *2: clear the overlay then dismiss the fullScreenCover
+                    // so the user returns to the hub. On macOS (path != nil) this
+                    // path is never reached — the predicate gates the overlay to
+                    // path == nil only.
+                    self.completionViewModel = nil
+                    dismiss()
+                } label: {
+                    Text("Close")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(theme.accent.primary.resolved)
+                .controlSize(.large)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 16)
+            }
         }
     }
 }

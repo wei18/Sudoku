@@ -188,9 +188,13 @@ private struct GameModalContent: View {
                     }
                     Spacer()
                     // Close button — always visible.
+                    // `.foregroundStyle(.primary)` replaces the system-blue default
+                    // tint with a neutral dark/light adaptive colour that works
+                    // across all game themes (palette sweep, #610 fix *5).
                     Button(action: onClose) {
                         Image(systemName: "xmark")
                             .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.primary)
                             .padding(10)
                             .background(.regularMaterial, in: Circle())
                     }

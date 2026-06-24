@@ -112,6 +112,10 @@ struct DigitPadView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
+                // Palette sweep (#610 fix *5): user-entry digit buttons match
+                // the board's user-digit colour (sage-green) so they read as the
+                // same brand accent instead of defaulting to system blue.
+                .tint(theme.accent.primary.resolved)
                 .accessibilityLabel("Digit \(digit)")
             }
         }
@@ -197,6 +201,8 @@ struct DigitPadView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        // Palette sweep (#610 fix *5): match iPhone digit tint.
+                        .tint(theme.accent.primary.resolved)
                         .accessibilityLabel("Digit \(digit)")
                     }
                 }

@@ -30,6 +30,10 @@ public struct BoardView: View {
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
+    // #610 fix *2: dismiss the fullScreenCover when Close is tapped on the
+    // completion overlay. `DismissAction` is a no-op outside a presented context
+    // (previews / snapshot tests / macOS push path — all safe to call).
+    @Environment(\.dismiss) private var dismiss
     // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the
     // modal hierarchy, this is non-nil and we (a) push the elapsed label
     // to the chrome on every tick and (b) hide the in-board header timer
@@ -72,9 +76,10 @@ public struct BoardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
         // #610: full-cover Completion overlay (MS #292/#518 mirror).
+        // fix *2: pass dismiss so Close returns the user to the hub.
         .overlay {
             if let completionViewModel {
-                completionSurface(completionViewModel)
+                completionSurface(completionViewModel, dismiss: dismiss)
             }
         }
         // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
@@ -373,20 +378,6 @@ public struct BoardView: View {
         } else {
             await viewModel.placeDigit(digit)
         }
-    }
-
-    @ViewBuilder
-    private var undoRedoShortcuts: some View {
-        // Hidden buttons that own the ⌘Z / ⌘⇧Z bindings (Mac App menu picks
-        // them up automatically; iPad external keyboards inherit).
-        Group {
-            Button("Undo") { Task { await viewModel.undo() } }
-                .keyboardShortcut("z", modifiers: .command)
-            Button("Redo") { Task { await viewModel.redo() } }
-                .keyboardShortcut("z", modifiers: [.command, .shift])
-        }
-        .hidden()
-        .accessibilityHidden(true)
     }
 
     // `internal` (not `private`) — the header's `timerLabel` in

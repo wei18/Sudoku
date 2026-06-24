@@ -257,6 +257,9 @@ public final class GameViewModel {
 
             if let digit {
                 fireAudio(forDigit: digit, at: coord, wasCompleted: wasCompleted, unitsCompleteBefore: unitsCompleteBefore)
+                // #610 fix *3: clear the save's inProgress status so the hub stops
+                // offering a resume for a completed game.
+                await markCompletedIfNeeded(wasCompleted: wasCompleted)
             }
         } else {
             // Preview / test path: poke the mirror without crossing actor.
@@ -516,6 +519,38 @@ public final class GameViewModel {
             }
         }
         return indices
+    }
+
+    // MARK: - Completion side-effect
+
+    /// Call `persistence.markCompleted` exactly once on the `.playing → .completed`
+    /// edge (#610 fix *3). Gated on `wasCompleted` captured before `resyncFromSession`.
+    ///
+    /// `SavedGameStore.recordName(for:mode:)` is internal; we mirror the same
+    /// `"\(mode.rawValue)-\(puzzleId)"` formula here since `GameViewModel` owns both
+    /// halves via `identity`. Only the `recordName` field is read by the store's
+    /// `markCompleted` implementation (it fetches by name, then flips `status`).
+    private func markCompletedIfNeeded(wasCompleted: Bool) async {
+        guard status == .completed, !wasCompleted, let persistence else { return }
+        let summary = SavedGameSummary(
+            recordName: "\(identity.kind.rawValue)-\(identity.puzzleId)",
+            puzzleId: identity.puzzleId,
+            mode: identity.kind,
+            difficulty: identity.difficulty,
+            lastModifiedAt: clock(),
+            elapsedSeconds: elapsedSeconds,
+            status: "completed",
+            generatorVersion: 1
+        )
+        do {
+            try await persistence.markCompleted(summary)
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameViewModel.markCompletedIfNeeded"
+            )
+        }
     }
 
     // MARK: - Persistence

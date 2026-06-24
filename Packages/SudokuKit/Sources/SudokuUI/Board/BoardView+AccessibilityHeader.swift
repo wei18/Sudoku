@@ -112,6 +112,25 @@ extension BoardView {
                 Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
             }
         }
+        // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
+        .tint(theme.accent.primary.resolved)
         .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+    }
+
+    // MARK: - Keyboard shortcuts (⌘Z / ⌘⇧Z)
+
+    // Hidden buttons that own the ⌘Z / ⌘⇧Z bindings (Mac App menu picks
+    // them up automatically; iPad external keyboards inherit).
+    // Moved here from BoardView.swift to keep that file under the 400-line ceiling.
+    @ViewBuilder
+    var undoRedoShortcuts: some View {
+        Group {
+            Button("Undo") { Task { await viewModel.undo() } }
+                .keyboardShortcut("z", modifiers: .command)
+            Button("Redo") { Task { await viewModel.redo() } }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
+        .hidden()
+        .accessibilityHidden(true)
     }
 }
