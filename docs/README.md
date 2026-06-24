@@ -18,6 +18,7 @@ Stable across versions; updated whenever architecture / process / brand changes:
   - `design.md`, `plan.md`, `setup.md`, `feature-tour.md`, `design-mockup.html`
 - `v2/` — v2.0 monetization layer (AdMob banner + Remove Ads IAP + UMP/ATT)
   - `design.md`, `plan.md`, `uiux-bugfix-plan.md`, `v2.5-readiness.md`, `att-permission-ux-proposal.md`
+- `superpowers/specs/` — platform-level design docs (SDD-003 GameAppKit, SDD-004 2048/Tiles2048, SDD-005 platform convergence)
 
 ## Conventions
 

@@ -422,8 +422,8 @@
   <span class="pill">AS-BUILT (re-tagged #459)</span>
   Originally the aspirational mirror-Sudoku target (2026-06-03). The build-out has since <strong>shipped</strong>:
   Home mode-cards + sidebar (#288/#289), Daily + Practice routes, Completion overlay + Game Center dashboard (#291/#292/#386), shared Settings sections, and the <code>MinesweeperTheme</code> tokens.
-  Screens tagged <span class="built-tag s">SHIPPED</span> exist today; the few remaining
-  <span class="built-tag t">NOT YET BUILT</span> elements are called out inline (Home resume pill — #455 in flight; Completion best-time row — no stored elapsed until the #455 save-flow).
+  Screens tagged <span class="built-tag s">SHIPPED</span> exist today. The Home resume pill has since landed (#455 via #463/#465);
+  the Completion best-time row is <strong>intentionally absent by design</strong> — MS persists only in-progress boards (no completed-game elapsed), so the player's ranked time shows in the leaderboard slice instead.
 </div>
 
 <header class="header">
@@ -445,7 +445,7 @@
   <section class="flow" id="flow-home">
     <h2 class="flow-title">Entry &amp; Home <span class="chip shipped">SHIPPED (#288/#289)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> <code>MinesweeperRoot</code> wraps the shared <code>GameRoot</code> → <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>MinesweeperHomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>The one unshipped element: the Home resume pill (M01) — saved-game persistence is #455, in flight.</em>
+      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> <code>MinesweeperRoot</code> wraps the shared <code>GameRoot</code> → <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>MinesweeperHomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>The Home resume pill (M01) shipped via #455 (#463/#465) — saved-game persistence is wired.</em>
     </p>
     <div class="flow-frames">
 
@@ -468,7 +468,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M01 — Root container <span class="built-tag s">SHIPPED</span> + Resume pill <span class="built-tag t">NOT YET BUILT (#455)</span></div>
+        <div class="phone-label">M01 — Root container <span class="built-tag s">SHIPPED</span> + Resume pill <span class="built-tag s">SHIPPED (#463/#465)</span></div>
         <div class="phone-source">MinesweeperRoot · RootShellView · ResumePill</div>
       </div>
 
@@ -823,7 +823,7 @@
   <section class="flow" id="flow-end">
     <h2 class="flow-title">Completion &amp; Leaderboard <span class="chip shipped">SHIPPED (#291/#292/#386 · overlay, no best-time row)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a terminal board, <code>MinesweeperCompletionView</code> mounts as an <b>overlay on the live board</b> (#388 — full-cover, not a stack push); re-viewing an already-solved daily uses the standalone <code>.completion</code> route (#386). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally (#291) — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Divergence from this mock: no best-time row — MS stores no elapsed until the #455 save-flow; the player's ranked time shows in the leaderboard slice instead.</em>
+      <b>Mirror of Sudoku's <code>CompletionView</code> + Game-Center pattern (#49).</b> On a terminal board, <code>MinesweeperCompletionView</code> mounts as an <b>overlay on the live board</b> (#388 — full-cover, not a stack push); re-viewing an already-solved daily uses the standalone <code>.completion</code> route (#386). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally (#291) — a side-effect, not a stack push (no <code>.leaderboard</code> route). <em>Divergence from this mock: no best-time row — by design MS stores no completed-game elapsed (the #455 save-flow persists only in-progress boards); the player's ranked time shows in the leaderboard slice instead.</em>
     </p>
     <div class="flow-frames">
 
@@ -848,7 +848,7 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M14 — Completion (hero + slice) <span class="built-tag s">SHIPPED (overlay)</span> · best-time row <span class="built-tag t">NOT YET BUILT (needs #455 save-flow)</span></div>
+        <div class="phone-label">M14 — Completion (hero + slice) <span class="built-tag s">SHIPPED (overlay)</span> · best-time row <span class="built-tag t">OMITTED BY DESIGN (no stored elapsed; ranked time in leaderboard)</span></div>
         <div class="phone-source">CompletionView · .loaded(slice)</div>
       </div>
 
