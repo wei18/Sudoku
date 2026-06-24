@@ -43,12 +43,13 @@ Distilled from collaboration / security patterns observed in this session.
 
 ---
 
-## Ops, review & process (16)
+## Ops, review & process (17)
 
 Workflow, review-discipline, monetization, ASC/icon ops, mockup, and App Store ops skills added as the project matured.
 
 | Skill | One-liner |
 |---|---|
+| [`game-factory-composition`](game-factory-composition/SKILL.md) | The shared composition template — `GameConfig<Route>` + `makeGameApp` in GameAppKit, `<Game><Concern>` naming, shared Home / DailyHub-skeleton / board-redirect / GC-dashboard; only the Game module is per-game (SDD-005 shipped) |
 | [`app-store-review-rejections`](app-store-review-rejections/SKILL.md) | Diagnose App Review rejections and harden submissions against the guideline classes (1.3 / 2.1 / 2.3 / 2.5.x / 3.1.1 / 4.x / 5.1.x) a free puzzle game with ads + IAP + CloudKit + Game Center actually hits |
 | [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | Drive the running game apps in the iOS Simulator with idb (tap / describe / screenshot) to find UX + layout bugs snapshot tests cannot — navigation, modals, back-stack, safe-area, offline/signed-out flows |
 | [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | Running `meetings/{date}_{topic}.impl-notes.md` during a sub-agent task — in-flight decisions, deviations, alternatives, open questions |

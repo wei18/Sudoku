@@ -43,12 +43,13 @@
 
 ---
 
-## 維運、審查與流程 (16)
+## 維運、審查與流程 (17)
 
 專案成熟過程中加入的工作流、審查紀律、變現、ASC／圖示維運、mockup，以及 App Store 維運 skill。
 
 | Skill | 一句話 |
 |---|---|
+| [`game-factory-composition`](game-factory-composition/SKILL.md) | 共用組裝模板——GameAppKit 的 `GameConfig<Route>` + `makeGameApp`、`<Game><Concern>` 命名、共用 Home／DailyHub-skeleton／board-redirect／GC-dashboard；只有 Game module 是 per-game（SDD-005 已落地） |
 | [`app-store-review-rejections`](app-store-review-rejections/SKILL.md) | 診斷 App Review 被拒案並針對含廣告 + IAP + CloudKit + Game Center 的免費解謎遊戲實際會踩的 guideline 類別（1.3 / 2.1 / 2.3 / 2.5.x / 3.1.1 / 4.x / 5.1.x）強化送審 |
 | [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | 用 idb 在 iOS Simulator 中實際驅動遊戲（點擊／描述／截圖），找出 snapshot 測試看不到的 UX + 版面 bug——導覽、modal、back-stack、安全區、離線 / 登出流程 |
 | [`agent-impl-notes-log`](agent-impl-notes-log/SKILL.md) | sub-agent 執行期間維護 `meetings/{date}_{topic}.impl-notes.md`——在途決策、偏離、替代方案、待決問題 |

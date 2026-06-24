@@ -27,6 +27,33 @@ description: Default testing stack for new Apple-platform Swift projects — swi
 - **Snapshot images go into git** (default `__Snapshots__/` next to the test file) so visual diffs show up in PR review.
 - Start by covering **the main screens** and expand from there. Each snapshot should cover multiple locales, iPhone / Mac, light / dark, and typical states.
 
+#### Snapshot gate strategy — strict content / tolerant board (settled in #586)
+
+Tolerance is **per-suite by view type**, not a global knob:
+
+- **Content suites** (Completion / DailyHub / Home / Settings — text, cards,
+  badges) use the **default strict `.image`** (precision 1.0). Bit-exact is the
+  point: adding any visible element (a new label/badge) changes pixels and
+  **fails without a re-record** → the gate catches unintended UI drift. This is
+  the only reliable "a new label appeared" gate (see dead end below).
+- **AA-heavy board/grid suites** (`*Board*`, terminal overlays) keep a
+  **`.tolerantImage`** (≈0.95 precision, defined once in each app's
+  `SnapshotConfig.swift`) — strict false-fails on dozens of antialiased cells.
+  Choose strategy at the call site via `as: .image` vs `as: .tolerantImage`;
+  **never sprinkle ad-hoc `precision:` overrides** at call sites.
+- **Baselines are the source of truth.** A suite failing on PNGs means *behavior
+  changed* → STOP and investigate; do **not** re-record to make it pass. Re-record
+  only for an intended visual change or a deliberate Xcode-version bump.
+- Snapshot suites run **local-Mac only** (`.enabled(if: !SnapshotEnv.isXcodeCloud)`)
+  — cross-machine AA drift makes them unreliable on CI runners.
+
+**DEAD END — do not re-spike:** building a *non-pixel* "new label appeared" gate
+by extracting rendered SwiftUI text via the **accessibility tree**
+(`accessibilityLabel/Value` + `accessibilityChildren`) returns **0 lines
+headlessly** on both a bare and a windowed `NSHostingView` — SwiftUI builds the
+AX tree lazily, tied to a live AX client that headless `swift test` lacks. Strict
+pixels (above) is the only viable content gate.
+
 ### Test doubles and CI isolation
 
 - CloudKit / GameKit / any third-party service is consumed **via protocol injection + fake/stub in tests**.
@@ -70,6 +97,8 @@ description: Default testing stack for new Apple-platform Swift projects — swi
 
 - Each production target has a matching `<Module>Tests`.
 - `__Snapshots__/` is committed to git and not accidentally excluded by `.gitignore`.
+- Content suites use strict `.image`; only AA-heavy board suites use `.tolerantImage` — no ad-hoc per-call `precision:` overrides.
+- A red snapshot suite is investigated as a behavior change, not silenced by re-recording.
 - CI runner's macOS / Xcode version matches the local lock.
 - No test connects directly to real CloudKit / Game Center.
 

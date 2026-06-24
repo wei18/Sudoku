@@ -144,6 +144,37 @@ Verification gates before merging a translation pass:
 - Substitution token parity per key: `en` has N `%@` → all locales have N `%@` (or locale-specific reordering via `%1$@` / `%2$@`).
 - Spot-check 3-5 keys per locale visually in the simulator with `Scheme → Run → Options → App Language`.
 
+### `scan:l10n` gate scope — and its two blind spots
+
+The repo's `mise run scan:l10n` gate (CI-enforced) checks **per-key locale
+completeness**: every key present in a catalog has all 7 locales, no `<TRANSLATE>`.
+Two things it does **NOT** catch — both have shipped English-fallback bugs:
+
+1. **A required key being *absent* entirely.** The gate validates keys that
+   exist; it cannot know a newly-activated capability *needs* a key that no
+   catalog has. When a game adopts a shared feature (audio settings, ATT primer,
+   reminders), its catalog can ship missing keys → the UI renders raw dotted keys
+   or English literals, and the gate stays green. After wiring any shared-UI
+   capability into a new game, **diff its catalog's key set against a game that
+   already has the feature** (caught in the #575 2048 audio-labels CR and the
+   #577 MS ATT-primer raw-keys sim-find).
+2. **Until #594**, keys referenced from **shared UI targets** weren't checked
+   against every app catalog. The gate now has a **shared-code dotted-key gate**:
+   any dotted-namespace key (e.g. `leave.game.close`, `att.primer.title`)
+   referenced from `GameAppKit`/`GameShellUI`/`SettingsUI`/`MonetizationUI` must
+   exist in **all** app catalogs or CI fails. Scoped to *dotted* keys to avoid
+   app-conditional English-phrase false positives (English-phrase shared keys
+   tracked separately in #598).
+
+### xcstrings editing footgun
+
+When adding keys to a `Localizable.xcstrings`, **text-splice** the new entries
+into the file — do **not** round-trip the whole catalog through a Python/JSON
+`load → dump`. The round-trip reformats Xcode's style (`"k" : v` space-before-
+colon + Xcode key order) and produces a multi-thousand-line noise diff that
+buries the real change. Splicing keeps a clean, reviewable diff (#577: 4400-line
+noise → 192-line clean).
+
 ### Tooling notes
 
 - xcstrings is JSON; parse with any JSON library. Schema: `{"sourceLanguage": "en", "strings": {<key>: {"localizations": {<locale>: {"stringUnit": {"state": "translated", "value": "..."}}}}}}`.

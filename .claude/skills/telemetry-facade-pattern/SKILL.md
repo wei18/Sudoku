@@ -53,6 +53,44 @@ public struct NoOpTrackingSink: TelemetrySink {
 - The App target's DI composition root injects sinks into the facade.
 - Sinks are **independent**; one sink's failure does not affect the others.
 
+#### Wiring traps (hard-won — #579 GC pipeline)
+
+A sink that *exists as a type* is worth **zero** until it is in the **live** sinks
+array. Four traps, in the order they bit:
+
+1. **Existing-but-unwired = dead code.** `GameCenterSink`/`AchievementEvaluator`
+   were fully written but never added to the live `Telemetry` sinks list
+   (`makeGameApp` shipped `[OSLogSink, NoOpTrackingSink]` only) → no score, no
+   achievement, silently. **Verify the composition root's actual sinks array**,
+   not that the sink type compiles. `git log -S "GameCenterSink("` showing only
+   the creation commit is the smoking gun.
+2. **Sink ordering matters when one sink reads another's write.** The facade
+   forwards in array order, so a sink that *writes* state another sink *reads*
+   must come first — e.g. `PersonalRecordSink` writes `completedCount` **before**
+   `GameCenterSink`'s evaluator reads it; reversed = an off-by-one where the
+   count achievement fires one completion late. Make read/write sink order
+   explicit and test it.
+3. **I/O sinks on a gameplay-reachable path must not block.** Completion events
+   are reached from the interactive path (`placeDigit → sessionCompleted →
+   telemetry.observe`). A sink doing CloudKit reads + GameKit network I/O
+   synchronously there **freezes the UI**. Forward to such sinks on a
+   **detached, order-preserving Task** (chain each on the previous so events
+   still forward in order) and return immediately; keep the fast sinks
+   (OSLog / NoOp) synchronous.
+4. **Late-binding to break the construction cycle.** When a sink needs deps
+   (persistence, GameCenter) that themselves need `Telemetry`, you cannot build
+   it at Telemetry-construction time. Wire a `DeferredSink` placeholder into the
+   facade at startup, then `setDownstream([real sinks])` once (sync, from the
+   `@MainActor` composition root) after all deps are assembled. `final class
+   @unchecked Sendable` + `NSLock` (not an actor) keeps `setDownstream`
+   synchronous; `receive` snapshots state under the lock before any `await`.
+5. **The sink firing ≠ the terminal call working.** Tracing "wire 2 things"
+   uncovered a third gap: the GameKit terminal (`submitScore`/`reportAchievement`)
+   was a stub that no-op'd / threw. **Trace to the actual platform call**
+   (`GKLeaderboard.submitScore`, `GKAchievement.report`), not just to the sink.
+   Terminal GameKit/StoreKit calls are device-gated — verify on a real device +
+   sandbox, never claim "done" from a green headless suite.
+
 ## Rationale
 
 - Decouples call sites from consumers: v1 can use `telemetry.observe(...)` with no external tracking, and a future TelemetryDeck / in-house pipeline only swaps the sink.
@@ -71,6 +109,14 @@ public struct NoOpTrackingSink: TelemetrySink {
 - `TelemetryEvent` is a value type, `Sendable`.
 - A default `NoOpTrackingSink` is provided and wired in the composition root.
 - Tests assert on event streams via fake sinks, not by parsing OSLog output.
+- **The live composition root's sinks array actually contains every sink you
+  intend to fire** (not just that the sink type exists) — the #579 failure mode.
+- Read/write-dependent sinks are ordered so writers precede readers, with a test
+  pinning the order.
+- I/O sinks on a gameplay-reachable completion path forward non-blocking; the
+  interactive path is never frozen by a sink's CloudKit/GameKit work.
+- The terminal platform call (GameKit/StoreKit) is reached and device-verified —
+  not just the sink.
 
 ## Related skills
 
