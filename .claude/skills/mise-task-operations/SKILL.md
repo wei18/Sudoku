@@ -19,7 +19,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | sync ASC screenshot PREVIEWS from snapshot baselines (symlinks) | safe; PREVIEW-ONLY (not ASC-spec) | [[appstore-screenshot-pipeline]] |
 | `mise run gen:acknowledgements [--config-path …]` | regenerate Settings.bundle license page | safe; output gitignored | [[acknowledgements-generation]] |
 | `mise run gen:l10n_fixture` | regenerate AppCompositionTests L10n fixture (byte-copy of Sudoku catalog) | safe | [[ai-translated-localization]] |
-| `mise run scan:l10n` | L10n gate: 0 `<TRANSLATE>`, all 7 locales per key | safe (read-only gate) | [[ai-translated-localization]] |
+| `mise run scan:l10n` | L10n gate: 0 `<TRANSLATE>`, all 7 locales per key, **+ shared-code dotted-key parity** (dotted keys referenced from GameAppKit/GameShellUI/SettingsUI/MonetizationUI must exist in every app catalog, #594) | safe (read-only gate) | [[ai-translated-localization]] |
 | `mise run scan:secrets` | gitleaks over staged files | safe | [[apple-public-repo-security]] |
 | `mise run scan:hygiene` | block secret-shaped files (`.p8`/`.p12`/`.pem`/`.env`) from history | safe | [[apple-public-repo-security]] |
 | `mise run scan:admob` | AdMob SDK isolation gate: only LiveAdMobBridge.swift may `import GoogleMobileAds` | safe (read-only gate) | [[monetization-sdk-integration]] |

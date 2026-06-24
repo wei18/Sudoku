@@ -44,6 +44,16 @@ xcbeautify = "1"
 - **Team already uses asdf heavily**: keep it for now, but new repos go to mise; mise can read `.tool-versions` as a transition.
 - **Tool not in mise registry / aqua / ubi**: install via Homebrew / SwiftPM build manually and note the exception in the README.
 - **CI runner already has the target version preinstalled**: still run `mise install` to enforce parity; the extra overhead is small.
+- **macOS-only tools on a mixed-OS CI fleet** (Xcode-project generators, macOS
+  artifact bundlers — e.g. `tuist`, `LicensePlist`): guard them with an `os`
+  field, `"aqua:tuist/tuist" = { version = "4", os = ["macos"] }`. A Linux CI job
+  (L10n / lint / markdown gates run fine on Ubuntu) runs `mise install` which
+  installs **every** tool; an unguarded macOS-only tool fails at setup
+  (`unsupported env: linux/amd64`) **before any gate runs**, blocking *all* PRs.
+  This can appear suddenly with no change of yours — an upstream registry can flip
+  a tool to darwin-only mid-day, so earlier PRs pass and later identical ones fail
+  at "install pinned tools". When CI dies at the mise-install step, read for
+  `unsupported env: linux/amd64` and add the `os` guard.
 
 ## Verification checklist
 
