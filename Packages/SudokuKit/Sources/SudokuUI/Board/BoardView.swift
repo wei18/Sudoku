@@ -6,10 +6,12 @@
 
 public import MonetizationCore
 public import SwiftUI
+public import GameCenterClient
 internal import GameAppKit
 import GameShellUI
 import MonetizationUI
 import SudokuEngine
+public import SettingsUI
 
 public struct BoardView: View {
     // Several members are `internal` (not `private`) because the header
@@ -22,6 +24,9 @@ public struct BoardView: View {
     /// `BoardView` directly, with no `NavigationStack`) keep working — `nil`
     /// makes the solve → completion push a graceful no-op.
     private let path: Binding<[AppRoute]>?
+    // #610: GC client + daily primer builder — internal for BoardView+Completion.swift.
+    let gameCenter: (any GameCenterClient)?
+    let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -34,16 +39,24 @@ public struct BoardView: View {
     /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
     /// freely, so guard the push to fire EXACTLY once.
     @State private var hasNavigatedToCompletion = false
+    // #610: Completion overlay VM + Daily primer. Both held in @State so they
+    // survive body recomputes without resetting fetch / auth-check state.
+    @State var completionViewModel: CompletionViewModel?
+    @State var completionReminderPrimer: ReminderPrimerCoordinator?
 
     public init(
         viewModel: GameViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        gameCenter: (any GameCenterClient)? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
+        self.gameCenter = gameCenter
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.path = path
     }
 
@@ -58,6 +71,27 @@ public struct BoardView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
+        // #610: full-cover Completion overlay (mirrors MS #292/#518).
+        .overlay {
+            if let completionViewModel {
+                completionSurface(completionViewModel)
+            }
+        }
+        // #610: build VM + primer once on .completed; clear on Close.
+        // Mirrors MS .onChange pattern (CR #518-R2: keyed on overlay presence,
+        // not status, so Close restores chrome without clearing terminal state).
+        .onChange(of: viewModel.status == .completed) { _, isCompleted in
+            if isCompleted, completionViewModel == nil {
+                completionViewModel = makeCompletionViewModel()
+                completionReminderPrimer = makeReminderPrimer()
+            } else if !isCompleted {
+                completionViewModel = nil
+                completionReminderPrimer = nil
+            }
+        }
+        .onChange(of: completionViewModel != nil) { _, overlayPresented in
+            gameChrome?.setHidingChrome(overlayPresented)
+        }
         .focusable()
         .focused($keyboardFocus)
         .onAppear { keyboardFocus = true }

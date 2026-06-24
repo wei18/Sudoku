@@ -127,7 +127,9 @@ public struct LiveRouteFactory: RouteFactory {
     /// A puzzleId is a Daily unless it carries the practice prefix — same
     /// encoding `BoardLoaderView.identity(from:)` relies on. The reminder primer
     /// is offered only after a Daily solve (proposal §5.1; flow S02).
-    private static func isDaily(puzzleId: String) -> Bool {
+    /// `internal` (not private) so `BoardView+Completion.swift` can gate the
+    /// primer on the same classification without duplicating the logic.
+    static func isDaily(puzzleId: String) -> Bool {
         !puzzleId.hasPrefix("practice-")
     }
 
@@ -203,7 +205,12 @@ public struct LiveRouteFactory: RouteFactory {
                         adGate: adGate,
                         soundPlayer: soundPlayer,
                         path: path,
-                        telemetry: telemetry
+                        telemetry: telemetry,
+                        // #610: thread GC + reminder primer into BoardView so
+                        // the Completion overlay has everything it needs when
+                        // the board is presented as a modal (path == nil).
+                        gameCenter: gameCenter,
+                        makeDailyReminderPrimer: makeDailyReminderPrimer
                     )
                 )
             }
