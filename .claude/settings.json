@@ -8,6 +8,7 @@
     }
   },
   "enabledPlugins": {
-    "apple-dev-skills@apple-dev-skills": true
+    "apple-dev-skills@apple-dev-skills": true,
+    "collaboration-skills@apple-dev-skills": true
   }
 }
