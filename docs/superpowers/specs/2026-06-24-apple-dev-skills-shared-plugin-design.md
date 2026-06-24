@@ -27,6 +27,31 @@ keeps only what is genuinely Sudoku/Minesweeper/Tiles2048-bound.
    (see §4); moved skills become `apple-dev-skills:<skill>`, mirroring how
    `superpowers:<skill>` already works in this repo.
 
+## 2a. Roadmap — three phases (user, 2026-06-24)
+
+`apple-dev-skills` is not just a dumping ground for this repo's skills; it is meant
+to become **the Swift/Apple-platform engineer-agent's professional skill library**,
+composable and self-describing.
+
+- **Phase 1 — Extract (this plan's core).** Move the 26 portable skills out of
+  Sudoku-spec into `apple-dev-skills`, genericize, consume back as a submodule.
+- **Phase 2 — Make it a real standalone library.** (a) `README.md` is the
+  **single source of truth / agenda** — what the library is, the full skill index,
+  how to consume it. (b) An **npm-based install path** so any project can pull the
+  skills (mirrors the `npx <tool>` distribution pattern Claude Code skill packages
+  use), in addition to the submodule path. (c) The repo can itself **submodule
+  *other* specialist skill repos** (e.g. a high-quality swift-testing or
+  concurrency skill set) so it aggregates best-of-breed instead of reinventing —
+  a "skill library of skill libraries".
+- **Phase 3 — Curate from the ecosystem.** Survey **high-star GitHub Swift /
+  Apple-platform skill repos**, analyze each against our set, and decide per skill:
+  **adopt** (submodule/import it), **replace** ours with theirs, or **skip**.
+  Output: a documented inclusion decision per candidate.
+
+Phases 2 and 3 are **planned, not yet designed in detail** — each gets its own
+spec/plan once Phase 1 lands. Two feasibility items must be verified before P2/P3
+build (see §3): the npm distribution mechanism and nested skill-repo aggregation.
+
 ## 3. Verified prerequisite — skill discovery mechanics
 
 Confirmed against official Claude Code docs (skills.md, plugins.md,
@@ -44,7 +69,20 @@ plugins-reference.md) via the `claude-code-guide` agent:
 - **No collisions**: plugin-namespaced skills cannot clash with the flat project
   skills that remain.
 
-### One Unconfirmed item (smoke-test gate, not a spec unknown)
+### Phase-2/3 Unconfirmed items (verify before building those phases — NOT blocking Phase 1)
+
+- **npm distribution mechanism.** How a Claude Code skill set is idiomatically
+  installed via npm (a CLI with an `install` command that copies skills into the
+  consumer's `.claude/skills/`? a postinstall script? a published plugin the CC
+  marketplace pulls?). Verify against Claude Code plugin/marketplace docs + the
+  `npx`-style precedents (e.g. claude-mem) before committing P2 to a mechanism.
+- **Nested skill-repo aggregation.** Whether a plugin can surface skills that live
+  in *its own* git submodules (depth-2 within `skills/`), given plain skill
+  discovery is depth-1. Likely the aggregation must happen at the **consumer**
+  level (each specialist repo mounted as its own plugin submodule) or via the
+  plugin manifest declaring multiple skill sources — verify before P2(c)/P3.
+
+### Phase-1 Unconfirmed item (smoke-test gate, not a spec unknown)
 
 Docs are explicit on the plugin manifest requirement but **silent on git
 submodules specifically**; the "`.claude/skills/<name>/` with `plugin.json`
@@ -152,10 +190,12 @@ Skills reference each other in prose "Related skills" lists. After the split:
    `apple-dev-skills:*` skills all resolve; `swift test` unaffected (skills are
    docs, no build impact); `mise run scan:*` gates still green.
 
-## 9. Non-goals / YAGNI
+## 9. Non-goals / YAGNI (Phase 1 scope)
 
-- **Not** publishing `apple-dev-skills` to a public plugin marketplace yet —
-  submodule consumption is enough for now; marketplace is a later option.
+- **Phase 1 does not** build the npm install path, the README-as-SSOT agenda, or
+  the aggregate-other-repos capability — those are **Phase 2** (deferred by
+  design, not dropped). Phase 1 ships the submodule-consumable plugin only.
+- **Phase 1 does not** survey/adopt external skill repos — that is **Phase 3**.
 - **Not** promoting these to user-level (`~/.claude/skills`) — the repo-as-plugin
   keeps the public showcase + PR-trail property this project values.
 - **Not** genericizing the 8 stay skills — they are deliberately repo-bound.
