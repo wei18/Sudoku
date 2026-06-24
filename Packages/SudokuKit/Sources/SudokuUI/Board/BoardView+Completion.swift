@@ -41,6 +41,20 @@ private actor BoardNoopGameCenterClient: GameCenterClient {
 
 extension BoardView {
 
+    // MARK: - Overlay eligibility predicate
+
+    /// True when the board is in a modal context (path == nil) AND the session
+    /// has reached .completed — the only condition under which we show the
+    /// in-board overlay.
+    ///
+    /// Gating on `path` (not `#if os(iOS)`) tracks the real presentation
+    /// contract: macOS boards inside a NavigationStack have a non-nil path
+    /// and use `pushCompletionIfNeeded()` instead. This prevents the
+    /// double-present regression where both the overlay AND the push fired.
+    var shouldPresentCompletionOverlay: Bool {
+        path == nil && viewModel.status == .completed
+    }
+
     // MARK: - Factories (called once per .completed transition)
 
     /// Construct the post-solve CompletionViewModel from the current terminal

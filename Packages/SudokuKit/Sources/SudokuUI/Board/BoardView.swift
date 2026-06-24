@@ -21,9 +21,9 @@ public struct BoardView: View {
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     /// Host navigation path. Optional so previews / snapshot tests (which mount
-    /// `BoardView` directly, with no `NavigationStack`) keep working — `nil`
-    /// makes the solve → completion push a graceful no-op.
-    private let path: Binding<[AppRoute]>?
+    /// `BoardView` directly) keep working — `nil` makes the push a graceful no-op.
+    /// `internal` (not `private`) — `BoardView+Completion` reads it for the predicate.
+    let path: Binding<[AppRoute]>?
     // #610: GC client + daily primer builder — internal for BoardView+Completion.swift.
     let gameCenter: (any GameCenterClient)?
     let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
@@ -71,17 +71,17 @@ public struct BoardView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
-        // #610: full-cover Completion overlay (mirrors MS #292/#518).
+        // #610: full-cover Completion overlay (MS #292/#518 mirror).
         .overlay {
             if let completionViewModel {
                 completionSurface(completionViewModel)
             }
         }
-        // #610: build VM + primer once on .completed; clear on Close.
-        // Mirrors MS .onChange pattern (CR #518-R2: keyed on overlay presence,
-        // not status, so Close restores chrome without clearing terminal state).
+        // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
+        // overlay presence so Close restores chrome. `shouldPresentCompletionOverlay`
+        // gates to path==nil — macOS (path!=nil) uses push path, no double-present.
         .onChange(of: viewModel.status == .completed) { _, isCompleted in
-            if isCompleted, completionViewModel == nil {
+            if isCompleted, completionViewModel == nil, shouldPresentCompletionOverlay {
                 completionViewModel = makeCompletionViewModel()
                 completionReminderPrimer = makeReminderPrimer()
             } else if !isCompleted {
