@@ -95,6 +95,12 @@ public struct AppComposition {
         // entirely. Compiled out of Release builds by the `#if DEBUG` guard.
         #if DEBUG
         .modifier(SudokuNearWinModifier())
+        // DEBUG-only modal near-win hook. When launched with
+        // `-uitest-near-win-modal`, present a near-win board through the
+        // PRODUCTION modal path (path == nil fullScreenCover) so the #610
+        // in-board Completion overlay fires on the winning tap. Distinct from
+        // `SudokuNearWinModifier` which uses a push NavigationStack (path != nil).
+        .modifier(SudokuNearWinModalModifier())
         #endif
     }
 
