@@ -532,6 +532,10 @@ public final class GameViewModel {
     /// `markCompleted` implementation (it fetches by name, then flips `status`).
     private func markCompletedIfNeeded(wasCompleted: Bool) async {
         guard status == .completed, !wasCompleted, let persistence else { return }
+        // `SavedGameStore.markCompleted` reads ONLY `summary.recordName` (it fetches
+        // the live CloudKit record by name and flips its `status` field). The other
+        // fields below are inert for this call — they satisfy the struct's memberwise
+        // init without requiring a separate query for the stored summary.
         let summary = SavedGameSummary(
             recordName: "\(identity.kind.rawValue)-\(identity.puzzleId)",
             puzzleId: identity.puzzleId,

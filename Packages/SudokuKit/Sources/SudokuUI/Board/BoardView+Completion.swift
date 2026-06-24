@@ -112,14 +112,20 @@ extension BoardView {
                 Spacer()
                 // Result card — CompletionView with no injected close button;
                 // the button is rendered separately below, pinned to the bottom.
+                //
+                // `.fixedSize(horizontal: false, vertical: true)` prevents
+                // CompletionScreen's `.frame(maxHeight: .infinity)` from expanding
+                // the card to fill the available height, which would collapse the
+                // top Spacer() to zero and stick the card at the top (#610 sim fix).
                 CompletionView(
                     viewModel: cvm,
                     reminderPrimer: completionReminderPrimer,
                     onClose: nil
                 )
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 // Close button (#610 fix *1 + *4): full-width, ~52pt tall,
-                // terracotta accent (theme.accent.primary) instead of system blue.
+                // sage-green brand accent instead of system blue.
                 // Pinned to the bottom safe area.
                 Button {
                     // #610 fix *2: clear the overlay then dismiss the fullScreenCover

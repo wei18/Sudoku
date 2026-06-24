@@ -81,6 +81,8 @@ struct DigitPadView: View {
 
             Button(action: onErase) {
                 Image(systemName: "delete.left")
+                    // Palette sweep (#610 fix *5): erase icon matches digit-pad accent.
+                    .foregroundStyle(theme.accent.primary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .frame(minWidth: 44, minHeight: 44)
@@ -216,6 +218,8 @@ struct DigitPadView: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.bordered)
+        // Palette sweep (#610 fix *5): match digit-pad accent.
+        .tint(theme.accent.primary.resolved)
         .accessibilityLabel("Erase")
     }
 }
