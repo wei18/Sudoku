@@ -19,6 +19,10 @@ public import SudokuPersistence
 public import Telemetry
 // #330 P2: the `SoundPlaying` seam forwarded into the live `GameViewModel`.
 public import GameAudio
+// #610: GameCenterClient + ReminderPrimerCoordinator forwarded into BoardView
+// so the Completion overlay can build its VM and daily reminder primer.
+public import GameCenterClient
+public import SettingsUI
 import SudokuGameState
 import SudokuEngine
 
@@ -52,6 +56,11 @@ public struct BoardLoaderView: View {
     // #579 phase 1: Telemetry fan-out for per-session adapter. `nil` (default)
     // → `NoOpGameStateTelemetry` so previews / tests are unaffected.
     private let telemetry: Telemetry?
+    // #610: Game Center client + Daily reminder primer builder forwarded into
+    // `BoardView` so the Completion overlay can build its VM + primer.
+    // Both default to nil so existing callsites (tests, previews) compile unchanged.
+    private let gameCenter: (any GameCenterClient)?
+    private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -65,7 +74,9 @@ public struct BoardLoaderView: View {
         adGate: AdGate? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         path: Binding<[AppRoute]>? = nil,
-        telemetry: Telemetry? = nil
+        telemetry: Telemetry? = nil,
+        gameCenter: (any GameCenterClient)? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
@@ -76,6 +87,8 @@ public struct BoardLoaderView: View {
         self.soundPlayer = soundPlayer
         self.path = path
         self.telemetry = telemetry
+        self.gameCenter = gameCenter
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
     }
 
     public var body: some View {
@@ -92,7 +105,14 @@ public struct BoardLoaderView: View {
             ProgressView()
                 .controlSize(.large)
         case .loaded(let viewModel):
-            BoardView(viewModel: viewModel, adProvider: adProvider, adGate: adGate, path: path)
+            BoardView(
+                viewModel: viewModel,
+                adProvider: adProvider,
+                adGate: adGate,
+                gameCenter: gameCenter,
+                makeDailyReminderPrimer: makeDailyReminderPrimer,
+                path: path
+            )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
         }
