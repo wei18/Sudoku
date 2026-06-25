@@ -1,6 +1,3 @@
-[submodule ".claude/skills/superpowers"]
-	path = .claude/skills/superpowers
-	url = https://github.com/obra/superpowers.git
 [submodule ".claude/skills/apple-dev-skills"]
 	path = .claude/skills/apple-dev-skills
 	url = https://github.com/wei18/apple-dev-skills.git
