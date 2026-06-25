@@ -219,8 +219,9 @@ private struct GameModalContent: View {
             // dependency: the save is performed by the board views' .onDisappear
             // hooks — MinesweeperBoardView.persistCurrentState (#455) and Sudoku
             // BoardView.flush (#413) — both bare `Task` so they outlive teardown.
-            // If either hook is removed, `leave.game.message` ("will be saved
-            // automatically") becomes false. The VM itself does not save.
+            // If either hook is removed, `leave.game.message` ("saved
+            // automatically when you're signed in to iCloud", #516) becomes false.
+            // The VM itself does not save.
             Button(role: .destructive) {
                 onConfirmLeave()
             } label: {

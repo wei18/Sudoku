@@ -104,9 +104,14 @@ struct DailyPuzzleCard: View {
                         .font(.callout)
                         .accessibilityLabel("Completed")
                 } else {
-                    Text("—")
+                    // #516: a "tap to play" chevron reads clearer than the bare
+                    // em-dash, which looked like a placeholder rather than an
+                    // unplayed state. Decorative — the card's combined a11y
+                    // element already conveys the difficulty + button trait.
+                    Image(systemName: "chevron.right")
                         .font(.callout)
                         .foregroundStyle(theme.text.tertiary.resolved)
+                        .accessibilityHidden(true)
                 }
             }
             MiniBoardStrip()
