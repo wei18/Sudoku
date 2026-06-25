@@ -11,6 +11,7 @@
 
 import SwiftUI
 import GameAppKit
+import GameShellUI
 public import SettingsUI
 public import GameCenterClient
 import SudokuEngine
@@ -105,45 +106,21 @@ extension BoardView {
         _ cvm: CompletionViewModel,
         dismiss: DismissAction
     ) -> some View {
-        ZStack(alignment: .bottom) {
-            theme.surface.background.resolved
-                .ignoresSafeArea()
-            VStack(spacing: 0) {
-                Spacer()
-                // Result card — CompletionView with no injected close button;
-                // the button is rendered separately below, pinned to the bottom.
-                //
-                // `.fixedSize(horizontal: false, vertical: true)` prevents
-                // CompletionScreen's `.frame(maxHeight: .infinity)` from expanding
-                // the card to fill the available height, which would collapse the
-                // top Spacer() to zero and stick the card at the top (#610 sim fix).
-                CompletionView(
-                    viewModel: cvm,
-                    reminderPrimer: completionReminderPrimer,
-                    onClose: nil
-                )
-                .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                // Close button (#610 fix *1 + *4): full-width, ~52pt tall,
-                // sage-green brand accent instead of system blue.
-                // Pinned to the bottom safe area.
-                Button {
-                    // #610 fix *2: clear the overlay then dismiss the fullScreenCover
-                    // so the user returns to the hub. On macOS (path != nil) this
-                    // path is never reached — the predicate gates the overlay to
-                    // path == nil only.
-                    self.completionViewModel = nil
-                    dismiss()
-                } label: {
-                    Text("Close")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(theme.accent.primary.resolved)
-                .controlSize(.large)
-                .padding(.horizontal, 32)
-                .padding(.bottom, 16)
-            }
-        }
+        // #615: the centred-card + bottom-pinned accent-Close layout now lives in
+        // the shared `CompletionOverlayScaffold` (GameShellUI) so Minesweeper and
+        // future games share it instead of re-deriving it per app. Close clears the
+        // overlay VM then dismisses the fullScreenCover → hub (#610 fix *2). On
+        // macOS (path != nil) this path is never reached — the predicate gates the
+        // overlay to path == nil only.
+        CompletionOverlayScaffold(onClose: {
+            self.completionViewModel = nil
+            dismiss()
+        }, card: {
+            CompletionView(
+                viewModel: cvm,
+                reminderPrimer: completionReminderPrimer,
+                onClose: nil
+            )
+        })
     }
 }
