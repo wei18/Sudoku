@@ -23,8 +23,14 @@
 // side-effect shape, which neither Minesweeper nor a third game has agreed to.
 
 public import SwiftUI
+internal import GameShellUI
 
 public struct SettingsShellView<Sections: View, Banner: View>: View {
+    // #516: warm-paper backdrop instead of the cold default grouped-Form gray, so
+    // Settings matches the tonal continuity of the hubs/board. The host injects
+    // its concrete palette (Sudoku warm / MS slate); falls back to NeutralTheme.
+    @Environment(\.theme) private var theme
+
     private let title: LocalizedStringKey
     private let sections: () -> Sections
     private let banner: Banner
@@ -52,6 +58,10 @@ public struct SettingsShellView<Sections: View, Banner: View>: View {
             // defaults to grouped in NavigationStack already, so this is a
             // no-op on iPhone. (Sudoku issue #197, carried into the shell.)
             .formStyle(.grouped)
+            // #516: drop the Form's own systemGroupedBackground so the warm-paper
+            // theme backdrop below shows through the gaps between the pill rows
+            // (the rows keep their own elevated/secondary fill).
+            .scrollContentBackground(.hidden)
             // Explicit fill so the Form claims the height above the banner on
             // macOS (matches the hub shells; a detail pane at arbitrary window
             // heights must not squash the form).
@@ -59,6 +69,8 @@ public struct SettingsShellView<Sections: View, Banner: View>: View {
 
             banner
         }
+        // #516: warm-paper backdrop behind the Form + banner (matches the hubs).
+        .background(theme.surface.background.resolved.ignoresSafeArea())
         // On the outer container (matches DailyHub/PracticeHub shells) so the
         // NavigationSplitView title preference reads from the pane root.
         .navigationTitle(title)

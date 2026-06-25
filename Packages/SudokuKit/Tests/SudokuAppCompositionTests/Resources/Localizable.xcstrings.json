@@ -5081,43 +5081,43 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your progress will be saved automatically."
+            "value" : "Your progress is saved automatically when you're signed in to iCloud."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu progreso se guardará automáticamente."
+            "value" : "Tu progreso se guarda automáticamente cuando inicias sesión en iCloud."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "進行状況は自動的に保存されます。"
+            "value" : "iCloudにサインインしていると、進行状況は自動的に保存されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "진행 상황이 자동으로 저장됩니다."
+            "value" : "iCloud에 로그인되어 있으면 진행 상황이 자동으로 저장됩니다."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ความคืบหน้าของคุณจะถูกบันทึกโดยอัตโนมัติ"
+            "value" : "ความคืบหน้าของคุณจะถูกบันทึกโดยอัตโนมัติเมื่อลงชื่อเข้าใช้ iCloud"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的进度将自动保存。"
+            "value" : "登录 iCloud 后，您的进度将自动保存。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的進度將自動儲存。"
+            "value" : "登入 iCloud 後，您的進度將自動儲存。"
           }
         }
       }
