@@ -56,7 +56,7 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
             Text("Ready to play")
                 .font(.headline)
 
-            Text(boardSummary(difficulty))
+            boardSummary(difficulty)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -85,8 +85,12 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         }
     }
 
-    private func boardSummary(_ level: Difficulty) -> String {
-        "\(level.rows) × \(level.columns) · \(level.mineCount) mines"
+    // #595: the whole hint is one localized key `"%lld × %lld · %lld mines"` so the
+    // "mines" word is translated (the `× / ·` + dimensions carry through every
+    // locale). MS mine counts are always ≥ 10 (beginner 10 / intermediate 40 /
+    // expert 99), so a non-plural key is grammatically correct everywhere.
+    private func boardSummary(_ level: Difficulty) -> Text {
+        Text("\(level.rows) × \(level.columns) · \(level.mineCount) mines")
     }
 }
 

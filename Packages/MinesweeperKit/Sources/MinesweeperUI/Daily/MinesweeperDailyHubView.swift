@@ -108,7 +108,7 @@ private struct MinesweeperDailyCardView: View {
                         .accessibilityHidden(true)
                 }
             }
-            Text(boardSummary(card.difficulty))
+            boardSummary(card.difficulty)
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
                 .accessibilityHidden(true)
@@ -142,8 +142,11 @@ private struct MinesweeperDailyCardView: View {
         }
     }
 
-    private func boardSummary(_ level: Difficulty) -> String {
-        "\(level.rows) × \(level.columns) · \(level.mineCount) mines"
+    // #595: one localized key `"%lld × %lld · %lld mines"` so "mines" is translated
+    // (dimensions + `× / ·` carry through). MS mine counts are always ≥ 10, so a
+    // non-plural key is grammatically correct in every locale.
+    private func boardSummary(_ level: Difficulty) -> Text {
+        Text("\(level.rows) × \(level.columns) · \(level.mineCount) mines")
     }
 }
 
