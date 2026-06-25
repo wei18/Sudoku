@@ -45,6 +45,9 @@ public struct MinesweeperBoardView: View {
     // and terminal reveal, both inside the VM). Mirrors Sudoku's
     // scenePhase-triggered flush (§How.5.5).
     @Environment(\.scenePhase) private var scenePhase
+    // #615: dismisses the presenting fullScreenCover so the Completion overlay's
+    // Close returns to the hub — mirrors Sudoku's BoardView.dismiss (close-to-hub).
+    @Environment(\.dismiss) private var dismiss
     // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the modal
     // hierarchy, this is non-nil and we (a) push the elapsed label to the
     // chrome on every tick and (b) hide the in-board status-bar clock to
@@ -666,22 +669,23 @@ public struct MinesweeperBoardView: View {
     // chrome and the user can leave the revealed board (CR #518-R2).
     @ViewBuilder
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
-        // SDD-003 Epic 4: Close dismisses the overlay by clearing the VM.
-        // Retry / New Game / Leaderboard CTAs removed at this injection site
-        // (spec note: "移除發生在各 app 的注入點"). The board stays live
-        // underneath the overlay — the player can restart via the home route.
-        ZStack {
-            // Background layer: extends into status bar / home indicator so no
-            // board content peeks through at the edges (#388 fill requirement).
-            theme.surface.background.resolved
-                .ignoresSafeArea()
-            // Content layer: stays within the safe area so the hero icon is
-            // fully below the Dynamic Island (#518 root fix).
+        // #615: now uses the shared `CompletionOverlayScaffold` (GameShellUI) so MS
+        // matches Sudoku — centred card, warm-paper background extended behind the
+        // safe area, bottom-pinned accent Close. Close clears the overlay VM then
+        // dismisses the presenting fullScreenCover so the player returns to the hub
+        // (mirrors Sudoku's close-to-hub). Previously MS only cleared the VM and
+        // revealed the boomed board, leaving the player trapped in the modal — the
+        // divergence #615 surfaced. Retry / New Game / Leaderboard CTAs stay removed
+        // at this injection site (SDD-003 Epic 4 spec note: "移除發生在各 app 的注入點").
+        CompletionOverlayScaffold(onClose: {
+            self.completionViewModel = nil
+            dismiss()
+        }, card: {
             MinesweeperCompletionView(
                 viewModel: completionViewModel,
-                onClose: { self.completionViewModel = nil }
+                onClose: nil
             )
-        }
+        })
     }
 }
 
