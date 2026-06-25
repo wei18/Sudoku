@@ -100,10 +100,14 @@ from project memory (`asc-api-credentials` + the Team ID).
   for the same `CFBundleShortVersionString`. The UTC-minute default is unique per
   minute; if you re-run within the same minute or pass an explicit `--build`,
   ensure it hasn't been used for this marketing version already.
-- **Export-compliance may hold the build.** Even a successful upload can sit in
-  "Processing" or be held pending the encryption/export-compliance answer before
-  it's available to internal testers in ASC — uploading is not the same as
-  "testable". Resolve compliance in the ASC web UI (user-owned).
+- **Export-compliance is already handled for Sudoku + Minesweeper — do NOT flag
+  it.** Both `App/Sudoku/Info.plist` and `App/Minesweeper/Info.plist` statically
+  declare `ITSAppUsesNonExemptEncryption = <false/>`, so ASC never prompts for an
+  encryption/export-compliance answer and the build is never held on that gate.
+  When reporting an upload result, omit the compliance step. (Processing delay is
+  still real — uploading ≠ instantly testable — but no compliance answer is
+  needed.) A NEW app (e.g. Tiles2048) must add the same Info.plist key before its
+  first TF build, or it WILL be held pending the ASC web-UI compliance answer.
 - **macOS export method.** Xcode 15+ renamed `app-store` → `app-store-connect`;
   the task uses the new name (accepted by 16/26). Don't revert it.
 - **Workspace is gitignored.** A clean checkout has no `Game.xcworkspace`; the
