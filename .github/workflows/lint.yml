@@ -1,11 +1,12 @@
-# Consolidated lint workflow — 3 jobs:
+# Consolidated lint workflow — 4 jobs:
 #   1. pr-metadata   — Conventional Commits PR title (ubuntu, no source)
 #   2. docs-link-check — lychee scan of docs/ + meetings/ (ubuntu, no source)
 #   3. swift-lint    — swiftlint + swiftformat on changed Swift files (macos)
+#   4. l10n          — L10n catalog completeness gate (ubuntu, no source)
 #
 # Workflow-level path filter is omitted so the workflow always runs and each
 # job's own `if:` (or path-aware logic) decides whether to do work; this keeps
-# the required-status-check setup simple — one workflow name, three job
+# the required-status-check setup simple — one workflow name, four job
 # names — once branch protection lands (user-owned).
 
 name: Lint

@@ -78,8 +78,8 @@ The `resumeCandidate: SavedGameSummary? → ResumeCandidate<Route>?` and `resume
 |---|---|
 | `GameAppKit/GameRootViewModel.swift` | primary: drop `resumeRoute`/`SavedGameSummary` resumeCandidate + `latestInProgress()` call; add `fetchResume`; `resumeCandidate` → DTO |
 | `GameAppKit/ResumePill.swift` | API → `(title:subtitle:onTap:)`; delete `elapsedLabel`/difficulty computation |
-| `SudokuKit/AppComposition/Live.swift` (~177-182) | `resumeRoute:` → `fetchResume:` closure + `elapsed()` helper |
-| `SudokuKit/AppComposition/Preview.swift` (~54-59) | **second composition site** — same `resumeRoute:` → `fetchResume:` |
+| `SudokuKit/Sources/SudokuAppComposition/Live.swift` | `resumeRoute:` → `fetchResume:` closure + `elapsed()` helper (post-SDD-005 rename: was `AppComposition`) |
+| `SudokuKit/Sources/SudokuAppComposition/Preview.swift` | **second composition site** — same `resumeRoute:` → `fetchResume:` |
 | `SudokuKit/SudokuUI/Root/RootView.swift` (109-110) | `resumeCandidate` is now DTO; `ResumePill(candidate:)` → `ResumePill(title:subtitle:onTap:)` |
 | `SudokuKit/Tests/SudokuUITests/RootViewTests.swift` (7× ctor + `:101`) | inject `fetchResume:`; **`:101 #expect(resumeCandidate == summary)` must change** (DTO ≠ `SavedGameSummary`) |
 | `GameAppKit/Tests/GameRootViewModelTests.swift` (5 tests incl `:155,:208`) | **rewrite**: `resumeRoute:`→`fetchResume:`; `resumeCandidate == summary` assertions → DTO; `StubPersistence.resumeCandidate` no longer drives the VM (keep for `latestInProgress` conformance only) |

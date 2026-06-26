@@ -1,6 +1,6 @@
 # SDD-005 — Platform Convergence: one Game module per game, everything else reusable + DI
 
-**Status:** DRAFT (starting point — next session refines/completes)
+**Status:** SHIPPED 2026-06-19 (see AS-BUILT NOTE below) — the body is retained as a historical design snapshot; its "DRAFT / to-do" framing and `[OQ]` markers are NOT unshipped blockers. (#592)
 **Date:** 2026-06-17
 **Author:** AI Leader (from a working session with the user)
 **Related:** SDD-003 (UX refresh), SDD-004 (game 3 / 2048), north-star memory `goal-many-small-games-platform`, the mirror principle (CLAUDE.md prime directive)
