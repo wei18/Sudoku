@@ -11,12 +11,14 @@
 - **Sign-in**: none required (no demo account)
 
 > **Feature-gating note for the drafter (not for ASC):** This app mirrors
-> Sudoku's frame but several Sudoku subsystems are NOT yet wired in
-> Minesweeper as of this draft. **Game Center (leaderboards / achievements) is
-> NOT integrated** — only the entitlement is set; no client, no registered
-> IDs. The **Daily hub is a placeholder** (renders three cards but has no
-> date-seeded engine or persisted completion yet). Do NOT claim leaderboards
-> or competitive Daily scoring in the listing or these notes until those land.
+> Sudoku's frame. As-built state (#592 refresh — matches the per-feature table
+> below): **Game Center leaderboards ARE wired + live** (#291/#328 — 3
+> per-difficulty recurring-daily leaderboards created via API), so they MAY be
+> claimed. **Game Center achievements are NOT wired** (no MS achievements) —
+> omit them. The **Daily hub IS wired** (#290/#307 — date-seeded trio,
+> deterministic per UTC-day, snapshot-tested), so competitive Daily scoring may
+> be described. Still gated: **saved-game resume** (persistence wired but the
+> save-flow path is a follow-up) — don't claim "automatic saves"/"resume" yet.
 > Confirm the wired state against `Live.swift` before each real submission.
 
 ---
