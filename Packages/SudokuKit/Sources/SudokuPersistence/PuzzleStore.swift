@@ -141,6 +141,9 @@ public actor PuzzleStore: PuzzleProviderProtocol {
         difficulty: Difficulty,
         generatorVersion: GeneratorVersion
     ) -> UInt64 {
+        // `StableHash` lives in DeterminismKit (#627); it reaches this target via
+        // `SudokuEngine`'s `@_exported public import DeterminismKit`. If that
+        // re-export is ever dropped, add a direct DeterminismKit dependency here.
         var hash = StableHash()
         hash.combine(generatorVersion.rawValue)
         hash.combine("daily")
@@ -204,57 +207,6 @@ public actor PuzzleStore: PuzzleProviderProtocol {
             return ParsedPuzzleId(kind: .daily(day: "\(year)-\(month)-\(day)"), difficulty: difficulty)
         }
         throw PuzzleStoreError.malformedPuzzleId(puzzleId)
-    }
-}
-
-// MARK: - StableHash
-
-/// Deterministic FNV-1a 64-bit hash, with explicit framing per element so that
-/// `combine("a"), combine("b")` and `combine("ab")` produce different outputs.
-/// This is the §How.4.1 `stableHash` primitive: NOT `Swift.Hasher` (whose
-/// output is randomized per process). Bit-identical across architectures.
-internal struct StableHash {
-    private static let fnvOffsetBasis: UInt64 = 0xCBF2_9CE4_8422_2325
-    private static let fnvPrime: UInt64 = 0x0000_0100_0000_01B3
-
-    private(set) var value: UInt64 = StableHash.fnvOffsetBasis
-
-    mutating func combine(_ bytes: [UInt8]) {
-        // Length prefix so different segmentations don't collide.
-        let length = UInt64(bytes.count)
-        absorb(length.littleEndianBytes)
-        absorb(bytes)
-    }
-
-    mutating func combine(_ string: String) {
-        combine(Array(string.utf8))
-    }
-
-    mutating func combine(_ word: UInt64) {
-        combine(word.littleEndianBytes)
-    }
-
-    private mutating func absorb(_ bytes: [UInt8]) {
-        for byte in bytes {
-            value ^= UInt64(byte)
-            value &*= StableHash.fnvPrime
-        }
-    }
-}
-
-private extension UInt64 {
-    var littleEndianBytes: [UInt8] {
-        let lowEndian = self.littleEndian
-        return [
-            UInt8(truncatingIfNeeded: lowEndian),
-            UInt8(truncatingIfNeeded: lowEndian >> 8),
-            UInt8(truncatingIfNeeded: lowEndian >> 16),
-            UInt8(truncatingIfNeeded: lowEndian >> 24),
-            UInt8(truncatingIfNeeded: lowEndian >> 32),
-            UInt8(truncatingIfNeeded: lowEndian >> 40),
-            UInt8(truncatingIfNeeded: lowEndian >> 48),
-            UInt8(truncatingIfNeeded: lowEndian >> 56)
-        ]
     }
 }
 
