@@ -373,10 +373,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     )
     .environment(\.theme, config.theme)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with
-    // first-frame rendering. `.onAppear { Task { … } }` not `.task { … }`:
-    // Xcode 26 lowers every `.task` overload to `task(name:priority:…)`, whose
-    // opaque descriptor links undefined in the arm64 device Release archive.
-    // #361
+    // first-frame rendering. `.onAppear { Task { … } }` not `.task { … }`: this is
+    // an app-root composition bootstrap, the position where the #361 Xcode 26 `.task`
+    // lowering linked an opaque descriptor undefined in the arm64 device Release
+    // archive. (Scoped to the app-root, NOT a blanket `.task` ban — leaf-view
+    // one-shot `.task` verifies link-clean; see #607.) #361
     .onAppear { Task {
         await bootMonetization(adProvider: adProvider, telemetry: telemetry)
     } }

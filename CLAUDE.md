@@ -95,8 +95,14 @@ tuist generate                               # workspace; new sibling packages a
 - Swift 6 strict concurrency + `InternalImportsByDefault` everywhere; new shared
   types are `Sendable`; `@Sendable` closures can't capture MainActor statics
   (mark test fixtures `nonisolated`).
-- One-shot bootstrap goes in `.onAppear { Task { … } }`, not `.task` — Xcode 26's
-  `.task` lowering breaks arm64 device Release links (#361).
+- The **app-root composition bootstrap** (`GameRoot` / `MakeGameApp`) goes in
+  `.onAppear { Task { … } }`, not `.task` — that is where the Xcode 26 `.task`
+  lowering broke the arm64 device Release link (#361). Leaf-view one-shot `.task`
+  bootstraps (Settings / Daily hub / banner) are **fine** — an arm64 device Release
+  archive links them clean (verified #607, Sudoku Release build 202606260559). So
+  don't blanket-ban `.task`: it's the idiomatic choice for view-lifecycle async
+  work. If a device-Release archive ever fails to link an opaque `.task` descriptor,
+  move that one site to `.onAppear { Task }`.
 - After merging from a worktree, `git fetch && git reset --hard origin/main` on the
   main checkout and verify clean (worktree index bleed is real).
 - L10n: user-visible strings need all 7 locales (`ai-translated-localization`
