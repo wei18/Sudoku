@@ -77,7 +77,10 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         path.append(.board(difficulty: difficulty, seed: seed, mode: .practice))
     }
 
-    private func displayName(_ level: Difficulty) -> String {
+    // #623: returns `LocalizedStringKey` (not a verbatim `String`) so the
+    // difficulty name is localized via the catalog — mirrors the Daily hub's
+    // `displayName` and Sudoku's `LocalizedStringKey(difficulty.rawValue…)`.
+    private func displayName(_ level: Difficulty) -> LocalizedStringKey {
         switch level {
         case .beginner: return "Beginner"
         case .intermediate: return "Intermediate"
