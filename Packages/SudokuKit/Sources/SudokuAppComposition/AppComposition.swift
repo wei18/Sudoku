@@ -30,6 +30,10 @@ public import SudokuPersistence
 public import SudokuUI
 public import SwiftUI
 public import Telemetry
+// #510: name GameAppKit directly at the target boundary — the public
+// `rootViewModel: RootViewModel` property aliases `GameAppKit.GameRootViewModel`
+// (so it must be public), and the DEBUG-only `UITestRouteModifier` lives here too.
+public import GameAppKit
 
 @MainActor
 public struct AppComposition {
@@ -101,8 +105,25 @@ public struct AppComposition {
         // in-board Completion overlay fires on the winning tap. Distinct from
         // `SudokuNearWinModifier` which uses a push NavigationStack (path != nil).
         .modifier(SudokuNearWinModalModifier())
+        // #510: DEBUG-only deep-link hook. `-uitest-route <daily|practice|settings>`
+        // pushes that screen onto the live root path in one launch (board +
+        // completion stay on the near-win hooks above).
+        .modifier(UITestRouteModifier(rootViewModel: rootViewModel, resolve: Self.uitestRoute(for:)))
         #endif
     }
+
+    #if DEBUG
+    /// #510: map a `-uitest-route` screen key to Sudoku's push routes. Returns
+    /// nil for `"home"` / unknown keys (stay at the root).
+    static func uitestRoute(for key: String) -> AppRoute? {
+        switch key {
+        case "daily": return .daily
+        case "practice": return .practice
+        case "settings": return .settings
+        default: return nil
+        }
+    }
+    #endif
 
     public init(
         rootViewModel: RootViewModel,

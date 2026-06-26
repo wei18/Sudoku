@@ -145,6 +145,10 @@ let productionTargets: [Target] = [
             gameCenterClientDep,
             telemetryDep,
             "SudokuUI",
+            // #510: direct GameAppKit dep so `rootView` can name the DEBUG-only
+            // `UITestRouteModifier` (a transitive re-export via SudokuUI does not
+            // satisfy Swift 6 module name resolution at the target boundary).
+            gameAppDep,
             // PR X2: explicit GameShellUI dep so AppComposition can name
             // `any RouteFactory<AppRoute>` (the protocol moved out of
             // SudokuUI into GameShellUI). SudokuUI still re-exports the

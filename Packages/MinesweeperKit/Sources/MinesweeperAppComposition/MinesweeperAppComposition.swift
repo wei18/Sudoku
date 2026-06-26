@@ -75,8 +75,25 @@ public struct MinesweeperAppComposition {
         // Compiled out of Release builds by the `#if DEBUG` guard.
         #if DEBUG
         .modifier(MinesweeperNearWinModifier())
+        // #510: DEBUG-only deep-link hook (mirrors Sudoku). `-uitest-route
+        // <daily|practice|settings>` pushes that screen onto the live root path
+        // in one launch (board + completion stay on the near-win hook above).
+        .modifier(UITestRouteModifier(rootViewModel: rootViewModel, resolve: Self.uitestRoute(for:)))
         #endif
     }
+
+    #if DEBUG
+    /// #510: map a `-uitest-route` screen key to Minesweeper's push routes.
+    /// Returns nil for `"home"` / unknown keys (stay at the root).
+    static func uitestRoute(for key: String) -> AppRoute? {
+        switch key {
+        case "daily": return .daily
+        case "practice": return .practice
+        case "settings": return .settings
+        default: return nil
+        }
+    }
+    #endif
 
     public init(
         rootViewModel: MinesweeperRootViewModel,
