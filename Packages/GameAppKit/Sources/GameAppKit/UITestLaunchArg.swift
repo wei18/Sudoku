@@ -15,6 +15,8 @@
 
 #if DEBUG
 
+internal import Foundation
+
 public enum UITestLaunchArg {
     /// Signals both apps to boot into a board that is one move from winning,
     /// so the real win → completion flow can be exercised with a single tap.
@@ -34,6 +36,29 @@ public enum UITestLaunchArg {
     /// so `SudokuNearWinModalModifier` and `LiveRouteFactory` share the same
     /// literal without duplication.
     public static let nearWinModalPuzzleId = "uitest-near-win-modal"
+
+    /// Deep-link launch flag (#510): boot straight into a named screen so a
+    /// reviewer / XCUITest reaches it in one launch instead of tapping through
+    /// the home stack. Takes the NEXT argument as the screen key, e.g.
+    ///   `xcrun simctl launch <udid> com.wei18.sudoku -uitest-route settings`
+    /// Each app maps the key → its own `Route` (home / daily / practice /
+    /// settings). Board + completion stay on the near-win hooks above. Absent
+    /// from Release builds via the `#if DEBUG` guard.
+    public static let route = "-uitest-route"
+
+    /// The screen key value following `-uitest-route` in this process's launch
+    /// arguments, or nil when the flag is absent / has no value. `"home"` (or
+    /// absent) means stay at the root.
+    public static func routeValue() -> String? {
+        routeValue(in: ProcessInfo.processInfo.arguments)
+    }
+
+    /// Testable core: the screen key following `-uitest-route` in `arguments`.
+    public static func routeValue(in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: route),
+              index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }
 }
 
 #endif
