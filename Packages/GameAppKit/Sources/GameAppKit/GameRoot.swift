@@ -27,13 +27,14 @@
 // the `[X]` button. When `gameChrome` is nil (macOS push / snapshot / preview)
 // the board views keep their own in-board timer and this path is never reached.
 //
-// Note on `.onAppear { Task { … } }` (NOT `.task { … }`): Xcode 26's SwiftUI
-// lowers EVERY `.task` overload to `task(name:priority:file:line:_:)`, whose
-// opaque-type descriptor links undefined in the arm64 device Release archive
-// (sim / macOS / Debug build fine). `bootstrap()` is a one-shot boot with its
-// own idempotency guard, so `.task`'s disappear-cancellation isn't needed.
-// Hosting this here fixes the latent MinesweeperRoot `.task` device-Release
-// link risk for free. #361 / #4499
+// Note on `.onAppear { Task { … } }` (NOT `.task { … }`): the original #361 arm64
+// device Release link failure — an opaque `.task` descriptor linking undefined
+// (sim / macOS / Debug build fine) — was at THIS app-root composition bootstrap, so
+// it stays on `.onAppear`. `bootstrap()` is a one-shot boot with its own idempotency
+// guard, so `.task`'s disappear-cancellation isn't needed. NOTE (#607): the rule is
+// scoped to the app-root bootstrap, NOT a blanket ban — leaf-view one-shot `.task`
+// bootstraps (Settings / Daily hub / banner) verify link-clean in an arm64 device
+// Release archive (build 202606260559). #361 / #4499
 
 public import SwiftUI
 public import GameShellUI
