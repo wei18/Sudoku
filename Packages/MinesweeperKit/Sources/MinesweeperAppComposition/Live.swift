@@ -126,7 +126,9 @@ extension MinesweeperAppComposition {
                 { [savedGameStore] in
                     guard let summary = try await savedGameStore.latestInProgress() else { return nil }
                     return ResumeCandidate(
-                        title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                        title: ResumeTitle.make(
+                            difficultyKey: summary.difficulty.rawValue.capitalized
+                        ),
                         subtitle: MinesweeperAppComposition.elapsed(summary.elapsedSeconds),
                         route: .resumeBoard(
                             recordName: summary.recordName,

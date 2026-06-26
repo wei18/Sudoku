@@ -61,7 +61,9 @@ extension AppComposition {
             fetchResume: {
                 guard let summary = try await persistence.latestInProgress() else { return nil }
                 return ResumeCandidate(
-                    title: "Resume \(summary.difficulty.rawValue.capitalized)",
+                    title: ResumeTitle.make(
+                        difficultyKey: summary.difficulty.rawValue.capitalized
+                    ),
                     subtitle: AppComposition.elapsed(summary.elapsedSeconds),
                     route: .board(puzzleId: summary.puzzleId)
                 )
