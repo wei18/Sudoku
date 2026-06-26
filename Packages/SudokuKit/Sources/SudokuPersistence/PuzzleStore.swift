@@ -141,6 +141,9 @@ public actor PuzzleStore: PuzzleProviderProtocol {
         difficulty: Difficulty,
         generatorVersion: GeneratorVersion
     ) -> UInt64 {
+        // `StableHash` lives in DeterminismKit (#627); it reaches this target via
+        // `SudokuEngine`'s `@_exported public import DeterminismKit`. If that
+        // re-export is ever dropped, add a direct DeterminismKit dependency here.
         var hash = StableHash()
         hash.combine(generatorVersion.rawValue)
         hash.combine("daily")
