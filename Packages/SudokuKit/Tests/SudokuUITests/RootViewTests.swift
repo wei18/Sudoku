@@ -38,7 +38,13 @@ private func sudokuFetchResume(
         let minutes = summary.elapsedSeconds / 60
         let seconds = summary.elapsedSeconds % 60
         return ResumeCandidate(
-            title: "Resume \(summary.difficulty.rawValue.capitalized)",
+            // Mirror production exactly: build the title through the shared
+            // `ResumeTitle.make` path (not a hand-copied interpolation) so this
+            // fixture validates what ships. In the test bundle the catalog isn't
+            // loaded, so it falls back to the English key text ("Resume Easy").
+            title: ResumeTitle.make(
+                difficultyKey: summary.difficulty.rawValue.capitalized
+            ),
             subtitle: String(format: "%d:%02d", minutes, seconds),
             route: .board(puzzleId: summary.puzzleId)
         )
