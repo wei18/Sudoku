@@ -43,6 +43,7 @@ if [[ -z "$UDID" ]]; then
 fi
 if [[ -z "$UDID" ]]; then
   UDID="$(xcrun simctl list devices available | grep -E 'iPhone 17 Pro \(' | grep -Eo '[0-9A-F-]{36}' | head -1)"
+  [[ -n "$UDID" ]] || { echo "error: no 'iPhone 17 Pro' simulator found in available devices" >&2; exit 1; }
   echo "==> booting iPhone 17 Pro ($UDID)"
   xcrun simctl boot "$UDID"
 fi
@@ -58,8 +59,8 @@ esac
 
 if [[ "$NO_BUILD" != "true" ]]; then
   echo "==> tuist generate (workspace is gitignored)"
-  tuist install >/dev/null 2>&1
-  tuist generate --no-open >/dev/null 2>&1
+  mise exec -- tuist install >/dev/null 2>&1
+  mise exec -- tuist generate --no-open >/dev/null 2>&1
 fi
 
 PRODUCTS="$DERIVED/Build/Products/Debug-iphonesimulator"
@@ -87,8 +88,13 @@ for app in "${APPS[@]}"; do
       # shellcheck disable=SC2086
       xcrun simctl launch "$UDID" "$bundle" $arg >/dev/null 2>&1 || true
       sleep 3
-      xcrun simctl io "$UDID" screenshot "$dir/$key.png" >/dev/null 2>&1 \
-        && echo "    $key.png" || echo "    $key.png (FAILED)"
+      # Capture stderr (simctl io chatters there even on success) and surface
+      # it only on failure — clean success output, diagnostic failure output.
+      if err="$(xcrun simctl io "$UDID" screenshot "$dir/$key.png" 2>&1 >/dev/null)"; then
+        echo "    $key.png"
+      else
+        echo "    $key.png (FAILED): $err"
+      fi
     done
   done
   xcrun simctl terminate "$UDID" "$bundle" >/dev/null 2>&1 || true
