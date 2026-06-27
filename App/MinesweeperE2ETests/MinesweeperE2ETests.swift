@@ -53,10 +53,20 @@ final class MinesweeperE2ETests: XCTestCase {
         }
 
         // The near-win board mounts paused — dismiss the cover before revealing.
+        // `viewModel.resume()` is async (`Task { await … }`), and the safe cell
+        // already exists in the a11y tree behind the cover, so we must wait for
+        // the resume button to LEAVE the tree (cover dismissed) before tapping —
+        // otherwise the cover can swallow the reveal tap on a slow machine.
         let resume = app.buttons[GameE2ESupport.resumeButtonID]
-        if resume.waitForExistence(timeout: 5) {
-            resume.tap()
-        }
+        XCTAssertTrue(
+            resume.waitForExistence(timeout: 10),
+            "near-win board should mount under the paused cover"
+        )
+        resume.tap()
+        XCTAssertTrue(
+            resume.waitForNonExistence(timeout: 5),
+            "pause cover should dismiss after tapping resume"
+        )
 
         // Tap the one remaining safe cell by its unique positional label
         // (coordinates are 1-based in the a11y label). "Hidden" is the covered

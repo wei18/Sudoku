@@ -87,7 +87,7 @@ private struct MinesweeperNearWinCoverView: View {
             .overlay(alignment: .topLeading) {
                 Color.clear
                     .frame(width: 1, height: 1)
-                    .accessibilityElement()
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("uitest winning cell beacon")
                     .accessibilityIdentifier(
                         "game.uitest.winningCell.r\(nearWin.lastSafeRow).c\(nearWin.lastSafeCol)"
