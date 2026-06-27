@@ -67,11 +67,14 @@ final class SudokuE2ETests: XCTestCase {
         for digit in 1...9 {
             cellPoint.tap()
             app.buttons["Digit \(digit)"].tap()
-            if completionHero.waitForExistence(timeout: 1) { break }
+            if completionHero.waitForExistence(timeout: 2) { break }
         }
 
+        // Final wait (not bare `.exists`) so a winning digit whose overlay
+        // animates in just after the loop's poll on a slow CI machine still
+        // resolves before we assert.
         XCTAssertTrue(
-            completionHero.exists,
+            completionHero.waitForExistence(timeout: 5),
             "completion overlay (game.completion.hero) should appear after the winning move"
         )
     }

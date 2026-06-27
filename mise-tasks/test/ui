@@ -32,7 +32,11 @@ if [[ -z "$UDID" ]]; then
   echo "==> booting iPhone 17 Pro ($UDID)"
   xcrun simctl boot "$UDID"
 fi
-until xcrun simctl list devices booted | grep -q "$UDID"; do sleep 2; done
+boot_waits=0
+until xcrun simctl list devices booted | grep -q "$UDID"; do
+  sleep 2; boot_waits=$((boot_waits + 1))
+  (( boot_waits < 30 )) || { echo "error: simulator $UDID did not finish booting" >&2; exit 1; }
+done
 echo "==> simulator: $UDID"
 
 # ── Apps to test ───────────────────────────────────────────────────────
