@@ -180,6 +180,40 @@ let tiles2048Target = Target.target(
     settings: .settings(base: appTargetSettings)
 )
 
+// #510 Phase 3: XCUITest E2E target for Sudoku. `product: .uiTests` hosts the
+// Sudoku app and drives the real UI on the simulator; the `.target("Sudoku")`
+// dependency makes Sudoku the target application. The DEBUG launch hooks (#510
+// Phase 1) let the win → completion flow be reached deterministically. Run
+// on-demand via `mise run test:ui sudoku` (not a per-PR gate — local substitute
+// while XCC quota is out, mirroring tf:upload). The shared parameterized flow
+// will live in App/UITestsShared/** once the Minesweeper mirror lands.
+// Named `SudokuE2ETests` (not `SudokuUITests`) to avoid colliding with the
+// SPM snapshot/unit target of that name in Packages/SudokuKit.
+let sudokuE2ETestsTarget = Target.target(
+    name: "SudokuE2ETests",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .uiTests,
+    bundleId: "com.wei18.sudoku.e2e",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    sources: ["App/SudokuE2ETests/**/*.swift"],
+    dependencies: [.target(name: "Sudoku")],
+    settings: .settings(base: swiftSettings)
+)
+
+// Minesweeper E2E target — mirrors `sudokuE2ETestsTarget`. Named
+// `MinesweeperE2ETests` to avoid colliding with the SPM `MinesweeperUITests`
+// snapshot target.
+let minesweeperE2ETestsTarget = Target.target(
+    name: "MinesweeperE2ETests",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .uiTests,
+    bundleId: "com.wei18.minesweeper.e2e",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    sources: ["App/MinesweeperE2ETests/**/*.swift"],
+    dependencies: [.target(name: "Minesweeper")],
+    settings: .settings(base: swiftSettings)
+)
+
 let project = Project(
     name: "Game",
     options: .options(
@@ -213,7 +247,10 @@ let project = Project(
             .release(name: "Release", xcconfig: "Tuist/Config-Release.xcconfig"),
         ]
     ),
-    targets: [sudokuTarget, minesweeperTarget, tiles2048Target],
+    targets: [
+        sudokuTarget, minesweeperTarget, tiles2048Target,
+        sudokuE2ETestsTarget, minesweeperE2ETestsTarget,
+    ],
     schemes: [
         .scheme(
             name: "Sudoku",
@@ -233,11 +270,50 @@ let project = Project(
                 )
             )
         ),
+        // #510 Phase 3: dedicated on-demand E2E scheme. Kept separate from the
+        // "Sudoku" scheme so the host-driven XCUITest target never runs on the
+        // default (fast SPM) test action. Same-project `.target(...)` references
+        // are fine here — the cross-SPM-package limitation that forces the other
+        // schemes onto .xctestplan (issue #184) does not apply to a native
+        // target in the Game project. Run via `mise run test:ui sudoku`.
+        .scheme(
+            name: "Sudoku-E2E",
+            shared: true,
+            buildAction: .buildAction(targets: ["Sudoku", "SudokuE2ETests"]),
+            testAction: .targets(
+                ["SudokuE2ETests"],
+                configuration: "Debug"
+            ),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "Sudoku",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/Sudoku/Resources/Sudoku.storekit")
+                )
+            )
+        ),
         .scheme(
             name: "Minesweeper",
             shared: true,
             buildAction: .buildAction(targets: ["Minesweeper"]),
             testAction: .testPlans(["App/Minesweeper/Minesweeper.xctestplan"]),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "Minesweeper",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/Minesweeper/Resources/Minesweeper.storekit")
+                )
+            )
+        ),
+        // #510 Phase 3: dedicated on-demand E2E scheme (mirrors Sudoku-E2E).
+        .scheme(
+            name: "Minesweeper-E2E",
+            shared: true,
+            buildAction: .buildAction(targets: ["Minesweeper", "MinesweeperE2ETests"]),
+            testAction: .targets(
+                ["MinesweeperE2ETests"],
+                configuration: "Debug"
+            ),
             runAction: .runAction(
                 configuration: "Debug",
                 executable: "Minesweeper",

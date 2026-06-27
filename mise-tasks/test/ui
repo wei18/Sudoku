@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#MISE description="Run the host-driven XCUITest E2E suites (#510 Phase 3) on the iOS Simulator. Local on-demand substitute for the per-PR CI gate while the XCC quota is out (mirrors tf:upload's posture) — NOT wired into any GitHub Actions / xctestplan default action. Drives the real app: Sudoku runs the full win → completion happy path via the near-win launch hook; Minesweeper runs a launch smoke (its win flow lands once the winning-cell beacon ships)."
+#USAGE arg "<app>" help="App E2E suite to run" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
+#USAGE flag "--udid <udid>" help="Simulator UDID (default: first booted, else boot an iPhone 17 Pro)" default=""
+#USAGE flag "--no-generate" help="Skip tuist install + generate; reuse the existing Game.xcworkspace" default="false"
+#
+# Each suite runs through its dedicated `<App>-E2E` scheme (see Project.swift)
+# so the slow host-driven tests never run on the fast default SPM test action.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+APP="${usage_app:-all}"
+UDID="${usage_udid:-}"
+NO_GENERATE="${usage_no_generate:-false}"
+
+DERIVED="build/e2e"
+
+scheme_for() { case "$1" in sudoku) echo "Sudoku-E2E";; minesweeper) echo "Minesweeper-E2E";; *) echo "";; esac; }
+
+# ── Resolve the simulator ──────────────────────────────────────────────
+if [[ -z "$UDID" ]]; then
+  UDID="$(xcrun simctl list devices booted 2>/dev/null | grep -Eo '[0-9A-F-]{36}' | head -1 || true)"
+fi
+if [[ -z "$UDID" ]]; then
+  UDID="$(xcrun simctl list devices available | grep -E 'iPhone 17 Pro \(' | grep -Eo '[0-9A-F-]{36}' | head -1)"
+  [[ -n "$UDID" ]] || { echo "error: no 'iPhone 17 Pro' simulator found in available devices" >&2; exit 1; }
+  echo "==> booting iPhone 17 Pro ($UDID)"
+  xcrun simctl boot "$UDID"
+fi
+boot_waits=0
+until xcrun simctl list devices booted | grep -q "$UDID"; do
+  sleep 2; boot_waits=$((boot_waits + 1))
+  (( boot_waits < 30 )) || { echo "error: simulator $UDID did not finish booting" >&2; exit 1; }
+done
+echo "==> simulator: $UDID"
+
+# ── Apps to test ───────────────────────────────────────────────────────
+APPS=()
+case "$APP" in
+  all) APPS=(sudoku minesweeper);;
+  *) APPS=("$APP");;
+esac
+
+if [[ "$NO_GENERATE" != "true" ]]; then
+  echo "==> tuist generate (workspace is gitignored)"
+  mise exec -- tuist install >/dev/null 2>&1
+  mise exec -- tuist generate --no-open >/dev/null 2>&1
+fi
+
+# ── Run each suite ─────────────────────────────────────────────────────
+FAILED=()
+for app in "${APPS[@]}"; do
+  scheme="$(scheme_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+  echo "==> $scheme"
+  # Single run: stream the filtered result lines AND capture xcodebuild's real
+  # exit code via PIPESTATUS[0] (grep's status would mask it).
+  set +e
+  xcodebuild test \
+    -workspace Game.xcworkspace -scheme "$scheme" \
+    -destination "platform=iOS Simulator,id=$UDID" \
+    -derivedDataPath "$DERIVED" 2>&1 \
+    | grep -E "Test Case .* (passed|failed)|Executed [0-9]|TEST (SUCCEEDED|FAILED)"
+  status=${PIPESTATUS[0]}
+  set -e
+  [[ $status -eq 0 ]] || FAILED+=("$scheme")
+done
+
+if (( ${#FAILED[@]} > 0 )); then
+  echo "==> FAILED: ${FAILED[*]}" >&2
+  exit 1
+fi
+echo "==> all E2E suites passed"
