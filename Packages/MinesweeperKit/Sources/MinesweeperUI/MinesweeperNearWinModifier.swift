@@ -76,6 +76,23 @@ private struct MinesweeperNearWinCoverView: View {
         MinesweeperBoardView(viewModel: nearWin.viewModel)
             .environment(\.theme, MinesweeperTheme())
             .environment(\.minesweeperCell, MinesweeperTheme().cell)
+            // #510 Phase 3 (#633): winning-cell beacon. Unlike Sudoku (where a
+            // wrong digit is harmless and can be brute-forced), tapping the
+            // wrong hidden cell here hits a mine = loss — the E2E test must tap
+            // the EXACT remaining safe cell, whose (row, col) is computed at
+            // runtime. Surface it through this hidden element's identifier; the
+            // test parses it, then taps that cell by its unique a11y label
+            // ("Row r+1, Column c+1, Hidden"). Compiled out of Release builds by
+            // the enclosing `#if DEBUG`.
+            .overlay(alignment: .topLeading) {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement()
+                    .accessibilityLabel("uitest winning cell beacon")
+                    .accessibilityIdentifier(
+                        "game.uitest.winningCell.r\(nearWin.lastSafeRow).c\(nearWin.lastSafeCol)"
+                    )
+            }
     }
 }
 

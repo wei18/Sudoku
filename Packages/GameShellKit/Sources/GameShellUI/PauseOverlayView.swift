@@ -48,6 +48,10 @@ public struct PauseOverlayView: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel(Text(resumeLabel))
+            // #510 Phase 3 (#633): stable, non-localized anchor so the E2E flow
+            // can dismiss the pause cover in any locale (resumeLabel is
+            // localized). Shared by both apps' boards (mirror principle).
+            .accessibilityIdentifier("game.pause.resume")
         }
     }
 }

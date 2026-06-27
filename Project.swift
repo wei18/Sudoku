@@ -195,7 +195,7 @@ let sudokuE2ETestsTarget = Target.target(
     product: .uiTests,
     bundleId: "com.wei18.sudoku.e2e",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    sources: ["App/SudokuE2ETests/**/*.swift"],
+    sources: ["App/SudokuE2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
     dependencies: [.target(name: "Sudoku")],
     settings: .settings(base: swiftSettings)
 )
@@ -209,7 +209,7 @@ let minesweeperE2ETestsTarget = Target.target(
     product: .uiTests,
     bundleId: "com.wei18.minesweeper.e2e",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    sources: ["App/MinesweeperE2ETests/**/*.swift"],
+    sources: ["App/MinesweeperE2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
     dependencies: [.target(name: "Minesweeper")],
     settings: .settings(base: swiftSettings)
 )
