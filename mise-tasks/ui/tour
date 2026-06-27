@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+#MISE description="Screen-tour (#510): deep-link + screenshot every app screen in light & dark for fast UI/UX-designer review. Builds a DEBUG sim app (the -uitest-route / near-win hooks are DEBUG-only) and walks home → daily → practice → board → settings on the iOS Simulator. Output: build/tour/<app>/<appearance>/NN-screen.png."
+#USAGE flag "--app <app>" help="Which app(s) to tour" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
+#USAGE flag "--udid <udid>" help="Simulator UDID (default: first booted, else boot an iPhone 17 Pro)" default=""
+#USAGE flag "--no-build" help="Skip build+install; tour the already-installed app" default="false"
+#
+# Each screen is reached in ONE launch via the #510 launch hooks — no manual
+# tapping — so the whole tour is deterministic and re-runnable. Board uses the
+# near-win-modal hook (a board one move from a win); the rest use -uitest-route.
+#
+# Hand the output folder to a designer: every screen, both appearances, side by
+# side. Re-run after a UI change to refresh.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+APP="${usage_app:-all}"
+UDID="${usage_udid:-}"
+NO_BUILD="${usage_no_build:-false}"
+
+DERIVED="build/tour-sim"
+OUT_ROOT="build/tour"
+
+scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
+bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
+
+# (screen-key, launch-arg) pairs — empty arg = default launch (home).
+SCREENS=(
+  "01-home:"
+  "02-daily:-uitest-route daily"
+  "03-practice:-uitest-route practice"
+  "04-board:-uitest-near-win-modal"
+  "05-settings:-uitest-route settings"
+)
+
+# ── Resolve the simulator ──────────────────────────────────────────────
+if [[ -z "$UDID" ]]; then
+  UDID="$(xcrun simctl list devices booted 2>/dev/null | grep -Eo '[0-9A-F-]{36}' | head -1 || true)"
+fi
+if [[ -z "$UDID" ]]; then
+  UDID="$(xcrun simctl list devices available | grep -E 'iPhone 17 Pro \(' | grep -Eo '[0-9A-F-]{36}' | head -1)"
+  [[ -n "$UDID" ]] || { echo "error: no 'iPhone 17 Pro' simulator found in available devices" >&2; exit 1; }
+  echo "==> booting iPhone 17 Pro ($UDID)"
+  xcrun simctl boot "$UDID"
+fi
+until xcrun simctl list devices booted | grep -q "$UDID"; do sleep 2; done
+echo "==> simulator: $UDID"
+
+# ── Apps to tour ───────────────────────────────────────────────────────
+APPS=()
+case "$APP" in
+  all) APPS=(sudoku minesweeper);;
+  *) APPS=("$APP");;
+esac
+
+if [[ "$NO_BUILD" != "true" ]]; then
+  echo "==> tuist generate (workspace is gitignored)"
+  mise exec -- tuist install >/dev/null 2>&1
+  mise exec -- tuist generate --no-open >/dev/null 2>&1
+fi
+
+PRODUCTS="$DERIVED/Build/Products/Debug-iphonesimulator"
+
+for app in "${APPS[@]}"; do
+  scheme="$(scheme_for "$app")"; bundle="$(bundle_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+
+  if [[ "$NO_BUILD" != "true" ]]; then
+    echo "==> build $scheme (Debug, iphonesimulator)"
+    xcodebuild -workspace Game.xcworkspace -scheme "$scheme" \
+      -sdk iphonesimulator -configuration Debug \
+      -destination "platform=iOS Simulator,id=$UDID" \
+      -derivedDataPath "$DERIVED" build >/dev/null
+    xcrun simctl install "$UDID" "$PRODUCTS/$scheme.app"
+  fi
+
+  for mode in light dark; do
+    xcrun simctl ui "$UDID" appearance "$mode" >/dev/null 2>&1 || true
+    dir="$OUT_ROOT/$app/$mode"; mkdir -p "$dir"
+    echo "==> $app · $mode"
+    for entry in "${SCREENS[@]}"; do
+      key="${entry%%:*}"; arg="${entry#*:}"
+      xcrun simctl terminate "$UDID" "$bundle" >/dev/null 2>&1 || true
+      # shellcheck disable=SC2086
+      xcrun simctl launch "$UDID" "$bundle" $arg >/dev/null 2>&1 || true
+      sleep 3
+      # Capture stderr (simctl io chatters there even on success) and surface
+      # it only on failure — clean success output, diagnostic failure output.
+      if err="$(xcrun simctl io "$UDID" screenshot "$dir/$key.png" 2>&1 >/dev/null)"; then
+        echo "    $key.png"
+      else
+        echo "    $key.png (FAILED): $err"
+      fi
+    done
+  done
+  xcrun simctl terminate "$UDID" "$bundle" >/dev/null 2>&1 || true
+done
+
+xcrun simctl ui "$UDID" appearance light >/dev/null 2>&1 || true
+echo "==> done. Tour screenshots: $OUT_ROOT/<app>/<light|dark>/NN-screen.png"

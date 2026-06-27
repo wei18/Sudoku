@@ -27,6 +27,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run lint:swift_strict [files]` | SwiftLint, warnings-fail (PR CI) | safe | [[apple-dev-skills:mise-tool-management]] |
 | `mise run new_app:provisioning` | render provisioning walkthrough HTML (public IDs only) | safe | [[asc-ops-handoff]] |
 | `mise run verify:audio` | check each #330 gameplay soundKey resolves to a bundled asset (stem == soundKey, resolver-ext) | safe (read-only) | — (#330) |
+| `mise run ui:tour [--app <app>] [--udid u] [--no-build]` | deep-link + screenshot every screen (home/daily/practice/board/settings) in light & dark for designer review; uses the #510 DEBUG launch hooks | safe; builds a DEBUG sim app, output gitignored under `build/tour/` | — (#510) |
 
 ## CI scripts (Xcode Cloud)
 
