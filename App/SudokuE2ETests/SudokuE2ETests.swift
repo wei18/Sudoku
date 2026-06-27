@@ -59,7 +59,7 @@ final class SudokuE2ETests: XCTestCase {
         let cellPoint = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: cellFrame.midX, dy: cellFrame.midY))
 
-        let completionHero = app.descendants(matching: .any)["game.completion.hero"]
+        let completionHero = app.descendants(matching: .any)[GameE2ESupport.completionHeroID]
 
         // Brute-force the winning digit: this Sudoku has no mistake limit, so a
         // wrong digit is simply overwritten by the next. The correct digit wins
@@ -70,12 +70,6 @@ final class SudokuE2ETests: XCTestCase {
             if completionHero.waitForExistence(timeout: 2) { break }
         }
 
-        // Final wait (not bare `.exists`) so a winning digit whose overlay
-        // animates in just after the loop's poll on a slow CI machine still
-        // resolves before we assert.
-        XCTAssertTrue(
-            completionHero.waitForExistence(timeout: 5),
-            "completion overlay (game.completion.hero) should appear after the winning move"
-        )
+        GameE2ESupport.assertCompletionAppears(in: app)
     }
 }

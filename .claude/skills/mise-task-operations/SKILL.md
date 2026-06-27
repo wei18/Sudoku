@@ -28,7 +28,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run new_app:provisioning` | render provisioning walkthrough HTML (public IDs only) | safe | [[asc-ops-handoff]] |
 | `mise run verify:audio` | check each #330 gameplay soundKey resolves to a bundled asset (stem == soundKey, resolver-ext) | safe (read-only) | — (#330) |
 | `mise run ui:tour [--app <app>] [--udid u] [--no-build]` | deep-link + screenshot every screen (home/daily/practice/board/settings) in light & dark for designer review; uses the #510 DEBUG launch hooks | safe; builds a DEBUG sim app, output gitignored under `build/tour/` | — (#510) |
-| `mise run test:ui [<app>] [--udid u] [--no-generate]` | run host-driven XCUITest E2E suites via the `<App>-E2E` schemes (Sudoku: full win→completion; MS: launch smoke) | safe; local on-demand substitute for the per-PR CI gate while XCC quota is out (NOT a GitHub Actions gate) | — (#510 Phase 3) |
+| `mise run test:ui [<app>] [--udid u] [--no-generate]` | run host-driven XCUITest E2E suites via the `<App>-E2E` schemes (both apps: launch smoke + full win→completion) | safe; local on-demand substitute for the per-PR CI gate while XCC quota is out (NOT a GitHub Actions gate) | — (#510 Phase 3) |
 
 ## CI scripts (Xcode Cloud)
 
