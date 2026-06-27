@@ -209,6 +209,11 @@ public struct CompletionScreen: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(outcome.accessibilityLabel)
+        // #510 Phase 3: stable, non-localized anchor so the host-driven
+        // XCUITest E2E flow can assert "completion overlay appeared" after the
+        // winning move, in any locale. Both apps render CompletionScreen, so
+        // this single identifier serves both (mirror principle).
+        .accessibilityIdentifier("game.completion.hero")
     }
 
     private var heroTint: Color {
