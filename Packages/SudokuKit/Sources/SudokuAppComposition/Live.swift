@@ -104,7 +104,6 @@ extension AppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
-            settingsNotices: makeSettingsNotices(),
             // #557 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
             // Byte-identical to the former `HomeViewModel.subtitleKey` literals
             // so snapshot baselines do not move.

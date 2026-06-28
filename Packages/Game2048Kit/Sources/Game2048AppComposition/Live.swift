@@ -116,7 +116,6 @@ extension Game2048AppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
-            settingsNotices: LiveRouteFactory.makeSettingsNotices(),
             // #479 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
             // Byte-identical to the former Game2048HomeViewModel.subtitleKey
             // literals so snapshot baselines do not move.
