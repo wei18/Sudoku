@@ -48,6 +48,39 @@ Settings are all shared and render from `GameConfig`. So the generated
 `<Game>AppComposition` is a thin, near-identical mirror of 2048's — exactly the
 kind of boilerplate a scaffold should own.
 
+### Conformance of the three existing games (audit 2026-06-29)
+
+Before templating game N, the three existing games must agree on the shape the
+template copies. Audited Sudoku / Minesweeper / 2048 against the canonical
+structure (2048 = clean shape):
+
+| Dimension | Sudoku | MS | 2048 | Verdict |
+|---|---|---|---|---|
+| `<Game>CoreKit` (`Engine` + `GameState`) | ✓ | ✓ | ✓ | conformant |
+| `<Game>Kit` (`AppComposition`/`Persistence`/`UI`) | ✓ (+`KitTesting`) | ✓ | ✓ | conformant (Sudoku's extra test-support target is benign) |
+| Composition = `makeGameApp` / `GameConfig` | ✓ | ✓ | ✓ | conformant |
+| **`LiveRouteFactory` location** | **`SudokuUI/Navigation/RouteFactory.swift`** | `MSAppComposition/LiveRouteFactory.swift` | `Game2048AppComposition/LiveRouteFactory.swift` | **⚠️ Sudoku outlier** |
+| App shell core (Info.plist · entitlements · license_plist · xcstrings×2 · PrivacyInfo · `App.swift`) | ✓ | ✓ | ✓ | conformant |
+| `cloudkit/<game>.ckdb` | ✓ | ✓ | ✓ | conformant |
+| Project.swift app target + scheme | ✓ (+E2E) | ✓ (+E2E) | ✓ (no E2E) | conformant (2048 E2E is pre-ship) |
+| Preview.swift / Audio / `.storekit` / `.xctestplan` | ✓ | ✓ | absent | 2048 **pre-ship gaps**, not drift (SDD-004 milestones / #501) |
+
+**The one real drift: Sudoku's `LiveRouteFactory`.** All three are role-equivalent
+(same `RouteFactory<Route>` protocol from GameShellUI, built by each Live.swift's
+`makeRouteFactory:` closure), but Sudoku's concrete type lives in the **UI** module
+(`SudokuUI/Navigation/RouteFactory.swift`) while MS and 2048 put theirs in the
+**composition** module (`<Game>AppComposition/LiveRouteFactory.swift`). Sudoku can't
+move it trivially: `SudokuUI/Board/BoardView+Completion.swift` calls the static
+helpers `LiveRouteFactory.leaderboardId(...)` / `.isDaily(puzzleId:)`, so the type is
+load-bearing inside SudokuUI (MS/2048 UI reference it in comments only). Tracked in
+**#639** — extract those statics into a SudokuUI helper, then relocate the factory.
+
+**Scaffold implication:** the template follows the 2048/MS shape — `LiveRouteFactory`
+in `<Game>AppComposition`, UI module composition-free. Until #639 lands, Sudoku is a
+documented exception, consistent with SDD-005 Pillar A ("Sudoku is the drifted one").
+2048's pre-ship gaps (audio assets, StoreKit, E2E) are tracked separately and don't
+affect the template's *structural* shape.
+
 ---
 
 ## 3. What the scaffold generates vs. what stays manual
