@@ -59,7 +59,7 @@ structure (2048 = clean shape):
 | `<Game>CoreKit` (`Engine` + `GameState`) | ✓ | ✓ | ✓ | conformant |
 | `<Game>Kit` (`AppComposition`/`Persistence`/`UI`) | ✓ (+`KitTesting`) | ✓ | ✓ | conformant (Sudoku's extra test-support target is benign) |
 | Composition = `makeGameApp` / `GameConfig` | ✓ | ✓ | ✓ | conformant |
-| **`LiveRouteFactory` location** | **`SudokuUI/Navigation/RouteFactory.swift`** | `MSAppComposition/LiveRouteFactory.swift` | `Game2048AppComposition/LiveRouteFactory.swift` | **⚠️ Sudoku outlier** |
+| **`LiveRouteFactory` location** | ~~`SudokuUI/Navigation/`~~ → `SudokuAppComposition/LiveRouteFactory.swift` | `MSAppComposition/LiveRouteFactory.swift` | `Game2048AppComposition/LiveRouteFactory.swift` | ⚠️→✓ **resolved #640** |
 | App shell core (Info.plist · entitlements · license_plist · xcstrings×2 · PrivacyInfo · `App.swift`) | ✓ | ✓ | ✓ | conformant |
 | `cloudkit/<game>.ckdb` | ✓ | ✓ | ✓ | conformant |
 | Project.swift app target + scheme | ✓ (+E2E) | ✓ (+E2E) | ✓ (no E2E) | conformant (2048 E2E is pre-ship) |
@@ -72,12 +72,14 @@ structure (2048 = clean shape):
 **composition** module (`<Game>AppComposition/LiveRouteFactory.swift`). Sudoku can't
 move it trivially: `SudokuUI/Board/BoardView+Completion.swift` calls the static
 helpers `LiveRouteFactory.leaderboardId(...)` / `.isDaily(puzzleId:)`, so the type is
-load-bearing inside SudokuUI (MS/2048 UI reference it in comments only). Tracked in
-**#639** — extract those statics into a SudokuUI helper, then relocate the factory.
+load-bearing inside SudokuUI (MS/2048 UI reference it in comments only). **Resolved
+in #640 (#639):** the statics moved to `SudokuLeaderboardRouting` (SudokuUI) and the
+factory now lives in `SudokuAppComposition/LiveRouteFactory.swift` — all three games
+place it identically.
 
-**Scaffold implication:** the template follows the 2048/MS shape — `LiveRouteFactory`
-in `<Game>AppComposition`, UI module composition-free. Until #639 lands, Sudoku is a
-documented exception, consistent with SDD-005 Pillar A ("Sudoku is the drifted one").
+**Scaffold implication:** the template follows the (now-universal) shape —
+`LiveRouteFactory` in `<Game>AppComposition`, UI module composition-free. With #640
+landed there is no longer a per-game exception to template around.
 2048's pre-ship gaps (audio assets, StoreKit, E2E) are tracked separately and don't
 affect the template's *structural* shape.
 
