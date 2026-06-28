@@ -14,6 +14,8 @@ import Persistence
 import SudokuPersistence
 import SudokuKitTesting
 import Telemetry
+// #639: LiveRouteFactory moved here from SudokuUI; these tests followed it.
+@testable import SudokuAppComposition
 @testable import SudokuUI
 
 @MainActor

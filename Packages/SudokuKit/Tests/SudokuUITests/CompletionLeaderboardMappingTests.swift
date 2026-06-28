@@ -20,22 +20,22 @@ struct CompletionLeaderboardMappingTests {
     // MARK: - puzzleId → leaderboard id mapping
 
     @Test func dailyEasyMapsToEasyLeaderboard() {
-        let id = LiveRouteFactory.leaderboardId(forPuzzleId: "2026-05-19-easy")
+        let id = SudokuLeaderboardRouting.leaderboardId(forPuzzleId: "2026-05-19-easy")
         #expect(id == LeaderboardID.dailyEasy)
     }
 
     @Test func dailyMediumMapsToMediumLeaderboard() {
-        let id = LiveRouteFactory.leaderboardId(forPuzzleId: "2026-05-19-medium")
+        let id = SudokuLeaderboardRouting.leaderboardId(forPuzzleId: "2026-05-19-medium")
         #expect(id == LeaderboardID.dailyMedium)
     }
 
     @Test func dailyHardMapsToHardLeaderboard() {
-        let id = LiveRouteFactory.leaderboardId(forPuzzleId: "2026-05-19-hard")
+        let id = SudokuLeaderboardRouting.leaderboardId(forPuzzleId: "2026-05-19-hard")
         #expect(id == LeaderboardID.dailyHard)
     }
 
     @Test func practicePuzzleMapsToNoLeaderboard() {
-        let id = LiveRouteFactory.leaderboardId(forPuzzleId: "practice-7Z9K-medium")
+        let id = SudokuLeaderboardRouting.leaderboardId(forPuzzleId: "practice-7Z9K-medium")
         #expect(id == nil)
     }
 
