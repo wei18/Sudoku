@@ -203,9 +203,6 @@ public struct GameConfig<Route: Hashable & Sendable> {
     public let audio: AudioConfig
     /// Reminder content: subsystem + notification copy for this game.
     public let reminders: ReminderContentConfig
-    /// Optional `SettingsNoticesConfig` — wired by each game's composition root
-    /// (some games may not have a Notices section yet).
-    public let settingsNotices: SettingsNoticesConfig?
     /// Per-mode home card content: subtitle copy + navigation route (or nil for
     /// leaderboard side-effect). `GameHomeView` builds its `HomeModeItem` array
     /// from this map. Missing modes fall back to an empty subtitle and no route.
@@ -257,7 +254,6 @@ public struct GameConfig<Route: Hashable & Sendable> {
         failureTint: Color,
         audio: AudioConfig,
         reminders: ReminderContentConfig,
-        settingsNotices: SettingsNoticesConfig? = nil,
         homeModes: [HomeMode: HomeModeContent<Route>] = [:],
         presentLeaderboard: (@MainActor () -> Void)? = nil,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
@@ -277,7 +273,6 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.failureTint = failureTint
         self.audio = audio
         self.reminders = reminders
-        self.settingsNotices = settingsNotices
         self.homeModes = homeModes
         self.presentLeaderboard = presentLeaderboard
         self.fetchResume = fetchResume
