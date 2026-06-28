@@ -64,7 +64,7 @@ extension BoardView {
     /// Mirrors `MinesweeperBoardView.makeCompletionViewModel()`.
     func makeCompletionViewModel() -> CompletionViewModel {
         // #381/#383: leaderboardId is nil for Practice solves → .noLeaderboard.
-        let leaderboardId = LiveRouteFactory.leaderboardId(
+        let leaderboardId = SudokuLeaderboardRouting.leaderboardId(
             forPuzzleId: viewModel.identity.puzzleId
         )
         return CompletionViewModel(
@@ -80,7 +80,7 @@ extension BoardView {
     /// Returns non-nil only when `makeDailyReminderPrimer` was wired AND the
     /// puzzleId is Daily. Practice solves → nil → no primer affordance shown.
     func makeReminderPrimer() -> ReminderPrimerCoordinator? {
-        guard LiveRouteFactory.isDaily(puzzleId: viewModel.identity.puzzleId) else {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: viewModel.identity.puzzleId) else {
             return nil
         }
         return makeDailyReminderPrimer?()

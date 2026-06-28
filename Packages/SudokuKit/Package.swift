@@ -285,6 +285,11 @@ let testTargets: [Target] = [
         name: "SudokuAppCompositionTests",
         dependencies: [
             "SudokuAppComposition",
+            // #639: RouteFactoryTests moved here with LiveRouteFactory; it
+            // `@testable import`s SudokuUI (AppRoute + destination views) and
+            // names SudokuPersistence types when building the factory's deps.
+            "SudokuUI",
+            "SudokuPersistence",
             persistenceDep,
             gameCenterClientDep,
             gameCenterTestingDep,

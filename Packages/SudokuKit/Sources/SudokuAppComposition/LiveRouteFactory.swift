@@ -3,6 +3,13 @@
 // This file holds the Sudoku-specific implementation and its destination
 // wiring; the protocol's `associatedtype Route` is bound to `AppRoute` here.
 //
+// #639 (SDD-006 §2): relocated from `SudokuUI/Navigation/RouteFactory.swift` into
+// SudokuAppComposition so the factory lives in the composition module, matching
+// the 2048/MS canonical shape (UI module stays composition-free). The Daily /
+// leaderboard-id statics it used to host moved to `SudokuLeaderboardRouting` in
+// SudokuUI (the module SudokuUI's board completion also needs them), so this
+// file no longer creates a UI→composition cycle.
+//
 // Why the protocol seam exists: every time the App gained a new top-level
 // dependency (Telemetry, PuzzleProvider, then v2's AdProvider / IAPClient /
 // AdGate) the `RootView` constructor grew another parameter — by v2.3.2's
@@ -17,9 +24,13 @@ public import MonetizationUI
 public import GameCenterClient
 public import Persistence
 public import SudokuPersistence
-internal import SudokuEngine
 public import Telemetry
 public import GameShellUI
+// #639: the factory now lives in SudokuAppComposition, so it imports SudokuUI
+// for the destination views / view models / `AppRoute` (in the public init +
+// `view(for:)` signature) + `SudokuLeaderboardRouting`. AppComposition → UI is
+// the correct (one-way) dependency direction.
+public import SudokuUI
 // refactor/settingskit-target: `SettingsNoticesConfig` moved out of GameShellUI
 // into SettingsUI; it appears in `LiveRouteFactory.init`'s public signature.
 public import SettingsUI
@@ -124,39 +135,6 @@ public struct LiveRouteFactory: RouteFactory {
         self.onPresentBoard = onPresentBoard
     }
 
-    /// A puzzleId is a Daily unless it carries the practice prefix — same
-    /// encoding `BoardLoaderView.identity(from:)` relies on. The reminder primer
-    /// is offered only after a Daily solve (proposal §5.1; flow S02).
-    /// `internal` (not private) so `BoardView+Completion.swift` can gate the
-    /// primer on the same classification without duplicating the logic.
-    static func isDaily(puzzleId: String) -> Bool {
-        !puzzleId.hasPrefix("practice-")
-    }
-
-    /// Leaderboard id this `puzzleId` submits to, or `nil` when it has none.
-    /// Issue #381: the Completion screen must post to the board matching the
-    /// solved difficulty, not always daily-easy. Practice puzzles have no
-    /// leaderboard (`LeaderboardKind` has no practice case) → `nil`.
-    ///
-    /// Mirrors `PuzzleIdentity`'s encoding: every id ends with the
-    /// `Difficulty.rawValue` suffix (`-easy` / `-medium` / `-hard`); Daily ids
-    /// have no `practice-` prefix. Only Daily ids resolve to a board.
-    static func leaderboardId(forPuzzleId puzzleId: String) -> String? {
-        guard isDaily(puzzleId: puzzleId) else { return nil }
-        let kind: LeaderboardKind
-        switch puzzleId {
-        case let id where id.hasSuffix("-\(Difficulty.easy.rawValue)"):
-            kind = .dailyEasy
-        case let id where id.hasSuffix("-\(Difficulty.medium.rawValue)"):
-            kind = .dailyMedium
-        case let id where id.hasSuffix("-\(Difficulty.hard.rawValue)"):
-            kind = .dailyHard
-        default:
-            return nil
-        }
-        return LeaderboardIDs.id(for: kind)
-    }
-
     @MainActor
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
@@ -217,7 +195,7 @@ public struct LiveRouteFactory: RouteFactory {
         case .completion(let puzzleId, let elapsedSeconds, let mistakeCount):
             // #287 Phase 2: offer the daily-ready primer ONLY on a Daily solve
             // (flow S02). Practice solves pass `reminderPrimer: nil` → no change.
-            let reminderPrimer = Self.isDaily(puzzleId: puzzleId)
+            let reminderPrimer = SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId)
                 ? makeDailyReminderPrimer?()
                 : nil
             // SDD-003 Epic 4: Close pops the last route entry so the player
@@ -229,7 +207,7 @@ public struct LiveRouteFactory: RouteFactory {
                         puzzleId: puzzleId,
                         elapsedSeconds: elapsedSeconds,
                         mistakeCount: mistakeCount,
-                        leaderboardId: Self.leaderboardId(forPuzzleId: puzzleId),
+                        leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId),
                         gameCenter: gameCenter
                     ),
                     reminderPrimer: reminderPrimer,
