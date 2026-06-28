@@ -250,6 +250,29 @@ duplicate → shared test covers it → snapshot gate green.
 
 ## 7. Acceptance criteria
 
+> **AS-BUILT (2026-06-28 audit).** Verified against the current tree: C1, C2, C5
+> met; C3 met **as revised**; C4 met structurally, pending empirical proof.
+> - **C1** ✓ — composition roots are thin mirrors (MS 127 / 2048 102 LOC; Sudoku
+>   229, carrying its extra monetization/ATT/error-reporter surface). Home (#557),
+>   DailyHub two-phase skeleton (#558), board redirect (#559), GC dashboard (#560)
+>   are all shared; per-app delta is `GameConfig` values + `Live.swift` DI values.
+> - **C2** ✓ — `Sudoku{UI,Persistence,AppComposition}` · `Minesweeper*` ·
+>   `Game2048*`; no legacy `GameState` / `AppComposition` / `PuzzleStore`.
+> - **C3 — REVISED during execution (#559).** `Live+Resume.swift` / `Live+Audio.swift`
+>   are gone and all three roots compose via `makeGameApp` ✓. But a per-app
+>   **`LiveRouteFactory` legitimately remains**: its `view(for:)` builds gameplay
+>   screens and the route enums differ per game, so it is *not* drift. The genuinely
+>   shared scaffolding (the `RouteFactory` protocol + `GameBoardRedirect` /
+>   `boardDestination`) was extracted to GameAppKit/GameShellUI. Read this criterion
+>   as "no per-app **composition** / `Live+Resume` / `Live+Audio`", **not** "no per-app
+>   RouteFactory". (Recurring SDD §5 lesson: per-game `view`/VM/routes are legit
+>   gameplay; extract only the shared bug-prone scaffolding.)
+> - **C4** — structurally met (no per-app Home/Root/HomeView remains; the shared
+>   `GameHomeView` + `GameRootViewModel<Route>` serve all three), but **not yet
+>   empirically proven** — that proof is scaffolding game 4 under epic **#479**.
+> - **C5** ✓ — each migration PR reported 0 snapshot-pixel moves; #554 CLOSED and
+>   sim-verified (#577).
+
 - `diff` of the **non-gameplay** source between games trends to ~empty (only
   `GameConfig` values differ).
 - Target/file naming matches the `<Game><Concern>` table for all games incl. 2048.
@@ -276,3 +299,9 @@ duplicate → shared test covers it → snapshot gate green.
 *Captured 2026-06-17 at the end of a long session (#536/#539/#540/#541/#544 fixes +
 skills + Phase-3 sim audit). Next context: refine §4 `GameConfig`, confirm the drift
 audit against the current tree, and turn §5 into tracked work.*
+
+*As-built closure (2026-06-28): all of the above "next context" work is done — §4
+`GameConfig` shipped (#556), the drift audit was confirmed per-surface during #558–#560,
+and §5 became the #479-tracked roadmap (#556–#561 / #572 / #575 / #577). SDD-005 is
+COMPLETE; see the §7 as-built audit note. The only forward thread is empirical C4 proof
+via the #479 new-game scaffold.*
