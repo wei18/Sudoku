@@ -21,6 +21,10 @@
 // What the caller owns: the card content (each game's Completion view) and the
 // `onClose` action — Sudoku and MS both clear their overlay VM then `dismiss()`
 // the presenting fullScreenCover so the player returns to the hub.
+//
+// #652: optional `onPlayAgain` — when wired, renders "Play Again" (primary
+// `.borderedProminent`) ABOVE Close (demoted to `.bordered`). When nil, only
+// Close renders, preserving snapshot parity for callers that don't wire it.
 
 public import SwiftUI
 
@@ -28,13 +32,17 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     @Environment(\.theme) private var theme
 
     private let onClose: () -> Void
+    // #652: Play Again CTA. `nil` → renders exactly as before (Close only).
+    private let onPlayAgain: (() -> Void)?
     @ViewBuilder private let card: () -> Card
 
     public init(
         onClose: @escaping () -> Void,
+        onPlayAgain: (() -> Void)? = nil,
         @ViewBuilder card: @escaping () -> Card
     ) {
         self.onClose = onClose
+        self.onPlayAgain = onPlayAgain
         self.card = card
     }
 
@@ -49,13 +57,38 @@ public struct CompletionOverlayScaffold<Card: View>: View {
                     // from eating the Spacers and sticking the card at the top.
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                Button(action: onClose) {
-                    Text("Close", bundle: .main)
-                        .frame(maxWidth: .infinity)
+                VStack(spacing: 12) {
+                    if let onPlayAgain {
+                        Button(action: onPlayAgain) {
+                            Text("Play Again", bundle: .main)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(theme.accent.primary.resolved)
+                        .controlSize(.large)
+                    }
+                    // #652: Close is demoted to secondary `.bordered` style when
+                    // Play Again is present; primary `.borderedProminent` when it is
+                    // the only CTA (nil onPlayAgain). Swift requires separate branches
+                    // because `.bordered` / `.borderedProminent` are different types.
+                    if onPlayAgain != nil {
+                        Button(action: onClose) {
+                            Text("Close", bundle: .main)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(theme.accent.primary.resolved)
+                        .controlSize(.large)
+                    } else {
+                        Button(action: onClose) {
+                            Text("Close", bundle: .main)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(theme.accent.primary.resolved)
+                        .controlSize(.large)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(theme.accent.primary.resolved)
-                .controlSize(.large)
                 .padding(.horizontal, 32)
                 .padding(.bottom, 16)
             }

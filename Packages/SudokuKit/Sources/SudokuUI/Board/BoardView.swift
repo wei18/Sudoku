@@ -10,7 +10,7 @@ public import GameCenterClient
 internal import GameAppKit
 import GameShellUI
 import MonetizationUI
-import SudokuEngine
+public import SudokuEngine
 public import SettingsUI
 
 public struct BoardView: View {
@@ -27,6 +27,11 @@ public struct BoardView: View {
     // #610: GC client + daily primer builder — internal for BoardView+Completion.swift.
     let gameCenter: (any GameCenterClient)?
     let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #652: Play Again CTA. When wired, the completion overlay shows "Play Again"
+    // above Close. The closure receives the current difficulty so the caller can
+    // start a fresh game at the same level. `nil` → Close-only (existing behavior).
+    // `internal` so BoardView+Completion can read it.
+    let onPlayAgain: ((Difficulty) -> Void)?
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -54,6 +59,7 @@ public struct BoardView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        onPlayAgain: ((Difficulty) -> Void)? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
@@ -61,6 +67,7 @@ public struct BoardView: View {
         self.adGate = adGate
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.onPlayAgain = onPlayAgain
         self.path = path
     }
 
