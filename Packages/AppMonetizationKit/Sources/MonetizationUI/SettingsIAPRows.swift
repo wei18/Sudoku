@@ -52,6 +52,7 @@ public struct RemoveAdsRow: View {
                 .frame(minWidth: 60, alignment: .trailing)
             }
         }
+        .buttonStyle(.plain)
         .disabled(controller.purchaseInFlight)
         .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
     }
@@ -120,6 +121,7 @@ public struct RestorePurchasesRow: View {
                 .frame(minWidth: 60, alignment: .trailing)
             }
         }
+        .buttonStyle(.plain)
         .disabled(controller.restoreInFlight)
     }
 }

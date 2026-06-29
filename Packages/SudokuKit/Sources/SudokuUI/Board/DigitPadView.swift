@@ -53,6 +53,7 @@ struct DigitPadView: View {
         HStack(spacing: 0) {
             Button(action: onUndo) {
                 Image(systemName: "arrow.uturn.backward")
+                    .foregroundStyle(theme.accent.primary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .frame(minWidth: 44, minHeight: 44)
@@ -61,6 +62,7 @@ struct DigitPadView: View {
 
             Button(action: onRedo) {
                 Image(systemName: "arrow.uturn.forward")
+                    .foregroundStyle(theme.accent.primary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .frame(minWidth: 44, minHeight: 44)
