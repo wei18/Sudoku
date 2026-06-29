@@ -18,10 +18,10 @@ internal struct LeaderboardConfig: Sendable, Equatable {
     /// (`gc.minesweeper.leaderboard.<d>.daily.title`) coexist in one catalog.
     internal let titleKey: String
     /// ASC score formatter. Defaults to `"ELAPSED_TIME_CENTISECOND"` (Sudoku/MS).
-    /// Tiles2048 passes `"INTEGER"` (OQ-GC-2048-1: score is a raw integer, not time).
+    /// A score-based game can pass `"INTEGER"` (raw integer score, not time).
     internal let scoreFormat: String
     /// ASC `scoreSortType` token. Defaults to `"ASC"` (lower elapsed-time = better).
-    /// Tiles2048 passes `"DESC"` (higher score = better). Confirmed tokens: "ASC" / "DESC"
+    /// A high-score-wins game passes `"DESC"`. Confirmed tokens: "ASC" / "DESC"
     /// (round-2 409 2026-05-20, issue #19).
     internal let sortOrder: String
 
@@ -115,7 +115,7 @@ internal struct AchievementConfig: Sendable, Equatable {
     /// All v1 achievements are visible (§How.3.2: "皆 visible").
     internal let isHidden: Bool
     /// Per-instance achievement prefix. Defaults to `Config.achievementPrefix`
-    /// (Sudoku). Tiles2048 passes `Config.tiles2048AchievementPrefix` so both
+    /// (Sudoku). A new game can pass its own bundle-id-rooted prefix so multiple
     /// games' achievements coexist without a per-app config struct split.
     private let achievementPrefix: String
 
@@ -138,8 +138,8 @@ internal struct AchievementConfig: Sendable, Equatable {
     /// (mirrors how `GCApp.leaderboardTitleKeyPrefix` derives the leaderboard
     /// key namespace). Sudoku (`com.wei18.sudoku.achievement.`) keeps the
     /// original un-namespaced `gc.achievement` for back-compat with shipped
-    /// xcstrings keys. Any other app (e.g. Tiles2048 →
-    /// `com.wei18.tiles2048.achievement.`) gets a scoped namespace
+    /// xcstrings keys. Any other app (e.g. a new game →
+    /// `com.wei18.<game>.achievement.`) gets a scoped namespace
     /// `gc.<app>.achievement` — no hardcoded game name in the else-branch.
     private var locKeyPrefix: String {
         let vendorPrefix = "com.wei18."

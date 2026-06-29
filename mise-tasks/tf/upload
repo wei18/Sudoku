@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="LOCAL archive → export → TestFlight upload (temporary Xcode-Cloud substitute while XCC quota is exhausted). archive/export are safe; the upload step is USER-OWNED and gated behind --i-am-sure. Reads ASC API creds from secrets/.env — never hardcoded."
 #USAGE arg "<app>" help="App to archive and upload" {
-#USAGE   choices "sudoku" "minesweeper" "tiles2048"
+#USAGE   choices "sudoku" "minesweeper"
 #USAGE }
 #USAGE arg "<platform>" help="Target platform" {
 #USAGE   choices "ios" "macos" "all"
@@ -58,8 +58,8 @@
 set -euo pipefail
 
 # ── Public, non-secret config (already in Project.swift / entitlements) ───────
-scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; tiles2048) echo "Tiles2048";; *) echo "";; esac; }
-bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; tiles2048) echo "com.wei18.tiles2048";; *) echo "";; esac; }
+scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
+bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
 usage() {
     sed -n '2,47p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
@@ -86,7 +86,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-case "$APP" in sudoku|minesweeper|tiles2048) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper|tiles2048 (got '$APP')" >&2; usage ;; esac
+case "$APP" in sudoku|minesweeper) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper (got '$APP')" >&2; usage ;; esac
 case "$PLAT" in ios|macos|all) ;; *) echo "error: platform must be ios|macos|all (got '$PLAT')" >&2; usage ;; esac
 [[ -n "$BUILD_NUMBER" ]] || { echo "error: --build value is empty" >&2; exit 1; }
 
@@ -289,7 +289,6 @@ render_admob_xcconfig() {
     case "$APP" in
         sudoku)      prefix="SUDOKU" ;;
         minesweeper) prefix="MINESWEEPER" ;;
-        tiles2048)   prefix="TILES2048" ;;
         *) return 0 ;;
     esac
     local app_id_var="${prefix}_ADMOB_APP_ID"

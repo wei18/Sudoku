@@ -141,19 +141,17 @@ internal struct ConfigConsistencyTests {
 
     // MARK: - IAP (issue #200, Phase 1.a)
 
-    @Test("Remove-ads IAP productIds are byte-equal to the StoreKit2 canonical identifiers (Sudoku + Minesweeper + Tiles2048)")
+    @Test("Remove-ads IAP productIds are byte-equal to the StoreKit2 canonical identifiers (Sudoku + Minesweeper)")
     internal func iapProductId() {
         // Hard-coded here (mirrors GC tests pattern) so this file stays
         // import-light; IAPStoreKit2 is not imported. If the StoreKit2
         // constant ever drifts, fix BOTH places — this test will fail first.
-        #expect(Config.iaps.count == 3)
+        #expect(Config.iaps.count == 2)
         #expect(Config.iaps[0].productId == "com.wei18.sudoku.iap.remove_ads")
         #expect(Config.iaps[1].productId == "com.wei18.minesweeper.iap.remove_ads")
-        #expect(Config.iaps[2].productId == "com.wei18.tiles2048.iap.remove_ads")
         #expect(Config.allIAPProductIds == [
             "com.wei18.sudoku.iap.remove_ads",
-            "com.wei18.minesweeper.iap.remove_ads",
-            "com.wei18.tiles2048.iap.remove_ads"
+            "com.wei18.minesweeper.iap.remove_ads"
         ])
     }
 
@@ -165,69 +163,9 @@ internal struct ConfigConsistencyTests {
         // Minesweeper: namespaced under app shortname
         #expect(Config.iaps[1].shortId == "minesweeper.remove_ads")
         #expect(Config.iaps[1].nameKey == "iap.minesweeper.remove_ads.name")
-        // Tiles2048: namespaced under app shortname
-        #expect(Config.iaps[2].shortId == "tiles2048.remove_ads")
-        #expect(Config.iaps[2].nameKey == "iap.tiles2048.remove_ads.name")
     }
 
-    // MARK: - Tiles2048 (SDD-004 M5, OQ-GC-2048-1)
-
-    @Test("Tiles2048: 1 leaderboard ID matches Game2048LeaderboardID.daily exactly")
-    internal func tiles2048LeaderboardID() {
-        // Hard-coded (mirrors MS pattern) so this file stays import-light;
-        // Game2048UI is not imported. If Game2048LeaderboardID.daily drifts,
-        // this test fails first — fix BOTH places.
-        let expected = ["com.wei18.tiles2048.leaderboard.daily.v1"]
-        #expect(Config.leaderboards(for: .tiles2048).map(\.id) == expected)
-    }
-
-    @Test("Tiles2048: leaderboard uses INTEGER format + DESC sort (OQ-GC-2048-1: higher score = better)")
-    internal func tiles2048LeaderboardShape() {
-        let boards = Config.leaderboards(for: .tiles2048)
-        #expect(boards.count == 1)
-        let board = boards[0]
-        // INTEGER formatter — score is a raw integer, NOT elapsed time.
-        #expect(board.defaultFormatter == "INTEGER")
-        // DESC — higher score ranks first.
-        #expect(board.sortOrder == "DESC")
-        // Recurring daily shape mirrors Sudoku/MS exactly.
-        #expect(board.recurrenceRule == "FREQ=DAILY;INTERVAL=1")
-        #expect(board.recurrenceDuration == "PT24H")
-        #expect(board.submissionType == "BEST_SCORE")
-        #expect(board.titleKey == "gc.tiles2048.leaderboard.daily.title")
-    }
-
-    @Test("Tiles2048: achievement prefix matches expected bundle-id-rooted value")
-    internal func tiles2048AchievementPrefix() {
-        #expect(Config.tiles2048AchievementPrefix == "com.wei18.tiles2048.achievement.")
-    }
-
-    @Test("Tiles2048: exactly 1 achievement (reached_2048), the sole M4 signal")
-    internal func tiles2048AchievementIds() {
-        #expect(Config.tiles2048Achievements.count == 1)
-        #expect(Config.tiles2048Achievements[0].shortId == "reached_2048")
-        #expect(Config.tiles2048Achievements[0].fullId
-            == "com.wei18.tiles2048.achievement.reached_2048")
-    }
-
-    @Test("Tiles2048: achievement points respect 0–100 cap (issue #40)")
-    internal func tiles2048AchievementPoints() {
-        #expect(Config.totalTiles2048AchievementPoints == 50)
-        for ach in Config.tiles2048Achievements {
-            #expect(ach.points >= 0 && ach.points <= 100)
-        }
-    }
-
-    @Test("Tiles2048: achievement localization keys use gc.tiles2048.achievement namespace")
-    internal func tiles2048AchievementLocKeys() {
-        let ach = Config.tiles2048Achievements[0]
-        #expect(ach.titleKey == "gc.tiles2048.achievement.reached_2048.title")
-        #expect(ach.descriptionKey == "gc.tiles2048.achievement.reached_2048.description")
-        #expect(ach.unearnedDescriptionKey
-            == "gc.tiles2048.achievement.reached_2048.unearnedDescription")
-    }
-
-    @Test("Sudoku achievements are unaffected by Tiles2048 additions")
+    @Test("Sudoku achievements: count + points budget pinned")
     internal func sudokuAchievementsUnchanged() {
         #expect(Config.achievements.count == 11)
         #expect(Config.totalAchievementPoints == 680)
@@ -237,7 +175,7 @@ internal struct ConfigConsistencyTests {
 
     // MARK: - #521: locKeyPrefix derivation (no hardcoded game name in else-branch)
 
-    @Test("locKeyPrefix derives namespace from achievementPrefix — hypothetical 4th game gets its own namespace, not tiles2048's (#521)")
+    @Test("locKeyPrefix derives namespace from achievementPrefix — a new game gets its own namespace, not Sudoku's (#521)")
     internal func achievementLocKeyPrefixDerived() {
         // Sudoku keeps the original un-namespaced key shape (back-compat).
         let sudokuAch = AchievementConfig(
@@ -246,26 +184,19 @@ internal struct ConfigConsistencyTests {
         )
         #expect(sudokuAch.titleKey == "gc.achievement.first_puzzle.title")
 
-        // Tiles2048 uses its derived namespace — same as the existing shipped keys.
-        let tilesAch = AchievementConfig(
-            shortId: "reached_2048", points: 50, isHidden: false,
-            achievementPrefix: "com.wei18.tiles2048.achievement."
-        )
-        #expect(tilesAch.titleKey == "gc.tiles2048.achievement.reached_2048.title")
-
-        // Hypothetical 4th game must derive its OWN namespace — NOT tiles2048's.
-        let game4Ach = AchievementConfig(
+        // A hypothetical new game must derive its OWN namespace from its prefix.
+        let newGameAch = AchievementConfig(
             shortId: "first_win", points: 20, isHidden: false,
-            achievementPrefix: "com.wei18.supergame4.achievement."
+            achievementPrefix: "com.wei18.supergame.achievement."
         )
-        #expect(game4Ach.titleKey == "gc.supergame4.achievement.first_win.title")
-        // Confirm the 4th-game key does NOT accidentally use the tiles2048 namespace.
-        #expect(!game4Ach.titleKey.contains("tiles2048"))
+        #expect(newGameAch.titleKey == "gc.supergame.achievement.first_win.title")
+        // Confirm it does NOT accidentally fall back to Sudoku's un-namespaced shape.
+        #expect(!newGameAch.titleKey.hasPrefix("gc.achievement."))
     }
 
     // MARK: - #522: expectedXCStringsKeys IAP filter
 
-    @Test("expectedXCStringsKeys filters IAP keys to the target app — minesweeper excludes sudoku + tiles2048 IAPs (#522)")
+    @Test("expectedXCStringsKeys filters IAP keys to the target app — each app excludes the other's IAP (#522)")
     internal func expectedXCStringsKeysIAPFilter() {
         // Sudoku validate: expects sudoku IAP keys only.
         let sudokuKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
@@ -275,7 +206,6 @@ internal struct ConfigConsistencyTests {
         )
         #expect(sudokuKeys.contains("iap.remove_ads.name"))
         #expect(!sudokuKeys.contains("iap.minesweeper.remove_ads.name"))
-        #expect(!sudokuKeys.contains("iap.tiles2048.remove_ads.name"))
 
         // Minesweeper validate: expects minesweeper IAP keys only.
         let msKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
@@ -285,16 +215,5 @@ internal struct ConfigConsistencyTests {
         )
         #expect(msKeys.contains("iap.minesweeper.remove_ads.name"))
         #expect(!msKeys.contains("iap.remove_ads.name"))
-        #expect(!msKeys.contains("iap.tiles2048.remove_ads.name"))
-
-        // Tiles2048 validate: expects tiles2048 IAP keys only.
-        let tilesKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
-            leaderboards: Config.leaderboards(for: .tiles2048),
-            achievements: Config.tiles2048Achievements,
-            gcApp: .tiles2048
-        )
-        #expect(tilesKeys.contains("iap.tiles2048.remove_ads.name"))
-        #expect(!tilesKeys.contains("iap.remove_ads.name"))
-        #expect(!tilesKeys.contains("iap.minesweeper.remove_ads.name"))
     }
 }

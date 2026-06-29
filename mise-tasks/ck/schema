@@ -4,7 +4,7 @@
 #USAGE   choices "export" "validate" "deploy"
 #USAGE }
 #USAGE flag "--app <app>" help="App whose CloudKit container to target" {
-#USAGE   choices "sudoku" "minesweeper" "tiles2048"
+#USAGE   choices "sudoku" "minesweeper"
 #USAGE }
 #USAGE flag "--env <env>" help="CloudKit environment (validate/deploy only)" default="development" {
 #USAGE   choices "development" "production"
@@ -27,9 +27,9 @@
 #              the same .ckdb is a no-op. Production indexes are add-only (Apple rule).
 #
 # Usage:
-#   mise run ck:schema export  --app sudoku|minesweeper|tiles2048
-#   mise run ck:schema validate --app sudoku|minesweeper|tiles2048 [--env development|production]
-#   mise run ck:schema deploy  --app sudoku|minesweeper|tiles2048 --env development
+#   mise run ck:schema export  --app sudoku|minesweeper
+#   mise run ck:schema validate --app sudoku|minesweeper [--env development|production]
+#   mise run ck:schema deploy  --app sudoku|minesweeper --env development
 #   (production: NOT scriptable — cktool import-schema is development-only;
 #    promote via CloudKit Console "Deploy Schema Changes to Production…".
 #    Running `deploy --env production` prints the Console steps and exits.)
@@ -47,7 +47,6 @@ container_for() {
     case "$1" in
         sudoku)      echo "iCloud.com.wei18.sudoku" ;;
         minesweeper) echo "iCloud.com.wei18.minesweeper" ;;
-        tiles2048)   echo "iCloud.com.wei18.tiles2048" ;;
         *) echo "" ;;
     esac
 }
@@ -73,9 +72,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$SUBCMD" ]] || { echo "error: missing subcommand (export|validate|deploy)" >&2; usage; }
-[[ -n "$APP" ]]    || { echo "error: --app is required (sudoku|minesweeper|tiles2048)" >&2; usage; }
+[[ -n "$APP" ]]    || { echo "error: --app is required (sudoku|minesweeper)" >&2; usage; }
 CONTAINER="$(container_for "$APP")"
-[[ -n "$CONTAINER" ]] || { echo "error: unknown --app '$APP' (expected: sudoku|minesweeper|tiles2048)" >&2; exit 1; }
+[[ -n "$CONTAINER" ]] || { echo "error: unknown --app '$APP' (expected: sudoku|minesweeper)" >&2; exit 1; }
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCHEMA_DIR="$REPO_ROOT/cloudkit"

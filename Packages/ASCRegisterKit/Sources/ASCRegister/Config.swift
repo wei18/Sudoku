@@ -26,17 +26,14 @@ internal enum Config {
     internal enum GCApp: String, Sendable, CaseIterable {
         case sudoku
         case minesweeper
-        case tiles2048
 
         /// Bundle-id-rooted leaderboard prefix for this app. Must equal the
         /// app's runtime constant (`LeaderboardID.dailyPrefix` /
-        /// `MinesweeperLeaderboardID.prefix` / `Game2048LeaderboardID.prefix`)
-        /// — pinned by ConfigConsistencyTests.
+        /// `MinesweeperLeaderboardID.prefix`) — pinned by ConfigConsistencyTests.
         internal var leaderboardPrefix: String {
             switch self {
             case .sudoku:      return "com.wei18.sudoku.leaderboard"
             case .minesweeper: return "com.wei18.minesweeper.leaderboard"
-            case .tiles2048:   return "com.wei18.tiles2048.leaderboard"
             }
         }
 
@@ -48,7 +45,6 @@ internal enum Config {
             switch self {
             case .sudoku:      return "gc.leaderboard"
             case .minesweeper: return "gc.minesweeper.leaderboard"
-            case .tiles2048:   return "gc.tiles2048.leaderboard"
             }
         }
     }
@@ -64,43 +60,20 @@ internal enum Config {
     /// 2-hour upper bound for valid completion times, per §How.3.1 score range.
     internal static let leaderboardScoreMaxMilliseconds: Int64 = 7_200_000
 
-    /// The daily leaderboard(s) for `app`.
-    ///
-    /// Sudoku + Minesweeper: 3 difficulty-based boards
-    /// (elapsed-time formatter, low-to-high sort, recurring daily).
-    /// MS difficulty segments `easy/medium/hard` mirror Sudoku's id shape —
-    /// see `MinesweeperLeaderboardID`.
-    ///
-    /// Tiles2048: 1 single daily board (INTEGER formatter, high-to-low sort,
-    /// recurring daily). The leaderboard metric is the game score (higher =
-    /// better), not elapsed time. OQ-GC-2048-1 resolved: `scoreSortType =
-    /// "DESC"`, `scoreFormat = "INTEGER"`. ID must equal
-    /// `Game2048LeaderboardID.daily`.
+    /// The 3 difficulty-based daily leaderboards for `app` (elapsed-time
+    /// formatter, low-to-high sort, recurring daily). MS difficulty segments
+    /// `easy/medium/hard` mirror Sudoku's id shape — see `MinesweeperLeaderboardID`.
     internal static func leaderboards(for app: GCApp) -> [LeaderboardConfig] {
         let prefix = app.leaderboardPrefix
         let keyPrefix = app.leaderboardTitleKeyPrefix
-        switch app {
-        case .tiles2048:
-            return [
-                LeaderboardConfig(
-                    id: "\(prefix).daily.\(leaderboardVersionSuffix)",
-                    referenceName: "Daily v1",
-                    difficulty: "",
-                    titleKey: "\(keyPrefix).daily.title",
-                    scoreFormat: "INTEGER",
-                    sortOrder: "DESC"
-                )
-            ]
-        default:
-            let titleCase: (String) -> String = { $0.prefix(1).uppercased() + $0.dropFirst() }
-            return ["easy", "medium", "hard"].map { difficulty in
-                LeaderboardConfig(
-                    id: "\(prefix).\(difficulty).daily.\(leaderboardVersionSuffix)",
-                    referenceName: "Daily \(titleCase(difficulty)) v1",
-                    difficulty: difficulty,
-                    titleKey: "\(keyPrefix).\(difficulty).daily.title"
-                )
-            }
+        let titleCase: (String) -> String = { $0.prefix(1).uppercased() + $0.dropFirst() }
+        return ["easy", "medium", "hard"].map { difficulty in
+            LeaderboardConfig(
+                id: "\(prefix).\(difficulty).daily.\(leaderboardVersionSuffix)",
+                referenceName: "Daily \(titleCase(difficulty)) v1",
+                difficulty: difficulty,
+                titleKey: "\(keyPrefix).\(difficulty).daily.title"
+            )
         }
     }
 
@@ -192,58 +165,11 @@ internal enum Config {
                 by purchasing in Settings → Pro → Remove Ads. After \
                 purchase, ads should not appear anywhere in the app.
                 """
-        ),
-        IAPProduct(
-            productId: "com.wei18.tiles2048.iap.remove_ads",
-            referenceName: "Remove Ads v1",
-            familyShareable: true,
-            reviewNote: """
-                This non-consumable IAP removes banner ads app-wide. Test \
-                by purchasing in Settings → Pro → Remove Ads. After \
-                purchase, ads should not appear anywhere in the app.
-                """
         )
     ]
 
     internal static var allIAPProductIds: [String] {
         iaps.map(\.productId)
-    }
-
-    // MARK: - Tiles2048 Game Center (OQ-GC-2048-1, SDD-004 M5)
-
-    /// Achievement prefix for Tiles2048. Must equal the runtime constant in
-    /// Game2048AppComposition's GameCenterSink (to be wired at M5).
-    internal static let tiles2048AchievementPrefix = "com.wei18.tiles2048.achievement."
-
-    /// Tiles2048 achievements: only those M4 code actually reports.
-    ///
-    /// M4 analysis: `Game2048SessionSnapshot.reachedTarget` is the sole
-    /// achievement signal in Game2048Kit (flows through
-    /// `Game2048GameViewModel` → `Game2048CompletionViewModel`). No other
-    /// achievement shortIds are emitted. Do NOT add achievements the code
-    /// does not report.
-    ///
-    /// `reached_2048`: awarded when the 2048 tile is reached in a run.
-    /// Points: 50 (respects ASC 0–100 cap per entry, issue #40).
-    internal static let tiles2048Achievements: [AchievementConfig] = [
-        AchievementConfig(
-            shortId: "reached_2048",
-            points: 50,
-            isHidden: false,
-            achievementPrefix: tiles2048AchievementPrefix
-        )
-    ]
-
-    internal static var allTiles2048AchievementShortIds: [String] {
-        tiles2048Achievements.map(\.shortId)
-    }
-
-    internal static var allTiles2048AchievementFullIds: [String] {
-        tiles2048Achievements.map(\.fullId)
-    }
-
-    internal static var totalTiles2048AchievementPoints: Int {
-        tiles2048Achievements.reduce(0) { $0 + $1.points }
     }
 
     // MARK: - Locale code mapping (issue #31)

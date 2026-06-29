@@ -104,9 +104,7 @@ internal enum ASCRegisterCLI {
 
         // Validate Config sanity (app-scoped).
         let leaderboards = Config.leaderboards(for: gcApp)
-        let achievements: [AchievementConfig] = (gcApp == .tiles2048)
-            ? Config.tiles2048Achievements
-            : Config.achievements
+        let achievements: [AchievementConfig] = Config.achievements
         let lbIds = leaderboards.map(\.id)
         let pointsSum = achievements.reduce(0) { $0 + $1.points }
 
@@ -209,7 +207,7 @@ internal enum ASCRegisterCLI {
         // slices vary by app (see ConfigSnapshot.live(for:)). For non-sudoku
         // apps the reconciler emits achievement actions from the app's own
         // achievement list; to keep `plan/apply` strictly leaderboard-scoped
-        // for MS + tiles2048 (achievements are a separate future pass), filter
+        // for MS (achievements are a separate future pass), filter
         // to leaderboard actions only. Sudoku drives all resource types in one
         // pass (historical behaviour, unchanged).
         let allActions = Reconciler.plan(
@@ -368,7 +366,7 @@ internal enum ASCRegisterCLI {
             keys.append(ach.unearnedDescriptionKey)
         }
         // Filter IAP keys to the target app so `validate --app minesweeper`
-        // does not expect the Sudoku or Tiles2048 IAP keys in the MS catalog
+        // does not expect the Sudoku IAP keys in the MS catalog
         // (issue #522).
         let appBundlePrefix = "com.wei18.\(gcApp.rawValue)."
         for iap in Config.iaps where iap.productId.hasPrefix(appBundlePrefix) {
@@ -382,9 +380,9 @@ internal enum ASCRegisterCLI {
     private static func printUsage() {
         print("""
         Usage:
-          ASCRegister validate  --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
-          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
-          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper|tiles2048>]
+          ASCRegister validate  --xcstrings <path> [--app <sudoku|minesweeper>]
+          ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
+          ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
