@@ -36,6 +36,7 @@
 
 public import Foundation
 public import MonetizationCore
+internal import StoreKit
 internal import SwiftUI
 
 /// Stable identifier for the Remove Ads non-consumable. Mirrors
@@ -199,9 +200,15 @@ public final class MonetizationStateController {
                 toastController?.show(Toast(style: .failure, message: reason))
             }
         } catch {
-            let reason = String(describing: error)
-            latestMessage = .failure(reason: reason)
-            toastController?.show(Toast(style: .failure, message: reason))
+            // StoreKit user-cancellation (e.g. App Store password sheet dismissed)
+            // is silent — mirrors the in-band `.userCancelled` case above.
+            if case .userCancelled = error as? StoreKitError {
+                latestMessage = nil
+            } else {
+                let reason = "Purchase failed"
+                latestMessage = .failure(reason: reason)
+                toastController?.show(Toast(style: .failure, message: reason))
+            }
         }
     }
 
@@ -219,9 +226,15 @@ public final class MonetizationStateController {
             latestMessage = .restored
             toastController?.show(Toast(style: .success, message: "Purchases restored"))
         } catch {
-            let reason = String(describing: error)
-            latestMessage = .failure(reason: reason)
-            toastController?.show(Toast(style: .failure, message: reason))
+            // StoreKit user-cancellation (e.g. App Store sign-in sheet dismissed
+            // during restore) is silent — no toast, no latestMessage update.
+            if case .userCancelled = error as? StoreKitError {
+                latestMessage = nil
+            } else {
+                let reason = "Restore failed"
+                latestMessage = .failure(reason: reason)
+                toastController?.show(Toast(style: .failure, message: reason))
+            }
         }
     }
 
