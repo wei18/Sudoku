@@ -215,9 +215,11 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .settings:
+            let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             return AnyView(
                 SettingsView(
                     viewModel: SettingsViewModel(
+                        appVersion: appVersion,
                         persistence: persistence,
                         errorReporter: errorReporter,
                         toastController: toastController
