@@ -5,7 +5,7 @@
 This directory holds the skills available in this project. It has two parts:
 
 1. **Project-bound skills (8)** — flat `SKILL.md` directories below. These name this
-   repo's specific apps (Sudoku / Minesweeper / Tiles2048), `mise run` tasks, and
+   repo's specific apps (Sudoku / Minesweeper), `mise run` tasks, and
    pipelines, so they are *not* portable and live here un-namespaced.
 2. **The `apple-dev-skills` plugin (26)** — the portable Apple-platform /
    AI-agent-collaboration skills were extracted into

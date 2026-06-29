@@ -1,6 +1,6 @@
 ---
 name: game-factory-composition
-description: The shared composition template that lets multiple games (Sudoku / Minesweeper / Tiles2048) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (Home / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp".
+description: The shared composition template that lets multiple games (Sudoku / Minesweeper) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (Home / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp".
 ---
 
 # Game Factory Composition
@@ -35,8 +35,9 @@ per-app-duplicated code and had to be fixed twice. The mirror principle
 ### A. Naming — `<Game><Concern>` targets
 
 - Targets are `SudokuGameState` / `SudokuAppComposition` / `SudokuPersistence`,
-  `Minesweeper…`, `Game2048…`. **2048 is the canonical clean shape**; Sudoku was
-  the drifted one and was renamed (#561/#562).
+  `Minesweeper…`. **Minesweeper is the canonical clean shape** to template from;
+  Sudoku was the drifted one and was renamed (#561/#562) + had its `LiveRouteFactory`
+  moved into `SudokuAppComposition` (#640) to match.
 - `<Game>UI` internals are **prefix-none** (don't over-prefix every file; MS
   historically over-prefixed, Sudoku didn't — settle on prefix-none).
 
@@ -78,7 +79,7 @@ per-app-duplicated code and had to be fixed twice. The mirror principle
 ## Capabilities are UNIVERSAL, not Optional
 
 Audio / reminders / ATT / MetricKit **all** wire in `makeGameApp` for every game.
-A game *missing* one (MS had no ATT; 2048 had no audio/reminders) is a **bug to
+A game *missing* one (e.g. MS initially shipped with no ATT primer) is a **bug to
 fix during its migration**, NOT modelled as an `Optional` capability. Filling the
 gap means adding the seam wiring **and** its L10n keys (see the scan:l10n blind
 spot in `apple-dev-skills:ai-translated-localization`).

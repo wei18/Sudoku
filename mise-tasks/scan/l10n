@@ -59,9 +59,10 @@ check_catalog "$REPO_ROOT/App/Minesweeper/Resources/Localizable.xcstrings" "Mine
 
 # 2.5) Shared-code dotted-key consistency (#594). A dotted-namespace localization
 #    key (e.g. `leave.game.close`) referenced from a SHARED UI target — linked by
-#    ALL three apps and resolving against `bundle: .main` — must exist in EVERY
-#    app catalog, else it renders the raw key (caught live: Tiles2048's leave-game
-#    dialog + close button announced `leave.game.*` in VoiceOver). The per-catalog
+#    BOTH apps and resolving against `bundle: .main` — must exist in EVERY
+#    app catalog, else it renders the raw key (caught live during the 3-game era:
+#    a game's leave-game dialog + close button announced `leave.game.*` in
+#    VoiceOver). The per-catalog
 #    completeness check above can't see this: each catalog was "complete" for the
 #    keys it HAD. Scoped to dotted keys (unambiguous l10n keys, no app-conditional
 #    English-phrase false positives); "in >=1 catalog but not all" is the signal.
