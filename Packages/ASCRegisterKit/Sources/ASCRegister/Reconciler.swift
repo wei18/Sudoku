@@ -372,21 +372,10 @@ internal struct ConfigSnapshot: Sendable, Equatable {
     /// - Sudoku: 3 elapsed-time daily leaderboards + 11 Sudoku achievements.
     /// - Minesweeper: 3 elapsed-time daily leaderboards + Sudoku achievements
     ///   (GC plan/apply filters to leaderboard-only for non-sudoku apps).
-    /// - Tiles2048: 1 integer-score daily leaderboard + 1 Tiles2048 achievement
-    ///   (`reached_2048`). GC plan/apply also filters to leaderboard-only at
-    ///   apply time; achievements are included here so a future tiles2048
-    ///   achievement-only `apply` pass can consume them without a new flag.
     internal static func live(for app: Config.GCApp) -> ConfigSnapshot {
-        let achievements: [AchievementConfig]
-        switch app {
-        case .tiles2048:
-            achievements = Config.tiles2048Achievements
-        default:
-            achievements = Config.achievements
-        }
-        return ConfigSnapshot(
+        ConfigSnapshot(
             leaderboards: Config.leaderboards(for: app),
-            achievements: achievements,
+            achievements: Config.achievements,
             iaps: Config.iaps
         )
     }

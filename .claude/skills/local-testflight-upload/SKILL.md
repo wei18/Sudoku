@@ -106,7 +106,7 @@ from project memory (`asc-api-credentials` + the Team ID).
   encryption/export-compliance answer and the build is never held on that gate.
   When reporting an upload result, omit the compliance step. (Processing delay is
   still real — uploading ≠ instantly testable — but no compliance answer is
-  needed.) A NEW app (e.g. Tiles2048) must add the same Info.plist key before its
+  needed.) A NEW app (a future game) must add the same Info.plist key before its
   first TF build, or it WILL be held pending the ASC web-UI compliance answer.
 - **macOS export method.** Xcode 15+ renamed `app-store` → `app-store-connect`;
   the task uses the new name (accepted by 16/26). Don't revert it.

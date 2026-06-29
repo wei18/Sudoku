@@ -1,6 +1,6 @@
 ---
 name: asc-ops-handoff
-description: Use when planning, scoping, or executing user-owned App Store Connect / TestFlight / Apple Developer operations for the repo apps (Sudoku / Minesweeper / Tiles2048) — IAP product registration, App Privacy questionnaire, AdMob console linkage, sandbox tester provisioning, TestFlight upload + review, ASC submission, App Metadata uploads. Codifies which steps are user-owned (require Apple ID / 2FA / web UI) vs Leader-orderable (via ASC API + ASCRegister CLI), and the canonical doc + verification checklist for each.
+description: Use when planning, scoping, or executing user-owned App Store Connect / TestFlight / Apple Developer operations for the repo apps (Sudoku / Minesweeper) — IAP product registration, App Privacy questionnaire, AdMob console linkage, sandbox tester provisioning, TestFlight upload + review, ASC submission, App Metadata uploads. Codifies which steps are user-owned (require Apple ID / 2FA / web UI) vs Leader-orderable (via ASC API + ASCRegister CLI), and the canonical doc + verification checklist for each.
 ---
 
 # ASC Ops Handoff

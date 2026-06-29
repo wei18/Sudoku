@@ -5,8 +5,19 @@ open question (§5); everything else is firm enough to review.
 **Date:** 2026-06-29
 **Author:** AI Leader (planning session with the user)
 **Tracks:** epic #479 (new-game scaffold). **Builds on:** SDD-005 (platform
-convergence, COMPLETE — the prerequisite), SDD-004 (game 3 / 2048, the canonical
-clean shape), north-star memory `goal-many-small-games-platform`, mirror principle.
+convergence, COMPLETE — the prerequisite), north-star memory
+`goal-many-small-games-platform`, mirror principle.
+
+> **UPDATE 2026-06-29 — Tiles2048 removed; template source is now Minesweeper.**
+> This RFC was drafted while Tiles2048 (SDD-004) existed as the "canonical clean
+> shape". Later the same day the user removed Tiles2048 to keep MS + Sudoku the
+> focus (SDD-004 abandoned, #501 closed). **Wherever this doc says "2048" / "from
+> 2048" as the template source, read "Minesweeper"** — MS is now the cleanest
+> shipped 2-game mirror to template from (Sudoku is the older reference with the
+> most bespoke surface). The §2 conformance audit below is now a **two-game**
+> (Sudoku + Minesweeper) check; both are conformant after #640. The generator
+> remains PENDING (§5 form undecided), so the design detail wasn't line-edited —
+> only this banner + the §2 table were updated.
 
 ---
 
@@ -50,38 +61,32 @@ kind of boilerplate a scaffold should own.
 
 ### Conformance of the three existing games (audit 2026-06-29)
 
-Before templating game N, the three existing games must agree on the shape the
-template copies. Audited Sudoku / Minesweeper / 2048 against the canonical
-structure (2048 = clean shape):
+Before templating game N, the two shipped games must agree on the shape the
+template copies. Audited Sudoku / Minesweeper against the canonical structure
+(Minesweeper = the clean shape to template from; the original audit also covered
+Tiles2048, now removed):
 
-| Dimension | Sudoku | MS | 2048 | Verdict |
-|---|---|---|---|---|
-| `<Game>CoreKit` (`Engine` + `GameState`) | ✓ | ✓ | ✓ | conformant |
-| `<Game>Kit` (`AppComposition`/`Persistence`/`UI`) | ✓ (+`KitTesting`) | ✓ | ✓ | conformant (Sudoku's extra test-support target is benign) |
-| Composition = `makeGameApp` / `GameConfig` | ✓ | ✓ | ✓ | conformant |
-| **`LiveRouteFactory` location** | ~~`SudokuUI/Navigation/`~~ → `SudokuAppComposition/LiveRouteFactory.swift` | `MSAppComposition/LiveRouteFactory.swift` | `Game2048AppComposition/LiveRouteFactory.swift` | ⚠️→✓ **resolved #640** |
-| App shell core (Info.plist · entitlements · license_plist · xcstrings×2 · PrivacyInfo · `App.swift`) | ✓ | ✓ | ✓ | conformant |
-| `cloudkit/<game>.ckdb` | ✓ | ✓ | ✓ | conformant |
-| Project.swift app target + scheme | ✓ (+E2E) | ✓ (+E2E) | ✓ (no E2E) | conformant (2048 E2E is pre-ship) |
-| Preview.swift / Audio / `.storekit` / `.xctestplan` | ✓ | ✓ | absent | 2048 **pre-ship gaps**, not drift (SDD-004 milestones / #501) |
+| Dimension | Sudoku | Minesweeper | Verdict |
+|---|---|---|---|
+| `<Game>CoreKit` (`Engine` + `GameState`) | ✓ | ✓ | conformant |
+| `<Game>Kit` (`AppComposition`/`Persistence`/`UI`) | ✓ (+`KitTesting`) | ✓ | conformant (Sudoku's extra test-support target is benign) |
+| Composition = `makeGameApp` / `GameConfig` | ✓ | ✓ | conformant |
+| **`LiveRouteFactory` location** | `SudokuAppComposition/LiveRouteFactory.swift` | `MinesweeperAppComposition/LiveRouteFactory.swift` | ✓ (Sudoku's UI→composition move resolved #640) |
+| App shell core (Info.plist · entitlements · license_plist · xcstrings×2 · PrivacyInfo · `App.swift`) | ✓ | ✓ | conformant |
+| `cloudkit/<game>.ckdb` | ✓ | ✓ | conformant |
+| Project.swift app target + schemes (incl. `<App>-E2E`) | ✓ | ✓ | conformant |
+| Preview.swift / Audio / `.storekit` / `.xctestplan` | ✓ | ✓ | conformant |
 
-**The one real drift: Sudoku's `LiveRouteFactory`.** All three are role-equivalent
-(same `RouteFactory<Route>` protocol from GameShellUI, built by each Live.swift's
-`makeRouteFactory:` closure), but Sudoku's concrete type lives in the **UI** module
-(`SudokuUI/Navigation/RouteFactory.swift`) while MS and 2048 put theirs in the
-**composition** module (`<Game>AppComposition/LiveRouteFactory.swift`). Sudoku can't
-move it trivially: `SudokuUI/Board/BoardView+Completion.swift` calls the static
-helpers `LiveRouteFactory.leaderboardId(...)` / `.isDaily(puzzleId:)`, so the type is
-load-bearing inside SudokuUI (MS/2048 UI reference it in comments only). **Resolved
-in #640 (#639):** the statics moved to `SudokuLeaderboardRouting` (SudokuUI) and the
-factory now lives in `SudokuAppComposition/LiveRouteFactory.swift` — all three games
-place it identically.
+The only drift the original three-game audit found — Sudoku's `LiveRouteFactory`
+living in the **UI** module instead of the **composition** module — was resolved in
+**#640 (#639)**: its Daily/leaderboard statics moved to `SudokuLeaderboardRouting`
+(SudokuUI) and the factory now lives in `SudokuAppComposition/LiveRouteFactory.swift`.
+Both games now place it identically.
 
-**Scaffold implication:** the template follows the (now-universal) shape —
-`LiveRouteFactory` in `<Game>AppComposition`, UI module composition-free. With #640
-landed there is no longer a per-game exception to template around.
-2048's pre-ship gaps (audio assets, StoreKit, E2E) are tracked separately and don't
-affect the template's *structural* shape.
+**Scaffold implication:** the template follows Minesweeper's shape — `LiveRouteFactory`
+in `<Game>AppComposition`, UI module composition-free, the full App-shell + ckdb +
+E2E-scheme set present. With #640 landed there is no per-game exception to template
+around.
 
 ---
 

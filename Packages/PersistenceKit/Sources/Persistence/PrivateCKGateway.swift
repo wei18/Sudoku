@@ -156,14 +156,4 @@ extension PrivateCKConfig {
         zoneName: "com.wei18.minesweeper.userZone",
         subscriptionID: "com.wei18.minesweeper.userZone.changes"
     )
-
-    /// Identifiers used by the Tiles2048 app. Distinct from `.sudoku` and
-    /// `.minesweeper` so the three apps' zone / subscription namespaces never
-    /// collide. The CKContainer itself (`iCloud.com.wei18.tiles2048`) is
-    /// resolved by `CKContainer.default()` from the Tiles2048 App target's
-    /// entitlements — not encoded here.
-    public static let tiles2048 = PrivateCKConfig(
-        zoneName: "com.wei18.tiles2048.userZone",
-        subscriptionID: "com.wei18.tiles2048.userZone.changes"
-    )
 }

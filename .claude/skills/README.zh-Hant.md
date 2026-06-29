@@ -5,7 +5,7 @@
 本目錄收錄此專案可用的 skills，分兩部分：
 
 1. **專案綁定 skills（8）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
-   App（Sudoku／Minesweeper／Tiles2048）、`mise run` 任務與 pipeline，**不可移植**，
+   App（Sudoku／Minesweeper）、`mise run` 任務與 pipeline，**不可移植**，
    故留在此處、無命名空間。
 2. **`apple-dev-skills` plugin（26）**——可移植的 Apple 平台／AI agent 協作 skills 已
    抽離至 [`wei18/apple-dev-skills`](https://github.com/wei18/apple-dev-skills)，以 git
