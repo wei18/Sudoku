@@ -101,6 +101,10 @@ extension BoardView {
     /// Close dismisses the overlay AND the fullScreenCover so the user returns
     /// to the hub (#610 fix *2). The dismiss closure is injected by the caller
     /// (BoardView reads `@Environment(\.dismiss)`).
+    ///
+    /// #652: when `onPlayAgain` is wired, Play Again appears above Close. The
+    /// dismiss-then-play action captures the current difficulty so the new game
+    /// matches the just-finished one.
     @ViewBuilder
     func completionSurface(
         _ cvm: CompletionViewModel,
@@ -112,15 +116,29 @@ extension BoardView {
         // overlay VM then dismisses the fullScreenCover → hub (#610 fix *2). On
         // macOS (path != nil) this path is never reached — the predicate gates the
         // overlay to path == nil only.
-        CompletionOverlayScaffold(onClose: {
-            self.completionViewModel = nil
-            dismiss()
-        }, card: {
-            CompletionView(
-                viewModel: cvm,
-                reminderPrimer: completionReminderPrimer,
-                onClose: nil
-            )
-        })
+        let difficulty = viewModel.identity.difficulty
+        CompletionOverlayScaffold(
+            onClose: {
+                self.completionViewModel = nil
+                dismiss()
+            },
+            onPlayAgain: onPlayAgain.map { playAgain in
+                // #652: dismiss current board then start a fresh game at the same
+                // difficulty. The outer `dismiss()` tears down the fullScreenCover so
+                // the hub is visible before the new board modal is presented.
+                {
+                    self.completionViewModel = nil
+                    dismiss()
+                    playAgain(difficulty)
+                }
+            },
+            card: {
+                CompletionView(
+                    viewModel: cvm,
+                    reminderPrimer: completionReminderPrimer,
+                    onClose: nil
+                )
+            }
+        )
     }
 }

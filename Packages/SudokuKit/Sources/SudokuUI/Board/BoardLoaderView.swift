@@ -24,7 +24,7 @@ public import GameAudio
 public import GameCenterClient
 public import SettingsUI
 import SudokuGameState
-import SudokuEngine
+public import SudokuEngine
 
 @MainActor
 public struct BoardLoaderView: View {
@@ -61,6 +61,9 @@ public struct BoardLoaderView: View {
     // Both default to nil so existing callsites (tests, previews) compile unchanged.
     private let gameCenter: (any GameCenterClient)?
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #652: Play Again CTA. Forwarded into `BoardView` → `BoardView+Completion`.
+    // `nil` (default) → Close-only completion (existing callsites unchanged).
+    private let onPlayAgain: ((Difficulty) -> Void)?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -76,7 +79,8 @@ public struct BoardLoaderView: View {
         path: Binding<[AppRoute]>? = nil,
         telemetry: Telemetry? = nil,
         gameCenter: (any GameCenterClient)? = nil,
-        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        onPlayAgain: ((Difficulty) -> Void)? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
@@ -89,6 +93,7 @@ public struct BoardLoaderView: View {
         self.telemetry = telemetry
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.onPlayAgain = onPlayAgain
     }
 
     public var body: some View {
@@ -111,6 +116,7 @@ public struct BoardLoaderView: View {
                 adGate: adGate,
                 gameCenter: gameCenter,
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
+                onPlayAgain: onPlayAgain,
                 path: path
             )
         case .failed(let userFacing):

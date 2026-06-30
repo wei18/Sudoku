@@ -188,7 +188,24 @@ public struct LiveRouteFactory: RouteFactory {
                         // the Completion overlay has everything it needs when
                         // the board is presented as a modal (path == nil).
                         gameCenter: gameCenter,
-                        makeDailyReminderPrimer: makeDailyReminderPrimer
+                        makeDailyReminderPrimer: makeDailyReminderPrimer,
+                        // #652: Play Again — draw a fresh practice puzzle at the
+                        // same difficulty and present it as a new modal. Only wired
+                        // when `onPresentBoard` is available (modal presentation
+                        // mode). Legacy push path (nil) → Close-only. Daily boards
+                        // are intentionally Close-only: a daily is one-per-day, so
+                        // "Play Again" would silently hand back a *practice* puzzle.
+                        onPlayAgain: SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId)
+                            ? nil
+                            : onPresentBoard.map { presenter in
+                                { @MainActor difficulty in
+                                    let provider = self.puzzleProvider
+                                    Task { @MainActor in
+                                        guard let envelope = try? await provider.fetchPracticePool(difficulty: difficulty) else { return }
+                                        presenter(.board(puzzleId: envelope.identity.puzzleId))
+                                    }
+                                }
+                            }
                     )
                 )
             }

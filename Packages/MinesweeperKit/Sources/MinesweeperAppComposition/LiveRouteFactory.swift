@@ -192,6 +192,19 @@ public struct LiveRouteFactory: RouteFactory {
                         // #292: the Completion overlay's "New Game" CTA pops the
                         // stack back to the difficulty picker.
                         onNewGame: { Self.popToNewGame(path: path) },
+                        // #652: Play Again — dismiss current board and present a new
+                        // practice board at the same difficulty with a fresh seed.
+                        // Only wired when `onPresentBoard` is available AND this is a
+                        // practice board: a daily is one-per-day, so Play Again would
+                        // silently hand back a practice board (it draws mode: .practice).
+                        onPlayAgain: mode == .practice
+                            ? onPresentBoard.map { presenter in
+                                { @MainActor difficulty in
+                                    let seed = UInt64.random(in: .min ... .max)
+                                    presenter(.board(difficulty: difficulty, seed: seed, mode: .practice))
+                                }
+                            }
+                            : nil,
                         // #455 step 4: persistence seam. The save's identity is
                         // derived ONCE here (today's date for a daily, a singleton
                         // slot per practice difficulty) — see the store's

@@ -99,6 +99,11 @@ public struct MinesweeperBoardView: View {
     // possible (the VM keeps its player private), so callers that pass a built VM
     // also pass the same player for BGM/Retry — defaulting to Noop is safe.
     private let soundPlayer: any SoundPlaying
+    // #652: Play Again CTA. When wired, the completion overlay shows "Play Again"
+    // above Close. The closure receives the current difficulty so the caller can
+    // dismiss and start a fresh board at the same level. `nil` → Close-only
+    // (existing behavior; snapshot tests are unaffected).
+    private let onPlayAgain: ((Difficulty) -> Void)?
 
     public init(
         viewModel: MinesweeperGameViewModel,
@@ -107,6 +112,7 @@ public struct MinesweeperBoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onNewGame: (() -> Void)? = nil,
+        onPlayAgain: ((Difficulty) -> Void)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil
     ) {
@@ -116,6 +122,7 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onNewGame = onNewGame
+        self.onPlayAgain = onPlayAgain
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
         // seeded terminal board renders WITH the overlay mounted (the in-body
@@ -137,6 +144,7 @@ public struct MinesweeperBoardView: View {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onNewGame: (() -> Void)? = nil,
+        onPlayAgain: ((Difficulty) -> Void)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil
     ) {
@@ -155,6 +163,7 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onNewGame = onNewGame
+        self.onPlayAgain = onPlayAgain
         self.suppressTickerForSnapshot = false
         self.mode = mode
     }
@@ -677,15 +686,28 @@ public struct MinesweeperBoardView: View {
         // revealed the boomed board, leaving the player trapped in the modal — the
         // divergence #615 surfaced. Retry / New Game / Leaderboard CTAs stay removed
         // at this injection site (SDD-003 Epic 4 spec note: "移除發生在各 app 的注入點").
-        CompletionOverlayScaffold(onClose: {
-            self.completionViewModel = nil
-            dismiss()
-        }, card: {
-            MinesweeperCompletionView(
-                viewModel: completionViewModel,
-                onClose: nil
-            )
-        })
+        // #652: Play Again — dismiss current board then present a fresh game at the
+        // same difficulty. Only rendered when `onPlayAgain` is wired by the factory.
+        let difficulty = viewModel.session.difficulty
+        CompletionOverlayScaffold(
+            onClose: {
+                self.completionViewModel = nil
+                dismiss()
+            },
+            onPlayAgain: onPlayAgain.map { playAgain in
+                {
+                    self.completionViewModel = nil
+                    dismiss()
+                    playAgain(difficulty)
+                }
+            },
+            card: {
+                MinesweeperCompletionView(
+                    viewModel: completionViewModel,
+                    onClose: nil
+                )
+            }
+        )
     }
 }
 
