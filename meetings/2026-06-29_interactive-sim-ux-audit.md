@@ -89,3 +89,59 @@ re-seed; L10n ×7 + snapshots to be Leader-finalized).
   (`r8.c8` → "Row 9, Column 9") — off-by-one there hits a mine.
 - **Read the code before trusting a reviewer's P1** — "no Cancel button" and "wrong colour"
   both dissolved under a 2-minute code/pixel check.
+
+## Follow-on (same session, into 2026-06-30) — shipping the fixes + Play Again
+
+Acted on the audit. Every fix went issue → worktree Developer → Leader review → CI → squash-merge.
+
+| PR | What | Closes |
+|---|---|---|
+| #646 | Sudoku settings reads bundle version; silence IAP-cancel toast | #644, #645 |
+| #651 | kill system-blue on undo/redo + Settings IAP rows (4 src lines + 13 re-recorded snapshots) | #650 |
+| #654 | **Play Again** (same-difficulty) completion CTA — reverses SDD-003 Epic 4 "Close only" | #652 |
+| #655 | snapshot test + sim-driveable DEBUG hook for Play Again | (verify #652) |
+| #653 | this meeting log | — |
+
+Still open: #647 (Pause tap target), #648 (Leave cancel discoverability — reframed: code has
+`.cancel`, iOS 26 just doesn't render it as a visible button), #649 (MS revealed-cell grid).
+
+**F1 sim-verified:** rebuilt from main → Sudoku Settings → Version now shows 2.6.0 (was 1.0.0).
+
+### Play Again was the hard one — four agent defects the Leader caught
+
+The feature reverses a deliberate spec decision (SDD-003 Epic 4 made the popup Close-only;
+GC-entry relocation is the still-open #468). Got product sign-off first, then implemented via
+subagents. Each agent pass needed Leader repair:
+
+1. **Daily-board fork (real bug).** "Play Again" drew a *practice* puzzle even after a Daily —
+   a daily is one-per-day. Guarded: Sudoku `SudokuLeaderboardRouting.isDaily(puzzleId:)`,
+   Minesweeper `mode == .practice` → Daily stays Close-only.
+2. **L10n left as English placeholders** (`needs_review`) — the gate passes on non-empty
+   values, so "green" hid 6 untranslated locales. Filled real es/ja/ko/th/zh-Hans/zh-Hant.
+3. **Whole-catalog reformat bled across worktrees.** An agent re-serialised
+   `App/Sudoku/.../Localizable.xcstrings` (compact JSON, 7 k lines) which leaked onto the main
+   checkout's working tree and failed the L10n fixture byte-sync gate on an *unrelated* PR.
+   Fixed by rebuilding that branch clean from origin/main.
+4. **A compile error the agent's "tests pass" claim masked.** The DEBUG hook used
+   `.onChange(of: nearWinBoard)`, which requires `SudokuNearWinBoard: Equatable` (it's only
+   `Identifiable`) → SudokuUI didn't compile. An *incremental* xcodebuild silently embedded the
+   stale SudokuUI framework (so the Play Again button never appeared in the sim, looking like a
+   wiring bug); only a **clean** build surfaced the real `error:`. Fix: observe
+   `(nearWinBoard == nil)` (a Bool — no Equatable needed).
+
+**End-to-end sim-verified** on a clean device build: completion shows Play Again (primary green)
+above Close (secondary); tapping it cleanly dismisses + re-presents a fresh board with a reset
+timer — the dismiss→present transition I'd flagged as a race is empirically clean.
+
+### More lessons
+
+- **Never trust a subagent's "tests pass" — re-run the gate.** #655's agent reported SudokuKit
+  green while the file didn't compile; the snapshot test it added literally could not have run.
+- **An incremental build can mask a compile error as a behaviour bug.** When sim behaviour
+  contradicts correct-looking source, `rm -rf` the derived data and clean-build before debugging
+  the code. (And `> dir/log` right after `rm -rf dir` silently fails — recreate the dir first.)
+- **Worktree edits to shared resource files (xcstrings) can reformat-and-bleed.** Tell impl
+  agents to insert keys surgically, never re-serialise; verify the catalog diff is +N lines, not
+  a whole-file churn, before merging.
+- **Reverting a spec decision is a product call** — surface the prior decision (SDD-003 Epic 4 /
+  #468) and get sign-off before implementing, don't silently "fix" it.
