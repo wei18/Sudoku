@@ -46,6 +46,10 @@ import SudokuEngine
 private struct SudokuNearWinModalIOSModifier: ViewModifier {
 
     @State private var nearWinBoard: SudokuNearWinBoard?
+    // DEBUG Play Again: set to true when the user taps "Play Again" in the
+    // completion overlay; the onChange handler rebuilds a fresh board once the
+    // dismiss animation clears nearWinBoard to nil.
+    @State private var wantsPlayAgain: Bool = false
 
     func body(content: Content) -> some View {
         let isModalLaunch = ProcessInfo.processInfo.arguments
@@ -60,7 +64,23 @@ private struct SudokuNearWinModalIOSModifier: ViewModifier {
             // item: (not isPresented:) — driven by the board itself, same
             // presentation-race fix as SudokuNearWinModifier (#523).
             .fullScreenCover(item: $nearWinBoard) { board in
-                SudokuNearWinModalCoverView(board: board)
+                SudokuNearWinModalCoverView(
+                    board: board,
+                    onPlayAgain: { _ in wantsPlayAgain = true }
+                )
+            }
+            // Rebuild a fresh near-win board after Play Again dismisses the
+            // current one. nearWinBoard becomes nil when the fullScreenCover's
+            // dismiss animation completes; at that point we rebuild.
+            // Observe `== nil` (a Bool) rather than the board itself, so we don't
+            // need SudokuNearWinBoard: Equatable. Fires when the cover's dismiss
+            // animation clears nearWinBoard to nil after a Play Again tap.
+            .onChange(of: nearWinBoard == nil) { _, isNil in
+                guard isNil, wantsPlayAgain else { return }
+                wantsPlayAgain = false
+                Task { @MainActor in
+                    nearWinBoard = try? await SudokuNearWinBoard.build()
+                }
             }
     }
 }
@@ -70,15 +90,26 @@ private struct SudokuNearWinModalIOSModifier: ViewModifier {
 /// Presents `BoardView` directly — NO wrapping NavigationStack.
 /// `path == nil` means `BoardView.shouldPresentCompletionOverlay` returns
 /// `true` on the winning tap, exercising the production #610 overlay path.
+///
+/// `onPlayAgain`: DEBUG-only Play Again hook. When wired, the completion
+/// overlay shows "Play Again" above Close; tapping it re-presents a fresh
+/// near-win board through the modifier's `wantsPlayAgain` / `onChange` cycle.
 @MainActor
 private struct SudokuNearWinModalCoverView: View {
 
     let board: SudokuNearWinBoard
+    let onPlayAgain: ((Difficulty) -> Void)?
+
+    init(board: SudokuNearWinBoard, onPlayAgain: ((Difficulty) -> Void)? = nil) {
+        self.board = board
+        self.onPlayAgain = onPlayAgain
+    }
 
     var body: some View {
         BoardView(
             viewModel: board.viewModel,
-            gameCenter: NearWinModalNoopGameCenterClient()
+            gameCenter: NearWinModalNoopGameCenterClient(),
+            onPlayAgain: onPlayAgain
             // path: nil (default) — the load-bearing distinction from the
             // push-context hook in SudokuNearWinModifier.
         )
