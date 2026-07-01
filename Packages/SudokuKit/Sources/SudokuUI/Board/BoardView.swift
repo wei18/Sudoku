@@ -260,6 +260,7 @@ public struct BoardView: View {
             canUndo: viewModel.canUndo,
             canRedo: viewModel.canRedo,
             sizeClass: sizeClass,
+            remainingCounts: (1...9).map { dgt in max(0, 9 - viewModel.board.cells.filter { $0 == UInt8(dgt) }.count) },
             onDigit: { digit in Task { await placeOrToggle(digit) } },
             onErase: { Task { await viewModel.eraseCell() } },
             onTogglePencil: { viewModel.togglePencil() },

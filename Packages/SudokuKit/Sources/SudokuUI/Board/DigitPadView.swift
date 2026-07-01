@@ -20,6 +20,8 @@ struct DigitPadView: View {
     let canUndo: Bool
     let canRedo: Bool
     let sizeClass: UserInterfaceSizeClass?
+    /// Remaining count for each digit 1–9 (index 0 = digit 1 … index 8 = digit 9).
+    let remainingCounts: [Int]
     let onDigit: (Int) -> Void
     let onErase: () -> Void
     let onTogglePencil: () -> Void
@@ -41,7 +43,7 @@ struct DigitPadView: View {
     private var compactLayout: some View {
         VStack(spacing: 12) {
             compactControlRow
-            digitRow
+            compactDigitGrid
         }
         .padding(.horizontal, 16)
     }
@@ -93,36 +95,50 @@ struct DigitPadView: View {
         .font(.title2)
     }
 
-    private var digitRow: some View {
-        // Each digit shares the available horizontal width equally so the
-        // 9-button row never exceeds the parent at iPhone compact widths.
-        //
-        // #540: at accessibility text sizes the digit glyph rendered BLANK —
-        // empty pills. Root cause: a single digit overflows VERTICALLY (glyph
-        // ~50–60 pt tall in a ~44 pt `.bordered` pill) and gets clipped to
-        // nothing. `minimumScaleFactor` is WIDTH-driven and never engages for a
-        // 1-char string, so it can't rescue a height overflow. Fix: cap the
-        // pad's Dynamic Type at `.xLarge` so the digits stay legible inside the
-        // 44 pt pill regardless of the system AX setting (compact numeric
-        // control convention). The cap only clamps sizes ABOVE `.xLarge`, so
-        // the default `.large` rendering — and every committed snapshot — is
-        // byte-identical. The board CELLS are unaffected and keep scaling.
-        HStack(spacing: 6) {
-            ForEach(1...9, id: \.self) { digit in
-                Button {
-                    onDigit(digit)
-                } label: {
-                    Text("\(digit)")
-                        .frame(maxWidth: .infinity, minHeight: 44)
+    // iPhone 3×3 digit grid — mirrors `macDigitGrid` with per-key remaining-count
+    // badges and a notes-mode visual signal (1 pt sage border + ~6 % sage wash).
+    // #540: Dynamic Type capped at `.xLarge` (same rationale as old `digitRow`).
+    private var compactDigitGrid: some View {
+        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+            ForEach(0..<3, id: \.self) { row in
+                GridRow {
+                    ForEach(1...3, id: \.self) { col in
+                        let digit = row * 3 + col
+                        let remaining = remainingCounts[digit - 1]
+                        Button {
+                            onDigit(digit)
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text("\(digit)")
+                                    .font(.title2.weight(.medium))
+                                if remaining > 0 {
+                                    Text("\(remaining)")
+                                        .font(.caption2)
+                                        .foregroundStyle(remaining == 1
+                                            ? theme.accent.primary.resolved
+                                            : theme.text.secondary.resolved)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(theme.accent.primary.resolved)
+                        .disabled(remaining == 0)
+                        .opacity(remaining == 0 ? 0.35 : 1.0)
+                        .accessibilityLabel("Digit \(digit)")
+                        .accessibilityValue(remaining > 0 ? "\(remaining) remaining" : "fully placed")
+                    }
                 }
-                .buttonStyle(.bordered)
-                // Palette sweep (#610 fix *5): user-entry digit buttons match
-                // the board's user-digit colour (sage-green) so they read as the
-                // same brand accent instead of defaulting to system blue.
-                .tint(theme.accent.primary.resolved)
-                .accessibilityLabel("Digit \(digit)")
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(theme.accent.primary.resolved, lineWidth: pencilMode ? 1 : 0)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(theme.accent.primary.resolved.opacity(pencilMode ? 0.06 : 0))
+        )
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
