@@ -560,7 +560,7 @@ public struct MinesweeperBoardView: View {
             let spacing = Self.cellSpacing
             // Subtract the inter-cell gaps before dividing so the cells (not
             // the gaps) fill the offered box exactly.
-            let availW = geo.size.width  - spacing * CGFloat(cols - 1)
+            let availW = geo.size.width - spacing * CGFloat(cols - 1)
             let availH = geo.size.height - spacing * CGFloat(rows - 1)
             let fitted    = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
             let heightFit = floor(availH / CGFloat(rows))
