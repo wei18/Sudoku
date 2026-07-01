@@ -522,6 +522,11 @@ public struct MinesweeperBoardView: View {
                     Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
                 }
             }
+            // #647: expand tap target to ≥44×44 pt (HIG minimum) without
+            // enlarging the visible glyph. `.contentShape(Rectangle())` makes
+            // the full frame hit-testable under `.plain` button style.
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
             .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
             .accessibilityIdentifier("minesweeper.board.pauseToggle")
         }

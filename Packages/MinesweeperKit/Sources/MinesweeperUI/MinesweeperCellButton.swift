@@ -124,6 +124,17 @@ struct MinesweeperCellButton: View {
                     )
                 )
                 .overlay(shape.strokeBorder(.black.opacity(0.14), lineWidth: 0.5))
+        } else if isRevealedSafe {
+            // #649: revealed-safe cells (empty + numbered) need a hairline
+            // recessed border so the grid footprint stays parseable after a
+            // flood-fill clear. Without it the `revealed` token (#FFFFFF in
+            // light mode) blends into the page background and the swept area
+            // loses all structure. 10 % black opacity reads as a subtle inset
+            // in light mode and adapts gracefully to dark (the dark `revealed`
+            // token is already distinct from covered, so the border just
+            // reinforces the boundary).
+            shape.fill(tokens.revealed.resolved)
+                .overlay(shape.strokeBorder(.black.opacity(0.10), lineWidth: 0.5))
         } else {
             shape.fill(backgroundFill)
         }
@@ -133,6 +144,15 @@ struct MinesweeperCellButton: View {
     /// not a surfaced lost-mine and not yet revealed.
     private var isRaisedCover: Bool {
         !showsLostMine && (cell.state == .hidden || cell.state == .flagged)
+    }
+
+    /// True when the cell is revealed and safe (empty or numbered) — needs the
+    /// recessed hairline border (#649) so the grid stays visible after a clear.
+    /// Excludes the detonated-mine cell (`cell.isMine` on `.revealed`) and the
+    /// surfaced-mine-on-loss path (`showsLostMine`), both of which have their
+    /// own distinct fills.
+    private var isRevealedSafe: Bool {
+        !showsLostMine && cell.state == .revealed && !cell.isMine
     }
 
     private var backgroundFill: Color {
