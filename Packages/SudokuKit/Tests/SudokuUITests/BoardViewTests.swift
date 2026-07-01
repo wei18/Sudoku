@@ -348,28 +348,32 @@ struct BoardViewTests {
         let givenLabel = labelFor(cell: BoardCellView(
             row: 0, column: 0,
             digit: 5, isGiven: true, isSelected: false,
-            isError: false, isPencilNotes: false, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: false, noteMask: 0, side: 40
         ))
         #expect(givenLabel.contains("Row 1") && givenLabel.contains("Column 1") && givenLabel.contains("given 5"))
 
         let userLabel = labelFor(cell: BoardCellView(
             row: 3, column: 4,
             digit: 7, isGiven: false, isSelected: false,
-            isError: false, isPencilNotes: false, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: false, noteMask: 0, side: 40
         ))
         #expect(userLabel.contains("Row 4") && userLabel.contains("Column 5") && userLabel.contains("value 7"))
 
         let errorLabel = labelFor(cell: BoardCellView(
             row: 4, column: 4,
             digit: 5, isGiven: false, isSelected: false,
-            isError: true, isPencilNotes: false, noteMask: 0, side: 40
+            isError: true, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: false, noteMask: 0, side: 40
         ))
         #expect(errorLabel.contains("conflict 5"))
 
         let emptyLabel = labelFor(cell: BoardCellView(
             row: 8, column: 8,
             digit: nil, isGiven: false, isSelected: false,
-            isError: false, isPencilNotes: true, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: true, noteMask: 0, side: 40
         ))
         #expect(emptyLabel.contains("Row 9") && emptyLabel.contains("Column 9") && emptyLabel.contains("Empty"))
         _ = viewModel

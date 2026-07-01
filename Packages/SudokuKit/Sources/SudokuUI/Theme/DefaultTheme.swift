@@ -30,6 +30,7 @@ public struct DefaultTheme: Theme {
         prefilled: ThemeColor(light: 0xEFEBE2, dark: 0x2A2D33),
         userFilled: ThemeColor(light: 0xFFFFFF, dark: 0x1E2024),
         highlighted: ThemeColor(light: 0xEBF0E2, dark: 0x252D1F),
+        sameDigit: ThemeColor(light: 0xC8E1B4, dark: 0x2A3C20),
         selected: ThemeColor(light: 0xDCE6D0, dark: 0x3A4A30),
         error: ThemeColor(light: 0xFBE3E1, dark: 0x4A2724),
         errorBorder: ThemeColor(light: 0xC8362B, dark: 0xE66258)
