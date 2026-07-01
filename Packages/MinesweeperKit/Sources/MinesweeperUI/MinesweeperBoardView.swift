@@ -23,7 +23,6 @@
 public import SwiftUI
 public import GameAudio
 public import GameCenterClient
-internal import GameAppKit
 import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
@@ -48,11 +47,6 @@ public struct MinesweeperBoardView: View {
     // #615: dismisses the presenting fullScreenCover so the Completion overlay's
     // Close returns to the hub — mirrors Sudoku's BoardView.dismiss (close-to-hub).
     @Environment(\.dismiss) private var dismiss
-    // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the modal
-    // hierarchy, this is non-nil and we (a) push the elapsed label to the
-    // chrome on every tick and (b) hide the in-board status-bar clock to
-    // avoid showing two timers. Mirrors Sudoku BoardView.gameChrome pattern.
-    @Environment(\.gameChrome) private var gameChrome
 
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
@@ -233,21 +227,6 @@ public struct MinesweeperBoardView: View {
                 completionViewModel = nil
             }
         }
-        // #518: hide the modal top-chrome row (timer chip + ✕) ONLY while the
-        // completion overlay is actually presented, so it doesn't bleed through
-        // on top of the result card (the chrome HStack lives in GameModalContent,
-        // which is ABOVE this board in the view hierarchy). Keyed on overlay
-        // presence (`completionViewModel != nil`), NOT `isTerminal` (CR #518-R2):
-        // Close dismisses the overlay (sets the VM to nil) WITHOUT clearing the
-        // terminal state, so a terminal-keyed hide would leave the ✕ hidden over
-        // the revealed boomed board → no way to leave (trapped). With the overlay
-        // gone the restored chrome has no card to overlap — it shows over the
-        // revealed board like normal.
-        // Hide the top chrome (timer capsule) while the completion overlay OR the
-        // pause menu is up, so the full-screen mask isn't pierced by the timer.
-        .onChange(of: completionViewModel != nil || viewModel.isPaused) { _, hide in
-            gameChrome?.setHidingChrome(hide)
-        }
         // #455 step 4: view-lifecycle save points.
         // #539: also pause so the elapsed clock doesn't accrue background time
         // (mirrors Sudoku). #548: pause ONLY on a real `.background` transition —
@@ -310,36 +289,17 @@ public struct MinesweeperBoardView: View {
             // into a finished state); `.onChange` only fires on a transition,
             // so seed the completion VM here too.
             await viewModel.refresh()
-            // Push the restored elapsed into the chrome before the first 1s tick
-            // (CR #489 F4 — symmetric with Sudoku's loop-entry push).
-            gameChrome?.updateElapsed(String(
-                format: "%d:%02d", viewModel.elapsedSeconds / 60, viewModel.elapsedSeconds % 60
-            ))
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
-                // #518: a board that mounts already-terminal (e.g. restored) seeds
-                // the overlay HERE, so hide the chrome immediately to match the
-                // overlay's presence — `.onChange(of: completionViewModel != nil)`
-                // doesn't fire for a value set during this initial `.task` pass.
-                // Keyed on overlay presence (not isTerminal): Close later clears
-                // the VM and the .onChange restores the chrome so the user can
-                // leave the revealed board (CR #518-R2).
-                gameChrome?.setHidingChrome(true)
             }
             // Then poll once per second while the game is live. The elapsed
             // label re-renders because `refresh()` republishes the @Observable
-            // snapshot. Stop polling once terminal (the clock is frozen) but
-            // keep the task alive so cancellation stays tied to the view.
-            // SDD-003 OQ-001: also push to chrome on every tick so the modal
-            // top-chrome timer stays in sync with the board session clock.
+            // snapshot (the in-board `clockLabel` reads it). Stop polling once
+            // terminal (the clock is frozen) but keep the task alive so
+            // cancellation stays tied to the view.
             while !Task.isCancelled {
                 if viewModel.status == .playing {
                     await viewModel.refresh()
-                    gameChrome?.updateElapsed(String(
-                        // Shared chrome is cross-game surface: mm:ss like Sudoku
-                        // (the in-board status bar keeps MS's raw-seconds idiom).
-                        format: "%d:%02d", viewModel.elapsedSeconds / 60, viewModel.elapsedSeconds % 60
-                    ))
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
@@ -355,8 +315,8 @@ public struct MinesweeperBoardView: View {
         // compact literal would re-record baselines and is deferred to #11.
         VStack(spacing: 12) {
             statusBar
-            modeToggle
             boardGrid
+            modeToggle
             bannerSlot
         }
     }
@@ -465,7 +425,7 @@ public struct MinesweeperBoardView: View {
             Spacer()
             statusLabel
             Spacer()
-            clockLabel  // SDD-003: hidden when gameChrome != nil
+            clockLabel
             pauseToggle
         }
     }
@@ -492,16 +452,19 @@ public struct MinesweeperBoardView: View {
             .minimumScaleFactor(0.6)
     }
 
-    // SDD-003 OQ-001: suppress the in-board clock when the modal chrome is
-    // showing it (gameChrome != nil). On macOS push navigation / snapshot
-    // tests (gameChrome == nil) the clock stays here as before.
-    @ViewBuilder private var clockLabel: some View {
-        if gameChrome == nil {
-            Label("\(viewModel.elapsedSeconds)", systemImage: "clock")
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
+    // The in-board elapsed clock, shown in the status bar. Since the board now
+    // fills the screen height (#F3), the modal's floating timer capsule would
+    // overlap the top mine rows on Intermediate/Expert — so Minesweeper no
+    // longer feeds that capsule (see the ticker below) and surfaces the clock
+    // here instead. mm:ss to match the rest of the app / Sudoku.
+    private var clockLabel: some View {
+        Label(
+            String(format: "%d:%02d", viewModel.elapsedSeconds / 60, viewModel.elapsedSeconds % 60),
+            systemImage: "clock"
+        )
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
     }
 
     // MARK: - Pause / resume toggle (#434)
@@ -582,9 +545,15 @@ public struct MinesweeperBoardView: View {
     private var boardGrid: some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
-        // (Expert is 16×30), then floor it for crisp glyphs. If that would drop
-        // below the tap-target floor we clamp to the floor and let the board
-        // scroll in both axes instead of shrinking.
+        // (Expert is 16×30), then floor it for crisp glyphs. Three branches:
+        //   fits-both: center the floored grid in the offered rect — mirrors
+        //     Sudoku BoardView's centered frame, avoids top-leading ScrollView drift.
+        //   fill-height-scroll-horizontal: board is wider than the offered width
+        //     but cells can still hit the tap-target floor at the offered height;
+        //     fill height and scroll horizontally rather than shrinking.
+        //   small-phone-fallback: cells would drop below the tap-target floor
+        //     even at the offered height; fix cell side at the floor and scroll
+        //     both axes (#278 Tier-0 #2).
         GeometryReader { geo in
             let rows = viewModel.rows
             let cols = viewModel.columns
@@ -593,31 +562,29 @@ public struct MinesweeperBoardView: View {
             // the gaps) fill the offered box exactly.
             let availW = geo.size.width - spacing * CGFloat(cols - 1)
             let availH = geo.size.height - spacing * CGFloat(rows - 1)
-            let fitted = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
-            let cellSide = max(Self.minCellSide, fitted)
-            // Fits (side at/above floor): center the floored grid in the
-            // offered rect — mirrors Sudoku BoardView's centered frame and
-            // avoids the top-leading drift a ScrollView would impose (#278 CR).
-            // Clamped (below floor, e.g. Expert on iPhone): the board exceeds
-            // the rect, so scroll both axes instead of shrinking.
+            let fitted    = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
+            let heightFit = floor(availH / CGFloat(rows))
             if fitted >= Self.minCellSide {
-                gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                gridStack(rows: rows, cols: cols, cellSide: fitted, spacing: spacing)
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+            } else if heightFit >= Self.minCellSide {
+                ScrollView(.horizontal) {
+                    gridStack(rows: rows, cols: cols, cellSide: heightFit, spacing: spacing)
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
             } else {
                 ScrollView([.horizontal, .vertical]) {
-                    gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: Self.minCellSide, spacing: spacing)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             }
         }
-        // Reserve a square-ish slot; the GR fills whatever it is offered.
-        .aspectRatio(boardAspectRatio, contentMode: .fit)
+        // Fill all available height offered by the parent VStack so the board
+        // expands into the space between the status bar and the mode toggle,
+        // rather than reserving a square-ish aspect-ratio slot.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // #434 pause cover moved to the top-level body `.overlay` so the mask
         // covers the whole screen and the "Leave Game?" card is screen-centred.
-    }
-
-    private var boardAspectRatio: CGFloat {
-        CGFloat(viewModel.columns) / CGFloat(viewModel.rows)
     }
 
     private func gridStack(rows: Int, cols: Int, cellSide: CGFloat, spacing: CGFloat) -> some View {

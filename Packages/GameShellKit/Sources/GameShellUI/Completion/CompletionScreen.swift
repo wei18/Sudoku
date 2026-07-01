@@ -206,7 +206,8 @@ public struct CompletionScreen: View {
         }
         .frame(maxWidth: .infinity)
         .padding(24)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(outcome.accessibilityLabel)
         // #510 Phase 3: stable, non-localized anchor so the host-driven
