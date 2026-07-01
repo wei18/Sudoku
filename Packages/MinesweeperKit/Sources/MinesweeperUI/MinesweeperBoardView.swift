@@ -355,8 +355,8 @@ public struct MinesweeperBoardView: View {
         // compact literal would re-record baselines and is deferred to #11.
         VStack(spacing: 12) {
             statusBar
-            modeToggle
             boardGrid
+            modeToggle
             bannerSlot
         }
     }
@@ -582,42 +582,46 @@ public struct MinesweeperBoardView: View {
     private var boardGrid: some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
-        // (Expert is 16×30), then floor it for crisp glyphs. If that would drop
-        // below the tap-target floor we clamp to the floor and let the board
-        // scroll in both axes instead of shrinking.
+        // (Expert is 16×30), then floor it for crisp glyphs. Three branches:
+        //   fits-both: center the floored grid in the offered rect — mirrors
+        //     Sudoku BoardView's centered frame, avoids top-leading ScrollView drift.
+        //   fill-height-scroll-horizontal: board is wider than the offered width
+        //     but cells can still hit the tap-target floor at the offered height;
+        //     fill height and scroll horizontally rather than shrinking.
+        //   small-phone-fallback: cells would drop below the tap-target floor
+        //     even at the offered height; fix cell side at the floor and scroll
+        //     both axes (#278 Tier-0 #2).
         GeometryReader { geo in
             let rows = viewModel.rows
             let cols = viewModel.columns
             let spacing = Self.cellSpacing
             // Subtract the inter-cell gaps before dividing so the cells (not
             // the gaps) fill the offered box exactly.
-            let availW = geo.size.width - spacing * CGFloat(cols - 1)
+            let availW = geo.size.width  - spacing * CGFloat(cols - 1)
             let availH = geo.size.height - spacing * CGFloat(rows - 1)
-            let fitted = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
-            let cellSide = max(Self.minCellSide, fitted)
-            // Fits (side at/above floor): center the floored grid in the
-            // offered rect — mirrors Sudoku BoardView's centered frame and
-            // avoids the top-leading drift a ScrollView would impose (#278 CR).
-            // Clamped (below floor, e.g. Expert on iPhone): the board exceeds
-            // the rect, so scroll both axes instead of shrinking.
+            let fitted    = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
+            let heightFit = floor(availH / CGFloat(rows))
             if fitted >= Self.minCellSide {
-                gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                gridStack(rows: rows, cols: cols, cellSide: fitted, spacing: spacing)
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+            } else if heightFit >= Self.minCellSide {
+                ScrollView(.horizontal) {
+                    gridStack(rows: rows, cols: cols, cellSide: heightFit, spacing: spacing)
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
             } else {
                 ScrollView([.horizontal, .vertical]) {
-                    gridStack(rows: rows, cols: cols, cellSide: cellSide, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: Self.minCellSide, spacing: spacing)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             }
         }
-        // Reserve a square-ish slot; the GR fills whatever it is offered.
-        .aspectRatio(boardAspectRatio, contentMode: .fit)
+        // Fill all available height offered by the parent VStack so the board
+        // expands into the space between the status bar and the mode toggle,
+        // rather than reserving a square-ish aspect-ratio slot.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // #434 pause cover moved to the top-level body `.overlay` so the mask
         // covers the whole screen and the "Leave Game?" card is screen-centred.
-    }
-
-    private var boardAspectRatio: CGFloat {
-        CGFloat(viewModel.columns) / CGFloat(viewModel.rows)
     }
 
     private func gridStack(rows: Int, cols: Int, cellSide: CGFloat, spacing: CGFloat) -> some View {
