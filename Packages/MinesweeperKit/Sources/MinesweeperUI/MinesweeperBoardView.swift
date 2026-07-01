@@ -214,6 +214,15 @@ public struct MinesweeperBoardView: View {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
             }
+            // Pause menu — full-screen so the mask hides the whole board and the
+            // "Leave Game?" card is centred on the screen (not framed to the board
+            // square). Merged close+pause: the only exit/pause affordance.
+            if viewModel.isPaused {
+                PauseOverlayView(
+                    onLeave: { dismiss() },
+                    onResume: { Task { await viewModel.resume() } }
+                )
+            }
         }
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
@@ -234,8 +243,10 @@ public struct MinesweeperBoardView: View {
         // the revealed boomed board → no way to leave (trapped). With the overlay
         // gone the restored chrome has no card to overlap — it shows over the
         // revealed board like normal.
-        .onChange(of: completionViewModel != nil) { _, overlayPresented in
-            gameChrome?.setHidingChrome(overlayPresented)
+        // Hide the top chrome (timer capsule) while the completion overlay OR the
+        // pause menu is up, so the full-screen mask isn't pierced by the timer.
+        .onChange(of: completionViewModel != nil || viewModel.isPaused) { _, hide in
+            gameChrome?.setHidingChrome(hide)
         }
         // #455 step 4: view-lifecycle save points.
         // #539: also pause so the elapsed clock doesn't accrue background time
@@ -601,18 +612,8 @@ public struct MinesweeperBoardView: View {
         }
         // Reserve a square-ish slot; the GR fills whatever it is offered.
         .aspectRatio(boardAspectRatio, contentMode: .fit)
-        // #434: cover the minefield while paused so the player can't study the
-        // board with the clock stopped. Tapping the cover resumes. Sized to the
-        // board's own frame via `.overlay`. Mirrors Sudoku's BoardView, which
-        // shows the same shared `PauseOverlayView` over its grid.
-        .overlay {
-            if viewModel.isPaused {
-                PauseOverlayView(
-                    onLeave: { dismiss() },
-                    onResume: { Task { await viewModel.resume() } }
-                )
-            }
-        }
+        // #434 pause cover moved to the top-level body `.overlay` so the mask
+        // covers the whole screen and the "Leave Game?" card is screen-centred.
     }
 
     private var boardAspectRatio: CGFloat {

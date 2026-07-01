@@ -27,7 +27,7 @@ public struct PauseOverlayView: View {
     @Environment(\.theme) private var theme
 
     public init(
-        title: LocalizedStringKey = "game.paused",
+        title: LocalizedStringKey = "leave.game.title",
         message: LocalizedStringKey = "leave.game.message",
         leaveLabel: LocalizedStringKey = "leave.game.leave",
         onLeave: (() -> Void)? = nil,
@@ -42,8 +42,12 @@ public struct PauseOverlayView: View {
 
     public var body: some View {
         ZStack {
+            // Original pause mask — a full blur that hides the board (anti-cheat)
+            // so the puzzle can't be studied while the clock is stopped. Fills the
+            // whole screen; tap outside the card = resume.
             Rectangle()
                 .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
                 .onTapGesture { onResume() }
             VStack(spacing: 20) {
                 Text(title)
@@ -60,7 +64,12 @@ public struct PauseOverlayView: View {
                     Text("Resume")
                         .frame(maxWidth: .infinity)
                 }
+                // Resume is the primary/safe action — solid fill so it clearly
+                // outweighs the subtle destructive Leave (avoids accidental leave).
                 .buttonStyle(.borderedProminent)
+                // Brand accent, not the system-blue default — each app themes it
+                // (Sudoku sage-green / Minesweeper steel-blue).
+                .tint(theme.accent.primary.resolved)
                 .accessibilityIdentifier("game.pause.resume")
                 // Leave — destructive, only when the caller wires onLeave.
                 if let onLeave {
@@ -68,13 +77,16 @@ public struct PauseOverlayView: View {
                         Text(leaveLabel)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                    .buttonStyle(.bordered)
+                    .tint(theme.status.error.resolved)
                 }
             }
             .padding(24)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-            .padding(32)
+            // Contain the card — a destructive confirmation shouldn't span the
+            // full screen width.
+            .frame(maxWidth: 340)
+            .padding(.horizontal, 24)
         }
     }
 }
