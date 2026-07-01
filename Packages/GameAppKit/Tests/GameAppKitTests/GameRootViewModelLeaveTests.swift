@@ -1,13 +1,13 @@
-// GameRootViewModelLeaveTests — Epic 1 + 2 (SDD-003): modal game presentation
-// + leave confirmation behavior of GameRootViewModel.
+// GameRootViewModelLeaveTests — Epic 1 (SDD-003): modal game presentation
+// behavior of GameRootViewModel.
 //
 // Tests cover:
 //   - presentGame(route:) sets activeGameRoute + isGamePresented
 //   - dismissGame() clears both
-//   - requestLeave() sets isShowingLeaveConfirmation (never auto-dismisses)
-//   - cancelLeave() clears isShowingLeaveConfirmation (no dismiss)
-//   - confirmLeave() clears confirmation + dismisses game
-//   - presentGame followed by confirmLeave results in no activeGameRoute
+//
+// Note: Epic 2 (leave-confirmation dialog) was removed when the unified
+// PauseOverlayView took over the leave flow. The former requestLeave /
+// cancelLeave / confirmLeave / isShowingLeaveConfirmation tests are gone.
 
 import Foundation
 import Testing
@@ -63,7 +63,7 @@ private struct MinimalGameCenter: GameCenterClient {
 // MARK: - Tests
 
 @MainActor
-@Suite("GameRootViewModel — modal presentation + leave confirmation (Epic 1+2)")
+@Suite("GameRootViewModel — modal presentation (Epic 1)")
 struct GameRootViewModelLeaveTests {
 
     private func makeVM() -> GameRootViewModel<LeaveRoute> {
@@ -102,59 +102,6 @@ struct GameRootViewModelLeaveTests {
         sut.dismissGame()
 
         #expect(sut.activeGameRoute == nil)
-        #expect(sut.isGamePresented == false)
-    }
-
-    // MARK: - Epic 2: Leave confirmation
-
-    @Test func requestLeaveShowsConfirmation() {
-        let sut = makeVM()
-        #expect(sut.isShowingLeaveConfirmation == false)
-
-        sut.requestLeave()
-
-        #expect(sut.isShowingLeaveConfirmation == true)
-    }
-
-    @Test func cancelLeaveHidesConfirmationWithoutDismissing() {
-        let sut = makeVM()
-        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
-        sut.requestLeave()
-
-        sut.cancelLeave()
-
-        #expect(sut.isShowingLeaveConfirmation == false)
-        // Game remains presented.
-        #expect(sut.isGamePresented == true)
-        #expect(sut.activeGameRoute == .board(puzzleId: "2026-06-12-easy"))
-    }
-
-    // AC 2.3 note: this verifies only the dismiss leg. The save leg is
-    // fulfilled cross-package by the board views' .onDisappear hooks
-    // (MinesweeperBoardView.persistCurrentState #455, Sudoku BoardView.flush
-    // #413) — not by the VM. See the load-bearing comment in GameRoot.swift.
-    @Test func confirmLeaveHidesConfirmationAndDismissesGame() {
-        let sut = makeVM()
-        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
-        sut.requestLeave()
-
-        sut.confirmLeave()
-
-        #expect(sut.isShowingLeaveConfirmation == false)
-        #expect(sut.isGamePresented == false)
-        #expect(sut.activeGameRoute == nil)
-    }
-
-    @Test func requestLeaveWhenNoGamePresentedIsHarmless() {
-        let sut = makeVM()
-        // requestLeave without a presented game (UI guard should prevent this,
-        // but the VM must not crash).
-        sut.requestLeave()
-
-        #expect(sut.isShowingLeaveConfirmation == true)
-        // confirmLeave still clears it safely.
-        sut.confirmLeave()
-        #expect(sut.isShowingLeaveConfirmation == false)
         #expect(sut.isGamePresented == false)
     }
 }

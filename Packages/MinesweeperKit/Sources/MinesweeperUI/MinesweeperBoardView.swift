@@ -607,9 +607,10 @@ public struct MinesweeperBoardView: View {
         // shows the same shared `PauseOverlayView` over its grid.
         .overlay {
             if viewModel.isPaused {
-                PauseOverlayView(onResume: {
-                    Task { await viewModel.resume() }
-                })
+                PauseOverlayView(
+                    onLeave: { dismiss() },
+                    onResume: { Task { await viewModel.resume() } }
+                )
             }
         }
     }

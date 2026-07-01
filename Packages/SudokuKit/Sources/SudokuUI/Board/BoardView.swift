@@ -295,9 +295,10 @@ public struct BoardView: View {
                 .frame(width: side, height: side)
 
                 if viewModel.isPaused {
-                    PauseOverlayView(onResume: {
-                        Task { await viewModel.resume() }
-                    })
+                    PauseOverlayView(
+                        onLeave: { dismiss() },
+                        onResume: { Task { await viewModel.resume() } }
+                    )
                     .frame(width: side, height: side)
                 }
             }
