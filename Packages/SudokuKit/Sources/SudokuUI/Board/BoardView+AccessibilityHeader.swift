@@ -112,6 +112,11 @@ extension BoardView {
                 Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
             }
         }
+        // #647: expand tap target to ≥44×44 pt (HIG minimum) without enlarging
+        // the visible glyph. `.contentShape(Rectangle())` makes the full frame
+        // hit-testable under `.plain` button style.
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
         // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
         .tint(theme.accent.primary.resolved)
         .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
