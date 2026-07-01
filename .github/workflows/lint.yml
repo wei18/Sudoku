@@ -45,12 +45,14 @@ jobs:
             revert
           # Scopes optional + unrestricted (e.g. `feat(monetization):`).
           requireScope: false
-          # Subject lowercase, per recent commit style.
-          subjectPattern: ^[a-z].+$
+          # Subject must not start with an UPPERCASE letter (Conventional-Commits
+          # lowercase style). A leading digit IS allowed so subjects like
+          # "3×3 keypad" / "44pt tap target" pass without contortion.
+          subjectPattern: ^[a-z0-9].+$
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"
-            didn't match the configured pattern. Subject should start with a
-            lowercase letter (e.g. "feat(scope): add foo bar").
+            must start with a lowercase letter or a digit (not an uppercase
+            letter) — e.g. "feat(scope): add foo bar" or "fix(ui): 44pt target".
 
   docs-link-check:
     name: Markdown link check (lychee)
