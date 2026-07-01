@@ -16,15 +16,18 @@ struct BoardCellAccessibilityTests {
     @Test func givenCellsAreNonInteractive() {
         let given = BoardCellView(
             row: 0, column: 0, digit: 5, isGiven: true, isSelected: false,
-            isError: false, isPencilNotes: false, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: false, noteMask: 0, side: 40
         )
         let editableEmpty = BoardCellView(
             row: 1, column: 1, digit: nil, isGiven: false, isSelected: false,
-            isError: false, isPencilNotes: true, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: true, noteMask: 0, side: 40
         )
         let editableFilled = BoardCellView(
             row: 2, column: 2, digit: 7, isGiven: false, isSelected: true,
-            isError: false, isPencilNotes: false, noteMask: 0, side: 40
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: false, noteMask: 0, side: 40
         )
         #expect(given.isInteractive == false)
         #expect(editableEmpty.isInteractive == true)

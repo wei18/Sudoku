@@ -18,6 +18,7 @@ public struct CellTokens: Sendable, Equatable, Hashable {
     public let prefilled: ThemeColor
     public let userFilled: ThemeColor
     public let highlighted: ThemeColor
+    public let sameDigit: ThemeColor
     public let selected: ThemeColor
     public let error: ThemeColor
     public let errorBorder: ThemeColor
@@ -27,6 +28,7 @@ public struct CellTokens: Sendable, Equatable, Hashable {
         prefilled: ThemeColor,
         userFilled: ThemeColor,
         highlighted: ThemeColor,
+        sameDigit: ThemeColor,
         selected: ThemeColor,
         error: ThemeColor,
         errorBorder: ThemeColor
@@ -35,6 +37,7 @@ public struct CellTokens: Sendable, Equatable, Hashable {
         self.prefilled = prefilled
         self.userFilled = userFilled
         self.highlighted = highlighted
+        self.sameDigit = sameDigit
         self.selected = selected
         self.error = error
         self.errorBorder = errorBorder

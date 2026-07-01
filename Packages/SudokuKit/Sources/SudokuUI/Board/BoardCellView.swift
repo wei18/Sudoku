@@ -14,6 +14,8 @@ struct BoardCellView: View {
     let isGiven: Bool
     let isSelected: Bool
     let isError: Bool
+    let isHighlighted: Bool   // shares row / column / box with selection
+    let isSameDigit: Bool     // non-selected cell carrying the same digit
     let isPencilNotes: Bool
     let noteMask: UInt16
     let side: CGFloat
@@ -67,12 +69,17 @@ struct BoardCellView: View {
         return "\(location), Empty"
     }
 
+    // bg priority: error > selected > sameDigit > highlighted (peer) > given > base
     @ViewBuilder
     private var background: some View {
         if isError {
             cell.error.resolved
         } else if isSelected {
             cell.selected.resolved
+        } else if isSameDigit {
+            cell.sameDigit.resolved
+        } else if isHighlighted {
+            cell.highlighted.resolved
         } else if isGiven {
             cell.prefilled.resolved
         } else {
