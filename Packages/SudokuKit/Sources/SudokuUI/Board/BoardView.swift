@@ -88,6 +88,13 @@ public struct BoardView: View {
             if let completionViewModel {
                 completionSurface(completionViewModel, dismiss: dismiss)
             }
+            // Pause menu — full-screen mask + screen-centred card (merged close+pause).
+            if viewModel.isPaused {
+                PauseOverlayView(
+                    onLeave: { dismiss() },
+                    onResume: { Task { await viewModel.resume() } }
+                )
+            }
         }
         // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
         // overlay presence so Close restores chrome. `shouldPresentCompletionOverlay`
@@ -101,8 +108,9 @@ public struct BoardView: View {
                 completionReminderPrimer = nil
             }
         }
-        .onChange(of: completionViewModel != nil) { _, overlayPresented in
-            gameChrome?.setHidingChrome(overlayPresented)
+        // Hide the top chrome (timer) while the completion overlay OR pause is up.
+        .onChange(of: completionViewModel != nil || viewModel.isPaused) { _, hide in
+            gameChrome?.setHidingChrome(hide)
         }
         .focusable()
         .focused($keyboardFocus)
@@ -293,13 +301,6 @@ public struct BoardView: View {
                     }
                 }
                 .frame(width: side, height: side)
-
-                if viewModel.isPaused {
-                    PauseOverlayView(onResume: {
-                        Task { await viewModel.resume() }
-                    })
-                    .frame(width: side, height: side)
-                }
             }
             // Centre the square grid within the GR's offered rectangle so
             // the board sits inline with the surrounding header/digit pad

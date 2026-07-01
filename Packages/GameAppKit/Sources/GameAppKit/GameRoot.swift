@@ -4,28 +4,26 @@
 //   - the generic `GameShellUI.RootShellView` (NavigationStackHost + sidebar)
 //   - launch-time `bootstrap()` via `.onAppear { Task { … } }`
 //   - the bottom toast overlay
-//   - SDD-003 Epic 1+2: fullScreenCover modal for board routes + leave confirmation
+//   - SDD-003 Epic 1: fullScreenCover modal for board routes
 //   - SDD-003 OQ-001: top-chrome elapsed timer in the modal (nav-bar-item style)
 //
 // Game-specific bits stay app-side and are layered on by each app's Root:
 // Sudoku adds `.attPrimerSheet(...)` and threads a `ResumePill` into its
 // `rootContent`; Minesweeper supplies its own Home as `rootContent`.
 //
-// SDD-003 Epic 1+2 — Modal game presentation + leave confirmation:
-// Board routes are now presented as fullScreenCover modals (R1.1).
+// SDD-003 Epic 1 — Modal game presentation:
+// Board routes are presented as fullScreenCover modals (R1.1).
 // Hub VMs call `viewModel.presentGame(route:)` instead of `path.append(boardRoute)`.
-// `GameRoot` owns the modal lifecycle: presents the route factory's board view,
-// overlays a `[X]` close button (R1.2), and attaches the "Leave Game?"
-// confirmationDialog (AC 2.1–2.3). Save-on-leave reuses each board's existing
-// `.onDisappear` flush — no new persistence logic is needed here.
+// The Pause overlay's Leave button now handles the leave flow directly (no separate
+// confirmationDialog — Epic 2 replaced by the unified pause menu).
 //
 // SDD-003 OQ-001 — Timer nav-bar item:
 // `GameRoot` owns a `GameChromeState` instance injected via
 // `.environment(\.gameChrome, …)` into the fullScreenCover hierarchy. Board views
 // read this key from `@Environment` and call `chromeState.updateElapsed(_:)` each
-// tick. `GameModalContent` renders the label as a leading capsule badge alongside
-// the `[X]` button. When `gameChrome` is nil (macOS push / snapshot / preview)
-// the board views keep their own in-board timer and this path is never reached.
+// tick. `GameModalContent` renders the label as a leading capsule badge.
+// When `gameChrome` is nil (macOS push / snapshot / preview) the board views
+// keep their own in-board timer and this path is never reached.
 //
 // Note on `.onAppear { Task { … } }` (NOT `.task { … }`): the original #361 arm64
 // device Release link failure — an opaque `.task` descriptor linking undefined
@@ -110,17 +108,7 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                 if let route = viewModel.activeGameRoute {
                     GameModalContent(
                         view: routeFactory.view(for: route, path: nil),
-                        chromeState: chromeState,
-                        onClose: { viewModel.requestLeave() },
-                        isShowingLeaveConfirmation: Binding(
-                            get: { viewModel.isShowingLeaveConfirmation },
-                            set: { _ in }   // mutations go through VM methods only
-                        ),
-                        onCancelLeave: { viewModel.cancelLeave() },
-                        // Reset chrome synchronously at confirmation rather than
-                        // relying solely on the cover binding's dismiss-animation
-                        // setter (CR #489 F1 — robust against cancelled animations).
-                        onConfirmLeave: { viewModel.confirmLeave(); chromeState.reset() }
+                        chromeState: chromeState
                     )
                     // SDD-003 OQ-001: inject the chrome state into the modal
                     // hierarchy so the board view can find it via
@@ -148,29 +136,25 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
 
 /// Wraps the route factory's game view with the shared chrome:
 ///   - top-left elapsed timer capsule (SDD-003 OQ-001)
-///   - top-right `[X]` close button (SDD-003 R1.2)
-///   - `confirmationDialog` for the "Leave Game?" confirmation (SDD-003 Epic 2)
 ///
-/// Kept as a separate named type (not an inline closure body) so the
-/// `confirmationDialog` modifier has a stable view identity for SwiftUI diffing.
+/// Leave is no longer handled here — the unified PauseOverlayView in each
+/// board provides a Leave button that calls `dismiss()` directly, replacing
+/// the former ✕ close button + confirmationDialog pattern (Epic 2 removed).
+///
+/// Kept as a separate named type (not an inline closure body) so view identity
+/// is stable across body re-evaluations.
 private struct GameModalContent: View {
     let view: AnyView
     /// SDD-003 OQ-001: shared observable that the board view updates with the
     /// current elapsed string. Observed here so the timer badge re-renders
     /// when `elapsedLabel` changes without re-creating `GameModalContent`.
     let chromeState: GameChromeState
-    let onClose: () -> Void
-    @Binding var isShowingLeaveConfirmation: Bool
-    let onCancelLeave: () -> Void
-    let onConfirmLeave: () -> Void
 
     var body: some View {
         ZStack(alignment: .top) {
             view
             // SDD-003 OQ-001: nav-bar-item-style top chrome row.
-            // Timer sits at leading; [X] sits at trailing.
-            // Padding (.top 56) places the row below the status bar safe area
-            // (mirrors the prior single-button vertical placement).
+            // Timer sits at leading edge below the status bar safe area.
             // #518: hidden when the board signals terminal state via
             // `chromeState.isHidingChrome` so the completion overlay (which is
             // a child of `view`) can cover the full screen without the chrome
@@ -188,54 +172,11 @@ private struct GameModalContent: View {
                             .transition(.opacity)
                     }
                     Spacer()
-                    // Close button — always visible.
-                    // `.foregroundStyle(.primary)` replaces the system-blue default
-                    // tint with a neutral dark/light adaptive colour that works
-                    // across all game themes (palette sweep, #610 fix *5).
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .padding(10)
-                            .background(.regularMaterial, in: Circle())
-                    }
-                    .accessibilityLabel(Text("leave.game.close", bundle: .main))
                 }
                 .padding(.top, 56)
                 .padding(.horizontal, 20)
                 .transition(.opacity)
             }
-        }
-        // SDD-003 Epic 2: "Leave Game?" confirmation dialog (AC 2.1).
-        // Using confirmationDialog (action sheet on iPhone, alert on Mac) per
-        // spec: "native SwiftUI confirmation for now — bottom-sheet is a
-        // Designer follow-up". The trigger seam is clean: swap the modifier
-        // here when the Designer provides the bottom-sheet spec.
-        .confirmationDialog(
-            Text("leave.game.title", bundle: .main),
-            isPresented: $isShowingLeaveConfirmation,
-            titleVisibility: .visible
-        ) {
-            // AC 2.3: Leave → save + dismiss. LOAD-BEARING cross-package
-            // dependency: the save is performed by the board views' .onDisappear
-            // hooks — MinesweeperBoardView.persistCurrentState (#455) and Sudoku
-            // BoardView.flush (#413) — both bare `Task` so they outlive teardown.
-            // If either hook is removed, `leave.game.message` ("saved
-            // automatically when you're signed in to iCloud", #516) becomes false.
-            // The VM itself does not save.
-            Button(role: .destructive) {
-                onConfirmLeave()
-            } label: {
-                Text("leave.game.leave", bundle: .main)
-            }
-            // AC 2.2: Cancel → return to game, no side effects.
-            Button(role: .cancel) {
-                onCancelLeave()
-            } label: {
-                Text("leave.game.cancel", bundle: .main)
-            }
-        } message: {
-            Text("leave.game.message", bundle: .main)
         }
     }
 }

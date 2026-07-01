@@ -3059,6 +3059,54 @@
         }
       }
     },
+    "game.paused" : {
+      "comment" : "Unified pause menu — title shown on the PauseOverlayView card while a game session is paused.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Paused"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Juego en pausa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時停止中"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "게임 일시정지"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เกมหยุดชั่วคราว"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "游戏已暂停"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遊戲已暫停"
+          }
+        }
+      }
+    },
     "leave.game.cancel" : {
       "comment" : "SDD-003 Epic 2 — Leave Game confirmation dialog: Cancel action button.",
       "extractionState" : "manual",
