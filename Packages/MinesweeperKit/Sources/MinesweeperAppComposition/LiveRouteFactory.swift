@@ -276,16 +276,24 @@ public struct LiveRouteFactory: RouteFactory {
             // dead-replay #386 avoids).
             // SDD-003 Epic 4: Close pops back to the hub (same as the old
             // New Game CTA). Retry removed at this injection site.
+            // Wrap in the shared scaffold so this pushed-route re-view matches the
+            // centred-card layout of the in-board overlay (the card is intrinsic;
+            // the scaffold owns bg / centring / Close).
             return AnyView(
-                MinesweeperCompletionView(
-                    viewModel: MinesweeperCompletionViewModel(
-                        didWin: true,
-                        elapsedSeconds: 0,
-                        leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty),
-                        gameCenter: gameCenter
-                    ),
+                CompletionOverlayScaffold(
                     onClose: { Self.popToNewGame(path: path) },
-                    showsElapsedTime: false
+                    card: {
+                        MinesweeperCompletionView(
+                            viewModel: MinesweeperCompletionViewModel(
+                                didWin: true,
+                                elapsedSeconds: 0,
+                                leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty),
+                                gameCenter: gameCenter
+                            ),
+                            onClose: nil,
+                            showsElapsedTime: false
+                        )
+                    }
                 )
             )
         case .settings:

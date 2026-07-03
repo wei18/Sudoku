@@ -6,10 +6,10 @@
 // stack. When the launch argument is absent (every non-uitest launch) the
 // modifier is a transparent no-op.
 //
-// On iOS: a `fullScreenCover` containing a real `NavigationStack` is presented
-// so the board can push `.completion` via a path binding. On macOS:
-// `fullScreenCover` is unavailable; the modifier is an unconditional no-op
-// (the near-win hook is an iOS simulator uitest feature).
+// On iOS: a `fullScreenCover` presents the board with `path == nil`, so a win
+// uses the same in-board completion OVERLAY as the normal flow (Close dismisses
+// the cover). On macOS: `fullScreenCover` is unavailable; the modifier is an
+// unconditional no-op (the near-win hook is an iOS simulator uitest feature).
 //
 // Availability: `#if DEBUG` only — stripped from Release builds entirely.
 
