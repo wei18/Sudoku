@@ -69,11 +69,6 @@ public struct MinesweeperBoardView: View {
     // leaderboard-slice VM. Optional so MVP / preview callsites stay no-op
     // (the slice degrades to the sign-in affordance, never blocking the win).
     private let gameCenter: (any GameCenterClient)?
-    // #292: New Game CTA on the Completion overlay → dismiss to root. The board
-    // has no path binding of its own (it's constructed with difficulty+seed), so
-    // the navigation owner (Home / Root) injects this. `nil` → the CTA is hidden
-    // (preview / standalone board).
-    private let onNewGame: (() -> Void)?
     // #297: snapshot / preview seam. `true` skips the in-body ticker `.task` so
     // a pre-seeded board survives capture and no Completion overlay is drawn
     // over a loss board. Defaults `false` — production never sets it, so the
@@ -105,7 +100,6 @@ public struct MinesweeperBoardView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        onNewGame: (() -> Void)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil
@@ -115,7 +109,6 @@ public struct MinesweeperBoardView: View {
         self.adGate = adGate
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
-        self.onNewGame = onNewGame
         self.onPlayAgain = onPlayAgain
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
@@ -137,7 +130,6 @@ public struct MinesweeperBoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        onNewGame: (() -> Void)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil
@@ -156,7 +148,6 @@ public struct MinesweeperBoardView: View {
         self.adGate = adGate
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
-        self.onNewGame = onNewGame
         self.onPlayAgain = onPlayAgain
         self.suppressTickerForSnapshot = false
         self.mode = mode

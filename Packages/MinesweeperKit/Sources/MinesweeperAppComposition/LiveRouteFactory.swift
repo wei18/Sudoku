@@ -26,10 +26,9 @@
 // today — no MS save-flow → `latestInProgress()` returns nil → nothing to
 // delete — but the error path is the real future-proofing.
 //
-// #448: the board destination's "New Game" CTA lives only in the Completion
-// overlay (threaded via `onNewGame` → `popToNewGame` → `path.removeAll()`).
-// The divergent in-play toolbar button was removed to restore parity with
-// Sudoku's board route, which has no such toolbar item.
+// #448: the divergent in-play toolbar "New Game" button was removed to restore
+// parity with Sudoku's board route. The `.completion` route's Close CTA uses
+// `popToNewGame` → `path.removeAll()` to return to the hub.
 
 public import SwiftUI
 public import GameCenterClient
@@ -189,9 +188,6 @@ public struct LiveRouteFactory: RouteFactory {
                         errorReporter: self.errorReporter,
                         // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
                         soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
-                        // #292: the Completion overlay's "New Game" CTA pops the
-                        // stack back to the difficulty picker.
-                        onNewGame: { Self.popToNewGame(path: path) },
                         // #652: Play Again — dismiss current board and present a new
                         // practice board at the same difficulty with a fresh seed.
                         // Only wired when `onPresentBoard` is available AND this is a
@@ -233,8 +229,7 @@ public struct LiveRouteFactory: RouteFactory {
                         adGate: self.adGate,
                         gameCenter: self.gameCenter,
                         errorReporter: self.errorReporter,
-                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
-                        onNewGame: { Self.popToNewGame(path: path) }
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying()
                     )
                 )
             }
@@ -257,8 +252,7 @@ public struct LiveRouteFactory: RouteFactory {
                         adGate: self.adGate,
                         gameCenter: nil,
                         errorReporter: self.errorReporter,
-                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
-                        onNewGame: { Self.popToNewGame(path: path) }
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying()
                         // store: nil, recordName: nil — intentionally omitted so no
                         // save is written and the Failed record stays intact.
                     )

@@ -94,7 +94,6 @@ struct MinesweeperBoardTerminalOverlaySnapshotTests {
         completionVM.setStateForTesting(.unauthenticated)
         return MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
-            onNewGame: {},
             suppressTickerForSnapshot: true,
             completionViewModelForSnapshot: completionVM
         )
