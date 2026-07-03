@@ -23,6 +23,8 @@
 | 跨裝置 | 存檔與紀錄經 iCloud Private DB 同步 | 設定與購買狀態經 iCloud 同步；尚無存檔續玩流程 |
 | 平台 | iOS 26 / macOS 26，真正的 SwiftUI Mac App（非 Catalyst） | 同上 |
 
+> **關於「v2.6」：** 這是**repo 里程碑**，且自 SDD-003 版號同步（a3e80d7）之後，它也是兩款 App 的商店版本字串——Sudoku *與* Minesweeper 的 `CFBundleShortVersionString` 都是 **2.6.0**。因此 Minesweeper 的*首次* App Store 送審是以 2.6.0（而非 1.0）出貨：repo、binary、ASC 三處共用同一個同步版號。
+
 **兩款 App 共通的理念。** 不收集任何個人資料、不嵌入第三方分析 SDK。存檔存於玩家自己的 iCloud Private Database；Game Center 提交交由 Apple 處理。在含商業模式的 build 中，*唯一*的第三方 SDK 是 Google 的 banner 廣告函式庫，隔離於單一模組內——且該 banner 可透過一次性、非消耗型的 In-App Purchase 永久移除。
 
 ---

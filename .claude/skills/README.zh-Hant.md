@@ -7,10 +7,12 @@
 1. **專案綁定 skills（8）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
    App（Sudoku／Minesweeper）、`mise run` 任務與 pipeline，**不可移植**，
    故留在此處、無命名空間。
-2. **`apple-dev-skills` plugin（26）**——可移植的 Apple 平台／AI agent 協作 skills 已
-   抽離至 [`wei18/apple-dev-skills`](https://github.com/wei18/apple-dev-skills)，以 git
-   submodule 釘在 `apple-dev-skills/`、以 Claude Code plugin 載入，命名空間為
-   **`apple-dev-skills:<skill>`**。
+2. **`apple-dev-skills` marketplace（2 個 plugin，32 skills）**——可移植的 Apple 平台／
+   AI agent 協作 skills 已抽離至
+   [`wei18/apple-dev-skills`](https://github.com/wei18/apple-dev-skills)，以 git
+   submodule 釘在 `apple-dev-skills/`、以 **兩個** Claude Code plugin 載入：
+   **`apple-dev-skills:<skill>`**（20，Apple 平台工程）與
+   **`collaboration-skills:<skill>`**（12，Leader-Developer 協作模式）。
 
 ---
 
@@ -29,18 +31,24 @@
 
 ---
 
-## `apple-dev-skills` plugin（26，帶命名空間）
+## `apple-dev-skills` marketplace（2 個 plugin，32 skills，帶命名空間）
 
-可移植 skills（Swift 6／SwiftPM／測試／CI／L10n／telemetry 預設 ＋ Leader-Developer
-協作模式）住在 [`apple-dev-skills`](apple-dev-skills/README.md) submodule、以 Claude
-Code plugin 載入。接線已 commit、可重現：
+可移植 skills 住在 [`apple-dev-skills`](apple-dev-skills/README.md) submodule——
+一個 Claude Code plugin **marketplace**，內含兩個 plugin：
+
+- **`apple-dev-skills`**（20）——Swift 6／SwiftPM／測試／CI／L10n／telemetry 預設；
+  以 `apple-dev-skills:<skill>` 出現。
+- **`collaboration-skills`**（12）——Leader-Developer 協作模式（派工契約、審查循環、
+  spec 編排）；以 `collaboration-skills:<skill>` 出現。
+
+接線已 commit、可重現：
 
 - **submodule** `apple-dev-skills/` 釘確切版本（commit SHA）。
 - **`.claude/settings.json`**（project scope）宣告它為 local-path plugin marketplace
-  並啟用；clone ＋ trust workspace 後 Claude Code 自動註冊，skills 以
-  `apple-dev-skills:<skill>` 出現——**不需手動 `/plugin install`**。
+  並啟用**兩個** plugin；clone ＋ trust workspace 後 Claude Code 自動註冊——
+  **不需手動 `/plugin install`**。
 
-26 個完整索引見 [`apple-dev-skills/README.md`](apple-dev-skills/README.md)。
+32 個完整索引見 [`apple-dev-skills/README.md`](apple-dev-skills/README.md)。
 
 > `superpowers/` 為另一個 git **submodule**（`obra/superpowers`），不在此編目。
 

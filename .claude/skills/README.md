@@ -7,11 +7,12 @@ This directory holds the skills available in this project. It has two parts:
 1. **Project-bound skills (8)** — flat `SKILL.md` directories below. These name this
    repo's specific apps (Sudoku / Minesweeper), `mise run` tasks, and
    pipelines, so they are *not* portable and live here un-namespaced.
-2. **The `apple-dev-skills` plugin (26)** — the portable Apple-platform /
-   AI-agent-collaboration skills were extracted into
+2. **The `apple-dev-skills` marketplace (2 plugins, 32 skills)** — the portable
+   Apple-platform / AI-agent-collaboration skills were extracted into
    [`wei18/apple-dev-skills`](https://github.com/wei18/apple-dev-skills), vendored
-   here as a git submodule at `apple-dev-skills/` and loaded as a Claude Code
-   plugin. They surface namespaced as **`apple-dev-skills:<skill>`**.
+   here as a git submodule at `apple-dev-skills/` and loaded as TWO Claude Code
+   plugins: **`apple-dev-skills:<skill>`** (20, Apple-platform engineering) and
+   **`collaboration-skills:<skill>`** (12, Leader-Developer collaboration patterns).
 
 ---
 
@@ -30,20 +31,26 @@ This directory holds the skills available in this project. It has two parts:
 
 ---
 
-## The `apple-dev-skills` plugin (26, namespaced)
+## The `apple-dev-skills` marketplace (2 plugins, 32 skills, namespaced)
 
-The portable skills (Swift 6 / SwiftPM / testing / CI / L10n / telemetry defaults +
-Leader-Developer collaboration patterns) live in the
-[`apple-dev-skills`](apple-dev-skills/README.md) submodule and load as a Claude Code
-plugin. Wiring is committed and reproducible:
+The portable skills live in the
+[`apple-dev-skills`](apple-dev-skills/README.md) submodule — a Claude Code plugin
+**marketplace** hosting two plugins:
+
+- **`apple-dev-skills`** (20) — Swift 6 / SwiftPM / testing / CI / L10n / telemetry
+  defaults; surfaces as `apple-dev-skills:<skill>`.
+- **`collaboration-skills`** (12) — Leader-Developer collaboration patterns
+  (dispatch contracts, review cycles, spec orchestration); surfaces as
+  `collaboration-skills:<skill>`.
+
+Wiring is committed and reproducible:
 
 - **submodule** `apple-dev-skills/` pins the exact version (a commit SHA).
 - **`.claude/settings.json`** (project scope) declares it as a local-path plugin
-  marketplace + enables it, so on clone + workspace-trust Claude Code
-  auto-registers and the skills appear as `apple-dev-skills:<skill>` — no manual
-  `/plugin install`.
+  marketplace + enables **both** plugins, so on clone + workspace-trust Claude Code
+  auto-registers them — no manual `/plugin install`.
 
-Full index of the 26: see [`apple-dev-skills/README.md`](apple-dev-skills/README.md).
+Full index of the 32: see [`apple-dev-skills/README.md`](apple-dev-skills/README.md).
 
 > The `superpowers/` directory is a separate git **submodule** (`obra/superpowers`)
 > and is not catalogued here.
