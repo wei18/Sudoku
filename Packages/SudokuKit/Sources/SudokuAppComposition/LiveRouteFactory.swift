@@ -218,17 +218,25 @@ public struct LiveRouteFactory: RouteFactory {
             // SDD-003 Epic 4: Close pops the last route entry so the player
             // returns to the board (which is already dismissed) or the Hub.
             let closePath = path
+            // Wrap in the shared scaffold so the pushed-route completion (macOS)
+            // matches the centred-card + CTAs-below layout of the iPhone overlay.
+            // The card itself is intrinsic; the scaffold owns bg / centring / Close.
             return AnyView(
-                CompletionView(
-                    viewModel: CompletionViewModel(
-                        puzzleId: puzzleId,
-                        elapsedSeconds: elapsedSeconds,
-                        mistakeCount: mistakeCount,
-                        leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId),
-                        gameCenter: gameCenter
-                    ),
-                    reminderPrimer: reminderPrimer,
-                    onClose: closePath.map { pathBinding in { pathBinding.wrappedValue.removeLast() } }
+                CompletionOverlayScaffold(
+                    onClose: { closePath?.wrappedValue.removeLast() },
+                    card: {
+                        CompletionView(
+                            viewModel: CompletionViewModel(
+                                puzzleId: puzzleId,
+                                elapsedSeconds: elapsedSeconds,
+                                mistakeCount: mistakeCount,
+                                leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId),
+                                gameCenter: gameCenter
+                            ),
+                            reminderPrimer: reminderPrimer,
+                            onClose: nil
+                        )
+                    }
                 )
             )
         case .settings:

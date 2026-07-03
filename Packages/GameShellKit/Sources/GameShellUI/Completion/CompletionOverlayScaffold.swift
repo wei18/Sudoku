@@ -47,51 +47,64 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .bottom) {
+        // Unified centred layout, mirroring the pause "Leave Game?" card: the
+        // result card and its CTAs form ONE group, vertically centred by the
+        // ZStack (default `.center`). No GeometryReader/ScrollView — those
+        // misbehave inside a board `.overlay` (the completion is presented as an
+        // overlay on iPhone). The card is intrinsic-height, so the group sizes to
+        // content and centres cleanly. Dynamic Type is capped on the card's hero
+        // so the group can't overflow the screen. Every completion presentation —
+        // both apps, overlay + pushed route — goes through here, staying identical.
+        ZStack {
             theme.surface.background.resolved
                 .ignoresSafeArea()
-            VStack(spacing: 0) {
-                Spacer()
+            VStack(spacing: 24) {
                 card()
-                    // Prevent CompletionScreen's `.frame(maxHeight: .infinity)`
-                    // from eating the Spacers and sticking the card at the top.
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                VStack(spacing: 12) {
-                    if let onPlayAgain {
-                        Button(action: onPlayAgain) {
-                            Text("Play Again", bundle: .main)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(theme.accent.primary.resolved)
-                        .controlSize(.large)
-                    }
-                    // #652: Close is demoted to secondary `.bordered` style when
-                    // Play Again is present; primary `.borderedProminent` when it is
-                    // the only CTA (nil onPlayAgain). Swift requires separate branches
-                    // because `.bordered` / `.borderedProminent` are different types.
-                    if onPlayAgain != nil {
-                        Button(action: onClose) {
-                            Text("Close", bundle: .main)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(theme.accent.primary.resolved)
-                        .controlSize(.large)
-                    } else {
-                        Button(action: onClose) {
-                            Text("Close", bundle: .main)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(theme.accent.primary.resolved)
-                        .controlSize(.large)
-                    }
+                ctas
+            }
+            .frame(maxWidth: 480)
+            .padding(.horizontal, 24)
+            // Cap Dynamic Type so the (non-scrolling) group can't grow past the
+            // screen — mirrors the board status bar's cap. Extreme-AX overflow
+            // scroll is a possible follow-up; the cap keeps it on-screen.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        }
+    }
+
+    @ViewBuilder
+    private var ctas: some View {
+        VStack(spacing: 12) {
+            if let onPlayAgain {
+                Button(action: onPlayAgain) {
+                    Text("Play Again", bundle: .main)
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 16)
+                .buttonStyle(.borderedProminent)
+                .tint(theme.accent.primary.resolved)
+                .controlSize(.large)
+            }
+            // #652: Close is demoted to secondary `.bordered` style when Play
+            // Again is present; primary `.borderedProminent` when it is the only
+            // CTA (nil onPlayAgain). Swift requires separate branches because
+            // `.bordered` / `.borderedProminent` are different types.
+            if onPlayAgain != nil {
+                Button(action: onClose) {
+                    Text("Close", bundle: .main)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(theme.accent.primary.resolved)
+                .controlSize(.large)
+            } else {
+                Button(action: onClose) {
+                    Text("Close", bundle: .main)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(theme.accent.primary.resolved)
+                .controlSize(.large)
             }
         }
+        .padding(.horizontal, 8)
     }
 }
