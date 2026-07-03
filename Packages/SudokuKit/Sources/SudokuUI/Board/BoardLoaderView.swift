@@ -50,8 +50,10 @@ public struct BoardLoaderView: View {
     // #330 P2: gameplay audio seam, forwarded into the live `GameViewModel`.
     // Defaults to `NoopSoundPlaying` so previews / tests stay silent.
     private let soundPlayer: any SoundPlaying
-    // Host navigation path, forwarded to `BoardView` so a solve can push the
-    // `.completion` route. Optional → previews / tests mount without a stack.
+    // Host navigation path, forwarded to `BoardView` so the completion
+    // overlay's Close can pop the board's own stack entry in the push context
+    // (#667 — the solve no longer pushes a `.completion` route). Optional →
+    // previews / tests mount without a stack.
     private let path: Binding<[AppRoute]>?
     // #579 phase 1: Telemetry fan-out for per-session adapter. `nil` (default)
     // → `NoOpGameStateTelemetry` so previews / tests are unaffected.
