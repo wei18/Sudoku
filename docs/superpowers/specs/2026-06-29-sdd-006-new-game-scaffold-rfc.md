@@ -180,7 +180,7 @@ placeholder set rather than copied.
   verify; ASCRegister GC config template; `NEXT-STEPS.md` user-owned checklist.
 - **PR3 — parameterization audit.** Confirm `tf:upload` / `store:screenshots` /
   `gen:acknowledgements` / `scan:l10n` already accept the new app name (the epic says
-  "verify"); fix any hard-coded `sudoku|minesweeper|tiles2048` enumerations found.
+  "verify"); fix any hard-coded `sudoku|minesweeper` enumerations found.
 - **PR4 (optional) — monetization slot.** Banner-slot assembly + Remove-Ads IAP wiring,
   pending the SDD-003 Epic-5 ScreenContainer banner shape.
 
