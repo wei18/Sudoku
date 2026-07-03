@@ -97,29 +97,38 @@ extension BoardView {
         }
     }
 
+    // #667 (SDD-003 2B, audit P2): hidden at terminal status, mirroring
+    // Minesweeper's `pauseToggle` guard. The completion overlay already covers
+    // the whole board once solved, so this is defense-in-depth (a stray
+    // pre-overlay frame, or the header being inspected directly in a test)
+    // rather than new chrome — without it the button stayed visible but dead
+    // (pause/resume both no-op on a `.completed` session).
+    @ViewBuilder
     private var pauseButton: some View {
-        Button {
-            Task {
-                if viewModel.isPaused { await viewModel.resume() } else { await viewModel.pause() }
+        if viewModel.status == .playing || viewModel.isPaused {
+            Button {
+                Task {
+                    if viewModel.isPaused { await viewModel.resume() } else { await viewModel.pause() }
+                }
+            } label: {
+                if sizeClass == .regular {
+                    Label(  // Mac: icon + text per board-mac-redesign wireframe.
+                        viewModel.isPaused ? "Resume" : "Pause",
+                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
+                    )
+                } else {
+                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                }
             }
-        } label: {
-            if sizeClass == .regular {
-                Label(  // Mac: icon + text per board-mac-redesign wireframe.
-                    viewModel.isPaused ? "Resume" : "Pause",
-                    systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
-                )
-            } else {
-                Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
-            }
+            // #647: expand tap target to ≥44×44 pt (HIG minimum) without enlarging
+            // the visible glyph. `.contentShape(Rectangle())` makes the full frame
+            // hit-testable under `.plain` button style.
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
+            .tint(theme.accent.primary.resolved)
+            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
         }
-        // #647: expand tap target to ≥44×44 pt (HIG minimum) without enlarging
-        // the visible glyph. `.contentShape(Rectangle())` makes the full frame
-        // hit-testable under `.plain` button style.
-        .frame(minWidth: 44, minHeight: 44)
-        .contentShape(Rectangle())
-        // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
-        .tint(theme.accent.primary.resolved)
-        .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
     }
 
     // MARK: - Keyboard shortcuts (⌘Z / ⌘⇧Z)

@@ -1,10 +1,16 @@
 // BoardCompletionOverlayTests — verifies that BoardView presents a
-// CompletionViewModel overlay when the game reaches .completed in the
-// modal (path == nil) context where path-push is a no-op.
+// CompletionViewModel overlay when the game reaches .completed, on every
+// presentation context (path == nil modal AND path != nil push).
 //
 // Root cause of #610: pushCompletionIfNeeded() silently no-ops when
 // path == nil (modal fullScreenCover). Fix: mirror MS's in-board
 // overlay pattern, gated by `shouldPresentCompletionOverlay`.
+//
+// #667 (SDD-003 2B): the macOS push branch (path != nil) that used to push a
+// SEPARATE `.completion` route is gone — its Close only popped that one
+// route, stranding the player on the solved board underneath (audit P1).
+// `shouldPresentCompletionOverlay` no longer gates on `path`, so the overlay
+// is the one completion presentation on both platforms.
 //
 // Tests in this file use the snapshot-init seam (GameViewModel(identity:board:...))
 // so they run without a live GameSession actor.
@@ -89,12 +95,12 @@ struct BoardCompletionOverlayTests {
                 "overlay predicate must be false while status==.playing")
     }
 
-    // FALSE: NavigationStack context (path != nil) + completed.
-    // This locks the macOS double-present regression: when a board is
-    // presented inline with a non-nil path, only pushCompletionIfNeeded()
-    // should fire — NOT the overlay.
-    @Test("shouldPresentCompletionOverlay: false when completed + path!=nil (macOS regression lock)")
-    func overlayPredicateFalseWhenPathNonNil() throws {
+    // TRUE: NavigationStack context (path != nil) + completed.
+    // #667 (SDD-003 2B): locks the fix for the macOS strand-on-solved-board
+    // bug (audit P1) — the overlay must fire regardless of push vs modal
+    // context; only Close's exit route (`exitToHub`) differs by context.
+    @Test("shouldPresentCompletionOverlay: true when completed + path!=nil (macOS uses the overlay too)")
+    func overlayPredicateTrueWhenPathNonNil() throws {
         let board = try Board(clues: Self.solvedClues)
         let viewModel = GameViewModel(
             identity: Self.dailyIdentity,
@@ -106,8 +112,54 @@ struct BoardCompletionOverlayTests {
         var routes: [AppRoute] = []
         let path = Binding(get: { routes }, set: { routes = $0 })
         let boardView = BoardView(viewModel: viewModel, path: path)
-        #expect(!boardView.shouldPresentCompletionOverlay,
-                "overlay predicate must be false when path!=nil — macOS uses push, not overlay")
+        #expect(boardView.shouldPresentCompletionOverlay,
+                "overlay predicate must be true when path!=nil — macOS now uses the overlay, not a push")
+    }
+
+    // MARK: - exitToHub (#667 audit P1: "Close always exits to hub")
+
+    // Push context (path != nil): the board is the top stack entry (no more
+    // separately-pushed `.completion` route), so Close must pop exactly that
+    // one entry, landing on whatever hub pushed the board.
+    @Test("exitToHub: push context pops the board's own stack entry, landing on the hub")
+    func exitToHubPopsBoardEntryInPushContext() throws {
+        let board = try Board(clues: Self.solvedClues)
+        let viewModel = GameViewModel(
+            identity: Self.dailyIdentity,
+            board: board,
+            status: .completed,
+            elapsedSeconds: 42,
+            mistakeCount: 0
+        )
+        var routes: [AppRoute] = [.daily, .board(puzzleId: Self.dailyIdentity.puzzleId)]
+        let path = Binding(get: { routes }, set: { routes = $0 })
+        let boardView = BoardView(viewModel: viewModel, path: path)
+
+        boardView.exitToHub(dismiss: EnvironmentValues().dismiss)
+
+        #expect(routes == [.daily],
+                "Close must pop only the board's own entry — never strand the player on the solved board")
+    }
+
+    // Defensive: an already-empty path (shouldn't happen in production, the
+    // board itself is always a pushed entry) must not crash on removeLast().
+    @Test("exitToHub: push context no-ops when path is already empty")
+    func exitToHubNoOpsWhenPathEmpty() throws {
+        let board = try Board(clues: Self.solvedClues)
+        let viewModel = GameViewModel(
+            identity: Self.dailyIdentity,
+            board: board,
+            status: .completed,
+            elapsedSeconds: 42,
+            mistakeCount: 0
+        )
+        var routes: [AppRoute] = []
+        let path = Binding(get: { routes }, set: { routes = $0 })
+        let boardView = BoardView(viewModel: viewModel, path: path)
+
+        boardView.exitToHub(dismiss: EnvironmentValues().dismiss)
+
+        #expect(routes.isEmpty)
     }
 
     // MARK: - makeCompletionViewModel content checks

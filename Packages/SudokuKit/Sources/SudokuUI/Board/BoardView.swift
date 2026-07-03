@@ -21,8 +21,14 @@ public struct BoardView: View {
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
     /// Host navigation path. Optional so previews / snapshot tests (which mount
-    /// `BoardView` directly) keep working — `nil` makes the push a graceful no-op.
-    /// `internal` (not `private`) — `BoardView+Completion` reads it for the predicate.
+    /// `BoardView` directly) keep working. Non-nil exactly when the board is a
+    /// macOS NavigationStack push (iOS boards are fullScreenCover modals, so
+    /// `path` is nil there). #667 (SDD-003 2B): the completion overlay is now
+    /// the ONE completion presentation on every platform — `path` is read only
+    /// by `BoardView+Completion.exitToHub` to pop the board's own stack entry
+    /// on Close in the push context (there is no separate pushed `.completion`
+    /// route to pop anymore). `internal` (not `private`) — `BoardView+Completion`
+    /// reads it.
     let path: Binding<[AppRoute]>?
     // #610: GC client + daily primer builder — internal for BoardView+Completion.swift.
     let gameCenter: (any GameCenterClient)?
@@ -45,9 +51,6 @@ public struct BoardView: View {
     // to avoid showing two clocks on screen.
     @Environment(\.gameChrome) var gameChrome
     @FocusState private var keyboardFocus: Bool
-    /// One-shot latch: completion is sticky and SwiftUI re-evaluates `body`
-    /// freely, so guard the push to fire EXACTLY once.
-    @State private var hasNavigatedToCompletion = false
     // #610: Completion overlay VM + Daily primer. Both held in @State so they
     // survive body recomputes without resetting fetch / auth-check state.
     @State var completionViewModel: CompletionViewModel?
@@ -138,13 +141,6 @@ public struct BoardView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
-        .onChange(of: viewModel.status) {
-            // Fires only on the live `.playing → .completed` transition (P0-1).
-            // No `initial: true`, so re-opening an already-completed board
-            // (mounted directly in `.completed`) does NOT auto-bounce to
-            // Completion — the finished board stays viewable.
-            pushCompletionIfNeeded()
-        }
         // #413: flush the debounced autosave when the board leaves the screen.
         // `scheduleSave()` is debounced (500 ms) and holds `[weak self]`; a
         // Home tap (NavigationStack pop → `.onDisappear`) tears the VM down
@@ -184,18 +180,6 @@ public struct BoardView: View {
                 break
             }
         }
-    }
-
-    /// Push `.completion` onto the host path when the session has reached
-    /// `.completed`. Guarded by `hasNavigatedToCompletion` so the sticky
-    /// completion state + SwiftUI re-evaluation can only append once.
-    /// `path == nil` (previews / tests) → graceful no-op.
-    private func pushCompletionIfNeeded() {
-        guard !hasNavigatedToCompletion,
-              let route = viewModel.completionRoute,
-              let path else { return }
-        hasNavigatedToCompletion = true
-        path.wrappedValue.append(route)
     }
 
     // MARK: - Compact (iPhone) layout
