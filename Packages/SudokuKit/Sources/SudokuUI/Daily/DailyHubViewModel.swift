@@ -60,8 +60,9 @@ public final class DailyHubViewModel {
     /// otherwise push `.completion` twice. Set synchronously before spawning
     /// the open Task and cleared in `openCompleted`'s `defer` — both run on
     /// the MainActor, so no second tap can slip a route in during the load.
-    /// Unlike P0-1's one-shot `hasNavigatedToCompletion`, this RESETS so a
-    /// re-tap after returning to the hub works again.
+    /// Unlike BoardView's completion-overlay presentation (a one-shot
+    /// `.completed` transition, #667), this RESETS so a re-tap after
+    /// returning to the hub works again.
     private var isOpeningCompleted = false
 
     public init(

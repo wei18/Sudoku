@@ -60,22 +60,6 @@ public final class GameViewModel {
     /// `true` while the session is paused; UI overlays a "Tap to resume" pane.
     public var isPaused: Bool { status == .paused }
 
-    /// Navigable Completion destination, surfaced as observable data so the
-    /// host (BoardView) can push it onto the navigation path. Non-nil exactly
-    /// when the session has reached `.completed` (sticky); the `elapsedSeconds`
-    /// is the FROZEN value `GameSession.freezeRunningClock()` captured on the
-    /// solve, mirrored here by `resyncFromSession()`. A late daily solve
-    /// (#228) still completes and still routes here — `SubmitGuards` gates the
-    /// leaderboard submission, not the completion screen.
-    public var completionRoute: AppRoute? {
-        guard status == .completed else { return nil }
-        return .completion(
-            puzzleId: identity.puzzleId,
-            elapsedSeconds: elapsedSeconds,
-            mistakeCount: mistakeCount
-        )
-    }
-
     // MARK: - Collaborators
 
     private let session: GameSession?

@@ -3,11 +3,12 @@
 // through the PRODUCTION modal path (path == nil fullScreenCover), so the
 // #610 in-board Completion overlay fires on the winning tap.
 //
-// Contrast with `SudokuNearWinModifier` (`-uitest-near-win`), which wraps the
-// board in its own NavigationStack (path != nil) — that exercises the push
-// completion path, NOT the #610 overlay. This modifier is the modal sibling:
-// the fullScreenCover has no inner NavigationStack, so `path == nil` and
-// `BoardView.shouldPresentCompletionOverlay` returns `true` on the win.
+// Contrast with `SudokuNearWinModifier` (`-uitest-near-win`), which also
+// mounts the board with `path == nil` in a fullScreenCover since the Jul-3
+// hook cleanup (its former NavigationStack-push variant exercised the
+// pushed-route completion, deleted entirely in #667 2B). Both hooks now hit
+// the same in-board overlay; this one exists to keep the historical
+// `-uitest-near-win-modal` entry point stable for #510 E2E.
 //
 // Applied at `AppComposition.rootView` alongside `SudokuNearWinModifier` —
 // when the launch argument is absent every launch, the modifier is a no-op.
