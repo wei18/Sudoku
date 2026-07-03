@@ -11,13 +11,22 @@ convergence, COMPLETE — the prerequisite), north-star memory
 > **UPDATE 2026-06-29 — Tiles2048 removed; template source is now Minesweeper.**
 > This RFC was drafted while Tiles2048 (SDD-004) existed as the "canonical clean
 > shape". Later the same day the user removed Tiles2048 to keep MS + Sudoku the
-> focus (SDD-004 abandoned, #501 closed). **Wherever this doc says "2048" / "from
-> 2048" as the template source, read "Minesweeper"** — MS is now the cleanest
+> focus (SDD-004 abandoned, #501 closed). **Wherever this doc said "2048" / "from
+> 2048" as the template source, it now says "Minesweeper"** — MS is the cleanest
 > shipped 2-game mirror to template from (Sudoku is the older reference with the
-> most bespoke surface). The §2 conformance audit below is now a **two-game**
-> (Sudoku + Minesweeper) check; both are conformant after #640. The generator
-> remains PENDING (§5 form undecided), so the design detail wasn't line-edited —
-> only this banner + the §2 table were updated.
+> most bespoke surface). The §2 conformance audit below is a **two-game**
+> (Sudoku + Minesweeper) check; both are conformant after #640.
+>
+> **UPDATE 2026-07-03 (audit #631) — body line-edited.** §2/§3/§5/§7's 2048
+> references were renamed to Minesweeper-keyed equivalents using the repo's real
+> identifiers (`cloudkit/minesweeper.ckdb`, `com.wei18.minesweeper`,
+> `iCloud.com.wei18.minesweeper`). One collapse to note: 2048 carried two
+> distinct name tokens — `Game2048` (Swift module prefix) and `Tiles2048`
+> (App-Store-facing name / app-target / bundle-id prefix), because its display
+> name diverged from its module prefix. Minesweeper uses one name for both, so
+> the §5 rename map now has a single token (`Minesweeper`) where 2048 needed two.
+> The generator itself is still PENDING (§5 form undecided) — this update is a
+> documentation rename only, no design change.
 
 ---
 
@@ -40,7 +49,7 @@ then replaces the three gameplay pieces.
 
 ## 2. Current state — what "add game 4" costs today
 
-Per-game footprint, using **2048 as the canonical template** (SDD-005 §Pillar A):
+Per-game footprint, using **Minesweeper as the canonical template** (SDD-005 §Pillar A):
 
 | Layer | Per-game artifacts | Generatable? |
 |---|---|---|
@@ -56,8 +65,8 @@ HTML). There is **no code generator** today.
 What SDD-005 already bought us: composition is `makeGameApp(config:)` everywhere;
 Home / DailyHub skeleton / board-redirect / GC dashboard / ResumePill / ATT /
 Settings are all shared and render from `GameConfig`. So the generated
-`<Game>AppComposition` is a thin, near-identical mirror of 2048's — exactly the
-kind of boilerplate a scaffold should own.
+`<Game>AppComposition` is a thin, near-identical mirror of Minesweeper's — exactly
+the kind of boilerplate a scaffold should own.
 
 ### Conformance of the three existing games (audit 2026-06-29)
 
@@ -99,7 +108,7 @@ around.
    entitlements (per-game iCloud container id), PrivacyInfo, `<Game>App.swift`,
    `license_plist.yml`, `Localizable.xcstrings` + `InfoPlist.xcstrings` (7-locale
    shells seeded from the shared keys), `Assets.xcassets` placeholder AppIcon.
-3. `cloudkit/<game>.ckdb` — SavedGame record-type template (mirror of `tiles2048.ckdb`).
+3. `cloudkit/<game>.ckdb` — SavedGame record-type template (mirror of `minesweeper.ckdb`).
 4. `Project.swift` — append the app target + `<Game>` and `<Game>-E2E` schemes.
 5. Test scaffolds — `<Game>E2ETests` dir, `ConfigConsistencyTests`, resume
    round-trip test stubs, an empty snapshot baseline dir.
@@ -137,24 +146,27 @@ This also gives us the #510-Phase-3 win→completion E2E **for free** on the new
 Two viable shapes; the user deferred the choice to this RFC.
 
 **Option A — `mise run new_game:scaffold <Name>` (bash generator).** Recommended.
-Stamps the file tree from a committed `templates/new-game/` set (or from 2048 as the
-live template), `sed`-renames `Game2048`/`Tiles2048` → `<Name>`, swaps in placeholder
+Stamps the file tree from a committed `templates/new-game/` set (or from Minesweeper
+as the live template), `sed`-renames `Minesweeper` → `<Name>`, swaps in placeholder
 gameplay, appends the `Project.swift` target+schemes, seeds the L10n shells. Consistent
 with the repo's mise-tasks-for-everything posture; one command, reproducible, reviewable.
 - *Risks:* `sed`-rename across a live template is brittle (catches substrings); a
-  committed `templates/` set drifts from 2048 unless gated. Mitigation: a
-  `scan:` check that diffs the template against 2048's shape, or generate *from* 2048
-  at run time with an explicit rename map.
+  committed `templates/` set drifts from Minesweeper unless gated. Mitigation: a
+  `scan:` check that diffs the template against Minesweeper's shape, or generate *from*
+  Minesweeper at run time with an explicit rename map.
 
-**Option B — documented checklist + copy 2048.** A `docs/new-game-checklist.md` + a
-"copy `Packages/Game2048*`, rename, blank gameplay" runbook. Lower build cost, but every
-new game repeats manual `cp`/`sed`/edit steps — exactly the friction this epic exists to
-kill. Not recommended as the primary deliverable (keep it as the fallback doc).
+**Option B — documented checklist + copy Minesweeper.** A `docs/new-game-checklist.md` +
+a "copy `Packages/Minesweeper*`, rename, blank gameplay" runbook. Lower build cost, but
+every new game repeats manual `cp`/`sed`/edit steps — exactly the friction this epic
+exists to kill. Not recommended as the primary deliverable (keep it as the fallback doc).
 
-**Leaning:** A, with the template sourced **from 2048 at run time** (no committed
-template copy to drift), driven by an explicit token map (`Game2048`→`<Name>`,
-`Tiles2048`→`<Name>`, `tiles2048`→`<name>`, `com.wei18.tiles2048`→`com.wei18.<name>`,
-`iCloud.com.wei18.tiles2048`→…). The gameplay files are then overwritten with the
+**Leaning:** A, with the template sourced **from Minesweeper at run time** (no committed
+template copy to drift), driven by an explicit token map (`Minesweeper`→`<Name>`,
+`minesweeper`→`<name>`, `com.wei18.minesweeper`→`com.wei18.<name>`,
+`iCloud.com.wei18.minesweeper`→`iCloud.com.wei18.<name>`). Unlike 2048 — which needed two
+separate tokens (`Game2048` module prefix vs `Tiles2048` app/bundle-id prefix) because
+its display name diverged from its module prefix — Minesweeper uses one name for both,
+so the map collapses to a single token. The gameplay files are then overwritten with the
 placeholder set rather than copied.
 
 ---
@@ -179,7 +191,7 @@ placeholder set rather than copied.
 - `mise run new_game:scaffold <Name>` produces a tree that **`tuist generate &&
   swift build` clean** and whose `<Name>-E2E` launch + win→completion smoke is green,
   with zero hand-editing.
-- The generated `<Game>AppComposition` diffs to ~empty against 2048's (only
+- The generated `<Game>AppComposition` diffs to ~empty against Minesweeper's (only
   `GameConfig` values + names differ) — i.e. it inherits SDD-005's convergence.
 - No real AdMob/ASC/CK IDs anywhere in generated files (only `$()` substitution +
   placeholders); `scan:secrets` / `scan:hygiene` pass.
@@ -201,8 +213,8 @@ merged) is the interim evidence that the wiring holds.
 ## 9. Open questions
 
 - **[OQ-1]** Scaffold form (§5) — A (mise generator, recommended) vs B (checklist).
-- **[OQ-2]** Template source — generate from 2048 at run time (no drift, recommended)
-  vs a committed `templates/new-game/` set (explicit but drifts).
+- **[OQ-2]** Template source — generate from Minesweeper at run time (no drift,
+  recommended) vs a committed `templates/new-game/` set (explicit but drifts).
 - **[OQ-3]** Rename safety — `sed` token map vs a small Swift/script renamer that's
   word-boundary aware (avoid `Game2048`-substring false hits).
 - **[OQ-4]** Does the placeholder game ship a real `Assets.xcassets` AppIcon, or a

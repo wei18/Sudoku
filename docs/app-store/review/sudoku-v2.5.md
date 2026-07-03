@@ -1,9 +1,13 @@
 # App Store Review Notes — Sudoku v2.5
 
+> **SUPERSEDED — v2.6 is the live submission round.** For current ASC paste-ready
+> content see [`sudoku-v2.6-review-information.md`](sudoku-v2.6-review-information.md)
+> and [`docs/app-store/SUBMISSION-CHECKLIST.md`](../SUBMISSION-CHECKLIST.md). This
+> file is kept as the historical record of the v2.5 round; do not paste from it.
+
 > Paste the **Review Information → Notes** field into App Store Connect at
 > submission. Demo account is N/A (no login). Contact = ASC account email.
-> This file is the source of truth; diff the live ASC page against it after
-> upload. Refs #236.
+> Refs #236.
 
 - **App**: Sudoku (`com.wei18.sudoku`, Apple ID `6771248206`)
 - **Version**: 2.5 (monetization-enabled round)
