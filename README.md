@@ -23,7 +23,7 @@ Both run on **iPhone and Mac** from one codebase, sync through the player's own 
 | Cross-device | iCloud Private DB sync of saves + records | Settings + purchase state via iCloud; no saved-game flow yet |
 | Platforms | iOS 26 / macOS 26, real SwiftUI Mac app (not Catalyst) | Same |
 
-> **On "v2.6":** that's the **repo milestone** (synced across both apps + the shared modules), not each app's store version string. Sudoku's `CFBundleShortVersionString` is **2.6**; Minesweeper's is **1.0** (its *first* App Store submission). So the ASC docs correctly say "1.0 (first submission)" for Minesweeper while the repo milestone is v2.6 — two different version concepts, neither wrong.
+> **On "v2.6":** that's the **repo milestone**, and since the SDD-003 version sync (a3e80d7) it's also both apps' store version string — Sudoku *and* Minesweeper ship `CFBundleShortVersionString` **2.6.0**. Minesweeper's *first* App Store submission therefore goes out as 2.6.0, not 1.0: one synced version across the repo, the binaries, and ASC.
 
 **Ethos (both apps).** No personal data is collected. No third-party analytics SDKs are embedded. Saves live in the player's own iCloud Private Database; Game Center submissions go to Apple. In the monetized builds the *only* third-party SDK is Google's banner-ad library, isolated to a single module — and the banner can be removed permanently with a one-time, non-consumable In-App Purchase.
 
