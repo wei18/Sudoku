@@ -40,7 +40,6 @@ public struct MinesweeperBoardLoaderView: View {
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
-    private let onNewGame: (() -> Void)?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -53,8 +52,7 @@ public struct MinesweeperBoardLoaderView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
-        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        onNewGame: (() -> Void)? = nil
+        soundPlayer: any SoundPlaying = NoopSoundPlaying()
     ) {
         self.recordName = recordName
         self.mode = mode
@@ -64,7 +62,6 @@ public struct MinesweeperBoardLoaderView: View {
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
-        self.onNewGame = onNewGame
     }
 
     public var body: some View {
@@ -86,8 +83,7 @@ public struct MinesweeperBoardLoaderView: View {
                 adProvider: adProvider,
                 adGate: adGate,
                 gameCenter: gameCenter,
-                soundPlayer: soundPlayer,
-                onNewGame: onNewGame
+                soundPlayer: soundPlayer
             )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
