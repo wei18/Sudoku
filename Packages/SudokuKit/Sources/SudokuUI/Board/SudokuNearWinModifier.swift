@@ -6,10 +6,10 @@
 // stack. When the launch argument is absent (every non-uitest launch) the
 // modifier is a transparent no-op.
 //
-// On iOS: a `fullScreenCover` containing a real `NavigationStack` is presented
-// so the board can push `.completion` via a path binding. On macOS:
-// `fullScreenCover` is unavailable; the modifier is an unconditional no-op
-// (the near-win hook is an iOS simulator uitest feature).
+// On iOS: a `fullScreenCover` presents the board with `path == nil`, so a win
+// uses the same in-board completion OVERLAY as the normal flow (Close dismisses
+// the cover). On macOS: `fullScreenCover` is unavailable; the modifier is an
+// unconditional no-op (the near-win hook is an iOS simulator uitest feature).
 //
 // Availability: `#if DEBUG` only — stripped from Release builds entirely.
 
@@ -66,42 +66,24 @@ private struct SudokuNearWinIOSModifier: ViewModifier {
 
 // MARK: - Cover content
 
-/// NavigationStack host inside the fullScreenCover. Provides a real
-/// `path` binding so `BoardView` can push `.completion` on win.
+/// Host for the near-win board inside the fullScreenCover. Presents the board
+/// with `path == nil` so a win uses the SAME in-board completion OVERLAY as the
+/// normal iPhone flow (Close → `dismiss()` → this cover closes). Previously it
+/// wrapped a `NavigationStack` and pushed `.completion`, which routed through the
+/// pushed-route completion whose Close popped back to the solved board (a trap)
+/// and diverged from MS's inline near-win. Now consistent with MS.
 @MainActor
 private struct SudokuNearWinCoverView: View {
 
     let board: SudokuNearWinBoard
-    @State private var path: [AppRoute] = []
 
     var body: some View {
-        NavigationStack(path: $path) {
-            BoardView(
-                viewModel: board.viewModel,
-                path: $path
-            )
-            .navigationDestination(for: AppRoute.self) { route in
-                nearWinDestination(for: route)
-            }
-        }
+        BoardView(
+            viewModel: board.viewModel,
+            gameCenter: NearWinNoopGameCenterClient()
+        )
         .environment(\.theme, DefaultTheme())
         .environment(\.sudokuCell, DefaultTheme().cell)
-    }
-
-    @ViewBuilder
-    private func nearWinDestination(for route: AppRoute) -> some View {
-        if case .completion(let puzzleId, let elapsedSeconds, let mistakeCount) = route {
-            CompletionView(
-                viewModel: CompletionViewModel(
-                    puzzleId: puzzleId,
-                    elapsedSeconds: elapsedSeconds,
-                    mistakeCount: mistakeCount,
-                    leaderboardId: nil,
-                    gameCenter: NearWinNoopGameCenterClient()
-                ),
-                onClose: { path.removeAll() }
-            )
-        }
     }
 }
 

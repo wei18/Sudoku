@@ -150,23 +150,20 @@ public struct CompletionScreen: View {
     }
 
     public var body: some View {
-        // SDD-003 Epic 4: popup/card shape. The host app still owns the
-        // presentation (Sudoku: pushed route; MS: full-board overlay) but
-        // CompletionScreen itself now renders as a centered card rather than a
-        // bare full-screen fill. `.padding` + max-width cap give the card its
-        // inset appearance; the host's background bleeds around it.
-        ScrollView {
-            VStack(spacing: 24) {
-                hero
-                content
-                actions
-                if let footer { footer }
-            }
-            .padding(20)
-            .frame(maxWidth: 480)
+        // Intrinsic-height card content. The host wrapper
+        // (`CompletionOverlayScaffold`) owns the themed background, vertical
+        // centring of the whole {card + CTAs} group, and scroll-on-overflow —
+        // so this view just lays out its content at its natural height and lets
+        // the wrapper place it. `.padding` + max-width cap keep the card inset.
+        VStack(spacing: 24) {
+            hero
+            content
+            actions
+            if let footer { footer }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.surface.background.resolved)
+        .padding(20)
+        .frame(maxWidth: 480)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Hero
