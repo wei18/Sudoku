@@ -110,13 +110,11 @@ internal actor SavedGameStore: Sendable {
         // puzzleLoader path is always reachable. The swallowed error is
         // reported via telemetry so the event stays observable in OSLog (#512).
         let existing: RecordPayload?
-        var fetchFailed = false
         do {
             existing = try await gateway.fetch(recordName: recordName)
         } catch {
             await telemetry.observe(.gameSaveFailed(puzzleId: puzzleId, reason: Self.fetchFailedReason))
             existing = nil
-            fetchFailed = true
         }
         if let existing {
             let puzzle = try await puzzleLoader(puzzleId)
@@ -124,26 +122,18 @@ internal actor SavedGameStore: Sendable {
         }
         let puzzle = try await puzzleLoader(puzzleId)
         let session = GameSession(puzzle: puzzle)
-        let snapshot = await session.snapshot()
-        // Data-loss guard (#512 CR): when the fetch failed we CANNOT confirm a
-        // remote record is absent. A transient blip (network, not signed-out)
-        // could hide a real in-progress save; persisting the fresh idle
-        // snapshot here would clobber it. So skip the initial save entirely on
-        // fetch failure — just return the snapshot for play. The VM persists on
-        // the first move through the conflict-resolved save path, so a genuinely
-        // new offline game still survives once the user acts.
-        if !fetchFailed {
-            // Best-effort seed of the new record; a save failure must not
-            // prevent the caller from receiving the fresh local snapshot.
-            try? await save(
-                snapshot,
-                puzzleId: puzzleId,
-                mode: mode,
-                difficulty: difficulty,
-                recordName: recordName
-            )
-        }
-        return snapshot
+        // #675: no eager seed-write here. A prior version best-effort-saved a
+        // virgin idle snapshot immediately, so any board that was merely
+        // mounted then abandoned before the first move left behind an
+        // inProgress "0:00 elapsed" record forever offered as a resume
+        // candidate. `GameViewModel` already persists on the first real
+        // mutation (`scheduleSave()`) or on pause (`flush()`); a session that
+        // never reaches either is correctly represented by NO record — there
+        // is nothing to resume. This also sidesteps the #512 CR data-loss
+        // concern (a failed fetch can't confirm a remote record is absent,
+        // so writing here could clobber a real save) without needing a
+        // `fetchFailed` branch: no write, no clobber.
+        return await session.snapshot()
     }
 
     /// Qualified save — `mode` cannot be inferred from `GameSessionSnapshot`

@@ -41,15 +41,16 @@ struct SaveIdentityRoutingTests {
         let mode: Mode = .daily
         let difficulty: Difficulty = .easy
 
-        // 1) loadOrCreate seeds a fresh record under the QUALIFIED identity.
+        // 1) loadOrCreate on a fresh puzzleId returns a playable snapshot but
+        //    (#675) does NOT eagerly persist anything — the eager "seed"
+        //    write was removed because it orphaned a 0:00-elapsed inProgress
+        //    record for any board mounted then abandoned before the first move.
         _ = try await store.loadOrCreate(
             puzzleId: puzzleId, mode: mode, difficulty: difficulty
         )
         let recordNameAfterLoad = SavedGameStore.recordName(for: puzzleId, mode: mode)
-        let recordAfterLoad = try await gateway.fetch(recordName: recordNameAfterLoad)
-        #expect(recordAfterLoad != nil, "loadOrCreate must seed under qualified record name")
         let initialCount = await gateway.recordCount()
-        #expect(initialCount == 1)
+        #expect(initialCount == 0, "loadOrCreate must not eagerly persist (#675)")
 
         // 2) Build a non-trivial snapshot and save it under the SAME identity.
         // The fixture has 1 missing cell at (0,0) with solution=1. Place an
