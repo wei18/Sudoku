@@ -1,4 +1,4 @@
-# ASC Submission Checklist — v2.6 (Sudoku) / v1.0 (Minesweeper)
+# ASC Submission Checklist — v2.6 (both apps; Minesweeper's first submission ships as 2.6.0)
 
 Linear copy-paste session guide. Work top-to-bottom per app.
 All source files live under `docs/app-store/`.
@@ -109,9 +109,9 @@ Source: `metadata/sudoku/iap/remove-ads.yaml`
 
 ---
 
-## MINESWEEPER — Version Information (v1.0, per locale × 7)
+## MINESWEEPER — Version Information (v2.6, per locale × 7)
 
-**ASC path:** My Apps → Minesweeper → [version 1.0] → Version Information → [select locale]
+**ASC path:** My Apps → Minesweeper → [version 2.6.0] → Version Information → [select locale]
 
 | Locale | ASC locale code | Source file |
 |---|---|---|
@@ -125,7 +125,8 @@ Source: `metadata/sudoku/iap/remove-ads.yaml`
 
 Same field set as Sudoku table above.
 
-> **whats_new gate:** Minesweeper v1.0 is the FIRST release on both platforms —
+> **whats_new gate:** Minesweeper 2.6.0 is the FIRST release on both platforms
+> (version string synced with Sudoku since a3e80d7; ASC confirmed 2026-07-04) —
 > leave What's New blank in ASC for both iOS and macOS. The `whats_new` key in
 > the YAML is authored for future reference; ASC will reject it on first submission.
 
@@ -133,9 +134,9 @@ Same field set as Sudoku table above.
 
 ## MINESWEEPER — App Review Information
 
-**ASC path:** My Apps → Minesweeper → [version 1.0] → App Review Information
+**ASC path:** My Apps → Minesweeper → [version 2.6.0] → App Review Information
 
-Source: `docs/app-store/review/minesweeper-v1-review-information.md`
+Source: `docs/app-store/review/minesweeper-v2.6-review-information.md`
 
 Same field mapping as Sudoku above.
 
