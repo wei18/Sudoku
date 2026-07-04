@@ -1492,7 +1492,7 @@ func boardA11yLabels() {
 - **Android App via Swift SDK for Android**（2026-05-20）：使用 swift.org 官方 Swift SDK for Android cross-compile `SudokuEngine` / `GameState` / `PuzzleStore` 等純 Swift module 為 Android shared library，再用 Kotlin/Jetpack Compose 撰寫 UI 層、透過 JNI 呼叫共享 core。Game Center / CloudKit 不可用，需替代方案（Google Play Games Services + Firestore 或自架 backend）。雙平台後 §How.4 deterministic generator 仍能跨 OS 產出同題（純 Swift + FNV-1a seed derivation 不依賴 Apple 框架），daily leaderboard 改走中立 backend 才能跨平台同榜。先驗證 swift-android-sdk 在 SudokuEngine target 的可編譯性 + JNI 邊界開銷，再決定 SudokuUI 是否也共享（多半否，UI 各平台 idiomatic）。
 
 ### 商業模式
-- **v2 廣告投放 + IAP — promoted from backlog 2026-05-20**：詳細決策見 [`docs/v2/design.md`](v2/design.md)。鎖定要點：AdMob + StoreKit2 IAP「Remove Ads」$2.99；廣告頻率 = 7-day grace + 1/day max + dismissed-skip；Banner（非 interstitial）插入 Home/Board view；frequency state 走 CloudKit Private `MonetizationState`；Apple-only impl。舊 backlog 提到的「每 14 天一次」被「7-day grace + 1/day max」取代（更貼近 calm brand）；「動態頻率依 CloudKit cost 反推」defer 到 v2.1+ 等 telemetry pipeline 跟上。
+- **v2 廣告投放 + IAP — promoted from backlog 2026-05-20**：詳細決策見 [`docs/v2/design.md`](../v2/design.md)。鎖定要點：AdMob + StoreKit2 IAP「Remove Ads」$2.99；廣告頻率 = 7-day grace + 1/day max + dismissed-skip；Banner（非 interstitial）插入 Home/Board view；frequency state 走 CloudKit Private `MonetizationState`；Apple-only impl。舊 backlog 提到的「每 14 天一次」被「7-day grace + 1/day max」取代（更貼近 calm brand）；「動態頻率依 CloudKit cost 反推」defer 到 v2.1+ 等 telemetry pipeline 跟上。
 - IAP 進階方案（subscription / pro tier / tip jar / premium puzzle pack）— v3+，需要先有 pro 內容可賣或 brand 接受度
 
 ### 通知與留存
