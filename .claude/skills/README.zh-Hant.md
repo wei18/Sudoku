@@ -4,7 +4,7 @@
 
 本目錄收錄此專案可用的 skills，分兩部分：
 
-1. **專案綁定 skills（8）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
+1. **專案綁定 skills（9）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
    App（Sudoku／Minesweeper）、`mise run` 任務與 pipeline，**不可移植**，
    故留在此處、無命名空間。
 2. **`apple-dev-skills` marketplace（2 個 plugin，32 skills）**——可移植的 Apple 平台／
@@ -16,10 +16,11 @@
 
 ---
 
-## 專案綁定 skills（8）
+## 專案綁定 skills（9）
 
 | Skill | 一句話 |
 |---|---|
+| [`screen-contract-spec`](screen-contract-spec/SKILL.md) | spec-first 導航規劃＝SCREEN CONTRACT——每頁元素清單＋每個互動的呈現語義＋返回/關閉落點＋覆蓋/z-order＋狀態變體＋正向/負向流程鏈，逐列附代碼錨點；worked example 見 `docs/screen-contracts.md`＋`docs/navigation-flows.md` |
 | [`game-factory-composition`](game-factory-composition/SKILL.md) | 共用組裝模板——GameAppKit 的 `GameConfig<Route>` + `makeGameApp`、`<Game><Concern>` 命名、共用 Home／DailyHub-skeleton／board-redirect／GC-dashboard；只有 Game module 是 per-game（SDD-005） |
 | [`mise-task-operations`](mise-task-operations/SKILL.md) | 每個 repo ops 任務的索引／入口——動手 grep「X 怎麼做」前先看這；每個 `mise run` 任務 → 呼叫法＋安全閘＋owning skill |
 | [`local-testflight-upload`](local-testflight-upload/SKILL.md) | 本地 archive→export→TestFlight（`mise run tf:upload`）；Xcode-Cloud-Main-CI 的暫代；上傳由 `--i-am-sure` 把關 |

@@ -16,10 +16,11 @@ This directory holds the skills available in this project. It has two parts:
 
 ---
 
-## Project-bound skills (8)
+## Project-bound skills (9)
 
 | Skill | One-liner |
 |---|---|
+| [`screen-contract-spec`](screen-contract-spec/SKILL.md) | Spec-first navigation planning as SCREEN CONTRACTS — per-screen element inventory + per-interaction presentation semantics + back/close landing + covering/z-order + state variants + forward/negative flow chains, code-anchored; worked example in `docs/screen-contracts.md` + `docs/navigation-flows.md` |
 | [`game-factory-composition`](game-factory-composition/SKILL.md) | The shared composition template — `GameConfig<Route>` + `makeGameApp` in GameAppKit, `<Game><Concern>` naming, shared Home / DailyHub-skeleton / board-redirect / GC-dashboard; only the Game module is per-game (SDD-005) |
 | [`mise-task-operations`](mise-task-operations/SKILL.md) | Index / entry point for every repo ops task — before grepping "how is X done", check here; maps each `mise run` task → invocation + safety gate + owning skill |
 | [`local-testflight-upload`](local-testflight-upload/SKILL.md) | Local archive→export→TestFlight via `mise run tf:upload`; temporary Xcode-Cloud-Main-CI substitute; upload gated behind `--i-am-sure` |
