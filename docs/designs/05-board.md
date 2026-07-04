@@ -1,5 +1,15 @@
 # 05 — BoardView
 
+> **AS-BUILT NOTE (2026-07-05):** board presentation switched to modal
+> fullScreenCover (SDD-003); pause+leave unified (#660); completion = in-board
+> overlay (#664/#669); timer in board header (#677). Where this doc says
+> "push to BoardView", read "present modally" on iOS. Canonical flow spec:
+> `docs/navigation-flows.md`. This doc's stale sections: **§b.3's blur +
+> "Tap to resume" pause overlay** is superseded by the shared
+> `PauseOverlayView` (blur + centred Resume/Leave card, #660), and **§b/§d's
+> nav-bar timer placement** is superseded by #677 (timer now lives in the
+> board's own header/status row on every presentation).
+
 ## a. View identity
 
 - **Purpose**: The core gameplay surface — 9×9 grid, digit pad, undo/redo, pencil mode, pause, timer.

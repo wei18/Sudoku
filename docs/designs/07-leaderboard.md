@@ -1,5 +1,9 @@
 # 07 — Leaderboard (Apple Native UI)
 
+> **AS-BUILT NOTE (2026-07-05):** content verified accurate 2026-07-04;
+> banner added for consistency with the rest of `docs/designs/`. Canonical
+> flow spec: `docs/navigation-flows.md`.
+
 ## a. Decision
 
 v1 uses Apple's native Game Center UI for full leaderboard browsing

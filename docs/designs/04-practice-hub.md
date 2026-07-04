@@ -1,5 +1,11 @@
 # 04 — PracticeHubView
 
+> **AS-BUILT NOTE (2026-07-05):** board presentation switched to modal
+> fullScreenCover (SDD-003); pause+leave unified (#660); completion = in-board
+> overlay (#664/#669); timer in board header (#677). Where this doc says
+> "push to BoardView", read "present modally" on iOS. Canonical flow spec:
+> `docs/navigation-flows.md`.
+
 ## a. View identity
 
 - **Purpose**: Pick a difficulty, generate a fresh puzzle locally via the deterministic generator. Open-ended play, no pool, no Starter Pack.

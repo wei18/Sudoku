@@ -1,5 +1,18 @@
 # 06 — CompletionView
 
+> **AS-BUILT NOTE (2026-07-05):** board presentation switched to modal
+> fullScreenCover (SDD-003); pause+leave unified (#660); completion = in-board
+> overlay (#664/#669); timer in board header (#677). Where this doc says
+> "push to BoardView", read "present modally" on iOS. Canonical flow spec:
+> `docs/navigation-flows.md`. This doc's stale sections: **§a/§b's
+> `fullScreenCover`-presented, separately-routed `CompletionView`** is
+> superseded by the shared in-board `CompletionOverlayScaffold` (#664/#669) —
+> completion is no longer its own modal/sheet presentation, and the
+> leaderboard slice it describes is not rendered (`state: .hidden`, #468 open
+> question); and **§d/§f's "Play again" pushing a new `BoardView`** is
+> superseded by #652's Play Again CTA, which presents a fresh board modally
+> via `GameRootViewModel.presentGame(route:)` rather than pushing.
+
 ## a. View identity
 
 - **Purpose**: Shown when a session reaches `completed`. Displays time, personal record delta, and a leaderboard slice (top + around-player). Modal.

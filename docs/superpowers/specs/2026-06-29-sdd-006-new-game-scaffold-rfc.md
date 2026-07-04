@@ -1,7 +1,7 @@
 # SDD-006 — New-Game Scaffold: one-command bootstrap for game N
 
-**Status:** DRAFT (2026-06-29) — planning #479. The scaffold *form* is the central
-open question (§5); everything else is firm enough to review.
+**Status:** PR1 shipped (#678, `mise run new_game:scaffold`); PR2 (NEXT-STEPS.md +
+GC config template) / PR3 (ops parameterization) / PR4 (monetization slot) pending.
 **Date:** 2026-06-29
 **Author:** AI Leader (planning session with the user)
 **Tracks:** epic #479 (new-game scaffold). **Builds on:** SDD-005 (platform
@@ -112,7 +112,10 @@ around.
 4. `Project.swift` — append the app target + `<Game>` and `<Game>-E2E` schemes.
 5. Test scaffolds — `<Game>E2ETests` dir, `ConfigConsistencyTests`, resume
    round-trip test stubs, an empty snapshot baseline dir.
-6. A generated `NEXT-STEPS.md` listing the manual + user-owned follow-ups.
+6. ~~A generated `NEXT-STEPS.md` listing the manual + user-owned follow-ups.~~
+   **Corrected (2026-07-05):** PR1 (#678, shipped) prints a `TODO(#479 PR2)`
+   block to stdout at the end of the run — it does not write a `NEXT-STEPS.md`
+   file. The generated file is PR2 scope, per the §6 phasing below.
 
 **Manual (gameplay — the point):**
 - `<Game>CoreKit` real rules (engine/session/daily).
@@ -196,6 +199,9 @@ placeholder set rather than copied.
 - No real AdMob/ASC/CK IDs anywhere in generated files (only `$()` substitution +
   placeholders); `scan:secrets` / `scan:hygiene` pass.
 - `NEXT-STEPS.md` lists every manual + user-owned gate with the owning skill.
+  **Corrected (2026-07-05):** this criterion is PR2 scope — PR1 (#678,
+  shipped) satisfies it today only via the stdout `TODO(#479 PR2)` block, not
+  a generated file.
 - The 9-item #479 checklist is either generated or explicitly listed as user-owned.
 
 ---
