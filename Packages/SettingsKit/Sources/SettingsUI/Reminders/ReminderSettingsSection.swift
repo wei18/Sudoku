@@ -134,7 +134,10 @@ public struct ReminderSettingsSection: View {
                 onOpenSettings: { model.openSystemSettings() },
                 onDismiss: { model.dismissDeniedExplainer() }
             )
+            // R6.3 (SDD-003) + #673: same single-detent + hidden-indicator
+            // treatment as the primer sheet above, for parity.
             .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
         }
     }
 
