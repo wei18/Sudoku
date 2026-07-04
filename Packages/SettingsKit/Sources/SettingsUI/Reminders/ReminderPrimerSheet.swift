@@ -300,59 +300,66 @@ public struct ReminderDeniedExplainer: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "bell.slash")
-                .font(.system(size: 30))
-                .foregroundStyle(theme.status.error.resolved)
-                .frame(width: 76, height: 76)
-                .background(theme.status.error.resolved.opacity(0.12), in: .circle)
-                .accessibilityHidden(true)
-            VStack(spacing: 6) {
-                Text(copy.title)
-                    .font(.title3.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(theme.text.primary.resolved)
-                Text(copy.message)
-                    .font(.subheadline)
+        // #673: background moved from the VStack onto the ScrollView (mirrors
+        // ReminderPrimerSheet's R6.3/R6.4 structure above). The intrinsically
+        // sized VStack was shorter than the .medium detent, so its background
+        // stopped short and the system sheet material showed as a darker band
+        // above the content; the ScrollView fills the full detent instead.
+        ScrollView {
+            VStack(spacing: 16) {
+                Image(systemName: "bell.slash")
+                    .font(.system(size: 30))
+                    .foregroundStyle(theme.status.error.resolved)
+                    .frame(width: 76, height: 76)
+                    .background(theme.status.error.resolved.opacity(0.12), in: .circle)
+                    .accessibilityHidden(true)
+                VStack(spacing: 6) {
+                    Text(copy.title)
+                        .font(.title3.weight(.bold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(theme.text.primary.resolved)
+                    Text(copy.message)
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                }
+
+                #if canImport(UIKit)
+                Button(action: onOpenSettings) {
+                    Label(copy.openSettingsCTA, systemImage: "gearshape")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(theme.accent.primary.resolved)
+                #else
+                // macOS (P12): no deep-link. Show textual guidance instead.
+                Text(copy.macOSGuidance)
+                    .font(.footnote)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme.text.secondary.resolved)
-            }
+                    .padding(12)
+                    .frame(maxWidth: .infinity)
+                    .background(theme.status.warning.resolved.opacity(0.10), in: .rect(cornerRadius: 10))
+                #endif
 
-            #if canImport(UIKit)
-            Button(action: onOpenSettings) {
-                Label(copy.openSettingsCTA, systemImage: "gearshape")
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 28)
-                    .padding(.vertical, 11)
-                    .contentShape(Rectangle())
+                // R6.1/R6.2 (same pattern as declineButton): hit region scoped to the
+                // button frame, pressed/focus feedback via DeclineButtonStyle.
+                Button(action: onDismiss) {
+                    Text(copy.dismissCTA)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(theme.text.secondary.resolved)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(DeclineButtonStyle())
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(theme.accent.primary.resolved)
-            #else
-            // macOS (P12): no deep-link. Show textual guidance instead.
-            Text(copy.macOSGuidance)
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(theme.text.secondary.resolved)
-                .padding(12)
-                .frame(maxWidth: .infinity)
-                .background(theme.status.warning.resolved.opacity(0.10), in: .rect(cornerRadius: 10))
-            #endif
-
-            // R6.1/R6.2 (same pattern as declineButton): hit region scoped to the
-            // button frame, pressed/focus feedback via DeclineButtonStyle.
-            Button(action: onDismiss) {
-                Text(copy.dismissCTA)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(theme.text.secondary.resolved)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .buttonStyle(DeclineButtonStyle())
-            .contentShape(Rectangle())
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity)
         .background(theme.surface.elevated.resolved)
     }
 }
