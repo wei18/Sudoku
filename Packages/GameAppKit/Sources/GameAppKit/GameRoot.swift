@@ -124,7 +124,24 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
 
     private var shellContent: some View {
         RootShellView(
-            path: Binding(get: { viewModel.path }, set: { viewModel.path = $0 }),
+            path: Binding(
+                get: { viewModel.path },
+                set: { newPath in
+                    // #675: on macOS, board routes are a `NavigationStack`
+                    // push (no `fullScreenCover`/`dismissGame()` involved —
+                    // see `GameBoardRedirect`), so a board's Leave / completion
+                    // Close pops `path` directly (`BoardView+Completion.exitToHub`)
+                    // instead of going through `dismissGame()`. Any shrink of
+                    // `path` is treated as "a route just went away" and
+                    // refreshes the resume pill the same way `dismissGame()`
+                    // does on iOS — cheap (one CK query), and harmless to run
+                    // for non-board pops too.
+                    if newPath.count < viewModel.path.count {
+                        Task { await viewModel.refreshResumeCandidate() }
+                    }
+                    viewModel.path = newPath
+                }
+            ),
             title: title,
             sidebarItems: sidebarItems,
             routeFactory: routeFactory,

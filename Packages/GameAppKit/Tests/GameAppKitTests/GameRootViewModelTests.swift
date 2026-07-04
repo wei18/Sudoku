@@ -226,4 +226,100 @@ struct GameRootViewModelTests {
         let received = await reporter.received
         #expect(received.contains { $0.source == "GameRootViewModel.bootstrap.resume" })
     }
+
+    // MARK: - #675: in-session resume refresh
+
+    /// `refreshResumeCandidate()` must re-invoke `fetchResume` (not reuse the
+    /// value cached by `bootstrap()`) and clear a candidate that has since
+    /// been consumed (e.g. the underlying save was `markCompleted`'d).
+    @Test func refreshResumeCandidateClearsConsumedCandidate() async {
+        let box = FetchResumeBox(initial: makeCandidate())
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(),
+            persistence: StubPersistence(),
+            fetchResume: { await box.fetch() }
+        )
+
+        await viewModel.bootstrap()
+        #expect(viewModel.resumeCandidate == makeCandidate())
+
+        // Simulate the just-finished game's record no longer qualifying as
+        // in-progress (completed / abandoned) — the next fetch returns nil.
+        await box.setNext(nil)
+        await viewModel.refreshResumeCandidate()
+
+        #expect(viewModel.resumeCandidate == nil)
+        let callCount = await box.callCount
+        #expect(callCount == 2) // bootstrap's fetch + the explicit refresh
+    }
+
+    /// `refreshResumeCandidate()` picks up a NEWLY in-progress game too (not
+    /// just clearing) — proves it's a real re-fetch, not a one-way latch.
+    @Test func refreshResumeCandidatePicksUpNewCandidate() async {
+        let box = FetchResumeBox(initial: nil)
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(),
+            persistence: StubPersistence(),
+            fetchResume: { await box.fetch() }
+        )
+
+        await viewModel.bootstrap()
+        #expect(viewModel.resumeCandidate == nil)
+
+        let candidate = makeCandidate()
+        await box.setNext(candidate)
+        await viewModel.refreshResumeCandidate()
+
+        #expect(viewModel.resumeCandidate == candidate)
+    }
+
+    /// `dismissGame()` (the iOS fullScreenCover teardown hook) must trigger
+    /// the same refresh — this is the actual #675 production wiring: a game
+    /// modal that just completed clears its stale pill without a relaunch.
+    @Test func dismissGameTriggersResumeRefresh() async {
+        let box = FetchResumeBox(initial: makeCandidate())
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(),
+            persistence: StubPersistence(),
+            fetchResume: { await box.fetch() }
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.resumeCandidate == makeCandidate())
+
+        await box.setNext(nil)
+        viewModel.presentGame(route: .board(puzzleId: "2026-05-19-easy"))
+        viewModel.dismissGame()
+
+        // `dismissGame()` fires the refresh as an unstructured `Task`; yield
+        // the MainActor cooperative pool until it lands.
+        for _ in 0..<10 where viewModel.resumeCandidate != nil {
+            await Task.yield()
+        }
+
+        #expect(viewModel.resumeCandidate == nil)
+    }
+}
+
+// MARK: - #675 fetchResume test double
+
+/// Mutable box so a test can change what the injected `fetchResume` closure
+/// returns BETWEEN calls (proving `refreshResumeCandidate()` genuinely
+/// re-fetches instead of reusing `bootstrap()`'s cached result) and count
+/// invocations.
+private actor FetchResumeBox {
+    private var next: ResumeCandidate<Route>?
+    private(set) var callCount = 0
+
+    init(initial: ResumeCandidate<Route>?) {
+        self.next = initial
+    }
+
+    func setNext(_ candidate: ResumeCandidate<Route>?) {
+        next = candidate
+    }
+
+    func fetch() -> ResumeCandidate<Route>? {
+        callCount += 1
+        return next
+    }
 }

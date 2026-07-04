@@ -28,7 +28,7 @@ struct SavedGameCRUDTests {
         return (store, gateway, sink)
     }
 
-    @Test func loadOrCreateNewPuzzleSeedsFromGameState() async throws {
+    @Test func loadOrCreateNewPuzzleDoesNotEagerlyPersist() async throws {
         let (store, gateway, _) = await makeStore()
         let snapshot = try await store.loadOrCreate(
             puzzleId: "2026-05-19-easy",
@@ -39,9 +39,13 @@ struct SavedGameCRUDTests {
         #expect(snapshot.elapsedSeconds == 0)
         #expect(snapshot.undoMoves.isEmpty)
         #expect(snapshot.redoMoves.isEmpty)
-        // The freshly seeded record landed in the gateway.
+        // #675: loadOrCreate on a puzzle with no existing record must NOT
+        // write anything — a board that's mounted then abandoned before the
+        // first move must leave zero trace (previously this eager "seed"
+        // write orphaned a 0:00-elapsed inProgress record forever offered as
+        // a resume candidate). The VM persists on the first real mutation.
         let count = await gateway.recordCount()
-        #expect(count == 1)
+        #expect(count == 0)
     }
 
     @Test func saveRoundtrips() async throws {
@@ -102,7 +106,7 @@ struct SavedGameCRUDTests {
         try await store.deleteAbandoned(recordName: recordName)
         let count = await gateway.recordCount()
         #expect(count == 0)
-        // loadOrCreate re-seeds a fresh record.
+        // loadOrCreate returns a fresh idle snapshot without re-persisting (#675).
         let reseeded = try await store.loadOrCreate(puzzleId: "p1", mode: .practice, difficulty: .easy)
         #expect(reseeded.status == .idle)
     }

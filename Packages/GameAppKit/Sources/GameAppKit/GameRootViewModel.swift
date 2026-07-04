@@ -137,6 +137,28 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
         path.append(candidate.route)
     }
 
+    /// Re-run the resume-candidate fetch outside `bootstrap()`'s one-shot
+    /// gate (#675). `bootstrap()` only fetches once per launch, so returning
+    /// Home after a game ends (completed via `markCompleted`, or abandoned)
+    /// left a stale pill on screen until the next relaunch. Call this
+    /// whenever a game session tears down — the modal dismiss (`dismissGame`)
+    /// on iOS, and a `path` pop on macOS's push navigation. A nil result is
+    /// valid (no in-flight game left) and clears any stale candidate; only a
+    /// thrown error is funneled, mirroring `bootstrap()`.
+    public func refreshResumeCandidate() async {
+        guard let fetchResume else { return }
+        do {
+            self.resumeCandidate = try await fetchResume()
+        } catch {
+            self.resumeCandidate = nil
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "GameRootViewModel.refreshResumeCandidate"
+            )
+        }
+    }
+
     // MARK: - Epic 1: Modal presentation (SDD-003)
 
     /// Present a game board as a fullScreenCover modal. Called from per-app
@@ -154,5 +176,9 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     public func dismissGame() {
         isGamePresented = false
         activeGameRoute = nil
+        // #675: the just-torn-down session may have just completed (marked
+        // via `markCompleted`) or been abandoned — refresh so Home stops
+        // offering a stale pill until the next launch.
+        Task { await refreshResumeCandidate() }
     }
 }
