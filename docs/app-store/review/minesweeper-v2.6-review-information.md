@@ -1,4 +1,9 @@
-# Review Information — Minesweeper v1.0 (ASC paste-ready)
+# Review Information — Minesweeper v2.6 (ASC paste-ready)
+
+> **Version note:** Minesweeper's first App Store submission ships as **2.6.0**
+> (versioning synced with Sudoku since a3e80d7; ASC confirmed 2.6.0 on
+> 2026-07-04). Earlier drafts of this doc said "v1.0" — same first-release
+> submission, corrected version string.
 
 > Paste each block verbatim into the matching field under
 > **App Store Connect → My Apps → Minesweeper → [version] → App Review**.
@@ -48,7 +53,7 @@ GAME CENTER
 Three daily leaderboards (Beginner / Intermediate / Expert, recurring, reset
 00:00 UTC, one scoring attempt per puzzle). Game Center sign-in is optional;
 gameplay works fully signed-out. All score traffic is mediated by Apple's
-GameKit. Note: achievements are NOT implemented in v1.0.
+GameKit. Note: achievements are NOT implemented in this release (2.6.0).
 
 REMOVE ADS — IN-APP PURCHASE (sandbox test)
 Product: com.wei18.minesweeper.iap.remove_ads  (Non-Consumable, Family Sharing on)
