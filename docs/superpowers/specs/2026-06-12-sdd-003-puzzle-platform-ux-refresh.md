@@ -93,6 +93,12 @@ Full Screen Completion → **Popup Completion**（GameShellKit `CompletionScreen
 - 顯示：Success/Failed · Time · Mistakes
 - Banner Rule：Popup 不顯示 Banner（AD-003）
 
+> **UPDATE (2026-07-05)：** CTA 集合後續持續演進 — #652/#654 為 Practice-mode
+> 加回 Play Again（modal 重開一局，非 push）；#664/#669 統一兩 app／兩平台的
+> 置中卡片 + Close 呈現（`GameShellUI.CompletionOverlayScaffold`），macOS push
+> 分支不再各自維護一份版型。詳見 `docs/navigation-flows.md` +
+> `docs/screen-contracts.md`。
+
 ## Epic 5 — Banner Coverage Expansion（P1，Feature）
 
 Target 頁面全部掛 Banner：Home · Game · Daily · Settings · Statistics · Reminder Flow。

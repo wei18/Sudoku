@@ -1,5 +1,14 @@
 # 08 — SettingsView
 
+> **AS-BUILT NOTE (2026-07-05):** board presentation switched to modal
+> fullScreenCover (SDD-003); pause+leave unified (#660); completion = in-board
+> overlay (#664/#669); timer in board header (#677). Where this doc says
+> "push to BoardView", read "present modally" on iOS. Canonical flow spec:
+> `docs/navigation-flows.md`. **§f note:** since #516 Settings paints the
+> app's warm-paper theme background behind the native Form — a deliberate
+> tonal-continuity exception to the "unbranded Settings" rationale below
+> (structure/rows remain native).
+
 ## a. View identity
 
 - **Purpose**: Read-only status surface + minimal preferences. GC auth state, locale, app version, "clear cache" action.

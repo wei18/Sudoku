@@ -1,5 +1,16 @@
 # 07 — Leaderboard (Apple Native UI)
 
+> **AS-BUILT NOTE (2026-07-05):** the sidebar/GC-dashboard decision (§a/§c/§e)
+> is still accurate, but **§b's "CompletionView → View full leaderboard" row and
+> ALL of §d (the embedded top-3 mini-slice + its CTA) are CODE CONTRADICTED** —
+> since SDD-003 Epic 4 both the mini-slice and the "View full leaderboard" button
+> were removed from the completion screen (`CompletionView.swift:10-12,64,128`:
+> "Leaderboard CTAs removed at this injection site"; the shared `CompletionScreen`
+> is called with `state: .hidden`). No focused-`leaderboardId` dashboard entry
+> point is reachable from completion today — the dormant slice machinery is the
+> #468 open question. Same removed UI is flagged from the destination angle in
+> `06-completion.md`'s banner. Canonical flow spec: `docs/navigation-flows.md`.
+
 ## a. Decision
 
 v1 uses Apple's native Game Center UI for full leaderboard browsing

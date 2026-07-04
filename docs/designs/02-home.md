@@ -1,5 +1,11 @@
 # 02 — HomeView
 
+> **AS-BUILT NOTE (2026-07-05):** board presentation switched to modal
+> fullScreenCover (SDD-003); pause+leave unified (#660); completion = in-board
+> overlay (#664/#669); timer in board header (#677). Where this doc says
+> "push to BoardView", read "present modally" on iOS. Canonical flow spec:
+> `docs/navigation-flows.md`.
+
 ## a. View identity
 
 - **Purpose**: Top-level mode selector (Daily / Practice / Leaderboard / Settings). Zero network operations.
@@ -52,8 +58,8 @@ private enum HomeMode: String, CaseIterable, Identifiable {
         switch self {
         case .daily: "3 puzzles today"
         case .practice: "Mixed difficulty pool"
-        case .leaderboard: "Global · friends"
-        case .settings: "Account · language"
+        case .leaderboard: "Global / friends"
+        case .settings: "Account / language"
         }
     }
     var symbol: String {
