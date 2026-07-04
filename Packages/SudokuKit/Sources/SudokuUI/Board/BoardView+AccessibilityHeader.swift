@@ -52,7 +52,7 @@ extension BoardView {
             difficultyLabel
             lateCompletionBadge  // #228 option B: past-day daily marker
             Spacer()
-            timerLabel           // SDD-003: hidden when gameChrome != nil
+            timerLabel           // #674: always shown here (moved off the modal chrome)
             pauseButton
         }
     }
@@ -85,16 +85,18 @@ extension BoardView {
         }
     }
 
-    // SDD-003 OQ-001: suppress the in-board timer when the chrome shows it.
-    @ViewBuilder private var timerLabel: some View {
-        if gameChrome == nil {
-            Label(elapsedLabel, systemImage: "timer")
-                .monospacedDigit()
-                .foregroundStyle(theme.text.secondary.resolved)
-                .accessibilityLabel("Elapsed time \(elapsedLabel)")
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
+    // #674: the modal's separate floating chrome-timer capsule (SDD-003
+    // OQ-001) overlapped the board's first grid row on some devices — its
+    // `.padding(.top, 56)` was a fixed offset independent of where this
+    // header actually landed. The timer now always renders here instead,
+    // mirroring Minesweeper's in-status-bar `clockLabel` (#663).
+    private var timerLabel: some View {
+        Label(elapsedLabel, systemImage: "timer")
+            .monospacedDigit()
+            .foregroundStyle(theme.text.secondary.resolved)
+            .accessibilityLabel("Elapsed time \(elapsedLabel)")
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 
     // #667 (SDD-003 2B, audit P2): hidden at terminal status, mirroring

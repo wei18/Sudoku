@@ -5,7 +5,8 @@
 //   - launch-time `bootstrap()` via `.onAppear { Task { … } }`
 //   - the bottom toast overlay
 //   - SDD-003 Epic 1: fullScreenCover modal for board routes
-//   - SDD-003 OQ-001: top-chrome elapsed timer in the modal (nav-bar-item style)
+//   - (retired #674: the modal no longer carries its own top-chrome elapsed
+//     timer — see the SDD-003 OQ-001 note below and GameModalContent's doc)
 //
 // Game-specific bits stay app-side and are layered on by each app's Root:
 // Sudoku adds `.attPrimerSheet(...)` and threads a `ResumePill` into its
@@ -17,13 +18,14 @@
 // The Pause overlay's Leave button now handles the leave flow directly (no separate
 // confirmationDialog — Epic 2 replaced by the unified pause menu).
 //
-// SDD-003 OQ-001 — Timer nav-bar item:
-// `GameRoot` owns a `GameChromeState` instance injected via
-// `.environment(\.gameChrome, …)` into the fullScreenCover hierarchy. Board views
-// read this key from `@Environment` and call `chromeState.updateElapsed(_:)` each
-// tick. `GameModalContent` renders the label as a leading capsule badge.
-// When `gameChrome` is nil (macOS push / snapshot / preview) the board views
-// keep their own in-board timer and this path is never reached.
+// SDD-003 OQ-001 — Timer nav-bar item (retired #674):
+// `GameRoot` still owns a `GameChromeState` instance injected via
+// `.environment(\.gameChrome, …)` into the fullScreenCover hierarchy, but as of
+// #674 neither board reads it any more — the modal's fixed-offset chrome-timer
+// capsule overlapped the board's first grid row on some devices, so the timer
+// moved permanently into each board's own header/status row instead (both
+// push and modal presentation). The seam is kept (not deleted) as a possible
+// injection point; see `GameChromeState.swift` for the follow-up note.
 //
 // Note on `.onAppear { Task { … } }` (NOT `.task { … }`): the original #361 arm64
 // device Release link failure — an opaque `.task` descriptor linking undefined
@@ -110,11 +112,10 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                         view: routeFactory.view(for: route, path: nil),
                         chromeState: chromeState
                     )
-                    // SDD-003 OQ-001: inject the chrome state into the modal
-                    // hierarchy so the board view can find it via
-                    // `@Environment(\.gameChrome)` and update the elapsed label
-                    // each tick. The board also reads this key to know it is in
-                    // a modal and should hide its own in-board timer.
+                    // #674: the chrome timer capsule is retired — the boards
+                    // render their own in-header timer and no longer read this
+                    // key. The injection stays only so the dormant seam keeps
+                    // compiling until the follow-up removal.
                     .environment(\.gameChrome, chromeState)
                 }
             }
@@ -134,49 +135,34 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
 
 // MARK: - GameModalContent
 
-/// Wraps the route factory's game view with the shared chrome:
-///   - top-left elapsed timer capsule (SDD-003 OQ-001)
+/// Wraps the route factory's game view for the fullScreenCover modal.
 ///
-/// Leave is no longer handled here — the unified PauseOverlayView in each
-/// board provides a Leave button that calls `dismiss()` directly, replacing
-/// the former ✕ close button + confirmationDialog pattern (Epic 2 removed).
+/// #674: previously also rendered a top-left elapsed-timer capsule
+/// (SDD-003 OQ-001) at a fixed `.padding(.top, 56)`. That fixed offset
+/// overlapped the board's own header row / grid first row on some devices
+/// (owner report, #674) because it was positioned independent of where the
+/// board's actual header landed. The timer now lives permanently in each
+/// board's own header/status row (SudokuUI.BoardView / MinesweeperUI's
+/// MinesweeperBoardView, mirroring MS's #663 uplift) instead of this
+/// separate chrome layer, so `GameModalContent` no longer renders anything
+/// beyond the game view itself.
+///
+/// Leave is handled by the unified PauseOverlayView in each board, which
+/// provides a Leave button that calls `dismiss()` directly (Epic 2 removed
+/// the former ✕ close button + confirmationDialog pattern).
 ///
 /// Kept as a separate named type (not an inline closure body) so view identity
 /// is stable across body re-evaluations.
 private struct GameModalContent: View {
     let view: AnyView
-    /// SDD-003 OQ-001: shared observable that the board view updates with the
-    /// current elapsed string. Observed here so the timer badge re-renders
-    /// when `elapsedLabel` changes without re-creating `GameModalContent`.
+    /// #674: neither board still feeds `chromeState.elapsedLabel` /
+    /// `isHidingChrome` (both retired their chrome-timer calls once their
+    /// header/status row took over rendering). Kept as an injection seam
+    /// rather than deleted outright — see the follow-up note in
+    /// `GameChromeState.swift` — but no longer read here.
     let chromeState: GameChromeState
 
     var body: some View {
-        ZStack(alignment: .top) {
-            view
-            // SDD-003 OQ-001: nav-bar-item-style top chrome row.
-            // Timer sits at leading edge below the status bar safe area.
-            // #518: hidden when the board signals terminal state via
-            // `chromeState.isHidingChrome` so the completion overlay (which is
-            // a child of `view`) can cover the full screen without the chrome
-            // row bleeding through on top of the result card.
-            if !chromeState.isHidingChrome {
-                HStack {
-                    // Timer capsule — visible only once the board starts ticking.
-                    if let label = chromeState.elapsedLabel {
-                        Label(label, systemImage: "timer")
-                            .font(.system(.subheadline, design: .monospaced).monospacedDigit())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(.regularMaterial, in: Capsule())
-                            .accessibilityLabel(Text("Elapsed time \(label)"))
-                            .transition(.opacity)
-                    }
-                    Spacer()
-                }
-                .padding(.top, 56)
-                .padding(.horizontal, 20)
-                .transition(.opacity)
-            }
-        }
+        view
     }
 }
