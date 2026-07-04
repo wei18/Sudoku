@@ -1,0 +1,406 @@
+#!/usr/bin/env bash
+#MISE description="Stamp a compiling, launchable game-N skeleton (packages + App shell + Project.swift wiring) by copying Minesweeper at run time and renaming tokens. Never touches git state; refuses if the destination already exists."
+#USAGE arg "<name>" help="New game name, UpperCamelCase (e.g. Zephyr). Becomes the Swift module/target prefix and, lowercased, the bundle-id/ckdb slug."
+#
+# SDD-006 (#479) PR1 — new-game scaffold generator core.
+#
+# OQ-1 (Option A, owner-approved 2026-07-05): one mise file-task, no committed
+# `templates/` tree. OQ-2: the template is Minesweeper itself, copied at RUN
+# TIME (never a stale committed copy) and renamed via an explicit token map.
+# OQ-3: rename is whole-token substring replacement, not a blind line-based
+# sed — see the Python rename pass below. OQ-4: the placeholder AppIcon is
+# Minesweeper's own icon PNGs, copied verbatim (binary, never text-substituted);
+# a real icon is a NEXT-STEPS / PR2 user-owned item (see the TODO printed below).
+#
+# TOKEN MAP (single collapsed pair — Minesweeper uses one name for both its
+# module prefix and its app/bundle-id slug, unlike 2048's two-token case):
+#   Minesweeper -> <Name>            (module/target/type prefix, display name)
+#   minesweeper -> <name>            (bundle-id slug, ckdb filename, lowercase refs)
+# `com.wei18.minesweeper` and `iCloud.com.wei18.minesweeper` fall out of the
+# `minesweeper` -> `name` substitution automatically (the token is bounded by
+# `.` on both sides, so no separate rule is needed for the dotted forms).
+#
+# WHAT THIS GENERATES (RFC §3):
+#   Packages/<Name>CoreKit, Packages/<Name>Kit  (copies of MinesweeperCoreKit /
+#     MinesweeperKit, renamed; gameplay is the COPIED Minesweeper gameplay —
+#     see the placeholder-gameplay note below, not a from-scratch stub)
+#   App/<Name>, App/<Name>E2ETests              (copies of App/Minesweeper[...])
+#   cloudkit/<name>.ckdb                        (copy of cloudkit/minesweeper.ckdb)
+#   Project.swift                               (app target + <Name>/<Name>-E2E
+#     schemes + package registration, inserted as a marker-delimited block
+#     anchored on stable surrounding text — never a line-number patch)
+#
+# PLACEHOLDER-GAMEPLAY DECISION (RFC §4 allows this fallback explicitly): PR1
+# keeps the copied Minesweeper gameplay (engine/session/board UI) AS the
+# placeholder, renamed, rather than hand-authoring a new tiny stub engine/UI.
+# Rationale: MinesweeperUI alone is ~25 source files threaded through
+# Persistence/AppComposition/GameConfig/DailyHub/Completion; a real "tiny
+# stub" would have to re-satisfy every one of those call sites by hand with
+# much higher regression risk than a mechanical rename for a PR1 whose stated
+# success criterion is "compiles and launches", not "gameplay-free". Swap the
+# three manual gameplay pieces (RFC §3 "Manual") whenever real rules land.
+#
+# SNAPSHOT BASELINES: MinesweeperKit's `__Snapshots__` PNG/txt baselines are
+# NEVER copied (the RFC wants an EMPTY baseline dir for a new game) — an empty
+# dir + .gitkeep is created instead. The six MinesweeperUITests files that
+# assert against those baselines (Board/BoardRevealed/BoardTerminalOverlay/
+# Completion/DailyHub/Home *SnapshotTests.swift) are DELETED from the
+# generated output, since `record: .missing` fails a test on first run rather
+# than silently recording+passing. SnapshotConfig.swift (helper) and the
+# ASC screenshot emit/render tests (gated behind `.enabled(if:
+# ASCScreenshotEmit.isEnabled)`, off by default) are kept — they don't assert
+# against a missing baseline.
+#
+# SAFETY: refuses if ANY destination path already exists. No --force (delete
+# the generated paths by hand + re-run). Never runs git; the caller commits.
+#
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+NAME="${1:-}"
+if [[ "$NAME" == "-h" || "$NAME" == "--help" ]]; then
+    echo "usage: mise run new_game:scaffold <Name>   (UpperCamelCase, e.g. Zephyr)" >&2
+    exit 0
+fi
+if [[ -z "$NAME" ]]; then
+    echo "error: missing required <name> argument" >&2
+    echo "usage: mise run new_game:scaffold <Name>   (UpperCamelCase, e.g. Zephyr)" >&2
+    exit 1
+fi
+if [[ ! "$NAME" =~ ^[A-Z][A-Za-z0-9]*$ ]]; then
+    echo "error: <name> must be UpperCamelCase, matching ^[A-Z][A-Za-z0-9]*\$ (got '$NAME')" >&2
+    exit 1
+fi
+if [[ "$NAME" == "Minesweeper" || "$NAME" == "Sudoku" ]]; then
+    echo "error: '$NAME' collides with an existing game" >&2
+    exit 1
+fi
+# Lowercase-first-letter slug (Zephyr -> zephyr), mirroring Minesweeper/minesweeper.
+name="$(printf '%s' "${NAME:0:1}" | tr '[:upper:]' '[:lower:]')${NAME:1}"
+
+echo "==> scaffolding '$NAME' (slug '$name') from Minesweeper"
+
+# ── Destination collision guard ──────────────────────────────────────────────
+DESTS=(
+    "Packages/${NAME}CoreKit"
+    "Packages/${NAME}Kit"
+    "App/${NAME}"
+    "App/${NAME}E2ETests"
+    "cloudkit/${name}.ckdb"
+)
+for d in "${DESTS[@]}"; do
+    if [[ -e "$d" ]]; then
+        echo "error: '$d' already exists — refusing to overwrite. Remove it by hand first (no --force)." >&2
+        exit 1
+    fi
+done
+if grep -q "let ${name}Target = Target.target(" Project.swift 2>/dev/null; then
+    echo "error: Project.swift already has a '${name}Target' — refusing (stale/partial prior run?)." >&2
+    exit 1
+fi
+
+# ── 1. Copy the template tree (exclude build artifacts + committed snapshot
+#      baselines; RFC wants an EMPTY baseline dir for the new game) ──────────
+copy_tree() {
+    local src="$1" dst="$2"
+    mkdir -p "$dst"
+    # `-a` preserves perms/times; trailing `/.` copies contents not the dir itself.
+    rsync -a --exclude='.build' --exclude='DerivedData' --exclude='__Snapshots__' "$src/." "$dst/"
+}
+copy_tree "Packages/MinesweeperCoreKit" "Packages/${NAME}CoreKit"
+copy_tree "Packages/MinesweeperKit" "Packages/${NAME}Kit"
+copy_tree "App/Minesweeper" "App/${NAME}"
+copy_tree "App/MinesweeperE2ETests" "App/${NAME}E2ETests"
+cp "cloudkit/minesweeper.ckdb" "cloudkit/${name}.ckdb"
+
+# ── 2. Drop the six snapshot-assertion test files (no baselines ship) + seed
+#      an empty, git-trackable baseline dir ──────────────────────────────────
+SNAP_TEST_DIR="Packages/${NAME}Kit/Tests/MinesweeperUITests"
+for f in \
+    MinesweeperBoardSnapshotTests.swift \
+    MinesweeperBoardRevealedSnapshotTests.swift \
+    MinesweeperBoardTerminalOverlaySnapshotTests.swift \
+    MinesweeperCompletionSnapshotTests.swift \
+    MinesweeperDailyHubSnapshotTests.swift \
+    MinesweeperHomeSnapshotTests.swift
+do
+    rm -f "$SNAP_TEST_DIR/$f"
+done
+mkdir -p "$SNAP_TEST_DIR/__Snapshots__"
+touch "$SNAP_TEST_DIR/__Snapshots__/.gitkeep"
+
+# ── 3. Rename pass: Minesweeper -> NAME, minesweeper -> name, in both paths
+#      and file contents. Mechanism is a plain literal substring replace
+#      (str.replace), NOT regex word-boundary matching — safe for OQ-3's
+#      purposes because `Minesweeper`/`minesweeper` never occurs as a
+#      substring of any unrelated token in the copied tree (verified by
+#      corpus grep; CR #479 round 1). If a future template ever introduces a
+#      colliding compound token, upgrade this to \b-anchored replacement.
+#      Binary files (images, audio)
+#      are detected and copied verbatim, never text-substituted.
+# ─────────────────────────────────────────────────────────────────────────────
+NAME="$NAME" name="$name" python3 - "Packages/${NAME}CoreKit" "Packages/${NAME}Kit" "App/${NAME}" "App/${NAME}E2ETests" "cloudkit/${name}.ckdb" <<'PY'
+import os
+import sys
+
+NAME = os.environ["NAME"]
+name = os.environ["name"]
+roots = sys.argv[1:]
+
+def retext(s: str) -> str:
+    return s.replace("Minesweeper", NAME).replace("minesweeper", name)
+
+def is_binary(path: str) -> bool:
+    try:
+        with open(path, "rb") as fh:
+            chunk = fh.read(8192)
+    except OSError:
+        return True
+    if b"\x00" in chunk:
+        return True
+    try:
+        chunk.decode("utf-8")
+    except UnicodeDecodeError:
+        return True
+    return False
+
+renamed_files = 0
+substituted_files = 0
+
+for root in roots:
+    if os.path.isfile(root):
+        # cloudkit/<name>.ckdb: content-substitute only, name is already right.
+        if not is_binary(root):
+            with open(root, "r", encoding="utf-8") as fh:
+                content = fh.read()
+            new_content = retext(content)
+            if new_content != content:
+                with open(root, "w", encoding="utf-8") as fh:
+                    fh.write(new_content)
+                substituted_files += 1
+        continue
+
+    # Bottom-up (topdown=False) so a directory is renamed only AFTER every
+    # file/subdirectory inside it has already been processed — renaming a
+    # child never invalidates a path we still need to visit. NOTE: os.walk
+    # captures each directory's `dirnames` list before recursing into it, so
+    # by the time a parent's tuple is yielded its children may already have
+    # been renamed on disk — do NOT rename via the `dirnames` list here (it
+    # would double-rename / fail with a stale path); each directory renames
+    # only ITSELF, in its own tuple's iteration, below.
+    for dirpath, _dirnames, filenames in os.walk(root, topdown=False):
+        for fname in filenames:
+            fpath = os.path.join(dirpath, fname)
+            if not is_binary(fpath):
+                with open(fpath, "r", encoding="utf-8") as fh:
+                    content = fh.read()
+                new_content = retext(content)
+                if new_content != content:
+                    with open(fpath, "w", encoding="utf-8") as fh:
+                        fh.write(new_content)
+                    substituted_files += 1
+            new_fname = retext(fname)
+            if new_fname != fname:
+                os.rename(fpath, os.path.join(dirpath, new_fname))
+                renamed_files += 1
+        new_dirpath_name = retext(os.path.basename(dirpath))
+        if new_dirpath_name != os.path.basename(dirpath) and dirpath not in roots:
+            os.rename(dirpath, os.path.join(os.path.dirname(dirpath), new_dirpath_name))
+            renamed_files += 1
+
+print(f"renamed {renamed_files} paths, substituted content in {substituted_files} files")
+PY
+
+# ── 3b. PersistenceKit fixup: `PrivateCKConfig` only ships `.sudoku` /
+#      `.minesweeper` static presets (hand-added per shipped game in a SHARED
+#      package this scaffold deliberately does not touch). The renamed
+#      `<Name>AppComposition/Live.swift` references `.{name}`, which doesn't
+#      exist for a fresh game — replace those two call sites with an inline
+#      `PrivateCKConfig(zoneName:subscriptionID:)` literal instead of adding a
+#      case to the shared package.
+NAME="$NAME" name="$name" python3 - <<'PY'
+import os
+
+NAME = os.environ["NAME"]
+name = os.environ["name"]
+path = f"Packages/{NAME}Kit/Sources/{NAME}AppComposition/Live.swift"
+
+with open(path, "r", encoding="utf-8") as fh:
+    content = fh.read()
+
+literal = f'PrivateCKConfig(zoneName: "com.wei18.{name}.userZone", subscriptionID: "com.wei18.{name}.userZone.changes")'
+
+old_gateway = f"PrivateCKGatewayFactory.live(config: .{name})"
+new_gateway = f"PrivateCKGatewayFactory.live(config: {literal})"
+assert content.count(old_gateway) == 1, f"expected exactly one '{old_gateway}' in {path}"
+content = content.replace(old_gateway, new_gateway, 1)
+
+old_ckconfig = f"ckConfig: .{name},"
+new_ckconfig = f"ckConfig: {literal},"
+assert content.count(old_ckconfig) == 1, f"expected exactly one '{old_ckconfig}' in {path}"
+content = content.replace(old_ckconfig, new_ckconfig, 1)
+
+with open(path, "w", encoding="utf-8") as fh:
+    fh.write(content)
+
+print(f"{path}: inlined PrivateCKConfig literal (no shared-package edit needed)")
+PY
+
+# ── 4. Project.swift: insert app target + schemes + package registration as
+#      clearly-delimited marker blocks, anchored on stable surrounding text
+#      (never a line-number patch) ───────────────────────────────────────────
+NAME="$NAME" name="$name" python3 - <<'PY'
+import os
+
+NAME = os.environ["NAME"]
+name = os.environ["name"]
+path = "Project.swift"
+
+with open(path, "r", encoding="utf-8") as fh:
+    content = fh.read()
+
+target_block = f"""// >>> new_game:scaffold {NAME} BEGIN (generated by `mise run new_game:scaffold {NAME}`; delete this block + the matching packages/targets/schemes blocks to remove the game)
+let {name}Target = Target.target(
+    name: "{NAME}",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .app,
+    bundleId: "com.wei18.{name}",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    infoPlist: .file(path: "App/{NAME}/Info.plist"),
+    sources: ["App/{NAME}/**/*.swift"],
+    resources: [
+        "App/{NAME}/Assets.xcassets",
+        "App/{NAME}/Resources/PrivacyInfo.xcprivacy",
+        "App/{NAME}/Resources/Localizable.xcstrings",
+        "App/{NAME}/Resources/InfoPlist.xcstrings",
+        "App/{NAME}/Resources/Audio/**",
+        .glob(pattern: "App/{NAME}/Resources/Settings.bundle/**"),
+    ],
+    entitlements: .file(path: "App/{NAME}/{NAME}.entitlements"),
+    dependencies: [
+        .package(product: "{NAME}UI"),
+        .package(product: "{NAME}AppComposition"),
+        .package(product: "MonetizationCore"),
+        .package(product: "AdsAdMob"),
+        .package(product: "IAPStoreKit2"),
+        .package(product: "GameAudio"),
+    ],
+    settings: .settings(base: appTargetSettings)
+)
+
+let {name}E2ETestsTarget = Target.target(
+    name: "{NAME}E2ETests",
+    destinations: [.iPhone, .iPad, .mac],
+    product: .uiTests,
+    bundleId: "com.wei18.{name}.e2e",
+    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    sources: ["App/{NAME}E2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
+    dependencies: [.target(name: "{NAME}")],
+    settings: .settings(base: swiftSettings)
+)
+// <<< new_game:scaffold {NAME} END
+
+"""
+
+anchor_lets = "let project = Project("
+assert content.count(anchor_lets) == 1, "Project.swift anchor for target-let insertion is not unique"
+content = content.replace(anchor_lets, target_block + anchor_lets, 1)
+
+anchor_pkg = '        .local(path: "Packages/ASCRegisterKit"),\n'
+assert content.count(anchor_pkg) == 1, "Project.swift anchor for packages insertion is not unique"
+pkg_block = (
+    f"        // >>> new_game:scaffold {NAME} packages BEGIN\n"
+    f'        .local(path: "Packages/{NAME}Kit"),\n'
+    f"        // <<< new_game:scaffold {NAME} packages END\n"
+)
+content = content.replace(anchor_pkg, anchor_pkg + pkg_block, 1)
+
+anchor_targets = "        sudokuE2ETestsTarget, minesweeperE2ETestsTarget,\n"
+assert content.count(anchor_targets) == 1, "Project.swift anchor for targets insertion is not unique"
+targets_block = (
+    f"        // >>> new_game:scaffold {NAME} targets BEGIN\n"
+    f"        {name}Target, {name}E2ETestsTarget,\n"
+    f"        // <<< new_game:scaffold {NAME} targets END\n"
+)
+content = content.replace(anchor_targets, anchor_targets + targets_block, 1)
+
+scheme_block = f"""        // >>> new_game:scaffold {NAME} schemes BEGIN
+        .scheme(
+            name: "{NAME}",
+            shared: true,
+            buildAction: .buildAction(targets: ["{NAME}"]),
+            testAction: .testPlans(["App/{NAME}/{NAME}.xctestplan"]),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "{NAME}",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/{NAME}/Resources/{NAME}.storekit")
+                )
+            )
+        ),
+        .scheme(
+            name: "{NAME}-E2E",
+            shared: true,
+            buildAction: .buildAction(targets: ["{NAME}", "{NAME}E2ETests"]),
+            testAction: .targets(
+                ["{NAME}E2ETests"],
+                configuration: "Debug"
+            ),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "{NAME}",
+                options: .options(
+                    storeKitConfigurationPath: .relativeToManifest("App/{NAME}/Resources/{NAME}.storekit")
+                )
+            )
+        ),
+        // <<< new_game:scaffold {NAME} schemes END
+"""
+
+anchor_close = "\n    ]\n)"
+idx = content.rindex(anchor_close)
+assert content.count(anchor_close) == 1, "Project.swift final-close anchor for schemes insertion is not unique"
+content = content[:idx] + "\n" + scheme_block + content[idx + 1:]
+
+with open(path, "w", encoding="utf-8") as fh:
+    fh.write(content)
+
+print(f"Project.swift: inserted {NAME} target/package/scheme blocks")
+PY
+
+# ── 5. Summary ────────────────────────────────────────────────────────────────
+cat <<SUMMARY
+
+==> generated:
+    Packages/${NAME}CoreKit
+    Packages/${NAME}Kit
+    App/${NAME}
+    App/${NAME}E2ETests
+    cloudkit/${name}.ckdb
+    Project.swift (marker-delimited ${NAME} block: target lets, packages, targets, schemes)
+
+==> gameplay: this PR1 scaffold keeps the COPIED Minesweeper gameplay (engine +
+    session + board UI), renamed, as the placeholder — not a from-scratch stub.
+    Replace <Name>CoreKit's engine/session and <Name>UI's board view + tokens
+    with real rules whenever you start gameplay work.
+
+==> next:
+    tuist generate && swift build --package-path Packages/${NAME}CoreKit && swift build --package-path Packages/${NAME}Kit
+
+==> TODO(#479 PR2) — user-owned / follow-up gates, not done by this script:
+    - cloudkit/${name}.ckdb is NOT deployed. Deploy Dev schema:
+        mise run ck:schema deploy --app ${name} --env development
+      ('ck:schema' only knows sudoku|minesweeper today — PR2 adds the --app
+      choice/container mapping for ${name}.)
+    - No Game Center leaderboards/achievements exist for ${name} yet
+      (ASCRegister config template — PR2).
+    - AppIcon is Minesweeper's placeholder icon (OQ-4) — replace
+      App/${NAME}/Assets.xcassets/AppIcon* with a real icon before shipping.
+    - No real AdMob/ASC/CK-container identifiers exist for ${name} — provision
+      via secrets/.env + build-time-secret-injection skill, never in code.
+    - mise-tasks/scan/l10n, mise-tasks/tf/upload, mise-tasks/ck/schema still
+      hardcode sudoku|minesweeper as their only --app choices (PR3 parameterization
+      audit, RFC §6) — ${name} is NOT yet wired into those gates.
+SUMMARY
