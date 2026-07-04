@@ -112,11 +112,10 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                         view: routeFactory.view(for: route, path: nil),
                         chromeState: chromeState
                     )
-                    // SDD-003 OQ-001: inject the chrome state into the modal
-                    // hierarchy so the board view can find it via
-                    // `@Environment(\.gameChrome)` and update the elapsed label
-                    // each tick. The board also reads this key to know it is in
-                    // a modal and should hide its own in-board timer.
+                    // #674: the chrome timer capsule is retired — the boards
+                    // render their own in-header timer and no longer read this
+                    // key. The injection stays only so the dormant seam keeps
+                    // compiling until the follow-up removal.
                     .environment(\.gameChrome, chromeState)
                 }
             }
