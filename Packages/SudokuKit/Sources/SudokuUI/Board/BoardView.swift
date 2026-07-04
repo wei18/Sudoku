@@ -45,11 +45,6 @@ public struct BoardView: View {
     // completion overlay. `DismissAction` is a no-op outside a presented context
     // (previews / snapshot tests / macOS push path — all safe to call).
     @Environment(\.dismiss) private var dismiss
-    // SDD-003 OQ-001: when GameRoot injects a GameChromeState into the
-    // modal hierarchy, this is non-nil and we (a) push the elapsed label
-    // to the chrome on every tick and (b) hide the in-board header timer
-    // to avoid showing two clocks on screen.
-    @Environment(\.gameChrome) var gameChrome
     @FocusState private var keyboardFocus: Bool
     // #610: Completion overlay VM + Daily primer. Both held in @State so they
     // survive body recomputes without resetting fetch / auth-check state.
@@ -111,10 +106,6 @@ public struct BoardView: View {
                 completionReminderPrimer = nil
             }
         }
-        // Hide the top chrome (timer) while the completion overlay OR pause is up.
-        .onChange(of: completionViewModel != nil || viewModel.isPaused) { _, hide in
-            gameChrome?.setHidingChrome(hide)
-        }
         .focusable()
         .focused($keyboardFocus)
         .onAppear { keyboardFocus = true }
@@ -131,12 +122,9 @@ public struct BoardView: View {
             // the session once per second while the game is live; cancel
             // automatically when paused / finished or when the view goes
             // away (`.task` lifecycle handles both).
-            // SDD-003 OQ-001: also push to chrome on every tick so the modal
-            // top-chrome timer stays in sync with the board session clock.
             while !Task.isCancelled {
                 if viewModel.status == .playing {
                     await viewModel.refreshElapsed()
-                    gameChrome?.updateElapsed(elapsedLabel)
                 }
                 try? await Task.sleep(for: .seconds(1))
             }

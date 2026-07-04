@@ -1,13 +1,24 @@
-// GameChromeState — shared observable carrier for the modal top-chrome timer.
+// GameChromeState — shared observable carrier for the (retired) modal top-chrome timer.
 //
-// SDD-003 OQ-001 follow-up: the game timer moves into the modal's top chrome
-// (nav-bar-style row alongside `[X]`). `GameChromeState` is the injection seam:
+// SDD-003 OQ-001 originally moved the game timer into the modal's top chrome
+// (nav-bar-style row alongside `[X]`), with `GameChromeState` as the injection seam:
 //
 //   1. `GameRoot` creates one instance and injects it via `.environment(\.gameChrome, ...)`.
 //   2. Board views (SudokuUI.BoardView, MinesweeperUI.MinesweeperBoardView) read it
 //      from `@Environment` and update `elapsedLabel` on every timer tick.
 //   3. `GameModalContent` reads `elapsedLabel` from the same instance and renders the
 //      capsule badge in the modal top chrome.
+//
+// #674: the capsule's fixed `.padding(.top, 56)` overlapped the board's own header /
+// first grid row on some devices. Minesweeper had already stopped feeding it (#663,
+// moved its clock into the status bar); Sudoku followed in #674, moving its timer
+// permanently into `BoardView`'s own header row. As of #674 NEITHER board calls
+// `updateElapsed` / `setHidingChrome` any more, and `GameModalContent` no longer
+// renders the capsule — this class + the `\.gameChrome` environment key are kept as
+// an unused injection seam rather than deleted outright (surgical scope for #674).
+// Follow-up candidate: if no future board revives this pattern, retire the whole
+// seam (this file, the `gameChrome` EnvironmentKey, and `GameModalContent`'s
+// `chromeState` property) in a dedicated cleanup PR.
 //
 // The carrier is in `GameAppKit` (not `GameShellKit`) because it is consumed by the
 // board views that live in `SudokuUI` / `MinesweeperUI`, both of which already
@@ -65,9 +76,9 @@ private struct GameChromeStateKey: EnvironmentKey {
 
 public extension EnvironmentValues {
     /// The active `GameChromeState` injected by `GameRoot` for its modal.
-    /// `nil` when the board is rendered outside a modal (e.g. push navigation
-    /// on macOS, snapshot tests, previews) — board views must handle `nil`
-    /// gracefully and keep their in-board timer visible in that case.
+    /// #674: kept as an unused injection seam — neither board reads this key
+    /// any more (both render their own timer unconditionally in their
+    /// header/status row regardless of modal vs. push presentation).
     var gameChrome: GameChromeState? {
         get { self[GameChromeStateKey.self] }
         set { self[GameChromeStateKey.self] = newValue }
