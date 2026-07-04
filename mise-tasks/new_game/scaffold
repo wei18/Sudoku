@@ -132,12 +132,13 @@ mkdir -p "$SNAP_TEST_DIR/__Snapshots__"
 touch "$SNAP_TEST_DIR/__Snapshots__/.gitkeep"
 
 # ── 3. Rename pass: Minesweeper -> NAME, minesweeper -> name, in both paths
-#      and file contents. Word-boundary-aware (OQ-3): matches the whole
-#      `Minesweeper`/`minesweeper` token wherever it occurs (module prefixes,
-#      bundle-id dotted segments, filenames) without touching unrelated text —
-#      there is no partial/compound collision risk for this token in the
-#      copied tree (verified: only these two case variants occur anywhere in
-#      the Minesweeper source/App/cloudkit tree). Binary files (images, audio)
+#      and file contents. Mechanism is a plain literal substring replace
+#      (str.replace), NOT regex word-boundary matching — safe for OQ-3's
+#      purposes because `Minesweeper`/`minesweeper` never occurs as a
+#      substring of any unrelated token in the copied tree (verified by
+#      corpus grep; CR #479 round 1). If a future template ever introduces a
+#      colliding compound token, upgrade this to \b-anchored replacement.
+#      Binary files (images, audio)
 #      are detected and copied verbatim, never text-substituted.
 # ─────────────────────────────────────────────────────────────────────────────
 NAME="$NAME" name="$name" python3 - "Packages/${NAME}CoreKit" "Packages/${NAME}Kit" "App/${NAME}" "App/${NAME}E2ETests" "cloudkit/${name}.ckdb" <<'PY'
