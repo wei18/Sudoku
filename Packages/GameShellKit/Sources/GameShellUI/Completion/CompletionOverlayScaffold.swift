@@ -69,6 +69,14 @@ public struct CompletionOverlayScaffold<Card: View>: View {
             // scroll is a possible follow-up; the cap keeps it on-screen.
             .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
+        // #680: same board-leak defect as PauseOverlayView — the board
+        // underneath stays LIVE in the a11y tree while this overlay presents.
+        // `.isModal` alone isolates it (sim-verified via `idb ui describe-all`
+        // on both apps: every board/digit-pad element drops out of the
+        // reported tree, leaving only the hero + CTAs). Also applied to the
+        // standalone pushed `.completion` route (macOS) — harmless there since
+        // that route has no board sibling to begin with.
+        .accessibilityAddTraits(.isModal)
     }
 
     @ViewBuilder
