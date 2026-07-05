@@ -35,6 +35,9 @@ mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
 | `--build <N>` | explicit `CFBundleVersion` (build number); default `$(date -u +%Y%m%d%H%M)` |
 | `--config <name>` | xcodebuild configuration (default `Release`) |
 | `--i-am-sure` | **REQUIRED** to actually upload to TestFlight (user-owned) |
+| `--changelog-only` | print + write the What-to-Test changelog only; no archive/export/upload/tag |
+| `--full` | changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filter), keep `(#NNN)` refs |
+| `--since <ref>` | changelog base ref when no prior `tf/<app>-<plat>/*` tag exists (ignored once a prior tag exists) |
 | `-h`, `--help` | usage |
 
 Examples:
@@ -43,6 +46,9 @@ mise run tf:upload sudoku ios --archive-only            # safe: produce .ipa
 mise run tf:upload sudoku all --archive-only            # iOS .ipa + macOS .pkg
 mise run tf:upload sudoku ios --i-am-sure               # archive+export+UPLOAD
 mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
+mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
+mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
+mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
 ```
 
 ## Pipeline (per app + platform)
@@ -64,6 +70,19 @@ mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
    `ExportOptions` plist (`method=app-store-connect`, `destination=export`) →
    `.ipa` (iOS) / `.pkg` (macOS).
 5. **upload** — `xcrun altool --upload-app` to TestFlight. **GATED** (see below).
+6. **changelog + tag (#694 P1)** — on a REAL upload success, first writes a
+   Fixes/Features/Other changelog from squash-merge PR-title subjects since the
+   previous `tf/<app>-<plat>/*` tag to
+   `build/testflight/<app>-<plat>-<build>-changelog.md` (also printed), THEN
+   tags `tf/<app>-<plat>/<build>` (pushed, best-effort — a failed tag/push only
+   warns, never fails the task). Changelog-before-tag order is load-bearing:
+   tagging first would make the range `HEAD..HEAD` and the changelog empty.
+   `--changelog-only` runs just this step for any app/platform/build without
+   touching archive/export/upload — use it to preview or regenerate the
+   TestFlight "What to Test" note. First run (no prior tag): pass `--since
+   <ref>`, or it falls back to full history with an explicit warning. A base
+   ref that doesn't resolve (bad `--since`, corrupt tag) fails loudly (exit 1,
+   no `.md` written) instead of emitting a lying "(none)/(none)" changelog.
 
 ## Auth
 
@@ -112,6 +131,11 @@ from project memory (`asc-api-credentials` + the Team ID).
   the task uses the new name (accepted by 16/26). Don't revert it.
 - **Workspace is gitignored.** A clean checkout has no `Game.xcworkspace`; the
   task runs `tuist install` + `tuist generate --no-open` to produce it.
+- **Changelog noise filter is scope-aware, not just type-aware.** A
+  `feat(skills): ...` or `feat(spec): ...` commit is still dropped from the
+  default (non `--full`) changelog even though its type is `feat` — the filter
+  also checks the Conventional-Commits scope for `skill`/`spec`/`meetings`. Use
+  `--full` to see everything with `(#NNN)` refs kept.
 
 ## See also
 
