@@ -30,8 +30,10 @@ public final class MinesweeperGameViewModel {
     /// Best-time leaderboard submit seam. `nil` in MVP / preview callsites
     /// (no-op); production wires the shared `LiveGameCenterClient`. Submit is
     /// best-effort and never blocks or crashes gameplay (mirrors Sudoku's
-    /// `GameCenterSink` no-retry, swallowed-error policy).
-    private let gameCenter: (any GameCenterClient)?
+    /// `GameCenterSink` no-retry, swallowed-error policy). Internal (not
+    /// private) so the `submitDailyTimeIfWon()` extension (separate file,
+    /// keeps this file under the 400-line lint ceiling) can read it.
+    let gameCenter: (any GameCenterClient)?
     /// Funnel for swallowed submit failures, so a failed leaderboard write is
     /// observable in OSLog instead of silent. `nil` → fully silent.
     /// Internal (not private) so `MinesweeperBoardView.onRetry` can re-thread
@@ -46,11 +48,12 @@ public final class MinesweeperGameViewModel {
     /// at the same mode (preserving the daily/practice submit gate).
     public let mode: GameMode
     /// Guards against a double-submit if the snapshot re-publishes `.won`.
-    private var didSubmitWin = false
+    /// Internal — see `gameCenter` above for why.
+    var didSubmitWin = false
     /// Best-effort one-shot auth so an unauthenticated player's first win
     /// still has a chance to land server-side. Mirrors Sudoku, where the
     /// native dashboard / `RootView.task` performs the handshake.
-    private var didAttemptAuth = false
+    var didAttemptAuth = false
 
     // MARK: - Audio (#330 P2)
 
@@ -65,17 +68,23 @@ public final class MinesweeperGameViewModel {
     // MARK: - Persistence (#455 step 4)
 
     /// Saved-game store seam. `nil` (MVP / preview / test callsites) → no
-    /// persistence side-effects, preserving every pre-#455 behaviour verbatim.
-    /// Production threads the composition-root `MinesweeperSavedGameStore`.
-    /// Internal so `onRetry` re-threads it (#465 CR — same as `soundPlayer`).
+    /// persistence side-effects. Production threads the composition-root
+    /// `MinesweeperSavedGameStore`. Internal so `onRetry` re-threads it
+    /// (#465 CR — same as `soundPlayer`).
     let store: MinesweeperSavedGameStore?
     /// The save's CloudKit identity, derived ONCE at board construction via
     /// `MinesweeperSavedGameStore.recordName(dailyDay:difficulty:)` /
-    /// `.recordName(practice:)` — never re-derived at save time, so a daily
-    /// board backgrounded across midnight still upserts its own record.
-    /// Internal so `onRetry` re-threads it (the retried board keeps the same
-    /// save slot — same difficulty/mode, fresh state overwrites the old save).
+    /// `.recordName(practice:)` — never re-derived, so a daily board
+    /// backgrounded across midnight still upserts its own record. Internal
+    /// so `onRetry` re-threads it (same save slot; fresh state overwrites).
     let recordName: String?
+
+    // MARK: - Personal record (#699)
+
+    /// Per-(mode × difficulty) best-time store. `nil` → no-op. Best-effort,
+    /// funnels through `errorReporter` — same posture as the GC submit right
+    /// beside it. MS-specific (owner decision, #699); not the shared sink.
+    let personalRecordStore: MinesweeperPersonalRecordStore?
 
     // MARK: - Snapshot / preview seam (#297)
 
@@ -122,7 +131,8 @@ public final class MinesweeperGameViewModel {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         store: MinesweeperSavedGameStore? = nil,
-        recordName: String? = nil
+        recordName: String? = nil,
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
@@ -131,7 +141,8 @@ public final class MinesweeperGameViewModel {
             errorReporter: errorReporter,
             soundPlayer: soundPlayer,
             store: store,
-            recordName: recordName
+            recordName: recordName,
+            personalRecordStore: personalRecordStore
         )
     }
 
@@ -144,7 +155,8 @@ public final class MinesweeperGameViewModel {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         store: MinesweeperSavedGameStore? = nil,
-        recordName: String? = nil
+        recordName: String? = nil,
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil
     ) {
         self.session = session
         self.mode = mode
@@ -153,6 +165,7 @@ public final class MinesweeperGameViewModel {
         self.soundPlayer = soundPlayer
         self.store = store
         self.recordName = recordName
+        self.personalRecordStore = personalRecordStore
         self.isSeeded = false
         let difficulty = session.difficulty
         // Synchronous bootstrap: snapshot before any action is just the
@@ -186,6 +199,7 @@ public final class MinesweeperGameViewModel {
         self.soundPlayer = NoopSoundPlaying()
         self.store = nil
         self.recordName = nil
+        self.personalRecordStore = nil
         self.snapshot = snapshot
         self.isSeeded = true
     }
@@ -332,50 +346,8 @@ public final class MinesweeperGameViewModel {
         snapshot = await session.resume()
     }
 
-    // MARK: - Game Center submit-on-win (#291, #329)
-
-    /// Submit the elapsed time to this difficulty's recurring daily leaderboard
-    /// the first time a **daily-mode** board reaches `.won`. Practice wins never
-    /// submit (#329): the gate `mode == .daily` mirrors Sudoku's `GameCenterSink`
-    /// (`guard mode == .daily`), so a Practice solve — a valid current-cycle
-    /// board — cannot inflate the daily ranking. Best-effort: a `nil` client is
-    /// a no-op (MVP / preview), an unauthenticated player's submit no-ops
-    /// server-side, and any thrown error is funneled (never re-raised) so a
-    /// failed leaderboard write can never interrupt the win moment.
-    private func submitDailyTimeIfWon() async {
-        guard snapshot.status == .won, !didSubmitWin else { return }
-        // #329: daily-only gate — mirrors GameCenterSink.swift:81. Practice
-        // wins reach `.won` but must not write the recurring daily board.
-        guard mode == .daily else { return }
-        guard let gameCenter else { return }
-        // Latch before the await so a re-entrant refresh tick can't double-fire.
-        didSubmitWin = true
-
-        let leaderboardId = MinesweeperLeaderboardID.daily(for: session.difficulty)
-        let elapsed = snapshot.elapsedSeconds
-
-        // Best-effort one-shot auth: the native GC dashboard normally performs
-        // the handshake, but a player who wins before ever opening it would
-        // otherwise submit while unauthenticated. Swallow the result.
-        if !didAttemptAuth {
-            didAttemptAuth = true
-            _ = try? await gameCenter.authenticate()
-        }
-
-        do {
-            try await gameCenter.submitScore(
-                leaderboardId: leaderboardId,
-                elapsedSeconds: elapsed
-            )
-        } catch {
-            // No-retry policy mirrors Sudoku's GameCenterSink (§How.3.4):
-            // GC is the leaderboard "炫耀面" only; the durable record lives
-            // elsewhere. Funnel so the failure is observable in OSLog.
-            await errorReporter?.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "MinesweeperGameViewModel.submitDailyTime"
-            )
-        }
-    }
+    // Game Center + personal-record submit-on-win (#291, #329, #699):
+    // `submitDailyTimeIfWon()` lives in MinesweeperGameViewModel+SubmitOnWin.swift
+    // — a separate file (not this class body) keeps this file under the
+    // 400-line lint ceiling; see that file for the full contract.
 }

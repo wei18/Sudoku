@@ -104,6 +104,12 @@ public struct LiveRouteFactory: RouteFactory {
     // persist (pause / background / terminal) and into the `.resumeBoard`
     // loader. Optional so preview / test callsites stay persistence-free.
     private let savedGameStore: MinesweeperSavedGameStore?
+    // #699: personal-best store, threaded into every board (+ the
+    // `.resumeBoard` loader) so a daily win records the personal best right
+    // beside the GC submit. Optional so preview / test callsites stay
+    // side-effect-free (mirrors `savedGameStore`'s optionality). MS-specific
+    // (owner decision, #699) — not wired through the shared TelemetryKit sink.
+    private let personalRecordStore: MinesweeperPersonalRecordStore?
     // SDD-003 Epic 1: closure that modal-presents a board route via
     // `GameRootViewModel.presentGame(route:)`. When non-nil, `.board` and
     // `.resumeBoard` routes return a `GameBoardRedirect` instead of building
@@ -123,6 +129,7 @@ public struct LiveRouteFactory: RouteFactory {
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
     ) {
         self.monetizationController = monetizationController
@@ -136,6 +143,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
         self.savedGameStore = savedGameStore
+        self.personalRecordStore = personalRecordStore
         self.onPresentBoard = onPresentBoard
     }
 
@@ -207,7 +215,8 @@ public struct LiveRouteFactory: RouteFactory {
                         // slot per practice difficulty) — see the store's
                         // recordName helpers for the scheme rationale.
                         store: self.savedGameStore,
-                        recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty)
+                        recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty),
+                        personalRecordStore: self.personalRecordStore
                     )
                 )
             }
@@ -230,7 +239,8 @@ public struct LiveRouteFactory: RouteFactory {
                         adGate: self.adGate,
                         gameCenter: self.gameCenter,
                         errorReporter: self.errorReporter,
-                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying()
+                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
+                        personalRecordStore: self.personalRecordStore
                     )
                 )
             }
