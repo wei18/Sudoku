@@ -88,5 +88,14 @@ public struct PauseOverlayView: View {
             .frame(maxWidth: 340)
             .padding(.horizontal, 24)
         }
+        // #680: without this, the board underneath stays LIVE in the a11y
+        // tree — VoiceOver users swiping the paused screen land on dozens of
+        // stale board-cell buttons interleaved with Resume/Leave. `.isModal`
+        // tells the accessibility system this subtree is the only reachable
+        // content while presented; sim-verified via `idb ui describe-all`
+        // (both apps) that it alone drops every sibling board/digit-pad
+        // element from the reported tree — no manual `.accessibilityHidden`
+        // plumbing needed at the board mount sites.
+        .accessibilityAddTraits(.isModal)
     }
 }
