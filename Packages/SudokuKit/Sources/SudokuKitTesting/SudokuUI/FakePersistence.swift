@@ -42,6 +42,7 @@ public actor FakePersistence: PersistenceProtocol {
     )
     public var loadOrCreateError: PersistenceError?
     public var latestInProgressError: PersistenceError?
+    public var deleteAbandonedError: PersistenceError?
     /// When set, `loadOrCreate` returns this snapshot instead of the loud
     /// default throw. Used by tests that exercise the completed-daily
     /// → Completion route (#379).
@@ -65,6 +66,10 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func setLatestInProgressError(_ error: PersistenceError?) {
         self.latestInProgressError = error
+    }
+
+    public func setDeleteAbandonedError(_ error: PersistenceError?) {
+        self.deleteAbandonedError = error
     }
 
     public func setLoadOrCreateSnapshot(_ snapshot: GameSessionSnapshot?) {
@@ -132,6 +137,9 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func deleteAbandoned(recordName: String) async throws {
         operations.append(.deleteAbandoned(recordName: recordName))
+        if let error = deleteAbandonedError {
+            throw error
+        }
     }
 
     public func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {

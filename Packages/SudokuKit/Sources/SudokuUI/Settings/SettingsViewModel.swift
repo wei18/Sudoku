@@ -75,8 +75,8 @@ public final class SettingsViewModel {
         if let candidate = resumeCandidate {
             // M10 (issue #67): delete failure surfaces through the funnel
             // but we still optimistically clear local resumeCandidate — the
-            // user explicitly asked to clear, and a fail-loud toast is the
-            // user-visible feedback today.
+            // user explicitly asked to clear. #687: a thrown delete now also
+            // fails loud via a failure toast instead of claiming success.
             do {
                 try await persistence.deleteAbandoned(recordName: candidate.recordName)
             } catch {
@@ -85,6 +85,11 @@ public final class SettingsViewModel {
                     underlying: error,
                     source: "SettingsViewModel.clearCache"
                 )
+                self.resumeCandidate = nil
+                let message = String(localized: "Couldn't clear cache", bundle: .main)
+                self.clearCacheConfirmation = message
+                toastController?.show(Toast(style: .failure, message: message))
+                return
             }
             self.resumeCandidate = nil
         }
