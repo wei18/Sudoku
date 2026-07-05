@@ -22,6 +22,7 @@ import Persistence
 import Reminders
 import SudokuEngine
 import SudokuKitTesting
+import Telemetry
 
 #if canImport(AppKit)
 import SnapshotTesting
@@ -72,6 +73,41 @@ struct SettingsViewTests {
         await viewModel.bootstrap()
         await viewModel.clearCache()
         #expect(viewModel.clearCacheConfirmation == "Cache cleared")
+    }
+
+    // #687: deleteAbandoned throwing must surface a FAILURE toast, not the
+    // unconditional success toast the bug shipped with — mirrors MS's
+    // ClearCacheFeedbackTests.clearCacheErrorReportsAndShowsFailureToast.
+    @Test func clearCache_whenDeleteThrows_showsFailureToastNotSuccess() async {
+        let candidate = SavedGameSummary(
+            recordName: "saved-easy",
+            puzzleId: "2026-05-19-easy",
+            mode: .daily,
+            difficulty: .easy,
+            lastModifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            elapsedSeconds: 120,
+            status: "inProgress",
+            generatorVersion: 1
+        )
+        let fake = FakePersistence()
+        await fake.setResumeCandidate(candidate)
+        await fake.setDeleteAbandonedError(.zoneNotProvisioned)
+        let reporter = FakeErrorReporter()
+        let toast = ToastController()
+        let viewModel = SettingsViewModel(
+            persistence: fake,
+            errorReporter: reporter,
+            toastController: toast
+        )
+        await viewModel.bootstrap()
+
+        await viewModel.clearCache()
+
+        #expect(viewModel.clearCacheConfirmation == "Couldn't clear cache")
+        #expect(toast.current?.style == .failure)
+        let received = await reporter.received
+        #expect(received.count == 1)
+        #expect(received.first?.source == "SettingsViewModel.clearCache")
     }
 
     @Test func settingsViewIncludesGameCenterSection() {

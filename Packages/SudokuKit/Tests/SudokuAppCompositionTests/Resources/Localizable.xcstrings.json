@@ -763,6 +763,54 @@
         }
       }
     },
+    "Couldn't clear cache" : {
+      "comment" : "#687 Settings — failure toast shown when the Clear cache action's delete throws (the error also funnels through ErrorReporter). Mirrors MinesweeperKit's entry (#284).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't clear cache"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo borrar la caché"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャッシュを消去できませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐시를 지우지 못했습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถล้างแคชได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法清除缓存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法清除快取"
+          }
+        }
+      }
+    },
     "Couldn't generate today's puzzle" : {
       "extractionState" : "stale",
       "localizations" : {

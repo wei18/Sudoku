@@ -233,7 +233,7 @@ truly cover edge-to-edge. Banner suppressed under both overlays.
 **Element inventory:** status bar (mine count / status / elapsed,
 `ViewThatFits` 1-row/2-row), reveal/flag mode toggle
 (`minesweeper.board.pauseToggle` is actually the **pause** toggle a11y id —
-verify naming if reused elsewhere), grid, optional banner.
+verified unique 2026-07-05 (repo-wide grep)), grid, optional banner.
 
 **Per-interaction outcome:**
 
