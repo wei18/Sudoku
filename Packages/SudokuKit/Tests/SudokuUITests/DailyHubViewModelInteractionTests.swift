@@ -270,6 +270,54 @@ struct DailyHubViewModelInteractionTests {
         #expect(count == 1)
     }
 
+    // MARK: - #686: `.exhausted` alert CTAs
+
+    @Test func tryPracticeInsteadSwapsLastPathEntryFromDailyToPractice() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let box = RoutePathBox()
+        box.binding.wrappedValue = [.home, .daily]
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+
+        viewModel.tryPracticeInstead()
+
+        #expect(box.routes == [.home, .practice])
+    }
+
+    @Test func tryPracticeInsteadAppendsWhenPathIsEmpty() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+
+        viewModel.tryPracticeInstead()
+
+        #expect(box.routes == [.practice])
+    }
+
+    @Test func dismissExhaustedPopsBackToHome() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let box = RoutePathBox()
+        box.binding.wrappedValue = [.home, .daily]
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+
+        viewModel.dismissExhausted()
+
+        #expect(box.routes == [.home])
+    }
+
+    @Test func dismissExhaustedIsNoOpWhenPathIsAlreadyEmpty() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+
+        viewModel.dismissExhausted()
+
+        #expect(box.routes == [])
+    }
+
 }
 
 /// Records `report(_:underlying:source:)` calls so the failure-path test can

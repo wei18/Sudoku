@@ -58,6 +58,34 @@ struct DailyHubViewTests {
         #expect(viewModel.state == .exhausted)
     }
 
+    // #686: the `.exhausted` alert's CTAs must actually navigate (previously
+    // "Try another difficulty" was a dead `{}` closure with no picker on this
+    // screen to route to).
+    @Test func exhaustedTryPracticeInsteadRoutesToPracticeHub() async {
+        let viewModel = await makeViewModel(
+            providerResult: .failure(.generatorFailed(underlying: "exhausted"))
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.state == .exhausted)
+
+        viewModel.tryPracticeInstead()
+
+        #expect(viewModel.path == [.practice])
+    }
+
+    @Test func exhaustedDismissPopsBackToHome() async {
+        let viewModel = await makeViewModel(
+            providerResult: .failure(.generatorFailed(underlying: "exhausted"))
+        )
+        await viewModel.bootstrap()
+        viewModel.path = [.home, .daily]
+        #expect(viewModel.state == .exhausted)
+
+        viewModel.dismissExhausted()
+
+        #expect(viewModel.path == [.home])
+    }
+
     @Test func cardTapAppendsBoardRoute() async {
         let viewModel = await makeViewModel()
         await viewModel.bootstrap()

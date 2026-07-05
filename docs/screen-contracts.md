@@ -100,9 +100,14 @@ state renders `Color.clear` under a floating `.alert`.
 **State variants:** `idle`/`loading` → `ProgressView`; `loaded` → 3-card grid
 (1-col iPhone / 3-col regular); `.exhausted` → empty backdrop + `.alert`
 `"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come
-back tomorrow."`; `.failed(reason)` → inline warning icon + `reason` text (no
-alert). CK-degraded: phase-2 completion-overlay fetch fails silently → all 3
-cards render un-completed (never blocks phase-1 render).
+back tomorrow."`, buttons **"Practice"** (`tryPracticeInstead()` swaps the
+last path entry `.daily` → `.practice`, landing on `SUD-PRACTICE-HUB` which
+actually has the difficulty picker the old label promised — #686) and
+**"Cancel"** (`role: .cancel`, `dismissExhausted()` pops back to HOME rather
+than leaving a blank backdrop with no recovery); `.failed(reason)` → inline
+warning icon + `reason` text (no alert). CK-degraded: phase-2
+completion-overlay fetch fails silently → all 3 cards render un-completed
+(never blocks phase-1 render).
 
 ---
 

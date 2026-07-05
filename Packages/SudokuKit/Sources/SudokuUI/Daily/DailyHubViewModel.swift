@@ -164,6 +164,30 @@ public final class DailyHubViewModel {
     /// `elapsedSeconds`, then routes to the Completion screen. On a load
     /// failure we report through the funnel and fall back to `.board` — never
     /// worse than the pre-#379 behavior, and never silently stuck.
+    /// #686: the `.exhausted` alert's primary CTA. The Daily hub has no
+    /// difficulty picker of its own — the Practice hub does — so "try
+    /// another difficulty" routes there. The hub was PUSHED from Home, so
+    /// swapping the last path entry (`.daily` → `.practice`) is the clean
+    /// move; it replaces the dead-end screen instead of stacking a second
+    /// push on top of it.
+    public func tryPracticeInstead() {
+        if !path.isEmpty {
+            path[path.count - 1] = .practice
+        } else {
+            path.append(.practice)
+        }
+    }
+
+    /// #686: the `.exhausted` alert's dismiss CTA. A `.exhausted` hub has
+    /// nothing to show, so staying on it after dismiss is the second half of
+    /// the trap the alert used to leave the user in — pop back to Home
+    /// instead of a blank backdrop.
+    public func dismissExhausted() {
+        if !path.isEmpty {
+            path.removeLast()
+        }
+    }
+
     func openCompleted(_ card: DailyCard) async {
         // Reset on both success and the error/fallback path so a later tap
         // (#385) re-enters cleanly. `@MainActor` guarantees this runs without
