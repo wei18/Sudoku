@@ -213,7 +213,7 @@ flowchart TD
     MDH -->|unplayed card, push .board| MB
     MDH -->|failed card, push .replayDailyBoard| MB
     MDH -->|completed card, push .completion| MCR
-    MCR -->|Close, popToNewGame path.removeAll| HOME
+    MCR -->|Close, path.removeLast| MDH
 
     MPH -->|Start, push .board| MB
 
@@ -235,9 +235,9 @@ flowchart TD
 | M2 | `HOME → MS-PRACTICE-HUB → (Start, synchronous, no draw step) → MS-BOARD → MS-COMPLETION-OVERLAY → Play Again → new MS-BOARD (fresh random seed)` | No shimmer/draw state exists in MS Practice — CODE CONTRADICTED vs. a naive Sudoku-mirror assumption (see `screen-contracts.md` `MS-PRACTICE-HUB`). |
 | M3 | `HOME(resume pill) → MS-BOARD-LOAD-FAILED(.resumeBoard) → MS-BOARD` | Only `.resumeBoard` uses the async loader; fresh `.board`/`.replayDailyBoard` mount `MS-BOARD` inline (no persistence fetch needed). |
 | M4 | `MS-DAILY-HUB(failed card) → MS-BOARD(.replayDailyBoard, unscored)` | Epic 8 (SDD-003). No persistence, no GC submit; the original Failed record is untouched. |
-| M5 | `MS-DAILY-HUB(completed card) → MS-COMPLETION-REVIEW → Close → HOME` | **#386. Close pops the WHOLE path (`popToNewGame` = `path.removeAll()`), landing on `HOME`, not back on `MS-DAILY-HUB`** — this is a genuine cross-app asymmetry with Sudoku's S4 (which pops one entry back to the hub). Verify before assuming parity. |
+| M5 | `MS-DAILY-HUB(completed card) → MS-COMPLETION-REVIEW → Close → MS-DAILY-HUB` | **#386, Close fixed by #697: pops one `path` entry** (`path?.wrappedValue.removeLast()`), landing back on `MS-DAILY-HUB` — now symmetric with Sudoku's S4. |
 | M6 | `HOME(Leaderboard, authenticated) → GC-DASHBOARD(external)` / signed-out → alert | Same shared mechanism as Sudoku S5. |
-| M7 | reminder notification tap → **no-op** | MS's `GameConfig.reminderTapRoute` is `nil` (`MinesweeperAppComposition/Live.swift` passes no `reminderTapRoute:` argument) — a tapped MS daily-ready notification does nothing beyond the OS launching the app to `HOME`. CODE CONTRADICTED vs. the mirror-principle assumption that this exists on both apps; tracked as a gap, not fixed by this doc. |
+| M7 | reminder notification tap → push `.daily` | Fixed by #696: MS's `GameConfig.reminderTapRoute` now mirrors Sudoku's — a tapped MS daily-ready notification pushes `.daily` (`MDH`) unless already on top. |
 | M8 | `SETTINGS` + sheets | Same shared components as Sudoku §3.1 S7. |
 
 ---
@@ -260,12 +260,12 @@ Every exit / cancel / error / degraded path, both apps unless noted.
 | N10 | Completion Close — Sudoku | `exitToHub(dismiss:)`: iOS `dismiss()`, macOS pops exactly one `path` entry (the board itself — there is no separate `.completion` push to pop post-#667) | `SudokuUI/Board/BoardView+Completion.swift:162-169` |
 | N11 | Completion Close — MS (in-board overlay) | Always `dismiss()`, no `path` branch at all (MS's board never receives a `path` parameter — the board is either modally presented or pushed inline, and `dismiss()` covers both) | `MinesweeperUI/MinesweeperBoardView.swift:657-661` |
 | N12 | Completion Close — re-view route, Sudoku | One `path` pop → back to `SUD-DAILY-HUB` | `SudokuAppComposition/LiveRouteFactory.swift:226` |
-| N13 | Completion Close — re-view route, MS | `popToNewGame` → `path.removeAll()` → **HOME**, not `MS-DAILY-HUB` — asymmetric with N12 | `MinesweeperAppComposition/LiveRouteFactory.swift:278`, `LiveRouteFactory+Helpers.swift:87-93` |
+| N13 | Completion Close — re-view route, MS | One `path` pop (`closePath?.wrappedValue.removeLast()`) → back to `MS-DAILY-HUB` — fixed by #697, now symmetric with N12 | `MinesweeperAppComposition/LiveRouteFactory.swift:282` |
 | N14 | GC signed-out alert | `.alert` OK → dismiss, HOME unchanged | `GameAppKit/MakeGameApp+Modifiers.swift:30-40` |
 | N15 | ATT primer decline | "Not now" → dismiss sheet, latched for the session (no re-offer), no system prompt fired; Home unaffected throughout | `AppMonetizationKit/ATTPrimerCoordinator.swift:79-81` |
 | N16 | UMP/ATT boot sequence | Runs concurrently with first-frame render (`.onAppear { Task {…} }`), **never gates Home interaction**; a failing step does not skip later steps (every step attempted, outcome logged) | `GameAppKit/MakeGameApp+Helpers.swift:16-42`, `MonetizationBootCoordinator` header comment |
 | N17 | AdMob banner unresolved / degraded | Banner slot degrades to a `.failed` placeholder rather than blocking its host screen (Home / Daily / Practice / Board all keep working) | referenced by `MonetizationBootCoordinator` contract note; `BannerSlotView` |
-| N18 | Reminder tap deep-link — MS gap | No-op (see M7 above) — repeated here because it is functionally a negative flow (an omission), not just a chain footnote | `MinesweeperAppComposition/Live.swift` (no `reminderTapRoute:` argument passed) |
+| N18 | Reminder tap deep-link — MS | Fixed by #696 (see M7 above) — was a no-op, now pushes `.daily` like Sudoku; kept as a row here for historical negative-flow tracking | `MinesweeperAppComposition/Live.swift` `reminderTapRoute:` |
 | N19 | Clear-cache Cancel + failure | Cancel → dialog dismisses, no-op. Failure: MS shows "Couldn't clear cache" failure toast; **Sudoku shows the success toast unconditionally — bug #687** (row to be re-verified once fixed) | `MinesweeperAppComposition/LiveRouteFactory+Helpers.swift:52-85`, `SudokuUI/Settings/SettingsViewModel.swift:74-94` |
 | N20 | GC signed-out — Completion entry point | Completion VMs compute `.unauthenticated` but the call sites hard-code `state: .hidden`, so the user gets ZERO feedback (worse than N14's alert path) — tracked in #685 (scope) + #468 (dormant slice) | `SudokuUI/Completion/CompletionViewModel.swift:89-101`, `MinesweeperUI/Completion/MinesweeperCompletionViewModel.swift:73-93` |
 | N21 | ATT system-level denied | `ATTPresenter.requestIfNeeded()` result (`.denied/.authorized/.restricted`) is discarded — no branch changes ad behavior on denial; AdMob serves non-personalized per its own SDK handling. Distinct from N15 (primer-stage "Not now") | `GameAppKit/MakeGameApp.swift:203-206` (result `_ =` discarded) |

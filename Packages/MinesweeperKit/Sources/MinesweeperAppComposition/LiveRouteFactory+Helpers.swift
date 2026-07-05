@@ -83,12 +83,4 @@ extension LiveRouteFactory {
             )
         }
     }
-
-    /// Empties the navigation path so the root content (MinesweeperHomeView) becomes
-    /// visible again. Safe against any path depth, empty path, and nil
-    /// binding. Extracted for unit testing — see `LiveRouteFactoryTests`.
-    @MainActor
-    internal static func popToNewGame(path: Binding<[AppRoute]>?) {
-        path?.wrappedValue.removeAll()
-    }
 }

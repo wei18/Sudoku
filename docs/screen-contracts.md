@@ -77,8 +77,8 @@ through to the alert path.
 ## SUD-DAILY-HUB
 
 **Entry points:** HOME "Daily" card; reminder-tap deep link
-(`reminderTapRoute` → `.daily`, Sudoku only — see `navigation-flows.md`
-negative flows for the MS gap).
+(`reminderTapRoute` → `.daily` — mirrored on MS by #696, see
+`navigation-flows.md` M7/N18).
 
 **Code:** `SudokuUI/Daily/DailyHubView.swift`, `DailyHubViewModel.swift`,
 `GameShellUI/DailyHubShellView.swift`.
@@ -113,9 +113,9 @@ completion-overlay fetch fails silently → all 3 cards render un-completed
 
 ## MS-DAILY-HUB
 
-**Entry points:** HOME "Daily" card. **No reminder deep-link** — MS's
-`GameConfig.reminderTapRoute` is `nil` (CODE CONTRADICTED vs. the mirror
-assumption; see `navigation-flows.md` negative flows).
+**Entry points:** HOME "Daily" card; reminder-tap deep link (`reminderTapRoute`
+→ `.daily`, fixed by #696 — now mirrors Sudoku; see `navigation-flows.md`
+M7/N18).
 
 **Code:** `MinesweeperUI/Daily/MinesweeperDailyHubView.swift`,
 `MinesweeperDailyHubViewModel.swift`.
@@ -129,7 +129,7 @@ element; trailing indicator is checkmark (completed) / `"Failed"` badge
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
 | Unplayed card tap | `.board(difficulty:seed:mode:.daily)` | modal-full (iOS) / push (macOS) | Close/Leave → `MS-DAILY-HUB` |
-| Completed card tap | `.completion(difficulty:mode:.daily)` (#386 re-view) | push → `MS-COMPLETION-REVIEW` | Close → `Self.popToNewGame` → `path.removeAll()` → HOME (not back to `MS-DAILY-HUB`) |
+| Completed card tap | `.completion(difficulty:mode:.daily)` (#386 re-view) | push → `MS-COMPLETION-REVIEW` | Close → `path?.wrappedValue.removeLast()` → back to `MS-DAILY-HUB` (fixed by #697) |
 | Failed card tap | `.replayDailyBoard(difficulty:seed:)` — unscored free replay, no persistence, no GC submit | modal-full/push | Close/Leave → `MS-DAILY-HUB` |
 
 **Covering behavior:** none. MS has **no `.empty`/`.exhausted` state** —
@@ -459,7 +459,7 @@ ranked time would need the leaderboard slice, which is hidden (`state:
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Close tap | `Self.popToNewGame(path:)` → `path?.wrappedValue.removeAll()` | pop-to-root | HOME (**not** `MS-DAILY-HUB`) — CODE CONTRADICTED vs. a mirror-of-Sudoku assumption; MS pops the whole path, Sudoku pops one entry |
+| Close tap | `path?.wrappedValue.removeLast()` | pop one entry | `MS-DAILY-HUB` — fixed by #697, now mirrors Sudoku |
 
 **Covering behavior / state variants:** same scaffold shape as
 `SUD-COMPLETION-REVIEW`; no Play Again; no mistake row.
