@@ -81,8 +81,11 @@ mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, wi
    touching archive/export/upload — use it to preview or regenerate the
    TestFlight "What to Test" note. First run (no prior tag): pass `--since
    <ref>`, or it falls back to full history with an explicit warning. A base
-   ref that doesn't resolve (bad `--since`, corrupt tag) fails loudly (exit 1,
-   no `.md` written) instead of emitting a lying "(none)/(none)" changelog.
+   ref that doesn't resolve (bad `--since`, corrupt tag) never emits a lying
+   "(none)/(none)" changelog: under `--changelog-only` it fails loudly (exit 1,
+   no `.md` written); on the real post-upload path it downgrades to a warning
+   so a completed upload is never reported as failed and the tag step still
+   runs.
 
 ## Auth
 
