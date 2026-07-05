@@ -500,7 +500,17 @@ public struct MinesweeperBoardView: View {
                     Task { await viewModel.pause() }
                 }
             } label: {
-                if sizeClass == .regular {
+                if viewModel.status == .idle {
+                    // #681 CR: label/behavior match — in `.idle` the tap opens
+                    // the Leave confirm, not a pause, so show ✕ / "Leave"
+                    // (reusing the pause overlay's own `leave.game.leave` key
+                    // from the app catalog; no new string).
+                    if sizeClass == .regular {
+                        Label("leave.game.leave", systemImage: "xmark")
+                    } else {
+                        Image(systemName: "xmark")
+                    }
+                } else if sizeClass == .regular {
                     Label(
                         viewModel.isPaused ? "Resume" : "Pause",
                         systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
@@ -514,7 +524,11 @@ public struct MinesweeperBoardView: View {
             // the full frame hit-testable under `.plain` button style.
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
-            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+            .accessibilityLabel(
+                viewModel.status == .idle
+                    ? Text("leave.game.leave")
+                    : Text(viewModel.isPaused ? "Resume" : "Pause")
+            )
             .accessibilityIdentifier("minesweeper.board.pauseToggle")
         }
     }

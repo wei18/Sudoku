@@ -240,7 +240,7 @@ verified unique 2026-07-05 (repo-wide grep)), grid, optional banner.
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
 | Pause toggle tap (`.playing`) | `viewModel.pause()` | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
-| Pause toggle tap (`.idle`, pre-first-tap — #681) | `showIdleLeaveOverlay = true` (view-local flag; does **not** call `viewModel.pause()`, which no-ops on `.idle` by design) | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
+| Pause toggle tap (`.idle`, pre-first-tap — #681) | `showIdleLeaveOverlay = true` (view-local flag; does **not** call `viewModel.pause()`, which no-ops on `.idle` by design). Button renders as ✕ (`xmark`) with visible/a11y label `leave.game.leave` ("Leave"), not the pause glyph — the tap opens a leave-confirm, not a pause | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
 | Cell reveal/flag | in-place mutation | — | — |
 | Terminal (win or loss) | `makeCompletionViewModel()` | `overlay` → `MS-COMPLETION-OVERLAY` | see that contract |
 
