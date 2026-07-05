@@ -359,11 +359,10 @@ wires it (both boards always wire it — no host omits it in production).
 | Play Again (practice only, iOS only — `onPresentBoard` wired) | "Play Again" `.borderedProminent` | none |
 | Close | "Close" — `.borderedProminent` if alone, `.bordered` if Play Again present | none |
 
-Leaderboard slice UI is **NOT rendered** — `state: .hidden` is passed to the
-shared `CompletionScreen`; the VM's leaderboard-fetch machinery exists but is
-dormant (open question #468). `docs/designs/06-completion.md`'s "Top 3 +
-Around you + View full leaderboard" section is **CODE CONTRADICTED** — none
-of that renders today.
+There is no leaderboard slice UI — #698 deleted the dead leaderboard-fetch
+state machine (both apps hardcoded `state: .hidden` since v2.6 and it never
+rendered). `docs/designs/06-completion.md`'s "Top 3 + Around you + View full
+leaderboard" section is **CODE CONTRADICTED** — none of that renders today.
 
 **Per-interaction outcome:**
 
@@ -377,10 +376,9 @@ of that renders today.
 card + CTAs stay within the safe area (so the hero icon clears the Dynamic
 Island, #518). Board underneath is torn down on Close, not merely hidden.
 
-**State variants:** single visible state (no loading/failed rendering since
-the leaderboard zone is hidden); the dormant VM still has
-loading/authenticated/unauthenticated/fetchFailed internal states with no UI
-surface.
+**State variants:** single visible state — #698 deleted the VM's dead
+loading/authenticated/unauthenticated/fetchFailed leaderboard states along
+with the rendering machinery, so there is nothing left to vary.
 
 ---
 
@@ -400,7 +398,8 @@ surface.
 | Play Again (practice only, iOS only) | "Play Again" | none |
 | Close | "Close" | none |
 
-Same "leaderboard zone hidden" caveat as Sudoku (`state: .hidden`).
+Same "no leaderboard zone" note as Sudoku — #698 deleted the dead fetch state
+machine on this VM too.
 
 **Per-interaction outcome:**
 
@@ -453,9 +452,8 @@ non-reachability-from-live-board note as Sudoku.
 
 **Element inventory:** `MinesweeperCompletionView` seeded `didWin: true`,
 `elapsedSeconds: 0`, **`showsElapsedTime: false`** — the hero omits the time
-row entirely (MS has no stored elapsed for a past daily, #284); the real
-ranked time would need the leaderboard slice, which is hidden (`state:
-.hidden`, same dormant-VM caveat).
+row entirely (MS has no stored elapsed for a past daily, #284); there is no
+leaderboard zone to show a real ranked time in (#698).
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|

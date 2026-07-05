@@ -1,16 +1,15 @@
 // MinesweeperCompletionSnapshotTests — post-game result-surface baselines (#315).
 //
 // From #292 CR (peer of #303 / #308): MinesweeperCompletionView had 9 VM tests
-// but no rendered baseline — its win-vs-loss hero, the conditional Retry /
-// New Game CTAs, and the four content slice states (loading / loaded /
-// unauthenticated / failed) were visually unverified. These baselines guard
-// that surface across light + dark.
+// but no rendered baseline — its win-vs-loss hero and the conditional Retry /
+// New Game CTAs were visually unverified. These baselines guard that surface
+// across light + dark.
 //
-// Seam (#315): none added — the VM already exposes
-// `MinesweeperCompletionViewModel.setStateForTesting(_:)` (the #292 degrade-
-// state seam), which sets the slice state AND latches `hasBootstrapped`, so the
-// view's `.task { bootstrap() }` is a no-op and the seeded state survives
-// NSHostingView capture. Mirrors Sudoku's CompletionViewTests.
+// #698: the leaderboard-slice fetch/present machine (`MinesweeperCompletionState`,
+// `setStateForTesting(_:)`, the `GameCenterClient` dependency) was deleted from
+// the VM — the completion popup has hardcoded `state: .hidden` since v2.6 and
+// never rendered the leaderboard zone, so these baselines never depended on it
+// (see the #587 note at the bottom). Seeding is now just `didWin`/`elapsedSeconds`.
 
 #if canImport(AppKit)
 import Foundation
@@ -19,43 +18,22 @@ import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-import GameCenterClient
-import GameCenterTesting
-
 @MainActor
 @Suite("MinesweeperCompletionView — themed snapshots")
 struct MinesweeperCompletionSnapshotTests {
 
-    /// A deterministic local-player-centred slice (fixed `fetchedAt`, hand-built
-    /// entries) — mirrors the VM-test fixture so the `.loaded` baseline matches
-    /// the real leaderboard-section layout.
-    private static let sampleSlice = LeaderboardSlice(
-        leaderboardId: MinesweeperLeaderboardID.easyDaily,
-        scope: .globalAllTime,
-        entries: [
-            LeaderboardEntry(rank: 1, player: PlayerSummary(teamPlayerId: "P1", displayName: "alice"), score: 41),
-            LeaderboardEntry(rank: 2, player: PlayerSummary(teamPlayerId: "P2", displayName: "bob"), score: 55),
-            LeaderboardEntry(rank: 3, player: PlayerSummary(teamPlayerId: "P3", displayName: "carol"), score: 73),
-        ],
-        totalPlayerCount: 900,
-        fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
-    )
-
-    /// Build a Completion view backed by a VM seeded to `state`. `didWin` drives
-    /// the hero; `onRetry` / `onNewGame` are injected so the conditional CTAs
-    /// render in the baselines (a win typically offers both).
+    /// Build a Completion view backed by a VM with the given win/elapsed. `onRetry` /
+    /// `onNewGame` are injected so the conditional CTAs render in the baselines
+    /// (a win typically offers both).
     private func completionView(
         didWin: Bool,
-        elapsedSeconds: Int = 65,
-        state: MinesweeperCompletionState
+        elapsedSeconds: Int = 65
     ) -> some View {
         let viewModel = MinesweeperCompletionViewModel(
             didWin: didWin,
             elapsedSeconds: elapsedSeconds,
-            leaderboardId: MinesweeperLeaderboardID.easyDaily,
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
-        viewModel.setStateForTesting(state)
         return MinesweeperCompletionView(
             viewModel: viewModel,
             onClose: {}
@@ -66,19 +44,16 @@ struct MinesweeperCompletionSnapshotTests {
 
     /// #386: re-viewing an already-solved daily has no stored elapsed (#284), so
     /// the route passes `showsElapsedTime: false` and the shared body OMITS the
-    /// hero time row entirely — win hero + leaderboard, no time line. The real
-    /// ranked time still appears in the leaderboard slice. This baseline pins
-    /// that no-time hero (contrast the `…win-loaded` baseline, which shows the
-    /// "1:05" subtitle from the live-overlay `elapsedSeconds: 65` fixture).
+    /// hero time row entirely — win hero, no time line. This baseline pins that
+    /// no-time hero (contrast the `…win-loaded` baseline, which shows the "1:05"
+    /// subtitle from the live-overlay `elapsedSeconds: 65` fixture).
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoadedNoElapsed_iPhone_light() {
         let viewModel = MinesweeperCompletionViewModel(
             didWin: true,
             elapsedSeconds: 0,
-            leaderboardId: MinesweeperLeaderboardID.easyDaily,
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
-        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
         let view = MinesweeperCompletionView(
             viewModel: viewModel,
             onClose: {},
@@ -88,18 +63,18 @@ struct MinesweeperCompletionSnapshotTests {
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
     }
 
-    // MARK: - Win hero + loaded leaderboard slice
+    // MARK: - Win hero
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPhone_light() {
-        let host = hostingView(completionView(didWin: true, state: .loaded(Self.sampleSlice)), size: SnapshotLayouts.iPhone, colorScheme: .light)
+        let host = hostingView(completionView(didWin: true), size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPad_light() {
         let host = hostingView(
-            completionView(didWin: true, state: .loaded(Self.sampleSlice)),
+            completionView(didWin: true),
             size: SnapshotLayouts.iPad,
             colorScheme: .light,
             sizeClass: .regular
@@ -109,33 +84,34 @@ struct MinesweeperCompletionSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPhone_dark() {
-        let host = hostingView(completionView(didWin: true, state: .loaded(Self.sampleSlice)), size: SnapshotLayouts.iPhone, colorScheme: .dark)
+        let host = hostingView(completionView(didWin: true), size: SnapshotLayouts.iPhone, colorScheme: .dark)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-win-loaded", record: SnapshotMode.recordMode)
     }
 
-    // MARK: - Loss hero (hero-only, unauthenticated affordance)
+    // MARK: - Loss hero (hero-only)
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoss_iPhone_light() {
-        let host = hostingView(completionView(didWin: false, state: .unauthenticated), size: SnapshotLayouts.iPhone, colorScheme: .light)
+        let host = hostingView(completionView(didWin: false), size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-loss", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoss_iPhone_dark() {
-        let host = hostingView(completionView(didWin: false, state: .unauthenticated), size: SnapshotLayouts.iPhone, colorScheme: .dark)
+        let host = hostingView(completionView(didWin: false), size: SnapshotLayouts.iPhone, colorScheme: .dark)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-dark-loss", record: SnapshotMode.recordMode)
     }
 
-    // MARK: - Leaderboard-slice states are NOT snapshot-meaningful (#587)
+    // MARK: - Leaderboard-slice states were never snapshot-meaningful (#587 / #698)
     //
     // SDD-003 Epic 4 removed the leaderboard zone from the completion popup:
-    // `MinesweeperCompletionView` maps every leaderboard-fetch state to
+    // `MinesweeperCompletionView` mapped every leaderboard-fetch state to
     // `CompletionScreen(state: .hidden)`, leaving the VM machinery unrendered.
-    // So `.loading` / `.failed` / `.loaded` render BYTE-IDENTICAL to the
+    // So `.loading` / `.failed` / `.loaded` rendered BYTE-IDENTICAL to the
     // `win-loaded` hero above — the old per-state baselines (loading/failed,
-    // light+dark) asserted a distinction the view no longer makes (false
-    // confidence). They were removed in #587; `snapshotWinLoaded_*` is the
-    // single guard that the popup renders the hero with NO leaderboard zone.
+    // light+dark) asserted a distinction the view never made (false
+    // confidence). They were removed in #587; #698 deleted the state machine
+    // itself. `snapshotWinLoaded_*` remains the single guard that the popup
+    // renders the hero with NO leaderboard zone.
 }
 #endif

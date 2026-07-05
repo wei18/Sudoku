@@ -6,11 +6,11 @@
 // hero, the Mistakes count, and (Daily-only) the reminder primer affordance +
 // sheet (#287).
 //
-// SDD-003 Epic 4: the popup is Success/Failed · Time · Mistakes · Close only —
-// `state: .hidden` renders no leaderboard zone, and `actions` injects ONLY a
-// Close button (Retry / New Game / Leaderboard removed at this injection
-// site). The VM's leaderboard fetch/mapping machinery is left intact but
-// unrendered; GC entry-point relocation is an open product question (#468).
+// SDD-003 Epic 4: the popup is Success/Failed · Time · Mistakes · Close only,
+// and `actions` injects ONLY a Close button (Retry / New Game / Leaderboard
+// removed at this injection site). #698: the leaderboard zone's dead fetch/
+// present machinery was deleted from both the VM and `CompletionScreen`; GC
+// entry-point relocation (Home card / Settings row) is #685's scope.
 
 public import SwiftUI
 import GameShellUI
@@ -54,13 +54,6 @@ public struct CompletionView: View {
             ),
             elapsedLabel: elapsedLabel,
             mistakeCount: viewModel.mistakeCount,
-            // SDD-003 Epic 4: the popup carries no leaderboard zone (spec:
-            // Success/Failed · Time · Mistakes · Close only). The VM's
-            // leaderboard fetch/mapping machinery is intentionally left in
-            // place but unrendered; GC entry-point relocation is an open
-            // product question on #468.
-            state: .hidden,
-            onRetryLeaderboard: {},
             actions: { closeButton },
             footer: { reminderAffordance }
         )

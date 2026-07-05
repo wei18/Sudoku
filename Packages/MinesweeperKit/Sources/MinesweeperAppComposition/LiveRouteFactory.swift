@@ -285,8 +285,7 @@ public struct LiveRouteFactory: RouteFactory {
                             viewModel: MinesweeperCompletionViewModel(
                                 didWin: true,
                                 elapsedSeconds: 0,
-                                leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty),
-                                gameCenter: gameCenter
+                                leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
                             ),
                             onClose: nil,
                             showsElapsedTime: false

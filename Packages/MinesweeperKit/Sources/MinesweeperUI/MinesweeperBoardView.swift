@@ -645,18 +645,15 @@ public struct MinesweeperBoardView: View {
     // MARK: - Completion overlay (#292)
 
     /// Construct the post-game VM from the current terminal snapshot. Called
-    /// once per terminal transition (see `.onChange` / `.task` above) so the
-    /// leaderboard-slice fetch + degrade state aren't reset by recomputes. The
-    /// VM fetches the local-player-centred slice on a win, and stays hero-only
-    /// on a loss.
+    /// once per terminal transition (see `.onChange` / `.task` above) so its
+    /// state survives recomputes.
     private func makeCompletionViewModel() -> MinesweeperCompletionViewModel {
         MinesweeperCompletionViewModel(
             didWin: viewModel.status == .won,
             elapsedSeconds: viewModel.elapsedSeconds,
             leaderboardId: MinesweeperLeaderboardID.daily(
                 for: viewModel.session.difficulty
-            ),
-            gameCenter: gameCenter
+            )
         )
     }
 

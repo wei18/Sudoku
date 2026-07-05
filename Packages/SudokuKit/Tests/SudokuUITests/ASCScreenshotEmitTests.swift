@@ -14,8 +14,8 @@
 //
 // Determinism mirrors the existing snapshot suites: no Date.now / RNG; the same
 // seeded view models (BoardViewTests clue strings, DailyHubViewModel fixed-date
-// trio, CompletionViewModel.setStateForTesting). All renders are light-mode (the
-// ASC v1 storyline is light-mode per screenshot-strategy.md).
+// trio). All renders are light-mode (the ASC v1 storyline is light-mode per
+// screenshot-strategy.md).
 
 #if canImport(AppKit)
 import Foundation
@@ -56,18 +56,6 @@ struct ASCScreenshotEmitTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    private static let leaderboardSlice = LeaderboardSlice(
-        leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
-        scope: .globalAllTime,
-        entries: [
-            LeaderboardEntry(rank: 1, player: PlayerSummary(teamPlayerId: "P1", displayName: "alice"), score: 228),
-            LeaderboardEntry(rank: 2, player: PlayerSummary(teamPlayerId: "P2", displayName: "bob"), score: 235),
-            LeaderboardEntry(rank: 3, player: PlayerSummary(teamPlayerId: "P3", displayName: "carol"), score: 242),
-        ],
-        totalPlayerCount: 1234,
-        fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
-    )
-
     private func boardView() throws -> BoardView {
         var board = try Board(clues: Self.inProgressClues)
         try board.setDigit(4, atRow: 0, column: 2)
@@ -97,14 +85,14 @@ struct ASCScreenshotEmitTests {
     }
 
     private func completionView() -> CompletionView {
+        // #698: leaderboard-state seeding removed — the popup has hardcoded
+        // `state: .hidden` since v2.6, so the leaderboard slice never rendered.
         let viewModel = CompletionViewModel(
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 251,
             mistakeCount: 2,
-            leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1"
         )
-        viewModel.setStateForTesting(.loaded(Self.leaderboardSlice))
         return CompletionView(viewModel: viewModel)
     }
 
