@@ -132,32 +132,4 @@ import GameShellUI
         let dump = String(describing: view)
         #expect(dump.contains("GameBoardRedirect"), "Expected GameBoardRedirect but got: \(dump)")
     }
-
-    // MARK: - popToNewGame
-
-    @Test func popToNewGameEmptiesPath() {
-        var path: [AppRoute] = [.board(difficulty: .beginner, seed: 1, mode: .practice)]
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        LiveRouteFactory.popToNewGame(path: binding)
-        #expect(path.isEmpty)
-    }
-
-    @Test func popToNewGameOnDeepPathStillEmpties() {
-        var path: [AppRoute] = [.settings, .board(difficulty: .expert, seed: 42, mode: .practice)]
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        LiveRouteFactory.popToNewGame(path: binding)
-        #expect(path.isEmpty)
-    }
-
-    @Test func popToNewGameOnEmptyPathIsNoop() {
-        var path: [AppRoute] = []
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        LiveRouteFactory.popToNewGame(path: binding)
-        #expect(path.isEmpty)
-    }
-
-    @Test func popToNewGameWithNilBindingIsNoop() {
-        // Must not trap when the toolbar receives no binding (e.g. preview).
-        LiveRouteFactory.popToNewGame(path: nil)
-    }
 }

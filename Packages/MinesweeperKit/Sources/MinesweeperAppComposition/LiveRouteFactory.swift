@@ -27,8 +27,9 @@
 // delete — but the error path is the real future-proofing.
 //
 // #448: the divergent in-play toolbar "New Game" button was removed to restore
-// parity with Sudoku's board route. The `.completion` route's Close CTA uses
-// `popToNewGame` → `path.removeAll()` to return to the hub.
+// parity with Sudoku's board route. #697: the `.completion` route's Close CTA
+// now pops one level (`path.removeLast()`), mirroring Sudoku's completion
+// Close instead of emptying the whole path back to Home.
 
 public import SwiftUI
 public import GameCenterClient
@@ -268,14 +269,17 @@ public struct LiveRouteFactory: RouteFactory {
             // the player's real ranked time shows in the leaderboard slice. New
             // Game pops to the picker; no Retry (replaying the same daily is the
             // dead-replay #386 avoids).
-            // SDD-003 Epic 4: Close pops back to the hub (same as the old
-            // New Game CTA). Retry removed at this injection site.
+            // #697: Close pops one level (mirrors Sudoku's LiveRouteFactory
+            // completion Close: `closePath?.wrappedValue.removeLast()`) instead of
+            // emptying the whole path back to Home. Retry removed at this
+            // injection site.
             // Wrap in the shared scaffold so this pushed-route re-view matches the
             // centred-card layout of the in-board overlay (the card is intrinsic;
             // the scaffold owns bg / centring / Close).
+            let closePath = path
             return AnyView(
                 CompletionOverlayScaffold(
-                    onClose: { Self.popToNewGame(path: path) },
+                    onClose: { closePath?.wrappedValue.removeLast() },
                     card: {
                         MinesweeperCompletionView(
                             viewModel: MinesweeperCompletionViewModel(

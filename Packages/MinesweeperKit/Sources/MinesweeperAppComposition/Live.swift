@@ -147,7 +147,16 @@ extension MinesweeperAppComposition {
             // makeHome superseded by the universal GameHomeView built from
             // homeModes in makeGameApp (#572). Kept for API stability; ignored
             // by makeGameApp when homeModes is non-empty.
-            makeHome: { _, _ in AnyView(EmptyView()) }
+            makeHome: { _, _ in AnyView(EmptyView()) },
+            // #696: a tapped `dailyReady` reminder deep-links to the Daily hub
+            // (mirrors Sudoku's AppComposition.live() reminderTapRoute), pushing
+            // `.daily` unless already on top.
+            reminderTapRoute: { identifier, rootViewModel in
+                guard identifier == ReminderKind.dailyReady.rawValue else { return }
+                if rootViewModel.path.last != .daily {
+                    rootViewModel.path.append(.daily)
+                }
+            }
         )
 
         // Wire the shared live stack once. The returned wired.view is the
