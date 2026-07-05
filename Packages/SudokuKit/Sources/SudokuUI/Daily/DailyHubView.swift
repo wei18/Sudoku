@@ -59,7 +59,14 @@ public struct DailyHubView<Banner: View>: View {
                 set: { _ in }
             ),
             actions: {
-                Button("Try another difficulty", role: .cancel) {}
+                // #686: the label promised a difficulty picker this hub
+                // doesn't have — route to the Practice hub that actually has
+                // one (reuses the existing "Practice" key, same string the
+                // Home card/PracticeHubView title already surface).
+                Button("Practice") { viewModel.tryPracticeInstead() }
+                // Dismiss pops back to Home rather than leaving the user on
+                // the `.exhausted` hub's blank backdrop with no recovery.
+                Button("Cancel", role: .cancel) { viewModel.dismissExhausted() }
             },
             message: {
                 Text("Try a different difficulty, or come back tomorrow.")
