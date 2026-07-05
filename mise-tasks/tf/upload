@@ -220,10 +220,13 @@ run_changelog() {
     # Guard: an unresolvable base ref (bad --since, corrupt prior tag) would
     # make `git log` fail inside the process substitution — invisible to
     # `set -e` — and emit an EMPTY "(none)/(none)" changelog that looks real.
-    # Fail loudly instead of writing a lying .md.
+    # Fail loudly instead of writing a lying .md. `return 1` (not `exit`):
+    # under --changelog-only the bare call still aborts via `set -e`, while
+    # the post-upload caller downgrades it to a warning — a completed upload
+    # must never be reported as failed over a changelog hiccup.
     if [[ -n "$base_ref" ]] && ! git -C "$REPO_ROOT" rev-parse -q --verify "$base_ref^{commit}" >/dev/null 2>&1; then
         echo "error: changelog base ref '$base_ref' does not resolve to a commit ($base_desc)." >&2
-        exit 1
+        return 1
     fi
 
     local body out
@@ -455,8 +458,11 @@ run_platform() {
     # 5b) changelog + tag (#694 P1). ORDER MATTERS: the changelog must run
     # BEFORE tagging this build — latest_tf_tag would otherwise pick up the
     # tag just created for THIS build (it points at HEAD) and emit an empty
-    # HEAD..HEAD changelog.
-    run_changelog "$APP" "$plat" "$BUILD_NUMBER"
+    # HEAD..HEAD changelog. Both steps are warn-only here: the upload already
+    # succeeded, so neither a changelog failure nor a tag/push failure may
+    # fail the task — and a changelog failure must not block the tag.
+    run_changelog "$APP" "$plat" "$BUILD_NUMBER" \
+        || echo "warning: changelog generation failed for a completed upload (upload already succeeded) — re-run with --changelog-only to regenerate manually." >&2
     create_and_push_tf_tag "$APP" "$plat" "$BUILD_NUMBER"
 }
 
