@@ -60,6 +60,15 @@ public struct MinesweeperBoardView: View {
     // terminal state, cleared on Retry. swiftui-interaction-footguns: a
     // recompute-rebuilt @Observable VM loses its loaded state + re-fires .task.
     @State private var completionViewModel: MinesweeperCompletionViewModel?
+    // #681: the pre-first-tap `.idle` board has no exit — `PauseOverlayView` is
+    // only mounted while `viewModel.isPaused` (== session `.paused`), and
+    // `MinesweeperSession.pause()` deliberately no-ops unless `.playing` (mine
+    // placement defers to the first reveal, so pausing an untouched board is
+    // meaningless). Rather than force the session through an illegal
+    // idle→paused transition, this is a view-local flag: the header button
+    // shows the SAME overlay without touching session state at all. Resume just
+    // hides it again (no session call); Leave still dismisses as normal.
+    @State private var showIdleLeaveOverlay = false
     // U15 (2026-06-03): banner slot wiring. Optional so the merged MVP `init`
     // shapes (used by `#Preview` + tests) keep compiling without monetization.
     // Production callsites wire both via `LiveRouteFactory`.
@@ -202,10 +211,21 @@ public struct MinesweeperBoardView: View {
             // Pause menu — full-screen so the mask hides the whole board and the
             // "Leave Game?" card is centred on the screen (not framed to the board
             // square). Merged close+pause: the only exit/pause affordance.
-            if viewModel.isPaused {
+            // #681: also mounted for the pre-first-tap `.idle` board via
+            // `showIdleLeaveOverlay` — same overlay, but Resume just hides the
+            // local flag instead of calling `viewModel.resume()` (which would be
+            // an illegal idle→paused→playing detour; `resume()` no-ops unless
+            // `.paused` anyway, so this branch is required, not just tidier).
+            if viewModel.isPaused || showIdleLeaveOverlay {
                 PauseOverlayView(
                     onLeave: { dismiss() },
-                    onResume: { Task { await viewModel.resume() } }
+                    onResume: {
+                        if viewModel.isPaused {
+                            Task { await viewModel.resume() }
+                        } else {
+                            showIdleLeaveOverlay = false
+                        }
+                    }
                 )
             }
         }
@@ -462,23 +482,35 @@ public struct MinesweeperBoardView: View {
 
     // Mirrors Sudoku's BoardView toolbar toggle: a single button flipping
     // between Pause and Resume, icon-only on iPhone (compact) and icon + text
-    // on Mac (regular). Only meaningful while a game is live — hidden in idle /
-    // terminal states (the actor no-ops those anyway, but hiding avoids a dead
-    // affordance). The board-cover overlay handles resume-by-tapping-the-board;
-    // this is the explicit header control.
+    // on Mac (regular). Hidden only in terminal states (won/lost — the
+    // Completion overlay owns the exit there). #681: also rendered in `.idle`
+    // (pre-first-tap) — that state has no timer to freeze, so tapping opens the
+    // same overlay as a leave-confirm rather than calling `pause()` (which
+    // no-ops on `.idle` by design). The board-cover overlay handles
+    // resume-by-tapping-the-board; this is the explicit header control.
     @ViewBuilder
     private var pauseToggle: some View {
-        if viewModel.status == .playing || viewModel.isPaused {
+        if viewModel.status == .playing || viewModel.isPaused || viewModel.status == .idle {
             Button {
-                Task {
-                    if viewModel.isPaused {
-                        await viewModel.resume()
-                    } else {
-                        await viewModel.pause()
-                    }
+                if viewModel.isPaused {
+                    Task { await viewModel.resume() }
+                } else if viewModel.status == .idle {
+                    showIdleLeaveOverlay = true
+                } else {
+                    Task { await viewModel.pause() }
                 }
             } label: {
-                if sizeClass == .regular {
+                if viewModel.status == .idle {
+                    // #681 CR: label/behavior match — in `.idle` the tap opens
+                    // the Leave confirm, not a pause, so show ✕ / "Leave"
+                    // (reusing the pause overlay's own `leave.game.leave` key
+                    // from the app catalog; no new string).
+                    if sizeClass == .regular {
+                        Label("leave.game.leave", systemImage: "xmark")
+                    } else {
+                        Image(systemName: "xmark")
+                    }
+                } else if sizeClass == .regular {
                     Label(
                         viewModel.isPaused ? "Resume" : "Pause",
                         systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
@@ -492,7 +524,11 @@ public struct MinesweeperBoardView: View {
             // the full frame hit-testable under `.plain` button style.
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
-            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+            .accessibilityLabel(
+                viewModel.status == .idle
+                    ? Text("leave.game.leave")
+                    : Text(viewModel.isPaused ? "Resume" : "Pause")
+            )
             .accessibilityIdentifier("minesweeper.board.pauseToggle")
         }
     }

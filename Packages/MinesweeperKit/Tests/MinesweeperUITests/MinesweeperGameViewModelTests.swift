@@ -91,6 +91,20 @@ import MinesweeperGameState
         #expect(vm.status == .idle)
     }
 
+    // #681: the board's pause toggle now also renders in `.idle` (so the
+    // pre-first-tap board has a leave exit), and its Resume closure is wired
+    // unconditionally through `viewModel.resume()` in the `isPaused` branch.
+    // `resume()` itself must stay a safe no-op when called on an `.idle`
+    // session — this backs the idle-overlay design decision that reaching the
+    // MS session actor from that branch (if it were ever hit) cannot corrupt
+    // state or crash on an illegal `.idle → .playing` jump.
+    @Test func resumeBeforeFirstActionIsNoop() async {
+        let vm = MinesweeperGameViewModel(difficulty: .beginner, seed: 1)
+        await vm.resume()
+        #expect(vm.isPaused == false)
+        #expect(vm.status == .idle)
+    }
+
     @Test func sharedSessionRoundTrips() async {
         // ViewModel injected with an external session — used by previews /
         // composition. Snapshot must update via the same actor.

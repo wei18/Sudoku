@@ -244,7 +244,8 @@ verified unique 2026-07-05 (repo-wide grep)), grid, optional banner.
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Pause toggle tap | `viewModel.pause()` | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
+| Pause toggle tap (`.playing`) | `viewModel.pause()` | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
+| Pause toggle tap (`.idle`, pre-first-tap — #681) | `showIdleLeaveOverlay = true` (view-local flag; does **not** call `viewModel.pause()`, which no-ops on `.idle` by design). Button renders as ✕ (`xmark`) with visible/a11y label `leave.game.leave` ("Leave"), not the pause glyph — the tap opens a leave-confirm, not a pause | `overlay` → `PAUSE-OVERLAY` | see `PAUSE-OVERLAY` |
 | Cell reveal/flag | in-place mutation | — | — |
 | Terminal (win or loss) | `makeCompletionViewModel()` | `overlay` → `MS-COMPLETION-OVERLAY` | see that contract |
 
@@ -253,6 +254,13 @@ verified unique 2026-07-05 (repo-wide grep)), grid, optional banner.
 `isPaused`.
 
 **State variants:** N/A (see `MS-BOARD-LOAD-FAILED` for the loader's states).
+**#681 (2026-07-05):** the pause toggle now mounts in `.idle` too — prior to
+this fix the pre-first-tap board (mine placement defers to first reveal) had
+NO exit: no back, no pause control, edge-swipe a no-op (#660), leaving
+force-quit as the only escape from a fat-fingered difficulty pick. Sudoku is
+immune (`SUD-BOARD`'s `BoardLoaderView.startOrResume()` drives the session to
+`.playing` at mount, so it never renders in `.idle`); MS's first-click-safe
+architecture makes `.idle` a real, reachable UI state.
 
 ---
 
@@ -300,7 +308,8 @@ game."`; a missing record (cleared elsewhere) is an **honest failure**
 
 ## PAUSE-OVERLAY
 
-**Entry points:** pause toggle tap on `SUD-BOARD` or `MS-BOARD`.
+**Entry points:** pause toggle tap on `SUD-BOARD` or `MS-BOARD` (`MS-BOARD`
+also mounts this from `.idle` pre-first-tap — #681).
 
 **Code:** `GameShellUI/PauseOverlayView.swift` (shared component, mounted by
 both boards).
@@ -319,8 +328,8 @@ both boards).
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Mask tap (anywhere outside the card) | `onResume()` | side-effect | dismiss overlay → same board, `.playing` |
-| Resume button tap | `onResume()` → `viewModel.resume()` | side-effect | same board, `.playing` |
+| Mask tap (anywhere outside the card) | `onResume()` | side-effect | dismiss overlay → same board, `.playing` (or `.idle` — see next row) |
+| Resume button tap | `onResume()` → `viewModel.resume()` on `SUD-BOARD` and `MS-BOARD` from `.paused`; on `MS-BOARD` from `.idle` (#681) `onResume()` instead just clears `showIdleLeaveOverlay` — no session call, since `resume()` no-ops unless `.paused` | side-effect | same board, `.playing` (or unchanged `.idle`) |
 | Leave button tap | `dismiss()` (SwiftUI environment action — pops push OR dismisses `fullScreenCover`, same call either context) | modal dismiss (iOS) / pop (macOS) | HOME (iOS: cover collapses) or the hub that pushed the board (macOS: 1-entry pop) |
 
 **Covering behavior:** full-screen `.ultraThinMaterial` blur, `.ignoresSafeArea()`
