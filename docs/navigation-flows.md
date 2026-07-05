@@ -96,6 +96,20 @@ collapses a `fullScreenCover` depending on context — **no branching code is
 needed at the call site** because `dismiss()` is context-polymorphic. See
 `PAUSE-OVERLAY` in `screen-contracts.md`.
 
+**#681 (2026-07-05) — MS `.idle` had no reachable exit:** MS defers session
+start to the first reveal/flag (first-click-safe mine placement), so a
+just-mounted board sits in `.idle` before any tap. The pause toggle was
+gated to `.playing || isPaused`, so the pre-first-tap board rendered with NO
+back, no pause control, and edge-swipe already a no-op (#660) — a
+fat-fingered difficulty pick (e.g. Expert 16×30) stranded the player with
+force-quit as the only escape. Fixed by widening the gate to also render in
+`.idle`; tapping it there sets a view-local `showIdleLeaveOverlay` flag and
+mounts the same `PAUSE-OVERLAY` WITHOUT calling `viewModel.pause()` (which
+deliberately no-ops on `.idle` — there is no running clock to freeze).
+Sudoku never had this gap: `BoardLoaderView.startOrResume()` drives the
+session to `.playing` at mount (`SudokuUI/Board/BoardLoaderView.swift:189`),
+so `SUD-BOARD` is never rendered in `.idle`.
+
 **The in-board `CompletionOverlayScaffold` is the ONE terminal completion
 surface** (#669) on every platform. Prior to #667 the macOS push path pushed
 a *separate* `.completion` route whose Close only popped that one route,
