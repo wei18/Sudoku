@@ -44,8 +44,6 @@ import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-import GameCenterClient
-import GameCenterTesting
 import MinesweeperEngine
 import MinesweeperGameState
 
@@ -86,12 +84,8 @@ struct MinesweeperBoardTerminalOverlaySnapshotTests {
         let completionVM = MinesweeperCompletionViewModel(
             didWin: false,
             elapsedSeconds: 65,
-            leaderboardId: MinesweeperLeaderboardID.easyDaily,
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
-        // Latch a deterministic terminal slice state so the surface's own
-        // `.task { bootstrap() }` is a no-op and the content is stable.
-        completionVM.setStateForTesting(.unauthenticated)
         return MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
             suppressTickerForSnapshot: true,

@@ -8,18 +8,16 @@
 // a pushed AppRoute (the difference from Sudoku's route-pushed Completion;
 // route-pushed MS Completion deferred — #386).
 //
-// It maps the leaderboard-fetch VM state onto the shared `CompletionScreenState`,
-// injects the win/loss hero outcome, and supplies the action stack.
+// It injects the win/loss hero outcome and supplies the action stack.
 //
 // SDD-003 Epic 4: actions now inject ONLY a Close button (View Leaderboard /
 // Retry / New Game removed at this injection site per spec note). `onClose`
 // dismisses the overlay (MinesweeperBoardView sets `completionViewModel = nil`).
 // Minesweeper has no mistake concept → `mistakeCount: nil` (row absent).
-// The Game Center coupling stays here; the shared shell never imports
-// GameCenterClient. Themed via `\.theme` tokens.
+// #698: the leaderboard zone's dead fetch/present machinery was deleted from
+// both the VM and the shared `CompletionScreen`. Themed via `\.theme` tokens.
 
 public import SwiftUI
-import GameCenterClient
 import GameShellUI
 
 public struct MinesweeperCompletionView: View {
@@ -50,10 +48,6 @@ public struct MinesweeperCompletionView: View {
             outcome: outcome,
             elapsedLabel: elapsedLabel,
             mistakeCount: nil,
-            // SDD-003 Epic 4: no leaderboard zone in the popup (mirror of
-            // Sudoku's CompletionView). VM fetch machinery left unrendered.
-            state: .hidden,
-            onRetryLeaderboard: {},
             actions: { closeButton }
         )
     }

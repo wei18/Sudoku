@@ -9,8 +9,8 @@
 //     --filter ASCScreenshotEmitTests
 //
 // Determinism mirrors the MS snapshot suites: seeded VMs
-// (MinesweeperGameViewModel(seeded:), DailyHubViewModel.setStateForTesting,
-// CompletionViewModel.setStateForTesting). Light-mode (ASC v1 storyline).
+// (MinesweeperGameViewModel(seeded:), DailyHubViewModel.setStateForTesting).
+// Light-mode (ASC v1 storyline).
 
 #if canImport(AppKit)
 import Foundation
@@ -63,18 +63,6 @@ struct ASCScreenshotEmitTests {
             isCompleted: false
         ),
     ]
-
-    private static let completionSlice = LeaderboardSlice(
-        leaderboardId: MinesweeperLeaderboardID.easyDaily,
-        scope: .globalAllTime,
-        entries: [
-            LeaderboardEntry(rank: 1, player: PlayerSummary(teamPlayerId: "P1", displayName: "alice"), score: 41),
-            LeaderboardEntry(rank: 2, player: PlayerSummary(teamPlayerId: "P2", displayName: "bob"), score: 55),
-            LeaderboardEntry(rank: 3, player: PlayerSummary(teamPlayerId: "P3", displayName: "carol"), score: 73),
-        ],
-        totalPlayerCount: 900,
-        fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
-    )
 
     private func index(row: Int, col: Int) -> Int { row * Self.cols + col }
 
@@ -149,13 +137,13 @@ struct ASCScreenshotEmitTests {
     }
 
     private func completionView() -> some View {
+        // #698: leaderboard-state seeding removed — the popup has hardcoded
+        // `state: .hidden` since v2.6, so the leaderboard slice never rendered.
         let viewModel = MinesweeperCompletionViewModel(
             didWin: true,
             elapsedSeconds: 65,
-            leaderboardId: MinesweeperLeaderboardID.easyDaily,
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
-        viewModel.setStateForTesting(.loaded(Self.completionSlice))
         return MinesweeperCompletionView(viewModel: viewModel, onClose: {})
     }
 

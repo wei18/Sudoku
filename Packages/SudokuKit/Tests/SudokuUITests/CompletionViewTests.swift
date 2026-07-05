@@ -1,4 +1,7 @@
-// CompletionViewTests — 3 state snapshots + deep-link behavior.
+// CompletionViewTests — 2 hero/mistake-row snapshots (#698: leaderboard-state
+// snapshots removed, the leaderboard zone never rendered — both `.loaded` and
+// `.noLeaderboard` degraded to the same hero-only surface, so they carried no
+// distinct visual coverage beyond mistakeCount value).
 
 import Foundation
 import SnapshotTesting
@@ -6,12 +9,10 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
-import GameCenterClient
-import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in SudokuKitTesting)
 import SudokuKitTesting
 
 @MainActor
-@Suite("CompletionView — state snapshots + deep link")
+@Suite("CompletionView — hero snapshots")
 struct CompletionViewTests {
 
     private func makeViewModel(mistakeCount: Int = 2) -> CompletionViewModel {
@@ -19,29 +20,15 @@ struct CompletionViewTests {
             puzzleId: "2026-05-19-easy",
             elapsedSeconds: 251,
             mistakeCount: mistakeCount,
-            leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1"
         )
     }
 
-    private static let sampleSlice = LeaderboardSlice(
-        leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1",
-        scope: .globalAllTime,
-        entries: [
-            LeaderboardEntry(rank: 1, player: PlayerSummary(teamPlayerId: "P1", displayName: "alice"), score: 228),
-            LeaderboardEntry(rank: 2, player: PlayerSummary(teamPlayerId: "P2", displayName: "bob"), score: 235),
-            LeaderboardEntry(rank: 3, player: PlayerSummary(teamPlayerId: "P3", displayName: "carol"), score: 242),
-        ],
-        totalPlayerCount: 1234,
-        fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
-    )
-
-    // MARK: - Snapshots (3 PNGs)
+    // MARK: - Snapshots (2 PNGs)
 
     #if canImport(AppKit)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPhoneLight() async {
         let viewModel = makeViewModel()
-        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
         let host = hostingView(
             CompletionView(viewModel: viewModel),
             size: SnapshotLayouts.iPhone,
@@ -55,7 +42,6 @@ struct CompletionViewTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPadLight() async {
         let viewModel = makeViewModel()
-        viewModel.setStateForTesting(.loaded(Self.sampleSlice))
         let host = hostingView(
             CompletionView(viewModel: viewModel),
             size: SnapshotLayouts.iPad,
@@ -67,28 +53,23 @@ struct CompletionViewTests {
         }
     }
 
-    // #587: removed `snapshot_unauthenticated_iPhoneLight_zhTW`. Two reasons:
-    // (1) `.environment(\.locale, "zh-Hant")` does NOT switch SwiftUI's
-    //     String-Catalog lookup (that follows the bundle's preferredLocalizations,
-    //     not the env locale), so the baseline rendered ENGLISH — false
-    //     localization confidence. zh-Hant string completeness is gated by
-    //     `mise run scan:l10n` (CI-enforced), not by a pixel snapshot.
-    // (2) `.unauthenticated` is not snapshot-distinct anyway — SDD-003 Epic 4
-    //     maps every leaderboard state to `CompletionScreen(state: .hidden)`, so
-    //     it rendered byte-identical to the `loaded` baseline below.
+    // #587 / #698: removed `snapshot_unauthenticated_iPhoneLight_zhTW` and the
+    // per-leaderboard-state variants. SDD-003 Epic 4 already mapped every
+    // leaderboard state to `CompletionScreen(state: .hidden)` (byte-identical
+    // rendering); #698 deleted the state machine itself. `.noLeaderboard`'s
+    // distinct mistakeCount: 0 hero styling is still covered below.
 
-    // #383: Practice solve (nil leaderboard) → `.noLeaderboard`. Neutral
-    // "not ranked" copy, NO sign-in button. The snapshot is the view-level
-    // guard that no sign-in CTA is rendered for this state.
+    // #383: Practice solve (nil leaderboard). mistakeCount: 0 exercises the
+    // hero's mistake-row "success" tint (vs. mistakeCount: 2 above) — the only
+    // remaining visual distinction between these two fixtures now that the
+    // leaderboard zone never renders.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_noLeaderboard_iPhoneLight() async {
         let viewModel = CompletionViewModel(
             puzzleId: "practice-7Z9K-medium",
             elapsedSeconds: 251,
             mistakeCount: 0,
-            leaderboardId: nil,
-            gameCenter: FakeGameCenterClient()
+            leaderboardId: nil
         )
-        viewModel.setStateForTesting(.noLeaderboard)
         let host = hostingView(
             CompletionView(viewModel: viewModel),
             size: SnapshotLayouts.iPhone,
@@ -104,37 +85,5 @@ struct CompletionViewTests {
     // leaderboard zone (Epic 4, `state: .hidden`), so `.failed` rendered
     // byte-identical to the `.loaded` baseline above; the per-state variant
     // asserted a distinction the view no longer makes (false confidence).
-    // `snapshot_authenticatedLoaded_iPhoneLight` is the single hero/no-leaderboard guard.
     #endif
-
-    // MARK: - Behavior
-
-    // Issue #49 (2026-05-20): the prior `viewLeaderboardTapped_appendsLeaderboardRoute`
-    // test was removed when the CTA switched from a stack push to a native
-    // Game Center modal. Invoking `GameCenterDashboard.present(...)` reaches
-    // Apple's `GKAccessPoint.shared` singleton, which can't be faked from
-    // unit-test scope without a UI host — the behavior is exercised manually
-    // in Phase 10 sandbox validation (plan.md §10.2).
-
-@Test func bootstrapUnauthenticated_transitionsToUnauthenticated() async {
-        let fake = FakeGameCenterClient()
-        await fake.setLeaderboardSlice(Self.sampleSlice)
-        // Re-script: throw `.notAuthenticated` from fetchLeaderboardSlice — but
-        // FakeGameCenterClient doesn't expose a fetch-error knob; instead we
-        // simulate by routing via a dedicated `failing` flag using an inline
-        // adapter. Simpler: assert the happy path matches loaded(slice).
-        let viewModel = CompletionViewModel(
-            puzzleId: "p",
-            elapsedSeconds: 100,
-            mistakeCount: 0,
-            leaderboardId: "lb",
-            gameCenter: fake
-        )
-        await viewModel.bootstrap()
-        if case .loaded(let slice) = viewModel.state {
-            #expect(slice.entries.count == 3)
-        } else {
-            Issue.record("expected loaded, got \(viewModel.state)")
-        }
-    }
 }

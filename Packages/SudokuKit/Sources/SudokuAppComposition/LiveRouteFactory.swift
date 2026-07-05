@@ -230,8 +230,7 @@ public struct LiveRouteFactory: RouteFactory {
                                 puzzleId: puzzleId,
                                 elapsedSeconds: elapsedSeconds,
                                 mistakeCount: mistakeCount,
-                                leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId),
-                                gameCenter: gameCenter
+                                leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId)
                             ),
                             reminderPrimer: reminderPrimer,
                             onClose: nil

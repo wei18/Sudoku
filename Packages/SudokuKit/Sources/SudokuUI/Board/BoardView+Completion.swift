@@ -20,30 +20,7 @@ import SwiftUI
 import GameAppKit
 import GameShellUI
 public import SettingsUI
-public import GameCenterClient
 import SudokuEngine
-
-// MARK: - Module-private noop (previews / tests with no GC wired)
-
-/// Minimal no-op conformance used when `BoardView` is constructed without a
-/// `GameCenterClient` (previews, snapshot tests, MVP callsites). Mirrors the
-/// `NearWinNoopGameCenterClient` in `SudokuNearWinModifier.swift`.
-private actor BoardNoopGameCenterClient: GameCenterClient {
-    func authenticate() async throws -> GameCenterAuthState { .unauthenticated }
-    func authStateUpdates() async -> AsyncStream<GameCenterAuthState> {
-        AsyncStream { _ in }
-    }
-    func submitScore(puzzleId: String, elapsedSeconds: Int,
-                     difficulty: Difficulty, leaderboardKind: LeaderboardKind) async throws {}
-    func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}
-    func reportAchievement(_ achievement: AchievementProgress) async throws {}
-    func fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope,
-                               aroundLocalPlayer: Bool, limit: Int) async throws -> LeaderboardSlice {
-        throw GameCenterError.notAuthenticated
-    }
-    func friendsAuthorizationStatus() async -> FriendsAuthStatus { .denied }
-    func requestFriendsAuthorization() async throws -> FriendsAuthStatus { .denied }
-}
 
 // MARK: - BoardView extension
 
@@ -67,9 +44,8 @@ extension BoardView {
     // MARK: - Factories (called once per .completed transition)
 
     /// Construct the post-solve CompletionViewModel from the current terminal
-    /// snapshot. Called once on the `.playing → .completed` edge so the
-    /// leaderboard-slice fetch + degrade state survive body recomputes.
-    /// Mirrors `MinesweeperBoardView.makeCompletionViewModel()`.
+    /// snapshot. Called once on the `.playing → .completed` edge so its state
+    /// survives body recomputes. Mirrors `MinesweeperBoardView.makeCompletionViewModel()`.
     func makeCompletionViewModel() -> CompletionViewModel {
         // #381/#383: leaderboardId is nil for Practice solves → .noLeaderboard.
         let leaderboardId = SudokuLeaderboardRouting.leaderboardId(
@@ -79,8 +55,7 @@ extension BoardView {
             puzzleId: viewModel.identity.puzzleId,
             elapsedSeconds: viewModel.elapsedSeconds,
             mistakeCount: viewModel.mistakeCount,
-            leaderboardId: leaderboardId,
-            gameCenter: gameCenter ?? BoardNoopGameCenterClient()
+            leaderboardId: leaderboardId
         )
     }
 
