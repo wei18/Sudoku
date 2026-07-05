@@ -10,6 +10,9 @@
 #USAGE flag "--build <number>" help="Explicit CFBundleVersion; default = UTC timestamp (YYYYMMDDhhmm)"
 #USAGE flag "--config <name>" help="xcodebuild configuration" default="Release"
 #USAGE flag "--i-am-sure" help="REQUIRED to actually upload to TestFlight (user-owned, irreversible)"
+#USAGE flag "--changelog-only" help="Print+write the What-to-Test changelog only; no archive/export/upload/tag"
+#USAGE flag "--full" help="Changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filtering), keep (#NNN) refs"
+#USAGE flag "--since <ref>" help="Changelog base ref when no prior tf/<app>-<plat>/* tag exists (ignored if a prior tag exists)"
 #
 # Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
 # §4 table: Build + Archive + upload internal TestFlight) for the window where the
@@ -27,6 +30,10 @@
 #                 ExportOptions.plist (App-Store-Connect method) → .ipa / .pkg
 #   5. upload   : `xcrun altool --upload-app` to TestFlight, authenticated with the
 #                 ASC API key (.p8 + key-id + issuer) from secrets/.env. GATED.
+#   6. tag+log  : on a REAL upload success, tag `tf/<app>-<plat>/<build>` (pushed,
+#                 best-effort) and write a What-to-Test changelog since the prior
+#                 such tag (#694 P1). `--changelog-only` runs just this step, for
+#                 any app/platform/build, without touching archive/export/upload.
 #
 # AUTH: ASC API key. Reuses the SAME secrets/.env keys as ASCRegister
 #   (ASC_API_KEY_PATH / ASC_API_KEY_ID / ASC_API_ISSUER_ID) plus the team id
@@ -38,6 +45,10 @@
 #   - upload is the only irreversible, user-owned step → REFUSES without
 #     --i-am-sure, and prints a "user-owned signing, confirm" banner first.
 #   - --archive-only stops after export (produces the .ipa/.pkg, no upload).
+#   - --changelog-only never archives/exports/uploads/tags; it only reads git
+#     history. A failed tag push after a real upload is a WARNING, not a failure
+#     — the upload already happened and must not be reported as failed because a
+#     git push hiccuped.
 #
 # Usage:
 #   mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
@@ -47,6 +58,9 @@
 #     --build <N>        explicit CFBundleVersion (build number); default = $(date -u +%Y%m%d%H%M)
 #     --config <name>    xcodebuild configuration (default: Release)
 #     --i-am-sure        REQUIRED to actually upload to TestFlight (user-owned)
+#     --changelog-only   print+write the What-to-Test changelog only (no build)
+#     --full             changelog: no noise filtering, keep (#NNN) refs
+#     --since <ref>      changelog base when no prior tf/<app>-<plat>/* tag exists
 #     -h | --help        this help
 #
 # Examples:
@@ -54,6 +68,9 @@
 #   mise run tf:upload sudoku all --archive-only           # iOS .ipa + macOS .pkg
 #   mise run tf:upload sudoku ios --i-am-sure              # archive+export+UPLOAD
 #   mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
+#   mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
+#   mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
+#   mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
 #
 set -euo pipefail
 
@@ -62,7 +79,7 @@ scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweep
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
 usage() {
-    sed -n '2,47p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,74p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -75,13 +92,19 @@ CONFIG="Release"
 BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"   # unique-by-minute default; --build overrides
 ARCHIVE_ONLY=0
 SURE=0
+CHANGELOG_ONLY=0
+CHANGELOG_FULL=0
+SINCE_REF=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --archive-only) ARCHIVE_ONLY=1; shift ;;
-        --i-am-sure)    SURE=1; shift ;;
-        --build)        BUILD_NUMBER="${2:-}"; shift 2 ;;
-        --config)       CONFIG="${2:-}"; shift 2 ;;
-        -h|--help)      usage 0 ;;
+        --archive-only)    ARCHIVE_ONLY=1; shift ;;
+        --i-am-sure)       SURE=1; shift ;;
+        --build)           BUILD_NUMBER="${2:-}"; shift 2 ;;
+        --config)          CONFIG="${2:-}"; shift 2 ;;
+        --changelog-only)  CHANGELOG_ONLY=1; shift ;;
+        --full)            CHANGELOG_FULL=1; shift ;;
+        --since)           SINCE_REF="${2:-}"; shift 2 ;;
+        -h|--help)         usage 0 ;;
         *) echo "error: unknown argument '$1'" >&2; usage ;;
     esac
 done
@@ -96,6 +119,168 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 WORKSPACE="$REPO_ROOT/Game.xcworkspace"
 BUILD_DIR="$REPO_ROOT/build/testflight"
 mkdir -p "$BUILD_DIR"
+
+# ── Changelog (#694 P1): tag-per-upload diffing + PR-title "What to Test" ──────
+# Independent of archive/export/upload/creds — only reads git history, so
+# --changelog-only can verify it without building anything.
+tf_tag_for() { echo "tf/${1}-${2}/${3}"; }   # $1=app $2=plat $3=build
+
+# Latest tf/<app>-<plat>/* tag = the previous uploaded build for this app+
+# platform. Build numbers are UTC-minute timestamps, so lexical sort ==
+# chronological sort.
+latest_tf_tag() {
+    git -C "$REPO_ROOT" tag -l "tf/${1}-${2}/*" | sort | tail -1
+}
+
+# Split one PR-title subject (`type(scope): desc` or `type: desc`) into
+# type / scope / desc, joined by \x1F (a non-whitespace delimiter — `read`
+# collapses consecutive TAB/space/newline delimiters, which would silently
+# swallow an empty `scope` field and shift `desc` into it for no-scope
+# subjects like `fix: ...`). Falls back to type=other for pre-Conventional-
+# Commits history. Prints "type<US>scope<US>desc".
+classify_subject() {
+    local subject="$1" us=$'\x1f'
+    if [[ "$subject" =~ ^([a-zA-Z0-9]+)\(([^\)]*)\)!?:[[:space:]]*(.*)$ ]]; then
+        printf '%s%s%s%s%s\n' "${BASH_REMATCH[1]}" "$us" "${BASH_REMATCH[2]}" "$us" "${BASH_REMATCH[3]}"
+    elif [[ "$subject" =~ ^([a-zA-Z0-9]+)!?:[[:space:]]*(.*)$ ]]; then
+        printf '%s%s%s%s%s\n' "${BASH_REMATCH[1]}" "$us" "" "$us" "${BASH_REMATCH[2]}"
+    else
+        printf '%s%s%s%s%s\n' "other" "$us" "" "$us" "$subject"
+    fi
+}
+
+# Noise filter for the default (non --full) tester-facing changelog (#694 §2):
+# drop docs/chore/ci commits and skill/spec/meetings-only meta commits even
+# when their type is feat/fix (e.g. `feat(skills): add ... skill`).
+is_changelog_noise() {
+    local type="$1" scope="$2" desc="$3"
+    case "$type" in docs|chore|ci) return 0 ;; esac
+    case "$scope" in *skill*|*spec*|*meetings*) return 0 ;; esac
+    case "$desc" in *"meetings"*) return 0 ;; esac
+    return 1
+}
+
+# Build the Fixes/Features/Other changelog body for (base_ref, HEAD].
+# base_ref="" means "from the start of history" (used when no prior tag AND no
+# --since exist). $2 = 1 for --full (no noise filter, keeps trailing (#NNN)).
+generate_changelog_body() {
+    local base_ref="$1" full="$2"
+    local range="HEAD"
+    [[ -n "$base_ref" ]] && range="${base_ref}..HEAD"
+
+    local features=() fixes=() other=()
+    local subject type scope desc line
+    while IFS= read -r subject; do
+        [[ -n "$subject" ]] || continue
+        IFS=$'\x1f' read -r type scope desc <<<"$(classify_subject "$subject")"
+        if [[ "$full" -ne 1 ]] && is_changelog_noise "$type" "$scope" "$desc"; then
+            continue
+        fi
+        line="$desc"
+        if [[ "$full" -ne 1 ]]; then
+            # tester-facing short form: strip trailing " (#NNN)" ref(s).
+            while [[ "$line" =~ ^(.*)[[:space:]]\(#[0-9]+\)$ ]]; do
+                line="${BASH_REMATCH[1]}"
+            done
+        fi
+        case "$type" in
+            feat) features+=("$line") ;;
+            fix)  fixes+=("$line") ;;
+            *)    other+=("$line") ;;
+        esac
+    done < <(git -C "$REPO_ROOT" log "$range" --format='%s')
+
+    echo "Fixes"
+    if [[ ${#fixes[@]} -gt 0 ]]; then printf -- '- %s\n' "${fixes[@]}"; else echo "- (none)"; fi
+    echo "Features"
+    if [[ ${#features[@]} -gt 0 ]]; then printf -- '- %s\n' "${features[@]}"; else echo "- (none)"; fi
+    if [[ ${#other[@]} -gt 0 ]]; then
+        echo "Other"
+        printf -- '- %s\n' "${other[@]}"
+    fi
+}
+
+# Resolve the base ref (prior tf tag → --since → full history, with a clear
+# warning on the full-history fallback), generate the body, print it framed,
+# and write build/testflight/<app>-<plat>-<build>-changelog.md.
+run_changelog() {
+    local app="$1" plat="$2" build="$3"
+    local prev_tag base_ref base_desc
+    prev_tag="$(latest_tf_tag "$app" "$plat")"
+    if [[ -n "$prev_tag" ]]; then
+        base_ref="$prev_tag"; base_desc="prior tag $prev_tag"
+    elif [[ -n "$SINCE_REF" ]]; then
+        base_ref="$SINCE_REF"; base_desc="--since $SINCE_REF"
+    else
+        base_ref=""
+        base_desc="FULL history (no prior tf/${app}-${plat}/* tag and no --since given)"
+        echo "warning: no prior tf/${app}-${plat}/* tag and no --since given — changelog covers the entire history." >&2
+    fi
+
+    # Guard: an unresolvable base ref (bad --since, corrupt prior tag) would
+    # make `git log` fail inside the process substitution — invisible to
+    # `set -e` — and emit an EMPTY "(none)/(none)" changelog that looks real.
+    # Fail loudly instead of writing a lying .md. `return 1` (not `exit`):
+    # under --changelog-only the bare call still aborts via `set -e`, while
+    # the post-upload caller downgrades it to a warning — a completed upload
+    # must never be reported as failed over a changelog hiccup.
+    if [[ -n "$base_ref" ]] && ! git -C "$REPO_ROOT" rev-parse -q --verify "$base_ref^{commit}" >/dev/null 2>&1; then
+        echo "error: changelog base ref '$base_ref' does not resolve to a commit ($base_desc)." >&2
+        return 1
+    fi
+
+    local body out
+    body="$(generate_changelog_body "$base_ref" "$CHANGELOG_FULL")"
+    out="$BUILD_DIR/${app}-${plat}-${build}-changelog.md"
+
+    echo "────────────────────────────────────────────────────────────────"
+    echo " CHANGELOG (What to Test) — $app · $plat · build $build"
+    echo " since: $base_desc$( [[ $CHANGELOG_FULL -eq 1 ]] && echo ' [--full]' )"
+    echo "────────────────────────────────────────────────────────────────"
+    printf '%s\n' "$body"
+    echo "────────────────────────────────────────────────────────────────"
+    printf '%s\n' "$body" > "$out"
+    echo "==> wrote $out"
+}
+
+# On a REAL upload success only: tag `tf/<app>-<plat>/<build>` (pushed,
+# best-effort). Never fails the task — the upload already happened, so a tag
+# or push hiccup is a warning, not an error.
+create_and_push_tf_tag() {
+    local app="$1" plat="$2" build="$3" tag
+    tag="$(tf_tag_for "$app" "$plat" "$build")"
+    if git -C "$REPO_ROOT" rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+        # Local tag exists (e.g. a re-run of the same build after a failed
+        # push) — don't re-create it, but still retry the push if origin
+        # doesn't have it yet.
+        echo "warning: git tag $tag already exists locally — skipping tag creation." >&2
+        if [[ -n "$(git -C "$REPO_ROOT" ls-remote --tags origin "refs/tags/$tag" 2>/dev/null)" ]]; then
+            echo "==> tag $tag already on origin — nothing to push."
+            return 0
+        fi
+    else
+        if git -C "$REPO_ROOT" tag "$tag" HEAD >/dev/null 2>&1; then
+            echo "==> tagged $tag"
+        else
+            echo "warning: failed to create git tag $tag (upload already succeeded — tag it manually if needed)." >&2
+            return 0
+        fi
+    fi
+    if git -C "$REPO_ROOT" push origin "refs/tags/$tag" >/dev/null 2>&1; then
+        echo "==> pushed tag $tag"
+    else
+        echo "warning: failed to push tag $tag to origin (upload already succeeded — push it manually: git push origin refs/tags/$tag)." >&2
+    fi
+}
+
+if [[ "$CHANGELOG_ONLY" -eq 1 ]]; then
+    case "$PLAT" in
+        ios)   run_changelog "$APP" ios "$BUILD_NUMBER" ;;
+        macos) run_changelog "$APP" macos "$BUILD_NUMBER" ;;
+        all)   run_changelog "$APP" ios "$BUILD_NUMBER"; run_changelog "$APP" macos "$BUILD_NUMBER" ;;
+    esac
+    exit 0
+fi
 
 # ── Auth loader: ASC API creds from secrets/.env (never echoed) ───────────────
 # Sets globals: ASC_KEY_PATH ASC_KEY_ID ASC_ISSUER TEAM_ID. Validates presence,
@@ -269,6 +454,16 @@ run_platform() {
         --api-key "$ASC_KEY_ID" \
         --api-issuer "$ASC_ISSUER" )
     echo "==> uploaded $APP $plat build $BUILD_NUMBER to TestFlight. Processing in ASC may take minutes."
+
+    # 5b) changelog + tag (#694 P1). ORDER MATTERS: the changelog must run
+    # BEFORE tagging this build — latest_tf_tag would otherwise pick up the
+    # tag just created for THIS build (it points at HEAD) and emit an empty
+    # HEAD..HEAD changelog. Both steps are warn-only here: the upload already
+    # succeeded, so neither a changelog failure nor a tag/push failure may
+    # fail the task — and a changelog failure must not block the tag.
+    run_changelog "$APP" "$plat" "$BUILD_NUMBER" \
+        || echo "warning: changelog generation failed for a completed upload (upload already succeeded) — re-run with --changelog-only to regenerate manually." >&2
+    create_and_push_tf_tag "$APP" "$plat" "$BUILD_NUMBER"
 }
 
 # ── Prerequisites that gate every run ─────────────────────────────────────────
