@@ -48,6 +48,15 @@ extension MinesweeperAppComposition {
             telemetry: nil  // telemetry threaded lazily; store funnels errors
         )
 
+        // #699: MS-specific personal-best store, over the same lazy gateway
+        // factory. Owner decision (2026-07-05): MS gets its own store rather
+        // than generalizing the shared `PersonalRecordSink`/`TelemetryEvent`
+        // pipeline to a second game's types — same precedent as
+        // `savedGameStore` above.
+        let personalRecordStore = MinesweeperPersonalRecordStore(
+            gateway: PrivateCKGatewayFactory.live(config: .minesweeper)
+        )
+
         // Shared daily-ready notification payload — used both by the primer
         // (initial schedule) and the Settings time picker (reschedule on change).
         let dailyReadyContent = ReminderContent(
@@ -141,7 +150,8 @@ extension MinesweeperAppComposition {
                 MinesweeperAppComposition.makeRouteFactory(
                     deps: deps,
                     rootViewModel: rootViewModel,
-                    savedGameStore: savedGameStore
+                    savedGameStore: savedGameStore,
+                    personalRecordStore: personalRecordStore
                 )
             },
             // makeHome superseded by the universal GameHomeView built from
@@ -188,7 +198,8 @@ extension MinesweeperAppComposition {
     private static func makeRouteFactory(
         deps: GameDeps,
         rootViewModel: GameRootViewModel<AppRoute>,
-        savedGameStore: MinesweeperSavedGameStore
+        savedGameStore: MinesweeperSavedGameStore,
+        personalRecordStore: MinesweeperPersonalRecordStore
     ) -> any RouteFactory<AppRoute> {
         LiveRouteFactory(
             monetizationController: deps.monetizationController,
@@ -202,6 +213,7 @@ extension MinesweeperAppComposition {
             soundPlayer: deps.soundPlayer,
             audioSettings: deps.audioSettings,
             savedGameStore: savedGameStore,
+            personalRecordStore: personalRecordStore,
             onPresentBoard: {
                 #if os(iOS)
                 { [rootViewModel] route in rootViewModel.presentGame(route: route) }

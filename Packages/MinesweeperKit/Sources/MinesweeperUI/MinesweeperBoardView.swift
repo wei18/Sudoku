@@ -141,7 +141,8 @@ public struct MinesweeperBoardView: View {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         store: MinesweeperSavedGameStore? = nil,
-        recordName: String? = nil
+        recordName: String? = nil,
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil
     ) {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(
             difficulty: difficulty,
@@ -151,7 +152,8 @@ public struct MinesweeperBoardView: View {
             errorReporter: errorReporter,
             soundPlayer: soundPlayer,
             store: store,
-            recordName: recordName
+            recordName: recordName,
+            personalRecordStore: personalRecordStore
         ))
         self.adProvider = adProvider
         self.adGate = adGate

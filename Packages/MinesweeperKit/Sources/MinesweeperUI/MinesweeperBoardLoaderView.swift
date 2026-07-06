@@ -40,6 +40,9 @@ public struct MinesweeperBoardLoaderView: View {
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
+    // #699: threaded into the restored VM so a resumed daily board that wins
+    // still records the personal best — same seam as `store`.
+    private let personalRecordStore: MinesweeperPersonalRecordStore?
 
     @State private var state: LoadState = .loading
     @Environment(\.theme) private var theme
@@ -52,7 +55,8 @@ public struct MinesweeperBoardLoaderView: View {
         adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
-        soundPlayer: any SoundPlaying = NoopSoundPlaying()
+        soundPlayer: any SoundPlaying = NoopSoundPlaying(),
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil
     ) {
         self.recordName = recordName
         self.mode = mode
@@ -62,6 +66,7 @@ public struct MinesweeperBoardLoaderView: View {
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
+        self.personalRecordStore = personalRecordStore
     }
 
     public var body: some View {
@@ -129,7 +134,8 @@ public struct MinesweeperBoardLoaderView: View {
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
                 store: store,
-                recordName: recordName
+                recordName: recordName,
+                personalRecordStore: personalRecordStore
             )
             state = .loaded(viewModel)
         } catch {

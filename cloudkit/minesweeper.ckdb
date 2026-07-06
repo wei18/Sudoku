@@ -17,6 +17,26 @@ DEFINE SCHEMA
         GRANT READ TO "_world"
     );
 
+    RECORD TYPE PersonalRecord (
+        "___createTime"    TIMESTAMP,
+        "___createdBy"     REFERENCE,
+        "___etag"          STRING,
+        "___modTime"       TIMESTAMP,
+        "___modifiedBy"    REFERENCE,
+        "___recordID"      REFERENCE,
+        bestTimeSeconds    INT64,
+        completedCount     INT64,
+        completedPuzzleIds LIST<STRING>,
+        difficulty         STRING,
+        lastUpdatedAt      TIMESTAMP,
+        mode               STRING,
+        schemaVersion      INT64,
+        totalTimeSeconds   INT64,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE SavedGame (
         "___createTime" TIMESTAMP,
         "___createdBy"  REFERENCE,
