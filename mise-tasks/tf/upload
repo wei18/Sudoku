@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="LOCAL archive → export → TestFlight upload (temporary Xcode-Cloud substitute while XCC quota is exhausted). archive/export are safe; the upload step is USER-OWNED and gated behind --i-am-sure. Reads ASC API creds from secrets/.env — never hardcoded."
-#USAGE arg "<app>" help="App to archive and upload" {
-#USAGE   choices "sudoku" "minesweeper"
+#USAGE arg "<app>" help="App to archive and upload (\"all\" = sudoku + minesweeper)" {
+#USAGE   choices "sudoku" "minesweeper" "all"
 #USAGE }
 #USAGE arg "<platform>" help="Target platform" {
 #USAGE   choices "ios" "macos" "all"
@@ -41,6 +41,21 @@
 #                 such tag (#694 P1). `--changelog-only` runs just this step, for
 #                 any app/platform/build, without touching archive/export/upload.
 #
+# <app> = "all" (#670 PR2): steps 1-4 (admob render → generate → archive → bump
+#   → export) run SEQUENTIALLY, one app at a time. This is NOT an accident of
+#   laziness — `Tuist/AdMob.xcconfig` and `Game.xcworkspace` are single,
+#   app-agnostic paths shared by the whole repo (Tuist project structure, not
+#   this script's choice). Two apps archiving concurrently would each render
+#   their OWN AdMob values into that ONE xcconfig and `tuist generate` that ONE
+#   workspace, racing each other — worst case, app A's binary gets app B's
+#   AdMob ID compiled in, silently (no error, wrong ad attribution/revenue).
+#   Only step 5 (upload, network-bound and genuinely independent per app) fans
+#   out in parallel — one background `xcrun altool` job per exported package,
+#   `wait`ed together, exit codes collected per app so one app's failure never
+#   blocks or hides another app's success. Step 6 (tag+log) then runs per app
+#   that uploaded successfully, sequentially (cheap, per-app-named files/tags,
+#   no lock needed — see #670 PR2 scope note).
+#
 # AUTH: ASC API key. Reuses the SAME secrets/.env keys as ASCRegister
 #   (ASC_API_KEY_PATH / ASC_API_KEY_ID / ASC_API_ISSUER_ID) plus the team id
 #   (reuses CK_TEAM_ID — the single 10-char Apple Developer Team ID already in
@@ -55,15 +70,22 @@
 #     history. A failed tag push after a real upload is a WARNING, not a failure
 #     — the upload already happened and must not be reported as failed because a
 #     git push hiccuped.
+#   - <app> all (#670 PR2): archive/export stays SEQUENTIAL per app (shared
+#     Tuist/AdMob.xcconfig + Game.xcworkspace paths — see PIPELINE note above);
+#     only the upload step parallelizes. --i-am-sure is one confirmation for the
+#     WHOLE batch (both apps' uploads), not one per app. One app's upload
+#     failure does not stop or roll back the other app's upload, changelog, or
+#     tag — the task exits non-zero overall but prints which app(s) failed.
 #
 # Usage:
-#   mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
+#   mise run tf:upload <sudoku|minesweeper|all> <ios|macos|all> [flags]
 #
 #   flags:
 #     --archive-only     archive + export only; never upload (default-safe)
 #     --build <N>        explicit CFBundleVersion (build number); default = $(date -u +%Y%m%d%H%M)
 #     --config <name>    xcodebuild configuration (default: Release)
-#     --i-am-sure        REQUIRED to actually upload to TestFlight (user-owned)
+#     --i-am-sure        REQUIRED to actually upload to TestFlight (user-owned;
+#                         with <app> all, gates BOTH apps' uploads at once)
 #     --changelog-only   print+write the What-to-Test changelog only (no build)
 #     --full             changelog: no noise filtering, keep (#NNN) refs
 #     --since <ref>      changelog base when no prior tf/<app>-<plat>/* tag exists
@@ -79,6 +101,9 @@
 #   mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
 #   mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
 #   mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
+#   mise run tf:upload all ios --archive-only                       # both apps, sequential archive
+#   mise run tf:upload all ios --i-am-sure                          # both apps, PARALLEL upload (#670 PR2)
+#   mise run tf:upload all all --changelog-only                     # 4 changelogs (2 apps x 2 platforms)
 #
 set -euo pipefail
 
@@ -87,7 +112,7 @@ scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweep
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
 usage() {
-    sed -n '2,82p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,107p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -119,12 +144,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-case "$APP" in sudoku|minesweeper) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper (got '$APP')" >&2; usage ;; esac
+case "$APP" in sudoku|minesweeper|all) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper|all (got '$APP')" >&2; usage ;; esac
 case "$PLAT" in ios|macos|all) ;; *) echo "error: platform must be ios|macos|all (got '$PLAT')" >&2; usage ;; esac
 [[ -n "$BUILD_NUMBER" ]] || { echo "error: --build value is empty" >&2; exit 1; }
 
-SCHEME="$(scheme_for "$APP")"
-BUNDLE="$(bundle_for "$APP")"
+# <app> "all" (#670 PR2) expands to both apps. SCHEME/BUNDLE are NOT computed
+# here (unlike <plat>) because they are per-app — they get (re)assigned inside
+# the sequential archive/export loop below, once per iteration.
+if [[ "$APP" == "all" ]]; then
+    TARGET_APPS=(sudoku minesweeper)
+else
+    TARGET_APPS=("$APP")
+fi
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 WORKSPACE="$REPO_ROOT/Game.xcworkspace"
 BUILD_DIR="$REPO_ROOT/build/testflight"
@@ -284,11 +315,15 @@ create_and_push_tf_tag() {
 }
 
 if [[ "$CHANGELOG_ONLY" -eq 1 ]]; then
-    case "$PLAT" in
-        ios)   run_changelog "$APP" ios "$BUILD_NUMBER" ;;
-        macos) run_changelog "$APP" macos "$BUILD_NUMBER" ;;
-        all)   run_changelog "$APP" ios "$BUILD_NUMBER"; run_changelog "$APP" macos "$BUILD_NUMBER" ;;
-    esac
+    # <app> all (#670 PR2): one changelog per app, same PLAT expansion as
+    # single-app — aligns with the PR1-era "all" precedent for <platform>.
+    for target_app in "${TARGET_APPS[@]}"; do
+        case "$PLAT" in
+            ios)   run_changelog "$target_app" ios "$BUILD_NUMBER" ;;
+            macos) run_changelog "$target_app" macos "$BUILD_NUMBER" ;;
+            all)   run_changelog "$target_app" ios "$BUILD_NUMBER"; run_changelog "$target_app" macos "$BUILD_NUMBER" ;;
+        esac
+    done
     exit 0
 fi
 
@@ -363,8 +398,8 @@ write_export_options() {
 # Hashes every input that actually influences the ARCHIVE's bytes: the current
 # commit, working-tree dirtiness (incl. untracked files), app/platform/config,
 # and the RENDERED Tuist/AdMob.xcconfig content. The xcconfig (not secrets/.env
-# directly) is hashed because at the call site (inside run_platform, after
-# render_admob_xcconfig + tuist generate have already run for this invocation)
+# directly) is hashed because at the call site (inside archive_export_platform,
+# after render_admob_xcconfig + tuist generate have already run for this app)
 # it is the file xcodebuild actually reads — hashing it also future-proofs any
 # other secret injected via xcconfig, without enumerating env var names here.
 #
@@ -390,9 +425,13 @@ compute_fingerprint() {
     } | shasum -a 256 | awk '{print $1}'
 }
 
-# ── Per-platform pipeline ─────────────────────────────────────────────────────
-# $1 = ios|macos
-run_platform() {
+# ── Per-platform archive+export (#670 PR2: upload split out, see below) ──────
+# $1 = ios|macos. Uses the current $APP/$SCHEME/$BUNDLE globals — safe because
+# this is only ever called from the SEQUENTIAL per-app loop, never from a
+# background job. On success (and unless --archive-only), appends
+# "$APP<US>$plat<US>$pkg<US>$upload_type" to the global EXPORT_RECORDS array
+# for the later parallel upload stage to consume.
+archive_export_platform() {
     local plat="$1"
     local destination archive_path export_dir
     case "$plat" in
@@ -441,6 +480,7 @@ run_platform() {
     # NOT driven by CURRENT_PROJECT_VERSION here), so an xcodebuild build-setting
     # override would not take effect. We patch the archive's embedded Info.plist
     # post-archive / pre-export — the canonical place agvtool-less projects bump.
+    # Runs regardless of archive reuse (idempotent in-place overwrite).
     local app_plist
     app_plist="$(/usr/bin/find "$archive_path/Products/Applications" -maxdepth 2 -name Info.plist -path '*.app/Info.plist' | head -1)"
     if [[ -z "$app_plist" ]]; then
@@ -478,51 +518,38 @@ run_platform() {
     fi
     echo "==> exported: $pkg"
 
-    # 4) upload (GATED) ---------------------------------------------------------
     if [[ "$ARCHIVE_ONLY" -eq 1 ]]; then
         echo "==> --archive-only: stopping before upload. Package is at:"
         echo "    $pkg"
         return 0
     fi
 
-    echo "────────────────────────────────────────────────────────────────"
-    echo " TESTFLIGHT UPLOAD — $APP · $plat · build $BUILD_NUMBER"
-    echo "────────────────────────────────────────────────────────────────"
-    echo " This is a USER-OWNED, irreversible action. It signs with your"
-    echo " App Store distribution identity + provisioning profile and pushes"
-    echo " the build to App Store Connect / TestFlight. Confirm the build"
-    echo " number is unique for $BUNDLE @ this marketing version before"
-    echo " proceeding (duplicates are rejected by ASC)."
-    echo "────────────────────────────────────────────────────────────────"
-    if [[ "$SURE" -ne 1 ]]; then
-        echo "Refusing to upload without --i-am-sure. (Re-run with --archive-only to" >&2
-        echo "just produce the package, or add --i-am-sure to upload.)" >&2
-        exit 2
+    EXPORT_RECORDS+=("${APP}${US}${plat}${US}${pkg}${US}${upload_type}")
+}
+
+# ── Parallel upload of one already-exported package (#670 PR2) ───────────────
+# Runs as a BACKGROUND job — one per (app, plat) — so it must not rely on the
+# $APP/$SCHEME/etc globals (those hold whichever app the sequential loop
+# finished on last by the time jobs run); everything it needs comes in as an
+# explicit argument. Writes its exit code to $5 (never lets a failed upload
+# escape via `set -e` into the caller, which is backgrounded and can't be
+# allowed to take the whole script down before siblings finish). Output is
+# tagged "[app-plat]" so interleaved parallel altool logs stay attributable.
+upload_one() {
+    local app="$1" plat="$2" pkg="$3" upload_type="$4" result_file="$5"
+    # altool finds the .p8 by --api-key id inside ./private_keys (staged once,
+    # before any job starts, by the caller). The key path/contents are never
+    # passed on argv. Flags verified against `xcrun altool --upload-app --help`
+    # 2026-06-05: API-key auth uses hyphenated --api-key/--api-issuer.
+    if ( cd "$BUILD_DIR" && xcrun altool --upload-app \
+            --type "$upload_type" \
+            --file "$pkg" \
+            --api-key "$ASC_KEY_ID" \
+            --api-issuer "$ASC_ISSUER" ) 2>&1 | sed "s/^/[${app}-${plat}] /"; then
+        echo 0 > "$result_file"
+    else
+        echo "${PIPESTATUS[0]:-1}" > "$result_file"
     fi
-
-    stage_key_for_altool
-    echo "==> altool --upload-app (type=$upload_type)"
-    # altool finds the .p8 by --api-key id inside ./private_keys (we staged a
-    # symlink there). The key path / contents are never passed on argv.
-    # Flags verified against `xcrun altool --upload-app --help` 2026-06-05:
-    # API-key auth uses hyphenated --api-key / --api-issuer (camelCase --apiKey
-    # is only for --generate-jwt). Sanity-check --type once on first real run.
-    ( cd "$BUILD_DIR" && xcrun altool --upload-app \
-        --type "$upload_type" \
-        --file "$pkg" \
-        --api-key "$ASC_KEY_ID" \
-        --api-issuer "$ASC_ISSUER" )
-    echo "==> uploaded $APP $plat build $BUILD_NUMBER to TestFlight. Processing in ASC may take minutes."
-
-    # 5b) changelog + tag (#694 P1). ORDER MATTERS: the changelog must run
-    # BEFORE tagging this build — latest_tf_tag would otherwise pick up the
-    # tag just created for THIS build (it points at HEAD) and emit an empty
-    # HEAD..HEAD changelog. Both steps are warn-only here: the upload already
-    # succeeded, so neither a changelog failure nor a tag/push failure may
-    # fail the task — and a changelog failure must not block the tag.
-    run_changelog "$APP" "$plat" "$BUILD_NUMBER" \
-        || echo "warning: changelog generation failed for a completed upload (upload already succeeded) — re-run with --changelog-only to regenerate manually." >&2
-    create_and_push_tf_tag "$APP" "$plat" "$BUILD_NUMBER"
 }
 
 # ── Prerequisites that gate every run ─────────────────────────────────────────
@@ -534,6 +561,15 @@ run_platform() {
 # values here never serve live ads from a dev run. When absent, whatever
 # Tuist/AdMob.xcconfig already exists is used unchanged (e.g. the committed
 # example's test IDs).
+#
+# CALLED ONCE PER APP FROM THE SEQUENTIAL LOOP BELOW — NEVER IN PARALLEL. Both
+# this function's output path (Tuist/AdMob.xcconfig) and the `tuist generate`
+# call right after it (Game.xcworkspace) are single, app-agnostic, repo-wide
+# paths (Tuist project structure, not a choice this script makes). Running two
+# apps' archive stages concurrently would race both files — worst case, one
+# app's binary silently gets compiled with the OTHER app's AdMob ID. This is
+# the reason <app> all keeps archive/export sequential and only parallelizes
+# the upload step below (see the PIPELINE comment near the top of this file).
 render_admob_xcconfig() {
     local env_file="$REPO_ROOT/secrets/.env"
     [[ -f "$env_file" ]] || return 0
@@ -561,53 +597,175 @@ render_admob_xcconfig() {
     } > "$REPO_ROOT/Tuist/AdMob.xcconfig"
     echo "==> AdMob: rendered Tuist/AdMob.xcconfig for $APP from secrets/.env (values not shown)."
 }
-render_admob_xcconfig
 
-# Resolve packages + materialise the workspace. `tuist install` populates the
-# SwiftPM checkouts + Package.resolved that LicensePlist reads in the next step;
-# `tuist generate` creates the *.xcworkspace (gitignored). Always run install so
-# the resolved state exists even when the workspace is already present from a
-# prior run.
-mise exec -- tuist install
-[[ -d "$WORKSPACE" ]] || {
-    echo "==> $WORKSPACE not found — generating with tuist."
-    mise exec -- tuist generate --no-open
-}
-[[ -d "$WORKSPACE" ]] || { echo "error: tuist generate did not produce $WORKSPACE" >&2; exit 1; }
-
-# ── Regenerate Acknowledgements Settings.bundle, then RE-generate the project ──
-# The Settings.bundle is gitignored build output (Xcode Cloud regenerates it via
-# ci_post_clone.sh), so on a local machine it's absent until we regenerate it
-# here. Without it the installed build's iOS Settings → Acknowledgements page is
-# empty. Two ordering constraints, both load-bearing:
-#
-#   1. gen must run AFTER `tuist install` — LicensePlist enumerates the dependency
-#      graph from the resolved SwiftPM state (Package.resolved + the package
-#      checkouts). Run it with no resolution in place and it emits an EMPTY list.
-#   2. gen must run BEFORE `tuist generate` *captures* the bundle — Tuist globs it
-#      as an App resource (Project.swift: `App/<App>/Resources/Settings.bundle/**`)
-#      and the glob is resolved into file references at generate time, not build
-#      time. If the bundle dir is absent/empty when the project is generated,
-#      xcodebuild copies nothing into the .app.
-#
-# So: install (resolve) → gen (populate bundle) → generate (re-glob the now-
-# populated bundle) → archive. The unconditional re-generate below is what makes
-# the freshly-written bundle land in the generated project's resource phase.
-echo "==> regenerate Acknowledgements Settings.bundle (gen:acknowledgements)"
-mise run gen:acknowledgements
-echo "==> re-generate project so Tuist globs the populated Settings.bundle"
-mise exec -- tuist generate --no-open
-
-# Credentials are needed for archive (DEVELOPMENT_TEAM) and upload. Load once.
+# Credentials are needed for archive (DEVELOPMENT_TEAM) and upload, and are
+# account-level (one ASC API key for both apps) — load once, before any app's
+# archive stage, not per app.
 load_asc_creds
 
-# Clean up the staged key symlink on every exit path.
+# Clean up the staged key symlink on every exit path (staged once below, right
+# before the parallel upload jobs start; this trap is what guarantees it is
+# also removed once — not per finishing job — after the LAST job exits, since
+# the trap only fires at overall script exit).
 trap 'rm -f "$BUILD_DIR/private_keys/AuthKey_${ASC_KEY_ID:-X}.p8" 2>/dev/null || true' EXIT
 
-case "$PLAT" in
-    ios)   run_platform ios ;;
-    macos) run_platform macos ;;
-    all)   run_platform ios; run_platform macos ;;
-esac
+# ── Sequential per-app archive+export stage (#670 PR2) ───────────────────────
+# For <app> all this iterates sudoku THEN minesweeper, one fully at a time:
+# admob-render → tuist install/generate → gen:acknowledgements → re-generate →
+# archive → bump → export. See render_admob_xcconfig's comment above for why
+# this must not be parallelized. Reassigns $APP/$SCHEME/$BUNDLE per iteration;
+# after the loop these globals hold the LAST app processed, which is fine —
+# nothing downstream (the parallel upload stage) reads them, it reads
+# EXPORT_RECORDS instead.
+EXPORT_RECORDS=()
+US=$'\x1f'
+for target_app in "${TARGET_APPS[@]}"; do
+    APP="$target_app"
+    SCHEME="$(scheme_for "$APP")"
+    BUNDLE="$(bundle_for "$APP")"
+
+    render_admob_xcconfig
+
+    # Resolve packages + materialise the workspace. `tuist install` populates
+    # the SwiftPM checkouts + Package.resolved that LicensePlist reads next;
+    # `tuist generate` creates the *.xcworkspace (gitignored). Always run
+    # install so the resolved state exists even when the workspace already
+    # exists from a prior run.
+    mise exec -- tuist install
+    [[ -d "$WORKSPACE" ]] || {
+        echo "==> $WORKSPACE not found — generating with tuist."
+        mise exec -- tuist generate --no-open
+    }
+    [[ -d "$WORKSPACE" ]] || { echo "error: tuist generate did not produce $WORKSPACE" >&2; exit 1; }
+
+    # Regenerate Acknowledgements Settings.bundle, then RE-generate the
+    # project. The Settings.bundle is gitignored build output (Xcode Cloud
+    # regenerates it via ci_post_clone.sh), so on a local machine it's absent
+    # until we regenerate it here. Without it the installed build's iOS
+    # Settings → Acknowledgements page is empty. Two ordering constraints,
+    # both load-bearing:
+    #
+    #   1. gen must run AFTER `tuist install` — LicensePlist enumerates the
+    #      dependency graph from the resolved SwiftPM state (Package.resolved
+    #      + the package checkouts). Run it with no resolution in place and
+    #      it emits an EMPTY list.
+    #   2. gen must run BEFORE `tuist generate` *captures* the bundle — Tuist
+    #      globs it as an App resource (Project.swift:
+    #      `App/<App>/Resources/Settings.bundle/**`) and the glob is resolved
+    #      into file references at generate time, not build time. If the
+    #      bundle dir is absent/empty when the project is generated,
+    #      xcodebuild copies nothing into the .app.
+    #
+    # So: install (resolve) → gen (populate bundle) → generate (re-glob the
+    # now-populated bundle) → archive. The unconditional re-generate below is
+    # what makes the freshly-written bundle land in the generated project's
+    # resource phase — for THIS app, since gen:acknowledgements reads
+    # App/<App>/license_plist.yml for the current $APP.
+    echo "==> regenerate Acknowledgements Settings.bundle (gen:acknowledgements) — $APP"
+    mise run gen:acknowledgements
+    echo "==> re-generate project so Tuist globs the populated Settings.bundle — $APP"
+    mise exec -- tuist generate --no-open
+
+    case "$PLAT" in
+        ios)   archive_export_platform ios ;;
+        macos) archive_export_platform macos ;;
+        all)   archive_export_platform ios; archive_export_platform macos ;;
+    esac
+done
+
+if [[ "$ARCHIVE_ONLY" -eq 1 ]]; then
+    echo "==> done (--archive-only: no upload)."
+    exit 0
+fi
+
+if [[ ${#EXPORT_RECORDS[@]} -eq 0 ]]; then
+    echo "error: no packages were exported to upload." >&2
+    exit 1
+fi
+
+# ── Parallel upload stage (#670 PR2) ──────────────────────────────────────────
+# Every EXPORT_RECORDS entry is a package that finished archiving+exporting
+# sequentially above; the upload itself is network-bound and independent per
+# app, so it fans out — one background `xcrun altool` job per package.
+BUNDLES_LIST=""
+for target_app in "${TARGET_APPS[@]}"; do
+    BUNDLES_LIST="${BUNDLES_LIST:+$BUNDLES_LIST, }$(bundle_for "$target_app")"
+done
+echo "────────────────────────────────────────────────────────────────"
+echo " TESTFLIGHT UPLOAD — ${#EXPORT_RECORDS[@]} package(s), build $BUILD_NUMBER"
+echo "────────────────────────────────────────────────────────────────"
+echo " This is a USER-OWNED, irreversible action. It signs with your"
+echo " App Store distribution identity + provisioning profile and pushes"
+echo " the build(s) to App Store Connect / TestFlight. Confirm the build"
+echo " number is unique for: $BUNDLES_LIST @ this marketing version before"
+echo " proceeding (duplicates are rejected by ASC). One --i-am-sure confirms"
+echo " the WHOLE batch below, not each package individually."
+echo "────────────────────────────────────────────────────────────────"
+if [[ "$SURE" -ne 1 ]]; then
+    echo "Refusing to upload without --i-am-sure. (Re-run with --archive-only to" >&2
+    echo "just produce the package(s), or add --i-am-sure to upload.)" >&2
+    exit 2
+fi
+
+# Key is staged ONCE for the whole batch (shared ASC API key, not per-app) —
+# staging it per-job would re-create the same symlink harmlessly, but cleaning
+# it up per-job (the old per-run `trap` behavior) is exactly the race #670
+# called out: the first job to finish would delete the key out from under a
+# sibling job still uploading. Cleanup instead happens once, after every job
+# below has been `wait`ed, via the single EXIT trap set above.
+stage_key_for_altool
+
+UPLOAD_PIDS=()
+for record in "${EXPORT_RECORDS[@]}"; do
+    IFS="$US" read -r r_app r_plat r_pkg r_type <<<"$record"
+    result_file="$BUILD_DIR/${r_app}-${r_plat}.upload_result"
+    rm -f "$result_file"
+    echo "==> altool --upload-app (type=$r_type) — $r_app $r_plat (background)"
+    upload_one "$r_app" "$r_plat" "$r_pkg" "$r_type" "$result_file" &
+    UPLOAD_PIDS+=("$!")
+done
+
+# `wait` on a job that exited non-zero would trip `set -e` and abort before
+# every sibling has finished / before results are read — `|| true` per-pid
+# neutralizes that; the REAL exit code was already written to each job's
+# result file by upload_one, independent of `wait`'s return value here.
+for pid in "${UPLOAD_PIDS[@]}"; do
+    wait "$pid" || true
+done
+
+FAILED_APPS=()
+for record in "${EXPORT_RECORDS[@]}"; do
+    IFS="$US" read -r r_app r_plat r_pkg r_type <<<"$record"
+    result_file="$BUILD_DIR/${r_app}-${r_plat}.upload_result"
+    code="$(cat "$result_file" 2>/dev/null || echo 1)"
+    rm -f "$result_file"
+    if [[ "$code" == "0" ]]; then
+        echo "==> uploaded $r_app $r_plat build $BUILD_NUMBER to TestFlight. Processing in ASC may take minutes."
+        # changelog + tag (#694 P1), per successful app+plat. ORDER MATTERS:
+        # the changelog must run BEFORE tagging this build — latest_tf_tag
+        # would otherwise pick up the tag just created for THIS build (it
+        # points at HEAD) and emit an empty HEAD..HEAD changelog. Both steps
+        # are warn-only: the upload already succeeded, so neither a changelog
+        # failure nor a tag/push failure may fail the task, and one app's
+        # changelog/tag hiccup must never touch another app's.
+        run_changelog "$r_app" "$r_plat" "$BUILD_NUMBER" \
+            || echo "warning: changelog generation failed for a completed upload ($r_app $r_plat, upload already succeeded) — re-run with --changelog-only to regenerate manually." >&2
+        create_and_push_tf_tag "$r_app" "$r_plat" "$BUILD_NUMBER"
+    else
+        echo "error: TestFlight upload FAILED for $r_app $r_plat (altool exit $code) — see the [${r_app}-${r_plat}] tagged output above." >&2
+        FAILED_APPS+=("${r_app}/${r_plat}")
+    fi
+done
+
+if [[ ${#FAILED_APPS[@]} -gt 0 ]]; then
+    echo "────────────────────────────────────────────────────────────────" >&2
+    echo " TestFlight upload FAILED for: ${FAILED_APPS[*]}" >&2
+    echo " Any other app/platform in this invocation succeeded independently" >&2
+    echo " (see the per-app '==> uploaded' / '==> tagged' lines above) and its" >&2
+    echo " changelog + tag were already committed — re-run just the failed" >&2
+    echo " app/platform to retry." >&2
+    echo "────────────────────────────────────────────────────────────────" >&2
+    exit 1
+fi
 
 echo "==> done."

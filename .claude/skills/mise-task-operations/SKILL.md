@@ -14,7 +14,7 @@ exists wastes time and tokens — this index exists so that never happens.
 
 | Task | What | Safety | Deeper skill |
 |---|---|---|---|
-| `mise run tf:upload <app> <ios\|macos\|all> [--archive-only\|--i-am-sure]` | archive → export → TestFlight upload | upload gated `--i-am-sure` (user-owned); archive/export safe | [[local-testflight-upload]] |
+| `mise run tf:upload <app\|all> <ios\|macos\|all> [--archive-only\|--i-am-sure]` | archive → export → TestFlight upload (`all` apps: serial archive, parallel upload) | upload gated `--i-am-sure` (user-owned, covers the whole batch); archive/export safe | [[local-testflight-upload]] |
 | `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e]` | CloudKit schema export / validate / dev-deploy | prod promote = Console-only (user-owned); task prints steps + exit 2 | [[cloudkit-schema-ops]] |
 | `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | sync ASC screenshot PREVIEWS from snapshot baselines (symlinks) | safe; PREVIEW-ONLY (not ASC-spec) | [[appstore-screenshot-pipeline]] |
 | `mise run gen:acknowledgements [--config-path …]` | regenerate Settings.bundle license page | safe; output gitignored | [[acknowledgements-generation]] |
