@@ -26,8 +26,13 @@ exhausted. It mirrors the scriptable-ops precedent of `mise-tasks/ck/schema` and
 ## Invocation
 
 ```
-mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
+mise run tf:upload <sudoku|minesweeper|all> <ios|macos|all> [flags]
 ```
+
+`all` for `<app>` expands to sudoku + minesweeper (#670 PR2): archive/export
+still runs SEQUENTIALLY per app (see the pipeline note below); only the
+network-bound upload step parallelizes across apps. With `all`, one
+`--i-am-sure` covers the whole batch (not one prompt per app).
 
 | Flag | Effect |
 |---|---|
@@ -80,6 +85,14 @@ mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, wi
    `ExportOptions` plist (`method=app-store-connect`, `destination=export`) →
    `.ipa` (iOS) / `.pkg` (macOS).
 5. **upload** — `xcrun altool --upload-app` to TestFlight. **GATED** (see below).
+   `<app> all` note (#670 PR2): archive/export loops over both apps ONE AT A
+   TIME — `Tuist/AdMob.xcconfig` and `Game.xcworkspace` are single,
+   app-agnostic repo paths, so concurrent archiving would race both files and
+   could silently compile the wrong app's AdMob ID into a binary. Only the
+   upload step (network-bound, independent per app) fans out into background
+   `xcrun altool` jobs, `wait`ed with per-app exit-code aggregation — one app's
+   upload failure never blocks or hides the other app's upload/changelog/tag,
+   but the task overall exits non-zero.
 6. **changelog + tag (#694 P1)** — on a REAL upload success, first writes a
    Fixes/Features/Other changelog from squash-merge PR-title subjects since the
    previous `tf/<app>-<plat>/*` tag to
