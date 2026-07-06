@@ -68,7 +68,7 @@ Settings are all shared and render from `GameConfig`. So the generated
 `<Game>AppComposition` is a thin, near-identical mirror of Minesweeper's — exactly
 the kind of boilerplate a scaffold should own.
 
-### Conformance of the three existing games (audit 2026-06-29)
+### Conformance of the two existing games (audit 2026-06-29)
 
 Before templating game N, the two shipped games must agree on the shape the
 template copies. Audited Sudoku / Minesweeper against the canonical structure

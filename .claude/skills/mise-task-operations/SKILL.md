@@ -21,6 +21,7 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run gen:l10n_fixture` | regenerate AppCompositionTests L10n fixture (byte-copy of Sudoku catalog) | safe | [[apple-dev-skills:ai-translated-localization]] |
 | `mise run gen:privacy_fixture` | regenerate SudokuAppCompositionTests PrivacyInfo fixture (byte-copy of shipping manifest, #361 group C) | safe | — (#361) |
 | `mise run tuist:generate [--open]` | resolve packages + regenerate Game.xcworkspace (tuist install + generate) | safe; run after Project.swift / package changes | [[game-factory-composition]] |
+| `mise run new_game:scaffold <Name>` | stamp a compiling game-N skeleton (copies Minesweeper at run time, renames tokens; SDD-006 #479 PR1) | safe; refuses existing destination; never touches git state | [[game-factory-composition]] |
 | `mise run scan:l10n` | L10n gate: 0 `<TRANSLATE>`, all 7 locales per key, **+ shared-code dotted-key parity** (dotted keys referenced from GameAppKit/GameShellUI/SettingsUI/MonetizationUI must exist in every app catalog, #594) | safe (read-only gate) | [[apple-dev-skills:ai-translated-localization]] |
 | `mise run scan:secrets` | gitleaks over staged files | safe | [[apple-dev-skills:apple-public-repo-security]] |
 | `mise run scan:hygiene` | block secret-shaped files (`.p8`/`.p12`/`.pem`/`.env`) from history | safe | [[apple-dev-skills:apple-public-repo-security]] |

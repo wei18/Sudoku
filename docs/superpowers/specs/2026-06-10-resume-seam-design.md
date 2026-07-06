@@ -96,7 +96,7 @@ The `resumeCandidate: SavedGameSummary? → ResumeCandidate<Route>?` and `resume
 ## Out of scope (downstream #455)
 
 - MS in-progress board persistence + an MS saved-game store (MS got its own store/fetch, as predicted — shipped in #463/#465 the same day).
-- `cloudkit/minesweeper.ckdb` `SavedGame` record type + `ck:schema` deploy (**user-owned**; the `.ckdb` is user-seeded, absent from the repo).
+- `cloudkit/minesweeper.ckdb` `SavedGame` record type + `ck:schema` deploy (Production promote **user-owned**; the `.ckdb` has since been committed — `cloudkit/minesweeper.ckdb` is the schema source of truth).
 - Wiring MS's `fetchResume` into its composition.
 
 After this seam ships, those remain — but the GameAppKit side is done and N-game-ready.

@@ -4,7 +4,7 @@
 
 This directory holds the skills available in this project. It has two parts:
 
-1. **Project-bound skills (8)** — flat `SKILL.md` directories below. These name this
+1. **Project-bound skills (9)** — flat `SKILL.md` directories below. These name this
    repo's specific apps (Sudoku / Minesweeper), `mise run` tasks, and
    pipelines, so they are *not* portable and live here un-namespaced.
 2. **The `apple-dev-skills` marketplace (2 plugins, 32 skills)** — the portable
