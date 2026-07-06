@@ -13,6 +13,7 @@
 #USAGE flag "--changelog-only" help="Print+write the What-to-Test changelog only; no archive/export/upload/tag"
 #USAGE flag "--full" help="Changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filtering), keep (#NNN) refs"
 #USAGE flag "--since <ref>" help="Changelog base ref when no prior tf/<app>-<plat>/* tag exists (ignored if a prior tag exists)"
+#USAGE flag "--force-archive" help="Skip fingerprint reuse; always re-run xcodebuild archive even if source+config are unchanged (#670 PR1)"
 #
 # Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
 # §4 table: Build + Archive + upload internal TestFlight) for the window where the
@@ -22,7 +23,12 @@
 #
 # PIPELINE (per app + platform):
 #   1. generate : `tuist generate` (the *.xcworkspace is gitignored — must exist)
-#   2. archive  : `xcodebuild archive` → build/<app>-<plat>.xcarchive
+#   2. archive  : `xcodebuild archive` → build/<app>-<plat>.xcarchive. SKIPPED
+#                 when a fingerprint file matches the current HEAD + dirty-tree
+#                 + app/platform/config + rendered Tuist/AdMob.xcconfig AND the
+#                 prior .xcarchive still exists (#670 PR1) — retrying a failed
+#                 upload then costs export+upload only, not the 5-8 min archive.
+#                 `--force-archive` always re-archives.
 #   3. bump     : patch the archived app's CFBundleVersion to a UNIQUE build number
 #                 (TestFlight rejects duplicate build numbers for a CFBundleShort-
 #                 VersionString). Default = UTC timestamp; override with --build.
@@ -61,6 +67,7 @@
 #     --changelog-only   print+write the What-to-Test changelog only (no build)
 #     --full             changelog: no noise filtering, keep (#NNN) refs
 #     --since <ref>      changelog base when no prior tf/<app>-<plat>/* tag exists
+#     --force-archive    always re-run xcodebuild archive (skip fingerprint reuse)
 #     -h | --help        this help
 #
 # Examples:
@@ -68,6 +75,7 @@
 #   mise run tf:upload sudoku all --archive-only           # iOS .ipa + macOS .pkg
 #   mise run tf:upload sudoku ios --i-am-sure              # archive+export+UPLOAD
 #   mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
+#   mise run tf:upload sudoku ios --i-am-sure --force-archive        # retry: skip fingerprint reuse
 #   mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
 #   mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
 #   mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
@@ -79,7 +87,7 @@ scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweep
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
 usage() {
-    sed -n '2,74p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,82p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -95,6 +103,7 @@ SURE=0
 CHANGELOG_ONLY=0
 CHANGELOG_FULL=0
 SINCE_REF=""
+FORCE_ARCHIVE=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --archive-only)    ARCHIVE_ONLY=1; shift ;;
@@ -104,6 +113,7 @@ while [[ $# -gt 0 ]]; do
         --changelog-only)  CHANGELOG_ONLY=1; shift ;;
         --full)            CHANGELOG_FULL=1; shift ;;
         --since)           SINCE_REF="${2:-}"; shift 2 ;;
+        --force-archive)   FORCE_ARCHIVE=1; shift ;;
         -h|--help)         usage 0 ;;
         *) echo "error: unknown argument '$1'" >&2; usage ;;
     esac
@@ -349,6 +359,37 @@ write_export_options() {
         "$out" >/dev/null
 }
 
+# ── Fingerprint archive-reuse (#670 PR1) ──────────────────────────────────────
+# Hashes every input that actually influences the ARCHIVE's bytes: the current
+# commit, working-tree dirtiness (incl. untracked files), app/platform/config,
+# and the RENDERED Tuist/AdMob.xcconfig content. The xcconfig (not secrets/.env
+# directly) is hashed because at the call site (inside run_platform, after
+# render_admob_xcconfig + tuist generate have already run for this invocation)
+# it is the file xcodebuild actually reads — hashing it also future-proofs any
+# other secret injected via xcconfig, without enumerating env var names here.
+#
+# KNOWN BLIND SPOT: `git status --porcelain --untracked-files=all` reports each
+# untracked file by NAME + status code ("?? path"), not by content. If an
+# already-untracked file's CONTENT changes while its name/status stays "??",
+# this fingerprint will NOT notice and a stale archive could be reused. This is
+# a deliberate tradeoff — hashing the bytes of every untracked file on every
+# invocation is too expensive for the common case of a clean-ish tree. Do not
+# present this fingerprint as a perfect content hash of the working tree.
+compute_fingerprint() {
+    local plat="$1" admob_hash=""
+    if [[ -f "$REPO_ROOT/Tuist/AdMob.xcconfig" ]]; then
+        admob_hash="$(shasum -a 256 "$REPO_ROOT/Tuist/AdMob.xcconfig" | awk '{print $1}')"
+    fi
+    {
+        git -C "$REPO_ROOT" rev-parse HEAD
+        git -C "$REPO_ROOT" status --porcelain --untracked-files=all
+        echo "$APP"
+        echo "$plat"
+        echo "$CONFIG"
+        echo "$admob_hash"
+    } | shasum -a 256 | awk '{print $1}'
+}
+
 # ── Per-platform pipeline ─────────────────────────────────────────────────────
 # $1 = ios|macos
 run_platform() {
@@ -360,22 +401,40 @@ run_platform() {
     esac
     archive_path="$BUILD_DIR/${APP}-${plat}.xcarchive"
     export_dir="$BUILD_DIR/${APP}-${plat}-export"
+    local fp_file="$BUILD_DIR/${APP}-${plat}.fingerprint"
+    local current_fp
+    current_fp="$(compute_fingerprint "$plat")"
 
     echo "────────────────────────────────────────────────────────────────"
     echo " $APP ($BUNDLE) · $plat · scheme=$SCHEME · config=$CONFIG · build=$BUILD_NUMBER"
     echo "────────────────────────────────────────────────────────────────"
 
-    # 1) archive ----------------------------------------------------------------
-    echo "==> archive → $archive_path"
-    xcodebuild archive \
-        -workspace "$WORKSPACE" \
-        -scheme "$SCHEME" \
-        -configuration "$CONFIG" \
-        -destination "$destination" \
-        -archivePath "$archive_path" \
-        CODE_SIGN_STYLE=Automatic \
-        DEVELOPMENT_TEAM="$TEAM_ID" \
-        | (command -v xcbeautify >/dev/null 2>&1 && xcbeautify || cat)
+    # 1) archive ------------------------------------------------------------
+    # Reuse the existing .xcarchive when the fingerprint (HEAD + dirty-tree +
+    # app/plat/config + rendered AdMob.xcconfig) matches the one recorded for
+    # it, unless --force-archive was passed. Skips only the xcodebuild archive
+    # call (the 5-8 min step); bump/export/upload always run.
+    if [[ "$FORCE_ARCHIVE" -ne 1 && -d "$archive_path" && -f "$fp_file" && "$(cat "$fp_file" 2>/dev/null)" == "$current_fp" ]]; then
+        echo "==> fingerprint match ($current_fp) — reusing existing archive:"
+        echo "    $archive_path"
+        echo "    (source tree + Tuist/AdMob.xcconfig unchanged since this archive was built."
+        echo "     Pass --force-archive to rebuild from scratch anyway.)"
+    else
+        echo "==> archive → $archive_path"
+        xcodebuild archive \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIG" \
+            -destination "$destination" \
+            -archivePath "$archive_path" \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            | (command -v xcbeautify >/dev/null 2>&1 && xcbeautify || cat)
+        # Only recorded once xcodebuild succeeds (set -o pipefail above makes a
+        # failed archive abort the script before this line) — never fingerprint
+        # a failed or partial archive as reusable.
+        echo "$current_fp" > "$fp_file"
+    fi
 
     # 2) bump build number on the ARCHIVED app's Info.plist ----------------------
     # CFBundleVersion is a hardcoded literal "1" in <App>/Info.plist (versions are
