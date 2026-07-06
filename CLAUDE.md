@@ -116,7 +116,7 @@ tuist generate                               # workspace; new sibling packages a
 | What | Where |
 |---|---|
 | Every ops/release pipeline | `.claude/skills/mise-task-operations` (index) + the owning skill |
-| Project skills | `.claude/skills/` — 8 project-bound skills (flat) + the `apple-dev-skills` marketplace submodule (2 plugins / 32 portable skills, namespaces `apple-dev-skills:` + `collaboration-skills:`, wired via `.claude/settings.json`); committed, public |
+| Project skills | `.claude/skills/` — 9 project-bound skills (flat) + the `apple-dev-skills` marketplace submodule (2 plugins / 32 portable skills, namespaces `apple-dev-skills:` + `collaboration-skills:`, wired via `.claude/settings.json`); committed, public |
 | Architecture & decisions | `docs/foundations.md` · `docs/v1/design.md` · `docs/superpowers/specs/` |
 | Design prototypes | `docs/designs/*.prototype.html` — re-tag build-status when features ship (recurring audit finding) |
 | Collaboration patterns | `docs/methodology.md` · `meetings/*.md` |
