@@ -1,0 +1,11 @@
+# Gitignored build-necessity files that MUST be copied into Claude Code agent
+# worktrees (--worktree / EnterWorktree / subagent isolation:"worktree").
+# Without these a worktree build either fails or silently falls back to
+# *.example sandbox values (#707). .gitignore syntax; only files that are BOTH
+# matched here AND gitignored are copied — tracked files are unaffected.
+
+# Layer 1 — build-time secret xcconfigs (see apple-dev-skills:build-time-secret-injection)
+Tuist/*.xcconfig
+
+# Layer 2 — CLI credentials (ASC API .p8, CK management token, AdMob IDs)
+secrets/
