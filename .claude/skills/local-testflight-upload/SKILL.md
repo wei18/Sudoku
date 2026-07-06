@@ -34,6 +34,7 @@ mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
 | `--archive-only` | archive + export only; never upload (default-safe) |
 | `--build <N>` | explicit `CFBundleVersion` (build number); default `$(date -u +%Y%m%d%H%M)` |
 | `--config <name>` | xcodebuild configuration (default `Release`) |
+| `--force-archive` | skip the fingerprint check and always re-archive (#670 PR1) |
 | `--i-am-sure` | **REQUIRED** to actually upload to TestFlight (user-owned) |
 | `--changelog-only` | print + write the What-to-Test changelog only; no archive/export/upload/tag |
 | `--full` | changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filter), keep `(#NNN)` refs |
@@ -62,6 +63,15 @@ mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, wi
 0.5. **acknowledgements** — `tuist install` (resolve SwiftPM) → `mise run gen:acknowledgements` → THEN `tuist generate`. Order matters (#433): `gen:acknowledgements` needs resolved checkouts to enumerate deps, and Tuist globs the `Settings.bundle` at *generate* time — so the bundle must be populated before generate or the installed build ships an EMPTY Acknowledgements page. See [[acknowledgements-generation]].
 1. **generate** — `tuist generate` (the `Game.xcworkspace` is gitignored).
 2. **archive** — `xcodebuild archive` → `build/testflight/<app>-<plat>.xcarchive`.
+   **SKIPPED when the source fingerprint matches** (#670 PR1): a hash of
+   HEAD + dirty tree (untracked included) + app/plat/config + the rendered
+   `Tuist/AdMob.xcconfig` content is kept in
+   `build/testflight/<app>-<plat>.fingerprint`; on a match with an existing
+   `.xcarchive`, the task jumps straight to bump/export/upload (a failed-upload
+   retry no longer pays the ~5-8 min re-archive). The fingerprint is written
+   only after a successful archive. `--force-archive` bypasses the check.
+   Known blind spot: an untracked file whose CONTENT changes (name/status
+   unchanged) does not move the fingerprint.
 3. **bump** — PlistBuddy `Set :CFBundleVersion` on the **archived app's** embedded
    Info.plist. `CFBundleVersion` is a hardcoded `"1"` literal in the app's
    Info.plist (not driven by `CURRENT_PROJECT_VERSION`), so a build-setting
