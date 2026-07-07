@@ -91,7 +91,13 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
             onAdContext: onAdContext,
-            backgroundColor: theme.surface.placeholder.resolved,
+            // #688 item 2: was `theme.surface.placeholder.resolved` — the
+            // "card" placeholder tone reads as a mismatched seam against the
+            // page background below the mode-card grid (audit-ms-01, dark
+            // mode). Match the page background instead so an empty/loading
+            // slot is invisible; the real ad or "Ad unavailable" caption
+            // still renders on top when the slot is actually showing.
+            backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
             dismissTint: theme.accent.muted.resolved.opacity(0.7)

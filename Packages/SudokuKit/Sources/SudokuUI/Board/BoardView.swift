@@ -221,7 +221,11 @@ public struct BoardView: View {
             adProvider: adProvider,
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
-            backgroundColor: theme.surface.placeholder.resolved,
+            // #688 item 2: was `theme.surface.placeholder.resolved` — mirrors
+            // the MS fix in `MinesweeperBoardView`/`GameHomeView` so both
+            // apps' banner containers match their own page background
+            // instead of a "card" tone that reads as a seam in dark mode.
+            backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
             dismissTint: theme.accent.muted.resolved.opacity(0.7)

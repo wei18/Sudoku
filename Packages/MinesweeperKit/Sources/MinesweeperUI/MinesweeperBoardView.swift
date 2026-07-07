@@ -396,7 +396,12 @@ public struct MinesweeperBoardView: View {
                 // return nil → honest fallback. Cast keeps MinesweeperUI free of
                 // an AdsAdMob import (§9.1).
                 bannerHost: adProvider as? any BannerViewProviding,
-                backgroundColor: theme.surface.placeholder.resolved,
+                // #688 item 2: was `theme.surface.placeholder.resolved` — the
+                // "card" placeholder tone reads as a mismatched seam against
+                // the page background (audit-ms-01, dark mode). Match the
+                // page background instead so an empty/loading slot is
+                // invisible; mirrors the same fix in `GameHomeView`.
+                backgroundColor: theme.surface.background.resolved,
                 progressTint: theme.accent.primary.resolved,
                 captionColor: theme.text.secondary.resolved,
                 dismissTint: theme.accent.muted.resolved.opacity(0.7)

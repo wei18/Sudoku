@@ -7,7 +7,9 @@
 // `RemoveAdsRow` / `AdsRemovedRow` / `RestorePurchasesRow` from
 // `MonetizationUI` (PR #249) under a `Section("Purchases")`. The host
 // passes a `MonetizationStateController` constructed against the MS ASC
-// productId. Tint is `.accentColor` — MS has no theme tokens yet.
+// productId. Tint is `theme.accent.primary.resolved` (#688 item 5a — was
+// `.accentColor`; MinesweeperTheme has shipped real accent tokens since
+// #278 Phase 2, so the "no theme tokens yet" premise was stale).
 //
 // #277: drops the "Coming soon" stub. About(Version) + Storage(Clear cache)
 // now reuse the shared `GameShellUI.SettingsAboutVersionRow` /
@@ -16,12 +18,14 @@
 // clear-cache closure wired to MS persistence via `PersistenceProtocol`.
 // Clear-cache is parity-only until MS save-flow lands (latestInProgress()
 // returns nil today), but it IS wired to the real protocol method, not a
-// fake button. Tint is `.accentColor` — MS has no theme.
+// fake button. Tint is `theme.accent.primary.resolved` (#688 item 5a).
 //
 // #572: `MinesweeperReminderSettingsEntry` deleted; `SettingsView` now uses
 // the shared `ReminderSettingsEntry` from SettingsUI (same fields, same behavior).
 
 public import SwiftUI
+// #688 item 5a: `@Environment(\.theme)` (the Theme env key), private-only use.
+internal import GameShellUI
 public import MonetizationUI
 // refactor/settingskit-target (2026-06-09): `SettingsScreen` /
 // `SettingsNoticesConfig` + the reminders UI types moved out of GameShellUI into
@@ -60,6 +64,10 @@ public struct SettingsView<Banner: View>: View {
     // ungated behavior for previews / tests that don't wire a root VM.
     private let presentGameCenter: (@MainActor () -> Void)?
 
+    // #688 item 5a: read only here (row inits still take a resolved
+    // `tintColor:`/`tint:` Color param, mirroring Sudoku's SettingsView).
+    @Environment(\.theme) private var theme
+
     public init(
         version: String = "1.0.0",
         clearCache: @escaping @MainActor () async -> Void = {},
@@ -84,10 +92,11 @@ public struct SettingsView<Banner: View>: View {
         // #421: the shared assembly (shell + 5 sections in order) now lives in
         // `GameShellUI.SettingsScreen`. MS supplies its config + the Purchases
         // slot, injects NO About extra rows (no generator), and tints with
-        // `.accentColor` (MS has no theme tokens yet).
+        // `theme.accent.primary.resolved` (#688 item 5a — mirrors Sudoku's
+        // SettingsView; was `.accentColor`).
         SettingsScreen(
             version: version,
-            tint: .accentColor,
+            tint: theme.accent.primary.resolved,
             clearCache: clearCache,
             reminderSettings: reminderSettings.map {
                 // #287: same building block Sudoku mounts; map the entry into
@@ -113,16 +122,16 @@ public struct SettingsView<Banner: View>: View {
                 if let controller = monetizationController {
                     Section("Purchases") {
                         if controller.hasPurchasedRemoveAds {
-                            AdsRemovedRow(tintColor: .accentColor)
+                            AdsRemovedRow(tintColor: theme.accent.primary.resolved)
                         } else {
                             RemoveAdsRow(
                                 controller: controller,
-                                tintColor: .accentColor
+                                tintColor: theme.accent.primary.resolved
                             )
                         }
                         RestorePurchasesRow(
                             controller: controller,
-                            tintColor: .accentColor
+                            tintColor: theme.accent.primary.resolved
                         )
                     }
                 }
