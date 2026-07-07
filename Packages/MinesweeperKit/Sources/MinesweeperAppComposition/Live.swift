@@ -220,7 +220,13 @@ extension MinesweeperAppComposition {
                 #else
                 nil
                 #endif
-            }()
+            }(),
+            // #685: Settings Game Center row now shares the Home leaderboard
+            // card's signed-out guard instead of calling
+            // `GameCenterDashboard.present()` unconditionally.
+            presentGameCenter: { [rootViewModel] in
+                rootViewModel.presentGameCenterOrAlert { GameCenterDashboard.present() }
+            }
         )
     }
 

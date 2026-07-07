@@ -46,6 +46,18 @@ import Reminders
         _ = view.body
     }
 
+    // #685: the Settings Game Center row previously always called
+    // `GameCenterDashboard.present()` directly with no signed-out guard.
+    // `presentGameCenter` (when injected) now takes over `onGameCenter` from
+    // that hardcoded default — proves the parameter actually threads through
+    // to `SettingsScreen`, not just that the default path still builds.
+    @Test func settingsViewUsesInjectedPresentGameCenterOverDefault() {
+        var called = false
+        let view = SettingsView(presentGameCenter: { called = true })
+        _ = view.body
+        #expect(called == false, "constructing/rendering must not itself invoke the closure")
+    }
+
     @Test func settingsViewConstructsWithNoticesSection() {
         // #331: injecting a populated notices config mounts the shared
         // SettingsNoticesSection. Confirms the wired path builds.

@@ -54,6 +54,13 @@ public struct SettingsView<Banner: View>: View {
     // must NOT import MonetizationUI; the actual BannerSlotView is injected by
     // LiveRouteFactory. EmptyView default keeps previews/tests inert.
     private let banner: Banner
+    // #685: the Game Center row previously called `GameCenterDashboard.present()`
+    // directly with no signed-out guard — a silent no-op when unauthenticated.
+    // Injected so the live wiring can route through
+    // `GameRootViewModel.presentGameCenterOrAlert`, matching the Home
+    // leaderboard card's fallback. `nil` (default) preserves the old
+    // ungated behavior for previews / tests that don't wire a root VM.
+    private let presentGameCenter: (@MainActor () -> Void)?
     @Environment(\.theme) private var theme
 
     public init(
@@ -62,6 +69,7 @@ public struct SettingsView<Banner: View>: View {
         reminderSettings: ReminderSettingsEntry? = nil,
         notices: SettingsNoticesConfig? = nil,
         audioSettings: AudioSettingsModel? = nil,
+        presentGameCenter: (@MainActor () -> Void)? = nil,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.viewModel = viewModel
@@ -69,6 +77,7 @@ public struct SettingsView<Banner: View>: View {
         self.reminderSettings = reminderSettings
         self.notices = notices
         self.audioSettings = audioSettings
+        self.presentGameCenter = presentGameCenter
         self.banner = banner()
     }
 
@@ -96,8 +105,9 @@ public struct SettingsView<Banner: View>: View {
             notices: notices,
             // Game Center entry: present Apple's native GC dashboard (no leaderboard
             // focus — opens the full listing). #560: shared `GameCenterDashboard`
-            // in GameCenterClient.
-            onGameCenter: { GameCenterDashboard.present() },
+            // in GameCenterClient. #685: signed-out taps now raise the same
+            // alert as the Home leaderboard card instead of silently no-op'ing.
+            onGameCenter: presentGameCenter ?? { GameCenterDashboard.present() },
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
             purchases: {

@@ -116,6 +116,11 @@ public struct LiveRouteFactory: RouteFactory {
     // the board view inline as a NavigationStack push destination.
     // `nil` (default) preserves legacy push behavior for tests / previews.
     private let onPresentBoard: (@MainActor (AppRoute) -> Void)?
+    // #685: closure that auth-gates the Settings Game Center row through
+    // `GameRootViewModel.presentGameCenterOrAlert`, mirroring `onPresentBoard`'s
+    // shape. `nil` (default) preserves the old ungated `SettingsView` behavior
+    // for tests / previews that don't wire a Root VM.
+    private let presentGameCenter: (@MainActor () -> Void)?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -130,7 +135,8 @@ public struct LiveRouteFactory: RouteFactory {
         audioSettings: AudioSettingsModel? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
-        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
+        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
+        presentGameCenter: (@MainActor () -> Void)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -145,6 +151,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.savedGameStore = savedGameStore
         self.personalRecordStore = personalRecordStore
         self.onPresentBoard = onPresentBoard
+        self.presentGameCenter = presentGameCenter
     }
 
     @MainActor
@@ -326,6 +333,7 @@ public struct LiveRouteFactory: RouteFactory {
                     // #330 P2: the shared Sound section (nil in preview/test → no
                     // section, byte-identical screen).
                     audioSettings: audioSettings,
+                    presentGameCenter: presentGameCenter,
                     banner: { bannerSlot() }
                 )
             )

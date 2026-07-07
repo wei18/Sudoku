@@ -181,4 +181,21 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
         // offering a stale pill until the next launch.
         Task { await refreshResumeCandidate() }
     }
+
+    // MARK: - Game Center signed-out guard (#685)
+
+    /// Shared auth-gate for every Game Center entry point: presents when
+    /// authenticated, otherwise raises `showGameCenterSignedOutAlert`. Both
+    /// the Home leaderboard card (`GameHomeViewModel.select(.leaderboard)`)
+    /// and the Settings Game Center row route through this single guard so
+    /// the signed-out fallback can't drift between the two entry points
+    /// (#685: the Settings row previously had no guard at all).
+    @MainActor
+    public func presentGameCenterOrAlert(present: () -> Void) {
+        if case .authenticated = authState {
+            present()
+        } else {
+            showGameCenterSignedOutAlert = true
+        }
+    }
 }

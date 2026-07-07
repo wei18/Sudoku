@@ -298,6 +298,61 @@ struct GameRootViewModelTests {
 
         #expect(viewModel.resumeCandidate == nil)
     }
+
+    // MARK: - #685: shared Game Center signed-out guard
+
+    /// `presentGameCenterOrAlert` is the single guard both the Home
+    /// leaderboard card and the Settings Game Center row route through
+    /// (#685: the Settings row previously had NO guard at all and silently
+    /// no-op'd when signed out). Authenticated → calls `present`, never
+    /// raises the alert.
+    @Test func presentGameCenterOrAlertPresentsWhenAuthenticated() async {
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(authResult: .success(.authenticated(
+                PlayerSummary(teamPlayerId: "p1", displayName: "Player")
+            ))),
+            persistence: StubPersistence()
+        )
+        await viewModel.bootstrap()
+
+        var presented = false
+        viewModel.presentGameCenterOrAlert { presented = true }
+
+        #expect(presented == true)
+        #expect(viewModel.showGameCenterSignedOutAlert == false)
+    }
+
+    /// Unauthenticated → raises the alert flag instead of calling `present`.
+    @Test func presentGameCenterOrAlertRaisesAlertWhenUnauthenticated() async {
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(authResult: .success(.unauthenticated)),
+            persistence: StubPersistence()
+        )
+        await viewModel.bootstrap()
+
+        var presented = false
+        viewModel.presentGameCenterOrAlert { presented = true }
+
+        #expect(presented == false)
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+    }
+
+    /// `.unknown` (auth never resolved / never bootstrapped) must ALSO raise
+    /// the alert, not silently no-op — this is the exact state the Settings
+    /// row previously ignored entirely.
+    @Test func presentGameCenterOrAlertRaisesAlertWhenAuthStateUnknown() async {
+        let viewModel = GameRootViewModel<Route>(
+            gameCenter: StubGameCenter(),
+            persistence: StubPersistence()
+        )
+        // No bootstrap() — authState stays .unknown (the default).
+
+        var presented = false
+        viewModel.presentGameCenterOrAlert { presented = true }
+
+        #expect(presented == false)
+        #expect(viewModel.showGameCenterSignedOutAlert == true)
+    }
 }
 
 // MARK: - #675 fetchResume test double
