@@ -11,6 +11,13 @@
 // API surface intentionally small (one State enum, no public deps beyond
 // what `RootView.destination` already has) so `GameViewModel.swift` and
 // `BoardView.swift` stay untouched.
+//
+// #719: the `.failed` screen used to be a dead end on iOS (fullScreenCover
+// has no interactive dismiss) — Retry was the ONLY affordance. `failedBlock`
+// now also offers Close, wired to the same `@Environment(\.dismiss)` the
+// board's own Leave button uses (BoardView.swift), and a DEBUG-only launch
+// hook (`UITestLaunchArg.loaderFail`) lets sim E2E drive straight into
+// `.failed(.unknown)` without a real persistence failure.
 
 public import MonetizationCore
 public import SwiftUI
@@ -25,6 +32,8 @@ public import GameCenterClient
 public import SettingsUI
 import SudokuGameState
 public import SudokuEngine
+// #719: `UITestLaunchArg.loaderFail` DEBUG hook.
+import GameAppKit
 
 @MainActor
 public struct BoardLoaderView: View {
@@ -66,9 +75,16 @@ public struct BoardLoaderView: View {
     // #652: Play Again CTA. Forwarded into `BoardView` → `BoardView+Completion`.
     // `nil` (default) → Close-only completion (existing callsites unchanged).
     private let onPlayAgain: ((Difficulty) -> Void)?
+    // #719: snapshot/test-only seam — when non-nil, `state` is pre-seeded to
+    // `.failed(_)` and the `.task`-driven `load()` is skipped, so a
+    // deterministic test can render `failedBlock` without a live (or fake)
+    // persistence fetch racing to overwrite it. `nil` in every production
+    // callsite — mirrors `MinesweeperBoardView`'s `completionViewModelForSnapshot` seam.
+    private let failedForSnapshot: UserFacingError?
 
-    @State private var state: LoadState = .loading
+    @State private var state: LoadState
     @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
 
     public init(
         puzzleId: String,
@@ -82,7 +98,8 @@ public struct BoardLoaderView: View {
         telemetry: Telemetry? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
-        onPlayAgain: ((Difficulty) -> Void)? = nil
+        onPlayAgain: ((Difficulty) -> Void)? = nil,
+        failedForSnapshot: UserFacingError? = nil
     ) {
         self.puzzleId = puzzleId
         self.puzzleProvider = puzzleProvider
@@ -96,13 +113,18 @@ public struct BoardLoaderView: View {
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain
+        self.failedForSnapshot = failedForSnapshot
+        self._state = State(initialValue: failedForSnapshot.map { .failed($0) } ?? .loading)
     }
 
     public var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(theme.surface.background.resolved)
-            .task(id: puzzleId) { await load() }
+            .task(id: puzzleId) {
+                guard failedForSnapshot == nil else { return }
+                await load()
+            }
     }
 
     @ViewBuilder
@@ -139,18 +161,45 @@ public struct BoardLoaderView: View {
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
                 .multilineTextAlignment(.center)
-            Button {
-                Task { await load() }
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
+            // #719: on iOS the board's fullScreenCover has no interactive
+            // dismiss (see GameRoot.swift), so Retry used to be the ONLY
+            // affordance here — a dead end for a player whose fetch keeps
+            // failing (e.g. offline). Close mirrors the same
+            // `@Environment(\.dismiss)` the board's own Leave button uses
+            // (BoardView.swift) and closes the modal back to the caller.
+            // Harmless-but-present on macOS too (push nav already has a
+            // system back chevron) — consistency over platform-splitting.
+            HStack(spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Close", systemImage: "xmark")
+                }
+                .buttonStyle(.bordered)
+                Button {
+                    Task { await load() }
+                } label: {
+                    Label("Retry", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
         .padding(20)
     }
 
     private func load() async {
         state = .loading
+        // #719: DEBUG-only sim E2E hook — forces `.failed` immediately,
+        // skipping the real persistence fetch, so the Close exit affordance
+        // can be verified without a real CloudKit failure repro (offline
+        // Sudoku daily/practice reads are near-unreachable in practice —
+        // `SavedGameStore.loadOrCreate` deliberately swallows CK errors).
+        #if DEBUG
+        if Self.isLoaderFailLaunch() {
+            state = .failed(.unknown)
+            return
+        }
+        #endif
         let identity = Self.identity(from: puzzleId)
         do {
             let snapshot = try await persistence.loadOrCreate(
@@ -200,6 +249,18 @@ public struct BoardLoaderView: View {
             state = .failed(bucket)
         }
     }
+
+    #if DEBUG
+    /// #719 testable core — extracted from `load()` so a unit test can drive
+    /// the `-uitest-loader-fail` hook without needing a live process launch
+    /// argument. `load()` calls the no-arg overload (real
+    /// `ProcessInfo.processInfo.arguments`).
+    static func isLoaderFailLaunch(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains(UITestLaunchArg.loaderFail)
+    }
+    #endif
 
     /// Derive `PuzzleIdentity` from `puzzleId` string.
     ///

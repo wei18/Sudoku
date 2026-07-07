@@ -37,6 +37,14 @@ public enum UITestLaunchArg {
     /// literal without duplication.
     public static let nearWinModalPuzzleId = "uitest-near-win-modal"
 
+    /// Forces both loaders (`BoardLoaderView` / `MinesweeperBoardLoaderView`)
+    /// straight into `.failed(.unknown)` on mount, skipping the real
+    /// persistence fetch entirely (#719). Sim verification of the loader's
+    /// `.failed` exit affordance is otherwise blocked — there is no way to
+    /// reliably fail a CloudKit fetch from a signed-in-but-offline simulator
+    /// on demand. Absent from Release builds via the `#if DEBUG` guard.
+    public static let loaderFail = "-uitest-loader-fail"
+
     /// Deep-link launch flag (#510): boot straight into a named screen so a
     /// reviewer / XCUITest reaches it in one launch instead of tapping through
     /// the home stack. Takes the NEXT argument as the screen key, e.g.
