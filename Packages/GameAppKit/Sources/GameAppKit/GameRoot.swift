@@ -86,6 +86,28 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
     public var body: some View {
         shellContent
             .onAppear { Task { await viewModel.bootstrap() } }
+            // #685: moved here from the former `universalRootModifiers` helper
+            // (called once from the plain `makeGameApp` function, outside any
+            // View's own `body`). That outer attachment point never got
+            // revisited by SwiftUI's Observation-driven invalidation once
+            // mounted — flipping `showGameCenterSignedOutAlert` never made the
+            // alert reappear (confirmed via instrumented sim repro: the
+            // Binding's `get` fired at initial mount and never again after the
+            // flag flipped true). Mounting it inside `GameRoot.body` — the
+            // same pattern the `fullScreenCover` binding below already uses
+            // successfully — keeps it inside an actively re-evaluated View body
+            // so the Observable flag reliably re-triggers presentation.
+            .alert(
+                "Sign in to Game Center",
+                isPresented: Binding(
+                    get: { viewModel.showGameCenterSignedOutAlert },
+                    set: { viewModel.showGameCenterSignedOutAlert = $0 }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Sign in to Game Center to compare with others.")
+            }
             .toastOverlay(
                 toastController,
                 successTint: successTint,

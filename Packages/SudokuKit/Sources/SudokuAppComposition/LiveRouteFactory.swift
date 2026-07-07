@@ -98,6 +98,11 @@ public struct LiveRouteFactory: RouteFactory {
     // `nil` (default) preserves the legacy push-navigation behavior for tests
     // and previews that don't wire a Root VM.
     private let onPresentBoard: (@MainActor (AppRoute) -> Void)?
+    // #685: closure that auth-gates the Settings Game Center row through
+    // `GameRootViewModel.presentGameCenterOrAlert`, mirroring `onPresentBoard`'s
+    // shape. `nil` (default) preserves the old ungated `SettingsView` behavior
+    // for tests / previews that don't wire a Root VM.
+    private let presentGameCenter: (@MainActor () -> Void)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -115,7 +120,8 @@ public struct LiveRouteFactory: RouteFactory {
         settingsNotices: SettingsNoticesConfig? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         audioSettings: AudioSettingsModel? = nil,
-        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil
+        onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
+        presentGameCenter: (@MainActor () -> Void)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -133,6 +139,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
         self.onPresentBoard = onPresentBoard
+        self.presentGameCenter = presentGameCenter
     }
 
     @MainActor
@@ -252,6 +259,7 @@ public struct LiveRouteFactory: RouteFactory {
                     reminderSettings: makeReminderSettings?(),
                     notices: settingsNotices,
                     audioSettings: audioSettings,
+                    presentGameCenter: presentGameCenter,
                     banner: { themedBanner() }
                 )
             )

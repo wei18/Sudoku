@@ -382,11 +382,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         await bootMonetization(adProvider: adProvider, telemetry: telemetry)
     } }
 
-    // #557 / #513: universal modifiers (GC-signed-out alert + theme-tinted ATT
-    // primer sheet) applied on the returned GameRoot view. Extracted to
-    // `MakeGameApp+Modifiers.swift` to keep this file under the 400-line ceiling.
+    // #557: universal theme-tinted ATT primer sheet applied on the returned
+    // GameRoot view. Extracted to `MakeGameApp+Modifiers.swift` to keep this
+    // file under the 400-line ceiling. #685: the GC-signed-out alert moved
+    // into `GameRoot.body` itself (see that file's header for why).
     let view = gameRoot.universalRootModifiers(
-        rootViewModel: rootViewModel,
         theme: config.theme,
         attPrimer: attPrimer
     )
