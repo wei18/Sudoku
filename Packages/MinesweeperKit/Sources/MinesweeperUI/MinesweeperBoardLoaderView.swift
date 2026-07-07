@@ -13,6 +13,15 @@
 // `schemaVersionTooNew` blob from a newer build, or a corrupt blob all land in
 // `.failed` with the classified `UserFacingError` (+ funnel), instead of
 // silently mounting a fresh board that would LOOK like the save was lost.
+//
+// #719: the `.failed` screen used to be a dead end on iOS (fullScreenCover
+// has no interactive dismiss) — Retry was the ONLY affordance, and MS resume
+// is genuinely reachable here (an offline tap on the Resume pill hits this
+// path for real). `failedBlock` now also offers Close, wired to the same
+// `@Environment(\.dismiss)` the board's own Leave button uses
+// (MinesweeperBoardView.swift), and a DEBUG-only launch hook
+// (`UITestLaunchArg.loaderFail`) lets sim E2E drive straight into
+// `.failed(.unknown)` without a real CloudKit failure repro.
 
 public import SwiftUI
 public import GameCenterClient
@@ -23,6 +32,8 @@ public import MinesweeperPersistence
 public import MonetizationCore
 public import Telemetry
 internal import GameShellUI
+// #719: `UITestLaunchArg.loaderFail` DEBUG hook.
+import GameAppKit
 
 public struct MinesweeperBoardLoaderView: View {
 
@@ -43,9 +54,17 @@ public struct MinesweeperBoardLoaderView: View {
     // #699: threaded into the restored VM so a resumed daily board that wins
     // still records the personal best — same seam as `store`.
     private let personalRecordStore: MinesweeperPersonalRecordStore?
+    // #719: snapshot/test-only seam — when non-nil, `state` is pre-seeded to
+    // `.failed(_)` and the `.task`-driven `load()` is skipped, so a
+    // deterministic test can render `failedBlock` without a live persistence
+    // fetch racing to overwrite it. `nil` in every production callsite —
+    // mirrors this same file's own `completionViewModelForSnapshot`-style seam
+    // used elsewhere in MinesweeperUI.
+    private let failedForSnapshot: UserFacingError?
 
-    @State private var state: LoadState = .loading
+    @State private var state: LoadState
     @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
 
     public init(
         recordName: String,
@@ -56,7 +75,8 @@ public struct MinesweeperBoardLoaderView: View {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
-        personalRecordStore: MinesweeperPersonalRecordStore? = nil
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
+        failedForSnapshot: UserFacingError? = nil
     ) {
         self.recordName = recordName
         self.mode = mode
@@ -67,13 +87,18 @@ public struct MinesweeperBoardLoaderView: View {
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
         self.personalRecordStore = personalRecordStore
+        self.failedForSnapshot = failedForSnapshot
+        self._state = State(initialValue: failedForSnapshot.map { .failed($0) } ?? .loading)
     }
 
     public var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(theme.surface.background.resolved)
-            .task(id: recordName) { await load() }
+            .task(id: recordName) {
+                guard failedForSnapshot == nil else { return }
+                await load()
+            }
     }
 
     @ViewBuilder
@@ -106,18 +131,42 @@ public struct MinesweeperBoardLoaderView: View {
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
                 .multilineTextAlignment(.center)
-            Button {
-                Task { await load() }
-            } label: {
-                Label("Retry", systemImage: "arrow.clockwise")
+            // #719: on iOS the board's fullScreenCover has no interactive
+            // dismiss (see GameRoot.swift), so Retry used to be the ONLY
+            // affordance here — a genuine trap for an offline Resume tap.
+            // Close mirrors the same `@Environment(\.dismiss)` the board's
+            // own Leave button uses (MinesweeperBoardView.swift). Harmless
+            // -but-present on macOS too (push nav already has a system back
+            // chevron) — consistency over platform-splitting.
+            HStack(spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Close", systemImage: "xmark")
+                }
+                .buttonStyle(.bordered)
+                Button {
+                    Task { await load() }
+                } label: {
+                    Label("Retry", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
         .padding(20)
     }
 
     private func load() async {
         state = .loading
+        // #719: DEBUG-only sim E2E hook — forces `.failed` immediately,
+        // skipping the real persistence fetch, so the Close exit affordance
+        // can be verified without a real CloudKit failure repro.
+        #if DEBUG
+        if Self.isLoaderFailLaunch() {
+            state = .failed(.unknown)
+            return
+        }
+        #endif
         do {
             guard let snapshot = try await store.loadInProgress(recordName: recordName) else {
                 // Record vanished between fetchResume and the tap (cleared on
@@ -147,6 +196,18 @@ public struct MinesweeperBoardLoaderView: View {
             state = .failed(UserFacingError.classify(error))
         }
     }
+
+    #if DEBUG
+    /// #719 testable core — extracted from `load()` so a unit test can drive
+    /// the `-uitest-loader-fail` hook without needing a live process launch
+    /// argument. `load()` calls the no-arg overload (real
+    /// `ProcessInfo.processInfo.arguments`).
+    static func isLoaderFailLaunch(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains(UITestLaunchArg.loaderFail)
+    }
+    #endif
 }
 
 // MARK: - Record-name derivation

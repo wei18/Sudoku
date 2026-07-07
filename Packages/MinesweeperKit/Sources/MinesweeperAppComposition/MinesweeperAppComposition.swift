@@ -90,6 +90,14 @@ public struct MinesweeperAppComposition {
         case "daily": return .daily
         case "practice": return .practice
         case "settings": return .settings
+        // #719: `.resumeBoard` is the ONLY route that mounts
+        // `MinesweeperBoardLoaderView` — unlike Sudoku, a fresh MS board never
+        // goes through the loader. Without this key there is no way to reach
+        // the loader (and its `-uitest-loader-fail` hook) in a sim that has no
+        // real in-progress CloudKit save to resume. The `recordName` is never
+        // read when `-uitest-loader-fail` is also passed — the hook short-
+        // circuits `load()` before `store.loadInProgress` is called.
+        case "resumeFail": return .resumeBoard(recordName: "uitest-loader-fail", mode: .practice)
         default: return nil
         }
     }
