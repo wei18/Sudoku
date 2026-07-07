@@ -11,8 +11,9 @@
 //
 // Theme decoupling mirrors `MonetizationUI.RemoveAdsRow`: the Version row
 // takes a required `tintColor: Color` — GameShellUI gains NO dependency on
-// any game's Theme. The host resolves it at the call site (Sudoku passes
-// `theme.accent.primary.resolved`, Minesweeper passes `.accentColor`).
+// any game's Theme. The host resolves it at the call site (both Sudoku and
+// Minesweeper pass `theme.accent.primary.resolved` as of #688 item 5a —
+// Minesweeper previously passed `.accentColor`, a cross-app tint drift).
 //
 // Why About is a *row* but Storage is a *Section*: Sudoku's About section
 // also hosts a Sudoku-only "Generator" row that is NOT shared. Exposing the

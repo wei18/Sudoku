@@ -18,10 +18,12 @@
 // Copy fully injected (`ReminderSettingsCopy` + the primer/denied copy) so the
 // shared target hard-codes no app text (proposal §3.3). Tint injected as
 // `Color` — NO `@Environment(\.theme)` dependency on the section itself, matching
-// `SettingsNoticesSection` / `SettingsAboutVersionRow` so Minesweeper (no theme
-// tokens) mounts the identical section under `.accentColor`. The presented
-// primer/denied SHEETS read `@Environment(\.theme)` themselves and fall back to
-// `NeutralTheme` when an app injects none.
+// `SettingsNoticesSection` / `SettingsAboutVersionRow`. Both apps resolve
+// `theme.accent.primary.resolved` at their own call site (#688 item 5a —
+// Minesweeper previously passed `.accentColor`). The presented primer/denied
+// SHEETS read `@Environment(\.theme)` themselves and fall back to
+// `NeutralTheme` when an app injects none (neither app does in practice —
+// both inject their concrete theme via `makeGameApp`/`config.theme`).
 
 public import SwiftUI
 

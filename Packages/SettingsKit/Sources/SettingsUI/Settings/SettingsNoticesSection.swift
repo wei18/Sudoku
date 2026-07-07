@@ -10,8 +10,9 @@
 //   - the section ships whole (no per-game additions today, unlike About which
 //     hosts Sudoku's Generator row);
 //   - it carries NO theme dependency — the host passes `tintColor: Color` for
-//     the leading SF Symbols (Sudoku → `theme.accent.primary.resolved`,
-//     Minesweeper → `.accentColor`), matching `SettingsAboutVersionRow`;
+//     the leading SF Symbols (both Sudoku and Minesweeper resolve
+//     `theme.accent.primary.resolved` as of #688 item 5a), matching
+//     `SettingsAboutVersionRow`;
 //   - rows use the HStack + Spacer primitive so `.formStyle(.grouped)` renders
 //     full-width pills on macOS (issue #197).
 //

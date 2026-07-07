@@ -18,8 +18,12 @@
 //
 // Theme decoupling: this module must not depend on the apps' `Theme` protocol
 // (Package.swift — MonetizationUI → MonetizationCore only). Colours are DI'd as
-// `Color` params with sensible system defaults (mirrors `ToastView`). Sudoku
-// passes its theme tokens; Minesweeper relies on the defaults.
+// `Color` params with sensible system defaults (mirrors `ToastView`). Both apps'
+// Home/Board callers pass their own theme tokens; the Daily/Practice/Settings
+// callers (both apps) still rely on the defaults below — #688 item 2 made the
+// default `backgroundColor` transparent so those un-themed slots blend with
+// whatever page background sits behind them instead of drawing a mismatched
+// system-gray seam.
 //
 // SDK isolation: the real banner view crosses the AdsAdMob border as an
 // `AnyView` via `BannerViewProviding` — `GoogleMobileAds` never leaks here
@@ -68,7 +72,12 @@ public struct BannerSlotView: View {
         adGate: AdGate,
         bannerHost: (any BannerViewProviding)? = nil,
         onAdContext: (@Sendable () async -> Void)? = nil,
-        backgroundColor: Color = Color.secondary.opacity(0.12),
+        // #688 item 2: was `Color.secondary.opacity(0.12)` — a translucent
+        // system-gray overlay that reads as a mismatched seam against a
+        // custom (non-system) page background, especially in dark mode.
+        // Transparent by default so an unthemed caller's slot blends with
+        // whatever sits behind it instead of announcing its own tint.
+        backgroundColor: Color = .clear,
         progressTint: Color = .accentColor,
         captionColor: Color = .secondary,
         dismissTint: Color = Color.secondary.opacity(0.7)

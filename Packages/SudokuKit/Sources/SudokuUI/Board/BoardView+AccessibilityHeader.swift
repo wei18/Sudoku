@@ -130,6 +130,11 @@ extension BoardView {
             // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
             .tint(theme.accent.primary.resolved)
             .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
+            // #688 item 5b: MS's mirror (`pauseToggle`) has both a label AND
+            // an identifier; this button had only the label. Adds the
+            // missing UI-test hook, matching MS's `"minesweeper.board.pauseToggle"`
+            // naming (`<app>.board.pauseToggle`).
+            .accessibilityIdentifier("sudoku.board.pauseToggle")
         }
     }
 
