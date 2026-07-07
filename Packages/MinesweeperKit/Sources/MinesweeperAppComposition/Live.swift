@@ -138,7 +138,7 @@ extension MinesweeperAppComposition {
                         title: ResumeTitle.make(
                             difficultyKey: summary.difficulty.rawValue.capitalized
                         ),
-                        subtitle: MinesweeperAppComposition.elapsed(summary.elapsedSeconds),
+                        subtitle: ResumeTitle.elapsed(summary.elapsedSeconds),
                         route: .resumeBoard(
                             recordName: summary.recordName,
                             mode: GameMode(rawValue: summary.modeRaw) ?? .practice
@@ -228,17 +228,6 @@ extension MinesweeperAppComposition {
                 rootViewModel.presentGameCenterOrAlert { GameCenterDashboard.present() }
             }
         )
-    }
-
-    // MARK: - Resume helpers (#455)
-
-    /// `%d:%02d` elapsed label for the resume pill subtitle. Mirrors Sudoku's
-    /// `AppComposition.elapsed` (the exact string the pre-#460 shared ResumePill
-    /// rendered).
-    static func elapsed(_ totalSeconds: Int) -> String {
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 
 }
