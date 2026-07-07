@@ -53,7 +53,7 @@ extension AppComposition {
         )
 
         // #455: same `SavedGameSummary` → `ResumeCandidate` mapping as `.live()`,
-        // using the shared `AppComposition.elapsed` helper.
+        // using the shared `ResumeTitle.elapsed` helper (#710).
         let rootViewModel = RootViewModel(
             gameCenter: gameCenter,
             persistence: persistence,
@@ -64,7 +64,7 @@ extension AppComposition {
                     title: ResumeTitle.make(
                         difficultyKey: summary.difficulty.rawValue.capitalized
                     ),
-                    subtitle: AppComposition.elapsed(summary.elapsedSeconds),
+                    subtitle: ResumeTitle.elapsed(summary.elapsedSeconds),
                     route: .board(puzzleId: summary.puzzleId)
                 )
             }

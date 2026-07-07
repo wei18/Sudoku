@@ -28,4 +28,14 @@ public enum ResumeTitle {
         )
         return String(format: format, name)
     }
+
+    /// `%d:%02d` elapsed label for the resume pill subtitle (e.g. `"3:21"` for
+    /// 201 seconds). Hoisted from byte-identical `elapsed` implementations that
+    /// used to live separately in Sudoku's and Minesweeper's app composition
+    /// (#710) so both apps share one implementation.
+    public static func elapsed(_ totalSeconds: Int) -> String {
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
 }

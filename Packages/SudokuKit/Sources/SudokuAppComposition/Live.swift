@@ -127,7 +127,7 @@ extension AppComposition {
                         title: ResumeTitle.make(
                             difficultyKey: summary.difficulty.rawValue.capitalized
                         ),
-                        subtitle: AppComposition.elapsed(summary.elapsedSeconds),
+                        subtitle: ResumeTitle.elapsed(summary.elapsedSeconds),
                         route: .board(puzzleId: summary.puzzleId)
                     )
                 }
