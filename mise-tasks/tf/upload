@@ -14,6 +14,9 @@
 #USAGE flag "--full" help="Changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filtering), keep (#NNN) refs"
 #USAGE flag "--since <ref>" help="Changelog base ref when no prior tf/<app>-<plat>/* tag exists (ignored if a prior tag exists)"
 #USAGE flag "--force-archive" help="Skip fingerprint reuse; always re-run xcodebuild archive even if source+config are unchanged (#670 PR1)"
+#USAGE flag "--whats-new-only" help="Backfill mode: poll ASC + sync betaBuildLocalization whatsNew for an ALREADY-uploaded build (requires --build); no archive/export/upload/tag/changelog"
+#USAGE flag "--whats-new-timeout <secs>" help="Seconds to poll ASC for a build to leave PROCESSING before giving up" default="900"
+#USAGE flag "--dry-run" help="With --whats-new-only: print the betaBuildLocalization payload that WOULD be sent to ASC; performs no write"
 #
 # Temporary stand-in for the Xcode Cloud "Main CI" workflow (docs/foundations.md
 # §4 table: Build + Archive + upload internal TestFlight) for the window where the
@@ -40,6 +43,16 @@
 #                 best-effort) and write a What-to-Test changelog since the prior
 #                 such tag (#694 P1). `--changelog-only` runs just this step, for
 #                 any app/platform/build, without touching archive/export/upload.
+#   7. whats-new: on a REAL upload success, poll ASC (App Store Connect API)
+#                 until the just-uploaded build's processingState leaves
+#                 PROCESSING, then create/update its en-US betaBuildLocalization
+#                 `whatsNew` from the changelog written in step 6 (#704, P2 of
+#                 #694). Never fails the task — a completed upload must not be
+#                 reported as failed over a slow/failed ASC sync; timeout or
+#                 error only WARNS. `--whats-new-only --build <N>` runs just
+#                 this step for an already-uploaded build (e.g. to backfill a
+#                 build uploaded before this feature existed), gated behind its
+#                 own --i-am-sure (or --dry-run to preview without writing).
 #
 # <app> = "all" (#670 PR2): steps 1-4 (admob render → generate → archive → bump
 #   → export) run SEQUENTIALLY, one app at a time. This is NOT an accident of
@@ -90,6 +103,11 @@
 #     --full             changelog: no noise filtering, keep (#NNN) refs
 #     --since <ref>      changelog base when no prior tf/<app>-<plat>/* tag exists
 #     --force-archive    always re-run xcodebuild archive (skip fingerprint reuse)
+#     --whats-new-only   backfill mode: poll ASC + sync betaBuildLocalization
+#                        whatsNew for an ALREADY-uploaded build (requires
+#                        --build; gated behind --i-am-sure or --dry-run)
+#     --whats-new-timeout <secs>  seconds to poll ASC before giving up (default 900)
+#     --dry-run          with --whats-new-only: print the payload, write nothing
 #     -h | --help        this help
 #
 # Examples:
@@ -104,6 +122,8 @@
 #   mise run tf:upload all ios --archive-only                       # both apps, sequential archive
 #   mise run tf:upload all ios --i-am-sure                          # both apps, PARALLEL upload (#670 PR2)
 #   mise run tf:upload all all --changelog-only                     # 4 changelogs (2 apps x 2 platforms)
+#   mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --dry-run       # preview payload, no write
+#   mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --i-am-sure     # backfill whatsNew for real
 #
 set -euo pipefail
 
@@ -112,7 +132,7 @@ scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweep
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
 usage() {
-    sed -n '2,107p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
+    sed -n '2,127p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'
     exit "${1:-1}"
 }
 
@@ -129,16 +149,23 @@ CHANGELOG_ONLY=0
 CHANGELOG_FULL=0
 SINCE_REF=""
 FORCE_ARCHIVE=0
+BUILD_EXPLICIT=0
+WHATS_NEW_ONLY=0
+WHATS_NEW_TIMEOUT=900
+DRY_RUN=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --archive-only)    ARCHIVE_ONLY=1; shift ;;
         --i-am-sure)       SURE=1; shift ;;
-        --build)           BUILD_NUMBER="${2:-}"; shift 2 ;;
+        --build)           BUILD_NUMBER="${2:-}"; BUILD_EXPLICIT=1; shift 2 ;;
         --config)          CONFIG="${2:-}"; shift 2 ;;
         --changelog-only)  CHANGELOG_ONLY=1; shift ;;
         --full)            CHANGELOG_FULL=1; shift ;;
         --since)           SINCE_REF="${2:-}"; shift 2 ;;
         --force-archive)   FORCE_ARCHIVE=1; shift ;;
+        --whats-new-only)  WHATS_NEW_ONLY=1; shift ;;
+        --whats-new-timeout) WHATS_NEW_TIMEOUT="${2:-}"; shift 2 ;;
+        --dry-run)         DRY_RUN=1; shift ;;
         -h|--help)         usage 0 ;;
         *) echo "error: unknown argument '$1'" >&2; usage ;;
     esac
@@ -147,6 +174,20 @@ done
 case "$APP" in sudoku|minesweeper|all) ;; -h|--help|"") usage 0 ;; *) echo "error: app must be sudoku|minesweeper|all (got '$APP')" >&2; usage ;; esac
 case "$PLAT" in ios|macos|all) ;; *) echo "error: platform must be ios|macos|all (got '$PLAT')" >&2; usage ;; esac
 [[ -n "$BUILD_NUMBER" ]] || { echo "error: --build value is empty" >&2; exit 1; }
+
+# --whats-new-only (#704 P2): a standalone backfill mode, mutually exclusive
+# with --changelog-only, needs an EXPLICIT --build (the already-uploaded
+# CFBundleVersion — the UTC-timestamp default would silently target the wrong
+# build), and writes to ASC so it carries its own --i-am-sure gate (waived
+# only by --dry-run, which performs no write).
+if [[ "$WHATS_NEW_ONLY" -eq 1 ]]; then
+    [[ "$CHANGELOG_ONLY" -ne 1 ]] || { echo "error: --whats-new-only and --changelog-only are mutually exclusive." >&2; exit 1; }
+    [[ "$BUILD_EXPLICIT" -eq 1 ]] || { echo "error: --whats-new-only requires an explicit --build <N> (the already-uploaded CFBundleVersion)." >&2; exit 1; }
+    if [[ "$DRY_RUN" -ne 1 && "$SURE" -ne 1 ]]; then
+        echo "error: --whats-new-only writes to App Store Connect — pass --i-am-sure (or --dry-run to preview without writing)." >&2
+        exit 2
+    fi
+fi
 
 # <app> "all" (#670 PR2) expands to both apps. SCHEME/BUNDLE are NOT computed
 # here (unlike <plat>) because they are per-app — they get (re)assigned inside
@@ -196,7 +237,10 @@ classify_subject() {
 is_changelog_noise() {
     local type="$1" scope="$2" desc="$3"
     case "$type" in docs|chore|ci) return 0 ;; esac
-    case "$scope" in *skill*|*spec*|*meetings*) return 0 ;; esac
+    # tf/testflight scope (e.g. `feat(tf): ...`, `feat(testflight): ...`) is
+    # tooling-chain noise, same class as skill/spec/meetings — testers never
+    # see the local-upload pipeline itself (#704).
+    case "$scope" in *skill*|*spec*|*meetings*|tf|testflight) return 0 ;; esac
     case "$desc" in *"meetings"*) return 0 ;; esac
     return 1
 }
@@ -312,6 +356,69 @@ create_and_push_tf_tag() {
     else
         echo "warning: failed to push tag $tag to origin (upload already succeeded — push it manually: git push origin refs/tags/$tag)." >&2
     fi
+}
+
+# Poll ASC until $2's build (CFBundleVersion) leaves PROCESSING, then create/
+# update its en-US betaBuildLocalization `whatsNew` from the changelog file at
+# $3 (#704, P2 of #694). Delegates the JWT + REST work to asc_whats_new.py
+# (stdlib-only python3 + openssl, no new deps) — see that file for the ES256
+# JWT construction (mirrors Packages/ASCRegisterKit/Sources/ASCRegister/JWT.swift)
+# and the builds/betaBuildLocalizations API calls.
+#
+# $1=app $2=build $3=changelog_file $4=mode ("warn" | "strict") $5=dry_run (0/1)
+#
+# mode="warn" (the automatic post-upload call site): the upload already
+# succeeded, so this function ALWAYS returns 0 — any ASC-side problem
+# (timeout, terminal bad state, HTTP error) is printed as a "warning:" and
+# swallowed, never escalated. mode="strict" (the standalone --whats-new-only
+# backfill entry point): the same problems print as "error:" and the function
+# returns 1, letting the caller aggregate failures and exit non-zero — there
+# is no "upload already succeeded" to protect in that mode.
+run_whats_new() {
+    local app="$1" build="$2" changelog="$3" mode="$4" dry="$5"
+    local app_id_var="ASC_APP_ID_$(printf '%s' "$app" | tr '[:lower:]' '[:upper:]')"
+    local app_id="${!app_id_var:-}"
+    local log_prefix="error:"; [[ "$mode" == "warn" ]] && log_prefix="warning:"
+
+    if [[ -z "$app_id" ]]; then
+        echo "$log_prefix ${app_id_var} not set in secrets/.env — cannot resolve the ASC app id for $app; whatsNew not synced." >&2
+        return 1
+    fi
+    if [[ ! -f "$changelog" ]]; then
+        echo "$log_prefix changelog file not found: $changelog — run '--changelog-only' first (or let a real upload generate it); whatsNew not synced." >&2
+        return 1
+    fi
+
+    # A plain scalar (not an array) for the optional --dry-run token: this
+    # repo's bash is macOS's stock 3.2.57, where `"${empty_array[@]}"` throws
+    # "unbound variable" under `set -u` (fixed upstream only in bash 4.4+).
+    # An empty *scalar* expands to nothing safely under `set -u`, so leaving
+    # $dry_flag unquoted below is the 3.2-safe way to make this argument
+    # optional (safe here since it only ever holds the single fixed literal
+    # token `--dry-run`, never anything containing spaces/globs).
+    local dry_flag=""
+    [[ "$dry" -eq 1 ]] && dry_flag="--dry-run"
+    echo "==> polling ASC for $app build $build (processingState), then syncing en-US whatsNew$( [[ $dry -eq 1 ]] && echo ' [--dry-run]' )..."
+    local code=0
+    python3 "$REPO_ROOT/mise-tasks/tf/asc_whats_new.py" \
+        --key-path "$ASC_KEY_RESOLVED" --key-id "$ASC_KEY_ID" --issuer-id "$ASC_ISSUER" \
+        --app-id "$app_id" --build "$build" --changelog "$changelog" \
+        --timeout "$WHATS_NEW_TIMEOUT" $dry_flag \
+        || code=$?
+
+    if [[ "$code" -eq 0 ]]; then
+        echo "==> whatsNew sync done for $app build $build."
+        return 0
+    fi
+    local reason
+    case "$code" in
+        2) reason="timed out waiting for ASC build processingState to leave PROCESSING (or the build never appeared)" ;;
+        3) reason="build reached a terminal non-VALID ASC processingState (FAILED/INVALID)" ;;
+        *) reason="whatsNew sync failed (asc_whats_new.py exit $code)" ;;
+    esac
+    echo "$log_prefix $reason for $app build $build — whatsNew not synced. Retry later with:" >&2
+    echo "         mise run tf:upload $app <ios|macos> --whats-new-only --build $build --i-am-sure" >&2
+    return 1
 }
 
 if [[ "$CHANGELOG_ONLY" -eq 1 ]]; then
@@ -609,6 +716,30 @@ load_asc_creds
 # the trap only fires at overall script exit).
 trap 'rm -f "$BUILD_DIR/private_keys/AuthKey_${ASC_KEY_ID:-X}.p8" 2>/dev/null || true' EXIT
 
+# ── Standalone whatsNew backfill (#704 P2) — no archive/export/upload/tag ────
+# Runs for every (app, platform) implied by <app>/<platform> "all" expansion,
+# reusing the SAME changelog file a real upload would have written for that
+# build (build/testflight/<app>-<plat>-<build>-changelog.md). Aggregates
+# failures across apps/platforms (mirrors the parallel-upload FAILED_APPS
+# pattern) instead of stopping at the first one, so `all all` backfills every
+# combination it can and reports which ones didn't sync.
+if [[ "$WHATS_NEW_ONLY" -eq 1 ]]; then
+    WHATS_NEW_FAILED=()
+    for target_app in "${TARGET_APPS[@]}"; do
+        for target_plat in $( [[ "$PLAT" == "all" ]] && echo "ios macos" || echo "$PLAT" ); do
+            changelog_file="$BUILD_DIR/${target_app}-${target_plat}-${BUILD_NUMBER}-changelog.md"
+            run_whats_new "$target_app" "$BUILD_NUMBER" "$changelog_file" strict "$DRY_RUN" \
+                || WHATS_NEW_FAILED+=("${target_app}/${target_plat}")
+        done
+    done
+    if [[ ${#WHATS_NEW_FAILED[@]} -gt 0 ]]; then
+        echo "error: whatsNew backfill failed for: ${WHATS_NEW_FAILED[*]}" >&2
+        exit 1
+    fi
+    echo "==> done (--whats-new-only)."
+    exit 0
+fi
+
 # ── Sequential per-app archive+export stage (#670 PR2) ───────────────────────
 # For <app> all this iterates sudoku THEN minesweeper, one fully at a time:
 # admob-render → tuist install/generate → gen:acknowledgements → re-generate →
@@ -751,6 +882,11 @@ for record in "${EXPORT_RECORDS[@]}"; do
         run_changelog "$r_app" "$r_plat" "$BUILD_NUMBER" \
             || echo "warning: changelog generation failed for a completed upload ($r_app $r_plat, upload already succeeded) — re-run with --changelog-only to regenerate manually." >&2
         create_and_push_tf_tag "$r_app" "$r_plat" "$BUILD_NUMBER"
+        # whatsNew sync (#704 P2) — same warn-only posture as changelog/tag
+        # above: the upload already succeeded, so a slow/failed ASC sync is
+        # never allowed to fail this task. run_whats_new prints its own
+        # warning + retry hint on any non-zero outcome.
+        run_whats_new "$r_app" "$BUILD_NUMBER" "$BUILD_DIR/${r_app}-${r_plat}-${BUILD_NUMBER}-changelog.md" warn 0 || true
     else
         echo "error: TestFlight upload FAILED for $r_app $r_plat (altool exit $code) — see the [${r_app}-${r_plat}] tagged output above." >&2
         FAILED_APPS+=("${r_app}/${r_plat}")

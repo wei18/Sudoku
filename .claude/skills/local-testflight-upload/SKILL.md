@@ -44,6 +44,9 @@ network-bound upload step parallelizes across apps. With `all`, one
 | `--changelog-only` | print + write the What-to-Test changelog only; no archive/export/upload/tag |
 | `--full` | changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filter), keep `(#NNN)` refs |
 | `--since <ref>` | changelog base ref when no prior `tf/<app>-<plat>/*` tag exists (ignored once a prior tag exists) |
+| `--whats-new-only` | backfill mode: poll ASC + sync betaBuildLocalization whatsNew for an already-uploaded build (requires `--build`; gated by `--i-am-sure` or `--dry-run`) |
+| `--whats-new-timeout <secs>` | seconds to poll ASC before giving up (default 900 = 15min) |
+| `--dry-run` | with `--whats-new-only`: print the payload, write nothing |
 | `-h`, `--help` | usage |
 
 Examples:
@@ -55,6 +58,8 @@ mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
 mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
 mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
 mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
+mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --dry-run     # preview payload, no write
+mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --i-am-sure   # backfill whatsNew for real
 ```
 
 ## Pipeline (per app + platform)
@@ -109,6 +114,15 @@ mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, wi
    no `.md` written); on the real post-upload path it downgrades to a warning
    so a completed upload is never reported as failed and the tag step still
    runs.
+7. **whatsNew sync (#704, P2 of #694)** — on a REAL upload success, polls ASC
+   until the build's processingState leaves PROCESSING (default 15min timeout,
+   `--whats-new-timeout` to adjust), then creates/updates its en-US
+   betaBuildLocalization `whatsNew` from the step-6 changelog file. Warn-only,
+   same posture as changelog/tag: a completed upload is never reported failed
+   over a slow/failed ASC sync. `--whats-new-only --build <N>` runs just this
+   step for an already-uploaded build (its own `--i-am-sure` gate, waived by
+   `--dry-run`); it errors loudly (non-zero exit) in that standalone mode since
+   there's no "upload already succeeded" to protect.
 
 ## Auth
 
@@ -157,6 +171,17 @@ from project memory (`asc-api-credentials` + the Team ID).
   the task uses the new name (accepted by 16/26). Don't revert it.
 - **Workspace is gitignored.** A clean checkout has no `Game.xcworkspace`; the
   task runs `tuist install` + `tuist generate --no-open` to produce it.
+- **whatsNew sync uses python3 + openssl only** (`mise-tasks/tf/asc_whats_new.py`)
+  — no `cryptography`/`PyJWT` install. openssl's EC signature is ASN.1 DER;
+  JOSE ES256 needs raw R||S, so the script hand-parses the DER. Don't
+  "simplify" this with a pip package — the repo's no-new-deps policy holds.
+- **macOS's stock bash is 3.2.57.** `"${empty_array[@]}"` throws `unbound
+  variable` under `set -u` on a genuinely empty array (fixed only in bash
+  4.4+) — the upload task uses plain-scalar optional-flag variables instead of
+  arrays for that reason. Don't "clean up" a scalar flag back into an array
+  without checking the bash version.
+- **`whatsNew` is capped at 4000 chars** — the sync script truncates with a
+  warning if the changelog exceeds it; it never fails the sync over length.
 - **Changelog noise filter is scope-aware, not just type-aware.** A
   `feat(skills): ...` or `feat(spec): ...` commit is still dropped from the
   default (non `--full`) changelog even though its type is `feat` — the filter
