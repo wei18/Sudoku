@@ -74,6 +74,16 @@ public struct BannerSlotView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Test/preview-only override for the `.loading`/`.notInitialized` visual
+    /// (#732): the live `ProgressView` is a genuinely timing-dependent spin
+    /// animation, so board-banner snapshot fixtures that capture it are
+    /// environment-sensitive across machines/worktrees. `nil` (default)
+    /// preserves production's real spinner untouched; a caller (snapshot
+    /// tests only) can inject a static placeholder via
+    /// `.environment(\.bannerSlotLoadingPreview, ...)` from OUTSIDE this
+    /// view, so no production call site needs to change.
+    @Environment(\.bannerSlotLoadingPreview) private var loadingPreview
+
     /// Gate-aware reload seam (#341).
     private let reloadCoordinator: BannerReloadCoordinator
 
@@ -175,9 +185,13 @@ public struct BannerSlotView: View {
     private var statusContent: some View {
         switch status {
         case .loading, .notInitialized:
-            ProgressView()
-                .controlSize(.small)
-                .tint(progressTint)
+            if let loadingPreview {
+                loadingPreview
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(progressTint)
+            }
         case let .loaded(handle):
             // The real banner view, type-erased across the AdsAdMob border
             // (#441). When no host is wired (fakes / macOS NoopAdProvider) we
@@ -253,5 +267,24 @@ public struct BannerSlotView: View {
         withAnimation(.easeInOut(duration: 0.18)) {
             dismissed = true
         }
+    }
+}
+
+// MARK: - Loading-preview environment override (#732)
+
+private struct BannerSlotLoadingPreviewKey: EnvironmentKey {
+    // Always `nil` — no actual shared mutable state — so `nonisolated(unsafe)`
+    // is safe here and avoids isolating the whole `EnvironmentKey` conformance
+    // to `@MainActor` (which `AnyView?`'s non-Sendable payload would otherwise
+    // force).
+    nonisolated(unsafe) static let defaultValue: AnyView? = nil
+}
+
+public extension EnvironmentValues {
+    /// See `BannerSlotView.loadingPreview`. `nil` by default — only snapshot
+    /// tests set this, from outside `BannerSlotView`'s own view tree.
+    var bannerSlotLoadingPreview: AnyView? {
+        get { self[BannerSlotLoadingPreviewKey.self] }
+        set { self[BannerSlotLoadingPreviewKey.self] = newValue }
     }
 }
