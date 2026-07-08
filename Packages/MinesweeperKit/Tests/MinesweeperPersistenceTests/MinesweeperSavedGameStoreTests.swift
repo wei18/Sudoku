@@ -63,6 +63,9 @@ struct MinesweeperSavedGameStoreTests {
         #expect(restoredSnap.cells == snapshot.cells)
     }
 
+    // #700 CR (MAJOR 1) terminal-record filter coverage lives in
+    // MinesweeperSavedGameStoreTerminalFilterTests.swift (file_length ceiling).
+
     @Test
     func latestInProgressPicksMostRecentlyModified() async throws {
         let gateway = FakePrivateCKGateway()

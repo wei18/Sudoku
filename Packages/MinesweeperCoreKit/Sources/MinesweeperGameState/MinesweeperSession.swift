@@ -33,6 +33,12 @@ public actor MinesweeperSession {
 
     public private(set) var status: MinesweeperSessionStatus = .idle
 
+    /// Monotonic "a flag was placed at some point this game" fact (#700,
+    /// backs "No Flags Needed"). Set on the placement edge in `toggleFlag`;
+    /// never cleared by removal; persisted via the snapshot and reinstated
+    /// by `applySnapshot` so it survives save/resume.
+    private var everFlagged = false
+
     // MARK: - Clock
 
     private let clock: any MonotonicClock
@@ -70,7 +76,8 @@ public actor MinesweeperSession {
             status: status,
             elapsedSeconds: elapsedSeconds,
             mineCount: engine.mineCount,
-            flagCount: flagCount
+            flagCount: flagCount,
+            everFlagged: everFlagged
         )
     }
 
@@ -114,6 +121,12 @@ public actor MinesweeperSession {
         status = snapshot.status == .playing ? .paused : snapshot.status
         accumulatedSeconds = snapshot.elapsedSeconds
         runningSince = nil
+        // #700: reinstate the flag-history fact. Legacy blobs (pre-#700)
+        // decode `everFlagged` as false — OR in `flagCount > 0` so a save
+        // with flags currently on the board stays disqualified for
+        // "No Flags Needed" (a legacy placed-then-removed flag is
+        // unrecoverable; accepted, saves are TestFlight-internal).
+        everFlagged = snapshot.everFlagged || snapshot.flagCount > 0
     }
 
     private var flagCount: Int {
@@ -147,6 +160,12 @@ public actor MinesweeperSession {
         guard status == .idle || status == .playing else { return snapshot() }
         // Engine mutation first; see `reveal` for rationale.
         try engine.toggleFlag(row: row, col: col)
+        // #700: latch the flag-history fact on the PLACEMENT edge only (the
+        // toggled cell now reads `.flagged`) — a later removal must not
+        // un-disqualify "No Flags Needed".
+        if engine.cells[row * difficulty.columns + col].state == .flagged {
+            everFlagged = true
+        }
         try ensurePlaying()
         updateStatusFromEngine()
         return snapshot()

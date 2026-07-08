@@ -32,10 +32,14 @@ extension MinesweeperGameViewModel {
         guard snapshot.status == .won, !didEvaluateAchievements else { return }
         didEvaluateAchievements = true
 
+        // The local tally is a device fact, not a Game Center fact — it must
+        // advance even when no GC seam is threaded (offline/signed-out play
+        // still counts toward the volume achievements on the next report).
+        let cumulativeWinCount = winCountStore.incrementAndGet()
+
         guard let gameCenter else { return }
 
         let difficulty = session.difficulty
-        let cumulativeWinCount = winCountStore.incrementAndGet()
 
         var dailyWinDifficulties: Set<Difficulty> = []
         var consecutiveDailyStreak = 0
@@ -69,7 +73,9 @@ extension MinesweeperGameViewModel {
             mode: mode,
             difficulty: difficulty,
             elapsedSeconds: snapshot.elapsedSeconds,
-            flagsPlaced: flagsPlacedThisGame ? 1 : 0,
+            // Session-tracked, snapshot-persisted fact (#700 CR): survives
+            // save/resume, unlike a ViewModel-instance latch would.
+            flagsPlaced: snapshot.everFlagged ? 1 : 0,
             cumulativeWinCount: cumulativeWinCount,
             dailyWinDifficulties: dailyWinDifficulties,
             consecutiveDailyStreak: consecutiveDailyStreak

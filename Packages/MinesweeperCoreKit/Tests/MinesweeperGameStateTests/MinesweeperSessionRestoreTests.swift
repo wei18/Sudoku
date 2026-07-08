@@ -167,4 +167,89 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
     }
 }
 
+// MARK: - everFlagged persistence (#700 CR)
+
+@Suite struct MinesweeperSessionEverFlaggedTests {
+
+    /// Find a hidden non-revealed cell to flag after the first reveal.
+    private func firstHiddenCell(in snap: MinesweeperSessionSnapshot) -> (row: Int, col: Int)? {
+        for r in 0..<snap.rows {
+            for c in 0..<snap.columns where snap.cell(row: r, col: c).state == .hidden {
+                return (r, c)
+            }
+        }
+        return nil
+    }
+
+    @Test("Place-then-remove keeps everFlagged latched — removal never un-disqualifies")
+    func placeThenRemoveKeepsEverFlagged() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 7, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let snap = await session.snapshot()
+        #expect(snap.everFlagged == false)
+        let target = try #require(firstHiddenCell(in: snap))
+
+        _ = try await session.toggleFlag(row: target.row, col: target.col)
+        let afterRemove = try await session.toggleFlag(row: target.row, col: target.col)
+        #expect(afterRemove.flagCount == 0)
+        #expect(afterRemove.everFlagged == true)
+    }
+
+    @Test("everFlagged survives JSON round-trip + restore, even with zero flags on the board")
+    func everFlaggedSurvivesRestore() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 7, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let target = try #require(firstHiddenCell(in: await session.snapshot()))
+        _ = try await session.toggleFlag(row: target.row, col: target.col)
+        _ = try await session.toggleFlag(row: target.row, col: target.col) // removed again
+        let snap = await session.snapshot()
+
+        let blob = try JSONEncoder().encode(snap)
+        let decoded = try JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: blob)
+        #expect(decoded.everFlagged == true)
+
+        let restored = await MinesweeperSession.restore(from: decoded, clock: FakeClock())
+        let restoredSnap = await restored.snapshot()
+        #expect(restoredSnap.everFlagged == true)
+    }
+
+    @Test("Legacy blob without the everFlagged key decodes as false (pre-#700 back-compat)")
+    func legacyBlobDecodesEverFlaggedFalse() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 7, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let blob = try JSONEncoder().encode(await session.snapshot())
+
+        // Simulate a pre-#700 save: strip the key from the encoded JSON.
+        var json = try #require(
+            try JSONSerialization.jsonObject(with: blob) as? [String: Any]
+        )
+        json.removeValue(forKey: "everFlagged")
+        let legacyBlob = try JSONSerialization.data(withJSONObject: json)
+
+        let decoded = try JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: legacyBlob)
+        #expect(decoded.everFlagged == false)
+    }
+
+    @Test("Restoring a legacy save with flags on the board conservatively sets everFlagged")
+    func restoreLegacySaveWithFlagsOnBoardSetsEverFlagged() async throws {
+        let session = MinesweeperSession(difficulty: .beginner, seed: 7, clock: FakeClock())
+        _ = try await session.reveal(row: 4, col: 4)
+        let target = try #require(firstHiddenCell(in: await session.snapshot()))
+        _ = try await session.toggleFlag(row: target.row, col: target.col) // flag stays placed
+        let snap = await session.snapshot()
+
+        // Simulate the pre-#700 shape: same board, everFlagged not recorded.
+        let legacy = MinesweeperSessionSnapshot(
+            difficulty: snap.difficulty, seed: snap.seed, cells: snap.cells,
+            status: snap.status, elapsedSeconds: snap.elapsedSeconds,
+            mineCount: snap.mineCount, flagCount: snap.flagCount,
+            everFlagged: false
+        )
+        let restored = await MinesweeperSession.restore(from: legacy, clock: FakeClock())
+        let restoredSnap = await restored.snapshot()
+        #expect(restoredSnap.flagCount == 1)
+        #expect(restoredSnap.everFlagged == true)
+    }
+}
+
 // swiftlint:enable identifier_name

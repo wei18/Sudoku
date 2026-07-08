@@ -67,10 +67,6 @@ public final class MinesweeperGameViewModel {
     /// `didSubmitWin` never latches for (see `submitDailyTimeIfWon`'s early
     /// `mode == .daily` return).
     var didEvaluateAchievements = false
-    /// Latches `true` the first time a `toggleFlag` call INCREASES the flag
-    /// count — i.e. the player placed a flag at some point this game, even if
-    /// later removed. Backs "No Flags Needed" (#700).
-    var flagsPlacedThisGame = false
 
     // MARK: - Audio (#330 P2)
 
@@ -270,8 +266,14 @@ public final class MinesweeperGameViewModel {
         // won state.
         await submitDailyTimeIfWon()
         // #700: achievement evaluation is NOT daily-gated (unlike the submit
-        // above) — most MS achievements apply to practice wins too.
-        await evaluateAchievementsIfWon()
+        // above) — most MS achievements apply to practice wins too. Gated on
+        // the LIVE transition (pre-reveal status was not already .won): a
+        // no-op reveal on a restored already-won board returns the same .won
+        // snapshot, and re-evaluating it would inflate the non-idempotent
+        // cumulative win tally (that win was counted when it happened live).
+        if previousStatus != .won {
+            await evaluateAchievementsIfWon()
+        }
         // #455: a terminal board persists immediately — `wireStatus` maps
         // won/lost → "completed", which removes it from the resume-candidate
         // set (the upsert also covers a board that was never saved mid-play).
@@ -318,12 +320,10 @@ public final class MinesweeperGameViewModel {
         // and shouldn't click). SFX only — no haptic on a routine tap.
         if snapshot.flagCount != flagsBefore {
             soundPlayer.play(.minesweeperFlag)
-            // #700: latch "a flag was placed this game" on the INCREASE edge
-            // only — a later removal must not un-disqualify "No Flags Needed".
-            if snapshot.flagCount > flagsBefore {
-                flagsPlacedThisGame = true
-            }
         }
+        // #700: the "a flag was ever placed" fact (backs "No Flags Needed")
+        // is tracked by the session and rides `snapshot.everFlagged` — no
+        // ViewModel-instance latch, so it survives save/resume.
     }
 
     // MARK: - Audio classification (#330 P2)
