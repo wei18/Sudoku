@@ -12,6 +12,7 @@
 // paused) pins the visual outcome.
 
 import Foundation
+import SnapshotTesting
 import SwiftUI
 import Testing
 
@@ -86,5 +87,50 @@ struct BoardViewBannerTests {
         #expect(allowed == false)
         _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
     }
+
+    // MARK: - #723 snapshots — ads-enabled, ad NOT loaded, slot reserved
+    //
+    // First repo fixtures rendering the banner slot's VISIBLE (ads-enabled)
+    // state — every other Home/Board snapshot seeds hasPurchasedRemoveAds:
+    // true, so the slot collapses in all of them (#723 acceptance note from
+    // #725's review). The gate is resolved ONCE before the view is built so
+    // `AdGate.lastKnownShouldShowBanner == true` seeds the slot and the very
+    // first layout reserves the 50pt rect (spinner placeholder, no ad) —
+    // pinning both the #723 reservation and #725's page-background slot.
+    // `.tolerantImage` per the board-suite policy (#586: AA-heavy boards).
+
+    #if canImport(AppKit)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAdsEnabledUnloadedSlot_iPhone_light() async throws {
+        let vm = try makeViewModel(paused: false)
+        let gate = makeAdGate(allow: true)
+        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let host = hostingView(
+            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .tolerantImage, named: "Board-iPhone-light-banner-reserved")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAdsEnabledUnloadedSlot_iPhone_dark() async throws {
+        let vm = try makeViewModel(paused: false)
+        let gate = makeAdGate(allow: true)
+        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let host = hostingView(
+            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .dark,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .tolerantImage, named: "Board-iPhone-dark-banner-reserved")
+        }
+    }
+    #endif
 }
 // swiftlint:enable identifier_name

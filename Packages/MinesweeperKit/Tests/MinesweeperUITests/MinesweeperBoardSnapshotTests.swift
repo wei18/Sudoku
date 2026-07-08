@@ -22,6 +22,8 @@ import Testing
 @testable import MinesweeperUI
 
 import MinesweeperEngine
+import MonetizationCore
+import MonetizationTesting
 
 @MainActor
 @Suite("MinesweeperBoardView — themed snapshots")
@@ -56,6 +58,54 @@ struct MinesweeperBoardSnapshotTests {
             of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
             as: .tolerantImage,
             named: "Board-iPad-light-beginner-covered",
+            record: SnapshotMode.recordMode
+        )
+    }
+
+    // MARK: - #723 — ads-enabled, ad NOT loaded, slot reserved
+    //
+    // Mirrors SudokuKit's BoardViewBannerTests #723 fixtures (mirror
+    // principle / verify-changes-on-both-apps). The gate is resolved once
+    // before the view is built so `AdGate.lastKnownShouldShowBanner == true`
+    // seeds the shared `BannerSlotView` and the first layout reserves the
+    // 50pt rect (spinner placeholder, no ad) — the board never reflows when
+    // the banner content later arrives.
+
+    private func adsAllowedGate() -> AdGate {
+        AdGate(store: FakeAdGateStateStore(
+            initial: AdGateState(
+                firstLaunchAt: Date(timeIntervalSince1970: 0),
+                hasPurchasedRemoveAds: false
+            )
+        ))
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAdsEnabledUnloadedSlot_iPhone_light() async {
+        let gate = adsAllowedGate()
+        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let view = MinesweeperBoardView(
+            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate
+        )
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light),
+            as: .tolerantImage,
+            named: "Board-iPhone-light-banner-reserved",
+            record: SnapshotMode.recordMode
+        )
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAdsEnabledUnloadedSlot_iPhone_dark() async {
+        let gate = adsAllowedGate()
+        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let view = MinesweeperBoardView(
+            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate
+        )
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark),
+            as: .tolerantImage,
+            named: "Board-iPhone-dark-banner-reserved",
             record: SnapshotMode.recordMode
         )
     }
