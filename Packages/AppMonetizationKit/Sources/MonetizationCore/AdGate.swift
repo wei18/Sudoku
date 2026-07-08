@@ -1,4 +1,5 @@
 public import Foundation
+import Synchronization
 
 // MARK: - AdGateState
 
@@ -91,6 +92,17 @@ public actor AdGate {
     private let calendar: Calendar
     private let onPersistenceError: (@Sendable (any Error) -> Void)?
     private var cachedState: AdGateState?
+    /// Session cache of the most recent `shouldShowBanner` resolution,
+    /// synchronously readable from any isolation via
+    /// `lastKnownShouldShowBanner`. UI layout-reservation seam (#723):
+    /// `BannerSlotView` reads this at init so a screen entered AFTER the
+    /// gate has resolved once (e.g. Board after Home) reserves its 50pt
+    /// slot from the very first layout instead of reflowing the board
+    /// when the async resolution lands mid-game. `nil` until the first
+    /// resolution of the session — the slot then keeps its legacy
+    /// collapsed-while-pending behavior. Cleared to `false` eagerly on
+    /// dismiss/purchase so a stale `true` can't over-reserve.
+    private nonisolated let lastResolvedShouldShow = Mutex<Bool?>(nil)
     /// Last `lastSeenWallClock` value we actually persisted via `saveState`.
     /// Separate from `cachedState.lastSeenWallClock` because the cache is
     /// advanced on every forward step (for in-session tamper checks), while
@@ -130,7 +142,27 @@ public actor AdGate {
     /// the value (no other code change needed).
     public static let gracePeriodDays: TimeInterval = 0
 
+    /// Last resolved `shouldShowBanner` decision of this session, readable
+    /// synchronously (no actor hop). `nil` before the first resolution.
+    /// Consumed by `BannerSlotView` (#723) to reserve the banner's 50pt
+    /// height from the first layout on screens entered after the gate has
+    /// already resolved once. This is a HINT only — the decision logic
+    /// itself is unchanged and every slot still awaits the real
+    /// `shouldShowBanner` before loading anything.
+    public nonisolated var lastKnownShouldShowBanner: Bool? {
+        lastResolvedShouldShow.withLock { $0 }
+    }
+
     public func shouldShowBanner(now: Date) async -> Bool {
+        let decision = await resolveShouldShowBanner(now: now)
+        lastResolvedShouldShow.withLock { $0 = decision }
+        return decision
+    }
+
+    /// The unchanged decision logic (docs/v1/design.md §How.3); split out of
+    /// `shouldShowBanner` so the public entry point can record the resolved
+    /// decision into `lastResolvedShouldShow` at every exit path (#723).
+    private func resolveShouldShowBanner(now: Date) async -> Bool {
         do {
             let state = try await currentState()
             // 1. Purchased → permanently suppressed.
@@ -172,6 +204,10 @@ public actor AdGate {
     }
 
     public func recordBannerDismissed(now: Date) async {
+        // Eagerly flip the layout-reservation hint (#723): a slot mounted
+        // after a same-day dismiss must not reserve space on a stale `true`.
+        // Day-rollover reopening is handled by the next real resolution.
+        lastResolvedShouldShow.withLock { $0 = false }
         await mutate { state in
             state.dismissedDate = self.calendar.startOfDay(for: now)
             state.lastSeenWallClock = max(state.lastSeenWallClock ?? .distantPast, now)
@@ -179,6 +215,9 @@ public actor AdGate {
     }
 
     public func recordPurchase() async {
+        // Eagerly flip the layout-reservation hint (#723) — a purchaser's
+        // slots must collapse immediately, not after the next resolution.
+        lastResolvedShouldShow.withLock { $0 = false }
         await mutate { state in
             state.hasPurchasedRemoveAds = true
         }

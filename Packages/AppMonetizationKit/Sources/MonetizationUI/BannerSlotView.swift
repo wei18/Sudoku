@@ -8,6 +8,16 @@
 // Contract (design.md v2 §How.3):
 //   - Exactly 50pt visible when shown; 0pt (EmptyView) when hidden — no
 //     shimmer / skeleton / teaser (Brand "calm" contract).
+//   - #723 layout stability: when the gate's LAST resolution this session
+//     allowed ads (`AdGate.lastKnownShouldShowBanner == true`), the slot
+//     occupies its 50pt from the FIRST layout — before the async gate
+//     re-resolution and before any ad loads — so the surrounding screen
+//     (e.g. the Sudoku board) never reflows when the banner content
+//     arrives. Loading only fills the already-reserved rect; it never
+//     resizes it. Gate-denied (Remove Ads purchased / dismissed today)
+//     still collapses to EmptyView. Before the session's first-ever
+//     resolution the hint is `nil` and the slot keeps the legacy
+//     collapsed-while-pending behavior (cold-launch first screen only).
 //   - Dismiss ✕ writes through to `AdGate.recordBannerDismissed` AND hides the
 //     slot for the rest of the session.
 //   - Honest status captions: loading (ProgressView), failed ("Ad unavailable"),
@@ -91,6 +101,13 @@ public struct BannerSlotView: View {
         self.captionColor = captionColor
         self.dismissTint = dismissTint
         self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
+        // #723: seed the show/hide decision from the gate's synchronous
+        // session hint so a slot mounted after the gate has resolved once
+        // (Board entered from Home, hub screens, …) reserves its 50pt from
+        // the very first layout. `nil` (nothing resolved yet this session)
+        // keeps the legacy collapsed-pending default; the authoritative
+        // async resolution in `resolveGateAndLoad` overwrites this either way.
+        _shouldShow = State(initialValue: adGate.lastKnownShouldShowBanner)
     }
 
     public var body: some View {
@@ -100,7 +117,10 @@ public struct BannerSlotView: View {
             } else if shouldShow == true {
                 banner
             } else {
-                // Gate decision pending. Reserve zero space; the slot only
+                // Gate decision pending AND no session hint (`shouldShow` is
+                // seeded from `AdGate.lastKnownShouldShowBanner` in init, so
+                // this branch only runs before the session's first-ever
+                // resolution — #723). Reserve zero space; the slot
                 // materializes once `shouldShow == true` resolves.
                 EmptyView()
             }
