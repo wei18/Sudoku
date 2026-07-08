@@ -63,6 +63,23 @@ public struct SettingsView<Banner: View>: View {
     private let presentGameCenter: (@MainActor () -> Void)?
     @Environment(\.theme) private var theme
 
+    /// #714: resolves the Game Center row's tap action, asserting in
+    /// debug/test if `presentGameCenter` was never injected — the exact
+    /// pre-#685 bug shape (unguarded `GameCenterDashboard.present()`), so a
+    /// future Live.swift refactor that drops the injection fails CI instead
+    /// of silently regressing. Mirrors `GameHomeViewModel.select`'s
+    /// `presentLeaderboard` assert. `internal` (not `private`) so
+    /// `SettingsViewTests` can invoke it directly and prove the injected
+    /// closure — not the fallback — actually fires.
+    @MainActor
+    func resolvedOnGameCenter() {
+        assert(
+            presentGameCenter != nil,
+            "presentGameCenter not wired — Settings Game Center row falls back to the unguarded pre-#685 GameCenterDashboard.present()"
+        )
+        (presentGameCenter ?? { GameCenterDashboard.present() })()
+    }
+
     public init(
         viewModel: SettingsViewModel,
         monetizationController: MonetizationStateController? = nil,
@@ -107,7 +124,7 @@ public struct SettingsView<Banner: View>: View {
             // focus — opens the full listing). #560: shared `GameCenterDashboard`
             // in GameCenterClient. #685: signed-out taps now raise the same
             // alert as the Home leaderboard card instead of silently no-op'ing.
-            onGameCenter: presentGameCenter ?? { GameCenterDashboard.present() },
+            onGameCenter: resolvedOnGameCenter,
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
             purchases: {

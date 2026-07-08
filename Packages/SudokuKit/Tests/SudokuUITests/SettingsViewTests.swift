@@ -121,8 +121,12 @@ struct SettingsViewTests {
     // #685: the Settings Game Center row previously always called
     // `GameCenterDashboard.present()` directly with no signed-out guard.
     // `presentGameCenter` (when injected) now takes over `onGameCenter` from
-    // that hardcoded default — proves the parameter actually threads through
-    // to `SettingsScreen`, not just that the default path still builds.
+    // that hardcoded default. #714: the original version of this test only
+    // proved construction/render doesn't eagerly invoke the closure — it would
+    // stay green even if `presentGameCenter` were never threaded to
+    // `SettingsScreen`. Now drives `resolvedOnGameCenter()` (the exact
+    // closure passed as `onGameCenter:`) directly to prove the injected
+    // presenter — not the unguarded fallback — actually fires.
     @Test func settingsViewUsesInjectedPresentGameCenterOverDefault() {
         let viewModel = SettingsViewModel(persistence: FakePersistence())
         var called = false
@@ -132,6 +136,8 @@ struct SettingsViewTests {
         )
         _ = view.body
         #expect(called == false, "constructing/rendering must not itself invoke the closure")
+        view.resolvedOnGameCenter()
+        #expect(called == true, "resolvedOnGameCenter must invoke the injected presentGameCenter, not the unguarded default")
     }
 
     @Test func settingsViewConstructsWithNoticesSection() {
