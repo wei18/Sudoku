@@ -227,14 +227,20 @@ internal struct Reconciler: Sendable {
             }
 
             for locale in targetLocales {
+                // Key-based lookup (not the shortId-based overload): the
+                // shortId-based helper hardcodes the un-namespaced
+                // `gc.achievement.*` shape, which is only correct for Sudoku.
+                // `ach.titleKey` etc. already carry the app-scoped namespace
+                // (e.g. `gc.minesweeper.achievement.*` for MS, #700) via
+                // `AchievementConfig`'s `locKeyPrefix` derivation.
                 guard let title = XCStringsParser.achievementTitle(
-                    in: strings, locale: locale, shortId: ach.shortId
+                    in: strings, locale: locale, key: ach.titleKey
                 ),
                 let desc = XCStringsParser.achievementDescription(
-                    in: strings, locale: locale, shortId: ach.shortId
+                    in: strings, locale: locale, key: ach.descriptionKey
                 ),
                 let unearned = XCStringsParser.achievementUnearnedDescription(
-                    in: strings, locale: locale, shortId: ach.shortId
+                    in: strings, locale: locale, key: ach.unearnedDescriptionKey
                 ) else { continue }
                 // xcstrings → ASC code mapping; see leaderboard branch
                 // above. Same rationale (issue #31).
@@ -370,12 +376,11 @@ internal struct ConfigSnapshot: Sendable, Equatable {
     /// (the reconciler silently no-ops on products not found in the target app).
     ///
     /// - Sudoku: 3 elapsed-time daily leaderboards + 11 Sudoku achievements.
-    /// - Minesweeper: 3 elapsed-time daily leaderboards + Sudoku achievements
-    ///   (GC plan/apply filters to leaderboard-only for non-sudoku apps).
+    /// - Minesweeper: 3 elapsed-time daily leaderboards + 11 MS achievements (#700).
     internal static func live(for app: Config.GCApp) -> ConfigSnapshot {
         ConfigSnapshot(
             leaderboards: Config.leaderboards(for: app),
-            achievements: Config.achievements,
+            achievements: Config.achievements(for: app),
             iaps: Config.iaps
         )
     }

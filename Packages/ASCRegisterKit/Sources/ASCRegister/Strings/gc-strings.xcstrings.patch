@@ -16,17 +16,22 @@
 //   - zh-Hant → filled (per docs/v1/design.md §How.3.1 table; achievements drafted
 //               to match the §How.3.2 trigger semantics)
 //   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
-//     translation-agent flow (foundations.md §L10n).
+//     translation-agent flow (foundations.md §L10n). Exception: the 33 MS
+//     achievement keys (#700) ship fully translated in all 7 locales
+//     (ai-translated-localization pass, en source / zh-Hant primary).
 //
 // File extension `.xcstrings.patch` is non-standard; Xcode will NOT try to
 // parse this as a string catalog. The wrapping `.txt`-style header comments
 // above are stripped from the JSON object below — everything from the
 // opening `{` to the matching closing `}` is valid JSON.
 //
-// Total: 49 keys × 7 locales = 343 string units (27 Sudoku gc.* v1 +
-// 15 v2.6 achievement keys + 3 MS gc.minesweeper.leaderboard.* +
-// 1 Tiles2048 gc.tiles2048.leaderboard.* + 3 Tiles2048 gc.tiles2048.achievement.*).
-// 49 × 2 = 98 filled (en + zh-Hant), 49 × 5 = 245 <TRANSLATE>.
+// Total: 76 keys × 7 locales = 532 string units (3 Sudoku gc.leaderboard.* +
+// 33 Sudoku gc.achievement.* [11 achievements × 3 keys] +
+// 3 MS gc.minesweeper.leaderboard.* + 1 Tiles2048 gc.tiles2048.leaderboard.* +
+// 3 Tiles2048 gc.tiles2048.achievement.* [1 achievement × 3 keys] +
+// 33 MS gc.minesweeper.achievement.* [11 achievements × 3 keys, #700]).
+// Filled: 76 × 2 (en + zh-Hant) + 33 × 5 (MS achievement keys, all 7 locales,
+// #700) = 317; remaining <TRANSLATE> = 43 × 5 = 215.
 
 {
   "strings" : {
@@ -517,6 +522,380 @@
         "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
         "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+      }
+    },
+
+    "gc.minesweeper.achievement.first_sweep.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "First Sweep" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首次掃雷" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "初クリア" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "首次扫雷" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Primer barrido" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "กวาดครั้งแรก" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "첫 승리" } }
+      }
+    },
+    "gc.minesweeper.achievement.first_sweep.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won your first game of Minesweeper." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "獲得你的第一場踩地雷勝利。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "マインスイーパーで初めての勝利を収めた。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "赢得了你的第一场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste tu primera partida de Buscaminas." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper เกมแรกของคุณ" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "지뢰찾기에서 첫 승리를 거뒀어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.first_sweep.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win any game of Minesweeper, Daily or Practice, to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一場踩地雷（每日或練習）即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーまたは練習でマインスイーパーに1回勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在每日或练习模式中赢得任意一场扫雷即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana cualquier partida de Buscaminas, diaria o de práctica, para conseguirlo." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper เกมใดก็ได้ ทั้งประจำวันหรือฝึกฝน เพื่อรับรางวัลนี้" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 또는 연습에서 지뢰찾기 한 판을 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.daily.complete_one.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Debut" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日初體驗" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーデビュー" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日初体验" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Debut diario" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ประเดิมประจำวัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 데뷔" } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.complete_one.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Completed your first Daily Minesweeper." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首次完成每日踩地雷挑戰。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "初めてのデイリーマインスイーパーをクリアした。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成了你的第一场每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Completaste tu primer Buscaminas diario." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "เล่น Minesweeper ประจำวันสำเร็จเป็นครั้งแรก" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "첫 데일리 지뢰찾기를 완료했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.complete_one.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Finish any Daily Minesweeper to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一每日踩地雷挑戰即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーマインスイーパーを1回クリアすると獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成任意一场每日扫雷即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Termina cualquier Buscaminas diario para conseguirlo." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "เล่น Minesweeper ประจำวันให้สำเร็จหนึ่งครั้งเพื่อรับรางวัลนี้" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 지뢰찾기 한 판을 완료하면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.wins.complete_10.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Sweeper" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "掃雷新手" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "スイーパー" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "扫雷新手" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Desminador" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "นักกวาดระเบิด" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "스위퍼" } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_10.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won 10 games of Minesweeper." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "累計獲勝 10 場踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "マインスイーパーで通算10勝した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "累计赢得 10 场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste 10 partidas de Buscaminas." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper ครบ 10 เกม" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "지뢰찾기에서 10승을 달성했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_10.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win 10 games of Minesweeper, Daily and Practice combined." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於每日與練習模式合計獲勝 10 場。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーと練習の合計で10勝すると獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日与练习模式合计赢得 10 场即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana 10 partidas de Buscaminas entre diarias y de práctica." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ 10 เกม รวมทั้งโหมดประจำวันและฝึกฝน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리와 연습을 합쳐 10승을 달성하면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.wins.complete_50.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Veteran" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "掃雷老手" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "ベテラン" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "扫雷老手" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Veterano" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ผู้ช่ำชอง" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "베테랑" } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_50.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won 50 games of Minesweeper." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "累計獲勝 50 場踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "マインスイーパーで通算50勝した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "累计赢得 50 场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste 50 partidas de Buscaminas." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper ครบ 50 เกม" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "지뢰찾기에서 50승을 달성했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_50.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win 50 games of Minesweeper, Daily and Practice combined." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於每日與練習模式合計獲勝 50 場。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーと練習の合計で50勝すると獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日与练习模式合计赢得 50 场即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana 50 partidas de Buscaminas entre diarias y de práctica." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ 50 เกม รวมทั้งโหมดประจำวันและฝึกฝน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리와 연습을 합쳐 50승을 달성하면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.wins.complete_200.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Master" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "掃雷大師" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "マスター" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "扫雷大师" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Maestro" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ปรมาจารย์" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "마스터" } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_200.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won 200 games of Minesweeper." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "累計獲勝 200 場踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "マインスイーパーで通算200勝した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "累计赢得 200 场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste 200 partidas de Buscaminas." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper ครบ 200 เกม" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "지뢰찾기에서 200승을 달성했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.wins.complete_200.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win 200 games of Minesweeper, Daily and Practice combined." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "於每日與練習模式合計獲勝 200 場。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリーと練習の合計で200勝すると獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日与练习模式合计赢得 200 场即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana 200 partidas de Buscaminas entre diarias y de práctica." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ 200 เกม รวมทั้งโหมดประจำวันและฝึกฝน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리와 연습을 합쳐 200승을 달성하면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.expert.first_win.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Expert Cleared" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "高級突破" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "上級クリア" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "高级突破" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Avanzado superado" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "พิชิตขั้นสูง" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "고급 클리어" } }
+      }
+    },
+    "gc.minesweeper.achievement.expert.first_win.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a game at Expert difficulty." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成一場高級難度的踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "上級の難易度で勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在高级难度赢得一场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste una partida en el nivel Avanzado." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกมในระดับขั้นสูง" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "고급 난이도에서 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.expert.first_win.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win any game at Expert difficulty to earn this." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一場高級難度的踩地雷即可獲得。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "上級の難易度で1回勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在高级难度赢得任意一场即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana cualquier partida en el nivel Avanzado para conseguirlo." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกมใดก็ได้ในระดับขั้นสูงเพื่อรับรางวัลนี้" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "고급 난이도에서 한 판을 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.daily.full_spectrum.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Full Spectrum" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全難度制霸" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "全難易度制覇" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全难度制霸" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Todos los niveles" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ครบทุกระดับ" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "전 난이도 정복" } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.full_spectrum.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a Daily Minesweeper on all three difficulties." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已在初級、中級、高級三種難度都完成過每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "3つの難易度すべてでデイリーマインスイーパーに勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已在全部三种难度赢得每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste el Buscaminas diario en las tres dificultades." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันครบทั้งสามระดับความยาก" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "세 가지 난이도 모두에서 데일리 지뢰찾기에 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.full_spectrum.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win at least one Daily Minesweeper at Beginner, Intermediate, and Expert." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "在初級、中級、高級三種難度各完成至少一場每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "初級・中級・上級それぞれでデイリーに1勝すると獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在初级、中级、高级各赢得至少一场每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana al menos un Buscaminas diario en Principiante, Intermedio y Avanzado." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันอย่างน้อยหนึ่งเกมในระดับมือใหม่ ระดับกลาง และขั้นสูง" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "초급, 중급, 고급에서 각각 데일리 지뢰찾기를 한 번 이상 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.skill.no_flags.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "No Flags Needed" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "不插旗也行" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "フラグいらず" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "不插旗也行" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Sin banderas" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ไม่ต้องปักธง" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "깃발 없이" } }
+      }
+    },
+    "gc.minesweeper.achievement.skill.no_flags.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a game without placing a single flag." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "全程未插旗即完成一場踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "フラグを1本も立てずに勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全程未插旗即赢得一场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste una partida sin colocar ni una bandera." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกมโดยไม่ปักธงแม้แต่อันเดียว" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "깃발을 하나도 꽂지 않고 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.skill.no_flags.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win any game of Minesweeper without placing a single flag." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成任一場踩地雷，且過程中完全不插旗。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "フラグを1本も立てずに1回勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在完全不插旗的情况下赢得任意一场扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana cualquier partida de Buscaminas sin colocar ni una bandera." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกม Minesweeper เกมใดก็ได้โดยไม่ปักธงเลย" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "깃발을 하나도 꽂지 않고 지뢰찾기 한 판을 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.skill.lightning_expert.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Lightning Sweep" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "閃電掃雷" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "電光石火" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "闪电扫雷" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Barrido relámpago" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "เร็วดั่งสายฟ้า" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "번개 클리어" } }
+      }
+    },
+    "gc.minesweeper.achievement.skill.lightning_expert.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a game at Expert difficulty in under 3 minutes." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "在 3 分鐘內完成一場高級難度的踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "上級の難易度で3分以内に勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 3 分钟内赢得一场高级难度扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste una partida en el nivel Avanzado en menos de 3 minutos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกมระดับขั้นสูงภายใน 3 นาที" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "고급 난이도에서 3분 안에 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.skill.lightning_expert.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win a game at Expert difficulty in under 3 minutes." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "在 3 分鐘內完成任一場高級難度的踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "上級の難易度で3分以内に勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 3 分钟内赢得一场高级难度扫雷即可获得。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana una partida en el nivel Avanzado en menos de 3 minutos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะเกมระดับขั้นสูงภายใน 3 นาทีเพื่อรับรางวัลนี้" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "고급 난이도에서 3분 안에 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.daily.streak_7.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Week Streak" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "一週連勝" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "7日連続" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一周连胜" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Racha semanal" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ต่อเนื่อง 7 วัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "7일 연속" } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.streak_7.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a Daily Minesweeper on 7 consecutive days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 7 天完成每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "7日連続でデイリーマインスイーパーに勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连续 7 天赢得每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste el Buscaminas diario durante 7 días seguidos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันติดต่อกัน 7 วัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "7일 연속으로 데일리 지뢰찾기에 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.streak_7.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win a Daily Minesweeper on 7 consecutive UTC days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 7 個 UTC 日各完成至少 1 場每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "UTCで7日連続デイリーに勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连续 7 个 UTC 日各赢得至少一场每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana el Buscaminas diario durante 7 días UTC consecutivos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันติดต่อกัน 7 วัน (ตามเวลา UTC)" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "UTC 기준 7일 연속으로 데일리 지뢰찾기를 이기면 획득해요." } }
+      }
+    },
+
+    "gc.minesweeper.achievement.daily.streak_30.title" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Month Streak" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "一月連勝" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "30日連続" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一月连胜" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Racha mensual" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ต่อเนื่อง 30 วัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "30일 연속" } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.streak_30.description" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Won a Daily Minesweeper on 30 consecutive days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 30 天完成每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "30日連続でデイリーマインスイーパーに勝利した。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连续 30 天赢得每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Ganaste el Buscaminas diario durante 30 días seguidos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันติดต่อกัน 30 วัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "30일 연속으로 데일리 지뢰찾기에 승리했어요." } }
+      }
+    },
+    "gc.minesweeper.achievement.daily.streak_30.unearnedDescription" : {
+      "localizations" : {
+        "en"      : { "stringUnit" : { "state" : "translated", "value" : "Win a Daily Minesweeper on 30 consecutive UTC days." } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 30 個 UTC 日各完成至少 1 場每日踩地雷。" } },
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "UTCで30日連続デイリーに勝つと獲得。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连续 30 个 UTC 日各赢得至少一场每日扫雷。" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Gana el Buscaminas diario durante 30 días UTC consecutivos." } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ชนะ Minesweeper ประจำวันติดต่อกัน 30 วัน (ตามเวลา UTC)" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "UTC 기준 30일 연속으로 데일리 지뢰찾기를 이기면 획득해요." } }
       }
     }
   }

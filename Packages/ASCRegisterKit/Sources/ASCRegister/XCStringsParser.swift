@@ -113,6 +113,22 @@ internal struct XCStringsParser: Sendable {
         data[locale]?["gc.achievement.\(shortId).unearnedDescription"]
     }
 
+    /// Look up an achievement title/description/unearnedDescription by its
+    /// explicit xcstrings key. App-scoped keys (Sudoku `gc.achievement.*`, MS
+    /// `gc.minesweeper.achievement.*`, #700) flow through
+    /// `AchievementConfig.titleKey` / `.descriptionKey` / `.unearnedDescriptionKey`.
+    internal static func achievementTitle(in data: LocalizedKeys, locale: String, key: String) -> String? {
+        data[locale]?[key]
+    }
+
+    internal static func achievementDescription(in data: LocalizedKeys, locale: String, key: String) -> String? {
+        data[locale]?[key]
+    }
+
+    internal static func achievementUnearnedDescription(in data: LocalizedKeys, locale: String, key: String) -> String? {
+        data[locale]?[key]
+    }
+
     /// `iap.<shortId>.name` — ASC `inAppPurchaseLocalizations.name`.
     internal static func iapName(
         in data: LocalizedKeys,

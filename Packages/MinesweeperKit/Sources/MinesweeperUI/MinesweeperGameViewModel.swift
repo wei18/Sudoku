@@ -55,6 +55,23 @@ public final class MinesweeperGameViewModel {
     /// native dashboard / `RootView.task` performs the handshake.
     var didAttemptAuth = false
 
+    // MARK: - Achievements (#700)
+
+    /// Device-local cumulative win tally backing the "Volume" achievements.
+    /// Internal (not private) so `evaluateAchievementsIfWon()` (separate file,
+    /// same rationale as `submitDailyTimeIfWon`) can read it.
+    let winCountStore: MinesweeperWinCountStore
+    /// Guards against re-evaluating achievements if the snapshot re-publishes
+    /// `.won`. A SEPARATE latch from `didSubmitWin`: most MS achievements are
+    /// NOT daily-gated, so they must still fire on a practice win, which
+    /// `didSubmitWin` never latches for (see `submitDailyTimeIfWon`'s early
+    /// `mode == .daily` return).
+    var didEvaluateAchievements = false
+    /// Latches `true` the first time a `toggleFlag` call INCREASES the flag
+    /// count — i.e. the player placed a flag at some point this game, even if
+    /// later removed. Backs "No Flags Needed" (#700).
+    var flagsPlacedThisGame = false
+
     // MARK: - Audio (#330 P2)
 
     /// Gameplay-audio seam. Fires an `AudioEvent` (sfx + paired haptic) at each
@@ -132,7 +149,8 @@ public final class MinesweeperGameViewModel {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
-        personalRecordStore: MinesweeperPersonalRecordStore? = nil
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
+        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore()
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
@@ -142,7 +160,8 @@ public final class MinesweeperGameViewModel {
             soundPlayer: soundPlayer,
             store: store,
             recordName: recordName,
-            personalRecordStore: personalRecordStore
+            personalRecordStore: personalRecordStore,
+            winCountStore: winCountStore
         )
     }
 
@@ -156,7 +175,8 @@ public final class MinesweeperGameViewModel {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
-        personalRecordStore: MinesweeperPersonalRecordStore? = nil
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
+        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore()
     ) {
         self.session = session
         self.mode = mode
@@ -166,6 +186,7 @@ public final class MinesweeperGameViewModel {
         self.store = store
         self.recordName = recordName
         self.personalRecordStore = personalRecordStore
+        self.winCountStore = winCountStore
         self.isSeeded = false
         let difficulty = session.difficulty
         // Synchronous bootstrap: snapshot before any action is just the
@@ -200,6 +221,7 @@ public final class MinesweeperGameViewModel {
         self.store = nil
         self.recordName = nil
         self.personalRecordStore = nil
+        self.winCountStore = MinesweeperWinCountStore()
         self.snapshot = snapshot
         self.isSeeded = true
     }
@@ -213,6 +235,13 @@ public final class MinesweeperGameViewModel {
         guard !isSeeded else { return }
         snapshot = await session.snapshot()
         await submitDailyTimeIfWon()
+        // #700: deliberately NOT calling evaluateAchievementsIfWon() here.
+        // `submitDailyTimeIfWon()` is idempotent downstream (CK dedups by
+        // puzzleId, GC keeps the best time), so re-firing on a refresh over an
+        // already-won board is harmless. Achievement evaluation is NOT: it
+        // increments the cumulative win tally (`MinesweeperWinCountStore`),
+        // so it must only run on the live win transition in `reveal()` —
+        // re-opening/refreshing a terminal board must not inflate the count.
     }
 
     // MARK: - Actions
@@ -240,6 +269,9 @@ public final class MinesweeperGameViewModel {
         // (flagging never wins). Submit the best time once we cross into the
         // won state.
         await submitDailyTimeIfWon()
+        // #700: achievement evaluation is NOT daily-gated (unlike the submit
+        // above) — most MS achievements apply to practice wins too.
+        await evaluateAchievementsIfWon()
         // #455: a terminal board persists immediately — `wireStatus` maps
         // won/lost → "completed", which removes it from the resume-candidate
         // set (the upsert also covers a board that was never saved mid-play).
@@ -286,6 +318,11 @@ public final class MinesweeperGameViewModel {
         // and shouldn't click). SFX only — no haptic on a routine tap.
         if snapshot.flagCount != flagsBefore {
             soundPlayer.play(.minesweeperFlag)
+            // #700: latch "a flag was placed this game" on the INCREASE edge
+            // only — a later removal must not un-disqualify "No Flags Needed".
+            if snapshot.flagCount > flagsBefore {
+                flagsPlacedThisGame = true
+            }
         }
     }
 
@@ -350,4 +387,8 @@ public final class MinesweeperGameViewModel {
     // `submitDailyTimeIfWon()` lives in MinesweeperGameViewModel+SubmitOnWin.swift
     // — a separate file (not this class body) keeps this file under the
     // 400-line lint ceiling; see that file for the full contract.
+    //
+    // Achievement evaluation + reporting (#700): `evaluateAchievementsIfWon()`
+    // lives in MinesweeperGameViewModel+EvaluateAchievements.swift — same
+    // file-split rationale, own latch (most achievements are NOT daily-gated).
 }

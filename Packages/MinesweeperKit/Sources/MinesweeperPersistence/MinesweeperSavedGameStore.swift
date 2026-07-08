@@ -148,7 +148,10 @@ public actor MinesweeperSavedGameStore {
 
     /// `daily-<YYYY-MM-DD>-<difficulty>` → `YYYY-MM-DD`; nil for any other
     /// shape (treated as non-stale, mirroring Sudoku's tolerant parse).
-    static func dailyDay(fromRecordName recordName: String) -> String? {
+    /// `public` (not `internal`): #700's achievement streak/full-spectrum
+    /// facts reuse this exact day-parse in `MinesweeperUI` rather than
+    /// duplicating the format logic.
+    public static func dailyDay(fromRecordName recordName: String) -> String? {
         guard recordName.hasPrefix("daily-") else { return nil }
         let day = recordName.dropFirst("daily-".count).prefix(10)
         guard day.count == 10,
