@@ -19,6 +19,7 @@ import Testing
 import SudokuGameState
 import MonetizationCore
 import MonetizationTesting
+import MonetizationUI
 import SudokuPersistence
 import SudokuEngine
 @testable import SudokuUI
@@ -98,6 +99,24 @@ struct BoardViewBannerTests {
     // first layout reserves the 50pt rect (spinner placeholder, no ad) —
     // pinning both the #723 reservation and #725's page-background slot.
     // `.tolerantImage` per the board-suite policy (#586: AA-heavy boards).
+    //
+    // #732: the live `ProgressView` shown while `.loading` is a genuinely
+    // timing-dependent spin animation, so capturing it made these baselines
+    // environment-sensitive (pixel drift across machines/worktrees even on an
+    // unmodified commit). We inject a static placeholder via
+    // `BannerSlotView`'s `\.bannerSlotLoadingPreview` environment override
+    // (production default stays the real spinner) AND keep `.tolerantImage`
+    // as a second line of defense — mirrors MinesweeperKit's twin fixture.
+
+    /// Deterministic stand-in for the live `ProgressView` spinner (#732) —
+    /// same static ring look, no animation-frame dependency.
+    private var deterministicBannerLoadingPreview: AnyView {
+        AnyView(
+            Circle()
+                .strokeBorder(Color.accentColor, lineWidth: 2)
+                .frame(width: 16, height: 16)
+        )
+    }
 
     #if canImport(AppKit)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
@@ -106,7 +125,8 @@ struct BoardViewBannerTests {
         let gate = makeAdGate(allow: true)
         _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
         let host = hostingView(
-            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate),
+            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
+                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
@@ -122,7 +142,8 @@ struct BoardViewBannerTests {
         let gate = makeAdGate(allow: true)
         _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
         let host = hostingView(
-            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate),
+            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
+                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview),
             size: SnapshotLayouts.iPhone,
             colorScheme: .dark,
             sizeClass: .compact
