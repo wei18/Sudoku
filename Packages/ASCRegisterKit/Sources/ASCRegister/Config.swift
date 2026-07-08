@@ -9,6 +9,12 @@
 // ConfigConsistencyTests enforces that equality. If you change an ID here
 // you MUST change it in the production target — and bump the leaderboard
 // `.v1` suffix per §How.4.5 if the generator version changed.
+//
+// #700 (MS achievements): achievements ARE now app-split, same shape as
+// `leaderboards(for:)` — `Config.achievements(for: .minesweeper)` mirrors
+// `MinesweeperUI.MinesweeperAchievementID`'s 11 short IDs, prefixed with
+// `com.wei18.minesweeper.achievement.`. `Config.achievements` /
+// `Config.achievementPrefix` stay Sudoku-only aliases for back-compat.
 
 import Foundation
 
@@ -45,6 +51,16 @@ internal enum Config {
             switch self {
             case .sudoku:      return "gc.leaderboard"
             case .minesweeper: return "gc.minesweeper.leaderboard"
+            }
+        }
+
+        /// Bundle-id-rooted achievement prefix for this app (#700). Must equal
+        /// the app's runtime constant (`AchievementID.prefix` /
+        /// `MinesweeperAchievementID.prefix`) — pinned by ConfigConsistencyTests.
+        internal var achievementPrefix: String {
+            switch self {
+            case .sudoku:      return "com.wei18.sudoku.achievement."
+            case .minesweeper: return "com.wei18.minesweeper.achievement."
             }
         }
     }
@@ -114,6 +130,37 @@ internal enum Config {
         AchievementConfig(shortId: "daily.streak_30", points: 100, isHidden: false),
         AchievementConfig(shortId: "expert_solver", points: 30, isHidden: false),
     ]
+
+    /// Minesweeper's 11 achievements (#700, owner-approved 2026-07-06).
+    /// Short IDs + point budget MUST stay byte-equal to
+    /// `MinesweeperUI.MinesweeperAchievementID` — pinned by ConfigConsistencyTests.
+    /// Total = 650 pts (well within the 1000 pt per-app cap; ASC's 0-100
+    /// per-entry range, issue #40, is respected by every value below).
+    internal static let minesweeperAchievements: [AchievementConfig] = {
+        let prefix = GCApp.minesweeper.achievementPrefix
+        return [
+            AchievementConfig(shortId: "first_sweep", points: 10, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "daily.complete_one", points: 20, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "wins.complete_10", points: 30, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "wins.complete_50", points: 60, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "wins.complete_200", points: 100, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "expert.first_win", points: 50, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "daily.full_spectrum", points: 60, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "skill.no_flags", points: 50, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "skill.lightning_expert", points: 70, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "daily.streak_7", points: 100, isHidden: false, achievementPrefix: prefix),
+            AchievementConfig(shortId: "daily.streak_30", points: 100, isHidden: false, achievementPrefix: prefix),
+        ]
+    }()
+
+    /// App-scoped achievement set (#700). Sudoku keeps its existing `achievements`
+    /// list unchanged; Minesweeper gets its own 11-entry list.
+    internal static func achievements(for app: GCApp) -> [AchievementConfig] {
+        switch app {
+        case .sudoku:      return achievements
+        case .minesweeper: return minesweeperAchievements
+        }
+    }
 
     internal static var allAchievementShortIds: [String] {
         achievements.map(\.shortId)

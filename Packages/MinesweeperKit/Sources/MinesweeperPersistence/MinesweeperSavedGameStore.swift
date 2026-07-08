@@ -148,7 +148,10 @@ public actor MinesweeperSavedGameStore {
 
     /// `daily-<YYYY-MM-DD>-<difficulty>` → `YYYY-MM-DD`; nil for any other
     /// shape (treated as non-stale, mirroring Sudoku's tolerant parse).
-    static func dailyDay(fromRecordName recordName: String) -> String? {
+    /// `public` (not `internal`): #700's achievement streak/full-spectrum
+    /// facts reuse this exact day-parse in `MinesweeperUI` rather than
+    /// duplicating the format logic.
+    public static func dailyDay(fromRecordName recordName: String) -> String? {
         guard recordName.hasPrefix("daily-") else { return nil }
         let day = recordName.dropFirst("daily-".count).prefix(10)
         guard day.count == 10,
@@ -158,9 +161,10 @@ public actor MinesweeperSavedGameStore {
         return String(day)
     }
 
-    /// Decode the full snapshot for a known record; nil only when the record
-    /// is genuinely absent or iCloud is signed out (#515 — signed-out fetch
-    /// degrades to "no resumable game" so the Home/resume UI doesn't dead-end).
+    /// Decode the full snapshot for a known record; nil when the record is
+    /// genuinely absent, is terminal (completed/failed — not resumable, #700
+    /// CR), or iCloud is signed out (#515 — signed-out fetch degrades to
+    /// "no resumable game" so the Home/resume UI doesn't dead-end).
     /// A blob written by a NEWER schema throws `.schemaVersionTooNew`; a corrupt
     /// blob propagates its decode error — both distinguishable from "no save",
     /// so the caller can hide/delete a broken candidate instead of surfacing a
@@ -175,6 +179,16 @@ public actor MinesweeperSavedGameStore {
             throw error
         }
         guard let payload else { return nil }
+        // #700 CR: a terminal record ("completed" / "failed") is not
+        // resumable — mirror `latestInProgress()`'s status filter. Handing a
+        // `.won` session to a fresh ViewModel (whose per-instance latches are
+        // unset) would re-run win side effects, inflating the non-idempotent
+        // achievement win tally. A missing status field stays resumable
+        // (tolerant, matching `dailyDay`'s tolerant-parse philosophy).
+        if case .string(let status) = payload.fields[Field.status],
+           status != "inProgress" {
+            return nil
+        }
         if case .int(let version) = payload.fields[Field.schemaVersion],
            version > Self.currentSchemaVersion {
             throw PersistenceError.schemaVersionTooNew(

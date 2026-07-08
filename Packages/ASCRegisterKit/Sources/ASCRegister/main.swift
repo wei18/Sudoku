@@ -104,7 +104,7 @@ internal enum ASCRegisterCLI {
 
         // Validate Config sanity (app-scoped).
         let leaderboards = Config.leaderboards(for: gcApp)
-        let achievements: [AchievementConfig] = Config.achievements
+        let achievements: [AchievementConfig] = Config.achievements(for: gcApp)
         let lbIds = leaderboards.map(\.id)
         let pointsSum = achievements.reduce(0) { $0 + $1.points }
 
@@ -153,9 +153,10 @@ internal enum ASCRegisterCLI {
         }
         let strings = try XCStringsParser.parse(fileURL: URL(fileURLWithPath: xcstringsPath))
 
-        // `--app` selects the per-app leaderboard set (mirrors the metadata
-        // command, #310). Defaults to `sudoku` so existing call sites are
-        // unaffected. Achievements + IAPs are not app-split (see Config.GCApp).
+        // `--app` selects the per-app leaderboard + achievement set (mirrors
+        // the metadata command, #310). Defaults to `sudoku` so existing call
+        // sites are unaffected. IAPs coexist multi-app via productId match
+        // (see Config.GCApp / Config.iaps).
         let appName = opts["app"] ?? Config.GCApp.sudoku.rawValue
         guard let gcApp = Config.GCApp(rawValue: appName) else {
             throw CLIError.invalidValue(
@@ -203,30 +204,14 @@ internal enum ASCRegisterCLI {
             }
         }
 
-        // 3. Plan. `--app` selects the leaderboard set; the achievement / IAP
-        // slices vary by app (see ConfigSnapshot.live(for:)). For non-sudoku
-        // apps the reconciler emits achievement actions from the app's own
-        // achievement list; to keep `plan/apply` strictly leaderboard-scoped
-        // for MS (achievements are a separate future pass), filter
-        // to leaderboard actions only. Sudoku drives all resource types in one
-        // pass (historical behaviour, unchanged).
-        let allActions = Reconciler.plan(
+        // 3. Plan. `--app` selects the app-scoped leaderboard + achievement
+        // sets (see ConfigSnapshot.live(for:), #700) — every app now drives
+        // both resource types in one pass.
+        let actions = Reconciler.plan(
             config: .live(for: gcApp),
             strings: strings,
             remote: remote
         )
-        let actions: [Action] = (gcApp == .sudoku)
-            ? allActions
-            : allActions.filter { action in
-                switch action {
-                case .createLeaderboard, .updateLeaderboard, .leaderboardUnchanged,
-                     .createLeaderboardLocalization, .updateLeaderboardLocalization,
-                     .leaderboardLocalizationUnchanged:
-                    return true
-                default:
-                    return false
-                }
-            }
 
         // 4. Print plan summary; in `apply` also execute.
         print("Plan: \(actions.count) action(s) for \(gcApp.rawValue)")

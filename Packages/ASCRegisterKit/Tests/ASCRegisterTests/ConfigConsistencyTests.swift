@@ -171,6 +171,56 @@ internal struct ConfigConsistencyTests {
         #expect(Config.totalAchievementPoints == 680)
         // Sudoku prefix unchanged.
         #expect(Config.achievementPrefix == "com.wei18.sudoku.achievement.")
+        // App-scoped accessor mirrors the Sudoku-only alias (#700 app-split).
+        #expect(Config.achievements(for: .sudoku) == Config.achievements)
+    }
+
+    // MARK: - #700: Minesweeper achievements (app-split)
+
+    @Test("11 Minesweeper achievement short IDs match MinesweeperAchievementID's emitted set (#700)")
+    internal func minesweeperAchievementShortIDs() {
+        let expected: Set<String> = [
+            "first_sweep",
+            "daily.complete_one",
+            "wins.complete_10",
+            "wins.complete_50",
+            "wins.complete_200",
+            "expert.first_win",
+            "daily.full_spectrum",
+            "skill.no_flags",
+            "skill.lightning_expert",
+            "daily.streak_7",
+            "daily.streak_30",
+        ]
+        let msAchievements = Config.achievements(for: .minesweeper)
+        #expect(Set(msAchievements.map(\.shortId)) == expected)
+        #expect(msAchievements.count == 11)
+    }
+
+    @Test("Minesweeper achievement prefix matches MinesweeperAchievementID.prefix (#700)")
+    internal func minesweeperAchievementPrefix() {
+        #expect(Config.GCApp.minesweeper.achievementPrefix == "com.wei18.minesweeper.achievement.")
+        for ach in Config.achievements(for: .minesweeper) {
+            #expect(ach.fullId == "com.wei18.minesweeper.achievement.\(ach.shortId)")
+        }
+    }
+
+    @Test("Minesweeper achievement points sum to 650 and respect the 0-100 per-entry range (#700)")
+    internal func minesweeperAchievementPointsBudget() {
+        let msAchievements = Config.achievements(for: .minesweeper)
+        #expect(msAchievements.reduce(0) { $0 + $1.points } == 650)
+        for ach in msAchievements {
+            #expect(ach.points >= 0 && ach.points <= 100)
+        }
+    }
+
+    @Test("Minesweeper achievement keys derive the gc.minesweeper.achievement.* namespace (#700)")
+    internal func minesweeperAchievementLocKeyPrefix() {
+        for ach in Config.achievements(for: .minesweeper) {
+            #expect(ach.titleKey.hasPrefix("gc.minesweeper.achievement."))
+            #expect(ach.descriptionKey.hasPrefix("gc.minesweeper.achievement."))
+            #expect(ach.unearnedDescriptionKey.hasPrefix("gc.minesweeper.achievement."))
+        }
     }
 
     // MARK: - #521: locKeyPrefix derivation (no hardcoded game name in else-branch)
@@ -210,7 +260,7 @@ internal struct ConfigConsistencyTests {
         // Minesweeper validate: expects minesweeper IAP keys only.
         let msKeys = ASCRegisterCLI.expectedXCStringsKeysForTesting(
             leaderboards: Config.leaderboards(for: .minesweeper),
-            achievements: Config.achievements,
+            achievements: Config.achievements(for: .minesweeper),
             gcApp: .minesweeper
         )
         #expect(msKeys.contains("iap.minesweeper.remove_ads.name"))

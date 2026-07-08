@@ -19,6 +19,16 @@ public struct MinesweeperSessionSnapshot: Sendable, Equatable, Hashable, Codable
     public let elapsedSeconds: Int
     public let mineCount: Int
     public let flagCount: Int
+    /// Whether a flag was PLACED at any point in this game's history, even if
+    /// later removed (`flagCount` only reflects the current board). Backs the
+    /// "No Flags Needed" achievement (#700) across save/resume — a fresh
+    /// ViewModel over a restored session must not forget an earlier flag.
+    /// Back-compat: blobs written before #700 lack this key and decode as
+    /// `false`; `MinesweeperSession.applySnapshot` additionally ORs in
+    /// `flagCount > 0` as a conservative fallback for such legacy saves
+    /// (accepted historical exemption — MS saves are TestFlight-internal,
+    /// same precedent as the `wireStatus` migration note).
+    public let everFlagged: Bool
 
     public var rows: Int { difficulty.rows }
     public var columns: Int { difficulty.columns }
@@ -30,7 +40,8 @@ public struct MinesweeperSessionSnapshot: Sendable, Equatable, Hashable, Codable
         status: MinesweeperSessionStatus,
         elapsedSeconds: Int,
         mineCount: Int,
-        flagCount: Int
+        flagCount: Int,
+        everFlagged: Bool = false
     ) {
         self.difficulty = difficulty
         self.seed = seed
@@ -39,6 +50,21 @@ public struct MinesweeperSessionSnapshot: Sendable, Equatable, Hashable, Codable
         self.elapsedSeconds = elapsedSeconds
         self.mineCount = mineCount
         self.flagCount = flagCount
+        self.everFlagged = everFlagged
+    }
+
+    /// Custom decode only to give `everFlagged` a missing-key default —
+    /// pre-#700 blobs don't carry it. Encoding stays synthesized.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.difficulty = try container.decode(Difficulty.self, forKey: .difficulty)
+        self.seed = try container.decode(UInt64.self, forKey: .seed)
+        self.cells = try container.decode([Cell].self, forKey: .cells)
+        self.status = try container.decode(MinesweeperSessionStatus.self, forKey: .status)
+        self.elapsedSeconds = try container.decode(Int.self, forKey: .elapsedSeconds)
+        self.mineCount = try container.decode(Int.self, forKey: .mineCount)
+        self.flagCount = try container.decode(Int.self, forKey: .flagCount)
+        self.everFlagged = try container.decodeIfPresent(Bool.self, forKey: .everFlagged) ?? false
     }
 
     public func cell(row: Int, col: Int) -> Cell {
