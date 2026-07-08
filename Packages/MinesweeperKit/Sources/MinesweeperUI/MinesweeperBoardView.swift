@@ -366,8 +366,8 @@ public struct MinesweeperBoardView: View {
     }
 
     // The Mac control rail: status read-out + the Reveal/Flag toggle, stacked
-    // vertically in a fixed-width column. The toggle keeps `.segmented` styling
-    // (same control as iPhone) — only the placement changes.
+    // vertically in a fixed-width column. #724: the toggle is the same single
+    // icon button as iPhone — only the placement changes.
     private var controlRail: some View {
         VStack(spacing: theme.spacing.medium) {
             statusBar
@@ -550,21 +550,35 @@ public struct MinesweeperBoardView: View {
         }
     }
 
-    // MARK: - Mode toggle (#278 Tier-0 #3)
+    // MARK: - Mode toggle (#278 Tier-0 #3, #724)
 
-    // Discoverable primary control for reveal vs flag. Modeled on Sudoku's
-    // pencil-mode toggle (DigitPadView): a segmented control that routes which
-    // action a cell tap fires. Works identically on iPhone (tap) and Mac
-    // (click) — the previously invisible right-click/long-press are now just
-    // accelerators on top of this.
+    // Discoverable primary control for reveal vs flag. #724: the segmented
+    // Picker (two always-visible options) was replaced with a single icon
+    // toggle button — same role (routes which action a cell tap fires), half
+    // the footprint. The button shows the CURRENT mode's icon and a
+    // mode-tinted `.borderedProminent` background (not just an icon swap) so
+    // the active mode reads clearly at a glance; tapping flips to the other
+    // mode. Long-press-to-flag (MinesweeperCellButton, unchanged) still works
+    // as the accelerator in `.reveal` mode.
     private var modeToggle: some View {
-        Picker("Tap mode", selection: $interactionMode) {
-            Label("Reveal", systemImage: "hand.tap").tag(InteractionMode.reveal)
-            Label("Flag", systemImage: "flag.fill").tag(InteractionMode.flag)
+        Button {
+            interactionMode = interactionMode == .reveal ? .flag : .reveal
+        } label: {
+            Image(systemName: interactionMode == .flag ? "flag.fill" : "hand.tap.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .frame(width: 44, height: 44)
         }
-        .pickerStyle(.segmented)
-        .accessibilityLabel("Tap action mode")
-        .accessibilityValue(interactionMode == .flag ? "Flag" : "Reveal")
+        .buttonStyle(.borderedProminent)
+        // swiftui-interaction-footguns: theme tint doesn't auto-propagate to
+        // system controls — apply `.tint` explicitly. Reveal reads with the
+        // app accent; flag switches to the warning tone so the two modes are
+        // color-distinct, not just icon-distinct.
+        .tint(interactionMode == .flag ? theme.status.warning.resolved : theme.accent.primary.resolved)
+        .accessibilityLabel(Text("Tap mode: \(interactionMode == .flag ? "Flag" : "Reveal")"))
+        .accessibilityValue(Text(interactionMode == .flag ? "Flag" : "Reveal"))
+        .accessibilityHint(Text("Double tap to switch tap mode"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("minesweeper.board.tapModeToggle")
     }
 
     // MARK: - Grid
