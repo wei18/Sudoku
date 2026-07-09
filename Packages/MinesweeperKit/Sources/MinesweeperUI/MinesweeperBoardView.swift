@@ -574,11 +574,32 @@ public struct MinesweeperBoardView: View {
         // app accent; flag switches to the warning tone so the two modes are
         // color-distinct, not just icon-distinct.
         .tint(interactionMode == .flag ? theme.status.warning.resolved : theme.accent.primary.resolved)
-        .accessibilityLabel(Text("Tap mode: \(interactionMode == .flag ? "Flag" : "Reveal")"))
-        .accessibilityValue(Text(interactionMode == .flag ? "Flag" : "Reveal"))
-        .accessibilityHint(Text("Double tap to switch tap mode"))
+        .accessibilityLabel(Text(String(format: modeToggleLabelFormat, modeToggleModeName)))
+        .accessibilityValue(Text(modeToggleModeName))
+        .accessibilityHint(Text(modeToggleHint))
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("minesweeper.board.tapModeToggle")
+    }
+
+    // #731: the mode name and the a11y strings around the toggle were bare
+    // English literals never extracted to the catalog. `modeToggleModeName`
+    // mirrors "Reveal"/"Flag" (also the label's %@ substitution and the
+    // standalone accessibility value); `modeToggleLabelFormat` mirrors
+    // `ResumeTitle`'s "Resume %@" pattern — a catalog format key resolved via
+    // `String(format:)` rather than string interpolation, so both the prefix
+    // and the mode name localize.
+    private var modeToggleModeName: String {
+        interactionMode == .flag
+            ? String(localized: "Flag", bundle: .main)
+            : String(localized: "Reveal", bundle: .main)
+    }
+
+    private var modeToggleLabelFormat: String {
+        String(localized: "Tap mode: %@", bundle: .main)
+    }
+
+    private var modeToggleHint: String {
+        String(localized: "Double tap to switch tap mode", bundle: .main)
     }
 
     // MARK: - Grid
