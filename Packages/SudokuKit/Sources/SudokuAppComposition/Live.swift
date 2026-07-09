@@ -6,7 +6,7 @@
 // `GameConfig<AppRoute>` carrying ONLY the Sudoku-specific values + builder
 // closures (puzzle loader, route factory, home, resume mapping, copy) and calls
 // `makeGameAppWithDeps`, which returns the wired `GameDeps` bag + root VM +
-// route factory. `AppComposition` is assembled from that bag so its public
+// route factory. `SudokuAppComposition` is assembled from that bag so its public
 // field shape (consumed by tests + the App target) is unchanged.
 //
 // Behaviour-preserving: every Sudoku string + default flows through the config,
@@ -28,9 +28,9 @@ internal import SwiftUI
 internal import UIKit
 #endif
 
-extension AppComposition {
+extension SudokuAppComposition {
 
-    public static func live() -> AppComposition {
+    public static func live() -> SudokuAppComposition {
         // PuzzleStore (default generator, v1 version). Kept here because the
         // puzzle loader closure + the route factory both reference it.
         let puzzleStore = PuzzleStore()
@@ -133,7 +133,7 @@ extension AppComposition {
                 }
             },
             makeRouteFactory: { deps, rootViewModel in
-                AppComposition.makeRouteFactory(
+                SudokuAppComposition.makeRouteFactory(
                     deps: deps,
                     rootViewModel: rootViewModel,
                     puzzleStore: puzzleStore
@@ -195,7 +195,7 @@ extension AppComposition {
         let wired = makeGameAppWithDeps(config: config)
         let deps = wired.deps
 
-        return AppComposition(
+        return SudokuAppComposition(
             rootViewModel: wired.rootViewModel,
             routeFactory: wired.routeFactory,
             puzzleProvider: puzzleStore,

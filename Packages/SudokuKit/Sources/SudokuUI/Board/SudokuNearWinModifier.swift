@@ -2,7 +2,7 @@
 // `-uitest-near-win` launch argument and presents a near-win board as a
 // fullScreenCover over the normal root (#510 uitest hook).
 //
-// Applied at `AppComposition.rootView` level — sits above the normal navigation
+// Applied at `SudokuAppComposition.rootView` level — sits above the normal navigation
 // stack. When the launch argument is absent (every non-uitest launch) the
 // modifier is a transparent no-op.
 //

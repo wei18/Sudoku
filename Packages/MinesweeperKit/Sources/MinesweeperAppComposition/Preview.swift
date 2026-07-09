@@ -1,6 +1,6 @@
 // Preview composition — fakes for SwiftUI #Preview and tests.
 //
-// #572: extracted from Live.swift (mirrors Sudoku's AppComposition/Preview.swift).
+// #572: extracted from Live.swift (mirrors Sudoku's SudokuAppComposition/Preview.swift).
 // All factories return deterministic in-memory state. No CloudKit, no
 // GameKit, no OSLog. Mirrors `.live()` field shape so composition tests
 // pass without live seams.

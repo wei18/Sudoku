@@ -37,17 +37,17 @@ let gameCenterTestingDep: Target.Dependency = .product(name: "GameCenterTesting"
 // #287 Phase 2: RemindersKit reminder mechanism (protocol seams + value types).
 // SudokuUI's `ReminderPrimerCoordinator` depends on the seams only; the live
 // `UserNotifications` conformers + the UNUserNotificationCenterDelegate stay in
-// AppComposition. `RemindersTesting` provides the fakes for the coordinator tests.
+// SudokuAppComposition. `RemindersTesting` provides the fakes for the coordinator tests.
 let remindersDep: Target.Dependency = .product(name: "Reminders", package: "RemindersKit")
 let remindersTestingDep: Target.Dependency = .product(name: "RemindersTesting", package: "RemindersKit")
 // refactor/settingskit-target (2026-06-09): the shared Settings screen + the
 // reminders UI (primer sheet, `ReminderSettingsSection` / `ReminderSettingsModel`,
 // `ReminderPermissionModel`) moved out of GameShellUI into the sibling SettingsKit
 // package. `SettingsView` + `ReminderPrimerCoordinator` + `CompletionView` consume
-// these from `SettingsUI`; AppComposition builds the entry configs.
+// these from `SettingsUI`; SudokuAppComposition builds the entry configs.
 let settingsUIDep: Target.Dependency = .product(name: "SettingsUI", package: "SettingsKit")
 // #330 P2: shared game-audio mechanism. SudokuUI fires gameplay cues via the
-// `SoundPlaying` seam (defaults to Noop); AppComposition builds the Live audio
+// `SoundPlaying` seam (defaults to Noop); SudokuAppComposition builds the Live audio
 // stack (`LiveAudioSession` + `LiveHaptics` + `LiveSoundPlayer`) +
 // `AudioSettingsModel`. Test targets pull `GameAudioTesting`'s order-preserving
 // fakes. No `AVFoundation` leaks past GameAudioKit's Live files.
@@ -75,7 +75,7 @@ let productionTargets: [Target] = [
             // protocol deps so individual destination Views (v2.3.4-6) can
             // pull them at construction. SudokuUI does not depend on the
             // AdMob / StoreKit2 concrete-impl targets — those stay isolated
-            // in AppComposition (foundations.md §9.1).
+            // in SudokuAppComposition (foundations.md §9.1).
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             // MS monetization wire Phase 1 (2026-06-02): shared rows
             // (`RemoveAdsRow` / `RestorePurchasesRow` / `AdsRemovedRow`)
@@ -93,7 +93,7 @@ let productionTargets: [Target] = [
             gameAppDep,
             // #287 Phase 2: ReminderPrimerCoordinator names the `ReminderScheduler`
             // / `NotificationAuthorizing` seams + `ReminderContent`. UI/logic only;
-            // never `UserNotifications` (that stays in AppComposition's Live layer).
+            // never `UserNotifications` (that stays in SudokuAppComposition's Live layer).
             remindersDep,
             // refactor/settingskit-target: the shared Settings screen + reminders UI
             // (primer sheet, settings/permission models) moved here. SettingsView,
@@ -149,19 +149,19 @@ let productionTargets: [Target] = [
             // `UITestRouteModifier` (a transitive re-export via SudokuUI does not
             // satisfy Swift 6 module name resolution at the target boundary).
             gameAppDep,
-            // PR X2: explicit GameShellUI dep so AppComposition can name
+            // PR X2: explicit GameShellUI dep so SudokuAppComposition can name
             // `any RouteFactory<AppRoute>` (the protocol moved out of
             // SudokuUI into GameShellUI). SudokuUI still re-exports the
             // type via `public import GameShellUI`, but a transitive
             // re-export does not satisfy Swift 6 module name resolution
-            // — AppComposition needs the dep at its target boundary.
+            // — SudokuAppComposition needs the dep at its target boundary.
             .product(name: "GameShellUI", package: "GameShellKit"),
             // #287 Phase 2: `.live()` wires `LiveNotificationAuthorizer` +
             // `LiveReminderScheduler` and sets the `UNUserNotificationCenterDelegate`.
             // This is the only target allowed `import UserNotifications` (transitively
             // via the Reminders Live conformers — the delegate itself imports it here).
             remindersDep,
-            // refactor/settingskit-target: AppComposition builds the
+            // refactor/settingskit-target: SudokuAppComposition builds the
             // `ReminderSettingsEntry` (which wraps `ReminderSettingsModel` /
             // `ReminderPermissionModel`) + names `SettingsNoticesConfig`, all moved
             // to SettingsUI.
@@ -182,7 +182,7 @@ let productionTargets: [Target] = [
             // GameCenterTesting; `Preview.swift` consumes `FakeGameCenterClient`
             // for the `.preview()` factory.
             gameCenterTestingDep,
-            // v2.3.2: monetization wiring. AppComposition.live builds
+            // v2.3.2: monetization wiring. SudokuAppComposition.live builds
             // LiveAdMobAdProvider + LiveStoreKit2IAPClient + AdGate via
             // LiveMonetizationStateStore. Preview / tests use MonetizationTesting fakes.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
@@ -247,7 +247,7 @@ let testTargets: [Target] = [
             // #278 Tier-1 Phase 1: ThemeTests names the bare `Theme` protocol,
             // which moved to GameShellUI. A transitive re-export through
             // SudokuUI does not satisfy Swift 6 module name resolution for a
-            // direct `import GameShellUI` — same reason AppComposition needs
+            // direct `import GameShellUI` — same reason SudokuAppComposition needs
             // the explicit dep at its boundary.
             .product(name: "GameShellUI", package: "GameShellKit"),
             // #287 Phase 2: ReminderPrimerCoordinatorTests drive the coordinator
@@ -368,12 +368,12 @@ let package = Package(
         .package(name: "GameAppKit", path: "../GameAppKit"),
         // #287 Phase 2: shared local-notification reminder mechanism. Leaf
         // sibling package (protocol seams + value types + Live UN conformers).
-        // SudokuUI consumes the `Reminders` seams; AppComposition wires the Live
+        // SudokuUI consumes the `Reminders` seams; SudokuAppComposition wires the Live
         // conformers + the notification-center delegate.
         .package(name: "RemindersKit", path: "../RemindersKit"),
         // refactor/settingskit-target (2026-06-09): shared Settings screen + the
         // reminders UI carved out of GameShellUI into this sibling package.
-        // SudokuUI / AppComposition consume the `SettingsUI` product.
+        // SudokuUI / SudokuAppComposition consume the `SettingsUI` product.
         .package(name: "SettingsKit", path: "../SettingsKit"),
         // #330 P2: shared game-audio mechanism (protocol seams + value types +
         // Noop/Live conformers + GameAudioTesting fakes). Leaf sibling package;

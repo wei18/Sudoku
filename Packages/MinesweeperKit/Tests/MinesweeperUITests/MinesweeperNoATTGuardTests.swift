@@ -3,7 +3,7 @@
 // APPROVED decision F2: ATT is Sudoku-only. Minesweeper keeps non-personalized
 // ads and shows no ATT prompt. ATT lives entirely in the shared
 // AppMonetizationKit (`ATTPresenter`); the *trigger* lives in SudokuUI
-// (`ATTPrimerCoordinator`) + Sudoku's `AppComposition`. MinesweeperKit has no
+// (`ATTPrimerCoordinator`) + Sudoku's `SudokuAppComposition`. MinesweeperKit has no
 // ATT code path at all.
 //
 // This is a structural guard: it scans every MinesweeperKit source file and

@@ -15,7 +15,7 @@
 // ATT dialog. "Not now" dismisses without requesting.
 //
 // Isolation: the two ATT touch points (read status / present prompt) are injected
-// as closures; `AppComposition` (which depends on AdsAdMob) wires them to
+// as closures; `SudokuAppComposition` (which depends on AdsAdMob) wires them to
 // `ATTPresenter`. MonetizationUI itself never imports AppTrackingTransparency.
 
 public import SwiftUI

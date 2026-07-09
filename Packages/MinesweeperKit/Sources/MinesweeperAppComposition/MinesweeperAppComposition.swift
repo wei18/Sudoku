@@ -1,7 +1,7 @@
 // MinesweeperAppComposition — DI composition root for the Minesweeper app.
 //
 // #572 SDD-005 Pillar C: migrated to GameConfig/makeGameApp (mirrors Sudoku's
-// AppComposition post-#557). The public field shape is preserved so existing
+// SudokuAppComposition post-#557). The public field shape is preserved so existing
 // tests and the App target compile unchanged.
 //
 // The App target reads `bag.rootView` and hands it to `WindowGroup`. After #572

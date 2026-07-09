@@ -40,8 +40,8 @@
       from per-workflow env vars in `ci_scripts/ci_post_clone.sh` so prod
       builds get production IDs and local/sandbox builds get Google's
       universal test IDs. Replaces the old in-source DEBUG-vs-Release
-      fatalError gate in AppComposition/Live.swift (the smoke test in
-      AppCompositionTests catches missing-key misconfig pre-archive).
+      fatalError gate in SudokuAppComposition/Live.swift (the smoke test in
+      SudokuAppCompositionTests catches missing-key misconfig pre-archive).
 
       `GADBannerUnitID` is our own key (not Google-reserved) — the banner
       provider in `Live.swift` reads it via

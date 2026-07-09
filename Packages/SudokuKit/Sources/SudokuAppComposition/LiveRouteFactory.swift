@@ -28,7 +28,7 @@ public import Telemetry
 public import GameShellUI
 // #639: the factory now lives in SudokuAppComposition, so it imports SudokuUI
 // for the destination views / view models / `AppRoute` (in the public init +
-// `view(for:)` signature) + `SudokuLeaderboardRouting`. AppComposition → UI is
+// `view(for:)` signature) + `SudokuLeaderboardRouting`. SudokuAppComposition → UI is
 // the correct (one-way) dependency direction.
 public import SudokuUI
 // refactor/settingskit-target: `SettingsNoticesConfig` moved out of GameShellUI
@@ -72,12 +72,12 @@ public struct LiveRouteFactory: RouteFactory {
     // #287 Phase 2: builds a fresh daily-ready primer coordinator for a Daily
     // completion mount. Injected as a closure (not the raw Reminders seams) so
     // ALL reminder wiring — Live conformers, copy, telemetry bridge — stays in
-    // AppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
+    // SudokuAppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
     // in previews / tests → no primer, byte-identical Completion screens.
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
     // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
     // Sudoku copy) per Settings mount. Injected as a closure (not the raw
-    // Reminders seams) so ALL reminder wiring stays in AppComposition. `nil` in
+    // Reminders seams) so ALL reminder wiring stays in SudokuAppComposition. `nil` in
     // previews / tests → no reminder section, byte-identical Settings screen.
     private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
     // #331: app-injected Notices section config (acknowledgements deep-link,

@@ -12,7 +12,7 @@
 //   - the telemetry emit closure (primer shown/accepted/declined, scheduled)
 //
 // It depends ONLY on the `Reminders` protocol seams + SettingsUI; it never
-// imports `UserNotifications` (that stays in AppComposition's Live layer). The
+// imports `UserNotifications` (that stays in the game's `<Game>AppComposition` Live layer). The
 // host (LiveRouteFactory) constructs one per Daily-completion mount.
 //
 // `@MainActor @Observable` because it drives a `.sheet` on CompletionView and

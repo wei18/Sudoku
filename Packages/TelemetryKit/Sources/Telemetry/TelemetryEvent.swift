@@ -41,7 +41,7 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     // Local-notification reminder funnel. `kind` is the stable
     // `ReminderKind.rawValue` (`"dailyReady"` / `"streakKeeper"` / `"comeback"`)
     // — passed as a plain String so this leaf observability module stays free
-    // of a `Reminders` import. The host (AppComposition) owns `RemindersKit`
+    // of a `Reminders` import. The host (SudokuAppComposition) owns `RemindersKit`
     // and maps `ReminderKind.rawValue` at the emit site.
 
     /// The soft pre-ask primer sheet was presented at a value moment (flow S03).

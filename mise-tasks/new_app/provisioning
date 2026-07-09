@@ -61,7 +61,7 @@ apply_app_defaults() {
             BUNDLE_ID="${BUNDLE_ID:-com.wei18.sudoku}"
             CONTAINER_ID="${CONTAINER_ID:-iCloud.com.wei18.sudoku}"
             IAP_PRODUCT_ID="${IAP_PRODUCT_ID:-com.wei18.sudoku.iap.remove_ads}"
-            LIVE_COMPOSITION="${LIVE_COMPOSITION:-AppComposition.Live}"
+            LIVE_COMPOSITION="${LIVE_COMPOSITION:-SudokuAppComposition.Live}"
             ;;
         minesweeper)
             APP_NAME="${APP_NAME:-Minesweeper}"

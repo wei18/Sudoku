@@ -18,7 +18,7 @@ let swiftSettings: [SwiftSetting] = [
 // live persistence / Game Center / monetization / audio stack.
 //
 // Module names `MinesweeperUI` and `MinesweeperAppComposition` avoid the
-// `SudokuUI` / `AppComposition` collision that would otherwise occur when
+// `SudokuUI` / `SudokuAppComposition` collision that would otherwise occur when
 // both packages join the same Xcode project's package graph.
 
 let productionTargets: [Target] = [
@@ -107,7 +107,7 @@ let productionTargets: [Target] = [
             // GameShellUI.
             .product(name: "GameShellUI", package: "GameShellKit"),
             // Telemetry + ErrorReporter seam (2026-06-02 parity audit). Mirror
-            // Sudoku's AppComposition shape — `.live()` constructs OSLog-backed
+            // Sudoku's SudokuAppComposition shape — `.live()` constructs OSLog-backed
             // Telemetry + LiveErrorReporter; `.preview()` wires empty-sinks +
             // NoopErrorReporter. View-level usage is intentionally deferred.
             .product(name: "Telemetry", package: "TelemetryKit"),
@@ -120,7 +120,7 @@ let productionTargets: [Target] = [
             // `LivePersistence` so any future Preview path that calls
             // bootstrap()/latestInProgress() stays trap-free. Production target
             // intentionally deps the Testing product — same pattern as Sudoku's
-            // AppComposition (its FakePersistence ships via SudokuKitTesting).
+            // SudokuAppComposition (its FakePersistence ships via SudokuKitTesting).
             .product(name: "PersistenceTesting", package: "PersistenceKit"),
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
@@ -137,14 +137,14 @@ let productionTargets: [Target] = [
             .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
             // #291: `.live()` wires `LiveGameCenterClient(authDriver:
             // GKAuthDriver())`; `.preview()` wires `FakeGameCenterClient`.
-            // Mirrors Sudoku's AppComposition (Live.swift / Preview.swift).
+            // Mirrors Sudoku's SudokuAppComposition (Live.swift / Preview.swift).
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             .product(name: "GameCenterTesting", package: "GameCenterKit"),
             // #287: the shared local-notification reminder seam. `.live()` wires
             // `LiveReminderScheduler` / `LiveNotificationAuthorizer` (the only
             // files allowed to import `UserNotifications`) to drive the Settings
             // Reminders entry; the UI model/section come through GameShellUI.
-            // Mirrors Sudoku's AppComposition RemindersKit wire.
+            // Mirrors Sudoku's SudokuAppComposition RemindersKit wire.
             .product(name: "Reminders", package: "RemindersKit"),
             // refactor/settingskit-target (2026-06-09): Live.swift builds the
             // `MinesweeperReminderSettingsEntry` (wrapping `ReminderSettingsModel` /

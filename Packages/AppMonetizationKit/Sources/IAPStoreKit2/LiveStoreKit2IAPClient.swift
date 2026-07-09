@@ -32,12 +32,12 @@ public actor LiveStoreKit2IAPClient: IAPClient {
     ///
     /// - Parameters:
     ///   - knownProductIds: ASC product IDs to fetch. Per-app — passed in by
-    ///     `AppComposition.Live` so the package can serve multiple apps
+    ///     `SudokuAppComposition.Live` so the package can serve multiple apps
     ///     (Sudoku + Minesweeper) in the same workspace without baking
     ///     Sudoku-specific IDs into the binary.
     ///   - onCatalogDesync: Optional sink invoked with the purchased
     ///     `productId` when a post-purchase product re-fetch returns empty.
-    ///     The host (`AppComposition`) wires this to `Telemetry.errorOccurred`
+    ///     The host (`SudokuAppComposition`) wires this to `Telemetry.errorOccurred`
     ///     so catalog instability is observable instead of silently shipping
     ///     an empty `displayPrice` to the UI (M3).
     public init(

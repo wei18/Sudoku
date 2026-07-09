@@ -4,7 +4,7 @@
 // Per docs/v1/design.md §How.1 (DI composition root): the App target should not have
 // to know about the internal split between `SavedGameStore`,
 // `PersonalRecordStore`, and `LivePrivateCKGateway`. This facade is the
-// single public entry that `AppComposition.live(...)` constructs.
+// single public entry that `SudokuAppComposition.live(...)` constructs.
 //
 // The CloudKit-talking parts (`LivePrivateCKGateway`, zone provisioning,
 // subscription installation) stay internal to this module — only this
@@ -28,7 +28,7 @@ public actor LivePersistence: PersistenceProtocol {
 
     // Lazy: `CKContainer.default()` traps when invoked outside a properly
     // configured app bundle (entitlements + container id). Deferring
-    // construction lets `AppComposition.live()` be safely called from unit
+    // construction lets `SudokuAppComposition.live()` be safely called from unit
     // tests that do not own those entitlements — IO calls would fail later,
     // but the wiring is exercised.
     private var _gateway: LivePrivateCKGateway?
@@ -151,11 +151,11 @@ public actor LivePersistence: PersistenceProtocol {
     // MARK: - Monetization wiring helper (v2.3.1)
 
     /// Construct a `LiveMonetizationStateStore` that shares this facade's
-    /// underlying `PrivateCKGateway`. AppComposition.live calls this to wire
+    /// underlying `PrivateCKGateway`. SudokuAppComposition.live calls this to wire
     /// AdGate without having to know about the gateway type (which stays
     /// internal to this module).
     ///
-    /// `nonisolated` so `AppComposition.live()` stays sync. Returns a fresh
+    /// `nonisolated` so `SudokuAppComposition.live()` stays sync. Returns a fresh
     /// `LiveMonetizationStateStore` whose own lazy provider does the
     /// CloudKit hop on first IO — symmetric to other store factories above.
     public nonisolated func monetizationStateStore() -> LiveMonetizationStateStore {

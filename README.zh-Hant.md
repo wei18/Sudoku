@@ -59,7 +59,7 @@ Packages/
 ├── SettingsKit/             # SettingsUI——兩款 App 共用的設定區塊
 ├── GameAppKit/              # 共用 app-composition 層:GameRootViewModel / GameRoot / ResumePill / ResumeCandidate
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2（第三方 SDK 隔離）
-├── SudokuKit/               # Sudoku 專屬：PuzzleStore / SudokuUI / AppComposition
+├── SudokuKit/               # Sudoku 專屬：PuzzleStore / SudokuUI / SudokuAppComposition
 ├── MinesweeperKit/          # Minesweeper 專屬：MinesweeperUI / MinesweeperAppComposition
 └── ASCRegisterKit/          # macOS-only 的 App Store Connect dev CLI（不在任一 App binary 內）
 ```

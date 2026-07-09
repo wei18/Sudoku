@@ -30,7 +30,7 @@
 // listener call `startListeningForLifetimeOfApp()` explicitly + tear
 // down via `FakeIAPClient.finishUpdates()`.
 //
-// Lifetime: one instance is constructed in AppComposition's preview/tests/live
+// Lifetime: one instance is constructed in SudokuAppComposition's preview/tests/live
 // path and re-used across HomeView and Settings so both surfaces observe the
 // same `hasPurchasedRemoveAds` flip after a purchase.
 
@@ -109,7 +109,7 @@ public final class MonetizationStateController {
     /// store + IAPClient are responsible for their own caching.
     ///
     /// Fix B (RCA 2026-05-25): this method NO LONGER starts the
-    /// `purchaseUpdates()` listener. Production (`AppComposition.live`)
+    /// `purchaseUpdates()` listener. Production (`SudokuAppComposition.live`)
     /// calls `startListeningForLifetimeOfApp()` once at boot, immediately
     /// after `bootstrap()`. Tests that need the listener opt in
     /// explicitly + tear down via `FakeIAPClient.finishUpdates()`.
@@ -118,7 +118,7 @@ public final class MonetizationStateController {
         // throws (CloudKit unreachable / first launch), the controller
         // keeps the `initialPurchased` default already set in init. M10
         // (issue #67): the underlying CloudKit failure is reported by
-        // `AdGate(onPersistenceError:)` wired in `AppComposition.live`
+        // `AdGate(onPersistenceError:)` wired in `SudokuAppComposition.live`
         // (see Live.swift), so this layer doesn't double-report. The
         // AdMob banner gate honours the false default and the toast on
         // an actual purchase attempt surfaces failure to the user.

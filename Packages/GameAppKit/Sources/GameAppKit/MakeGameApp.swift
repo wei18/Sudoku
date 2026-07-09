@@ -40,7 +40,7 @@ internal import Reminders
 
 /// Wires the full shared live stack for any game and returns a root `View`.
 ///
-/// Call from `AppComposition.live()` (or any thin game-side shell):
+/// Call from `SudokuAppComposition.live()` (or any thin game-side shell):
 /// build a `GameConfig<Route>` carrying per-game values and builder closures,
 /// then pass it here. The returned view is ready to mount in `WindowGroup`.
 @MainActor
@@ -54,7 +54,7 @@ public func makeGameApp<Route: Hashable & Sendable>(
 
 /// Same as `makeGameApp(config:)` but also returns the wired `GameDeps` bag,
 /// the `GameRootViewModel`, and the route factory. Use this from composition
-/// roots that expose deps for test inspection (e.g. `AppComposition.live()`).
+/// roots that expose deps for test inspection (e.g. `SudokuAppComposition.live()`).
 /// The view is `AnyView`-erased because the concrete type closes over deps.
 @MainActor
 public func makeGameAppWithDeps<Route: Hashable & Sendable>(

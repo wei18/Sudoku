@@ -55,7 +55,7 @@ public actor LiveMonetizationStateStore: MonetizationStateStore {
     /// the provider closure is invoked the first time a load/save actually
     /// needs CloudKit, NOT at composition time. This matches `LivePersistence`'s
     /// existing pattern of deferring `CKContainer.default()` until IO so
-    /// `AppComposition.live()` stays callable from unit tests.
+    /// `SudokuAppComposition.live()` stays callable from unit tests.
     public init(
         gatewayProvider: @escaping @Sendable () -> any PrivateCKGateway,
         clock: @escaping @Sendable () -> Date = { Date() }

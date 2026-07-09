@@ -5,7 +5,7 @@
 // AdGate already operates against `AdGateStateStore`, so re-exposing the same
 // shape under a Persistence-local name lets the Sudoku App's Persistence layer
 // own the concrete CloudKit-Private implementation without forcing AdGate to
-// know anything about CloudKit. Callers (AppComposition) can refer to either
+// know anything about CloudKit. Callers (SudokuAppComposition) can refer to either
 // name; they pick the resolved underlying type at the seam.
 
 public import MonetizationCore
