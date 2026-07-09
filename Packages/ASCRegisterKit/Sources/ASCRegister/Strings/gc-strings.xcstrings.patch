@@ -16,9 +16,11 @@
 //   - zh-Hant → filled (per docs/v1/design.md §How.3.1 table; achievements drafted
 //               to match the §How.3.2 trigger semantics)
 //   - ja, zh-Hans, es, th, ko → "<TRANSLATE>" — to be filled by the
-//     translation-agent flow (foundations.md §L10n). Exception: the 33 MS
-//     achievement keys (#700) ship fully translated in all 7 locales
-//     (ai-translated-localization pass, en source / zh-Hant primary).
+//     translation-agent flow (foundations.md §L10n). Exceptions: the 33 MS
+//     achievement keys (#700) and the 3 MS gc.minesweeper.leaderboard.*.daily.title
+//     keys (#738) ship fully translated in all 7 locales (ai-translated-localization
+//     pass, en source / zh-Hant primary; difficulty wording matched to the in-app
+//     Beginner/Intermediate/Expert labels).
 //
 // File extension `.xcstrings.patch` is non-standard; Xcode will NOT try to
 // parse this as a string catalog. The wrapping `.txt`-style header comments
@@ -31,7 +33,8 @@
 // 3 Tiles2048 gc.tiles2048.achievement.* [1 achievement × 3 keys] +
 // 33 MS gc.minesweeper.achievement.* [11 achievements × 3 keys, #700]).
 // Filled: 76 × 2 (en + zh-Hant) + 33 × 5 (MS achievement keys, all 7 locales,
-// #700) = 317; remaining <TRANSLATE> = 43 × 5 = 215.
+// #700) + 3 × 5 (MS leaderboard title keys, all 7 locales, #738) = 332;
+// remaining <TRANSLATE> = 40 × 5 = 200.
 
 {
   "strings" : {
@@ -73,33 +76,33 @@
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Beginner" } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日初級" } },
-        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリー初級" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日初级" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Principiante diario" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "มือใหม่ประจำวัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 초급" } }
       }
     },
     "gc.minesweeper.leaderboard.medium.daily.title" : {
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Intermediate" } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日中級" } },
-        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリー中級" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日中级" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Intermedio diario" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ระดับกลางประจำวัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 중급" } }
       }
     },
     "gc.minesweeper.leaderboard.hard.daily.title" : {
       "localizations" : {
         "en"      : { "stringUnit" : { "state" : "translated", "value" : "Daily Expert" } },
         "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "今日高級" } },
-        "ja"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "es"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "th"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } },
-        "ko"      : { "stringUnit" : { "state" : "new", "value" : "<TRANSLATE>" } }
+        "ja"      : { "stringUnit" : { "state" : "translated", "value" : "デイリー上級" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日高级" } },
+        "es"      : { "stringUnit" : { "state" : "translated", "value" : "Avanzado diario" } },
+        "th"      : { "stringUnit" : { "state" : "translated", "value" : "ขั้นสูงประจำวัน" } },
+        "ko"      : { "stringUnit" : { "state" : "translated", "value" : "데일리 고급" } }
       }
     },
 

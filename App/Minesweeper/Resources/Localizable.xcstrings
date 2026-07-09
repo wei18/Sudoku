@@ -819,7 +819,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Experto diario"
+            "value" : "Avanzado diario"
           }
         },
         "ja" : {
@@ -837,7 +837,7 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ผู้เชี่ยวชาญประจำวัน"
+            "value" : "ขั้นสูงประจำวัน"
           }
         },
         "zh-Hans" : {
