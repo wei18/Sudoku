@@ -114,9 +114,7 @@ public struct PracticeHubView<Banner: View>: View {
             // Picker uses) + a localized "ready"; the "·" separator is verbatim.
             // Previously this interpolated the raw enum + literal "ready", so the
             // whole hint stayed English in non-en locales.
-            (Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized))
-                + Text(verbatim: " · ")
-                + Text("ready"))
+            Text("\(Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized)))\(Text(verbatim: " · "))\(Text("ready"))")
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         case .drawingShimmer:
@@ -128,8 +126,7 @@ public struct PracticeHubView<Banner: View>: View {
         case .drawn(let envelope):
             // #516: localize the difficulty; the "·" separator + deterministic
             // puzzleId (not user-facing copy) are verbatim.
-            (Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized))
-                + Text(verbatim: " · \(envelope.identity.puzzleId)"))
+            Text("\(Text(LocalizedStringKey(viewModel.difficulty.rawValue.capitalized)))\(Text(verbatim: " · \(envelope.identity.puzzleId)"))")
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         case .failed(let reason):
