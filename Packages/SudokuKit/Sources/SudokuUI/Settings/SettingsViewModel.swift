@@ -93,7 +93,7 @@ public final class SettingsViewModel {
             }
             self.resumeCandidate = nil
         }
-        let message = "Cache cleared"
+        let message = String(localized: "Cache cleared", bundle: .main)
         self.clearCacheConfirmation = message
         toastController?.show(Toast(style: .success, message: message))
     }
