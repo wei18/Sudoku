@@ -30,6 +30,10 @@ import MonetizationUI
 internal import MinesweeperGameState
 public import MinesweeperPersistence
 public import Telemetry
+// #720 G3: `LastSelectionStore` backs the tap-mode persistence below.
+// MinesweeperUI already depends on GameAppKit for `GameRootViewModel`, so this
+// is not a new module edge.
+internal import GameAppKit
 
 public struct MinesweeperBoardView: View {
 
@@ -52,7 +56,12 @@ public struct MinesweeperBoardView: View {
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
     // engine semantics — it only routes which action a cell tap fires. Mirrors
     // Sudoku's pencil-mode toggle as a discoverable primary control.
-    @State private var interactionMode: InteractionMode = .reveal
+    // #720 G3: seeded from `UserDefaults` (via `LastSelectionStore`) instead of
+    // always starting at `.reveal`, so the player's last tap-mode choice
+    // survives opening a new board.
+    @State private var interactionMode: InteractionMode = Self.interactionMode(
+        fromRawValue: Self.tapModeStore.load()
+    )
     // #292: the Completion overlay's VM. Held in `@State` so it survives the
     // board's recomputes (the status bar's 1 Hz TimelineView re-runs `body`
     // every second) — building it inline would reset its leaderboard-slice
@@ -550,6 +559,30 @@ public struct MinesweeperBoardView: View {
         }
     }
 
+    // MARK: - Tap-mode persistence (#720 G3)
+
+    // Reuses the same `LastSelectionStore` seam GameAppKit already provides
+    // for the Practice-difficulty gaps (G1 Sudoku / G2 Minesweeper) rather
+    // than inventing a bespoke UserDefaults wrapper — MinesweeperUI already
+    // has the GameAppKit dependency (`GameRootViewModel`), so this needs no
+    // new module edge. `tapModeKey` + `interactionMode(fromRawValue:)` /
+    // `rawValue(for:)` are `internal` (not `private`) so
+    // `MinesweeperBoardViewTapModeTests` can exercise the exact round trip
+    // production uses without a live SwiftUI render tree.
+    static let tapModeKey = "com.wei18.minesweeper.board.tapMode"
+
+    static var tapModeStore: LastSelectionStore {
+        LastSelectionStore(key: tapModeKey, fallback: "reveal")
+    }
+
+    static func interactionMode(fromRawValue rawValue: String) -> InteractionMode {
+        rawValue == "flag" ? .flag : .reveal
+    }
+
+    static func rawValue(for mode: InteractionMode) -> String {
+        mode == .flag ? "flag" : "reveal"
+    }
+
     // MARK: - Mode toggle (#278 Tier-0 #3, #724)
 
     // Discoverable primary control for reveal vs flag. #724: the segmented
@@ -563,6 +596,9 @@ public struct MinesweeperBoardView: View {
     private var modeToggle: some View {
         Button {
             interactionMode = interactionMode == .reveal ? .flag : .reveal
+            // #720 G3: persist the new mode so the next board open reopens
+            // in it.
+            Self.tapModeStore.save(Self.rawValue(for: interactionMode))
         } label: {
             Image(systemName: interactionMode == .flag ? "flag.fill" : "hand.tap.fill")
                 .font(.system(size: 20, weight: .semibold))

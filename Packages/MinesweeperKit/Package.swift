@@ -157,6 +157,10 @@ let productionTargets: [Target] = [
             // `NoopSoundPlaying`. `AVFoundation` stays inside GameAudioKit's Live
             // files — composition sees only the public seams.
             .product(name: "GameAudio", package: "GameAudioKit"),
+            // #720 G2: `Difficulty` named explicitly (as a type, not just an
+            // inferred pattern-match binding) to seed/persist the Practice
+            // hub's last-selected difficulty.
+            .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
         ],
         swiftSettings: swiftSettings
     ),
