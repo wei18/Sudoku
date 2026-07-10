@@ -59,7 +59,7 @@ Observed state (verify in `Packages/*/Package.swift`):
 | Engine | `SudokuEngine` | `MinesweeperEngine` | `Game2048Engine` | `<Game>Engine` ✓ |
 | Game state | **`GameState`** ⚠️ | `MinesweeperGameState` | `Game2048GameState` | `<Game>GameState` |
 | UI | `SudokuUI` | `MinesweeperUI` | `Game2048UI` | `<Game>UI` ✓ |
-| Composition | **`AppComposition`** ⚠️ | `MinesweeperAppComposition` | `Game2048AppComposition` | `<Game>AppComposition` |
+| Composition | `SudokuAppComposition` ✓ (renamed #739) | `MinesweeperAppComposition` | `Game2048AppComposition` | `<Game>AppComposition` |
 | Persistence | **`PuzzleStore`** ⚠️ | `MinesweeperPersistence` | `Game2048Persistence` | `<Game>Persistence` |
 | Core pkg | `SudokuCoreKit` | `MinesweeperCoreKit` | `Game2048CoreKit` | `<Game>CoreKit` ✓ |
 | Kit pkg | `SudokuKit` | `MinesweeperKit` | `Game2048Kit` | `<Game>Kit` ✓ |

@@ -7,7 +7,7 @@
 // Phase 2b.
 //
 // Views read these via `@Environment(\.sudokuCell)`, injected at the same two
-// points the generic `\.theme` is injected: `AppComposition.rootView` (live)
+// points the generic `\.theme` is injected: `SudokuAppComposition.rootView` (live)
 // and `SnapshotConfig.hostingView` (snapshot tests).
 
 public import GameShellUI

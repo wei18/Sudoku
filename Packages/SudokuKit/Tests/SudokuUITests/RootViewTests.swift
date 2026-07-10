@@ -5,7 +5,7 @@
 // navigation shell + HomeView — a superset of what HomeViewTests covers.
 // HomeViewTests now snapshots GameHomeView (the inner content surface)
 // with identical mode cards and subtitle copy. The GameRoot navigation
-// shell is integration-tested via the live wired stack (AppComposition).
+// shell is integration-tested via the live wired stack (SudokuAppComposition).
 //
 // Behavioral tests kept as-is — they test RootViewModel (= GameRootViewModel<AppRoute>)
 // directly and do not reference RootView.

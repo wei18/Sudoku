@@ -73,7 +73,7 @@ let sudokuTarget = Target.target(
         .package(product: "SudokuUI"),
         .package(product: "SudokuAppComposition"),
         // v2.3.2: explicit App-target links so Google Mobile Ads + StoreKit2
-        // bridge binaries are embedded in the .app bundle. AppComposition
+        // bridge binaries are embedded in the .app bundle. SudokuAppComposition
         // already pulls these transitively, but Tuist surfaces them at the
         // App target so the linker discovers the .xcframework slices.
         .package(product: "MonetizationCore"),

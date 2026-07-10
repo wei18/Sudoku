@@ -1,5 +1,5 @@
-// CompositionTests — phase 9.1 + v2.3.2/3: AppComposition.live / .preview /
-// .tests produce fully-wired AppComposition values.
+// CompositionTests — phase 9.1 + v2.3.2/3: SudokuAppComposition.live / .preview /
+// .tests produce fully-wired SudokuAppComposition values.
 //
 // Live wiring goes through CloudKit / GameKit / AdMob / StoreKit2 constructors;
 // we do NOT invoke any IO method. The tests only check that all factory
@@ -15,12 +15,12 @@ import SudokuKitTesting
  import SudokuAppComposition
 
 @MainActor
-@Suite("AppComposition — live / preview / tests wiring")
+@Suite("SudokuAppComposition — live / preview / tests wiring")
 struct CompositionTests {
 
     @Test
     func liveCompositionWiresAllProtocols() async {
-        let composition = AppComposition.live()
+        let composition = SudokuAppComposition.live()
         _ = composition.rootViewModel
 
         let mirror = Mirror(reflecting: composition.rootViewModel)
@@ -34,7 +34,7 @@ struct CompositionTests {
 
     @Test
     func liveCompositionExposesMonetizationDeps() async {
-        let composition = AppComposition.live()
+        let composition = SudokuAppComposition.live()
         // v2.3.2: all three monetization stored properties resolve to Live impls.
         // On non-iOS platforms (macOS) AdMob's xcframework has no platform
         // slice, so the live composition wires `NoopAdProvider` instead of
@@ -54,13 +54,13 @@ struct CompositionTests {
 
     @Test
     func liveCompositionExposesRouteFactory() async {
-        let composition = AppComposition.live()
+        let composition = SudokuAppComposition.live()
         #expect(String(describing: type(of: composition.routeFactory)).contains("LiveRouteFactory"))
     }
 
     @Test
     func previewCompositionUsesFakes() async {
-        let composition = AppComposition.preview()
+        let composition = SudokuAppComposition.preview()
         let mirror = Mirror(reflecting: composition.rootViewModel)
         let gcChild = mirror.children.first(where: { $0.label == "gameCenter" })?.value
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
@@ -72,7 +72,7 @@ struct CompositionTests {
 
     @Test
     func testsCompositionUsesFakes() async {
-        let composition = AppComposition.tests()
+        let composition = SudokuAppComposition.tests()
         let mirror = Mirror(reflecting: composition.rootViewModel)
         let gcChild = mirror.children.first(where: { $0.label == "gameCenter" })?.value
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value

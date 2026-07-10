@@ -15,17 +15,17 @@ internal import GameCenterTesting  // Stage 3: FakeGameCenterClient (was in Sudo
 internal import SudokuUI
 internal import Telemetry
 
-extension AppComposition {
+extension SudokuAppComposition {
 
-    public static func preview() -> AppComposition {
+    public static func preview() -> SudokuAppComposition {
         fakeComposition()
     }
 
-    public static func tests() -> AppComposition {
+    public static func tests() -> SudokuAppComposition {
         fakeComposition()
     }
 
-    internal static func fakeComposition() -> AppComposition {
+    internal static func fakeComposition() -> SudokuAppComposition {
         let gameCenter = FakeGameCenterClient()
         let persistence = FakePersistence()
         let puzzleProvider = FakePuzzleProvider()
@@ -83,7 +83,7 @@ extension AppComposition {
             toastController: toastController
         )
 
-        return AppComposition(
+        return SudokuAppComposition(
             rootViewModel: rootViewModel,
             routeFactory: routeFactory,
             puzzleProvider: puzzleProvider,

@@ -54,7 +54,7 @@ public enum UserFacingError: Error, Sendable, Equatable, Hashable {
     /// user-facing bucket. Conservative by default: anything unrecognised
     /// returns `.unknown` rather than mis-classifying. Inspect by NSError
     /// domain + code to avoid hard-importing CloudKit / GameKit here
-    /// (AppComposition already brings them transitively, but keeping the
+    /// (SudokuAppComposition already brings them transitively, but keeping the
     /// classifier domain-string based makes it portable to test fakes that
     /// throw plain `NSError`s).
     public static func classify(_ error: any Error) -> UserFacingError {

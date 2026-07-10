@@ -1,7 +1,7 @@
 // BootOrderTests — v2.3.7.
 //
 // Drives `MonetizationBootCoordinator` directly through `MonetizationBootBridges`
-// closures that record the order in which they fire. AppComposition's live
+// closures that record the order in which they fire. SudokuAppComposition's live
 // `bootMonetization()` re-uses the same coordinator with the live UMP /
 // ATT / AdProvider wiring; the unit under test here is the *sequencing*,
 // not the live integrations.
@@ -196,12 +196,12 @@ struct BootOrderTests {
 // the live coordinator would surface `.unsupported` on every cold launch and
 // the failure path would fan 2 spurious `Telemetry.errorOccurred` breadcrumbs
 // per launch. The fix is a `#if !os(iOS)` early-return in
-// `AppComposition.bootMonetization()`. This suite verifies the observable
+// `SudokuAppComposition.bootMonetization()`. This suite verifies the observable
 // contract: zero telemetry events emitted on macOS.
 
 #if !os(iOS)
 @MainActor
-@Suite("AppComposition.bootMonetization — non-iOS early-return")
+@Suite("SudokuAppComposition.bootMonetization — non-iOS early-return")
 struct BootMonetizationPlatformGuardTests {
 
     /// Records every event for assertion. Sendable via the same unfair-lock
@@ -221,8 +221,8 @@ struct BootMonetizationPlatformGuardTests {
     @Test("bootMonetization early-returns on non-iOS (no telemetry events)")
     func bootMonetization_earlyReturns_onNonIOS() async {
         let sink = RecordingSink()
-        let base = AppComposition.tests()
-        let composition = AppComposition(
+        let base = SudokuAppComposition.tests()
+        let composition = SudokuAppComposition(
             rootViewModel: base.rootViewModel,
             routeFactory: base.routeFactory,
             puzzleProvider: base.puzzleProvider,

@@ -117,7 +117,7 @@ public actor AdGate {
     ///     determinism if needed.
     ///   - onPersistenceError: Optional sink for `saveState` failures. We
     ///     deliberately do NOT depend on Telemetry here — the host
-    ///     (`AppComposition`) wires this closure to its Telemetry facade so
+    ///     (`SudokuAppComposition`) wires this closure to its Telemetry facade so
     ///     MonetizationCore stays observability-stack-free. Closure runs
     ///     synchronously after the failed save inside the actor; keep it
     ///     short and non-throwing.

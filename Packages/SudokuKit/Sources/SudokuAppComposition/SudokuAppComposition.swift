@@ -1,6 +1,6 @@
-// AppComposition — DI composition root (docs/v1/design.md §How.1).
+// SudokuAppComposition — DI composition root (docs/v1/design.md §How.1).
 //
-// Three factory methods produce a fully-wired `AppComposition` for the
+// Three factory methods produce a fully-wired `SudokuAppComposition` for the
 // three environments the App needs to run in:
 //
 //   - `.live()`    — CloudKit / GameKit / OSLog / AdMob / StoreKit2 wiring.
@@ -36,7 +36,7 @@ public import Telemetry
 public import GameAppKit
 
 @MainActor
-public struct AppComposition {
+public struct SudokuAppComposition {
     public let rootViewModel: RootViewModel
     public let routeFactory: any RouteFactory<AppRoute>
     public let puzzleProvider: any PuzzleProviderProtocol

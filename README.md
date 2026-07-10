@@ -59,7 +59,7 @@ Packages/
 ├── SettingsKit/             # SettingsUI — the shared settings sections both apps mount
 ├── GameAppKit/              # shared app-composition layer: GameRootViewModel / GameRoot / ResumePill / ResumeCandidate
 ├── AppMonetizationKit/      # MonetizationCore/UI + AdsAdMob + IAPStoreKit2 (third-party SDK isolation)
-├── SudokuKit/               # Sudoku-specific: PuzzleStore / SudokuUI / AppComposition
+├── SudokuKit/               # Sudoku-specific: PuzzleStore / SudokuUI / SudokuAppComposition
 ├── MinesweeperKit/          # Minesweeper-specific: MinesweeperUI / MinesweeperAppComposition
 └── ASCRegisterKit/          # macOS-only dev CLI for App Store Connect ops (not in either app binary)
 ```

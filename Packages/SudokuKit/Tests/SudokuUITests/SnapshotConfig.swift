@@ -209,7 +209,7 @@ func hostingView<V: SwiftUI.View>(
         // #278 Tier-1 Phase 1: the `@Environment(\.theme)` key moved to
         // GameShellUI with a palette-neutral default. Snapshot fixtures
         // previously relied on that default being Sudoku's `DefaultTheme`;
-        // inject it explicitly here (mirroring AppComposition's root
+        // inject it explicitly here (mirroring SudokuAppComposition's root
         // injection) so baselines stay byte-identical.
         .environment(\.theme, DefaultTheme())
         // #278 Tier-1 Phase 2a: cell tokens moved to SudokuUI's `\.sudokuCell`

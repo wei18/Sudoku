@@ -23,7 +23,7 @@ internal import UIKit
 // neither knows nor cares — it only sees the `AdMobBridge` protocol surface.
 
 internal final class LiveAdMobBridge: AdMobBridge {
-    // AdMob banner ad unit ID. Per-app — `AppComposition.Live` selects the
+    // AdMob banner ad unit ID. Per-app — `SudokuAppComposition.Live` selects the
     // value (DEBUG: Google universal test unit; Release: the app's production
     // unit from AdMob console) so this package can serve multiple apps in
     // the same workspace without baking Sudoku-specific IDs into the binary.
@@ -60,7 +60,7 @@ internal final class LiveAdMobBridge: AdMobBridge {
     /// dev / simulator build can never accidentally request production ads
     /// against the live app id. Release reads the real per-app prod id from
     /// `Info.plist` (`GADBannerUnitID`, injected from `Tuist/AdMob.xcconfig`),
-    /// which `AppComposition` passes into `bannerAdUnitID`. (#441 — user
+    /// which `SudokuAppComposition` passes into `bannerAdUnitID`. (#441 — user
     /// decision: prod ids in Release / TestFlight are intended.)
     /// https://developers.google.com/admob/ios/test-ads#sample_ad_units
     internal static let debugTestBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"

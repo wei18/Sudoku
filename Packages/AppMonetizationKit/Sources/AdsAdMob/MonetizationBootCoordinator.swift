@@ -16,7 +16,7 @@ public import MonetizationCore
 //   3. Errors are logged via the caller-supplied `log` closure rather than
 //      coupled to a specific logger — `AppMonetizationKit` does not depend
 //      on the SudokuKit `Telemetry` target. The Sudoku App composes the
-//      live closure that fans into Telemetry (see AppComposition.live).
+//      live closure that fans into Telemetry (see SudokuAppComposition.live).
 //
 // Test seam:
 //   `MonetizationBootBridges` is a Sendable struct of three async closures.

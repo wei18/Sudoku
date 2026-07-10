@@ -74,7 +74,7 @@ public actor LiveErrorReporter: ErrorReporter {
 /// Fake impl for tests — records every report so test cases can assert
 /// that the expected funnel call happened. Lives alongside `LiveErrorReporter`
 /// (not in `SudokuKitTesting`) because the `ErrorReporter` protocol lives
-/// here and SudokuKitTesting is below AppComposition in the dep graph.
+/// here and SudokuKitTesting is below SudokuAppComposition in the dep graph.
 public actor FakeErrorReporter: ErrorReporter {
     public private(set) var received: [ErrorReport] = []
     private let clock: @Sendable () -> Date

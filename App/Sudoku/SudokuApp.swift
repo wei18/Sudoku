@@ -3,7 +3,7 @@ import SudokuAppComposition
 
 @main
 struct SudokuApp: App {
-    private let composition: AppComposition = AppComposition.live()
+    private let composition: SudokuAppComposition = SudokuAppComposition.live()
 
     var body: some Scene {
         WindowGroup {

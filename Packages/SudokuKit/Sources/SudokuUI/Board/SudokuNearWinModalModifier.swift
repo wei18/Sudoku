@@ -10,7 +10,7 @@
 // the same in-board overlay; this one exists to keep the historical
 // `-uitest-near-win-modal` entry point stable for #510 E2E.
 //
-// Applied at `AppComposition.rootView` alongside `SudokuNearWinModifier` —
+// Applied at `SudokuAppComposition.rootView` alongside `SudokuNearWinModifier` —
 // when the launch argument is absent every launch, the modifier is a no-op.
 //
 // Availability: `#if DEBUG` only — stripped from Release builds entirely.

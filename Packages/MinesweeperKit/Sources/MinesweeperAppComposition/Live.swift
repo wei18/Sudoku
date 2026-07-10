@@ -37,7 +37,7 @@ extension MinesweeperAppComposition {
     public static func live() -> MinesweeperAppComposition {
         // MS-specific identifiers live here (NOT inside AppMonetizationKit) so
         // the package can be linked by Sudoku without baking MS IDs into its
-        // binary (and vice-versa). Mirrors Sudoku's AppComposition.live().
+        // binary (and vice-versa). Mirrors Sudoku's SudokuAppComposition.live().
 
         // #455 step 4: saved-game store over the public gateway factory
         // (same container/zone LivePersistence.bootstrap() provisions).
@@ -159,7 +159,7 @@ extension MinesweeperAppComposition {
             // by makeGameApp when homeModes is non-empty.
             makeHome: { _, _ in AnyView(EmptyView()) },
             // #696: a tapped `dailyReady` reminder deep-links to the Daily hub
-            // (mirrors Sudoku's AppComposition.live() reminderTapRoute), pushing
+            // (mirrors Sudoku's SudokuAppComposition.live() reminderTapRoute), pushing
             // `.daily` unless already on top.
             reminderTapRoute: { identifier, rootViewModel in
                 guard identifier == ReminderKind.dailyReady.rawValue else { return }
