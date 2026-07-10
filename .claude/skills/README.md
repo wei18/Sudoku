@@ -53,8 +53,9 @@ Wiring is committed and reproducible:
 
 Full index of the 32: see [`apple-dev-skills/README.md`](apple-dev-skills/README.md).
 
-> The `superpowers/` directory is a separate git **submodule** (`obra/superpowers`)
-> and is not catalogued here.
+> `superpowers` content lives at `docs/superpowers/` as ordinary tracked files (not
+> a git submodule); `.gitmodules` declares only `apple-dev-skills`. It is not
+> catalogued here.
 
 ---
 

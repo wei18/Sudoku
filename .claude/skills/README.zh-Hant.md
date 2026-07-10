@@ -51,7 +51,8 @@
 
 32 個完整索引見 [`apple-dev-skills/README.md`](apple-dev-skills/README.md)。
 
-> `superpowers/` 為另一個 git **submodule**（`obra/superpowers`），不在此編目。
+> `superpowers` 內容以一般 tracked files 形式存在於 `docs/superpowers/`（並非 git submodule）；
+> `.gitmodules` 只宣告了 `apple-dev-skills`。不在此編目。
 
 ---
 

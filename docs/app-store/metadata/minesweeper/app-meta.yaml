@@ -44,9 +44,9 @@ review_information:
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
   # Notes pasted into ASC "Review Information → Notes". The canonical, full
-  # text is the fenced block in docs/app-store/review/minesweeper-v1.md —
-  # paste THAT verbatim at submission; this summary just points to it.
-  notes_source: "docs/app-store/review/minesweeper-v1.md"
+  # text is the fenced block in docs/app-store/review/minesweeper-v2.6-review-information.md
+  # — paste THAT verbatim at submission; this summary just points to it.
+  notes_source: "docs/app-store/review/minesweeper-v2.6-review-information.md"
   notes_summary: |
     No account or login required; app runs fully on first launch. Classic
     Minesweeper, three difficulties (Beginner/Intermediate/Expert). First tap

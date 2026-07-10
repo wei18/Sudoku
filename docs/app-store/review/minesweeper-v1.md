@@ -1,9 +1,15 @@
 # App Store Review Notes — Minesweeper v1
 
+> **SUPERSEDED — v2.6.0 is the live submission round** (Minesweeper's first
+> submission ships as 2.6.0, synced with Sudoku's versioning). For current ASC
+> paste-ready content see
+> [`minesweeper-v2.6-review-information.md`](minesweeper-v2.6-review-information.md)
+> and [`docs/app-store/SUBMISSION-CHECKLIST.md`](../SUBMISSION-CHECKLIST.md). This
+> file is kept as the historical record of the v1.0 draft round; do not paste from it.
+
 > Paste the **Review Information → Notes** field into App Store Connect at
 > submission. Demo account is N/A (no login). Contact = ASC account email.
-> This file is the source of truth; diff the live ASC page against it after
-> upload. Refs #236.
+> Refs #236.
 
 - **App**: Minesweeper (`com.wei18.minesweeper`)
 - **Version**: 1.0 (first submission)
