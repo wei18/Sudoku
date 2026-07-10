@@ -95,7 +95,8 @@ already leaked. See [`SECURITY.md`](SECURITY.md).
 
 The `Lint` CI workflow ([`.github/workflows/lint.yml`](.github/workflows/lint.yml))
 validates the PR title as `type(scope): subject`. **This is the most common
-trip-up:** the subject must start with a **lowercase** letter.
+trip-up:** the subject must not start with an uppercase letter — a lowercase
+letter or a leading digit both pass.
 
 ```
 feat(monetization): add remove-ads restore button   ✅
@@ -106,7 +107,7 @@ Fix: Crash On Launch                                 ❌  (wrong type case + upp
 - Accepted types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`,
   `build`, `ci`, `perf`, `style`, `revert`.
 - Scope is **optional** and unrestricted (e.g. `feat(monetization):`).
-- Subject pattern: `^[a-z].+$`.
+- Subject pattern: `^[a-z0-9].+$`.
 
 The squash-merge commit takes the PR title, which is why the title — not the
 individual commits — is what CI gates.

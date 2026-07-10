@@ -11,6 +11,12 @@
 > on 2026-06-19. The "DRAFT / to-do" framing below is **historical** — it reflects
 > the design conversation as captured on 2026-06-17. Do not act on open items
 > or [OQ] markers without first verifying the current tree.
+>
+> **RETCON (2026-06-29) — Tiles2048/SDD-004 removed; "2048 is canonical" is stale.**
+> The user removed Tiles2048 (SDD-004 ABANDONED, PR #642, #501 closed won't-do) to
+> keep MS + Sudoku the focus. Wherever the body below names 2048 as the "cleanest"
+> or "canonical" naming template, treat Minesweeper as the canonical template
+> instead (see SDD-006, which templates the new-game scaffold from Minesweeper).
 
 > This doc is a captured snapshot of a design conversation. It is INTENTIONALLY a
 > draft: sections marked **[OQ]** are open questions for the next session. Verify

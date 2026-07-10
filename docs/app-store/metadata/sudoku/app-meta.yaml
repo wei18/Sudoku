@@ -61,9 +61,9 @@ review_information:
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
   # Notes pasted into ASC "Review Information → Notes". The canonical, full
-  # text is the fenced block in docs/app-store/review/sudoku-v2.5.md — paste
-  # THAT verbatim at submission; this summary just points the uploader to it.
-  notes_source: "docs/app-store/review/sudoku-v2.5.md"
+  # text is the fenced block in docs/app-store/review/sudoku-v2.6-review-information.md
+  # — paste THAT verbatim at submission; this summary just points the uploader to it.
+  notes_source: "docs/app-store/review/sudoku-v2.6-review-information.md"
   notes_summary: |
     No account or login required; app runs fully on first launch. One IAP
     (com.wei18.sudoku.iap.remove_ads, non-consumable, removes banner ads) —

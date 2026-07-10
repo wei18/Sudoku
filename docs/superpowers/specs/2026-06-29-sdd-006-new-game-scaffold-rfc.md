@@ -27,6 +27,11 @@ convergence, COMPLETE — the prerequisite), north-star memory
 > the §5 rename map now has a single token (`Minesweeper`) where 2048 needed two.
 > The generator itself is still PENDING (§5 form undecided) — this update is a
 > documentation rename only, no design change.
+>
+> **SUPERSEDED by the 2026-07-05 owner point-call (see below) — the generator
+> shipped.** OQ-1 through OQ-4 (§5/§9) were resolved and PR1 landed as
+> `mise-tasks/new_game/scaffold` (#678). "Still PENDING" above is stale; see the
+> §5/§9 resolution notes for the recorded decisions.
 
 ---
 
@@ -144,7 +149,11 @@ This also gives us the #510-Phase-3 win→completion E2E **for free** on the new
 
 ---
 
-## 5. **[OQ-1] Scaffold form — the central open question**
+## 5. **[OQ-1] Scaffold form — RESOLVED 2026-07-05 (Option A, owner-approved)**
+
+> **RESOLVED 2026-07-05 (owner point-call, recorded in `mise-tasks/new_game/scaffold`
+> header):** Option A — one mise file-task, no committed `templates/` tree. Section
+> body below is kept as the historical options analysis.
 
 Two viable shapes; the user deferred the choice to this RFC.
 
@@ -218,17 +227,21 @@ merged) is the interim evidence that the wiring holds.
 
 ## 9. Open questions
 
-- **[OQ-1]** Scaffold form (§5) — A (mise generator, recommended) vs B (checklist).
-- **[OQ-2]** Template source — generate from Minesweeper at run time (no drift,
-  recommended) vs a committed `templates/new-game/` set (explicit but drifts).
-- **[OQ-3]** Rename safety — `sed` token map vs a small Swift/script renamer that's
-  word-boundary aware (avoid `Game2048`-substring false hits).
-- **[OQ-4]** Does the placeholder game ship a real `Assets.xcassets` AppIcon, or a
-  1×1 stub the developer must replace (and a `scan:` reminder)?
-- **[OQ-5]** Should PR3's parameterization audit be folded into PR1 (so the very first
-  generated game exercises `tf:upload` etc.) or kept separate?
+- **[OQ-1] RESOLVED 2026-07-05 (owner-approved).** Scaffold form (§5) — Option A:
+  one mise file-task (`mise-tasks/new_game/scaffold`), no committed `templates/` tree.
+- **[OQ-2] RESOLVED 2026-07-05 (owner-approved).** Template source — generate from
+  Minesweeper at run time (no committed copy to drift).
+- **[OQ-3] RESOLVED 2026-07-05 (owner-approved).** Rename safety — whole-token
+  substring replacement (a Python rename pass), not a blind line-based `sed`;
+  avoids `Game2048`-style substring false hits.
+- **[OQ-4] RESOLVED 2026-07-05 (owner-approved).** The placeholder game ships
+  Minesweeper's own icon PNGs copied verbatim (binary, never text-substituted);
+  a real icon is a NEXT-STEPS / PR2 user-owned item.
+- **[OQ-5]** Still open. Should PR3's parameterization audit be folded into PR1 (so
+  the very first generated game exercises `tf:upload` etc.) or kept separate?
 
 ---
 
-*Drafted 2026-06-29 while closing out SDD-005 (#634/#635/#636 E2E + #637 dead-field).
-Next: user picks the §5 form + §9 OQs, then this becomes the #479 implementation roadmap.*
+*Drafted 2026-06-29 while closing out SDD-005 (#634/#635/#636 E2E + #637 dead-field).*
+*Next (updated 2026-07-10): OQ-1..OQ-4 resolved 2026-07-05 and PR1 shipped (#678,
+`mise-tasks/new_game/scaffold`); OQ-5 remains open for PR3 scoping.*

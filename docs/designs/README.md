@@ -15,8 +15,10 @@ Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`.
 | [`06-completion.md`](./06-completion.md) | CompletionView — hero + leaderboard slice; 3 state variants |
 | [`07-leaderboard.md`](./07-leaderboard.md) | LeaderboardView — scope × difficulty pickers; auth/error/empty states |
 | [`08-settings.md`](./08-settings.md) | SettingsView — native Form, GC status, language, version, clear cache |
+| [`captureguard-kit.md`](./captureguard-kit.md) | RFC — CaptureGuardKit, surface-scoped black-on-capture guard (screen-recording/mirroring blackout) |
+| [`code/SnapshotMatrix.md`](./code/SnapshotMatrix.md) | Snapshot Matrix — tracks every PNG snapshot the snapshot-test target must produce (v1 UI baseline) |
 
-`code/` is reserved for `*_Designs.swift` preview files extracted from the per-View docs (developer task, not produced here — the snippets inside each per-View doc are the source of truth).
+`code/` holds `SnapshotMatrix.md` plus a standalone SwiftPM package (`Package.swift` / `Sources/` / `Tests/`) — not `*_Designs.swift` preview files (there are none in this directory).
 
 ## How to read these docs (Developer perspective)
 

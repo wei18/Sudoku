@@ -86,7 +86,7 @@ The collaboration model is a **Leader / Developer state machine**, defined in [`
 - The **Leader** (the coordinating session) understands intent, writes and reviews documents, decomposes work, and dispatches tasks — but does not write implementation code.
 - **Developer / Reviewer / Designer / Architect** sub-agents implement, review, and design against a precise dispatch contract (scope, docs to read, skills to invoke, return format, verification criteria), with their output gated by the Leader before anything reaches the user.
 
-Work advances through explicit states — `GOAL_RECEIVED → PROPOSAL → RFC → USER_APPROVED → IMPL → CLOSED` — with a code-review step inserted whenever a change is large or touches sensitive modules. The methodology document also captures the recurring **patterns** and **anti-patterns** observed across phases, which is the part most directly reusable on another project.
+Work advances loosely from goal → proposal/spec → user approval → implementation → close-out, with a code-review step inserted whenever a change is large or touches sensitive modules. The methodology document also captures the recurring **patterns** and **anti-patterns** observed across phases, which is the part most directly reusable on another project.
 
 ---
 

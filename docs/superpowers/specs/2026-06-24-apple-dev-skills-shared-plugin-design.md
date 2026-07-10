@@ -1,8 +1,16 @@
 # 2026-06-24 — `apple-dev-skills`: extract portable skills into a shared Claude Code plugin (submodule)
 
-Status: DESIGN (awaiting user review → writing-plans)
+Status: SHIPPED (see AS-BUILT NOTE below) — the body is retained as a historical design snapshot
 Author: Leader (AI Collaboration Mode)
 Origin: user goal "planning 一個新 repo，像 iOS agent developer skills，把這 repo 可移植的 skills 全部挪過去，用 submodule 概念連結回來"
+
+> **AS-BUILT NOTE (verified 2026-07-10) — SHIPPED, diverges from the plan below.**
+> Landed as a marketplace with **2 plugins** — `apple-dev-skills` and
+> `collaboration-skills` — totaling **32** portable skills across both, namespaces
+> `apple-dev-skills:` and `collaboration-skills:`; **9** project-bound skills stay
+> flat in this repo (see `CLAUDE.md` §Where truth lives). This diverges from §2's
+> single-plugin / 26-skill / one-namespace plan — treat this note, not the
+> historical counts below, as current truth.
 
 ## 1. Goal
 
