@@ -14,14 +14,21 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
     @Binding private var path: [AppRoute]
     @State private var difficulty: Difficulty
     private let banner: Banner
+    // #720 G2: fires when the player picks a new difficulty segment so the
+    // composition root can persist it (mirrors Sudoku's
+    // `PracticeHubViewModel.persistDifficulty`). `nil` (previews / most unit
+    // tests) makes this a no-op.
+    private let onDifficultyChanged: ((Difficulty) -> Void)?
 
     public init(
         path: Binding<[AppRoute]>,
         initialDifficulty: Difficulty = .beginner,
+        onDifficultyChanged: ((Difficulty) -> Void)? = nil,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self._path = path
         self._difficulty = State(initialValue: initialDifficulty)
+        self.onDifficultyChanged = onDifficultyChanged
         self.banner = banner()
     }
 
@@ -37,9 +44,25 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         )
     }
 
+    // #720 G2: `internal` (not `private`) so `MinesweeperPracticeHubViewTests`
+    // can drive the persistence round trip directly — this repo's test infra
+    // has no SwiftUI render-tree introspection (`AnyView`'s payload isn't
+    // introspectable per `LiveRouteFactoryTests`), so the `Binding` itself is
+    // the seam under test. Mirrors Sudoku's `PracticeHubView.difficultyBinding`,
+    // which routes through `viewModel.selectDifficulty(_:)` instead.
+    var difficultyBinding: Binding<Difficulty> {
+        Binding(
+            get: { difficulty },
+            set: { newValue in
+                difficulty = newValue
+                onDifficultyChanged?(newValue)
+            }
+        )
+    }
+
     @ViewBuilder
     private var difficultyPicker: some View {
-        Picker("Difficulty", selection: $difficulty) {
+        Picker("Difficulty", selection: difficultyBinding) {
             ForEach(Difficulty.allCases, id: \.self) { level in
                 Text(displayName(level)).tag(level)
             }

@@ -40,8 +40,12 @@ public import SettingsUI
 public import GameAudio
 // SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
 // `onPresentBoard` is wired, so board views are presented as fullScreenCover
-// modals instead of NavigationStack pushes.
+// modals instead of NavigationStack pushes. `LastSelectionStore` backs the
+// #720 G1 Practice-difficulty persistence below.
 public import GameAppKit
+// #720 G1: `Difficulty` used to seed/persist the Practice hub's last-selected
+// difficulty. Internal only — not part of this factory's public API surface.
+internal import SudokuEngine
 
 // MARK: - LiveRouteFactory
 
@@ -163,9 +167,20 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .practice:
+            // #720 G1: remember the player's last-picked Practice difficulty
+            // across launches instead of always resetting to Medium.
+            let difficultyStore = LastSelectionStore(
+                key: "com.wei18.sudoku.practice.lastDifficulty",
+                fallback: Difficulty.medium.rawValue
+            )
             return AnyView(
                 PracticeHubView(
-                    viewModel: PracticeHubViewModel(provider: puzzleProvider, path: path),
+                    viewModel: PracticeHubViewModel(
+                        provider: puzzleProvider,
+                        initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .medium,
+                        persistDifficulty: { difficultyStore.save($0.rawValue) },
+                        path: path
+                    ),
                     banner: { themedBanner() }
                 )
             )

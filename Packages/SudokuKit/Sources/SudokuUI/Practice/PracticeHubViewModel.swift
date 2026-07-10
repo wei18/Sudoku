@@ -24,7 +24,7 @@ public enum PracticeHubLoadingState: Sendable, Equatable {
 @MainActor
 @Observable
 public final class PracticeHubViewModel {
-    public var difficulty: Difficulty = .medium
+    public var difficulty: Difficulty
     public private(set) var loadingState: PracticeHubLoadingState = .idle
 
     /// Navigation path store (issue #240): routes through an injected
@@ -42,14 +42,23 @@ public final class PracticeHubViewModel {
 
     private let provider: any PuzzleProviderProtocol
     private let shimmerDelayNanos: UInt64
+    // #720 G1: fires when the player picks a new difficulty segment so the
+    // composition root can persist it (mirrors `AudioSettingsModel`'s
+    // injected setter closures). `nil` (previews / most unit tests) makes
+    // this a no-op.
+    private let persistDifficulty: ((Difficulty) -> Void)?
 
     public init(
         provider: any PuzzleProviderProtocol,
         shimmerDelayNanos: UInt64 = 100_000_000,  // 100 ms
+        initialDifficulty: Difficulty = .medium,
+        persistDifficulty: ((Difficulty) -> Void)? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
         self.provider = provider
         self.shimmerDelayNanos = shimmerDelayNanos
+        self.difficulty = initialDifficulty
+        self.persistDifficulty = persistDifficulty
         self.routePath = RoutePath(path)
     }
 
@@ -97,5 +106,6 @@ public final class PracticeHubViewModel {
     public func selectDifficulty(_ next: Difficulty) {
         difficulty = next
         loadingState = .idle
+        persistDifficulty?(next)
     }
 }

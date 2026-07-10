@@ -36,9 +36,13 @@ public import GameCenterClient
 public import GameShellUI
 // SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
 // `onPresentBoard` is wired, so board views are presented as fullScreenCover
-// modals instead of NavigationStack pushes.
+// modals instead of NavigationStack pushes. `LastSelectionStore` backs the
+// #720 G2 Practice-difficulty persistence below.
 public import GameAppKit
 public import MinesweeperUI
+// #720 G2: `Difficulty` used to seed/persist the Practice hub's last-selected
+// difficulty. Internal only — not part of this factory's public API surface.
+internal import MinesweeperEngine
 public import MonetizationCore
 public import MonetizationUI
 public import MinesweeperPersistence
@@ -179,9 +183,17 @@ public struct LiveRouteFactory: RouteFactory {
             )
         case .practice:
             // Was unreachable (no AppRoute case). Now reachable from Home.
+            // #720 G2: remember the player's last-picked Practice difficulty
+            // across launches instead of always resetting to Beginner.
+            let difficultyStore = LastSelectionStore(
+                key: "com.wei18.minesweeper.practice.lastDifficulty",
+                fallback: Difficulty.beginner.rawValue
+            )
             return AnyView(
                 MinesweeperPracticeHubView(
                     path: path ?? .constant([]),
+                    initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
+                    onDifficultyChanged: { difficultyStore.save($0.rawValue) },
                     banner: { bannerSlot() }
                 )
             )
