@@ -32,11 +32,6 @@ public enum UITestLaunchArg {
     /// enum is stripped by the compiler.
     public static let nearWinModal = "-uitest-near-win-modal"
 
-    /// The sentinel puzzleId used when the modal hook is active. Stored here
-    /// so `SudokuNearWinModalModifier` and `LiveRouteFactory` share the same
-    /// literal without duplication.
-    public static let nearWinModalPuzzleId = "uitest-near-win-modal"
-
     /// Forces both loaders (`BoardLoaderView` / `MinesweeperBoardLoaderView`)
     /// straight into `.failed(.unknown)` on mount, skipping the real
     /// persistence fetch entirely (#719). Sim verification of the loader's

@@ -37,7 +37,7 @@ final class SudokuE2ETests: XCTestCase {
     /// Happy path: near-win board → winning move → completion overlay appears.
     func test_winToCompletion() {
         let app = XCUIApplication()
-        app.launchArguments += ["-uitest-near-win-modal"]
+        app.launchArguments += [UITestLaunchArg.nearWinModal]
         app.launch()
 
         // The fixed-seed near-win board has exactly ONE empty cell, whose a11y

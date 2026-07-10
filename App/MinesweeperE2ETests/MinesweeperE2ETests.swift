@@ -36,7 +36,7 @@ final class MinesweeperE2ETests: XCTestCase {
     /// completion overlay appears.
     func test_winToCompletion() {
         let app = XCUIApplication()
-        app.launchArguments += ["-uitest-near-win"]
+        app.launchArguments += [UITestLaunchArg.nearWin]
         app.launch()
 
         // Read the winning cell's (row, col) from the DEBUG beacon.
