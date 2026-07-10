@@ -19,7 +19,6 @@
 //     bag for callers that need direct references (e.g. App-level boot order,
 //     CompositionTests / BootOrderTests).
 
-internal import AdsAdMob
 internal import Foundation
 public import GameCenterClient
 public import GameShellUI
@@ -157,61 +156,5 @@ public struct SudokuAppComposition {
         self.toastController = toastController
         self.attPrimer = attPrimer
         self.wiredView = wiredView
-    }
-
-    // MARK: - v2.3.7 boot order
-
-    /// App-launch monetization boot. Runs UMP consent → (ATT no-op) → AdMob
-    /// SDK initialize in that order. Each step is attempted independently;
-    /// a failing earlier step never blocks later steps (banner gate will
-    /// surface `.failed` honestly while AdMob is still un-initialized).
-    ///
-    /// #371 / #195: the ATT step is intentionally a NO-OP at boot. The
-    /// coordinator keeps the 3-slot UMP/ATT/AdMob shape (ordering tests rely on
-    /// it) but `MonetizationBootBridges.live` wires the ATT closure to nothing —
-    /// the real ATT prompt is driven later by `ATTPrimerCoordinator` (after Home
-    /// + first ad-context). UMP (GDPR consent) legitimately stays at cold launch.
-    ///
-    /// Callable from `.task` on the root scene — the boot runs concurrently
-    /// with first-frame rendering, never blocks UI.
-    public func bootMonetization() async {
-        #if !os(iOS)
-        // AdMob + UMP are iOS-only (Google's xcframeworks ship iOS slices
-        // only — see PR #101 for the conditional dep wiring). On macOS /
-        // other platforms, `NoopAdProvider` is wired in Live.swift and the
-        // UMP / ATT bridges always return `.unsupported`, which the
-        // coordinator's failure path would otherwise misclassify as a
-        // runtime fault and fan into `Telemetry.errorOccurred` (2 spurious
-        // breadcrumbs per cold launch). Nothing to initialize here.
-        return
-        #else
-        let bridges = MonetizationBootBridges.live(adProvider: adProvider)
-        let telemetryHandle = telemetry
-        let coordinator = MonetizationBootCoordinator(
-            bridges: bridges,
-            log: { outcome in
-                // Telemetry's typed catalog does not have an "info"/"trace"
-                // case suited to boot-sequence breadcrumbs, so we only fan
-                // failures into Telemetry.observe(.errorOccurred(...)); the
-                // success path takes the `print` fallback per spec §boot
-                // notes. (See impl-notes §未決 — promoting boot events to
-                // a first-class TelemetryEvent case is deferred to v2.4.)
-                if !outcome.succeeded {
-                    Task {
-                        await telemetryHandle.observe(
-                            .errorOccurred(
-                                source: "MonetizationBoot",
-                                code: outcome.step.rawValue,
-                                message: outcome.errorDescription ?? "unknown"
-                            )
-                        )
-                    }
-                } else {
-                    print("[MonetizationBoot] step=\(outcome.step.rawValue) succeeded")
-                }
-            }
-        )
-        await coordinator.boot()
-        #endif
     }
 }

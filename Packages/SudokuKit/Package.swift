@@ -182,12 +182,12 @@ let productionTargets: [Target] = [
             // GameCenterTesting; `Preview.swift` consumes `FakeGameCenterClient`
             // for the `.preview()` factory.
             gameCenterTestingDep,
-            // v2.3.2: monetization wiring. SudokuAppComposition.live builds
-            // LiveAdMobAdProvider + LiveStoreKit2IAPClient + AdGate via
-            // LiveMonetizationStateStore. Preview / tests use MonetizationTesting fakes.
+            // Monetization surfaces referenced by the composition types
+            // (MonetizationCore/MonetizationUI); since #556/#557 the live
+            // UMP → ATT → AdMob boot construction lives in GameAppKit's
+            // makeGameApp, not here. Preview uses MonetizationTesting fakes.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
-            .product(name: "AdsAdMob", package: "AppMonetizationKit"),
             .product(name: "IAPStoreKit2", package: "AppMonetizationKit"),
             .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
         ],
