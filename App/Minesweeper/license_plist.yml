@@ -15,9 +15,15 @@ options:
   # AdMob + UMP (third-party SDKs that ship in the app bundle and require
   # disclosure); MinesweeperKit currently has no third-party deps but is listed
   # for forward-compatibility.
+  # NB: like outputPath below, packagePaths resolve relative to THIS config
+  # file's directory (App/Minesweeper/), so they must climb to the repo root
+  # with `../../` (#721). With repo-root-relative paths LicensePlist silently
+  # found nothing here and only produced a full list when `Game.xcworkspace`
+  # (its `*.xcworkspace` CWD fallback) happened to exist from a prior
+  # tuist generate.
   packagePaths:
-    - Packages/AppMonetizationKit/Package.swift
-    - Packages/MinesweeperKit/Package.swift
+    - ../../Packages/AppMonetizationKit/Package.swift
+    - ../../Packages/MinesweeperKit/Package.swift
 
   # Settings.bundle landing path inside the App target's resources.
   # NB: LicensePlist resolves outputPath relative to THIS config file's directory
