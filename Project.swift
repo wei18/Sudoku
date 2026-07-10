@@ -154,7 +154,18 @@ let sudokuE2ETestsTarget = Target.target(
     product: .uiTests,
     bundleId: "com.wei18.sudoku.e2e",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    sources: ["App/SudokuE2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
+    // The E2E targets depend only on `.target(name: "Sudoku")` (no package
+    // product deps — see minesweeperE2ETestsTarget for the mirrored setup), so
+    // `UITestLaunchArg` (GameAppKit) can't be reached via `import GameAppKit`.
+    // Compiling the Foundation-only source file directly (no module import,
+    // same technique as the shared `App/UITestsShared` glob below) keeps the
+    // launch-arg string literals single-sourced without adding a new
+    // dependency edge.
+    sources: [
+        "App/SudokuE2ETests/**/*.swift",
+        "App/UITestsShared/**/*.swift",
+        "Packages/GameAppKit/Sources/GameAppKit/UITestLaunchArg.swift",
+    ],
     dependencies: [.target(name: "Sudoku")],
     settings: .settings(base: swiftSettings)
 )
@@ -168,7 +179,14 @@ let minesweeperE2ETestsTarget = Target.target(
     product: .uiTests,
     bundleId: "com.wei18.minesweeper.e2e",
     deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
-    sources: ["App/MinesweeperE2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
+    // Mirrors sudokuE2ETestsTarget: no package product deps on this target
+    // (only `.target(name: "Minesweeper")`), so `UITestLaunchArg` is compiled
+    // in directly rather than imported as a GameAppKit module.
+    sources: [
+        "App/MinesweeperE2ETests/**/*.swift",
+        "App/UITestsShared/**/*.swift",
+        "Packages/GameAppKit/Sources/GameAppKit/UITestLaunchArg.swift",
+    ],
     dependencies: [.target(name: "Minesweeper")],
     settings: .settings(base: swiftSettings)
 )
