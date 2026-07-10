@@ -528,7 +528,7 @@ public struct MinesweeperBoardView: View {
                     }
                 } else if sizeClass == .regular {
                     Label(
-                        viewModel.isPaused ? "Resume" : "Pause",
+                        pauseToggleTitle,
                         systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
                     )
                 } else {
@@ -543,19 +543,35 @@ public struct MinesweeperBoardView: View {
             .accessibilityLabel(
                 viewModel.status == .idle
                     ? Text("leave.game.leave")
-                    : Text(viewModel.isPaused ? "Resume" : "Pause")
+                    : Text(pauseToggleTitle)
             )
             .accessibilityIdentifier("minesweeper.board.pauseToggle")
         }
     }
 
+    // #741: the Mac-regular `Label` title and the accessibility label both
+    // showed the same Resume/Pause word via a bare ternary literal — that
+    // expression resolves to a runtime `String`, not a `LocalizedStringKey`,
+    // so it bypassed the catalog entirely (same bug class as the mode-toggle
+    // strings #731 already fixed below). Reuses the "Pause"/"Resume" keys
+    // #434 already added for this same toolbar toggle.
+    private var pauseToggleTitle: String {
+        viewModel.isPaused
+            ? String(localized: "Resume", bundle: .main)
+            : String(localized: "Pause", bundle: .main)
+    }
+
     private var statusText: String {
+        // #741: this switch fed bare English literals straight into `Text`
+        // (a runtime `String`, not a `LocalizedStringKey` literal, so it
+        // bypassed the catalog entirely). "You won" / "Boom" reuse the keys
+        // #421 already added for the Completion screen's hero title.
         switch viewModel.status {
-        case .idle:    return "Ready"
-        case .playing: return "Playing"
-        case .paused:  return "Paused"
-        case .won:     return "You won"
-        case .lost:    return "Boom"
+        case .idle:    return String(localized: "Ready", bundle: .main)
+        case .playing: return String(localized: "Playing", bundle: .main)
+        case .paused:  return String(localized: "Paused", bundle: .main)
+        case .won:     return String(localized: "You won", bundle: .main)
+        case .lost:    return String(localized: "Boom", bundle: .main)
         }
     }
 
