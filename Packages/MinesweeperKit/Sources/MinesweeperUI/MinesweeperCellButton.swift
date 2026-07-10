@@ -78,7 +78,7 @@ struct MinesweeperCellButton: View {
         }
         #elseif os(macOS)
         .contextMenu {
-            Button(cell.state == .flagged ? "Unflag" : "Flag") {
+            Button(flagToggleTitle) {
                 onToggleFlag()
             }
         }
@@ -100,7 +100,19 @@ struct MinesweeperCellButton: View {
     /// VoiceOver action title for the flag toggle (mirrors the macOS context
     /// menu wording).
     private var flagActionName: Text {
-        Text(cell.state == .flagged ? "Unflag" : "Flag")
+        Text(flagToggleTitle)
+    }
+
+    /// #741: the macOS context-menu button and the VoiceOver action name show
+    /// the same Flag/Unflag word — computed once here via `String(localized:)`
+    /// so both resolve through the catalog instead of the previous bare-ternary
+    /// literal (which bypassed it: a `Text`/`Button` initializer fed a runtime
+    /// `String` rather than a `LocalizedStringKey` literal). Reuses the "Flag"
+    /// key already added by #731's mode toggle.
+    private var flagToggleTitle: String {
+        cell.state == .flagged
+            ? String(localized: "Unflag", bundle: .main)
+            : String(localized: "Flag", bundle: .main)
     }
 
     @ViewBuilder
@@ -231,13 +243,19 @@ struct MinesweeperCellButton: View {
     }
 
     private var stateDescription: String {
-        if showsLostMine { return "Mine" }
+        // #741: this switch fed bare English literals straight into
+        // `accessibilityLabel` — same bug class as the context-menu Flag/Unflag
+        // ternary above. Each branch now resolves through the catalog; the
+        // neighbor-mine-count branch stays a raw numeral (no l10n needed).
+        if showsLostMine { return String(localized: "Mine", bundle: .main) }
         switch cell.state {
-        case .hidden:   return "Hidden"
-        case .flagged:  return "Flagged"
+        case .hidden:   return String(localized: "Hidden", bundle: .main)
+        case .flagged:  return String(localized: "Flagged", bundle: .main)
         case .revealed:
-            if cell.isMine { return "Mine" }
-            return cell.neighborMineCount == 0 ? "Empty" : "\(cell.neighborMineCount)"
+            if cell.isMine { return String(localized: "Mine", bundle: .main) }
+            return cell.neighborMineCount == 0
+                ? String(localized: "Empty", bundle: .main)
+                : "\(cell.neighborMineCount)"
         }
     }
 }
