@@ -55,19 +55,20 @@ struct BoardCellView: View {
     }
 
     private var accessibilityLabel: String {
-        // §How.5.7 format: "Row R, Column C, <state>". #755: routed through
-        // the catalog (was bare interpolation bypassing l10n).
+        // §How.5.7 format: "Row R, Column C, <state>". #755 routed the location
+        // prefix through the catalog; #771 routes the state suffix too (was
+        // bare interpolation bypassing l10n).
         let location = String(localized: "Row \(row + 1), Column \(column + 1)", bundle: .main)
         if isError, let digit {
-            return "\(location), conflict \(digit)"
+            return "\(location), \(String(localized: "conflict \(digit)", bundle: .main))"
         }
         if let digit {
             if isGiven {
-                return "\(location), given \(digit)"
+                return "\(location), \(String(localized: "given \(digit)", bundle: .main))"
             }
-            return "\(location), value \(digit)"
+            return "\(location), \(String(localized: "value \(digit)", bundle: .main))"
         }
-        return "\(location), Empty"
+        return "\(location), \(String(localized: "Empty", bundle: .main))"
     }
 
     // bg priority: error > selected > sameDigit > highlighted (peer) > given > base
