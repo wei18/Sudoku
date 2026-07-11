@@ -55,8 +55,9 @@ struct BoardCellView: View {
     }
 
     private var accessibilityLabel: String {
-        // §How.5.7 format: "Row R, Column C, <state>"
-        let location = "Row \(row + 1), Column \(column + 1)"
+        // §How.5.7 format: "Row R, Column C, <state>". #755: routed through
+        // the catalog (was bare interpolation bypassing l10n).
+        let location = String(localized: "Row \(row + 1), Column \(column + 1)", bundle: .main)
         if isError, let digit {
             return "\(location), conflict \(digit)"
         }

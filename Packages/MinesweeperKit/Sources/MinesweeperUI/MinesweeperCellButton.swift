@@ -237,8 +237,9 @@ struct MinesweeperCellButton: View {
     private var accessibilityLabel: String {
         // #298 #10: "Row R, Column C, <state>" — mirrors Sudoku BoardCellView
         // §How.5.7. Coordinates are 1-based for VO; state defers to the
-        // lost-mine surfacing first.
-        let location = "Row \(row + 1), Column \(column + 1)"
+        // lost-mine surfacing first. #755: routed through the catalog (was
+        // bare interpolation bypassing l10n, same bug class as #741).
+        let location = String(localized: "Row \(row + 1), Column \(column + 1)", bundle: .main)
         return "\(location), \(stateDescription)"
     }
 
