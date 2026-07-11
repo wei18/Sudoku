@@ -599,16 +599,18 @@ public struct MinesweeperBoardView: View {
         mode == .flag ? "flag" : "reveal"
     }
 
-    // MARK: - Mode toggle (#278 Tier-0 #3, #724)
+    // MARK: - Mode toggle (#278 Tier-0 #3, #724, #767)
 
     // Discoverable primary control for reveal vs flag. #724: the segmented
     // Picker (two always-visible options) was replaced with a single icon
     // toggle button — same role (routes which action a cell tap fires), half
-    // the footprint. The button shows the CURRENT mode's icon and a
-    // mode-tinted `.borderedProminent` background (not just an icon swap) so
-    // the active mode reads clearly at a glance; tapping flips to the other
-    // mode. Long-press-to-flag (MinesweeperCellButton, unchanged) still works
-    // as the accelerator in `.reveal` mode.
+    // the footprint. #767 (audit N2): an icon-only button gave sighted users
+    // no in-context hint of which mode was active or what a tap would do —
+    // the mode name was VoiceOver-only. The label now pairs the icon with
+    // the same "Reveal"/"Flag" text already in the catalog (#742), so the
+    // active mode reads without opening the a11y tree. Tapping flips to the
+    // other mode. Long-press-to-flag (MinesweeperCellButton, unchanged)
+    // still works as the accelerator in `.reveal` mode.
     private var modeToggle: some View {
         Button {
             interactionMode = interactionMode == .reveal ? .flag : .reveal
@@ -616,16 +618,30 @@ public struct MinesweeperBoardView: View {
             // in it.
             Self.tapModeStore.save(Self.rawValue(for: interactionMode))
         } label: {
-            Image(systemName: interactionMode == .flag ? "flag.fill" : "hand.tap.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .frame(width: 44, height: 44)
+            Label {
+                Text(modeToggleModeName)
+                    .font(.system(size: 13, weight: .semibold))
+            } icon: {
+                Image(systemName: interactionMode == .flag ? "flag.fill" : "hand.tap.fill")
+                    .font(.system(size: 18, weight: .semibold))
+            }
+            // #767: `accent.muted` is a background-only token (design-system.md
+            // §Color) — text/icon on top must be `text.primary` to hold
+            // contrast, mirroring the pattern already used wherever
+            // `accent.muted` backs content elsewhere in the app.
+            .foregroundStyle(interactionMode == .flag ? theme.text.primary.resolved : .white)
+            .padding(.horizontal, 12)
+            .frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
         // swiftui-interaction-footguns: theme tint doesn't auto-propagate to
-        // system controls — apply `.tint` explicitly. Reveal reads with the
-        // app accent; flag switches to the warning tone so the two modes are
-        // color-distinct, not just icon-distinct.
-        .tint(interactionMode == .flag ? theme.status.warning.resolved : theme.accent.primary.resolved)
+        // system controls — apply `.tint` explicitly. #767: flag mode
+        // previously borrowed `status.warning` for its tint, which reads as
+        // "something is wrong" for a routine mode switch and isn't a
+        // status-signal use per design-system.md's token table. Flag mode
+        // now uses `accent.muted` — still color-distinct from reveal's
+        // `accent.primary`, but out of the status-token family.
+        .tint(interactionMode == .flag ? theme.accent.muted.resolved : theme.accent.primary.resolved)
         .accessibilityLabel(Text(String(format: modeToggleLabelFormat, modeToggleModeName)))
         .accessibilityValue(Text(modeToggleModeName))
         .accessibilityHint(Text(modeToggleHint))
