@@ -66,6 +66,9 @@ App/Minesweeper/Resources/Settings.bundle/*
 !App/Minesweeper/Resources/Settings.bundle/Root.plist
 .claude/worktrees/
 
-# Sub-package Package.resolved — top-level SudokuKit pins everything; per-leaf-pkg resolveds are noise (Stage 2 precedent, TelemetryKit/SudokuCoreKit don't ship one)
+# Sub-package Package.resolved — top-level SudokuKit pins everything; per-leaf-pkg resolveds are noise (Stage 2 precedent, TelemetryKit/SudokuCoreKit don't ship one).
+# SudokuKit's + MinesweeperKit's own resolveds ARE committed (mirror parity, #747)
+# so both app packages pin identical third-party versions.
 Packages/*/Package.resolved
+!Packages/MinesweeperKit/Package.resolved
 .claude/scheduled_tasks.lock
