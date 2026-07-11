@@ -245,7 +245,11 @@ public struct BoardView: View {
             canRedo: viewModel.canRedo,
             sizeClass: sizeClass,
             remainingCounts: (1...9).map { dgt in max(0, 9 - viewModel.board.cells.filter { $0 == UInt8(dgt) }.count) },
-            onDigit: { digit in Task { await placeOrToggle(digit) } },
+            armedDigit: viewModel.armedDigit,
+            hasSelection: viewModel.selection != nil,
+            // #722: routing (place-into-selection vs arm/disarm) lives on the
+            // VM (`keypadDigit`), matching every other mutation on this board.
+            onDigit: { digit in Task { await viewModel.keypadDigit(digit) } },
             onErase: { Task { await viewModel.eraseCell() } },
             onTogglePencil: { viewModel.togglePencil() },
             onUndo: { Task { await viewModel.undo() } },

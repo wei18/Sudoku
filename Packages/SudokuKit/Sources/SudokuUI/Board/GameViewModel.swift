@@ -50,6 +50,15 @@ public final class GameViewModel {
     /// arrows; `nil` means no cell focused (legal initial state).
     public var selection: GridCoordinate?
 
+    /// Digit armed for digit-first placement (#722): tapping a keypad digit
+    /// with no cell selected arms it here instead of placing; a subsequent
+    /// empty-cell tap places it (see `tapCell(row:column:)`) and the digit
+    /// stays armed for consecutive placements. `nil` = today's cell-first
+    /// flow. Invariant: `armedDigit != nil ⟺ selection == nil` — `select()`
+    /// is the one place that disarms, `armDigit(_:)` the one place that arms
+    /// (and clears `selection`).
+    public private(set) var armedDigit: Int?
+
     /// Whether digit input writes pencil notes (`true`) or values (`false`).
     public var pencilMode: Bool = false
 
@@ -128,6 +137,7 @@ public final class GameViewModel {
         mistakeCount: Int = 0,
         errorIndices: Set<Int> = [],
         selection: GridCoordinate? = nil,
+        armedDigit: Int? = nil,
         pencilMode: Bool = false,
         canUndo: Bool = false,
         canRedo: Bool = false,
@@ -145,7 +155,13 @@ public final class GameViewModel {
         self.elapsedSeconds = elapsedSeconds
         self.mistakeCount = mistakeCount
         self.errorIndices = errorIndices
+        // #722 invariant, asserted at construction so test/preview fixtures
+        // can't drift into a state the two runtime mutators (select() /
+        // armDigit()) make unreachable.
+        assert(selection == nil || armedDigit == nil,
+               "armedDigit != nil requires selection == nil (#722 invariant)")
         self.selection = selection
+        self.armedDigit = armedDigit
         self.pencilMode = pencilMode
         self.canUndo = canUndo
         self.canRedo = canRedo
@@ -188,6 +204,7 @@ public final class GameViewModel {
         mistakeCount: Int? = nil,
         errorIndices: Set<Int>? = nil,
         selection: GridCoordinate? = nil,
+        armedDigit: Int? = nil,
         pencilMode: Bool? = nil,
         canUndo: Bool? = nil,
         canRedo: Bool? = nil
@@ -198,10 +215,20 @@ public final class GameViewModel {
         if let elapsedSeconds { self.elapsedSeconds = elapsedSeconds }
         if let mistakeCount { self.mistakeCount = mistakeCount }
         if let errorIndices { self.errorIndices = errorIndices }
+        assert((selection ?? self.selection) == nil || (armedDigit ?? self.armedDigit) == nil,
+               "armedDigit != nil requires selection == nil (#722 invariant)")
         if let selection { self.selection = selection }
+        applyTestArmedDigit(armedDigit)
         if let pencilMode { self.pencilMode = pencilMode }
         if let canUndo { self.canUndo = canUndo }
         if let canRedo { self.canRedo = canRedo }
+    }
+
+    /// #722: split out of `setStateForTesting` to keep that function's
+    /// cyclomatic complexity under the lint ceiling — one more `if let`
+    /// there tipped it from 10 to 11.
+    private func applyTestArmedDigit(_ armedDigit: Int?) {
+        if let armedDigit { self.armedDigit = armedDigit }
     }
 
     // MARK: - Mutations (UI-facing)
@@ -289,16 +316,22 @@ public final class GameViewModel {
 
     public func toggleNote(_ digit: Int) async {
         guard let selection else { return }
-        let index = Board.index(row: selection.row, column: selection.column)
+        await toggleNote(digit, at: selection)
+    }
+
+    /// #722: coord-taking overload so digit-first placement (`tapCell`) can
+    /// toggle a note on an arbitrary cell without going through `selection`.
+    public func toggleNote(_ digit: Int, at coord: GridCoordinate) async {
+        let index = Board.index(row: coord.row, column: coord.column)
         if board.givenMask[index] { return }
 
         if let session {
             await runSession("toggleNote") {
-                try await session.toggleNote(row: selection.row, col: selection.column, digit: digit)
+                try await session.toggleNote(row: coord.row, col: coord.column, digit: digit)
             }
             await resyncFromSession()
         } else {
-            _ = notes.toggle(digit: digit, row: selection.row, col: selection.column)
+            _ = notes.toggle(digit: digit, row: coord.row, col: coord.column)
         }
         scheduleSave()
     }
@@ -401,6 +434,12 @@ public final class GameViewModel {
     }
 
     public func select(row: Int, column: Int) {
+        // #722: any cell-first selection disarms digit-first mode. This is
+        // the single enforcement point for the invariant `armedDigit != nil
+        // ⟺ selection == nil` on the "selecting" side — unconditional (even
+        // when the guards below no-op the actual selection change) so a tap
+        // on a given/out-of-bounds cell while armed still exits armed mode.
+        armedDigit = nil
         guard (0..<Board.dimension).contains(row),
               (0..<Board.dimension).contains(column) else { return }
         // Epic 9 (SDD-003): given (prefilled) cells are not selectable —
@@ -415,10 +454,21 @@ public final class GameViewModel {
     /// SDD-003 Epic 9 targets tap interaction only, and skipping givens would
     /// make arrow navigation jump non-linearly. The guard lives in `select()`.
     public func moveSelection(rowDelta: Int, columnDelta: Int) {
+        armedDigit = nil  // #722: keyboard navigation also disarms.
         let current = selection ?? GridCoordinate(row: 0, column: 0)
         let nextRow = max(0, min(Board.dimension - 1, current.row + rowDelta))
         let nextCol = max(0, min(Board.dimension - 1, current.column + columnDelta))
         selection = GridCoordinate(row: nextRow, column: nextCol)
+    }
+
+    /// Arm/disarm a digit for digit-first placement (#722). Tapping the
+    /// keypad with no cell selected calls this; tapping the SAME armed digit
+    /// again disarms. Arming clears `selection` — the invariant's other
+    /// enforcement point (paired with `select()`, which clears `armedDigit`).
+    public func armDigit(_ digit: Int) {
+        guard (1...9).contains(digit) else { return }
+        armedDigit = (armedDigit == digit) ? nil : digit
+        if armedDigit != nil { selection = nil }
     }
 
     // MARK: - Audio (#330 P2)
