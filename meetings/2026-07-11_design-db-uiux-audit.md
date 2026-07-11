@@ -9,10 +9,14 @@ database as the comparison lens, cross-referenced against
 `audit-platform` lane (static scan closing the coverage gaps the 2026-07-05
 audit round named as untouched: iPad regular + macOS, MS Intermediate board,
 Settings sub-screens, AX3, offline). Findings below are merged and sorted
-BLOCKER → MAJOR → MINOR. Three companion proposals
+BLOCKER → MAJOR → MINOR. Three companion proposals were originally drafted
 (`docs/v2/first-run-guide-proposal.md`, `docs/v2/stats-screen-proposal.md`,
-`docs/v2/daily-calendar-streak-proposal.md`) turn a subset of this into
-buildable specs.
+`docs/v2/daily-calendar-streak-proposal.md`) to turn a subset of this into
+buildable specs. **`docs/v2/first-run-guide-proposal.md` was withdrawn by the
+owner on 2026-07-11 and removed from this branch** — see §Adjudicated
+2026-07-11 (owner-delegated) below. The remaining two,
+`docs/v2/stats-screen-proposal.md` and
+`docs/v2/daily-calendar-streak-proposal.md`, are still active.
 
 ---
 
@@ -263,7 +267,23 @@ Leader ("裁定的給你選", 2026-07-11). Each decision below is a Leader call 
 under that delegation, not an owner decision in its own right — individually
 reversible if the owner later overrides it.
 
-### #468 B1 — Completion-screen leaderboard zone
+### FIRST-RUN — proposal withdrawn (owner, 2026-07-11)
+
+**Decision:** owner withdrew the first-run coach-marks proposal in full on
+2026-07-11; no first-run/onboarding feature ships in this round. The spec
+file (`docs/v2/first-run-guide-proposal.md`) was removed from this branch.
+**Note:** the underlying findings that motivated the proposal remain valid
+findings, unaffected by the withdrawal — MS's tap-mode toggle still has zero
+visual affordance for a first-time user, and the repo still has no
+first-run/"seen before" flag anywhere.
+This is an owner decision made directly, not a Leader call under delegation
+— recorded here for the project's history, not reversible-by-Leader the way
+the delegated items below are.
+
+### #468 B1 — Completion-screen leaderboard zone — **SUPERSEDED 2026-07-11**
+
+**[SUPERSEDED — kept verbatim for history, no longer the controlling
+decision; see the superseding decision below]**
 
 **Decision:** Expose. When Game Center is authenticated,
 `SUD-COMPLETION-OVERLAY`/`MS-COMPLETION-OVERLAY` show a leaderboard row; when
@@ -275,6 +295,16 @@ already invested in (recent commits); surfacing social proof on the
 completion screen reinforces the daily habit loop the DAILY-CAL/STATS
 proposals are trying to strengthen.
 Delegated by owner; reversible if owner overrides.
+
+**Superseding decision (owner, 2026-07-11, same day):** keep as-built — the
+completion screen does **not** grow a leaderboard row. #698 already removed
+the leaderboard-rendering mechanism from the completion path; this decision
+is to *not* reintroduce it, not to leave a half-built feature in place.
+**Rationale:** owner directly overrode Leader's delegated call above the
+same day; recorded as a superseding entry rather than edited in place so the
+reversal stays visible in the document's history.
+This is the current, controlling decision for #468 B1 — an owner decision
+made directly, not a Leader call under delegation.
 
 ### #468 B2 — MS `makeCompletionSinks` unwired
 
