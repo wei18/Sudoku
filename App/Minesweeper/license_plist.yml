@@ -8,7 +8,22 @@
 # surfaces under iOS Settings.app → <App name> → Acknowledgements.
 #
 # Schema reference: https://github.com/mono0926/LicensePlist#configuration
-# YAML keys are camelCase nested under `options:`.
+# YAML keys are camelCase nested under `options:`, EXCEPT `exclude:`/`rename:`/
+# `github:`/`manual:`, which are top-level siblings of `options:` (confirmed
+# against the upstream README §Excludes — the config-dir `.build` LicensePlist
+# checkout has no bundled source/README, so this one lookup used the GitHub
+# README directly; verified empirically below by regenerating and diffing output).
+
+# Test-target-only transitive deps (pulled in via swift-snapshot-testing's test
+# targets) that never ship in the app binary — exclude by package `name` so the
+# Acknowledgements page only discloses what's actually shipped (#747). Each
+# entry is a dictionary (README §Excludes: bare-string form is NOT supported by
+# this key, only `name`/`source`/`owner`/`licenseType`).
+exclude:
+  - name: swift-custom-dump
+  - name: swift-snapshot-testing
+  - name: swift-syntax
+  - name: xctest-dynamic-overlay
 
 options:
   # SwiftPM packages to scan. Both must be listed: AppMonetizationKit pulls
