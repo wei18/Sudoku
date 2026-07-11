@@ -4,6 +4,7 @@
 // distinct visual coverage beyond mistakeCount value).
 
 import Foundation
+import GameShellUI
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -30,7 +31,10 @@ struct CompletionViewTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPhoneLight() async {
         let viewModel = makeViewModel()
         let host = hostingView(
-            CompletionView(viewModel: viewModel),
+            // The hero-reveal `.onAppear` never fires on this off-screen
+            // host — see `completionHeroSkipsReveal`'s doc comment.
+            CompletionView(viewModel: viewModel)
+                .environment(\.completionHeroSkipsReveal, true),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
@@ -43,7 +47,10 @@ struct CompletionViewTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPadLight() async {
         let viewModel = makeViewModel()
         let host = hostingView(
-            CompletionView(viewModel: viewModel),
+            // The hero-reveal `.onAppear` never fires on this off-screen
+            // host — see `completionHeroSkipsReveal`'s doc comment.
+            CompletionView(viewModel: viewModel)
+                .environment(\.completionHeroSkipsReveal, true),
             size: SnapshotLayouts.iPad,
             colorScheme: .light,
             sizeClass: .regular
@@ -71,7 +78,10 @@ struct CompletionViewTests {
             leaderboardId: nil
         )
         let host = hostingView(
-            CompletionView(viewModel: viewModel),
+            // The hero-reveal `.onAppear` never fires on this off-screen
+            // host — see `completionHeroSkipsReveal`'s doc comment.
+            CompletionView(viewModel: viewModel)
+                .environment(\.completionHeroSkipsReveal, true),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact

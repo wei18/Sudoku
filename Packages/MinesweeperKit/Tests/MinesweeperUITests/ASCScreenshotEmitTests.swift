@@ -144,7 +144,11 @@ struct ASCScreenshotEmitTests {
             elapsedSeconds: 65,
             leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
+        // The hero-reveal `.onAppear` never fires on this off-screen render
+        // path — see `completionHeroSkipsReveal`'s doc comment. Without this,
+        // the emitted ASC screenshot would ship with a blank hero card.
         return MinesweeperCompletionView(viewModel: viewModel, onClose: {})
+            .environment(\.completionHeroSkipsReveal, true)
     }
 
     // MARK: - iPhone 6.9" (1290×2796) — Home / Daily / Board / Completion

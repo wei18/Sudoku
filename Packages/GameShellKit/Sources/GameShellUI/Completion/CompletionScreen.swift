@@ -56,6 +56,14 @@ public struct CompletionOutcome: Equatable {
 
 public struct CompletionScreen: View {
     @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.completionHeroSkipsReveal) private var skipsReveal
+
+    /// design-system.md §Motion "CompletionView hero stat reveal" (350 ms
+    /// fade + 8 pt rise, stagger 60 ms / reduced motion: instant fade).
+    /// Starts `false` and flips true on appear so the reveal plays once per
+    /// presentation rather than replaying on every re-render.
+    @State private var heroRevealed = false
 
     private let outcome: CompletionOutcome
     /// Hero subtitle time ("4:11"). `nil` OMITS the time row entirely (symbol +
@@ -110,14 +118,20 @@ public struct CompletionScreen: View {
 
     // MARK: - Hero
 
+    /// `heroRevealed` OR the test/offline-renderer escape hatch below — see
+    /// `completionHeroSkipsReveal`.
+    private var isHeroRevealed: Bool { heroRevealed || skipsReveal }
+
     private var hero: some View {
         VStack(spacing: 10) {
             Image(systemName: outcome.systemImage)
                 .font(.system(size: 56))
                 .foregroundStyle(heroTint)
+                .heroReveal(isHeroRevealed, index: 0, reduceMotion: reduceMotion)
             Text(outcome.title)
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(theme.text.primary.resolved)
+                .heroReveal(isHeroRevealed, index: 1, reduceMotion: reduceMotion)
             // Omit the time row entirely when there's no elapsed (MS re-opened
             // solved-daily, #386) — no placeholder/empty row. Has-time callers
             // render the identical `Text` as before, so snapshots are unchanged.
@@ -126,6 +140,7 @@ public struct CompletionScreen: View {
                     .font(.title3)
                     .foregroundStyle(theme.text.secondary.resolved)
                     .monospacedDigit()
+                    .heroReveal(isHeroRevealed, index: 2, reduceMotion: reduceMotion)
             }
             // Mistakes row — only shown when the game tracks mistakes (Sudoku).
             // Minesweeper passes `nil` and the row is fully absent (no height,
@@ -141,6 +156,7 @@ public struct CompletionScreen: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                         .monospacedDigit()
                 }
+                .heroReveal(isHeroRevealed, index: 3, reduceMotion: reduceMotion)
             }
         }
         .frame(maxWidth: .infinity)
@@ -154,6 +170,14 @@ public struct CompletionScreen: View {
         // winning move, in any locale. Both apps render CompletionScreen, so
         // this single identifier serves both (mirror principle).
         .accessibilityIdentifier("game.completion.hero")
+        // Reveal plays once per presentation, not on every body re-evaluation
+        // (e.g. a theme/locale environment change while the screen is up).
+        // NOTE: `.onAppear` does not fire on an off-screen `NSHostingView`
+        // that's never added to a real window (confirmed empirically) — the
+        // snapshot-test / ASC-screenshot harnesses render exactly that way,
+        // so they rely on `completionHeroSkipsReveal` below rather than this
+        // callback ever running.
+        .onAppear { heroRevealed = true }
     }
 
     private var heroTint: Color {
@@ -161,5 +185,50 @@ public struct CompletionScreen: View {
         case .success: theme.status.success.resolved
         case .failure: theme.status.error.resolved
         }
+    }
+}
+
+// MARK: - Hero reveal
+
+private extension View {
+    /// design-system.md §Motion "CompletionView hero stat reveal": 350 ms
+    /// fade + 8 pt rise, staggered 60 ms per element by `index`; reduced
+    /// motion drops straight to the revealed state (instant fade, no rise).
+    func heroReveal(_ revealed: Bool, index: Int, reduceMotion: Bool) -> some View {
+        opacity(revealed ? 1 : 0)
+            .offset(y: revealed ? 0 : 8)
+            .animation(
+                MotionGate.animation(
+                    .easeOut(duration: 0.35).delay(Double(index) * 0.06),
+                    reduceMotion: reduceMotion
+                ),
+                value: revealed
+            )
+    }
+}
+
+// MARK: - Offline-renderer escape hatch
+
+private struct CompletionHeroSkipsRevealKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+public extension EnvironmentValues {
+    /// Test/offline-renderer-only override (mirrors `BannerSlotView`'s
+    /// `bannerSlotLoadingPreview`, #732): `CompletionScreen`'s hero-reveal
+    /// animation is driven by `.onAppear`, which never fires on an
+    /// `NSHostingView` that isn't attached to a real window — exactly how
+    /// the snapshot-test harness and the ASC screenshot emitter render a
+    /// view for a single synchronous capture. Without this seam those
+    /// captures show a permanently blank hero (the pre-reveal opacity-0
+    /// state), not a "needs a longer wait" issue — waiting does not help,
+    /// since the callback that would flip the state never runs at all.
+    /// `false` (default) leaves the live app's real entrance animation
+    /// untouched; only offline renderers set this via
+    /// `.environment(\.completionHeroSkipsReveal, true)` from OUTSIDE
+    /// `CompletionScreen`'s own view tree.
+    var completionHeroSkipsReveal: Bool {
+        get { self[CompletionHeroSkipsRevealKey.self] }
+        set { self[CompletionHeroSkipsRevealKey.self] = newValue }
     }
 }

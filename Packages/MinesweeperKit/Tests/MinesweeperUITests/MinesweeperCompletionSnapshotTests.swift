@@ -13,6 +13,7 @@
 
 #if canImport(AppKit)
 import Foundation
+import GameShellUI
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -34,10 +35,13 @@ struct MinesweeperCompletionSnapshotTests {
             elapsedSeconds: elapsedSeconds,
             leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
+        // The hero-reveal `.onAppear` never fires on this off-screen host —
+        // see `completionHeroSkipsReveal`'s doc comment.
         return MinesweeperCompletionView(
             viewModel: viewModel,
             onClose: {}
         )
+        .environment(\.completionHeroSkipsReveal, true)
     }
 
     // MARK: - Re-opened solved daily (#386): hero OMITS the time row
@@ -59,6 +63,7 @@ struct MinesweeperCompletionSnapshotTests {
             onClose: {},
             showsElapsedTime: false
         )
+        .environment(\.completionHeroSkipsReveal, true)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
     }
