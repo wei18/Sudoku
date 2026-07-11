@@ -22,6 +22,16 @@ struct DigitPadView: View {
     let sizeClass: UserInterfaceSizeClass?
     /// Remaining count for each digit 1–9 (index 0 = digit 1 … index 8 = digit 9).
     let remainingCounts: [Int]
+    /// #722 digit-first input: the digit currently armed (no cell selected,
+    /// keypad-tapped), or `nil`. Drives the keypad's own highlight — same
+    /// visual affordance as the Notes-mode toggle's active state.
+    let armedDigit: Int?
+    /// #722: whether a board cell is currently selected. When `true`, tapping
+    /// a digit places/toggles-note directly (today's flow) so the existing
+    /// `remaining == 0` disable gate still applies. When `false`, a tap only
+    /// ARMS the digit (no immediate placement) — arming an exhausted digit is
+    /// still valid for notes use, so the gate is relaxed.
+    let hasSelection: Bool
     let onDigit: (Int) -> Void
     let onErase: () -> Void
     let onTogglePencil: () -> Void
@@ -104,29 +114,7 @@ struct DigitPadView: View {
                 GridRow {
                     ForEach(1...3, id: \.self) { col in
                         let digit = row * 3 + col
-                        let remaining = remainingCounts[digit - 1]
-                        Button {
-                            onDigit(digit)
-                        } label: {
-                            VStack(spacing: 2) {
-                                Text("\(digit)")
-                                    .font(.title2.weight(.medium))
-                                if remaining > 0 {
-                                    Text("\(remaining)")
-                                        .font(.caption2)
-                                        .foregroundStyle(remaining == 1
-                                            ? theme.accent.primary.resolved
-                                            : theme.text.secondary.resolved)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(theme.accent.primary.resolved)
-                        .disabled(remaining == 0)
-                        .opacity(remaining == 0 ? 0.35 : 1.0)
-                        .accessibilityLabel("Digit \(digit)")
-                        .accessibilityValue(remaining > 0 ? "\(remaining) remaining" : "fully placed")
+                        compactDigitButton(digit: digit, remaining: remainingCounts[digit - 1])
                     }
                 }
             }
@@ -140,6 +128,48 @@ struct DigitPadView: View {
                 .fill(theme.accent.primary.resolved.opacity(pencilMode ? 0.06 : 0))
         )
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
+    }
+
+    // #722: `.buttonStyle(.borderedProminent)` vs `.buttonStyle(.bordered)`
+    // are distinct concrete types, so the armed/unarmed branches need a
+    // `Group { if/else }` split (same pattern as `macNotesToggle` below)
+    // rather than a ternary passed to a single `.buttonStyle(...)` call.
+    @ViewBuilder
+    private func compactDigitButton(digit: Int, remaining: Int) -> some View {
+        let isArmed = digit == armedDigit
+        Group {
+            if isArmed {
+                Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining) }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .tint(theme.accent.primary.resolved)
+        // #722: only the direct-placement path (a cell is selected) gates on
+        // remaining count — with no selection, a tap only arms, and arming an
+        // already-fully-placed digit is still valid for notes use.
+        .disabled(hasSelection && remaining == 0)
+        .opacity(remaining == 0 ? 0.35 : 1.0)
+        .accessibilityLabel("Digit \(digit)")
+        .accessibilityValue(remaining > 0 ? "\(remaining) remaining" : "fully placed")
+        .accessibilityAddTraits(isArmed ? .isSelected : [])
+    }
+
+    private func compactDigitLabel(digit: Int, remaining: Int) -> some View {
+        VStack(spacing: 2) {
+            Text("\(digit)")
+                .font(.title2.weight(.medium))
+            if remaining > 0 {
+                Text("\(remaining)")
+                    .font(.caption2)
+                    .foregroundStyle(remaining == 1
+                        ? theme.accent.primary.resolved
+                        : theme.text.secondary.resolved)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 56)
     }
 
     // MARK: - Mac (regular) layout
@@ -211,23 +241,38 @@ struct DigitPadView: View {
             ForEach(0..<3, id: \.self) { row in
                 GridRow {
                     ForEach(1...3, id: \.self) { col in
-                        let digit = row * 3 + col
-                        Button {
-                            onDigit(digit)
-                        } label: {
-                            Text("\(digit)")
-                                .font(.title2.weight(.medium))
-                                .frame(minWidth: 64, minHeight: 64)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        // Palette sweep (#610 fix *5): match iPhone digit tint.
-                        .tint(theme.accent.primary.resolved)
-                        .accessibilityLabel("Digit \(digit)")
+                        macDigitButton(digit: row * 3 + col)
                     }
                 }
             }
         }
+    }
+
+    // #722: same armed-highlight treatment as `compactDigitButton`, minus
+    // the remaining-count badge/gate (Mac never disabled on remaining count).
+    @ViewBuilder
+    private func macDigitButton(digit: Int) -> some View {
+        let isArmed = digit == armedDigit
+        Group {
+            if isArmed {
+                Button { onDigit(digit) } label: { macDigitLabel(digit: digit) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button { onDigit(digit) } label: { macDigitLabel(digit: digit) }
+                    .buttonStyle(.bordered)
+            }
+        }
+        // Palette sweep (#610 fix *5): match iPhone digit tint.
+        .tint(theme.accent.primary.resolved)
+        .accessibilityLabel("Digit \(digit)")
+        .accessibilityAddTraits(isArmed ? .isSelected : [])
+    }
+
+    private func macDigitLabel(digit: Int) -> some View {
+        Text("\(digit)")
+            .font(.title2.weight(.medium))
+            .frame(minWidth: 64, minHeight: 64)
+            .frame(maxWidth: .infinity)
     }
 
     private var macEraseRow: some View {

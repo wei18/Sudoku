@@ -19,9 +19,13 @@ extension BoardView {
             sel2.row == row || sel2.column == column
                 || (sel2.row / 3 == row / 3 && sel2.column / 3 == column / 3)
         } ?? false
-        // Same-digit: non-selected cell carrying the digit shown in the selected cell.
+        // Same-digit: non-selected cell carrying the digit shown in the selected
+        // cell, OR (#722) the digit armed for digit-first placement — the two
+        // sources are mutually exclusive (armedDigit != nil ⟺ selection == nil),
+        // so reading whichever is active reuses the existing token unchanged.
         let selDig = sel.flatMap { viewModel.board.digit(atIndex: Board.index(row: $0.row, column: $0.column)) }
-        let isSameDigit = !isSelected && selDig != nil && digit == selDig
+        let targetDigit = selDig ?? viewModel.armedDigit
+        let isSameDigit = !isSelected && targetDigit != nil && digit == targetDigit
         let cellView = BoardCellView(
             row: row,
             column: column,
@@ -37,7 +41,9 @@ extension BoardView {
         )
         if cellView.isInteractive {
             Button {
-                viewModel.select(row: row, column: column)
+                // #722: routes through the digit-first dispatch — degrades to
+                // plain select() when nothing is armed, so cell-first is unchanged.
+                Task { await viewModel.tapCell(row: row, column: column) }
             } label: {
                 cellView
             }
