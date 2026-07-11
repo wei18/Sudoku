@@ -2,6 +2,8 @@
 
 **Status:** PROPOSAL (design spec, not yet implemented)
 **Date:** 2026-07-11
+**GitHub:** #773 (feature); soft-depends on **#761** (daily-hub refresh
+BLOCKER — see §2 closure-principle note)
 **Author:** Developer/Designer subagent → Leader review
 **Companion:** `meetings/2026-07-11_design-db-uiux-audit.md` (audit findings this
 spec responds to — see finding M2)
@@ -185,26 +187,32 @@ schema changes**. It is explicitly **not** sufficient for:
   built.** Verified ✓ — confirmed by direct grep of `SettingsKit` (no
   "stats" match) and by reading `SettingsScreen.swift:76-132`'s actual row
   order; this is finding M2, already adjudicated by Leader as a real defect.
-- **MS side of `PersonalRecord` is not populated at all today — now a hard
-  blocking prerequisite.** **Adjudicated 2026-07-11** (owner-delegated):
-  finding #468 B2 (`makeCompletionSinks` absent for Minesweeper — see
-  `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11) is
-  confirmed as a real gap, not an intentional design choice. Wiring
-  Minesweeper's completion flow to the `PersonalRecord`/achievements sinks
-  (the way Sudoku's completion path already does) **must ship before this
-  proposal's MS-side tiles can show any data at all** — without it,
-  `completedCount`/`bestTimeSeconds`/`totalTimeSeconds` simply stay
-  unwritten for every MS (mode, difficulty) pair. Delegated by owner;
-  reversible if owner overrides.
+- **MS daily-mode `PersonalRecord` data is already available; the MS
+  Practice tab is what's actually blocked.** **Correction (2026-07-11, later
+  same day):** this bullet previously treated MS sink-wiring as a fresh,
+  newly-adjudicated blocking gap ("#468 B2") — that was wrong, verified
+  against `gh`/the source tree. MS's daily-mode `PersonalRecord` submission
+  already shipped
+  (`submitDailyTimeIfWon()`,
+  `Packages/MinesweeperKit/Sources/MinesweeperUI/MinesweeperGameViewModel+SubmitOnWin.swift:33`,
+  #699, merged 2026-07-05/06) — this screen's Daily-section MS tiles can ship
+  against existing data, no new wiring required. What's genuinely
+  outstanding is **MS practice-mode** personal bests, a deliberate
+  initial-scope exclusion at the time (MS practice `recordName`s are
+  singletons per difficulty and can't dedupe per-attempt the way daily's
+  puzzleId does) — already tracked as **open issue #705**, blocked on a
+  per-game-unique practice id design. **This proposal's MS-side Practice tab
+  is blocked on #705**, not on any new adjudication from this round; see
+  `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11
+  (#468 B2 entry) for the full correction.
 - **MS win-rate-per-difficulty is derivable from existing fields.**
-  Unconfirmed ? — even once B2's sink-wiring lands, `completedCount` alone
-  doesn't distinguish "played and won" from "played" for Minesweeper the way
-  it implicitly does for Sudoku (a Sudoku puzzle that's "completed" was
-  solved; an MS board that ends in a mine hit is a loss, not a completion).
-  Whether a loss count is tracked anywhere adjacent to `PersonalRecord`
-  needs a direct check before this spec's MS win-rate tile can be built as
-  described — flagged rather than assumed, independent of the B2 wiring
-  decision above.
+  Unconfirmed ? — independent of the correction above, `completedCount`
+  alone doesn't distinguish "played and won" from "played" for Minesweeper
+  the way it implicitly does for Sudoku (a Sudoku puzzle that's "completed"
+  was solved; an MS board that ends in a mine hit is a loss, not a
+  completion). Whether a loss count is tracked anywhere adjacent to
+  `PersonalRecord` needs a direct check before this spec's MS win-rate tile
+  can be built as described — flagged rather than assumed.
 - **Streak number depends on DAILY-CAL.** Unconfirmed ? (by design) — the
   hero "current streak" number in §3.2 assumes the streak-counting logic
   proposed in `docs/v2/daily-calendar-streak-proposal.md` exists. If DAILY-

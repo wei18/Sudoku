@@ -267,6 +267,18 @@ Leader ("裁定的給你選", 2026-07-11). Each decision below is a Leader call 
 under that delegation, not an owner decision in its own right — individually
 reversible if the owner later overrides it.
 
+**Correction (2026-07-11, later same day):** the B2/B3/B4 entries below
+originally re-adjudicated three items as if they were still open. They were
+not: verified against `gh`/the source tree, B2/B3/B4 were already fixed and
+shipped on 2026-07-05/06 (see each entry for the shipped evidence) — treating
+them as fresh open questions was redundant with work already merged.
+Separately, **"#468" is not this repo's real GitHub issue #468** (that issue
+is an unrelated closed epic); the "B1-B4" labels were carried over from the
+2026-07-05 audit's internal working list, not an actual issue number.
+Corrected below: B2-B4 are marked **Moot — already shipped**, evidence cited,
+original text kept verbatim for history. B1's adjudication stands as
+previously recorded (owner override, kept as-built).
+
 ### FIRST-RUN — proposal withdrawn (owner, 2026-07-11)
 
 **Decision:** owner withdrew the first-run coach-marks proposal in full on
@@ -304,9 +316,13 @@ is to *not* reintroduce it, not to leave a half-built feature in place.
 same day; recorded as a superseding entry rather than edited in place so the
 reversal stays visible in the document's history.
 This is the current, controlling decision for #468 B1 — an owner decision
-made directly, not a Leader call under delegation.
+made directly, not a Leader call under delegation. Tracked as GitHub **#775**,
+closed not-planned.
 
-### #468 B2 — MS `makeCompletionSinks` unwired
+### #468 B2 — MS `makeCompletionSinks` unwired — **MOOT 2026-07-11 (already shipped)**
+
+**[MOOT — this was already fixed before this audit round even started; kept
+verbatim for history, not a live decision]**
 
 **Decision:** Confirmed gap. Wire `makeCompletionSinks` to the
 `PersonalRecord`/achievements sinks the same way Sudoku's completion path
@@ -317,14 +333,38 @@ screen would ship with no MS data at all. Now recorded as a hard (blocking)
 prerequisite in that proposal's §5.
 Delegated by owner; reversible if owner overrides.
 
-### #468 B3 — MS `reminderTapRoute` missing
+**Correction (owner, 2026-07-11, same day):** already shipped. MS's
+daily-mode `PersonalRecord` submission landed via `submitDailyTimeIfWon()`
+(`Packages/MinesweeperKit/Sources/MinesweeperUI/MinesweeperGameViewModel+SubmitOnWin.swift:33`,
+#699, merged 2026-07-05/06). Owner explicitly declined the generalized
+`makeCompletionSinks` approach at the time; MS practice-mode personal bests
+remain a separate, already-tracked gap (**#705**, open — blocked on a
+per-game-unique practice id design, since MS practice `recordName`s are
+singletons per difficulty and can't dedupe per-attempt the way daily's
+puzzleId does). Nothing new to adjudicate here — see
+`docs/v2/stats-screen-proposal.md` §5 for the corrected prerequisite.
+
+### #468 B3 — MS `reminderTapRoute` missing — **MOOT 2026-07-11 (already shipped)**
+
+**[MOOT — this was already fixed before this audit round even started; kept
+verbatim for history, not a live decision]**
 
 **Decision:** Add it. MS reminder taps should route to the daily hub,
 matching Sudoku's existing `reminderTapRoute` behavior.
 **Rationale:** pure platform-parity gap; no design disagreement to resolve.
 Delegated by owner; reversible if owner overrides.
 
-### #468 B4 — MS re-view Close destination
+**Correction (owner, 2026-07-11, same day):** already shipped. MS's
+`reminderTapRoute` closure is wired in
+`Packages/MinesweeperKit/Sources/MinesweeperAppComposition/Live.swift:161-169`
+(#696, closed) — a tapped `dailyReady` reminder pushes `.daily` unless
+already on top, matching Sudoku's `reminderTapRoute`. Nothing new to
+adjudicate here.
+
+### #468 B4 — MS re-view Close destination — **MOOT 2026-07-11 (already shipped)**
+
+**[MOOT — this was already fixed before this audit round even started; kept
+verbatim for history, not a live decision]**
 
 **Decision:** Close lands on the Daily hub (matching Sudoku), not Home.
 **Rationale:** matches the settlement-closure principle this round's
@@ -332,6 +372,12 @@ findings apply elsewhere (B1 above) — closing a re-view should return to a
 screen where the completed state is visible; also keeps DAILY-CAL's
 week-strip visually consistent across both apps' review flows.
 Delegated by owner; reversible if owner overrides.
+
+**Correction (owner, 2026-07-11, same day):** already shipped. MS's
+completion re-view Close pops one level
+(`Packages/MinesweeperKit/Sources/MinesweeperAppComposition/LiveRouteFactory.swift:299-311`,
+#697, closed), mirroring Sudoku's `closePath?.wrappedValue.removeLast()`
+behavior. Nothing new to adjudicate here.
 
 ### ATT Path A vs. Path B
 

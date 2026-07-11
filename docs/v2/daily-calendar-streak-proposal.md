@@ -2,6 +2,8 @@
 
 **Status:** PROPOSAL (design spec, not yet implemented)
 **Date:** 2026-07-11
+**GitHub:** #774 (feature); hard-blocked on **#761** (daily-hub refresh
+BLOCKER — see below)
 **Author:** Developer/Designer subagent → Leader review
 **Companion:** `meetings/2026-07-11_design-db-uiux-audit.md` (audit findings this
 spec responds to — see finding B1, hard prerequisite below)
@@ -22,7 +24,8 @@ the user leaves the flow entirely and re-enters. A week-strip streak widget
 built on top of that hub inherits the exact same staleness: the dot for
 today's puzzle would not fill in on return-to-hub either, defeating the
 entire "complete → see it logged immediately" loop this proposal exists to
-create. **B1 must land first; everything below assumes it has.**
+create. **B1 must land first; everything below assumes it has.** Tracked as
+GitHub **#761**.
 
 ## 1. Problem
 
@@ -157,12 +160,14 @@ badge) / unplayed at the trio level. This proposal's week-strip "completed"
 dot state, per §3.1, is participation-based (any attempt with an outcome
 counts as that day being "done"), not win-only — a day where the user played
 and lost still fills the dot, since the habit being tracked is "did you show
-up today," not "did you win." **Adjudicated 2026-07-11** (owner-delegated,
-see §6): `MS-COMPLETION-REVIEW`'s Close now lands on the Daily hub, matching
-Sudoku, resolving the pre-existing **#468 B4** open question (see
+up today," not "did you win." Minesweeper's `MS-COMPLETION-REVIEW` Close
+already lands on the Daily hub, matching Sudoku — this shipped via **#697**
+(closed) before this audit round even started, not a decision made by this
+proposal. An earlier pass of this round's adjudication briefly (and
+incorrectly) re-litigated it as an open "#468 B4" question; see
 `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11 for the
-full rationale). Sudoku's and Minesweeper's Close-to-Daily-hub behavior are
-therefore both fully specified and consistent above.
+correction. Sudoku's and Minesweeper's Close-to-Daily-hub behavior are
+therefore both already consistent as described above.
 
 ## 4. Acceptance checklist
 
@@ -195,6 +200,7 @@ therefore both fully specified and consistent above.
 - **Hard prerequisite (blocking, not just a dependency): finding B1 must be
   fixed first.** Unconfirmed ? until fixed — tracked as this spec's explicit
   gate, not assumed resolved. See the callout at the top of this document.
+  GitHub: **#761**.
 - **Per-day completion querying does not exist yet and must be added.**
   Verified ✓ (as a gap, confirmed by this round's audit) —
   `PersistenceProtocol.fetchCompletedDailyIds(for date:)`
@@ -233,11 +239,12 @@ therefore both fully specified and consistent above.
    implementation detail but one with real user-visible consequences
    (a streak "unfairly" breaking at midnight in the wrong timezone). Still
    open.
-3. ~~MS's past-day review Close-destination (Home vs. Daily-hub)~~
-   **Adjudicated 2026-07-11** (owner-delegated): Close lands on the Daily
-   hub, matching Sudoku, resolving **#468 B4**. See
-   `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11 for
-   the full rationale. Delegated by owner; reversible if owner overrides.
+3. ~~MS's past-day review Close-destination (Home vs. Daily-hub)~~ —
+   **already shipped, not actually open.** MS's `MS-COMPLETION-REVIEW` Close
+   already pops to the Daily hub via **#697** (closed), matching Sudoku. An
+   earlier pass of this round mislabeled this as an open "#468 B4" question;
+   see `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11
+   for the correction. Nothing to decide here.
 4. Sequencing against the companion STATS proposal, whose hero "current
    streak" number depends on this proposal's streak-counting logic
    existing — see STATS §6. Still open.
