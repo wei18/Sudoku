@@ -1,27 +1,30 @@
 // swiftlint:disable identifier_name
 //
-// MinesweeperPersonalRecordSubmitTests — #699: submit-on-win wiring for the
-// MS-specific personal-record store, sitting right beside the Game Center
-// submit in `MinesweeperGameViewModel.submitDailyTimeIfWon()`.
+// MinesweeperPersonalRecordSubmitTests — #699/#705: submit-on-win wiring for
+// the MS-specific personal-record store, sitting right beside the Game
+// Center submit in `MinesweeperGameViewModel.submitWinIfWon()`.
 //
 // Drives `MinesweeperGameViewModel` to a real `.won` state (mirrors
 // `MinesweeperGameCenterSubmitTests.driveToWin`) with an injected
 // `MinesweeperPersonalRecordStore` over `FakePrivateCKGateway`, and asserts
-// the personal best is recorded exactly once, only for daily-mode wins, and
-// that a failed write never breaks the win.
+// the personal best is recorded exactly once for BOTH daily- and
+// practice-mode wins (#705 widened the #699 daily-only launch scope), using
+// the mode-appropriate puzzleId, and that a failed write never breaks the win.
 
 import Foundation
 import Testing
 @testable import MinesweeperUI
 import MinesweeperEngine
 import MinesweeperGameState
+import GameCenterClient
+import GameCenterTesting
 import Persistence
 import PersistenceTesting
 import Telemetry
 @testable import MinesweeperPersistence
 
 @MainActor
-@Suite("MinesweeperGameViewModel — personal-record submit-on-win (#699)")
+@Suite("MinesweeperGameViewModel — personal-record submit-on-win (#699/#705)")
 struct MinesweeperPersonalRecordSubmitTests {
 
     /// Drive `vm` to a win by revealing every non-mine cell (identical
@@ -70,13 +73,16 @@ struct MinesweeperPersonalRecordSubmitTests {
         #expect(record.completedPuzzleIds == [recordName])
     }
 
-    @Test func practiceWinNeverRecordsPersonalBest() async throws {
-        // #329-style gate: mirrors the GC daily-only gate — a Practice solve
-        // must not write the personal-best record either.
+    @Test func practiceWinRecordsPersonalBestWithSeedDerivedPuzzleId() async throws {
+        // #705: widened from the #699 daily-only launch scope. The dedup
+        // puzzleId is derived from the board's own generation seed (NOT the
+        // singleton `practice-{difficulty}` recordName, which would collapse
+        // every practice win into one entry) — see MinesweeperPracticeIdentity.
         let (store, _) = makeStore()
+        let seed: UInt64 = 42
         let vm = MinesweeperGameViewModel(
             difficulty: .beginner,
-            seed: 42,
+            seed: seed,
             mode: .practice,
             personalRecordStore: store
         )
@@ -85,7 +91,87 @@ struct MinesweeperPersonalRecordSubmitTests {
         #expect(vm.status == .won)
 
         let record = try await store.fetch(modeRaw: "practice", difficulty: .beginner)
-        #expect(record.completedCount == 0)
+        #expect(record.completedCount == 1)
+        #expect(record.bestTimeSeconds == vm.elapsedSeconds)
+        let expectedPuzzleId = MinesweeperPracticeIdentity.puzzleId(seed: seed, difficulty: .beginner)
+        #expect(record.completedPuzzleIds == [expectedPuzzleId])
+    }
+
+    @Test func distinctPracticeGamesOfSameDifficultyBothCount() async throws {
+        // Two DIFFERENT practice games (different seeds) at the same
+        // difficulty must both count — proves the dedup key is per-game, not
+        // per-difficulty (which is what the old singleton recordName would
+        // have collapsed to).
+        let (store, _) = makeStore()
+        let vm1 = MinesweeperGameViewModel(
+            difficulty: .beginner, seed: 1, mode: .practice, personalRecordStore: store
+        )
+        await driveToWin(vm1)
+        #expect(vm1.status == .won)
+
+        let vm2 = MinesweeperGameViewModel(
+            difficulty: .beginner, seed: 2, mode: .practice, personalRecordStore: store
+        )
+        await driveToWin(vm2)
+        #expect(vm2.status == .won)
+
+        let record = try await store.fetch(modeRaw: "practice", difficulty: .beginner)
+        #expect(record.completedCount == 2)
+    }
+
+    @Test func resumedPracticeGameReusesSameIdAndDedups() async throws {
+        // #705: "resume + win must dedup as the SAME game." A resumed board
+        // reconstructs from the same persisted `seed`
+        // (`MinesweeperSession.restore(from:)`), so a second VM instance over
+        // the identical seed (simulating a relaunch-and-resume) must derive
+        // the identical puzzleId and dedup against the earlier win instead of
+        // double-counting.
+        let (store, _) = makeStore()
+        let seed: UInt64 = 7
+
+        let vm1 = MinesweeperGameViewModel(
+            difficulty: .beginner, seed: seed, mode: .practice, personalRecordStore: store
+        )
+        await driveToWin(vm1)
+        #expect(vm1.status == .won)
+
+        let vm2 = MinesweeperGameViewModel(
+            difficulty: .beginner, seed: seed, mode: .practice, personalRecordStore: store
+        )
+        await driveToWin(vm2)
+        #expect(vm2.status == .won)
+
+        let record = try await store.fetch(modeRaw: "practice", difficulty: .beginner)
+        #expect(record.completedCount == 1)
+    }
+
+    @Test func practiceWinRecordsPersonalBestButStillNeverSubmitsToGameCenter() async throws {
+        // #705: widening the personal-record write to practice must NOT touch
+        // the #329 Game Center gate — GC submit stays STRICTLY daily-only even
+        // when a `gameCenter` client IS threaded alongside the now-eligible
+        // personalRecordStore.
+        let (store, _) = makeStore()
+        let fake = FakeGameCenterClient()
+        let vm = MinesweeperGameViewModel(
+            difficulty: .beginner,
+            seed: 42,
+            mode: .practice,
+            gameCenter: fake,
+            personalRecordStore: store
+        )
+
+        await driveToWin(vm)
+        #expect(vm.status == .won)
+
+        let record = try await store.fetch(modeRaw: "practice", difficulty: .beginner)
+        #expect(record.completedCount == 1, "the personal-record write must still fire")
+
+        let ops = await fake.operations
+        let submitted = ops.contains {
+            if case .submitRawScore = $0 { return true }
+            return false
+        }
+        #expect(submitted == false, "Game Center submit must stay daily-only")
     }
 
     @Test func losingNeverRecordsPersonalBest() async throws {

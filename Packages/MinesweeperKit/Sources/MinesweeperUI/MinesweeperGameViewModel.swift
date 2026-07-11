@@ -31,7 +31,7 @@ public final class MinesweeperGameViewModel {
     /// (no-op); production wires the shared `LiveGameCenterClient`. Submit is
     /// best-effort and never blocks or crashes gameplay (mirrors Sudoku's
     /// `GameCenterSink` no-retry, swallowed-error policy). Internal (not
-    /// private) so the `submitDailyTimeIfWon()` extension (separate file,
+    /// private) so the `submitWinIfWon()` extension (separate file,
     /// keeps this file under the 400-line lint ceiling) can read it.
     let gameCenter: (any GameCenterClient)?
     /// Funnel for swallowed submit failures, so a failed leaderboard write is
@@ -59,13 +59,14 @@ public final class MinesweeperGameViewModel {
 
     /// Device-local cumulative win tally backing the "Volume" achievements.
     /// Internal (not private) so `evaluateAchievementsIfWon()` (separate file,
-    /// same rationale as `submitDailyTimeIfWon`) can read it.
+    /// same rationale as `submitWinIfWon`) can read it.
     let winCountStore: MinesweeperWinCountStore
     /// Guards against re-evaluating achievements if the snapshot re-publishes
-    /// `.won`. A SEPARATE latch from `didSubmitWin`: most MS achievements are
-    /// NOT daily-gated, so they must still fire on a practice win, which
-    /// `didSubmitWin` never latches for (see `submitDailyTimeIfWon`'s early
-    /// `mode == .daily` return).
+    /// `.won`. A SEPARATE latch from `didSubmitWin`: achievement evaluation is
+    /// gated to the LIVE `reveal()` win transition only (not `refresh()`, see
+    /// its comment below), because it increments a non-idempotent cumulative
+    /// win tally — `submitWinIfWon()`'s downstream writes are idempotent and
+    /// safe to re-run from `refresh()`.
     var didEvaluateAchievements = false
 
     // MARK: - Audio (#330 P2)
@@ -230,9 +231,9 @@ public final class MinesweeperGameViewModel {
     public func refresh() async {
         guard !isSeeded else { return }
         snapshot = await session.snapshot()
-        await submitDailyTimeIfWon()
+        await submitWinIfWon()
         // #700: deliberately NOT calling evaluateAchievementsIfWon() here.
-        // `submitDailyTimeIfWon()` is idempotent downstream (CK dedups by
+        // `submitWinIfWon()` is idempotent downstream (CK dedups by
         // puzzleId, GC keeps the best time), so re-firing on a refresh over an
         // already-won board is harmless. Achievement evaluation is NOT: it
         // increments the cumulative win tally (`MinesweeperWinCountStore`),
@@ -264,10 +265,11 @@ public final class MinesweeperGameViewModel {
         // #291: a reveal is the only action that can transition to `.won`
         // (flagging never wins). Submit the best time once we cross into the
         // won state.
-        await submitDailyTimeIfWon()
-        // #700: achievement evaluation is NOT daily-gated (unlike the submit
-        // above) — most MS achievements apply to practice wins too. Gated on
-        // the LIVE transition (pre-reveal status was not already .won): a
+        await submitWinIfWon()
+        // #700: achievement evaluation is NOT daily-gated (unlike the Game
+        // Center submit above; the personal-record write is no longer
+        // daily-gated either, #705). Gated on the LIVE transition (pre-reveal
+        // status was not already .won): a
         // no-op reveal on a restored already-won board returns the same .won
         // snapshot, and re-evaluating it would inflate the non-idempotent
         // cumulative win tally (that win was counted when it happened live).
@@ -383,8 +385,8 @@ public final class MinesweeperGameViewModel {
         snapshot = await session.resume()
     }
 
-    // Game Center + personal-record submit-on-win (#291, #329, #699):
-    // `submitDailyTimeIfWon()` lives in MinesweeperGameViewModel+SubmitOnWin.swift
+    // Game Center + personal-record submit-on-win (#291, #329, #699, #705):
+    // `submitWinIfWon()` lives in MinesweeperGameViewModel+SubmitOnWin.swift
     // — a separate file (not this class body) keeps this file under the
     // 400-line lint ceiling; see that file for the full contract.
     //

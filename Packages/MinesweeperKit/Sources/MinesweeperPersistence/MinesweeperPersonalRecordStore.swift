@@ -12,10 +12,12 @@
 //
 // #699 (owner decision, 2026-07-05): MS-specific store, constructed directly
 // in `MinesweeperAppComposition.live()` and called from
-// `MinesweeperGameViewModel.submitDailyTimeIfWon()` — deliberately NOT wired
+// `MinesweeperGameViewModel.submitWinIfWon()` — deliberately NOT wired
 // through the shared `TelemetryEvent` / `PersonalRecordSink` /
 // `makeCompletionSinks` pipeline (generalizing that pipeline to a second
-// game's types is left to #479).
+// game's types is left to #479). #705 widened the write path from
+// daily-only to daily + practice; see `submitWinIfWon()`'s doc comment for
+// the per-mode `puzzleId` derivation.
 
 public import Foundation
 public import MinesweeperEngine
