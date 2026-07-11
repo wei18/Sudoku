@@ -33,37 +33,42 @@
 // NOT use snapshot baselines (no record/diff). It writes REAL PNG files under
 // docs/app-store/screenshots/ — gated behind `ASC_EMIT_SCREENSHOTS=1` so a normal
 // `swift test` never rewrites the committed assets.
+//
+// #750: shared by SudokuUITests + MinesweeperUITests (previously two
+// byte-drifting copies, see #713). Nothing here names a Sudoku/Minesweeper
+// type — the per-app seam is the `hostingView(...)` helper each UI-test target
+// still defines locally (SnapshotConfig.swift), which is where the
+// `@testable import SudokuUI` / `MinesweeperUI` theme wiring actually lives.
 
 #if canImport(AppKit)
-import AppKit
+public import AppKit
 import Foundation
-import SwiftUI
-@testable import SudokuUI
+public import SwiftUI
 
 /// An App Store Connect screenshot device profile: the point size we host the
 /// SwiftUI subtree at, plus the EXACT pixel size ASC requires for that device
 /// family. `pixels / points` is an integer scale (3 for 6.9" iPhone, 2 for iPad
 /// 13" and Mac).
-struct ASCProfile {
+public struct ASCProfile: Sendable {
     let pointSize: CGSize
     let pixelSize: CGSize
     /// `default` size-class for this device family in the snapshot harness.
     let sizeClass: UserInterfaceSizeClass
 
     /// iPhone 6.9" — ASC 1290×2796 (430×932 pt @3x).
-    static let iPhone69 = ASCProfile(
+    public static let iPhone69 = ASCProfile(
         pointSize: CGSize(width: 430, height: 932),
         pixelSize: CGSize(width: 1290, height: 2796),
         sizeClass: .compact
     )
     /// iPad 13" — ASC 2064×2752 (1032×1376 pt @2x).
-    static let iPad13 = ASCProfile(
+    public static let iPad13 = ASCProfile(
         pointSize: CGSize(width: 1032, height: 1376),
         pixelSize: CGSize(width: 2064, height: 2752),
         sizeClass: .regular
     )
     /// Mac — a valid ASC Mac size 2880×1800 (1440×900 pt @2x, ≥1280×800).
-    static let mac = ASCProfile(
+    public static let mac = ASCProfile(
         pointSize: CGSize(width: 1440, height: 900),
         pixelSize: CGSize(width: 2880, height: 1800),
         sizeClass: .regular
@@ -72,8 +77,8 @@ struct ASCProfile {
 
 /// `true` only when explicitly regenerating ASC screenshots. Keeps a normal
 /// `swift test` from rewriting the committed PNGs.
-enum ASCScreenshotEmit {
-    static let isEnabled = ProcessInfo.processInfo.environment["ASC_EMIT_SCREENSHOTS"] != nil
+public enum ASCScreenshotEmit {
+    public static let isEnabled = ProcessInfo.processInfo.environment["ASC_EMIT_SCREENSHOTS"] != nil
 }
 
 /// Render `view` at the ASC profile's exact pixel size, opaque, and write a PNG
@@ -89,10 +94,15 @@ enum ASCScreenshotEmit {
 ///   - background:  opaque fill composited behind the view.
 ///   - colorScheme: light/dark; mirrored onto the host appearance.
 ///   - localeID:    optional `Locale` injected into the SwiftUI environment.
+///   - host:        builds the AppKit host for the composited view — each
+///                   UI-test target passes its own `hostingView(...)` helper
+///                   here (type-erased to `AnyView`, since a closure type
+///                   cannot itself be generic), as that is where the per-app
+///                   theme/size-class wiring lives.
 /// - Returns: the written file URL, or `nil` if capture produced no bitmap.
 @MainActor
 @discardableResult
-func emitASCScreenshot<V: SwiftUI.View>(
+public func emitASCScreenshot<V: SwiftUI.View>(
     _ view: V,
     profile: ASCProfile,
     app: String,
@@ -101,18 +111,21 @@ func emitASCScreenshot<V: SwiftUI.View>(
     slot: String,
     background: Color,
     colorScheme: ColorScheme = .light,
-    localeID: Locale? = nil
+    localeID: Locale? = nil,
+    host: (AnyView, CGSize, ColorScheme, Locale?, UserInterfaceSizeClass) -> NSView
 ) throws -> URL? {
-    let composited = ZStack {
-        background.ignoresSafeArea()
-        view
-    }
-    let host = hostingView(
+    let composited = AnyView(
+        ZStack {
+            background.ignoresSafeArea()
+            view
+        }
+    )
+    let hostView = host(
         composited,
-        size: profile.pointSize,
-        colorScheme: colorScheme,
-        locale: localeID,
-        sizeClass: profile.sizeClass
+        profile.pointSize,
+        colorScheme,
+        localeID,
+        profile.sizeClass
     )
 
     guard let rep = NSBitmapImageRep(
@@ -132,7 +145,7 @@ func emitASCScreenshot<V: SwiftUI.View>(
     // Set the rep's logical size to the POINT size so AppKit maps the
     // point-sized host into the larger pixel buffer at the implied scale.
     rep.size = profile.pointSize
-    host.cacheDisplay(in: host.bounds, to: rep)
+    hostView.cacheDisplay(in: hostView.bounds, to: rep)
 
     guard let pngData = rep.representation(using: .png, properties: [:]) else {
         return nil

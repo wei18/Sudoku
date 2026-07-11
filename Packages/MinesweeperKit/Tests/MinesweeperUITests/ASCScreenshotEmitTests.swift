@@ -18,6 +18,7 @@ import GameAppKit
 import GameCenterClient
 import GameCenterTesting
 import GameShellUI
+import GameTestSupportKit
 import MinesweeperEngine
 import MinesweeperGameState
 import MonetizationCore
@@ -154,7 +155,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             homeView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
-            slot: "01-home", background: Self.background
+            slot: "01-home", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -163,7 +165,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             dailyHubView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
-            slot: "02-daily", background: Self.background
+            slot: "02-daily", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -172,7 +175,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             boardView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
-            slot: "03-board", background: Self.background
+            slot: "03-board", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -181,7 +185,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             completionView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
-            slot: "04-completion", background: Self.background
+            slot: "04-completion", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -192,7 +197,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             homeView(),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
-            slot: "01-home", background: Self.background
+            slot: "01-home", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -201,7 +207,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             boardView(),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
-            slot: "03-board", background: Self.background
+            slot: "03-board", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -212,7 +219,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             homeView(),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
-            slot: "01-home", background: Self.background
+            slot: "01-home", background: Self.background,
+            host: hostingView
         )
     }
 
@@ -221,7 +229,8 @@ struct ASCScreenshotEmitTests {
         try emitASCScreenshot(
             dailyHubView(),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
-            slot: "02-daily", background: Self.background
+            slot: "02-daily", background: Self.background,
+            host: hostingView
         )
     }
 }

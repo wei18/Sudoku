@@ -220,6 +220,9 @@ let testTargets: [Target] = [
             // which `AudioEvent` (+ haptic) each MS action fires.
             .product(name: "GameAudio", package: "GameAudioKit"),
             .product(name: "GameAudioTesting", package: "GameAudioKit"),
+            // #750: ASCScreenshotEmitTests draws ASCProfile / emitASCScreenshot
+            // from the shared package instead of a forked local copy.
+            .product(name: "GameTestSupportKit", package: "GameTestSupportKit"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because
@@ -288,6 +291,9 @@ let package = Package(
         // in MinesweeperUI. Transitive via swift-snapshot-testing (1.9.0);
         // promoted to direct dep. `from: "1.9.0"` matches resolved — no churn.
         .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.9.0"),
+        // #750: shared ASC-screenshot render machinery (test-only), consumed by
+        // MinesweeperUITests. See `docs/foundations.md` for the extraction rationale.
+        .package(name: "GameTestSupportKit", path: "../GameTestSupportKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]

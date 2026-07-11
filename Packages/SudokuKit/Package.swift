@@ -58,6 +58,10 @@ let gameAudioTestingDep: Target.Dependency = .product(name: "GameAudioTesting", 
 // the zero-dep GameShellUI). SudokuUI's `RootViewModel` is now a typealias over
 // `GameRootViewModel<AppRoute>`.
 let gameAppDep: Target.Dependency = .product(name: "GameAppKit", package: "GameAppKit")
+// #750: shared ASC-screenshot render machinery (ASCProfile / emitASCScreenshot),
+// extracted out of the byte-drifted per-app copies. Test-only — wired into the
+// UITests target's dependency list, never a production target.
+let gameTestSupportDep: Target.Dependency = .product(name: "GameTestSupportKit", package: "GameTestSupportKit")
 
 // MARK: - Production targets
 
@@ -264,6 +268,9 @@ let testTargets: [Target] = [
             gameAudioDep,
             gameAudioTestingDep,
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            // #750: ASCScreenshotEmitTests draws ASCProfile / emitASCScreenshot
+            // from the shared package instead of a forked local copy.
+            gameTestSupportDep,
         ] + monetizationTestDeps,
         resources: [.copy("__Snapshots__")],
         swiftSettings: swiftSettings
@@ -379,6 +386,9 @@ let package = Package(
         // Noop/Live conformers + GameAudioTesting fakes). Leaf sibling package;
         // SettingsKit already depends on it for `AudioSettingsModel`.
         .package(name: "GameAudioKit", path: "../GameAudioKit"),
+        // #750: shared ASC-screenshot render machinery (test-only), consumed by
+        // SudokuUITests. See `docs/foundations.md` for the extraction rationale.
+        .package(name: "GameTestSupportKit", path: "../GameTestSupportKit"),
     ],
     targets: productionTargets + testTargets,
     swiftLanguageModes: [.v6]
