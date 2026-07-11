@@ -4685,6 +4685,54 @@
           }
         }
       }
+    },
+    "Row %lld, Column %lld" : {
+      "comment" : "#755 board cell — VoiceOver coordinate location prefix. Was plain string interpolation bypassing the catalog (companion of #741's stateDescription fix). Mirrors Sudoku BoardCellView's identical key.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Row %lld, Column %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fila %lld, columna %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld行目、%lld列目"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld행 %lld열"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แถว %lld คอลัมน์ %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %lld 行，第 %lld 列"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %lld 列，第 %lld 欄"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
