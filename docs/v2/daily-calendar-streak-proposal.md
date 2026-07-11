@@ -86,15 +86,15 @@ difficulty cards).
   card tap" row) — no new review screen, just a new entry point into the
   existing one, parameterized by the tapped day's date instead of always
   "today."
-- **Tap a past incomplete day:** per the outline's explicit call, this is
-  **not** implemented as a backfill-and-complete action in this spec — see
-  §6 open question. The recommended default is "view only, cannot
-  retroactively complete," on the reasoning that allowing backfill would
-  let a streak be padded after the fact, undermining the number's honesty
-  as a habit signal. This spec ships with taps on incomplete past days doing
-  nothing (or, if the owner prefers a non-silent response, showing a brief
-  "not completed" state rather than opening a board) — final call is the
-  owner's, not decided here.
+- **Tap a past incomplete day:** **Adjudicated 2026-07-11** (owner-delegated,
+  see §6) — view-only, no backfill. Past incomplete days cannot be
+  retroactively completed; a backfillable streak would carry no integrity as
+  a habit signal, and the brand's monetization exclusions already rule out
+  any streak-repair mechanic that could otherwise motivate backfill. This
+  spec ships with taps on incomplete past days doing nothing (or, if the
+  owner later prefers a non-silent response, showing a brief "not completed"
+  state rather than opening a board — that refinement remains open, but the
+  no-backfill decision itself is final pending owner override).
 - **Tap today (incomplete):** falls through to the existing trio tap
   behavior below the strip — the dot itself is not a new alternate entry
   point to the same puzzles, just a status indicator.
@@ -157,14 +157,12 @@ badge) / unplayed at the trio level. This proposal's week-strip "completed"
 dot state, per §3.1, is participation-based (any attempt with an outcome
 counts as that day being "done"), not win-only — a day where the user played
 and lost still fills the dot, since the habit being tracked is "did you show
-up today," not "did you win." This spec does **not** decide whether tapping
-into a past failed day's review should land the way `MS-COMPLETION-REVIEW`'s
-Close currently does (Home) or the way Sudoku's does (Daily-hub) — that is
-the pre-existing **B4** open question from `docs/v2/att-permission-ux-proposal.md`'s
-sibling findings-report open-questions list, and this proposal explicitly
-does not adjudicate it. Sudoku's Close-to-Daily-hub behavior is fully
-specified above; Minesweeper's equivalent destination is inherited from
-whatever B4 resolves to, not redefined here.
+up today," not "did you win." **Adjudicated 2026-07-11** (owner-delegated,
+see §6): `MS-COMPLETION-REVIEW`'s Close now lands on the Daily hub, matching
+Sudoku, resolving the pre-existing **#468 B4** open question (see
+`meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11 for the
+full rationale). Sudoku's and Minesweeper's Close-to-Daily-hub behavior are
+therefore both fully specified and consistent above.
 
 ## 4. Acceptance checklist
 
@@ -225,18 +223,24 @@ whatever B4 resolves to, not redefined here.
 
 ## 6. Open questions for owner
 
-1. **Can a missed past day be backfilled/completed retroactively, or is it
-   view-only forever once missed?** This spec's default recommendation is
-   view-only (protects streak honesty), per the outline's own framing of
-   this exact question. Flagged, not decided here.
+1. ~~Can a missed past day be backfilled/completed retroactively, or is it
+   view-only forever once missed?~~ **Adjudicated 2026-07-11**
+   (owner-delegated): no, view-only forever once missed. Rationale: protects
+   streak honesty as a habit signal; no monetization mechanic in this brand
+   would benefit from allowing backfill either. Delegated by owner;
+   reversible if owner overrides.
 2. Streak-break timezone/day-boundary rule (local time vs. UTC) — an
    implementation detail but one with real user-visible consequences
-   (a streak "unfairly" breaking at midnight in the wrong timezone).
-3. MS's past-day review Close-destination (Home vs. Daily-hub) — inherited
-   from the pre-existing **B4** open question, not decided by this proposal.
+   (a streak "unfairly" breaking at midnight in the wrong timezone). Still
+   open.
+3. ~~MS's past-day review Close-destination (Home vs. Daily-hub)~~
+   **Adjudicated 2026-07-11** (owner-delegated): Close lands on the Daily
+   hub, matching Sudoku, resolving **#468 B4**. See
+   `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11 for
+   the full rationale. Delegated by owner; reversible if owner overrides.
 4. Sequencing against the companion STATS proposal, whose hero "current
    streak" number depends on this proposal's streak-counting logic
-   existing — see STATS §6.
+   existing — see STATS §6. Still open.
 
 ---
 

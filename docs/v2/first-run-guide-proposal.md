@@ -56,7 +56,7 @@ self-explanatory to a new player, and there's no repo precedent for how a
 
 ## 3. Proposed solution
 
-### 3.1 Primary path — board coach-mark overlay (recommended)
+### 3.1 Primary path — board coach-mark overlay (adopted 2026-07-11)
 
 First entry into `SUD-BOARD` or `MS-BOARD` (per-app, tracked independently)
 shows a 3-point coach-mark sequence layered over the live board — not a
@@ -140,7 +140,7 @@ since its mechanics are less self-evident:**
   dismisses; this is onboarding, not an achievement, per the brand's no-
   celebration constraint.
 
-### 3.4 Alternative — Home "How to play" card (not recommended, offered for owner choice)
+### 3.4 Alternative — Home "How to play" card (rejected 2026-07-11)
 
 Instead of (or in addition to) the board overlay, `HOME` could show a
 dismissible "How to play" card on first launch that opens a 3-screen sheet
@@ -148,7 +148,9 @@ covering the same content as §3.1's points, front-loaded before any play.
 This is closer to design-db's Zip precedent in literal screen count but adds
 a step before `HOME`'s existing zero-friction cold start, and duplicates
 content the board overlay already delivers in-context. Listed as an
-alternative per the outline's instruction, not as this spec's recommendation.
+alternative per the outline's instruction; **rejected** by Leader
+adjudication (owner-delegated, 2026-07-11) in favor of §3.1 — see §6 for the
+recorded decision and rationale.
 
 ## 4. Acceptance checklist
 
@@ -201,8 +203,14 @@ alternative per the outline's instruction, not as this spec's recommendation.
 
 ## 6. Open questions for owner
 
-1. Primary (§3.1, board overlay) vs. alternative (§3.4, Home "How to play"
-   sheet) — which should ship? This spec recommends the primary path.
+1. ~~Primary (§3.1, board overlay) vs. alternative (§3.4, Home "How to play"
+   sheet) — which should ship?~~ **Adjudicated 2026-07-11** (owner-delegated):
+   §3.1 (board coach-mark overlay) is adopted; §3.4 (Home "How to play"
+   sheet) is rejected. Rationale: teaches in the context of the real screen
+   being used, adds zero cold-launch friction, and avoids compounding this
+   round's N1 finding (`HOME`'s four mode cards already carry equal visual
+   weight — stacking another card there would make that worse, not better).
+   Delegated by owner; reversible if owner overrides.
 2. Should there be any Settings-level "Replay guide" affordance in v1, or is
    "never shows again after first dismissal" acceptable for the initial
    ship (this spec assumes the latter, but it's a real product choice, not

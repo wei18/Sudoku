@@ -244,11 +244,11 @@ reopened by this audit or the three proposals below:
   spacing must resolve through the 4pt `@ScaledMetric` ladder (4/8/12/16/24/
   32/48/64) once B2 above is fixed; type uses SwiftUI semantic font roles,
   never fixed point sizes (cell digit is the one documented exception).
-- **Open questions not re-litigated here:** #468 B1-B4 (completion
-  leaderboard zone, MS `makeCompletionSinks` wiring, MS `reminderTapRoute`,
-  MS re-view Close destination) and the ATT Path A/B decision
-  (`docs/v2/att-permission-ux-proposal.md`) — both remain owner calls, not
-  audit findings.
+- **#468 B1-B4 and the ATT Path A/B decision** — not audit findings; these
+  were owner-only product calls, not something this audit adjudicates on its
+  own authority. All five were subsequently adjudicated by Leader under
+  explicit owner delegation on 2026-07-11 — see §Adjudicated 2026-07-11
+  (owner-delegated) below for the recorded decisions and rationale.
 - **Architecture:** MS and Sudoku are settled on a copy-paste-adapt model;
   no shared-hub extraction/refactor is in scope for any of the three
   proposals.
@@ -256,20 +256,73 @@ reopened by this audit or the three proposals below:
   paid hints — none of the three proposals introduce or depend on any of
   these.
 
-## Open questions not adjudicated
+## Adjudicated 2026-07-11 (owner-delegated)
 
-- **#468 B1-B4** — completion leaderboard zone treatment, MS
-  `makeCompletionSinks` (achievements/`PersonalRecord` unwired — intentional
-  gap or backlog item?), MS `reminderTapRoute`, and MS re-view Close
-  destination (Home vs. Sudoku's Daily-hub pattern) all remain open owner
-  calls.
-- **ATT Path A vs. Path B** — per `docs/v2/att-permission-ux-proposal.md`,
-  still pending the owner's product/legal decision; not touched by this
-  round.
-- **DAILY-CAL's "can a missed day be back-filled?"** — this audit round's
-  own new open question, raised in the daily-calendar proposal below and
-  tied to the B4 re-view-destination question for the Minesweeper side. Not
-  adjudicated here; flagged for the owner in that proposal's §Open questions.
+Owner explicitly delegated adjudication of the following open questions to
+Leader ("裁定的給你選", 2026-07-11). Each decision below is a Leader call made
+under that delegation, not an owner decision in its own right — individually
+reversible if the owner later overrides it.
+
+### #468 B1 — Completion-screen leaderboard zone
+
+**Decision:** Expose. When Game Center is authenticated,
+`SUD-COMPLETION-OVERLAY`/`MS-COMPLETION-OVERLAY` show a leaderboard row; when
+signed out, the row is hidden entirely rather than rendered as a dead/
+disabled button (echoes this round's concern about #685's GC signed-out dead
+buttons).
+**Rationale:** leaderboard localization and supporting infrastructure are
+already invested in (recent commits); surfacing social proof on the
+completion screen reinforces the daily habit loop the DAILY-CAL/STATS
+proposals are trying to strengthen.
+Delegated by owner; reversible if owner overrides.
+
+### #468 B2 — MS `makeCompletionSinks` unwired
+
+**Decision:** Confirmed gap. Wire `makeCompletionSinks` to the
+`PersonalRecord`/achievements sinks the same way Sudoku's completion path
+already does.
+**Rationale:** `docs/v2/stats-screen-proposal.md`'s Minesweeper side depends
+entirely on `PersonalRecord` data; leaving the sink unwired means the Stats
+screen would ship with no MS data at all. Now recorded as a hard (blocking)
+prerequisite in that proposal's §5.
+Delegated by owner; reversible if owner overrides.
+
+### #468 B3 — MS `reminderTapRoute` missing
+
+**Decision:** Add it. MS reminder taps should route to the daily hub,
+matching Sudoku's existing `reminderTapRoute` behavior.
+**Rationale:** pure platform-parity gap; no design disagreement to resolve.
+Delegated by owner; reversible if owner overrides.
+
+### #468 B4 — MS re-view Close destination
+
+**Decision:** Close lands on the Daily hub (matching Sudoku), not Home.
+**Rationale:** matches the settlement-closure principle this round's
+findings apply elsewhere (B1 above) — closing a re-view should return to a
+screen where the completed state is visible; also keeps DAILY-CAL's
+week-strip visually consistent across both apps' review flows.
+Delegated by owner; reversible if owner overrides.
+
+### ATT Path A vs. Path B
+
+**Decision:** Stay on Path B (keep the ATT prompt, serve personalized ads on
+consent) and fix the two defects `docs/v2/att-permission-ux-proposal.md`
+already identified — cold-launch prompt timing, and the unlocalized purpose
+string.
+**Rationale:** adopts that document's own §7 recommendation; Path A would
+mean deliberately removing already-shipped infrastructure (a materially
+larger change surface) rather than polishing what's live.
+Delegated by owner; reversible if owner overrides.
+
+### DAILY-CAL — can a missed day be back-filled?
+
+**Decision:** No. Past incomplete days remain view-only forever; there is no
+retroactive completion path. Recorded directly in
+`docs/v2/daily-calendar-streak-proposal.md` §Open questions for owner.
+**Rationale:** a backfillable streak carries no integrity as a habit signal,
+and the brand's monetization exclusions already rule out any streak-repair
+mechanic that might otherwise motivate backfill.
+Delegated by owner; reversible if owner overrides.
 
 ## What was not verified
 

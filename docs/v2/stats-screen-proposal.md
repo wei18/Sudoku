@@ -185,14 +185,26 @@ schema changes**. It is explicitly **not** sufficient for:
   built.** Verified ✓ — confirmed by direct grep of `SettingsKit` (no
   "stats" match) and by reading `SettingsScreen.swift:76-132`'s actual row
   order; this is finding M2, already adjudicated by Leader as a real defect.
+- **MS side of `PersonalRecord` is not populated at all today — now a hard
+  blocking prerequisite.** **Adjudicated 2026-07-11** (owner-delegated):
+  finding #468 B2 (`makeCompletionSinks` absent for Minesweeper — see
+  `meetings/2026-07-11_design-db-uiux-audit.md` §Adjudicated 2026-07-11) is
+  confirmed as a real gap, not an intentional design choice. Wiring
+  Minesweeper's completion flow to the `PersonalRecord`/achievements sinks
+  (the way Sudoku's completion path already does) **must ship before this
+  proposal's MS-side tiles can show any data at all** — without it,
+  `completedCount`/`bestTimeSeconds`/`totalTimeSeconds` simply stay
+  unwritten for every MS (mode, difficulty) pair. Delegated by owner;
+  reversible if owner overrides.
 - **MS win-rate-per-difficulty is derivable from existing fields.**
-  Unconfirmed ? — `completedCount` alone doesn't distinguish "played and won"
-  from "played" for Minesweeper the way it implicitly does for Sudoku (a
-  Sudoku puzzle that's "completed" was solved; an MS board that ends in a
-  mine hit is a loss, not a completion). Whether a loss count is tracked
-  anywhere adjacent to `PersonalRecord` needs a direct check before this
-  spec's MS win-rate tile can be built as described — flagged rather than
-  assumed.
+  Unconfirmed ? — even once B2's sink-wiring lands, `completedCount` alone
+  doesn't distinguish "played and won" from "played" for Minesweeper the way
+  it implicitly does for Sudoku (a Sudoku puzzle that's "completed" was
+  solved; an MS board that ends in a mine hit is a loss, not a completion).
+  Whether a loss count is tracked anywhere adjacent to `PersonalRecord`
+  needs a direct check before this spec's MS win-rate tile can be built as
+  described — flagged rather than assumed, independent of the B2 wiring
+  decision above.
 - **Streak number depends on DAILY-CAL.** Unconfirmed ? (by design) — the
   hero "current streak" number in §3.2 assumes the streak-counting logic
   proposed in `docs/v2/daily-calendar-streak-proposal.md` exists. If DAILY-
