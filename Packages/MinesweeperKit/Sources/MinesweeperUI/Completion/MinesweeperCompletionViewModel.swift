@@ -7,7 +7,7 @@
 // since v2.6 (SDD-003 Epic 4) and never rendered it. `didWin`/`leaderboardId`
 // stay: they are cheap data fields the hero + snapshot tests still use and are
 // unrelated to the deleted rendering machinery (real GC score submission is a
-// fully separate path — `MinesweeperGameViewModel.submitDailyTimeIfWon()`).
+// fully separate path — `MinesweeperGameViewModel.submitWinIfWon()`).
 
 public import Foundation
 

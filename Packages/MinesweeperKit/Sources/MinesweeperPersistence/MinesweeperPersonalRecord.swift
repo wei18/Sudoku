@@ -11,7 +11,7 @@
 // wired through the shared `TelemetryEvent` / `PersonalRecordSink` /
 // `makeCompletionSinks` pipeline — same precedent as `MinesweeperSavedGameStore`
 // and the Game Center best-time submit in
-// `MinesweeperGameViewModel.submitDailyTimeIfWon()`.
+// `MinesweeperGameViewModel.submitWinIfWon()`.
 //
 // `recordName` is deterministic (`"\(modeRaw)-\(difficulty.rawValue)"`) so
 // concurrent first-completion races on two devices collapse to a single

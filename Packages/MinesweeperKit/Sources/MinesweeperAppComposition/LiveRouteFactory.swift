@@ -285,6 +285,11 @@ public struct LiveRouteFactory: RouteFactory {
                         soundPlayer: self.soundPlayer ?? NoopSoundPlaying()
                         // store: nil, recordName: nil — intentionally omitted so no
                         // save is written and the Failed record stays intact.
+                        // personalRecordStore: nil — ALSO intentional: #705 widened
+                        // practice-mode personal-record writes, so wiring a store
+                        // here would record unscored daily replays as practice PBs
+                        // (the replay reuses the daily seed, so each replayed board
+                        // would mint a stable practice-{base32(seed)} dedup id).
                     )
                 )
             }
