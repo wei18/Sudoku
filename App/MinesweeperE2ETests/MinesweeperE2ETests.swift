@@ -70,8 +70,10 @@ final class MinesweeperE2ETests: XCTestCase {
 
         // Tap the one remaining safe cell by its unique positional label
         // (coordinates are 1-based in the a11y label). "Hidden" is the covered
-        // state set by MinesweeperCellButton; all three tokens are hardcoded
-        // English, so the query is locale-independent.
+        // state set by MinesweeperCellButton. As of #741 (Hidden) and #755
+        // (Row/Column) all three tokens are catalog-routed, so this query
+        // matches the en-locale rendering only — the E2E suite runs under the
+        // simulator's default en locale.
         let safeCell = app.buttons["Row \(row + 1), Column \(col + 1), Hidden"]
         XCTAssertTrue(
             safeCell.waitForExistence(timeout: 10),

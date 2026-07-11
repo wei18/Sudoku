@@ -11,11 +11,13 @@ import XCTest
 // fixed-seed board one move from winning, presented through the PRODUCTION
 // modal path so the #610 in-board Completion overlay fires on the winning tap.
 //
-// Locale-stable element queries: the digit-pad buttons carry hardcoded English
-// a11y labels ("Digit 1"…"Digit 9"), the one empty board cell ends in "Empty"
-// ("Row R, Column C, Empty"), and the completion hero exposes the identifier
-// `game.completion.hero` (added in GameShellUI for this flow). None of these
-// are localized, so the run is locale-independent.
+// Element queries: only the completion hero is locale-independent — it
+// exposes the identifier `game.completion.hero` (added in GameShellUI for
+// this flow). The digit-pad buttons' a11y labels ("Digit 1"…"Digit 9") are
+// catalog-routed via the "Digit %lld" key (LocalizedStringKey literal), and
+// the one empty board cell's "Row R, Column C, Empty" label is catalog-routed
+// as of #755/#771 — so those queries match the en-locale rendering only; the
+// E2E suite runs under the simulator's default en locale.
 @MainActor
 final class SudokuE2ETests: XCTestCase {
 
