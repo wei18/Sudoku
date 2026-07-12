@@ -94,7 +94,9 @@ tuist generate                               # workspace; new sibling packages a
   "fix(ui): 44pt target" is fine); CI (`lint.yml`) validates.
 - SwiftLint runs `--strict` in CI: `file_length` 400 (Live.swift sits at the
   ceiling — extract `Live+Feature.swift` instead of growing it), `identifier_name`
-  ≥3 chars (no `vm`), no `TODO` without an issue reference.
+  (1-char names hard-fail; 2-char like `vm` pass 0.57.1 in practice — #757
+  triage — but prefer ≥3-char descriptive names in new code), no `TODO`
+  without an issue reference.
 - Swift 6 strict concurrency + `InternalImportsByDefault` everywhere; new shared
   types are `Sendable`; `@Sendable` closures can't capture MainActor statics
   (mark test fixtures `nonisolated`).
