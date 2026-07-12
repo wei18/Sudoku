@@ -25,6 +25,7 @@ shared UI (GameShellKit = ZERO deps):    GameShellUI · SettingsUI(SettingsKit)
 shared composition (deps allowed):       GameAppKit — GameRootViewModel<Route> · GameRoot · ResumePill · ResumeCandidate
 apps (thin shells):                      SudokuKit · MinesweeperKit  →  App/Sudoku · App/Minesweeper (Tuist-generated)
 tooling:                                 ASCRegisterKit (standalone CLI; deliberately does NOT depend on the cores)
+test support (never in app products):    GameTestSupportKit — shared ASC-screenshot render; consumed only by *UITests targets
 ```
 
 Key seams agents get wrong:
