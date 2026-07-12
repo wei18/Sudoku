@@ -86,6 +86,9 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
     public var body: some View {
         shellContent
             .onAppear { Task { await viewModel.bootstrap() } }
+            // #761: route views (e.g. the Daily hubs) read this to refresh
+            // after a game session ends — see `GameRootViewModel.sessionTeardownCount`.
+            .environment(\.gameSessionTeardownCount, viewModel.sessionTeardownCount)
             // #685: moved here from the former `universalRootModifiers` helper
             // (called once from the plain `makeGameApp` function, outside any
             // View's own `body`). That outer attachment point never got
@@ -157,9 +160,12 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                     // `path` is treated as "a route just went away" and
                     // refreshes the resume pill the same way `dismissGame()`
                     // does on iOS — cheap (one CK query), and harmless to run
-                    // for non-board pops too.
+                    // for non-board pops too. #761: also bumps the teardown
+                    // counter so environment-observing views (e.g. the Daily
+                    // hubs) refresh, mirroring `dismissGame()`'s iOS wiring.
                     if newPath.count < viewModel.path.count {
                         Task { await viewModel.refreshResumeCandidate() }
+                        viewModel.gameSessionDidTearDown()
                     }
                     viewModel.path = newPath
                 }

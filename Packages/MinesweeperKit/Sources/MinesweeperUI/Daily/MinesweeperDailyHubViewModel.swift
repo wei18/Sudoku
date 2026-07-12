@@ -114,11 +114,41 @@ public final class MinesweeperDailyHubViewModel {
         )
     }
 
+    /// Re-runs the phase-2 completion/failure-overlay fetch outside
+    /// `bootstrap()`'s one-shot gate (#761), mirroring how
+    /// `GameRootViewModel.refreshResumeCandidate()` bypasses `bootstrap()`'s own
+    /// gate for the resume pill. Closing the Completion overlay after solving a
+    /// daily returns to this same, un-destroyed hub instance — nothing
+    /// re-triggered a load, so the just-solved card stayed unchecked until the
+    /// whole hub was torn down and remounted.
+    ///
+    /// Called from `MinesweeperDailyHubView`'s `.onChange(of: sessionTeardownCount)`
+    /// — `GameRoot`'s explicit game-session-teardown signal (#761). An earlier
+    /// version of this fix rode `.onAppear`, on the theory that it re-fires
+    /// whenever the hub becomes visible again; simulator verification disproved
+    /// that for the real Close → Leave flow (a dismissing `fullScreenCover`
+    /// does not re-fire the covered view's `.onAppear` at all — the only
+    /// re-fire is a transient push-pop at board OPEN, which is useless here
+    /// since completion doesn't exist yet). The same verification also found
+    /// `refresh()` at first mount passes its guards on Minesweeper (MS board
+    /// generation is synchronous, so `hasBootstrapped` and `.loaded` are both
+    /// already true by the time `.onAppear` used to fire) — the `.loaded` guard
+    /// below is a correctness guard, not a "no-op on first mount" claim.
+    /// Mirrors `SudokuUI.DailyHubViewModel.refresh()`.
+    ///
+    /// Re-fetches only completed/failed ids, not the trio (today's boards never
+    /// change) — cheap, like `refreshResumeCandidate`'s single query.
+    public func refresh() async {
+        guard hasBootstrapped, case .loaded(let cards) = state else { return }
+        await fillCompletionAndFailureOverlay(trio: cards.map(\.entry), date: dateProvider())
+    }
+
     /// Phase-2 overlay fill: fetches completed and failed daily ids, then
     /// re-merges them with the already-rendered cards. Called after `state` is
     /// already `.loaded`, so a hang or failure here cannot block the initial
     /// render. Errors are funneled through `errorReporter` (OSLog-observable)
     /// and degrade silently to "no cards marked" — same M10 contract as #526.
+    /// Also the target of `refresh()`'s re-fetch (#761).
     private func fillCompletionAndFailureOverlay(trio: [MinesweeperDailyEntry], date: Date) async {
         guard case .loaded = state else { return }
 

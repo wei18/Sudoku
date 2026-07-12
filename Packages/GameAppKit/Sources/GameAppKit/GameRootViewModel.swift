@@ -28,6 +28,7 @@
 public import Foundation
 public import GameCenterClient
 public import Persistence
+public import SwiftUI
 public import Telemetry
 
 @MainActor
@@ -49,6 +50,16 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     /// Separate from `activeGameRoute` so SwiftUI can animate the dismiss before
     /// the route is cleared.
     public private(set) var isGamePresented: Bool = false
+
+    /// Increments every time a game session tears down — the iOS modal
+    /// dismiss (`dismissGame()`) or the macOS `path`-pop teardown (via
+    /// `gameSessionDidTearDown()`, called from `GameRoot`'s path-shrink
+    /// branch). Injected into the environment (`\.gameSessionTeardownCount`)
+    /// so route views (e.g. the Daily hubs) can `.onChange` it to re-run a
+    /// refresh instead of relying on `.onAppear`, which does not re-fire when
+    /// a `fullScreenCover` dismisses (#761: sim-verified — no re-fire on the
+    /// real Close → Leave flow, only on the board's own transient open/close).
+    public private(set) var sessionTeardownCount: Int = 0
 
     // MARK: - Game Center signed-out alert (#513 fix)
 
@@ -180,6 +191,25 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
         // via `markCompleted`) or been abandoned — refresh so Home stops
         // offering a stale pill until the next launch.
         Task { await refreshResumeCandidate() }
+        gameSessionDidTearDown()
+    }
+
+    /// Signals that a game session just ended. Called by `dismissGame()` (iOS
+    /// fullScreenCover) and by `GameRoot`'s `path`-shrink branch (on macOS a
+    /// board's Leave / completion Close pops `path` directly instead of going
+    /// through `dismissGame()` — see `GameRoot.shellContent`). Bumps
+    /// `sessionTeardownCount` so environment-observing views (e.g. the Daily
+    /// hubs, #761) can react without depending on `.onAppear` re-firing.
+    ///
+    /// Caveat (sim-verified, #761 round-2 CR): the `path`-shrink branch is not
+    /// gated by route type, so on iOS this ALSO fires once at board OPEN when
+    /// `GameBoardRedirect` pops its synthetic path entry — i.e. the counter
+    /// over-approximates "a session ended" the same way that branch's
+    /// `refreshResumeCandidate()` call has since #675. Consumers must treat a
+    /// bump as "a session MAY have just ended" and stay idempotent/cheap, like
+    /// the hubs' guarded `refresh()`.
+    public func gameSessionDidTearDown() {
+        sessionTeardownCount += 1
     }
 
     // MARK: - Game Center signed-out guard (#685)
@@ -197,5 +227,22 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
         } else {
             showGameCenterSignedOutAlert = true
         }
+    }
+}
+
+// MARK: - EnvironmentKey (#761)
+
+private struct GameSessionTeardownCountKey: EnvironmentKey {
+    static let defaultValue: Int = 0
+}
+
+public extension EnvironmentValues {
+    /// `GameRootViewModel.sessionTeardownCount`, injected by `GameRoot` so any
+    /// route view can `.onChange` it to react to a game session ending — the
+    /// explicit signal Daily hub refresh (#761) rides instead of `.onAppear`,
+    /// which does not re-fire when a `fullScreenCover` dismisses.
+    var gameSessionTeardownCount: Int {
+        get { self[GameSessionTeardownCountKey.self] }
+        set { self[GameSessionTeardownCountKey.self] = newValue }
     }
 }

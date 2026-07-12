@@ -98,10 +98,56 @@ struct GameRootViewModelLeaveTests {
 
     @Test func dismissGameWhenNotPresentedIsNoop() {
         let sut = makeVM()
-        // Must not crash or set unexpected state.
+        // Must not crash or set unexpected state. ("Noop" refers to the
+        // presentation state below; since #761 a defensive call still bumps
+        // `sessionTeardownCount` + kicks a resume refresh — both idempotent.)
         sut.dismissGame()
 
         #expect(sut.activeGameRoute == nil)
         #expect(sut.isGamePresented == false)
+    }
+
+    // MARK: - #761: session-teardown counter
+
+    /// `dismissGame()` (the iOS fullScreenCover teardown hook) bumps
+    /// `sessionTeardownCount` so environment-observing views (the Daily
+    /// hubs) can react to a game session ending. Replaces the earlier
+    /// `.onAppear`-based wiring, which sim-verification (#761) showed does
+    /// not re-fire when a `fullScreenCover` dismisses.
+    @Test func dismissGameIncrementsSessionTeardownCount() {
+        let sut = makeVM()
+        #expect(sut.sessionTeardownCount == 0)
+
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.dismissGame()
+
+        #expect(sut.sessionTeardownCount == 1)
+    }
+
+    /// `gameSessionDidTearDown()` is the macOS-path counterpart — called from
+    /// `GameRoot`'s `path`-shrink branch (a board's Leave / completion Close
+    /// pops `path` directly instead of going through `dismissGame()`). Must
+    /// bump the same counter so both platforms drive the same signal.
+    @Test func gameSessionDidTearDownIncrementsSessionTeardownCount() {
+        let sut = makeVM()
+        #expect(sut.sessionTeardownCount == 0)
+
+        sut.gameSessionDidTearDown()
+
+        #expect(sut.sessionTeardownCount == 1)
+    }
+
+    /// Repeated teardowns accumulate (not a latch) — each session end must
+    /// produce a distinct `.onChange` firing for observers.
+    @Test func sessionTeardownCountAccumulatesAcrossMultipleTeardowns() {
+        let sut = makeVM()
+
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.dismissGame()
+        sut.gameSessionDidTearDown()
+        sut.presentGame(route: .board(puzzleId: "2026-06-13-easy"))
+        sut.dismissGame()
+
+        #expect(sut.sessionTeardownCount == 3)
     }
 }
