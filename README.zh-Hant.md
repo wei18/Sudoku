@@ -86,7 +86,7 @@ Packages/
 - **Leader**（協調的 session）理解意圖、撰寫並審核文件、拆解工作、派發任務——但不直接寫實作程式碼。
 - **Developer / Reviewer / Designer / Architect** 子 agent 依照精確的派發契約（scope、應讀文件、應 invoke 的 skill、回傳格式、驗證標準）進行實作、審查與設計，其產出在抵達使用者之前一律由 Leader 把關。
 
-工作沿著明確的狀態推進——`GOAL_RECEIVED → PROPOSAL → RFC → USER_APPROVED → IMPL → CLOSED`——並在改動規模大或觸及敏感模組時插入一輪 code review。方法論文件也記錄了跨 phase 觀察到的**模式**與**反模式**，這部分最能直接複用到另一個專案。
+工作大致沿著「目標 → 提案/規格 → 使用者核准 → 實作 → 收尾」鬆散推進，並在改動規模大或觸及敏感模組時插入一輪 code review。方法論文件也記錄了跨 phase 觀察到的**模式**與**反模式**，這部分最能直接複用到另一個專案。
 
 ---
 

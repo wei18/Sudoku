@@ -145,7 +145,8 @@ let minesweeperTarget = Target.target(
 // Phase 1) let the win → completion flow be reached deterministically. Run
 // on-demand via `mise run test:ui sudoku` (not a per-PR gate — local substitute
 // while XCC quota is out, mirroring tf:upload). The shared parameterized flow
-// will live in App/UITestsShared/** once the Minesweeper mirror lands.
+// lives in App/UITestsShared/** (GameE2ESupport), globbed into this target's
+// sources and the Minesweeper mirror's below.
 // Named `SudokuE2ETests` (not `SudokuUITests`) to avoid colliding with the
 // SPM snapshot/unit target of that name in Packages/SudokuKit.
 let sudokuE2ETestsTarget = Target.target(
