@@ -13,6 +13,9 @@ public import MinesweeperEngine
 public struct MinesweeperPracticeHubView<Banner: View>: View {
     @Binding private var path: [AppRoute]
     @State private var difficulty: Difficulty
+    // #765: threads MS's theme through the hub, mirroring Sudoku's
+    // `PracticeHubView` — see `tint(for:)` below.
+    @Environment(\.theme) private var theme
     private let banner: Banner
     // #720 G2: fires when the player picks a new difficulty segment so the
     // composition root can persist it (mirrors Sudoku's
@@ -35,9 +38,9 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
     public var body: some View {
         PracticeHubShellView(
             title: "Practice",
-            backgroundColor: .clear,
+            backgroundColor: theme.surface.background.resolved,
             filterHeader: "Difficulty",
-            headerForeground: .primary,
+            headerForeground: theme.text.primary.resolved,
             filter: { difficultyPicker },
             cta: { startCard },
             banner: { banner }
@@ -69,6 +72,10 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+        // #765: tint the segmented control with the *selected* difficulty's
+        // token so the active chip reads as that difficulty's color, mirroring
+        // Sudoku's `PracticeHubView.difficultyPicker`.
+        .tint(tint(for: difficulty))
         .padding(8)
         .glassEffect(.regular, in: .rect(cornerRadius: 12))
     }
@@ -78,21 +85,35 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Ready to play")
                 .font(.headline)
+                .foregroundStyle(theme.text.primary.resolved)
 
             boardSummary(difficulty)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.text.secondary.resolved)
 
             Button(action: start) {
                 Label("Start", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            // #765: CTA carries the selected difficulty's tint, keeping the
+            // segmented Picker and the start button visually linked (mirrors
+            // Sudoku's `drawCard`).
+            .tint(tint(for: difficulty))
             .controlSize(.large)
             .accessibilityIdentifier("minesweeper.practiceHub.start")
         }
         .padding(16)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
+    }
+
+    /// Map a `Difficulty` to its `difficulty.*` token.
+    private func tint(for difficulty: Difficulty) -> Color {
+        switch difficulty {
+        case .beginner: return theme.difficulty.easy.resolved
+        case .intermediate: return theme.difficulty.medium.resolved
+        case .expert: return theme.difficulty.hard.resolved
+        }
     }
 
     private func start() {
