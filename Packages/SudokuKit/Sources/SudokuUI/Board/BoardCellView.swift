@@ -6,6 +6,7 @@
 
 import SwiftUI
 import SudokuEngine
+import GameShellUI
 
 struct BoardCellView: View {
     let row: Int
@@ -22,11 +23,21 @@ struct BoardCellView: View {
 
     @Environment(\.theme) private var theme
     @Environment(\.sudokuCell) private var cell
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// design-system.md §Motion "Error highlight pulse" (200 ms × 2,
+    /// ease-in-out / reduced motion: static fill only). Starts at full
+    /// opacity so a non-error cell never shows the pulse's low point; only
+    /// `isError` becoming true (via `onChange` below) animates it down and
+    /// back.
+    @State private var errorPulseOpacity: Double = 1
 
     var body: some View {
         ZStack {
             background
+                .animation(backgroundAnimation, value: isSelected)
             content
+                .animation(digitAnimation, value: digit)
             if isError {
                 ErrorTriangle()
                     .fill(cell.errorBorder.resolved)
@@ -38,6 +49,25 @@ struct BoardCellView: View {
         }
         .frame(width: side, height: side)
         .overlay(borderOverlay)
+        .opacity(errorPulseOpacity)
+        .onChange(of: isError) { _, newValue in
+            guard newValue, !reduceMotion else {
+                errorPulseOpacity = 1
+                return
+            }
+            // Two explicit 200 ms ease-in-out legs (dip, then recover) rather
+            // than `Animation.repeatCount(_:autoreverses:)` — the repeat/
+            // autoreverse combination leaves the final *model* value
+            // ambiguous, where chained `withAnimation(...completion:)` calls
+            // land on a known `errorPulseOpacity` deterministically.
+            withAnimation(.easeInOut(duration: 0.2)) {
+                errorPulseOpacity = 0.55
+            } completion: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    errorPulseOpacity = 1
+                }
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(accessibilityTraits)
@@ -88,6 +118,18 @@ struct BoardCellView: View {
             cell.base.resolved
         }
     }
+    // design-system.md §Motion "Cell tap → selection" (100 ms ease-out).
+    // Scoped to `isSelected` alone so the peer-highlight / same-digit /
+    // given background swaps (not covered by this row) stay instant.
+    private var backgroundAnimation: Animation? {
+        MotionGate.animation(.easeOut(duration: 0.1), reduceMotion: reduceMotion)
+    }
+
+    // design-system.md §Motion "Cell digit place" (80 ms ease-out; the
+    // 0.9→1.0 scale itself lives on the `.transition` at the Text above).
+    private var digitAnimation: Animation? {
+        MotionGate.animation(.easeOut(duration: 0.08), reduceMotion: reduceMotion)
+    }
 
     @ViewBuilder
     private var content: some View {
@@ -96,6 +138,13 @@ struct BoardCellView: View {
                 .font(.system(size: side * 0.6, weight: isGiven ? .semibold : .regular, design: .rounded))
                 .foregroundStyle(digitColor)
                 .monospacedDigit()
+                // design-system.md §Motion "Cell digit place" (80 ms scale
+                // 0.9→1.0 ease-out). `.transition` only fires on insertion/
+                // removal, so `.id(digit)` forces every new digit (including
+                // overwriting an existing one) to re-insert rather than
+                // silently update the existing Text's content in place.
+                .id(digit)
+                .transition(.scale(scale: 0.9))
         } else if isPencilNotes, noteMask != 0 {
             PencilNotesGrid(mask: noteMask, side: side)
         } else {

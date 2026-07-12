@@ -7,6 +7,7 @@
 
 internal import SwiftUI
 internal import MinesweeperEngine
+internal import GameShellUI
 
 // MARK: - Interaction mode
 
@@ -26,6 +27,7 @@ struct MinesweeperCellButton: View {
     // rather than reaching for raw SwiftUI primitives.
     @Environment(\.theme) private var theme
     @Environment(\.minesweeperCell) private var tokens
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let cell: Cell
     /// #298 #10: zero-based grid coordinates, surfaced (1-based) in the
@@ -59,6 +61,12 @@ struct MinesweeperCellButton: View {
             ZStack {
                 background
                 content
+                    // design-system.md §Motion "Cell digit place" (80 ms
+                    // scale 0.9→1.0 ease-out) — MS's equivalent content-
+                    // appearing moment is a cell's reveal glyph (number/mine)
+                    // or its flag icon; both surface through this one
+                    // `content` switch, so one gate covers both.
+                    .animation(contentAnimation, value: cell.state)
             }
             .frame(width: side, height: side)
             // Ensure the whole cell square is hit-testable under .plain, not
@@ -198,6 +206,7 @@ struct MinesweeperCellButton: View {
                 Image(systemName: "flag.fill")
                     .font(.system(size: glyphSize))
                     .foregroundStyle(theme.status.warning.resolved)
+                    .transition(.scale(scale: 0.9))
             case .revealed:
                 if cell.isMine {
                     mineGlyph(detonated: true)
@@ -205,11 +214,18 @@ struct MinesweeperCellButton: View {
                     Text("\(cell.neighborMineCount)")
                         .font(.system(size: glyphSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(numberColor(cell.neighborMineCount))
+                        .transition(.scale(scale: 0.9))
                 } else {
                     EmptyView()
                 }
             }
         }
+    }
+
+    // design-system.md §Motion "Cell digit place" (80 ms ease-out; the
+    // 0.9→1.0 scale itself lives on the `.transition`s above).
+    private var contentAnimation: Animation? {
+        MotionGate.animation(.easeOut(duration: 0.08), reduceMotion: reduceMotion)
     }
 
     // #298 #8: the mine glyph. A filled `xmark.octagon` reads more clearly as a
@@ -221,6 +237,7 @@ struct MinesweeperCellButton: View {
         Image(systemName: "xmark.octagon.fill")
             .font(.system(size: glyphSize))
             .foregroundStyle(detonated ? .white : theme.status.error.resolved)
+            .transition(.scale(scale: 0.9))
     }
 
     // Glyph size tracks the cell side so numbers/flags/mines stay proportional

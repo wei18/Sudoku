@@ -85,7 +85,7 @@ struct ASCScreenshotEmitTests {
         return DailyHubView(viewModel: viewModel)
     }
 
-    private func completionView() -> CompletionView {
+    private func completionView() -> some View {
         // #698: leaderboard-state seeding removed — the popup has hardcoded
         // `state: .hidden` since v2.6, so the leaderboard slice never rendered.
         let viewModel = CompletionViewModel(
@@ -94,7 +94,11 @@ struct ASCScreenshotEmitTests {
             mistakeCount: 2,
             leaderboardId: "com.wei18.sudoku.leaderboard.easy.daily.v1"
         )
+        // The hero-reveal `.onAppear` never fires on this off-screen render
+        // path — see `completionHeroSkipsReveal`'s doc comment. Without this,
+        // the emitted ASC screenshot would ship with a blank hero card.
         return CompletionView(viewModel: viewModel)
+            .environment(\.completionHeroSkipsReveal, true)
     }
 
     /// Settings wrapped in the production navigation + grouped-Form chrome
