@@ -13,7 +13,7 @@
 - **States**:
   - `loading` — fetching trio
   - `loaded(cards: [DailyCard])` — happy path
-  - `error(.exhausted)` — extremely rare; surfaced as Alert per §How.6.3 (Generator defect)
+  - `error(.exhausted)` — extremely rare; surfaced as an inline empty-state block per §How.6.3 (Generator defect; #768 replaced the prior system alert)
   - `error(reason)` — fetch failed; show retry
 
 ## b. ASCII wireframe
@@ -148,7 +148,7 @@ private struct MiniBoardStrip: View {
 | Em-dash placeholder | `text.tertiary` | not completed | `.callout` |
 | Mini strip cell | `text.tertiary` α0.08/0.18 | decorative | 8 pt tall |
 | Card tap | — | press | scale 0.98 100 ms |
-| Alert (.exhausted) | system | error | Title "Couldn't generate today's puzzle"; message "Try a different difficulty, or come back tomorrow."; primary CTA "Try another difficulty" (dismiss + bounce to hub); VoiceOver = `.assertive` |
+| Inline empty-state block (.exhausted) | `status.warning` | error | Warning icon; title "Couldn't generate today's puzzle"; message "Try a different difficulty, or come back tomorrow."; actions "Practice" (`.borderedProminent`, routes to Practice hub) / "Cancel" (`.bordered`, pops to Home); #768 replaced the prior system alert, same visual language as `.failed` |
 
 ## e. A11y notes
 
@@ -163,4 +163,4 @@ Three sibling cards rather than a hero "today's hardest" or a stack-by-difficult
 
 Rejected: (1) tab control to switch difficulty — adds a click before play; (2) auto-advance "next puzzle" carousel — coercive; (3) leaderboard preview inline on each card — moved into BoardView/CompletionView per §How.5.1's clear separation.
 
-v1 has no inline empty state — Daily puzzles are generated locally and deterministically; the only failure path is `GeneratorError.exhausted` (§How.6.3), surfaced via Alert.
+Daily puzzles are generated locally and deterministically; the only failure path is `GeneratorError.exhausted` (§How.6.3), surfaced via an inline empty-state block (#768; a system alert prior to that).

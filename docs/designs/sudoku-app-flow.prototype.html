@@ -513,7 +513,7 @@
   <section class="flow" id="flow-daily">
     <h2 class="flow-title">Daily</h2>
     <p class="flow-sub">
-      <code>DailyHubView</code> (via <code>DailyHubShellView</code>) lists 3 puzzles for today — one per difficulty, color-dot + completion checkmark + a decorative MiniBoardStrip. When the generator can't produce today's set, Sudoku's own <code>DailyHubState</code> enters <code>.exhausted</code> (which the generic shell maps to its <code>HubLoadState.empty</code> case) and an <code>.alert</code> surfaces.
+      <code>DailyHubView</code> (via <code>DailyHubShellView</code>) lists 3 puzzles for today — one per difficulty, color-dot + completion checkmark + a decorative MiniBoardStrip. When the generator can't produce today's set, Sudoku's own <code>DailyHubState</code> enters <code>.exhausted</code> (which the generic shell maps to its <code>HubLoadState.empty</code> case) and an inline empty-state block surfaces (same visual language as <code>.failed</code>). The S04 frame below predates #768 and still shows the superseded system-alert presentation — see its label.
     </p>
     <div class="flow-frames">
 
@@ -543,7 +543,7 @@
         <div class="phone-source">DailyHubView · DailyPuzzleCard · MiniBoardStrip</div>
       </div>
 
-      <!-- S04 DailyHub exhausted alert -->
+      <!-- S04 DailyHub exhausted — SUPERSEDED mock (#768 shipped an inline empty-state block, not this alert) -->
       <div class="phone" id="S04">
         <div class="phone-shell">
           <div class="dynamic-island"></div>
@@ -564,8 +564,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">S04 — Daily exhausted (.alert)</div>
-        <div class="phone-source">DailyHubView · state == .exhausted</div>
+        <div class="phone-label">S04 — Daily exhausted — SUPERSEDED mock (#768 shipped inline empty-state block)</div>
+        <div class="phone-source">DailyHubView · state == .exhausted · mock predates #768's inline redesign</div>
       </div>
 
     </div>
@@ -802,7 +802,7 @@
     <p class="flow-sub" style="margin-top:-12px;">
       <b>Platform-shared surfaces (not drawn as separate Mac frames):</b>
       <b>Leaderboard</b> is Apple's native <b>Game Center</b> dashboard — presented modally, identical on Mac (issue&nbsp;#49), see S10.
-      The Daily-exhausted <code>.alert</code> (S04), the Board <code>PauseOverlayView</code> (S08), and the <code>BoardLoaderView</code> loader (S06) are <i>size-class-agnostic overlays</i> — the same modifiers in either layout, so they're not re-rendered at Mac scale.
+      The Daily-exhausted inline empty-state block (S04 — superseded mock, see label; shipped as inline content since #768, not a system alert), the Board <code>PauseOverlayView</code> (S08), and the <code>BoardLoaderView</code> loader (S06) are <i>size-class-agnostic overlays</i> — the same modifiers in either layout, so they're not re-rendered at Mac scale.
       Each Mac frame below carries the <b>macOS / iPad-regular share the NavigationSplitView layout</b> labeling (sidebar + detail, same view code, regular size class).
     </p>
     <div class="flow-frames">
@@ -1194,8 +1194,8 @@
         <div class="comp-note">SettingsShellView grouped Form · full-width pill on macOS (#197)</div>
       </div>
       <div class="comp">
-        <div class="comp-name">Alert · Pause overlay</div>
-        <div class="comp-note">.alert (daily exhausted) · ultraThinMaterial PauseOverlayView with play.circle CTA</div>
+        <div class="comp-name">Inline empty-state · Pause overlay</div>
+        <div class="comp-note">inline empty-state block (daily exhausted, #768 — S04 mock is superseded) · ultraThinMaterial PauseOverlayView with play.circle CTA</div>
       </div>
     </div>
 
