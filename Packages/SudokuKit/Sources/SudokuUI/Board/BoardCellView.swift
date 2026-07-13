@@ -20,10 +20,48 @@ struct BoardCellView: View {
     let isPencilNotes: Bool
     let noteMask: UInt16
     let side: CGFloat
+    /// #790 fix 2: the digit currently armed for digit-first placement
+    /// (`GameViewModel.armedDigit`), or `nil`. Only meaningful for empty
+    /// cells — while armed, tapping ANY empty cell places it (`tapCell`),
+    /// so this is not tied to a specific row/column.
+    let armedDigit: Int?
 
     @Environment(\.theme) private var theme
     @Environment(\.sudokuCell) private var cell
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // #790: a `let` stored property with an inline default value does NOT
+    // get a memberwise-init parameter (Swift bakes it in as a constant) —
+    // this explicit init is required so `armedDigit` can both default to
+    // `nil` (existing call sites keep compiling unchanged) AND be overridden
+    // (BoardView+Highlighting.swift passes the live `viewModel.armedDigit`).
+    init(
+        row: Int,
+        column: Int,
+        digit: Int?,
+        isGiven: Bool,
+        isSelected: Bool,
+        isError: Bool,
+        isHighlighted: Bool,
+        isSameDigit: Bool,
+        isPencilNotes: Bool,
+        noteMask: UInt16,
+        side: CGFloat,
+        armedDigit: Int? = nil
+    ) {
+        self.row = row
+        self.column = column
+        self.digit = digit
+        self.isGiven = isGiven
+        self.isSelected = isSelected
+        self.isError = isError
+        self.isHighlighted = isHighlighted
+        self.isSameDigit = isSameDigit
+        self.isPencilNotes = isPencilNotes
+        self.noteMask = noteMask
+        self.side = side
+        self.armedDigit = armedDigit
+    }
 
     /// design-system.md §Motion "Error highlight pulse" (200 ms × 2,
     /// ease-in-out / reduced motion: static fill only). Starts at full
@@ -84,7 +122,11 @@ struct BoardCellView: View {
         return traits
     }
 
-    private var accessibilityLabel: String {
+    // `internal` (not `private`) — like `isInteractive` above,
+    // `BoardCellArmedAccessibilityTests` (#790 fix 2) reads this directly via
+    // `@testable import` so the armed-digit hint is verified against the
+    // REAL computed label, not a re-implementation that can't go red.
+    var accessibilityLabel: String {
         // §How.5.7 format: "Row R, Column C, <state>". #755 routed the location
         // prefix through the catalog; #771 routes the state suffix too (was
         // bare interpolation bypassing l10n).
@@ -98,7 +140,13 @@ struct BoardCellView: View {
             }
             return "\(location), \(String(localized: "value \(digit)", bundle: .main))"
         }
-        return "\(location), \(String(localized: "Empty", bundle: .main))"
+        let emptyLabel = "\(location), \(String(localized: "Empty", bundle: .main))"
+        // #790 fix 2: while a digit is armed, this empty cell's tap semantics
+        // change from select → place (BoardView+Highlighting.swift `tapCell`)
+        // with no prior a11y signal. Append the pending-placement hint so
+        // VoiceOver's name/role/value still matches actual behavior.
+        guard let armedDigit else { return emptyLabel }
+        return "\(emptyLabel), \(String(localized: "will place \(armedDigit)", bundle: .main))"
     }
 
     // bg priority: error > selected > sameDigit > highlighted (peer) > given > base

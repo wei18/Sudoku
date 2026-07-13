@@ -151,10 +151,20 @@ struct DigitPadView: View {
         // remaining count — with no selection, a tap only arms, and arming an
         // already-fully-placed digit is still valid for notes use.
         .disabled(hasSelection && remaining == 0)
-        .opacity(remaining == 0 ? 0.35 : 1.0)
+        .opacity(Self.digitButtonOpacity(remaining: remaining, isArmed: isArmed))
         .accessibilityLabel("Digit \(digit)")
         .accessibilityValue(remaining > 0 ? "\(remaining) remaining" : "fully placed")
         .accessibilityAddTraits(isArmed ? .isSelected : [])
+    }
+
+    /// #790 fix 3: an exhausted-but-armed digit (remaining == 0, armed for
+    /// notes use per `hasSelection`'s doc above) must stay full-opacity —
+    /// dimming it to 0.35 while it renders `.borderedProminent` accent fill
+    /// mixes "disabled" and "active" visual language. Extracted as a pure
+    /// `static func` (not inlined in `.opacity(...)`) so this decision is
+    /// unit-testable without rendering the view.
+    static func digitButtonOpacity(remaining: Int, isArmed: Bool) -> Double {
+        remaining == 0 && !isArmed ? 0.35 : 1.0
     }
 
     private func compactDigitLabel(digit: Int, remaining: Int) -> some View {

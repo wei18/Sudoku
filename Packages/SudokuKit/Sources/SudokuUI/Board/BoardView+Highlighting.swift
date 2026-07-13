@@ -37,7 +37,8 @@ extension BoardView {
             isSameDigit: isSameDigit,
             isPencilNotes: digit == nil,
             noteMask: noteMask,
-            side: side
+            side: side,
+            armedDigit: viewModel.armedDigit
         )
         if cellView.isInteractive {
             Button {

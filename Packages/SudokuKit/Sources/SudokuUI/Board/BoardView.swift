@@ -110,6 +110,14 @@ public struct BoardView: View {
         .focused($keyboardFocus)
         .onAppear { keyboardFocus = true }
         .onKeyPress(phases: .down, action: handleKeyPress)
+        // #790 fix 2: arming/disarming a digit silently changes what an empty
+        // cell's tap does (select → place), but the only prior signal was the
+        // keypad button's `.isSelected` trait — inaudible once VO focus moves
+        // to the board. Announce the transition explicitly; `onChange` only
+        // fires on an actual value change, so this never double-announces.
+        .onChange(of: viewModel.armedDigit) { _, newValue in
+            AccessibilityNotification.Announcement(Self.armedAnnouncementMessage(for: newValue)).post()
+        }
         .background(undoRedoShortcuts)
         .task(id: viewModel.identity.puzzleId) {
             // #330 P2: start the looping gameplay BGM when the board appears.
@@ -321,18 +329,25 @@ public struct BoardView: View {
         if let scalar = chars.unicodeScalars.first,
            let digit = Int(String(scalar)),
            (1...9).contains(digit) {
-            Task { await placeOrToggle(digit) }
+            Task { await dispatchKeyboardDigit(digit) }
             return .handled
         }
         return .ignored
     }
 
-    private func placeOrToggle(_ digit: Int) async {
-        if viewModel.pencilMode {
-            await viewModel.toggleNote(digit)
-        } else {
-            await viewModel.placeDigit(digit)
-        }
+    /// #790 fix 1: keyboard digits now share the SAME `keypadDigit` arm/place/
+    /// pencil-note dispatch as the pointer-driven digit pad (`digitPad`'s
+    /// `onDigit:` closure above) — previously this called `placeDigit(_:)`
+    /// directly, which silently no-ops when nothing is selected (no way to
+    /// arm a digit from the keyboard at all). `internal` (not `private`) so
+    /// `BoardViewKeyboardDigitTests` can exercise it directly: SwiftUI's
+    /// `KeyPress` has no public initializer (confirmed against Apple's
+    /// Accessibility/SwiftUI sample code, which only ever receives one from
+    /// `onKeyPress`'s closure, never constructs one), so the full
+    /// `onKeyPress` → `handleKeyPress` chain isn't unit-testable — this is
+    /// the closest testable proxy for "what a digit key does."
+    func dispatchKeyboardDigit(_ digit: Int) async {
+        await viewModel.keypadDigit(digit)
     }
 
     // `internal` (not `private`) — the header's `timerLabel` in
@@ -342,5 +357,18 @@ public struct BoardView: View {
         let minutes = total / 60
         let seconds = total % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// #790 fix 2: message posted via `AccessibilityNotification.Announcement`
+    /// when `armedDigit` changes. Extracted as a pure `static func` (not
+    /// inlined in the `.onChange` closure above) so the message text is
+    /// unit-testable without posting a real accessibility notification —
+    /// `AccessibilityNotification.Announcement.post()` itself has no mock
+    /// point and requires a live VoiceOver session to observe.
+    static func armedAnnouncementMessage(for armedDigit: Int?) -> String {
+        if let armedDigit {
+            return String(localized: "Digit \(armedDigit) armed", bundle: .main)
+        }
+        return String(localized: "Digit unarmed", bundle: .main)
     }
 }

@@ -34,3 +34,43 @@ struct BoardCellAccessibilityTests {
         #expect(editableFilled.isInteractive == true)
     }
 }
+
+// MARK: - #790 fix 2: armed-digit VoiceOver hint
+
+// A digit armed for digit-first placement changes an empty cell's tap
+// semantics (select → place, BoardView+Highlighting.swift `tapCell`) with no
+// prior a11y signal — the empty cell's label still read only "Empty". Locks
+// the "will place N" suffix BoardCellView now appends while armed. Reads the
+// REAL `accessibilityLabel` (made `internal` for this reason) rather than a
+// re-implementation, so this test goes red on the pre-fix code.
+@MainActor
+@Suite("BoardCellView — armed-digit accessibility hint (#790 fix 2)")
+struct BoardCellArmedAccessibilityTests {
+
+    private func cell(digit: Int?, armedDigit: Int?) -> BoardCellView {
+        BoardCellView(
+            row: 0, column: 0, digit: digit, isGiven: false, isSelected: false,
+            isError: false, isHighlighted: false, isSameDigit: false,
+            isPencilNotes: true, noteMask: 0, side: 40, armedDigit: armedDigit
+        )
+    }
+
+    @Test func emptyCell_noArmedDigit_labelUnchanged() {
+        let unarmed = cell(digit: nil, armedDigit: nil)
+        #expect(unarmed.accessibilityLabel == "Row 1, Column 1, Empty")
+    }
+
+    @Test func emptyCell_armedDigit_labelGainsPlacementHint() {
+        let armed = cell(digit: nil, armedDigit: 5)
+        #expect(armed.accessibilityLabel == "Row 1, Column 1, Empty, will place 5",
+            "An armed empty cell's label must announce that a tap will place the armed digit")
+    }
+
+    @Test func filledCell_armedDigit_noHintAppended() {
+        // Armed digits only place into EMPTY cells (tapCell falls back to
+        // select() on a non-empty cell) — a filled cell's label must not
+        // gain the hint even while some digit is armed elsewhere.
+        let filled = cell(digit: 7, armedDigit: 5)
+        #expect(filled.accessibilityLabel == "Row 1, Column 1, value 7")
+    }
+}
