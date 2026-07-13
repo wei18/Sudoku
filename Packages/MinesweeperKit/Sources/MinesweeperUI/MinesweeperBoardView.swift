@@ -629,8 +629,27 @@ public struct MinesweeperBoardView: View {
             // §Color) — text/icon on top must be `text.primary` to hold
             // contrast, mirroring the pattern already used wherever
             // `accent.muted` backs content elsewhere in the app.
-            .foregroundStyle(interactionMode == .flag ? theme.text.primary.resolved : .white)
-            .padding(.horizontal, 12)
+            // #786 item 3: reveal mode was `.white` on `accent.primary`, which
+            // hard-fails AA in dark mode (white on 0x7FAFCF = 2.35:1). No
+            // `text.*` token passes there either — their dark variants are all
+            // light inks (text.primary 0xEEF1F4 → 2.07:1) because the accent
+            // ramp flips light↔dark opposite to the text ramp. The correct
+            // on-accent ink is the theme's surface color: `surface.primary`
+            // (0xFFFFFF light / 0x1C2026 dark) = 5.70:1 light / 6.96:1 dark —
+            // both AA. Light mode renders byte-identically (still white).
+            .foregroundStyle(
+                interactionMode == .flag
+                    ? theme.text.primary.resolved
+                    : theme.surface.primary.resolved
+            )
+            // #786 item 1 (#780 review): was a hard-coded `12` literal.
+            // `SpacingTokens` names no 12 step (8/16/24/32), so this snaps to
+            // `small` (8): closer to the chip's #724 "half the footprint"
+            // intent than `medium` (16), which the design-system pairing
+            // table reserves for card-level internal padding. The
+            // `.frame(minWidth: 44, minHeight: 44)` below guarantees the HIG
+            // tap-target floor independent of this padding value.
+            .padding(.horizontal, theme.spacing.small)
             .frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
