@@ -150,6 +150,12 @@ public final class DailyHubViewModel {
     /// degrade silently to "no cards completed" — same M10 contract as before.
     /// Also the target of `refresh()`'s re-fetch (#761).
     private func fillCompletionOverlay(trio: [PuzzleEnvelope], date: Date) async {
+        // #788: guard `.loaded` before AND after the fetch — mirrors MS's
+        // `fillCompletionAndFailureOverlay`. Since #761 this method is
+        // re-entrant via `refresh()` (the session-teardown signal), so a state
+        // transition landing mid-fetch must not resurrect a stale `.loaded`
+        // write over whatever state replaced it.
+        guard case .loaded = state else { return }
         let completed: Set<String>
         do {
             completed = try await persistence.fetchCompletedDailyIds(for: date)
@@ -161,6 +167,7 @@ public final class DailyHubViewModel {
             )
             return // degrade: cards remain un-completed
         }
+        guard case .loaded = state else { return }
         guard !completed.isEmpty else { return }
         let cards = trio.map { envelope in
             DailyCard(envelope: envelope, isCompleted: completed.contains(envelope.identity.puzzleId))
