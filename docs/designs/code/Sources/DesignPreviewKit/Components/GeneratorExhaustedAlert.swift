@@ -3,6 +3,13 @@
 // `.exhausted` alert spec, rendered as a stub View so it's snapshottable.
 // Source: docs/designs/03-daily-hub.md §d (Alert row) + 04-practice-hub.md §d.
 // VoiceOver = .assertive (§How.6.3 generator defect).
+//
+// SUPERSEDED for `surface: .daily` (#768): the shipped Daily hub no longer
+// presents `.exhausted` as a system alert — it renders inline via an
+// empty-state block in DailyHubView.swift's `empty:` builder (same copy,
+// same Practice/Cancel actions, no separate modal). Kept as a historical
+// snapshot fixture, not redesigned. `surface: .practice` is untouched by
+// #768 (Practice Hub's own draw-failure path is separately unrelated).
 
 import SwiftUI
 
