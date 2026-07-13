@@ -471,12 +471,13 @@ leaderboard zone to show a real ranked time in (#698).
 **Code:** `SudokuUI/Settings/SettingsView.swift`,
 `MinesweeperUI/SettingsView.swift`, `SettingsKit/Sources/SettingsUI/Settings/*`.
 
-**Element inventory:** GC status row (`settings.gameCenter`), stats row,
-locale row (read-only), audio section (mute/music-volume/sfx-volume/
-music-enabled/haptics toggles, ids `audio.settings.*`), reminders section
-(see `REMINDER-*` ids under it), Storage section "Clear cache" button,
-About section (Version row +, Sudoku-only, Generator row), Notices section
-(acknowledgements deep-link, copyright).
+**Element inventory (row order):** Purchases section (host-injected IAP
+rows), GC status row (`settings.gameCenter`), reminders section (see
+`REMINDER-*` ids under it), Sound section (mute/music-volume/sfx-volume/
+music-enabled/haptics toggles, ids `audio.settings.*`), About section
+(Version row +, Sudoku-only, Generator row), Notices section
+(acknowledgements deep-link, copyright), Storage section "Clear cache"
+button.
 
 **Per-interaction outcome:**
 

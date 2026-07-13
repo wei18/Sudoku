@@ -154,7 +154,7 @@ private struct SettingsStub: View {
 | Resume pill text | `text.primary` | default | `.body` `.medium` |
 | Resume pill icon | `accent.primary` | default | SF Symbol `arrow.clockwise`, 18 pt |
 | Chevron | `text.tertiary` | default | SF `chevron.right`, 14 pt |
-| Sidebar row (Mac) | system list | selected | `.tint(accent.primary)` |
+| Sidebar row (Mac) | system list | default | plain `Button` + `Label`, no selected-state tracking or tint (`RootShellView.sidebarList`) |
 | Bootstrapping placeholder | `text.secondary` | only when `isBootstrapping && resume == nil` | small `ProgressView()` top-center, never blocks Home |
 
 Interaction:
@@ -165,7 +165,7 @@ Interaction:
 ## e. A11y notes
 
 - Resume pill: `.accessibilityLabel("Resume \(difficultyLabel) puzzle, elapsed \(elapsed)")` + `.accessibilityHint("Opens the board")` + `.accessibilityAddTraits(.isButton)`
-- Sidebar (Mac): native `List` selection handles VoiceOver; no override needed
+- Sidebar (Mac): plain-button `List` with no selection-state tracking; VoiceOver reads each row as a button, not as a selectable list item
 - Dynamic Type acceptance: must survive `xSmall` … `xxxLarge` (resume pill wraps to 2 lines at xxxLarge — that's OK)
 - Color-blind: resume pill carries icon + text, not color-only
 
