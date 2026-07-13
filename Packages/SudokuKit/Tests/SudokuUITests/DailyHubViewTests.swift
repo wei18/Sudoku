@@ -1,4 +1,4 @@
-// DailyHubView — bootstrap, exhausted alert, and 3-state snapshots.
+// DailyHubView — bootstrap, exhausted inline block, and 4-state snapshots.
 
 import Foundation
 import SnapshotTesting
@@ -149,6 +149,27 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
         }
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    // #768: `.exhausted` now renders as an inline icon+message+action block
+    // (was a system `.alert` over `Color.clear`) — pins the new content so a
+    // regression back to a blank backdrop shows up as a snapshot diff.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotExhaustedIPhoneLight() async {
+        let viewModel = await makeViewModel(
+            providerResult: .failure(.generatorFailed(underlying: "exhausted"))
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.state == .exhausted)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-exhausted")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-exhausted", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPadLight() async {

@@ -19,23 +19,28 @@
 //   - the per-item card builder (`@ViewBuilder card`)
 //   - the failure overlay builder (`@ViewBuilder failure`); kept caller-
 //     provided so each game owns its own warning copy + tinting tokens
+//   - the empty-state overlay builder (`@ViewBuilder empty`), defaulting to
+//     `Color.clear` so existing callers (Minesweeper) compile unchanged.
+//     #768: Sudoku now supplies an inline icon+message+action block here
+//     instead of layering a system `.alert` on top of a blank shell.
 //   - the per-item tap action
 //   - the `banner` slot (injected by each app; EmptyView default for
 //     previews/tests; the actual BannerSlotView is never imported here)
 //
-// `.task { bootstrap() }` and the empty-state `.alert(...)` are NOT owned
-// by the shell — same precedent as X4 (SettingsShellView owns no side-
-// effect modifiers). The caller applies those on top of the shell.
+// `.task { bootstrap() }` is NOT owned by the shell — same precedent as X4
+// (SettingsShellView owns no side-effect modifiers). The caller applies
+// that on top of the shell.
 
 public import SwiftUI
 
-public struct DailyHubShellView<Item, Card, Failure, Banner>: View
-where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Banner: View {
+public struct DailyHubShellView<Item, Card, Failure, Empty, Banner>: View
+where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Banner: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let state: HubLoadState<Item>
     private let card: (Item) -> Card
     private let failure: (String) -> Failure
+    private let empty: () -> Empty
     private let onItemTap: (Item) -> Void
     private let banner: Banner
 
@@ -45,6 +50,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Banne
         state: HubLoadState<Item>,
         @ViewBuilder card: @escaping (Item) -> Card,
         @ViewBuilder failure: @escaping (String) -> Failure,
+        @ViewBuilder empty: @escaping () -> Empty = { Color.clear },
         onItemTap: @escaping (Item) -> Void,
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
@@ -53,6 +59,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Banne
         self.state = state
         self.card = card
         self.failure = failure
+        self.empty = empty
         self.onItemTap = onItemTap
         self.banner = banner()
     }
@@ -76,10 +83,10 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Banne
         case .loaded(let items):
             cardList(items)
         case .empty:
-            // Mirrors Sudoku's `.exhausted` precedent (caller surfaces the
-            // empty case via `.alert` on top of the shell). Shell shows an
-            // empty backdrop so the alert reads as the primary surface.
-            Color.clear
+            // #768: caller-provided inline block (defaults to `Color.clear`
+            // for callers with no reachable `.empty` state, e.g. Minesweeper).
+            empty()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed(let reason):
             failure(reason)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

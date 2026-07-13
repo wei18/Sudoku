@@ -1030,7 +1030,7 @@ public enum GeneratorError: Error, Sendable, Equatable {
 | Persistence | `.diskFull` | `NSFileWriteOutOfSpaceError` | Alert | `OSLog .error` | 使用者觸發 |
 | Persistence | `.schemaVersionTooNew` | 讀到 `schemaVersion > 1` | Banner「App 版本過舊，請更新」+ 跳 App Store | `OSLog .fault` | 使用者觸發 |
 | Persistence | `.schemaVersionTooOld` | 讀到 `schemaVersion < 1` | 靜默 + 補預設 | `OSLog .info` | 自動：conservative migration |
-| Generator | `.exhausted` | retry 上限 N=32 內無 calibrator-accepted 唯一解 puzzle（極罕見、視為 defect）| Alert「Today's puzzle hit a generation defect — please try a different difficulty or come back tomorrow」| `OSLog .fault` + MetricKit；OSLog 包含 `seed`、`difficulty`、`generatorVersion`（皆 `.public` — 非 PII，方便 issue tracker 上重現） | 使用者觸發：切換難度 |
+| Generator | `.exhausted` | retry 上限 N=32 內無 calibrator-accepted 唯一解 puzzle（極罕見、視為 defect）| Inline empty-state block（warning icon +「Couldn't generate today's puzzle」+「Try a different difficulty, or come back tomorrow.」+ Practice/Cancel 動作；#768 起改為 inline，與 `.failed` 同視覺語言，不再用系統 alert）| `OSLog .fault` + MetricKit；OSLog 包含 `seed`、`difficulty`、`generatorVersion`（皆 `.public` — 非 PII，方便 issue tracker 上重現） | 使用者觸發：切換難度 |
 | Generator | `.cancelled` | Task 被取消（如 View dismiss 中途）| 靜默 | `OSLog .info` | 自動：下次進畫面重試 |
 
 OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.error`（操作失敗）/ `.fault`（資料完整性風險）。**MetricKit 採集邏輯為自動**（`MXCrashDiagnostic` / `MXHangDiagnostic` / `MXMetricPayload`）；我方不顯式 forward 任何錯誤到 MetricKit，僅在 `MetricKitSink.didReceive(_:)` 內把採到的 payload 落地為 OSLog（§How.1 C 場景）。
@@ -1077,7 +1077,7 @@ OSLog level 對應：`.info`（可觀察）/ `.notice`（值得注意）/ `.erro
 
 #### §How.6.6 ~~「今天沒有 Daily 題」情境~~ (removed)
 
-本節在 v1 不再適用 — 題目改由本機 deterministic generator 產生（§How.4），不存在 server-side 投放失敗導致「今天沒題」的路徑。Generator 唯一可能的失敗為 `GeneratorError.exhausted`（§How.6.3），屬 defect 級事件、走 alert + MetricKit。
+本節在 v1 不再適用 — 題目改由本機 deterministic generator 產生（§How.4），不存在 server-side 投放失敗導致「今天沒題」的路徑。Generator 唯一可能的失敗為 `GeneratorError.exhausted`（§How.6.3），屬 defect 級事件、走 inline empty-state block（#768 前為系統 alert）+ MetricKit。
 
 #### §How.6.7 CloudKit 同步衝突解決
 
