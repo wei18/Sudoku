@@ -8,6 +8,11 @@ BLOCKER — see §2 closure-principle note)
 **Companion:** `meetings/2026-07-11_design-db-uiux-audit.md` (audit findings this
 spec responds to — see finding M2)
 
+> **Correction (2026-07-13):** the #761 soft dependency referenced above and
+> in §2 is now RESOLVED — closed via PR #789 (main commit e53fdd3), which
+> added a `sessionTeardownCount`-driven `refresh()` to both daily hubs. The
+> dependency language elsewhere in this doc is kept verbatim for history.
+
 ---
 
 ## 1. Problem

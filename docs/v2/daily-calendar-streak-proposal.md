@@ -27,6 +27,13 @@ entire "complete → see it logged immediately" loop this proposal exists to
 create. **B1 must land first; everything below assumes it has.** Tracked as
 GitHub **#761**.
 
+> **Correction (2026-07-13):** the hard prerequisite above is now RESOLVED.
+> #761 closed via PR #789 (main commit e53fdd3): both hubs gained a guarded
+> `refresh()` driven by `GameRoot`'s explicit `sessionTeardownCount`
+> environment signal (`.onAppear` was sim-disproved as a trigger — see the
+> PR/commit body). The blocker language below is kept verbatim for history;
+> this proposal is no longer gated on it.
+
 ## 1. Problem
 
 The daily hub shows only the current day's trio of puzzles/boards — there is
@@ -200,7 +207,8 @@ therefore both already consistent as described above.
 - **Hard prerequisite (blocking, not just a dependency): finding B1 must be
   fixed first.** Unconfirmed ? until fixed — tracked as this spec's explicit
   gate, not assumed resolved. See the callout at the top of this document.
-  GitHub: **#761**.
+  GitHub: **#761**. *[Correction 2026-07-13: now Verified ✓ — #761 closed via
+  PR #789, see the correction note at the top of this document.]*
 - **Per-day completion querying does not exist yet and must be added.**
   Verified ✓ (as a gap, confirmed by this round's audit) —
   `PersistenceProtocol.fetchCompletedDailyIds(for date:)`

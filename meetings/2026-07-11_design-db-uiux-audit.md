@@ -41,6 +41,11 @@ owner on 2026-07-11 and removed from this branch** — see §Adjudicated
 - **Note:** this blocks DAILY-CAL (proposal below) — a per-day streak dot ring
   built on top of a hub that doesn't self-refresh would carry the same stale
   read forward into the new calendar row.
+- **Resolved (2026-07-13):** shipped as #761 → PR #789 (main e53fdd3). The
+  landed fix deviates from the "onAppear" fix-direction sketched above —
+  sim verification disproved `.onAppear` re-fire on fullScreenCover dismissal;
+  the fix rides `GameRoot`'s explicit `sessionTeardownCount` teardown signal
+  instead (same #675 resume-pill seam this entry pointed to).
 
 ### B2 — `@ScaledMetric` Dynamic-Type spacing rule is unimplemented across the UI
 
