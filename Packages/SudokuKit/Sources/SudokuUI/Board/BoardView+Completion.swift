@@ -41,6 +41,17 @@ extension BoardView {
         viewModel.status == .completed
     }
 
+    // MARK: - Overlay-active predicate (#763)
+
+    /// True whenever this board's own Pause or Completion overlay is up.
+    /// MUST track the EXACT same condition as the `.overlay { … }` mounted in
+    /// `BoardView.body` — it feeds the `.preference` published right after
+    /// that overlay, which `RootShellView` uses to mask + disable the macOS
+    /// sidebar (see `BoardModalOverlayActivePreferenceKey`).
+    var isModalOverlayActive: Bool {
+        completionViewModel != nil || viewModel.isPaused
+    }
+
     // MARK: - Factories (called once per .completed transition)
 
     /// Construct the post-solve CompletionViewModel from the current terminal

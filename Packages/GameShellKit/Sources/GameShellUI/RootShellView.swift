@@ -17,6 +17,10 @@ public struct RootShellView<Route: Hashable, RootContent: View>: View {
     private let sidebarItems: [SidebarItem<Route>]
     private let routeFactory: any RouteFactory<Route>
     private let rootContent: () -> RootContent
+    // #763: true while a board's Pause/Completion overlay is masking it.
+    // Captured from `BoardModalOverlayActivePreferenceKey`; drives the
+    // macOS-only sidebar mask below.
+    @State private var isBoardModalOverlayActive = false
 
     public init(
         path: Binding<[Route]>,
@@ -41,6 +45,13 @@ public struct RootShellView<Route: Hashable, RootContent: View>: View {
                 routeFactory.view(for: route, path: $path)
             }
         )
+        // #763: a board pushed into the detail column (macOS) publishes this
+        // preference from `BoardView` / `MinesweeperBoardView`; it propagates
+        // up through the pushed destination's view tree to this ancestor
+        // regardless of which route is showing.
+        .onPreferenceChange(BoardModalOverlayActivePreferenceKey.self) { isActive in
+            isBoardModalOverlayActive = isActive
+        }
     }
 
     // Sidebar mirrors the caller's mode list. The shell does not know which
@@ -67,5 +78,23 @@ public struct RootShellView<Route: Hashable, RootContent: View>: View {
             }
         }
         .navigationTitle(title)
+        #if os(macOS)
+        // #763: on macOS a board-mounted Pause/Completion overlay only fills
+        // the detail column (board routes are a `NavigationStack` push there,
+        // not a `fullScreenCover` — see `GameAppKit.GameRoot`'s
+        // `#if os(iOS)` split), so it never masks the sidebar on its own.
+        // Mirror the same `.ultraThinMaterial` mask `PauseOverlayView` uses on
+        // the board + `.disabled` so the sidebar reads as unreachable while
+        // the overlay is up, matching iOS's full-screen coverage. iOS is
+        // untouched — this whole block compiles away there.
+        .overlay {
+            if isBoardModalOverlayActive {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .ignoresSafeArea()
+            }
+        }
+        .disabled(isBoardModalOverlayActive)
+        #endif
     }
 }

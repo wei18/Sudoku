@@ -173,6 +173,17 @@ public struct MinesweeperBoardView: View {
         self.mode = mode
     }
 
+    // MARK: - Overlay-active predicate (#763)
+
+    /// True whenever this board's own Pause/idle-leave or Completion overlay
+    /// is up. MUST track the EXACT same condition as the `.overlay { … }`
+    /// mounted in `body` — it feeds the `.preference` published right after
+    /// that overlay, which `RootShellView` uses to mask + disable the macOS
+    /// sidebar (see `BoardModalOverlayActivePreferenceKey`).
+    var isModalOverlayActive: Bool {
+        (viewModel.isTerminal && completionViewModel != nil) || viewModel.isPaused || showIdleLeaveOverlay
+    }
+
     public var body: some View {
         // #298 #6: compact (iPhone) keeps the vertical stack; regular (iPad /
         // Mac) splits into a 2-column board + control rail, mirroring Sudoku's
@@ -240,6 +251,12 @@ public struct MinesweeperBoardView: View {
                 )
             }
         }
+        // #763: publish whether the overlay above is up, so the macOS split-view
+        // shell (RootShellView) can also mask + disable the sidebar — this
+        // overlay's `.ignoresSafeArea()` only fills the detail column there, not
+        // the whole split view. MUST track the exact same condition as `.overlay`
+        // above; see `isModalOverlayActive` below.
+        .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isModalOverlayActive)
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
         .onChange(of: viewModel.isTerminal) { _, isTerminal in

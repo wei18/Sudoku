@@ -94,6 +94,12 @@ public struct BoardView: View {
                 )
             }
         }
+        // #763: publish whether the overlay above is up, so the macOS split-view
+        // shell (RootShellView) can also mask + disable the sidebar — this
+        // overlay's `.ignoresSafeArea()` only fills the detail column there, not
+        // the whole split view. MUST track the exact same condition as `.overlay`
+        // above; see `isModalOverlayActive` (BoardView+Completion.swift).
+        .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isModalOverlayActive)
         // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
         // overlay presence so Close restores chrome. `shouldPresentCompletionOverlay`
         // gates to path==nil — macOS (path!=nil) uses push path, no double-present.
