@@ -92,8 +92,30 @@ public struct PracticeHubView<Banner: View>: View {
                     viewModel.playTapped()
                 }
             } label: {
-                Label("Draw new puzzle", systemImage: "play.fill")
-                    .frame(maxWidth: .infinity)
+                // #797 (CR round 2): the prominent style's default white label
+                // fails AA in dark mode against EVERY difficulty tint (easy
+                // 0x9BB87E 2.20:1 / medium 0xD89A82 2.37:1 / hard 0xEFC07F
+                // 1.68:1). `surface.primary` ink clears dark on all three
+                // (7.42 / 6.89 / 9.72) and is byte-identical in light mode
+                // (still white). KNOWN RESIDUAL (pre-existing, not a #797
+                // regression): light-mode white on medium 0xC97D5F (3.19:1)
+                // and hard 0xE6A857 (2.08:1) also fails — that needs a
+                // token-level fix (darker light-ramp difficulty tints or a
+                // per-difficulty ink), tracked as a #797 follow-up, because
+                // surface.primary is white in light mode and cannot help.
+                // NOTE: the explicit ink applies ONLY while enabled — while
+                // `isDrawing` the button is `.disabled(...)` and an explicit
+                // `.foregroundStyle` would override the system's disabled
+                // dimming (caught by the committed shimmer baseline, which
+                // must stay byte-identical).
+                if isDrawing {
+                    Label("Draw new puzzle", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Label("Draw new puzzle", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(theme.surface.primary.resolved)
+                }
             }
             .buttonStyle(.borderedProminent)
             // CTA carries the selected difficulty's tint, keeping the

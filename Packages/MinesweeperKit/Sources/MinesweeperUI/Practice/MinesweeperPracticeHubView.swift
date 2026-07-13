@@ -92,8 +92,18 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
                 .foregroundStyle(theme.text.secondary.resolved)
 
             Button(action: start) {
+                // #797 (CR round 2): mirrors Sudoku's PracticeHubView draw CTA
+                // fix — the prominent style's default white label fails AA in
+                // dark mode against every difficulty tint (Beginner 0x7FAFCF
+                // 2.35:1 / Intermediate 0xD89A82 2.37:1 / Expert 0xD96B77
+                // 3.32:1). `surface.primary` ink clears dark on all three
+                // (6.96 / 6.90 / 4.92) and is byte-identical in light mode.
+                // KNOWN RESIDUAL (pre-existing): light-mode white on
+                // Intermediate 0xC97D5F (3.19:1) also fails — token-level
+                // follow-up, see the Sudoku sibling's comment.
                 Label("Start", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)
+                    .foregroundStyle(theme.surface.primary.resolved)
             }
             .buttonStyle(.borderedProminent)
             // #765: CTA carries the selected difficulty's tint, keeping the
