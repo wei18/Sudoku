@@ -32,7 +32,7 @@ struct MinesweeperBoardSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPhone_light() {
-        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42)
+        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light),
             as: .tolerantImage,
@@ -43,7 +43,7 @@ struct MinesweeperBoardSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPhone_dark() {
-        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42)
+        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark),
             as: .tolerantImage,
@@ -54,7 +54,7 @@ struct MinesweeperBoardSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPad_light() {
-        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42)
+        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
             as: .tolerantImage,
@@ -105,7 +105,8 @@ struct MinesweeperBoardSnapshotTests {
         let gate = adsAllowedGate()
         _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
         let view = MinesweeperBoardView(
-            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate
+            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate,
+            tapModeDefaults: BoardTestDefaults.store
         )
         .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
         assertUISnapshot(
@@ -121,7 +122,8 @@ struct MinesweeperBoardSnapshotTests {
         let gate = adsAllowedGate()
         _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
         let view = MinesweeperBoardView(
-            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate
+            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate,
+            tapModeDefaults: BoardTestDefaults.store
         )
         .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
         assertUISnapshot(

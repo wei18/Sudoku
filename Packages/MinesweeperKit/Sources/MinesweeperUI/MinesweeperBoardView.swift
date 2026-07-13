@@ -59,9 +59,16 @@ public struct MinesweeperBoardView: View {
     // #720 G3: seeded from `UserDefaults` (via `LastSelectionStore`) instead of
     // always starting at `.reveal`, so the player's last tap-mode choice
     // survives opening a new board.
-    @State private var interactionMode: InteractionMode = Self.interactionMode(
-        fromRawValue: Self.tapModeStore.load()
-    )
+    // #796: the seed read moved out of this property initializer (which ran
+    // against `Self.tapModeStore`, hard-wired to `UserDefaults.standard`) and
+    // into both `init` bodies below, so it can read the injected
+    // `tapModeDefaults` instead. The swiftpm test host's persistent defaults
+    // domain otherwise leaks a prior run's `tapMode` value into every
+    // snapshot recording — see `tapModeDefaults` below. `internal` (not
+    // `private`), mirroring `tapModeKey` below, so
+    // `MinesweeperBoardViewTapModeTests` can assert the injected store
+    // actually seeds this value without a live SwiftUI render tree.
+    @State var interactionMode: InteractionMode
     // #292: the Completion overlay's VM. Held in `@State` so it survives the
     // board's recomputes (the status bar's 1 Hz TimelineView re-runs `body`
     // every second) — building it inline would reset its leaderboard-slice
@@ -111,6 +118,13 @@ public struct MinesweeperBoardView: View {
     // dismiss and start a fresh board at the same level. `nil` → Close-only
     // (existing behavior; snapshot tests are unaffected).
     private let onPlayAgain: ((Difficulty) -> Void)?
+    // #796: the store backing the tap-mode toggle's seed/persist round trip
+    // (#720 G3). Defaults `.standard` so every production call site compiles
+    // and behaves unchanged; snapshot/ASC-screenshot tests MUST pass an
+    // isolated `UserDefaults(suiteName:)` instead — the swiftpm test host's
+    // shared `.standard` domain otherwise leaks a prior run's `tapMode` key
+    // into deterministic recordings (found during #786's re-record).
+    private let tapModeDefaults: UserDefaults
 
     public init(
         viewModel: MinesweeperGameViewModel,
@@ -120,7 +134,8 @@ public struct MinesweeperBoardView: View {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         suppressTickerForSnapshot: Bool = false,
-        completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil
+        completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil,
+        tapModeDefaults: UserDefaults = .standard
     ) {
         self._viewModel = State(initialValue: viewModel)
         self.adProvider = adProvider
@@ -137,6 +152,10 @@ public struct MinesweeperBoardView: View {
         // app always seeds via `.task` / `.onChange`, never this parameter.
         self._completionViewModel = State(initialValue: completionViewModelForSnapshot)
         self.mode = viewModel.mode
+        self.tapModeDefaults = tapModeDefaults
+        self._interactionMode = State(initialValue: Self.interactionMode(
+            fromRawValue: Self.tapModeStore(defaults: tapModeDefaults).load()
+        ))
     }
 
     public init(
@@ -151,7 +170,8 @@ public struct MinesweeperBoardView: View {
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
-        personalRecordStore: MinesweeperPersonalRecordStore? = nil
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
+        tapModeDefaults: UserDefaults = .standard
     ) {
         self._viewModel = State(initialValue: MinesweeperGameViewModel(
             difficulty: difficulty,
@@ -171,6 +191,10 @@ public struct MinesweeperBoardView: View {
         self.onPlayAgain = onPlayAgain
         self.suppressTickerForSnapshot = false
         self.mode = mode
+        self.tapModeDefaults = tapModeDefaults
+        self._interactionMode = State(initialValue: Self.interactionMode(
+            fromRawValue: Self.tapModeStore(defaults: tapModeDefaults).load()
+        ))
     }
 
     // MARK: - Overlay-active predicate (#763)
@@ -604,8 +628,12 @@ public struct MinesweeperBoardView: View {
     // production uses without a live SwiftUI render tree.
     static let tapModeKey = "com.wei18.minesweeper.board.tapMode"
 
-    static var tapModeStore: LastSelectionStore {
-        LastSelectionStore(key: tapModeKey, fallback: "reveal")
+    // #796: parameterized over the injected `defaults` (was a fixed
+    // `.standard` computed property) so both `init`s and `modeToggle` below
+    // read/write through the SAME store this instance was constructed with,
+    // instead of always touching the shared `UserDefaults.standard` domain.
+    static func tapModeStore(defaults: UserDefaults) -> LastSelectionStore {
+        LastSelectionStore(key: tapModeKey, fallback: "reveal", defaults: defaults)
     }
 
     static func interactionMode(fromRawValue rawValue: String) -> InteractionMode {
@@ -632,8 +660,9 @@ public struct MinesweeperBoardView: View {
         Button {
             interactionMode = interactionMode == .reveal ? .flag : .reveal
             // #720 G3: persist the new mode so the next board open reopens
-            // in it.
-            Self.tapModeStore.save(Self.rawValue(for: interactionMode))
+            // in it. #796: through this instance's injected store, not the
+            // shared `.standard` domain.
+            Self.tapModeStore(defaults: tapModeDefaults).save(Self.rawValue(for: interactionMode))
         } label: {
             Label {
                 Text(modeToggleModeName)
