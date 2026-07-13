@@ -52,4 +52,46 @@ struct MinesweeperBoardViewTapModeTests {
     func unrecognizedRawValueFallsBackToReveal() {
         #expect(MinesweeperBoardView.interactionMode(fromRawValue: "garbage") == .reveal)
     }
+
+    // MARK: - #796 regression: injected store is actually live
+
+    /// #796: `MinesweeperBoardView` used to seed `interactionMode` from
+    /// `UserDefaults.standard` unconditionally, so the swiftpm test host's
+    /// shared persistent domain could silently flip a snapshot recording to
+    /// Flag mode. This poisons an ISOLATED store (never touching `.standard`)
+    /// with `tapMode = flag` and constructs the real view through the
+    /// `tapModeDefaults:` seam, proving the injection actually feeds
+    /// `interactionMode` — not just the static round-trip helpers above.
+    @Test("a poisoned isolated store seeds interactionMode = .flag, proving the injection is live")
+    func poisonedIsolatedStoreSeedsFlagMode() {
+        let suiteName = "test.poison.\(UUID().uuidString)"
+        // swiftlint:disable:next force_unwrapping
+        let poisoned = UserDefaults(suiteName: suiteName)!
+        poisoned.set("flag", forKey: MinesweeperBoardView.tapModeKey)
+        defer { poisoned.removePersistentDomain(forName: suiteName) }
+
+        let boardView = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: poisoned)
+
+        #expect(boardView.interactionMode == .flag)
+    }
+
+    /// Same poison, via the `viewModel:` init overload (the one every
+    /// seeded-snapshot suite uses) — both `init`s must honor the seam
+    /// identically.
+    @Test("a poisoned isolated store seeds interactionMode = .flag via the viewModel: init too")
+    func poisonedIsolatedStoreSeedsFlagModeViaViewModelInit() {
+        let suiteName = "test.poison.\(UUID().uuidString)"
+        // swiftlint:disable:next force_unwrapping
+        let poisoned = UserDefaults(suiteName: suiteName)!
+        poisoned.set("flag", forKey: MinesweeperBoardView.tapModeKey)
+        defer { poisoned.removePersistentDomain(forName: suiteName) }
+
+        let boardView = MinesweeperBoardView(
+            viewModel: MinesweeperGameViewModel(difficulty: .beginner, seed: 42),
+            suppressTickerForSnapshot: true,
+            tapModeDefaults: poisoned
+        )
+
+        #expect(boardView.interactionMode == .flag)
+    }
 }

@@ -54,7 +54,8 @@ struct MinesweeperBoardRevealedSnapshotTests {
         )
         return MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
-            suppressTickerForSnapshot: true
+            suppressTickerForSnapshot: true,
+            tapModeDefaults: BoardTestDefaults.store
         )
     }
 

@@ -49,6 +49,29 @@ enum SnapshotEnv {
     static let isXcodeCloud = ProcessInfo.processInfo.environment["CI_XCODE_CLOUD"] != nil
 }
 
+/// #796: the isolated `UserDefaults` suite every `MinesweeperBoardView(...)`
+/// construction in this test target MUST pass as `tapModeDefaults`. The
+/// swiftpm-testing-helper host shares one persistent `.standard` domain
+/// across every test process on the machine, so a leaked
+/// `com.wei18.minesweeper.board.tapMode = flag` from an unrelated run can
+/// silently seed the toggle in Flag mode for every board snapshot / ASC
+/// screenshot — `.tolerantImage`'s 0.95 precision absorbs the pixel
+/// difference, so a polluted recording still passes verification (#786 hit
+/// this on a re-record). One suite per process (not per-call — these tests
+/// never need cross-test isolation for this single key) reset to the
+/// baseline-expected "reveal" value at first access.
+@MainActor
+enum BoardTestDefaults {
+    static let store: UserDefaults = {
+        let suiteName = "MinesweeperUITests.tapModeIsolation.\(UUID().uuidString)"
+        // swiftlint:disable:next force_unwrapping
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults.set("reveal", forKey: MinesweeperBoardView.tapModeKey)
+        return defaults
+    }()
+}
+
 /// Resolves the per-test-class snapshot directory. Returns an absolute path on
 /// Xcode Cloud (via `Bundle.module`), or `nil` locally so the library's
 /// `#filePath`-walk default kicks in (preserving `--record` write-back).

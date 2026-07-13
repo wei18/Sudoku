@@ -89,7 +89,8 @@ struct MinesweeperBoardTerminalOverlaySnapshotTests {
         return MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
             suppressTickerForSnapshot: true,
-            completionViewModelForSnapshot: completionVM
+            completionViewModelForSnapshot: completionVM,
+            tapModeDefaults: BoardTestDefaults.store
         )
     }
 

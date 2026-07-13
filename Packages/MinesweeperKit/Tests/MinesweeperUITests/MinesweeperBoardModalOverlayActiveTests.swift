@@ -44,7 +44,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
         )
         let boardView = MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
-            suppressTickerForSnapshot: true
+            suppressTickerForSnapshot: true,
+            tapModeDefaults: BoardTestDefaults.store
         )
         #expect(boardView.isModalOverlayActive,
                 "isModalOverlayActive must be true while viewModel.isPaused, mirroring the .overlay condition")
@@ -68,7 +69,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
         let boardView = MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
             suppressTickerForSnapshot: true,
-            completionViewModelForSnapshot: completionVM
+            completionViewModelForSnapshot: completionVM,
+            tapModeDefaults: BoardTestDefaults.store
         )
         #expect(boardView.isModalOverlayActive,
                 "isModalOverlayActive must be true when terminal + completionViewModel is mounted")
@@ -86,7 +88,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
         )
         let boardView = MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
-            suppressTickerForSnapshot: true
+            suppressTickerForSnapshot: true,
+            tapModeDefaults: BoardTestDefaults.store
         )
         #expect(!boardView.isModalOverlayActive,
                 "isModalOverlayActive must be false while playing with no pause/completion/idle-leave state")
@@ -104,7 +107,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
         )
         let boardView = MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
-            suppressTickerForSnapshot: true
+            suppressTickerForSnapshot: true,
+            tapModeDefaults: BoardTestDefaults.store
         )
         #expect(!boardView.isModalOverlayActive,
                 "isModalOverlayActive must stay false until completionViewModel is actually seeded")
