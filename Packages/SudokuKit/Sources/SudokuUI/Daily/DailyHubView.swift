@@ -1,14 +1,15 @@
 // DailyHubView — 3 puzzle cards per day, checkmark on completion.
 //
-// Per docs/designs/03-daily-hub.md. Failure path `exhausted` surfaces as
-// an Alert per docs/v1/design.md §How.6.3.
+// Per docs/designs/03-daily-hub.md. Failure path `exhausted` renders as an
+// inline icon+message+action block (#768) — matches the `.failed` visual
+// language instead of a system `.alert` over a blank backdrop.
 //
 // PR U12: chrome + responsive grid + state-switch scaffold extracted into
 // `GameShellUI.DailyHubShellView`. This view now produces the
-// game-specific `DailyCard` items + failure overlay + Sudoku theme colors
-// and hands them to the generic shell. `.task` and the `.exhausted`
-// `.alert` stay on the caller (matches X4 / SettingsShellView precedent:
-// shells own no side-effect modifiers).
+// game-specific `DailyCard` items + failure/empty overlays + Sudoku theme
+// colors and hands them to the generic shell. `.task` stays on the caller
+// (matches X4 / SettingsShellView precedent: shells own no side-effect
+// modifiers).
 
 public import MonetizationCore
 public import SwiftUI
@@ -56,6 +57,53 @@ public struct DailyHubView<Banner: View>: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
             },
+            // #768: `.exhausted` renders inline instead of a system `.alert`
+            // over a blank backdrop — same icon+message language as
+            // `failure` above, plus the #686 action pair as inline buttons.
+            // Text reuses the exact strings the alert used to show (no new
+            // L10n keys). Both actions are wired unchanged from #686.
+            empty: {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(theme.status.warning.resolved)
+                        .accessibilityHidden(true)
+                    Text("Couldn't generate today's puzzle")
+                        .foregroundStyle(theme.text.primary.resolved)
+                    Text("Try a different difficulty, or come back tomorrow.")
+                        .font(.caption)
+                        .foregroundStyle(theme.text.secondary.resolved)
+                        .multilineTextAlignment(.center)
+                    HStack(spacing: 12) {
+                        // #686: the label promised a difficulty picker this
+                        // hub doesn't have — route to the Practice hub that
+                        // actually has one (reuses the existing "Practice"
+                        // key, same string the Home card/PracticeHubView
+                        // title already surface).
+                        Button {
+                            viewModel.tryPracticeInstead()
+                        } label: {
+                            Text("Practice")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        // Pops back to Home rather than leaving the user on
+                        // the `.exhausted` hub's blank backdrop with no
+                        // recovery — same navigation #686 wired into the
+                        // alert's Cancel button.
+                        Button {
+                            viewModel.dismissExhausted()
+                        } label: {
+                            Text("Cancel")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                    }
+                }
+                .padding(24)
+            },
             onItemTap: { card in viewModel.cardTapped(card) },
             banner: { banner }
         )
@@ -65,33 +113,12 @@ public struct DailyHubView<Banner: View>: View {
         // work). `refresh()`'s own `.loaded`-state guard still protects
         // against a spurious fetch before `bootstrap()` has landed.
         .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
-        .alert(
-            "Couldn't generate today's puzzle",
-            isPresented: Binding(
-                get: { viewModel.state == .exhausted },
-                set: { _ in }
-            ),
-            actions: {
-                // #686: the label promised a difficulty picker this hub
-                // doesn't have — route to the Practice hub that actually has
-                // one (reuses the existing "Practice" key, same string the
-                // Home card/PracticeHubView title already surface).
-                Button("Practice") { viewModel.tryPracticeInstead() }
-                // Dismiss pops back to Home rather than leaving the user on
-                // the `.exhausted` hub's blank backdrop with no recovery.
-                Button("Cancel", role: .cancel) { viewModel.dismissExhausted() }
-            },
-            message: {
-                Text("Try a different difficulty, or come back tomorrow.")
-            }
-        )
     }
 
     /// Translates Sudoku's `DailyHubState` (with `.exhausted`) into the
     /// generic `HubLoadState<DailyCard>` shell input. `.exhausted` maps to
-    /// `.empty` per the shell's documented semantic — the surfacing alert
-    /// stays driven off `viewModel.state == .exhausted` directly so the
-    /// Sudoku-specific prose is unchanged.
+    /// `.empty`, rendered inline via the `empty:` builder passed to
+    /// `DailyHubShellView` above (#768).
     private var liftedState: HubLoadState<DailyCard> {
         switch viewModel.state {
         case .idle: return .idle

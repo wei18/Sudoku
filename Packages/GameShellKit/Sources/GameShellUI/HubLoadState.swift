@@ -13,11 +13,12 @@
 //                                Minesweeper's "no daily seed" branch)
 //   .failed      ←  .failed
 //
-// `.empty` is rendered as `Color.clear` by `DailyHubShellView`. Sudoku's
-// existing precedent surfaces the empty case via `.alert(...)` on the
-// caller, not via inline copy in the grid; Minesweeper can opt into the
-// same pattern or overlay its own empty view at the call site. If a
-// future consumer asks for a caller-provided empty builder, add it then.
+// `.empty` is rendered by `DailyHubShellView`'s caller-provided `empty`
+// builder (defaults to `Color.clear` if the caller doesn't supply one).
+// #768: Sudoku's `.exhausted` now maps here and supplies an inline
+// icon+message+action block, matching the visual language of `.failed`.
+// Minesweeper never reaches `.empty` (its daily generation is pure and
+// non-throwing) and relies on the default.
 
 public enum HubLoadState<Item: Hashable & Sendable>: Sendable, Equatable {
     case idle
