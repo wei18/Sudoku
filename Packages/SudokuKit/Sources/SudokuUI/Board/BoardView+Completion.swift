@@ -41,6 +41,18 @@ extension BoardView {
         viewModel.status == .completed
     }
 
+    /// #763: true exactly when the board's own `.overlay` (in `BoardView.body`)
+    /// is showing the completion surface or the pause menu — the same two
+    /// conditions as the `if`s inside that `.overlay` block, ORed. Reported
+    /// upward via `.modalOverlayActive(_:)` (GameShellUI) so an ancestor
+    /// `NavigationStackHost` can mask its macOS sidebar for as long as this
+    /// is true. `internal` (not `private`) so `BoardViewModalOverlayActiveTests`
+    /// can assert it directly without a live SwiftUI render tree, mirroring
+    /// `shouldPresentCompletionOverlay` just above.
+    var isModalOverlayActive: Bool {
+        completionViewModel != nil || viewModel.isPaused
+    }
+
     // MARK: - Factories (called once per .completed transition)
 
     /// Construct the post-solve CompletionViewModel from the current terminal

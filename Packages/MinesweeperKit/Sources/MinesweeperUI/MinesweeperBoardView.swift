@@ -240,6 +240,11 @@ public struct MinesweeperBoardView: View {
                 )
             }
         }
+        // #763: report overlay presence upward so a macOS ancestor
+        // NavigationStackHost can mask its sidebar — mirrors the two `if`s
+        // in the `.overlay` above exactly (kept as one boolean so the two
+        // never drift apart). Sudoku's BoardView mirrors this same modifier.
+        .modalOverlayActive(isModalOverlayActive)
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
@@ -826,6 +831,16 @@ public struct MinesweeperBoardView: View {
                 }
             }
         }
+    }
+
+    /// #763: true exactly when the board's own `.overlay` is showing the
+    /// completion surface or the pause menu — i.e. the same conditions as
+    /// the `if`s inside the `.overlay` block in `body` above, ORed.
+    /// `internal` (not `private`) so
+    /// `MinesweeperBoardViewModalOverlayActiveTests` can assert it directly
+    /// without a live SwiftUI render tree.
+    var isModalOverlayActive: Bool {
+        (viewModel.isTerminal && completionViewModel != nil) || viewModel.isPaused || showIdleLeaveOverlay
     }
 
     // MARK: - Completion overlay (#292)

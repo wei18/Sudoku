@@ -29,6 +29,15 @@ public struct BoardView: View {
     /// on Close in the push context (there is no separate pushed `.completion`
     /// route to pop anymore). `internal` (not `private`) — `BoardView+Completion`
     /// reads it.
+    ///
+    /// #763 (owner adjudication 2026-07-13): #667's "ONE completion
+    /// presentation on every platform" was previously read as also settling
+    /// that the macOS sidebar staying visible/tappable next to a pushed
+    /// board's overlay was fine — it isn't. That framing is overturned: the
+    /// overlay is still board-local (this file's `.overlay` below is
+    /// unchanged), but `isModalOverlayActive` now also reports it via
+    /// `.modalOverlayActive(_:)` (GameShellUI) so the ancestor
+    /// `NavigationStackHost` can mask the sidebar for the overlay's duration.
     let path: Binding<[AppRoute]>?
     // #610: GC client + daily primer builder — internal for BoardView+Completion.swift.
     let gameCenter: (any GameCenterClient)?
@@ -58,7 +67,16 @@ public struct BoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
-        path: Binding<[AppRoute]>? = nil
+        path: Binding<[AppRoute]>? = nil,
+        // #763: test/preview seam mirroring MinesweeperBoardView's
+        // `completionViewModelForSnapshot` — installs the overlay's @State
+        // via `State(initialValue:)` at init time so a test can exercise
+        // `isModalOverlayActive`'s `completionViewModel != nil` branch
+        // without mounting a live render tree (directly assigning `@State`
+        // post-init is a no-op before SwiftUI attaches a location).
+        // Defaults nil; production never sets it — the live `.onChange` path
+        // above is unaffected.
+        completionViewModelForSnapshot: CompletionViewModel? = nil
     ) {
         self.viewModel = viewModel
         self.adProvider = adProvider
@@ -67,6 +85,7 @@ public struct BoardView: View {
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain
         self.path = path
+        self._completionViewModel = State(initialValue: completionViewModelForSnapshot)
     }
 
     public var body: some View {
@@ -94,6 +113,11 @@ public struct BoardView: View {
                 )
             }
         }
+        // #763: report overlay presence upward so a macOS ancestor
+        // NavigationStackHost can mask its sidebar — mirrors the two `if`s
+        // in the `.overlay` above exactly (kept as one boolean so the two
+        // never drift apart).
+        .modalOverlayActive(isModalOverlayActive)
         // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
         // overlay presence so Close restores chrome. `shouldPresentCompletionOverlay`
         // gates to path==nil — macOS (path!=nil) uses push path, no double-present.
