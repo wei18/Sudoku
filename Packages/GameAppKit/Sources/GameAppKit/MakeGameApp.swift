@@ -99,7 +99,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // 3. Game Center client. #580: live GameKit seams (else submit/report no-op).
     let gameCenter: any GameCenterClient = LiveGameCenterClient(
-        authDriver: GKAuthDriver(),
+        authDriver: GKAuthDriver(errorReporter: errorReporter),
         submitScoreHook: GKScoreSubmitter.live,
         reportAchievementHook: GKAchievementReporter.live
     )
