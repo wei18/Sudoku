@@ -12,6 +12,7 @@
 
 public import MonetizationCore
 public import SwiftUI
+internal import GameAppKit
 internal import GameShellUI
 internal import SudokuEngine
 
@@ -23,6 +24,13 @@ public struct DailyHubView<Banner: View>: View {
     // and leave the hub stuck at .idle (banner WebView re-render trigger).
     @State private var viewModel: DailyHubViewModel
     @Environment(\.theme) private var theme
+    // #761: `.onAppear` does NOT re-fire when the board's fullScreenCover
+    // dismisses (sim-verified — no re-fire on the real Close → Leave flow;
+    // the only re-fire is a transient GameBoardRedirect push-pop at board
+    // OPEN, which is useless here since completion doesn't exist yet). This
+    // hub instead listens to `GameRoot`'s explicit teardown counter, mirroring
+    // the `ResumePill` / `refreshResumeCandidate` precedent (#675).
+    @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
     private let banner: Banner
 
     public init(
@@ -52,6 +60,11 @@ public struct DailyHubView<Banner: View>: View {
             banner: { banner }
         )
         .task { await viewModel.bootstrap() }
+        // #761: driven by `GameRoot`'s explicit teardown counter (not
+        // `.onAppear` — see the property doc above for why that doesn't
+        // work). `refresh()`'s own `.loaded`-state guard still protects
+        // against a spurious fetch before `bootstrap()` has landed.
+        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
         .alert(
             "Couldn't generate today's puzzle",
             isPresented: Binding(

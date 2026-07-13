@@ -117,11 +117,38 @@ public final class DailyHubViewModel {
         )
     }
 
+    /// Re-runs the phase-2 completion-overlay fetch outside `bootstrap()`'s
+    /// one-shot gate (#761), mirroring how `GameRootViewModel.refreshResumeCandidate()`
+    /// bypasses `bootstrap()`'s own gate for the resume pill. Closing the
+    /// Completion overlay after solving a daily returns to this same,
+    /// un-destroyed hub instance — nothing re-triggered a load, so the
+    /// just-solved card stayed unchecked until the whole hub was torn down and
+    /// remounted.
+    ///
+    /// Called from `DailyHubView`'s `.onChange(of: sessionTeardownCount)` —
+    /// `GameRoot`'s explicit game-session-teardown signal (#761). An earlier
+    /// version of this fix rode `.onAppear`, on the theory that it re-fires
+    /// whenever the hub becomes visible again; simulator verification disproved
+    /// that for the real Close → Leave flow (a dismissing `fullScreenCover`
+    /// does not re-fire the covered view's `.onAppear` at all — the only
+    /// re-fire is a transient push-pop at board OPEN, which is useless here
+    /// since completion doesn't exist yet).
+    ///
+    /// Re-fetches only completed ids, not the trio (today's puzzles never
+    /// change) — cheap, like `refreshResumeCandidate`'s single query. The
+    /// `hasBootstrapped` + `.loaded` guard below still protects against
+    /// running before `bootstrap()`'s phase-1 has landed.
+    public func refresh() async {
+        guard hasBootstrapped, case .loaded(let cards) = state else { return }
+        await fillCompletionOverlay(trio: cards.map(\.envelope), date: dateProvider())
+    }
+
     /// Phase-2 completion overlay: fetches completed daily ids and re-merges
     /// them with the already-rendered cards. Called after `state` is already
     /// `.loaded` so a hang or failure here cannot block the initial render.
     /// Errors are funneled through `errorReporter` (OSLog-observable) and
     /// degrade silently to "no cards completed" — same M10 contract as before.
+    /// Also the target of `refresh()`'s re-fetch (#761).
     private func fillCompletionOverlay(trio: [PuzzleEnvelope], date: Date) async {
         let completed: Set<String>
         do {

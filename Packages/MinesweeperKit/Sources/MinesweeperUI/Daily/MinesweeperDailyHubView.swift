@@ -14,6 +14,7 @@
 // save-flow lands).
 
 public import SwiftUI
+internal import GameAppKit
 internal import GameShellUI
 internal import MinesweeperEngine
 
@@ -23,6 +24,14 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     // the Sudoku fix in DailyHubView — both share the same @Bindable bug class.
     @State private var viewModel: MinesweeperDailyHubViewModel
     @Environment(\.theme) private var theme
+    // #761: `.onAppear` does NOT re-fire when the board's fullScreenCover
+    // dismisses (sim-verified — no re-fire on the real Close → Leave flow;
+    // the only re-fire is a transient GameBoardRedirect push-pop at board
+    // OPEN, which is useless here since completion doesn't exist yet). This
+    // hub instead listens to `GameRoot`'s explicit teardown counter, mirroring
+    // the `ResumePill` / `refreshResumeCandidate` precedent (#675). Mirrors
+    // Sudoku's `DailyHubView`.
+    @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
     private let banner: Banner
 
     public init(
@@ -52,6 +61,12 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
             banner: { banner }
         )
         .task { await viewModel.bootstrap() }
+        // #761: driven by `GameRoot`'s explicit teardown counter (not
+        // `.onAppear` — see the property doc above for why that doesn't
+        // work). `refresh()`'s own `.loaded`-state guard still protects
+        // against a spurious fetch before `bootstrap()` has landed. Mirrors
+        // Sudoku's `DailyHubView`.
+        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
     }
 
     /// Translates the MS daily state into the generic shell input. MS has no
