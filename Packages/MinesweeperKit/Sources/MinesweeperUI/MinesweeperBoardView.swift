@@ -691,25 +691,76 @@ public struct MinesweeperBoardView: View {
 
     // MARK: - Grid
 
-    // Cell-side floor (pt). Below this the board scrolls rather than shrinking
-    // cells into an un-tappable size (#278 Tier-0 #2). 32pt keeps a deliberate
-    // reveal tap comfortable; flag taps are now mode-driven so no precision
-    // long-press is required on small cells.
-    private static let minCellSide: CGFloat = 32
+    // Cell-side floor (pt), per difficulty. Below this the board scrolls
+    // rather than shrinking cells into an un-tappable size (#278 Tier-0 #2).
+    // #764: Intermediate (16×16) and Expert (16×30) had inherited Beginner's
+    // 32pt floor, below the 44pt HIG touch target — undocumented and, unlike
+    // Beginner, not a deliberate reviewed trade-off. Beginner's floor stays
+    // 32 because its 36pt-fitted exception (design-system.md §Touch/mouse
+    // targets) already clears 32 on every supported width, so it never
+    // touches this floor in practice — raising it would risk pushing that
+    // documented case into a scroll branch it doesn't use today. Intermediate/
+    // Expert already land in the pinned-floor scroll branch on any 375pt-wide
+    // phone, so raising their floor to 44 only lengthens the scroll — it does
+    // not change which branch fires. Flag taps are mode-driven so no
+    // precision long-press is required on small cells.
+    nonisolated static func minCellSide(for difficulty: Difficulty) -> CGFloat {
+        switch difficulty {
+        case .beginner: return 32
+        case .intermediate, .expert: return 44
+        }
+    }
     private static let cellSpacing: CGFloat = 2
+
+    // MARK: - Grid sizing ladder (pure, testable)
+
+    // Extracted from `boardGrid` below so the three-branch decision can be
+    // unit-tested without hosting a SwiftUI view (see
+    // MinesweeperBoardCellSizingTests). Branches mirror the prior inline
+    // comment 1:1:
+    //   fitted: both axes fit at/above the floor — center the floored grid,
+    //     mirrors Sudoku BoardView's centered frame, avoids top-leading
+    //     ScrollView drift.
+    //   heightFitScrollHorizontal: board is wider than the offered width but
+    //     cells still clear the floor at the offered height; fill height and
+    //     scroll horizontally rather than shrinking.
+    //   pinnedFloorScrollBoth: cells would drop below the floor even at the
+    //     offered height; fix cell side at the floor and scroll both axes
+    //     (#278 Tier-0 #2).
+    enum CellSizingBranch: Equatable {
+        case fitted
+        case heightFitScrollHorizontal
+        case pinnedFloorScrollBoth
+    }
+
+    struct CellSizingResult: Equatable {
+        let branch: CellSizingBranch
+        let cellSide: CGFloat
+    }
+
+    nonisolated static func cellSizing(
+        availW: CGFloat,
+        availH: CGFloat,
+        rows: Int,
+        cols: Int,
+        floor minCellSide: CGFloat
+    ) -> CellSizingResult {
+        let fitted = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
+        let heightFit = floor(availH / CGFloat(rows))
+        if fitted >= minCellSide {
+            return CellSizingResult(branch: .fitted, cellSide: fitted)
+        } else if heightFit >= minCellSide {
+            return CellSizingResult(branch: .heightFitScrollHorizontal, cellSide: heightFit)
+        } else {
+            return CellSizingResult(branch: .pinnedFloorScrollBoth, cellSide: minCellSide)
+        }
+    }
 
     private var boardGrid: some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
-        // (Expert is 16×30), then floor it for crisp glyphs. Three branches:
-        //   fits-both: center the floored grid in the offered rect — mirrors
-        //     Sudoku BoardView's centered frame, avoids top-leading ScrollView drift.
-        //   fill-height-scroll-horizontal: board is wider than the offered width
-        //     but cells can still hit the tap-target floor at the offered height;
-        //     fill height and scroll horizontally rather than shrinking.
-        //   small-phone-fallback: cells would drop below the tap-target floor
-        //     even at the offered height; fix cell side at the floor and scroll
-        //     both axes (#278 Tier-0 #2).
+        // (Expert is 16×30), then floor it for crisp glyphs. See
+        // `cellSizing(availW:availH:rows:cols:floor:)` above for the branch logic.
         GeometryReader { geo in
             let rows = viewModel.rows
             let cols = viewModel.columns
@@ -718,19 +769,25 @@ public struct MinesweeperBoardView: View {
             // the gaps) fill the offered box exactly.
             let availW = geo.size.width - spacing * CGFloat(cols - 1)
             let availH = geo.size.height - spacing * CGFloat(rows - 1)
-            let fitted    = floor(min(availW / CGFloat(cols), availH / CGFloat(rows)))
-            let heightFit = floor(availH / CGFloat(rows))
-            if fitted >= Self.minCellSide {
-                gridStack(rows: rows, cols: cols, cellSide: fitted, spacing: spacing)
+            let sizing = Self.cellSizing(
+                availW: availW,
+                availH: availH,
+                rows: rows,
+                cols: cols,
+                floor: Self.minCellSide(for: viewModel.session.difficulty)
+            )
+            switch sizing.branch {
+            case .fitted:
+                gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
-            } else if heightFit >= Self.minCellSide {
+            case .heightFitScrollHorizontal:
                 ScrollView(.horizontal) {
-                    gridStack(rows: rows, cols: cols, cellSide: heightFit, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
-            } else {
+            case .pinnedFloorScrollBoth:
                 ScrollView([.horizontal, .vertical]) {
-                    gridStack(rows: rows, cols: cols, cellSide: Self.minCellSide, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             }

@@ -174,6 +174,7 @@ Per HIG.
 |---|---|---|---|
 | Buttons, toggles, list rows | 44 × 44 pt | 28 × 28 pt | Hard minimum |
 | BoardView cell | **~36 × 36 pt** on iPhone SE (3rd) | ~40 × 40 pt | **Exception**: 9×9 grid forced to fit 320 pt width minus padding ⇒ 36 pt cell. Mitigation: tap zone extended to cell border (no inter-cell gap that swallows taps); selection ring visible. Acknowledged HIG deviation. |
+| MS BoardView cell — Intermediate (16×16) / Expert (16×30) | **44 × 44 pt**, meets HIG | n/a — Mac windows resize freely and the pointer needs no 44 pt floor; the fitted branch governs there | #764: previously inherited Beginner's 32 pt scroll-fallback floor (below the 44 pt minimum, undocumented). The per-difficulty floor is now 44 pt on these two boards; on narrow phones they were already in the pinned-floor scroll fallback, so raising the floor only lengthens the scroll — cells now meet the HIG minimum instead of falling below it. Beginner's 36 pt exception above is unaffected (its floor stays 32 pt; it never reached that floor to begin with). |
 | GC sign-in CTA | 48 × 48 pt | 32 × 32 pt | Account-action emphasis |
 
 ---
