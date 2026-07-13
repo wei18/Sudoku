@@ -51,7 +51,17 @@ struct BoardCellView: View {
         .overlay(borderOverlay)
         .opacity(errorPulseOpacity)
         .onChange(of: isError) { _, newValue in
-            guard newValue, !reduceMotion else {
+            // #786 follow-up (#783 review): the reduce-motion decision routes
+            // through the shared `MotionGate` (matching the two `.animation`
+            // modifiers above) instead of a hand-written `!reduceMotion`
+            // guard. `guard let` — not `withAnimation(nil)` — because a nil
+            // animation would still dip the *value* to 0.55 for a frame;
+            // MotionGate returning nil must mean "static fill only, no pulse"
+            // (design-system.md §Motion reduced-motion column: off, not shorter).
+            guard newValue,
+                  let pulseLeg = MotionGate.animation(
+                      .easeInOut(duration: 0.2), reduceMotion: reduceMotion
+                  ) else {
                 errorPulseOpacity = 1
                 return
             }
@@ -60,10 +70,10 @@ struct BoardCellView: View {
             // autoreverse combination leaves the final *model* value
             // ambiguous, where chained `withAnimation(...completion:)` calls
             // land on a known `errorPulseOpacity` deterministically.
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(pulseLeg) {
                 errorPulseOpacity = 0.55
             } completion: {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(pulseLeg) {
                     errorPulseOpacity = 1
                 }
             }
