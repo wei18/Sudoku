@@ -1,6 +1,6 @@
 # `docs/designs/` — v1 visual design artifacts
 
-Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`. No `.fig` / `.sketch` binaries — every artifact here is reviewable in plain markdown + reproducible in a SwiftUI Preview.
+Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`. No `.fig` / `.sketch` binaries — most artifacts here are reviewable in plain markdown + reproducible in a SwiftUI Preview; a couple are self-contained `.prototype.html` flow mocks (re-tagged with build-status annotations as features ship — see the Index).
 
 ## Index
 
@@ -17,8 +17,10 @@ Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`.
 | [`08-settings.md`](./08-settings.md) | SettingsView — native Form, GC status, language, version, clear cache |
 | [`captureguard-kit.md`](./captureguard-kit.md) | RFC — CaptureGuardKit, surface-scoped black-on-capture guard (screen-recording/mirroring blackout) |
 | [`code/SnapshotMatrix.md`](./code/SnapshotMatrix.md) | Snapshot Matrix — tracks every PNG snapshot the snapshot-test target must produce (v1 UI baseline) |
+| [`sudoku-app-flow.prototype.html`](./sudoku-app-flow.prototype.html) | HTML flow mock — Sudoku app-wide screen flow (S01–S11); re-tagged HTML, not markdown; SUPERSEDED frames annotated inline as features ship (per-frame labels, not this Index) |
+| [`reminders-flow.prototype.html`](./reminders-flow.prototype.html) | HTML flow mock — RemindersKit usage flow; SHIPPED (Phase 2), re-tagged HTML per the same convention |
 
-`code/` holds `SnapshotMatrix.md` plus a standalone SwiftPM package (`Package.swift` / `Sources/` / `Tests/`) — not `*_Designs.swift` preview files (there are none in this directory).
+`code/` holds `SnapshotMatrix.md` plus a standalone SwiftPM package (`Package.swift` / `Sources/` / `Tests/`) — not `*_Designs.swift` preview files (there are none in this directory). The two `.prototype.html` files are self-contained flow mocks (iPhone-frame + navigation-arrow canvases), not markdown — see `CLAUDE.md` §Where truth lives ("Design prototypes").
 
 ## How to read these docs (Developer perspective)
 
