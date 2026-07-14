@@ -54,6 +54,23 @@ public enum GameCenterDashboard {
         #endif
     }
 
+    /// Present Apple's native "invite friends" Game Center sheet (#744).
+    ///
+    /// `GKAccessPoint.triggerForFriending(handler:)` is iOS 26.0+ / macOS
+    /// 26.0+ only — there is no programmatic friend-add API below iOS 26 (the
+    /// legacy `GKFriendRequestComposeViewController` is deprecated since iOS
+    /// 10 and must not be used). Callers gate the Settings row itself on the
+    /// same availability (row ABSENT below iOS 26, not disabled — owner
+    /// decision #744); this method's own `@available` is a second,
+    /// self-documenting guard at the call boundary.
+    @available(iOS 26.0, macOS 26.0, *)
+    @MainActor
+    public static func triggerFriending() {
+        #if canImport(GameKit)
+        GKAccessPoint.shared.triggerForFriending()
+        #endif
+    }
+
     #if canImport(GameKit)
     @MainActor
     private static func presentFocusedDashboard(leaderboardId: String) {

@@ -51,6 +51,19 @@
     <string>$(ADMOB_APP_ID)</string>
     <key>GADBannerUnitID</key>
     <string>$(ADMOB_BANNER_UNIT_ID)</string>
+    <!--
+      #744: Share App / Write a Review Settings rows need this app's numeric
+      App Store Connect id to build `https://apps.apple.com/app/id<ID>` links.
+      Substituted at build time from `Tuist/AppStore.xcconfig` (gitignored;
+      .example template committed) — same mechanism as GADApplicationIdentifier
+      above. SettingsUI reads this via
+      `Bundle.main.object(forInfoDictionaryKey: "AppStoreID")` and hides both
+      rows gracefully when the value is missing or still the unresolved
+      `$(APP_STORE_ID)` token (no precondition crash — these rows are not
+      launch-critical like ads).
+    -->
+    <key>AppStoreID</key>
+    <string>$(APP_STORE_ID)</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>

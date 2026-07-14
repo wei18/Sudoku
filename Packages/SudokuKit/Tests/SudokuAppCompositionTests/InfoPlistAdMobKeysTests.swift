@@ -67,4 +67,14 @@ struct InfoPlistAdMobKeysTests {
         #expect(value != nil)
         #expect(value?.isEmpty == false)
     }
+
+    // #744: `AppStoreID` — same build-time-secret-injection shape as the
+    // AdMob keys above, substituted from `Tuist/AppStore.xcconfig`.
+    @Test
+    func appStoreIDPresent() throws {
+        let plist = try Self.infoPlist()
+        let value = plist["AppStoreID"] as? String
+        #expect(value != nil)
+        #expect(value?.isEmpty == false)
+    }
 }

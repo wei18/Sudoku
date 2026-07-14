@@ -3,7 +3,9 @@
 // arg can carry both (Tuist 4 takes one file per configuration).
 //
 // Both included files are gitignored; their *.example templates are
-// committed. See Tuist/Signing.xcconfig.example + Tuist/AdMob.xcconfig.example.
+// committed. See Tuist/Signing.xcconfig.example + Tuist/AdMob.xcconfig.example
+// + Tuist/AppStore.xcconfig.example (#744: Share App / Write a Review rows).
 
 #include? "Signing.xcconfig"
 #include? "AdMob.xcconfig"
+#include? "AppStore.xcconfig"

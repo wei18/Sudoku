@@ -518,9 +518,14 @@ write_export_options() {
 # invocation is too expensive for the common case of a clean-ish tree. Do not
 # present this fingerprint as a perfect content hash of the working tree.
 compute_fingerprint() {
-    local plat="$1" admob_hash=""
+    local plat="$1" admob_hash="" appstore_hash=""
     if [[ -f "$REPO_ROOT/Tuist/AdMob.xcconfig" ]]; then
         admob_hash="$(shasum -a 256 "$REPO_ROOT/Tuist/AdMob.xcconfig" | awk '{print $1}')"
+    fi
+    # #744: AppStoreID also lands in the built Info.plist — hash it alongside
+    # AdMob.xcconfig so a stale archive isn't reused after the rendered id changes.
+    if [[ -f "$REPO_ROOT/Tuist/AppStore.xcconfig" ]]; then
+        appstore_hash="$(shasum -a 256 "$REPO_ROOT/Tuist/AppStore.xcconfig" | awk '{print $1}')"
     fi
     {
         git -C "$REPO_ROOT" rev-parse HEAD
@@ -529,6 +534,7 @@ compute_fingerprint() {
         echo "$plat"
         echo "$CONFIG"
         echo "$admob_hash"
+        echo "$appstore_hash"
     } | shasum -a 256 | awk '{print $1}'
 }
 
@@ -705,6 +711,42 @@ render_admob_xcconfig() {
     echo "==> AdMob: rendered Tuist/AdMob.xcconfig for $APP from secrets/.env (values not shown)."
 }
 
+# #744: AppStore.xcconfig from secrets/.env — local parity with
+# ci_post_clone.sh §3.1c (XCC renders the same file from per-workflow Secret
+# env vars). Reuses the SAME `ASC_APP_ID_SUDOKU` / `ASC_APP_ID_MINESWEEPER`
+# keys ASCRegister already reads from secrets/.env (no new key names invented).
+# When the key is present the file is (re)written for THIS app's archive; when
+# absent, whatever Tuist/AppStore.xcconfig already exists is used unchanged
+# (e.g. the committed example's fake id — Share App / Write a Review still
+# render, just against a non-real ASC id).
+#
+# Same sequential-only constraint as render_admob_xcconfig — see that
+# function's comment above.
+render_appstore_xcconfig() {
+    local env_file="$REPO_ROOT/secrets/.env"
+    [[ -f "$env_file" ]] || return 0
+    # shellcheck disable=SC1090
+    source "$env_file"
+    local prefix
+    case "$APP" in
+        sudoku)      prefix="SUDOKU" ;;
+        minesweeper) prefix="MINESWEEPER" ;;
+        *) return 0 ;;
+    esac
+    local app_store_id_var="ASC_APP_ID_${prefix}"
+    local app_store_id="${!app_store_id_var:-}"
+    if [[ -z "$app_store_id" ]]; then
+        echo "==> AppStore: ${app_store_id_var} not in secrets/.env — keeping existing Tuist/AppStore.xcconfig as-is."
+        return 0
+    fi
+    {
+        echo "// Rendered by mise-tasks/tf/upload from secrets/.env (${app_store_id_var})."
+        echo "// Gitignored. Do not commit. See ci_post_clone.sh §3.1c for the XCC twin."
+        echo "APP_STORE_ID = ${app_store_id}"
+    } > "$REPO_ROOT/Tuist/AppStore.xcconfig"
+    echo "==> AppStore: rendered Tuist/AppStore.xcconfig for $APP from secrets/.env (value not shown)."
+}
+
 # Credentials are needed for archive (DEVELOPMENT_TEAM) and upload, and are
 # account-level (one ASC API key for both apps) — load once, before any app's
 # archive stage, not per app.
@@ -756,6 +798,7 @@ for target_app in "${TARGET_APPS[@]}"; do
     BUNDLE="$(bundle_for "$APP")"
 
     render_admob_xcconfig
+    render_appstore_xcconfig
 
     # Resolve packages + materialise the workspace. `tuist install` populates
     # the SwiftPM checkouts + Package.resolved that LicensePlist reads next;

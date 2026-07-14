@@ -41,6 +41,8 @@
     <string>$(ADMOB_APP_ID)</string>
     <key>GADBannerUnitID</key>
     <string>$(ADMOB_BANNER_UNIT_ID)</string>
+    <key>AppStoreID</key>
+    <string>$(APP_STORE_ID)</string>
     <!--
       Required by App Tracking Transparency. The AdMob / UMP consent flow at
       app launch calls `ATTrackingManager.requestTrackingAuthorization` (see

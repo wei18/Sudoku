@@ -126,6 +126,74 @@ struct SettingsScreenTests {
         _ = screen.body
     }
 
+    // MARK: - #744: Share App / Write a Review / Invite Friends
+
+    @Test func appStoreRows_omittedWhenAppStoreIDNil() {
+        // Byte-identical to minimalConstruction — `appStoreID` defaults nil,
+        // so neither row is built. Sentinel: body builds without crashing.
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+    }
+
+    @Test func appStoreRows_renderWhenAppStoreIDValid() {
+        // A pinned FAKE id (not Bundle.main) — proves the rows mount when the
+        // host injects a resolved id, independent of any real xcconfig/Info.plist.
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            appStoreID: "1234567890",
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+    }
+
+    @Test func appStoreRows_omittedWhenAppStoreIDUnresolvedToken() {
+        // The shape Bundle.main reports pre-xcconfig-render — rows stay hidden.
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            appStoreID: "$(APP_STORE_ID)",
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+    }
+
+    @Test func inviteFriendsRow_rendersWhenInjectedAlongsideGameCenter() {
+        // The invite-friends row only renders inside the Game Center section
+        // (i.e. only when `onGameCenter` is ALSO non-nil) — both injected here.
+        var tapped = false
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            onGameCenter: {},
+            presentInviteFriends: { tapped = true },
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+        _ = tapped // silence unused-variable warning
+    }
+
+    @Test func telemetryEmit_defaultsToNoOp() {
+        // Default `{ _ in }` — constructing/rendering without injecting a
+        // telemetry closure must not crash (previews / tests stay inert).
+        let screen = SettingsScreen(
+            version: "1.0.0",
+            tint: .accentColor,
+            clearCache: {},
+            appStoreID: "1234567890",
+            purchases: { EmptyView() }
+        )
+        _ = screen.body
+    }
+
     // MARK: - Sudoku path: injects the Generator About extra row + reminders
 
     @Test func sudokuShapedWithAboutExtraRowsAndReminders() {

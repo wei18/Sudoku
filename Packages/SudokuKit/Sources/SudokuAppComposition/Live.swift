@@ -254,6 +254,19 @@ extension SudokuAppComposition {
             // `GameCenterDashboard.present()` unconditionally.
             presentGameCenter: { [rootViewModel] in
                 rootViewModel.presentGameCenterOrAlert { GameCenterDashboard.present() }
+            },
+            // #744: same signed-out guard as `presentGameCenter` above, wrapping
+            // the iOS 26+/macOS 26+ "invite friends" sheet instead of the
+            // dashboard. The `#available` check lives here (not just in
+            // `SettingsScreen`'s row-render gate) as a second, self-documenting
+            // guard at the call boundary — `GameCenterDashboard.triggerFriending()`
+            // itself is `@available(iOS 26.0, macOS 26.0, *)`.
+            presentInviteFriends: { [rootViewModel] in
+                rootViewModel.presentGameCenterOrAlert {
+                    if #available(iOS 26.0, macOS 26.0, *) {
+                        GameCenterDashboard.triggerFriending()
+                    }
+                }
             }
         )
     }

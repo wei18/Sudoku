@@ -51,6 +51,8 @@
     <string>$(ADMOB_APP_ID)</string>
     <key>GADBannerUnitID</key>
     <string>$(ADMOB_BANNER_UNIT_ID)</string>
+    <key>AppStoreID</key>
+    <string>$(APP_STORE_ID)</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>

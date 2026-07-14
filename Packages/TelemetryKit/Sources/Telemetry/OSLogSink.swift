@@ -120,6 +120,14 @@ public struct OSLogSink: TelemetrySink {
             logger.log(level: .notice, message: "reminderFired kind=\(kind)", privacy: .publicValue)
         case .reminderOpenedApp(let kind):
             logger.log(level: .notice, message: "reminderOpenedApp kind=\(kind)", privacy: .publicValue)
+        // Settings share / review / invite taps (#744) — no payload, nothing
+        // sensitive to redact → .publicValue.
+        case .shareAppTapped:
+            logger.log(level: .info, message: "shareAppTapped", privacy: .publicValue)
+        case .writeReviewTapped:
+            logger.log(level: .info, message: "writeReviewTapped", privacy: .publicValue)
+        case .inviteFriendsTapped:
+            logger.log(level: .info, message: "inviteFriendsTapped", privacy: .publicValue)
         }
     }
 }

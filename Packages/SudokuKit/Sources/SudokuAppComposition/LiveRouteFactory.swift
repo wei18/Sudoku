@@ -107,6 +107,12 @@ public struct LiveRouteFactory: RouteFactory {
     // shape. `nil` (default) preserves the old ungated `SettingsView` behavior
     // for tests / previews that don't wire a Root VM.
     private let presentGameCenter: (@MainActor () -> Void)?
+    // #744: closure that auth-gates the Settings Game Center "Invite Friends"
+    // row, mirroring `presentGameCenter`'s shape exactly (built the same way
+    // at the `live()` call site — wraps `GameCenterDashboard.triggerFriending()`
+    // in `presentGameCenterOrAlert`). `nil` (default) keeps the row absent for
+    // tests / previews that don't wire a Root VM.
+    private let presentInviteFriends: (@MainActor () -> Void)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -125,7 +131,8 @@ public struct LiveRouteFactory: RouteFactory {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         audioSettings: AudioSettingsModel? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
-        presentGameCenter: (@MainActor () -> Void)? = nil
+        presentGameCenter: (@MainActor () -> Void)? = nil,
+        presentInviteFriends: (@MainActor () -> Void)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -144,6 +151,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.audioSettings = audioSettings
         self.onPresentBoard = onPresentBoard
         self.presentGameCenter = presentGameCenter
+        self.presentInviteFriends = presentInviteFriends
     }
 
     @MainActor
@@ -262,6 +270,11 @@ public struct LiveRouteFactory: RouteFactory {
             )
         case .settings:
             let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
+            // #744: this app's numeric App Store Connect id — same
+            // Bundle.main read pattern as `appVersion` above. `SettingsScreen`
+            // hides Share App / Write a Review when this is nil/unresolved.
+            let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String
+            let telemetry = self.telemetry
             return AnyView(
                 SettingsView(
                     viewModel: SettingsViewModel(
@@ -275,6 +288,11 @@ public struct LiveRouteFactory: RouteFactory {
                     notices: settingsNotices,
                     audioSettings: audioSettings,
                     presentGameCenter: presentGameCenter,
+                    appStoreID: appStoreID,
+                    presentInviteFriends: presentInviteFriends,
+                    telemetryEmit: { event in
+                        Task { await telemetry.observe(event) }
+                    },
                     banner: { themedBanner() }
                 )
             )

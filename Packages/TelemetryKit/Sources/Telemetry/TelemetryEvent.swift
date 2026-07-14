@@ -61,4 +61,19 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     /// The user tapped a delivered reminder, opening the app
     /// (`UNUserNotificationCenterDelegate.didReceive`, deep-link to the Daily hub).
     case reminderOpenedApp(kind: String)
+
+    // MARK: - Settings: share / review / invite (#744)
+    //
+    // No payload fields — game-agnostic UI-action taps, shared by both apps'
+    // `SettingsScreen` rows. Unlike `puzzleCompleted` et al. these carry no
+    // `Mode`/`Difficulty`, so Minesweeper can emit them too (owner decision
+    // #699 only scoped OUT Sudoku-shaped game-outcome events, not simple
+    // UI-tap events).
+
+    /// The Settings "Share App" row's `ShareLink` was tapped.
+    case shareAppTapped
+    /// The Settings "Write a Review" row was tapped.
+    case writeReviewTapped
+    /// The Settings Game Center "Invite Friends" row was tapped (iOS 26+/macOS 26+).
+    case inviteFriendsTapped
 }
