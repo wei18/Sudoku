@@ -128,9 +128,12 @@ public struct DifficultyTokens: Sendable, Equatable, Hashable {
     }
 }
 
-/// Base spacing scale (4 pt grid) — design-system.md §Spacing scale.
-/// Production code wraps these literals in `@ScaledMetric`; this struct
-/// just exposes the canonical unscaled values.
+/// Base spacing scale (4 pt grid) — design-system.md §Spacing scale, two-tier
+/// contract (#762). This struct exposes the canonical unscaled token values.
+/// Content-tier call sites (padding/gaps adjacent to text or icons) wrap a
+/// tier in `ScaledSpacing` to track Dynamic Type; structural-tier call sites
+/// (screen margins, card outer gaps, hit-target minimums, board-cell
+/// geometry) read a tier here directly and stay fixed.
 public struct SpacingTokens: Sendable, Equatable, Hashable {
     public let extraSmall: CGFloat
     public let small: CGFloat

@@ -58,12 +58,17 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         ZStack {
             theme.surface.background.resolved
                 .ignoresSafeArea()
-            VStack(spacing: 24) {
+            // Section gap (#762 PR1 two-tier spacing contract) — structural,
+            // fixed rhythm between the result card and its CTA group;
+            // reinforced by the `.dynamicTypeSize` cap just below, which
+            // exists specifically so this overlay can't grow past the
+            // screen.
+            VStack(spacing: theme.spacing.large) {
                 card()
                 ctas
             }
             .frame(maxWidth: 480)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, theme.spacing.large)
             // Cap Dynamic Type so the (non-scrolling) group can't grow past the
             // screen — mirrors the board status bar's cap. Extreme-AX overflow
             // scroll is a possible follow-up; the cap keeps it on-screen.
@@ -81,6 +86,11 @@ public struct CompletionOverlayScaffold<Card: View>: View {
 
     @ViewBuilder
     private var ctas: some View {
+        // spacing-exempt: 12pt (gap between full-width CTA buttons) predates
+        // the 5-tier `SpacingTokens` scale — no matching tier to route
+        // through without snapping to a neighbor and changing this
+        // overlay's existing layout/snapshot. Tracked as a follow-up once
+        // the token-scale gap gets an owner decision (#762).
         VStack(spacing: 12) {
             if let onPlayAgain {
                 Button(action: onPlayAgain) {
@@ -113,6 +123,6 @@ public struct CompletionOverlayScaffold<Card: View>: View {
                 .controlSize(.large)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, theme.spacing.small)
     }
 }

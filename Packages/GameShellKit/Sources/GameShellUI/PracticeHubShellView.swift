@@ -38,6 +38,16 @@ where Filter: View, CTA: View, Banner: View {
     private let cta: () -> CTA
     private let banner: Banner
 
+    // Structural screen-edge inset (#762 PR1 two-tier spacing contract).
+    // This shell deliberately does not read `@Environment(\.theme)` for
+    // colors (DI via init, mirrors SettingsShellView) — `SpacingTokens()`'s
+    // defaults are theme-invariant (every concrete `Theme` uses the same
+    // values), so reading the type directly keeps that value routed through
+    // the token type without adding a live environment dependency.
+    private let screenEdgeInset = SpacingTokens().medium
+    // Content spacing (label / filter / CTA stack) — scales with Dynamic Type.
+    @ScaledSpacing(.large) private var contentGap
+
     public init(
         title: LocalizedStringKey,
         backgroundColor: Color,
@@ -57,8 +67,10 @@ where Filter: View, CTA: View, Banner: View {
     }
 
     public var body: some View {
+        // spacing-exempt: zero-gap chrome seam between the scrollable content
+        // and the banner slot — not a spacing decision.
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: contentGap) {
                 Text(filterHeader)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(headerForeground)
@@ -69,7 +81,7 @@ where Filter: View, CTA: View, Banner: View {
 
                 Spacer()
             }
-            .padding(16)
+            .padding(screenEdgeInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             banner

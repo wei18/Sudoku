@@ -137,6 +137,14 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    // Card-to-card grid gap (#762 PR1 two-tier spacing contract). Structural
+    // (owner adjudication explicitly lists "card outer gaps" as structural,
+    // so it's fixed, not Dynamic-Type-scaled) — 12pt predates the 5-tier
+    // `SpacingTokens` scale (design-system.md lists 12 as a "common pairing"
+    // with no matching field), so it's routed through a named constant
+    // instead of `theme.spacing.*`.
+    private let cardGridGap: CGFloat = 12
+
     public init(
         items: [HomeModeItem],
         cardAccessibilityIdentifier: @escaping (HomeMode) -> String? = { _ in nil },
@@ -155,7 +163,7 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
         ScrollView {
             header
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: cardGridGap) {
                 ForEach(items) { item in
                     Button {
                         item.onTap()
@@ -168,7 +176,7 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
 
                 removeAdsCard
             }
-            .padding(16)
+            .padding(theme.spacing.medium)
 
             banner
         }
@@ -193,6 +201,10 @@ public struct HomeModeCard: View {
     let mode: HomeMode
     let subtitleKey: LocalizedStringKey
     @Environment(\.theme) private var theme
+    // Card internal padding (#762 PR1 two-tier spacing contract) — content
+    // tier, wraps the icon/title/subtitle/chevron row, scales with Dynamic
+    // Type.
+    @ScaledSpacing(.medium) private var cardPadding
 
     public init(mode: HomeMode, subtitleKey: LocalizedStringKey) {
         self.mode = mode
@@ -200,11 +212,16 @@ public struct HomeModeCard: View {
     }
 
     public var body: some View {
+        // spacing-exempt: 14pt (icon-to-text gap) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier without snapping and
+        // changing this card's existing layout/snapshot (#762).
         HStack(spacing: 14) {
             Image(systemName: mode.symbolName)
                 .font(.title2)
                 .foregroundStyle(theme.accent.primary.resolved)
                 .frame(width: 36, height: 36)
+            // spacing-exempt: 2pt (title-to-subtitle gap) predates the
+            // 5-tier `SpacingTokens` scale — same rationale as above (#762).
             VStack(alignment: .leading, spacing: 2) {
                 Text(mode.titleKey)
                     .font(.title3.weight(.medium))
@@ -217,7 +234,7 @@ public struct HomeModeCard: View {
             Image(systemName: "chevron.right")
                 .foregroundStyle(theme.text.tertiary.resolved)
         }
-        .padding(16)
+        .padding(cardPadding)
         .frame(minHeight: 72)
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))

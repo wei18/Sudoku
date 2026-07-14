@@ -117,27 +117,64 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 
 ## Spacing scale
 
-Base unit: **4 pt**. Steps: `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`.
+Base unit: **4 pt**. `SpacingTokens` (`GameShellUI/Theme/Theme.swift`) exposes
+five named tiers: `extraSmall / small / medium / large / extraLarge` =
+`4 / 8 / 16 / 24 / 32`.
 
-All padding / gaps use `@ScaledMetric` to track Dynamic Type:
+**Two-tier contract** (#762, owner adjudication 2026-07-13 — supersedes the
+former blanket "all padding/gaps scale" rule):
 
-```swift
-@ScaledMetric(relativeTo: .body) private var spacingMd: CGFloat = 16
-@ScaledMetric(relativeTo: .body) private var spacingLg: CGFloat = 24
-// Inside a View:
-VStack(spacing: spacingMd) { … }.padding(spacingLg)
-```
+- **Content spacing** — padding / stack gaps adjacent to text or icons —
+  scales with Dynamic Type via `ScaledSpacing`, a custom `DynamicProperty` in
+  `GameShellUI/Theme/ScaledSpacing.swift`:
 
-> **Preview snippets vs production code**: The SwiftUI preview snippets in `docs/designs/0X-*.md` use **literal** padding/spacing values (e.g. `.padding(16)`) for snapshot-baseline stability — `@ScaledMetric` re-resolves per category and would churn snapshots. Production code MUST wrap these literals in `@ScaledMetric` as shown above. The preview-only literals are not an exemption from the Dynamic Type contract.
+  ```swift
+  @ScaledSpacing(.medium) private var cardPadding
+  @ScaledSpacing(.large) private var contentGap
+  // Inside a View:
+  VStack(spacing: contentGap) { … }.padding(cardPadding)
+  ```
 
-**Common pairings**:
+  `ScaledSpacing` resolves `theme.spacing.<tier>` multiplied by a Dynamic
+  Type curve read directly from `@Environment(\.dynamicTypeSize)` — **not**
+  `@ScaledMetric`. PR1's prerequisite gate caught `@ScaledMetric` not
+  responding to `dynamicTypeSize` environment overrides in this repo's
+  headless `swift test` environment (canary-confirmed; see the PIVOT note in
+  `ScaledSpacing.swift`), so the mechanism reads the environment directly and
+  applies its own monotonic multiplier table (`1.0` through `.large`, rising
+  to `1.65` at `.accessibility5` — deliberately far below the ~3× a
+  body-text glyph grows at that size). At the default type size the
+  multiplier is exactly `1.0`, so this is pixel-identical to the raw
+  token — zero snapshot churn for anything recorded at default size.
 
-- Card internal padding: `16` (md)
-- Card-to-card gap: `12`
-- Section gap: `24` (lg)
-- Screen edge inset (iPhone): `16`
-- Screen edge inset (Mac regular): `24`
-- BoardView grid-to-edge: `8` (cell breathing room dominates over screen edge)
+- **Structural spacing** — screen margins, card outer gaps, hit-target
+  minimums, board-cell geometry — stays **fixed** (does not scale with
+  Dynamic Type: these values encode layout geometry that would overflow or
+  break if inflated) but still MUST route through `theme.spacing.*` tokens
+  or a named constant — never a bare literal:
+
+  ```swift
+  .padding(.horizontal, theme.spacing.large)
+  private let cardGridGap: CGFloat = 12   // no matching SpacingTokens tier
+  ```
+
+- Values that predate this contract and don't match one of the five
+  `SpacingTokens` tiers (legacy literals like `12` / `14` / `20`) are marked
+  `// spacing-exempt: <reason>` at the call site instead of being silently
+  snapped to a neighboring tier, which would change existing pixel output.
+  These are tracked as follow-up cleanup once the token-scale gap (the
+  5-tier scale doesn't cover every value in use) gets an owner decision.
+
+> **Preview snippets vs production code**: The SwiftUI preview snippets in `docs/designs/0X-*.md` use **literal** padding/spacing values (e.g. `.padding(16)`) for snapshot-baseline stability — `ScaledSpacing` re-resolves per category and would churn snapshots. Production code MUST wrap content-tier literals in `ScaledSpacing` and structural-tier literals in `theme.spacing.*` (or a named constant) as shown above. The preview-only literals are not an exemption from the Dynamic Type contract.
+
+**Common pairings** (tier in parens):
+
+- Card internal padding: `16` (md, content)
+- Card-to-card gap: `12` (structural — no matching tier, named constant)
+- Section gap: `24` (lg, structural)
+- Screen edge inset (iPhone): `16` (structural)
+- Screen edge inset (Mac regular): `24` (structural)
+- BoardView grid-to-edge: `8` (structural — cell breathing room dominates over screen edge)
 
 ---
 
@@ -327,7 +364,7 @@ struct BoardView: View {
 Consolidated reference. Cross-link: `docs/v1/design.md` §How.5.7.
 
 1. **All non-cell text uses SwiftUI semantic fonts** (`.body`, `.title2`, `.callout`, …) — auto-scales with Dynamic Type.
-2. **All spacing / padding uses `@ScaledMetric`** (see §Spacing scale) — tracks Dynamic Type so layout breathes with type size.
+2. **Spacing / padding follows the two-tier contract** (see §Spacing scale): content-tier spacing (adjacent to text/icons) scales with Dynamic Type via `ScaledSpacing`; structural-tier spacing (screen margins, card outer gaps, hit-target minimums, board-cell geometry) stays fixed but still routes through `theme.spacing.*` or a named constant.
 3. **Cell digit is the documented exception** — `.system(size: cellSide * 0.6, design: .rounded)`. Reason: the 9×9 grid is geometrically fixed; if cell digits Dynamic-Type'd, they would burst the cell. Mitigation: cell size scales with **screen width** (not Dynamic Type), so larger devices yield larger digits.
 4. **Acceptance test**: every View must look usable at `.accessibility3` size. The snapshot suite covers BoardView + DailyHubView + CompletionView at `.accessibility3` minimum.
 5. **`@Environment(\.dynamicTypeSize)` triggers in v1**:

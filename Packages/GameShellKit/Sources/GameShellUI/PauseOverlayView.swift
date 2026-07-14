@@ -25,6 +25,9 @@ public struct PauseOverlayView: View {
     private let onLeave: (() -> Void)?
     private let onResume: () -> Void
     @Environment(\.theme) private var theme
+    // Card internal padding (#762 PR1 two-tier spacing contract) — content
+    // tier, scales with Dynamic Type.
+    @ScaledSpacing(.large) private var cardPadding
 
     public init(
         title: LocalizedStringKey = "leave.game.title",
@@ -49,6 +52,11 @@ public struct PauseOverlayView: View {
                 .fill(.ultraThinMaterial)
                 .ignoresSafeArea()
                 .onTapGesture { onResume() }
+            // spacing-exempt: 20pt predates the 5-tier `SpacingTokens` scale
+            // (4/8/16/24/32) — no matching tier to route through without
+            // snapping to a neighbor and changing this card's existing
+            // layout/snapshot. Tracked as a follow-up once the token-scale
+            // gap gets an owner decision (#762).
             VStack(spacing: 20) {
                 Text(title)
                     .font(.title2.weight(.semibold))
@@ -81,12 +89,12 @@ public struct PauseOverlayView: View {
                     .tint(theme.status.error.resolved)
                 }
             }
-            .padding(24)
+            .padding(cardPadding)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
             // Contain the card — a destructive confirmation shouldn't span the
             // full screen width.
             .frame(maxWidth: 340)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, theme.spacing.large)
         }
         // #680: without this, the board underneath stays LIVE in the a11y
         // tree — VoiceOver users swiping the paused screen land on dozens of
