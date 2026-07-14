@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#MISE description="Watch a PR until a terminal state: emits one line on MERGED / CLOSED / DIRTY (conflict) / failing checks, then exits. Designed as a Monitor-tool command: `mise run watch:pr <number> [interval-seconds]` — each stdout line becomes one notification. Exit 0 only on MERGED."
+set -euo pipefail
+
+PR="${1:?usage: mise run watch:pr <pr-number> [interval-seconds]}"
+INTERVAL="${2:-45}"
+
+# Terminal states, one line each (Monitor turns each stdout line into a
+# notification; silence == still pending, matching the harness's
+# "silence is not success" rule by covering every terminal outcome):
+#   PR<N> MERGED                          exit 0
+#   PR<N> CLOSED without merge            exit 1
+#   PR<N> DIRTY (conflict)                exit 2
+#   PR<N> has K failing check(s)          exit 3
+while true; do
+  if ! state_json=$(gh pr view "$PR" --json state,mergeStateStatus 2>/dev/null); then
+    # Transient API failure — keep watching rather than dying silently.
+    sleep "$INTERVAL"
+    continue
+  fi
+  state=$(jq -r .state <<<"$state_json")
+  mss=$(jq -r .mergeStateStatus <<<"$state_json")
+
+  if [ "$state" = "MERGED" ]; then
+    echo "PR$PR MERGED"
+    exit 0
+  fi
+  if [ "$state" = "CLOSED" ]; then
+    echo "PR$PR CLOSED without merge"
+    exit 1
+  fi
+  if [ "$mss" = "DIRTY" ]; then
+    echo "PR$PR DIRTY (conflict) — needs attention"
+    exit 2
+  fi
+
+  failed=$(gh pr checks "$PR" --json name,bucket 2>/dev/null \
+    | jq -r '[.[] | select(.bucket=="fail")] | length' || echo 0)
+  if [ "${failed:-0}" -gt 0 ]; then
+    echo "PR$PR has $failed failing check(s)"
+    exit 3
+  fi
+
+  sleep "$INTERVAL"
+done
