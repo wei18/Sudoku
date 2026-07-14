@@ -95,3 +95,75 @@ struct DefaultThemeOnAccentContrastTests {
         #expect(dark >= 4.5, "dark-mode on-accent ink fell below WCAG AA: \(dark)")
     }
 }
+
+// MARK: - Difficulty-tint on-tint-ink contract (#806)
+
+/// Guards `SurfaceTokens.onTintInk(for:)` (GameShellUI/Theme.swift): the
+/// practice-hub CTA's ink for EACH difficulty tint, in BOTH modes, must clear
+/// WCAG AA (≥ 4.5:1). #797's `surface.primary`-as-ink shortcut couldn't fix
+/// this class — `surface.primary` is white in light mode, which still failed
+/// AA against the medium (3.19:1) and hard (2.08:1) light-ramp tints (#806).
+/// This calls the PRODUCTION `onTintInkHex(for:)` picker directly (not just a
+/// hand-copied expected value), so a future palette or picker-logic
+/// regression fails here.
+@Suite("DefaultTheme — difficulty-tint on-tint-ink contrast (#806)")
+struct DifficultyTintOnTintInkContrastTests {
+
+    private func linearize(_ channel: Double) -> Double {
+        channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+    }
+
+    private func relativeLuminance(_ hex: UInt32) -> Double {
+        let red = linearize(Double((hex >> 16) & 0xFF) / 255)
+        let green = linearize(Double((hex >> 8) & 0xFF) / 255)
+        let blue = linearize(Double(hex & 0xFF) / 255)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    private func contrastRatio(_ first: UInt32, _ second: UInt32) -> Double {
+        let lumA = relativeLuminance(first)
+        let lumB = relativeLuminance(second)
+        return (max(lumA, lumB) + 0.05) / (min(lumA, lumB) + 0.05)
+    }
+
+    private func assertClearsAA(name: String, tint: ThemeColor) {
+        let theme = DefaultTheme()
+        let ink = theme.surface.onTintInkHex(for: tint)
+
+        let light = contrastRatio(ink.light, tint.lightHex)
+        let dark = contrastRatio(ink.dark, tint.darkHex)
+
+        #expect(light >= 4.5, "\(name) light-mode on-tint ink fell below WCAG AA: \(light)")
+        #expect(dark >= 4.5, "\(name) dark-mode on-tint ink fell below WCAG AA: \(dark)")
+    }
+
+    @Test func easyOnTintInkClearsAAInBothModes() {
+        assertClearsAA(name: "easy", tint: DefaultTheme().difficulty.easy)
+    }
+
+    @Test func mediumOnTintInkClearsAAInBothModes() {
+        // #806: was white-on-3.19:1 (FAIL) in light mode before this fix.
+        assertClearsAA(name: "medium", tint: DefaultTheme().difficulty.medium)
+    }
+
+    @Test func hardOnTintInkClearsAAInBothModes() {
+        // #806: was white-on-2.08:1 (FAIL) in light mode before this fix.
+        assertClearsAA(name: "hard", tint: DefaultTheme().difficulty.hard)
+    }
+
+    @Test func darkModeRatiosUnchangedByOnTintInkFix() {
+        // #797 already had dark mode passing via plain `surface.primary`;
+        // this proves the #806 mechanism didn't regress any of those ratios.
+        let theme = DefaultTheme()
+        let expectedDark: [(ThemeColor, Double)] = [
+            (theme.difficulty.easy, 7.42),
+            (theme.difficulty.medium, 6.89),
+            (theme.difficulty.hard, 9.72),
+        ]
+        for (tint, expected) in expectedDark {
+            let ink = theme.surface.onTintInkHex(for: tint)
+            let ratio = contrastRatio(ink.dark, tint.darkHex)
+            #expect(abs(ratio - expected) < 0.01, "dark ratio drifted: got \(ratio), expected ~\(expected)")
+        }
+    }
+}
