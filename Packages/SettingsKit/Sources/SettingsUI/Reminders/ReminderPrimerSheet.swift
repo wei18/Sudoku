@@ -86,7 +86,10 @@ public struct ReminderPrimerCopy: Equatable {
 /// - Pressed → opacity 0.5, animated with spring(duration: 0.15)
 /// - Focused (hardware keyboard / TV navigation) → rounded-rectangle stroke
 /// - Reduced-motion → no animation, just the final opacity value
-private struct DeclineButtonStyle: ButtonStyle {
+///
+/// `internal` (not `private`) — #762 PR2 extracted `ReminderDeniedExplainer`
+/// into its own sibling file (400-line ceiling), and it reuses this style.
+struct DeclineButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isFocused) private var isFocused
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -119,6 +122,17 @@ public struct ReminderPrimerSheet: View {
     // R6.4: icon tile contracts at AX text sizes so the sheet still fits.
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 60
 
+    // Sheet content padding (#762 PR2 two-tier spacing contract) — content
+    // tier, wraps the whole icon/title/lede/promise/CTA/fineprint column,
+    // scales with Dynamic Type. Independent of `iconSize` above (R6.4) —
+    // does not change that mechanism's AX-contraction behavior.
+    @ScaledSpacing(.large) private var sheetPadding
+    // Content rhythm between the sheet's major sections — content tier.
+    @ScaledSpacing(.medium) private var contentGap
+    // Content rhythm within a section (e.g. the two CTA buttons, or the
+    // promise-block bullets) — content tier.
+    @ScaledSpacing(.small) private var rowGap
+
     /// - Parameters:
     ///   - copy: localized strings (host-provided).
     ///   - isRequesting: drives the accept CTA spinner while the system prompt
@@ -143,8 +157,12 @@ public struct ReminderPrimerSheet: View {
         // at AX text sizes the content can exceed the detent height. ScrollView
         // keeps the fineprint and decline button reachable instead of clipped.
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: contentGap) {
                 iconTile
+                // spacing-exempt: 6pt (title-to-lede gap) predates the
+                // 5-tier `SpacingTokens` scale — no matching tier without
+                // snapping and changing this sheet's existing
+                // layout/snapshot (#762 PR2).
                 VStack(spacing: 6) {
                     // R6.4: minimumScaleFactor prevents truncation on SE-class widths
                     // and at AX text sizes; lineLimit(nil) keeps multiline wrapping.
@@ -162,7 +180,7 @@ public struct ReminderPrimerSheet: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
                 promiseBlock
-                VStack(spacing: 8) {
+                VStack(spacing: rowGap) {
                     acceptButton
                     declineButton
                 }
@@ -171,7 +189,7 @@ public struct ReminderPrimerSheet: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme.text.tertiary.resolved)
             }
-            .padding(24)
+            .padding(sheetPadding)
             .frame(maxWidth: .infinity)
         }
         .background(theme.surface.elevated.resolved)
@@ -192,8 +210,12 @@ public struct ReminderPrimerSheet: View {
     }
 
     private var promiseBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: rowGap) {
             ForEach(Array(copy.bullets.enumerated()), id: \.offset) { _, bullet in
+                // spacing-exempt: 9pt (checkmark-to-text gap) predates the
+                // 5-tier `SpacingTokens` scale — no matching tier without
+                // snapping and changing this block's existing
+                // layout/snapshot (#762 PR2).
                 HStack(alignment: .top, spacing: 9) {
                     Image(systemName: "checkmark")
                         .font(.footnote.weight(.semibold))
@@ -206,6 +228,11 @@ public struct ReminderPrimerSheet: View {
                 }
             }
         }
+        // spacing-exempt: 14pt (block padding) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier to route through
+        // without snapping to a neighbor and changing this block's
+        // existing layout/snapshot. Tracked as a follow-up once the
+        // token-scale gap gets an owner decision (#762 PR2).
         .padding(14)
         .frame(maxWidth: .infinity)
         .background(theme.accent.muted.resolved.opacity(0.25), in: .rect(cornerRadius: 12))
@@ -238,6 +265,9 @@ public struct ReminderPrimerSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 28)
+            // spacing-exempt: 11pt predates the 5-tier `SpacingTokens`
+            // scale — no matching tier without snapping and changing this
+            // button's existing layout/snapshot (#762 PR2).
             .padding(.vertical, 11)
         }
         .buttonStyle(.borderedProminent)
@@ -260,121 +290,5 @@ public struct ReminderPrimerSheet: View {
         .buttonStyle(DeclineButtonStyle())
         .contentShape(Rectangle())
         .disabled(isRequesting)
-    }
-}
-
-// MARK: - Denial explainer (S06)
-
-/// Copy for the denial-recovery explainer (flow S06). Separate from the primer
-/// copy because it's a distinct surface with its own CTA. Not `Sendable` for the
-/// same reason as `ReminderPrimerCopy` (MainActor-only `LocalizedStringKey`).
-public struct ReminderDeniedCopy: Equatable {
-    public var title: LocalizedStringKey
-    public var message: LocalizedStringKey
-    public var openSettingsCTA: LocalizedStringKey
-    public var dismissCTA: LocalizedStringKey
-    /// macOS-only textual guidance shown in place of the deep-link button
-    /// (proposal P12 — no AppKit `openNotificationSettingsURLString`).
-    public var macOSGuidance: LocalizedStringKey
-
-    public init(
-        title: LocalizedStringKey,
-        message: LocalizedStringKey,
-        openSettingsCTA: LocalizedStringKey,
-        dismissCTA: LocalizedStringKey,
-        macOSGuidance: LocalizedStringKey
-    ) {
-        self.title = title
-        self.message = message
-        self.openSettingsCTA = openSettingsCTA
-        self.dismissCTA = dismissCTA
-        self.macOSGuidance = macOSGuidance
-    }
-}
-
-/// The `.denied` explainer (S06): icon + title + message, then on iOS an
-/// "Open Settings" deep-link button; on macOS, textual guidance (P12 gap).
-public struct ReminderDeniedExplainer: View {
-    private let copy: ReminderDeniedCopy
-    private let onOpenSettings: () -> Void
-    private let onDismiss: () -> Void
-
-    @Environment(\.theme) private var theme
-
-    public init(
-        copy: ReminderDeniedCopy,
-        onOpenSettings: @escaping () -> Void,
-        onDismiss: @escaping () -> Void
-    ) {
-        self.copy = copy
-        self.onOpenSettings = onOpenSettings
-        self.onDismiss = onDismiss
-    }
-
-    public var body: some View {
-        // #673: background moved from the VStack onto the ScrollView (mirrors
-        // ReminderPrimerSheet's R6.3/R6.4 structure above). The intrinsically
-        // sized VStack was shorter than the .medium detent, so its background
-        // stopped short and the system sheet material showed as a darker band
-        // above the content; the ScrollView fills the full detent instead.
-        ScrollView {
-            VStack(spacing: 16) {
-                Image(systemName: "bell.slash")
-                    .font(.system(size: 30))
-                    .foregroundStyle(theme.status.error.resolved)
-                    .frame(width: 76, height: 76)
-                    .background(theme.status.error.resolved.opacity(0.12), in: .circle)
-                    .accessibilityHidden(true)
-                VStack(spacing: 6) {
-                    Text(copy.title)
-                        .font(.title3.weight(.bold))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(theme.text.primary.resolved)
-                    Text(copy.message)
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                }
-
-                #if canImport(UIKit)
-                Button(action: onOpenSettings) {
-                    // #797 (CR round 2): same on-accent-ink fix + label-content
-                    // placement as `acceptButton` above.
-                    Label(copy.openSettingsCTA, systemImage: "gearshape")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 28)
-                        .padding(.vertical, 11)
-                        .contentShape(Rectangle())
-                        .foregroundStyle(theme.surface.primary.resolved)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(theme.accent.primary.resolved)
-                #else
-                // macOS (P12): no deep-link. Show textual guidance instead.
-                Text(copy.macOSGuidance)
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(theme.text.secondary.resolved)
-                    .padding(12)
-                    .frame(maxWidth: .infinity)
-                    .background(theme.status.warning.resolved.opacity(0.10), in: .rect(cornerRadius: 10))
-                #endif
-
-                // R6.1/R6.2 (same pattern as declineButton): hit region scoped to the
-                // button frame, pressed/focus feedback via DeclineButtonStyle.
-                Button(action: onDismiss) {
-                    Text(copy.dismissCTA)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(theme.text.secondary.resolved)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(DeclineButtonStyle())
-                .contentShape(Rectangle())
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity)
-        }
-        .background(theme.surface.elevated.resolved)
     }
 }

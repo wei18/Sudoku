@@ -51,17 +51,26 @@ struct DigitPadView: View {
     // MARK: - iPhone (compact) layout
 
     private var compactLayout: some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // no matching tier without snapping and changing this pad's
+        // existing layout/snapshot (#762 PR2).
         VStack(spacing: 12) {
             compactControlRow
             compactDigitGrid
         }
-        .padding(.horizontal, 16)
+        // Structural (#762 PR2 two-tier spacing contract) — horizontal
+        // margin of the digit pad's control row + grid; fixed because it
+        // bounds the available width for the fixed 44pt-minimum touch
+        // targets laid out inside.
+        .padding(.horizontal, theme.spacing.medium)
     }
 
     // Unified secondary-action row (#210): Undo · Redo · Notes · Erase,
     // icon-only, distributed across the digit-strip width with 44pt minimum
     // tap targets per HIG. Erase rightmost = right-thumb resting zone.
     private var compactControlRow: some View {
+        // spacing-exempt: zero-gap — icon buttons distributed edge-to-edge
+        // across the digit-strip width, not a spacing decision (#762 PR2).
         HStack(spacing: 0) {
             Button(action: onUndo) {
                 Image(systemName: "arrow.uturn.backward")
@@ -188,6 +197,11 @@ struct DigitPadView: View {
     }
 
     private func compactDigitLabel(digit: Int, remaining: Int) -> some View {
+        // spacing-exempt: 2pt — digit-key face geometry (this VStack sits
+        // inside a fixed `minHeight: 56` key); board/digit-pad cell/key
+        // geometry stays structural and must not scale with Dynamic Type
+        // (design-system.md §Spacing scale), and 2pt isn't on the 5-tier
+        // `SpacingTokens` scale (#762 PR2).
         VStack(spacing: 2) {
             Text("\(digit)")
                 .font(.title2.weight(.medium))
@@ -205,6 +219,9 @@ struct DigitPadView: View {
     // MARK: - Mac (regular) layout
 
     private var macLayout: some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // no matching tier without snapping and changing this rail's
+        // existing layout/snapshot (#762 PR2).
         VStack(spacing: 12) {
             macHistoryRow
             macNotesToggle
@@ -215,6 +232,8 @@ struct DigitPadView: View {
     }
 
     private var macHistoryRow: some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // same rationale as `macLayout` above (#762 PR2).
         HStack(spacing: 12) {
             Button(action: onUndo) {
                 Label("Undo", systemImage: "arrow.uturn.backward")

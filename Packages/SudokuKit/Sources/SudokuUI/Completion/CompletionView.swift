@@ -80,9 +80,15 @@ public struct CompletionView: View {
             Button {
                 Task { await reminderPrimer.presentPrimer() }
             } label: {
+                // spacing-exempt: 12pt (icon-to-text gap) predates the
+                // 5-tier `SpacingTokens` scale — no matching tier to route
+                // through without snapping to a neighbor and changing this
+                // row's existing layout/snapshot (#762 PR2).
                 HStack(spacing: 12) {
                     Image(systemName: "bell.badge")
                         .foregroundStyle(theme.accent.primary.resolved)
+                    // spacing-exempt: 2pt (title-to-subtitle gap) — same
+                    // rationale as above (#762 PR2).
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Remind me when tomorrow's puzzle is ready")
                             .font(.body.weight(.medium))
@@ -97,6 +103,11 @@ public struct CompletionView: View {
                     Image(systemName: "chevron.right")
                         .foregroundStyle(theme.text.tertiary.resolved)
                 }
+                // spacing-exempt: 14pt (row padding) predates the 5-tier
+                // `SpacingTokens` scale — no matching tier to route through
+                // without snapping to a neighbor and changing this row's
+                // existing layout/snapshot. Tracked as a follow-up once the
+                // token-scale gap gets an owner decision (#762 PR2).
                 .padding(14)
                 .frame(maxWidth: .infinity)
                 .background(theme.surface.primary.resolved, in: .rect(cornerRadius: 14))

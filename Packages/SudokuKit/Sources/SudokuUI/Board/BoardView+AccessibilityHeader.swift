@@ -48,6 +48,9 @@ extension BoardView {
     // ViewThatFits picks this (always true at default text sizes) the snapshot
     // baseline is unchanged.
     private var singleRowHeader: some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // no matching tier without snapping and changing this header's
+        // existing layout/snapshot (#762 PR2).
         HStack(spacing: 12) {
             difficultyLabel
             lateCompletionBadge  // #228 option B: past-day daily marker
@@ -60,8 +63,11 @@ extension BoardView {
     // Two-row fallback for when the enlarged labels can't fit one row:
     // row 1 = difficulty + badge; row 2 = timer (leading) + pause (trailing).
     private var twoRowHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) { difficultyLabel; lateCompletionBadge }
+        VStack(alignment: .leading, spacing: headerRowGap) {
+            HStack(spacing: headerBadgeGap) { difficultyLabel; lateCompletionBadge }
+            // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
+            // scale — no matching tier without snapping and changing this
+            // header's existing layout/snapshot (#762 PR2).
             HStack(spacing: 12) { timerLabel; Spacer(); pauseButton }
         }
     }

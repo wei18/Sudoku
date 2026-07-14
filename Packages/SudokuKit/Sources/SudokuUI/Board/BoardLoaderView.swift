@@ -149,6 +149,9 @@ public struct BoardLoaderView: View {
     }
 
     private func failedBlock(userFacing: UserFacingError) -> some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // no matching tier without snapping and changing this block's
+        // existing layout/snapshot (#762 PR2).
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 32))
@@ -169,6 +172,8 @@ public struct BoardLoaderView: View {
             // (BoardView.swift) and closes the modal back to the caller.
             // Harmless-but-present on macOS too (push nav already has a
             // system back chevron) — consistency over platform-splitting.
+            // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
+            // scale — same rationale as above (#762 PR2).
             HStack(spacing: 12) {
                 Button {
                     dismiss()
@@ -184,6 +189,11 @@ public struct BoardLoaderView: View {
                 .buttonStyle(.bordered)
             }
         }
+        // spacing-exempt: 20pt (card padding) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier to route through without
+        // snapping to a neighbor and changing this card's existing
+        // layout/snapshot. Tracked as a follow-up once the token-scale gap
+        // gets an owner decision (#762 PR2).
         .padding(20)
     }
 
