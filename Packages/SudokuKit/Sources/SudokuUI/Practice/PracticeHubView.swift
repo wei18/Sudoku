@@ -92,17 +92,19 @@ public struct PracticeHubView<Banner: View>: View {
                     viewModel.playTapped()
                 }
             } label: {
-                // #797 (CR round 2): the prominent style's default white label
-                // fails AA in dark mode against EVERY difficulty tint (easy
-                // 0x9BB87E 2.20:1 / medium 0xD89A82 2.37:1 / hard 0xEFC07F
-                // 1.68:1). `surface.primary` ink clears dark on all three
-                // (7.42 / 6.89 / 9.72) and is byte-identical in light mode
-                // (still white). KNOWN RESIDUAL (pre-existing, not a #797
-                // regression): light-mode white on medium 0xC97D5F (3.19:1)
-                // and hard 0xE6A857 (2.08:1) also fails — that needs a
-                // token-level fix (darker light-ramp difficulty tints or a
-                // per-difficulty ink), tracked as a #797 follow-up, because
-                // surface.primary is white in light mode and cannot help.
+                // #797 (CR round 2) fixed dark mode: the prominent style's
+                // default white label failed AA against EVERY difficulty tint
+                // there. #806 fixes the remaining light-mode residual —
+                // `surface.primary` alone is white in light mode, which still
+                // failed AA against medium (3.19:1) and hard (2.08:1) —
+                // switching to `onTintInk(for:)`, which picks whichever of
+                // `surface.primary`'s light/dark variants has the higher
+                // contrast against the ACTUAL resolved tint per mode. Full
+                // ratio table (WCAG relative-luminance) after the fix:
+                //   easy   — light 4.83 (white, unchanged) / dark 7.42 (navy)
+                //   medium — light 5.11 (navy, was 3.19 FAIL) / dark 6.89 (navy, unchanged)
+                //   hard   — light 7.85 (navy, was 2.08 FAIL) / dark 9.72 (navy, unchanged)
+                // Guarded by `ThemeTests.DifficultyTintOnTintInkContrastTests`.
                 // NOTE: the explicit ink applies ONLY while enabled — while
                 // `isDrawing` the button is `.disabled(...)` and an explicit
                 // `.foregroundStyle` would override the system's disabled
@@ -114,7 +116,7 @@ public struct PracticeHubView<Banner: View>: View {
                 } else {
                     Label("Draw new puzzle", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
-                        .foregroundStyle(theme.surface.primary.resolved)
+                        .foregroundStyle(theme.surface.onTintInk(for: difficultyTint(for: viewModel.difficulty)))
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -160,10 +162,17 @@ public struct PracticeHubView<Banner: View>: View {
 
     /// Map a `Difficulty` to its `difficulty.*` token.
     private func tint(for difficulty: Difficulty) -> Color {
+        difficultyTint(for: difficulty).resolved
+    }
+
+    /// Same mapping as `tint(for:)` but keeping the unresolved `ThemeColor`
+    /// (light + dark hex) — `onTintInk(for:)` needs both variants, not the
+    /// pre-resolved `Color`.
+    private func difficultyTint(for difficulty: Difficulty) -> ThemeColor {
         switch difficulty {
-        case .easy: return theme.difficulty.easy.resolved
-        case .medium: return theme.difficulty.medium.resolved
-        case .hard: return theme.difficulty.hard.resolved
+        case .easy: return theme.difficulty.easy
+        case .medium: return theme.difficulty.medium
+        case .hard: return theme.difficulty.hard
         }
     }
 

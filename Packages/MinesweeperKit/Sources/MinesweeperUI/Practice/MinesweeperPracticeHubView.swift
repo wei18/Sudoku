@@ -92,18 +92,23 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
                 .foregroundStyle(theme.text.secondary.resolved)
 
             Button(action: start) {
-                // #797 (CR round 2): mirrors Sudoku's PracticeHubView draw CTA
-                // fix — the prominent style's default white label fails AA in
-                // dark mode against every difficulty tint (Beginner 0x7FAFCF
-                // 2.35:1 / Intermediate 0xD89A82 2.37:1 / Expert 0xD96B77
-                // 3.32:1). `surface.primary` ink clears dark on all three
-                // (6.96 / 6.90 / 4.92) and is byte-identical in light mode.
-                // KNOWN RESIDUAL (pre-existing): light-mode white on
-                // Intermediate 0xC97D5F (3.19:1) also fails — token-level
-                // follow-up, see the Sudoku sibling's comment.
+                // #797 (CR round 2) fixed dark mode, mirroring Sudoku's
+                // PracticeHubView draw CTA: the prominent style's default
+                // white label failed AA against every difficulty tint there.
+                // #806 fixes the remaining light-mode residual —
+                // `surface.primary` alone is white in light mode, which still
+                // failed AA against Intermediate (3.19:1) — switching to
+                // `onTintInk(for:)`, which picks whichever of
+                // `surface.primary`'s light/dark variants has the higher
+                // contrast against the ACTUAL resolved tint per mode. Full
+                // ratio table (WCAG relative-luminance) after the fix:
+                //   Beginner     — light 5.70 (white, unchanged) / dark 6.96 (navy)
+                //   Intermediate — light 5.13 (navy, was 3.19 FAIL) / dark 6.90 (navy, unchanged)
+                //   Expert       — light 5.85 (white, unchanged) / dark 4.92 (navy, unchanged)
+                // Guarded by `MinesweeperThemeContrastTests.DifficultyTintOnTintInkContrastTests`.
                 Label("Start", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)
-                    .foregroundStyle(theme.surface.primary.resolved)
+                    .foregroundStyle(theme.surface.onTintInk(for: difficultyTint(for: difficulty)))
             }
             .buttonStyle(.borderedProminent)
             // #765: CTA carries the selected difficulty's tint, keeping the
@@ -119,10 +124,17 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
 
     /// Map a `Difficulty` to its `difficulty.*` token.
     private func tint(for difficulty: Difficulty) -> Color {
+        difficultyTint(for: difficulty).resolved
+    }
+
+    /// Same mapping as `tint(for:)` but keeping the unresolved `ThemeColor`
+    /// (light + dark hex) — `onTintInk(for:)` needs both variants, not the
+    /// pre-resolved `Color`.
+    private func difficultyTint(for difficulty: Difficulty) -> ThemeColor {
         switch difficulty {
-        case .beginner: return theme.difficulty.easy.resolved
-        case .intermediate: return theme.difficulty.medium.resolved
-        case .expert: return theme.difficulty.hard.resolved
+        case .beginner: return theme.difficulty.easy
+        case .intermediate: return theme.difficulty.medium
+        case .expert: return theme.difficulty.hard
         }
     }
 

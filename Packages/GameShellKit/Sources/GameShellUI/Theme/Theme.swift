@@ -15,6 +15,7 @@
 // All tokens are `Sendable` for cross-actor passing.
 
 public import SwiftUI
+internal import Foundation  // WCAGContrast: `pow` for the relative-luminance formula.
 
 public protocol Theme: Sendable {
     var surface: SurfaceTokens { get }
@@ -62,6 +63,13 @@ public struct SurfaceTokens: Sendable, Equatable, Hashable {
     /// (SudokuKit `ThemeTests` / MinesweeperKit
     /// `MinesweeperThemeContrastTests`) — add the same test for any new
     /// game's theme.
+    ///
+    /// `accent.primary` is one fixed color per mode, so a single ink works
+    /// for it. `difficulty.*` tints are a whole RAMP (#806) — `surface.primary`
+    /// alone isn't guaranteed to clear AA against every tint in light mode
+    /// (it's white, and several difficulty tints are themselves light). Use
+    /// `onTintInk(for:)` below for difficulty-tinted (or any other
+    /// multi-color-ramp) surfaces instead of reading `primary` directly.
     public let primary: ThemeColor
     public let elevated: ThemeColor
     public let placeholder: ThemeColor
@@ -76,6 +84,75 @@ public struct SurfaceTokens: Sendable, Equatable, Hashable {
         self.primary = primary
         self.elevated = elevated
         self.placeholder = placeholder
+    }
+}
+
+// MARK: - Contrast-picked on-tint ink (#806)
+
+public extension SurfaceTokens {
+    /// The ink to use on top of an arbitrary theme-defined tint (e.g. a
+    /// `difficulty.*` color), computed per color scheme rather than assumed.
+    ///
+    /// For each of `tint`'s two variants (light, dark) this picks whichever
+    /// of `primary`'s own two variants yields the HIGHER WCAG contrast.
+    /// Best-effort maximizer only — it guarantees the better of the two inks,
+    /// NOT an absolute AA ratio; the hard >= 4.5:1 gate for the shipped
+    /// palettes lives in each app's theme contract tests (#797/#806).
+    /// against it. `primary` already carries both a light surface (usually
+    /// white) and a dark surface — everything this needs already exists as
+    /// raw hex components on `ThemeColor`, so no platform `Color`-to-RGBA
+    /// introspection is required (that path is unreliable across
+    /// catalog/dynamic colors; see `onTintInkHex` below, which is the pure
+    /// hex-arithmetic implementation this wraps).
+    ///
+    /// Resolves like `ThemeColor.resolved`: the returned `Color` auto-flips
+    /// with the environment's `colorScheme`.
+    func onTintInk(for tint: ThemeColor) -> Color {
+        let hex = onTintInkHex(for: tint)
+        return Color(light: Color(hex: hex.light), dark: Color(hex: hex.dark))
+    }
+
+    /// Pure-hex form of `onTintInk(for:)`, exposed so contract tests can
+    /// assert on the exact picked component instead of only on a resolved
+    /// `Color` (which isn't introspectable across platforms).
+    func onTintInkHex(for tint: ThemeColor) -> (light: UInt32, dark: UInt32) {
+        (
+            light: Self.higherContrastHex(of: primary, against: tint.lightHex),
+            dark: Self.higherContrastHex(of: primary, against: tint.darkHex)
+        )
+    }
+
+    private static func higherContrastHex(of candidate: ThemeColor, against backgroundHex: UInt32) -> UInt32 {
+        let usingLight = WCAGContrast.ratio(candidate.lightHex, backgroundHex)
+        let usingDark = WCAGContrast.ratio(candidate.darkHex, backgroundHex)
+        return usingLight >= usingDark ? candidate.lightHex : candidate.darkHex
+    }
+}
+
+/// WCAG 2.x relative-luminance + contrast-ratio math backing
+/// `SurfaceTokens.onTintInk` (production ink selection). Contract test
+/// suites (`ThemeTests`, `MinesweeperThemeContrastTests`) keep their OWN
+/// inlined copy of this formula per #797's convention: a shared helper bug
+/// would otherwise silently pass the test that's supposed to catch it.
+enum WCAGContrast {
+    static func ratio(_ first: UInt32, _ second: UInt32) -> Double {
+        let lumA = relativeLuminance(first)
+        let lumB = relativeLuminance(second)
+        return (max(lumA, lumB) + 0.05) / (min(lumA, lumB) + 0.05)
+    }
+
+    private static func relativeLuminance(_ hex: UInt32) -> Double {
+        let red = linearize(Double((hex >> 16) & 0xFF) / 255)
+        let green = linearize(Double((hex >> 8) & 0xFF) / 255)
+        let blue = linearize(Double(hex & 0xFF) / 255)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    private static func linearize(_ channel: Double) -> Double {
+        // 0.04045 is the sRGB-standard (continuous) breakpoint; WCAG 2.x prose
+        // says 0.03928 — indistinguishable for any 8-bit channel outside the
+        // ~10/255 band, which no palette value here occupies.
+        channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
     }
 }
 
