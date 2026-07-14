@@ -17,7 +17,9 @@ Stable across versions; updated whenever architecture / process / brand changes:
 - `v1/` — v1.0 Sudoku app (puzzle gameplay + Game Center + CloudKit save sync)
   - `design.md`, `plan.md`, `setup.md`, `feature-tour.md`, `design-mockup.html`
 - `v2/` — v2.0 monetization layer (AdMob banner + Remove Ads IAP + UMP/ATT)
-  - `design.md`, `plan.md`, `uiux-bugfix-plan.md`, `v2.5-readiness.md`, `att-permission-ux-proposal.md`
+  - `design.md`, `plan.md`, `uiux-bugfix-plan.md`, `v2.5-readiness.md`, `att-permission-ux-proposal.md`,
+    `daily-calendar-streak-proposal.md` (daily-hub calendar/streak design proposal, #774),
+    `stats-screen-proposal.md` (stats screen design proposal, #773)
 - `superpowers/specs/` — platform-level design docs (SDD-003 Puzzle Platform UX Refresh, SDD-004 2048/Tiles2048 [abandoned 2026-06-29], SDD-005 platform convergence, SDD-006 new-game scaffold)
 
 ## Conventions

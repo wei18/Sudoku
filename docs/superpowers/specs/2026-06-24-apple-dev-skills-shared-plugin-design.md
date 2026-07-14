@@ -127,6 +127,10 @@ the `apple-dev-skills:` prefix.
 
 ## 5. Classification (34 → move 26 / stay 8)
 
+> **UPDATE (2026-07-13):** Stay count corrected to **9** — `screen-contract-spec`
+> (added to this repo after this spec was written) is also project-bound and
+> stays flat; item 9 below is appended accordingly. See the AS-BUILT NOTE above.
+
 ### Stay (project-bound — names this repo's mise tasks / specific apps / pipelines)
 1. `game-factory-composition` — Sudoku/MS/2048 + GameAppKit `makeGameApp`
 2. `mise-task-operations` — index of THIS repo's `mise run` tasks
@@ -136,6 +140,8 @@ the `apple-dev-skills:` prefix.
 6. `acknowledgements-generation` — `gen:acknowledgements`, `license_plist.yml`
 7. `asc-ops-handoff` — the repo apps, ASCRegister CLI, app-ids
 8. `interactive-sim-ux-audit` — drives the three specific apps
+9. `screen-contract-spec` — nav/flow spec-first methodology for this repo's screens
+   *(added 2026-07-13 per the UPDATE above; not part of the original 2026-06-24 plan)*
 
 ### Move (portable — 26)
 - **Platform defaults (10):** swift6-concurrency · apple-platform-targets ·
