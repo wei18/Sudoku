@@ -30,6 +30,10 @@
 // byte-identical to the prior wrappers — no catalog change.
 
 public import SwiftUI
+// #744: `TelemetryEvent` appears in this type's public `telemetryEmit` init
+// param — mirrors `ReminderPrimerCoordinator`'s decoupled `emit` closure
+// (SettingsKit already depends on TelemetryKit for that type).
+public import Telemetry
 
 public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View>: View {
     private let purchases: () -> Purchases
@@ -47,6 +51,26 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
     // (the shared dashboard from GameCenterClient, #560).
     // `nil` (default) keeps previews / tests byte-identical.
     private let onGameCenter: (@MainActor () -> Void)?
+    // #744: this app's numeric App Store Connect id, resolved ONCE by the
+    // composition root from `Bundle.main` (mirrors the `version` param's
+    // `CFBundleShortVersionString` read) and injected here so SettingsKit
+    // never touches Bundle.main itself (test-host flakiness — see
+    // `AppStoreLinks`'s header comment). `nil`/invalid hides the Share App /
+    // Write a Review rows entirely (not disabled) — same "absent, not
+    // disabled" language as the Game Center invite-friends row below.
+    private let appStoreID: String?
+    // #744: Game Center "Invite Friends" entry point. Mirrors `onGameCenter`'s
+    // per-app-injected-closure shape so SettingsKit never imports GameKit.
+    // The row additionally requires `#available(iOS 26.0, macOS 26.0, *)` —
+    // ABSENT (not disabled) below that floor, per the issue's owner decision
+    // against a weak "opens the dashboard instead" fallback.
+    private let presentInviteFriends: (@MainActor () -> Void)?
+    // #744: decoupled telemetry emit for the three new rows below — the host
+    // bridges this to `Telemetry.observe`, mirroring
+    // `ReminderPrimerCoordinator.emit`. No-op default keeps previews / tests
+    // side-effect-free.
+    private let telemetryEmit: @Sendable (TelemetryEvent) -> Void
+    @Environment(\.openURL) private var openURL
 
     public init(
         version: String,
@@ -56,6 +80,9 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         audioSettings: AudioSettingsModel? = nil,
         notices: SettingsNoticesConfig? = nil,
         onGameCenter: (@MainActor () -> Void)? = nil,
+        appStoreID: String? = nil,
+        presentInviteFriends: (@MainActor () -> Void)? = nil,
+        telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
         @ViewBuilder purchases: @escaping () -> Purchases,
         @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() },
         @ViewBuilder banner: @escaping () -> Banner = { EmptyView() }
@@ -67,6 +94,9 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         self.audioSettings = audioSettings
         self.notices = notices
         self.onGameCenter = onGameCenter
+        self.appStoreID = appStoreID
+        self.presentInviteFriends = presentInviteFriends
+        self.telemetryEmit = telemetryEmit
         self.purchases = purchases
         self.aboutExtraRows = aboutExtraRows
         self.banner = banner
@@ -91,6 +121,22 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("settings.gameCenter")
+
+                    // #744: invite-friends row — ABSENT (not disabled) below
+                    // iOS 26 / macOS 26, and when the host never injected a
+                    // presenter (previews / tests / an OS below the floor at
+                    // the composition root).
+                    if #available(iOS 26.0, macOS 26.0, *), let presentInviteFriends {
+                        Button {
+                            telemetryEmit(.inviteFriendsTapped)
+                            presentInviteFriends()
+                        } label: {
+                            Label("Invite Friends", systemImage: "person.badge.plus")
+                                .foregroundStyle(tint)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("settings.inviteFriends")
+                    }
                 }
             }
 
@@ -120,6 +166,40 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
             Section("About") {
                 SettingsAboutVersionRow(version: version, tintColor: tint)
                 aboutExtraRows()
+
+                // #744: Share App + Write a Review — About-adjacent, right
+                // after the version row. Both hidden (not disabled) when
+                // `appStoreID` is missing/unresolved — a disabled row with no
+                // working destination offers no useful affordance, and this
+                // mirrors the invite-friends row's "absent" language above.
+                if let shareURL = AppStoreLinks.shareURL(appStoreID: appStoreID) {
+                    ShareLink(item: shareURL) {
+                        Label("Share App", systemImage: "square.and.arrow.up")
+                            .foregroundStyle(tint)
+                    }
+                    .buttonStyle(.plain)
+                    // `ShareLink` has no completion callback for "the share
+                    // sheet was invoked" (only the system share sheet itself
+                    // reports item-level completion, which SwiftUI doesn't
+                    // surface) — a simultaneous tap gesture is the standard
+                    // pattern for observing a ShareLink tap without
+                    // interfering with its own gesture recognition.
+                    .simultaneousGesture(TapGesture().onEnded {
+                        telemetryEmit(.shareAppTapped)
+                    })
+                    .accessibilityIdentifier("settings.shareApp")
+                }
+                if let reviewURL = AppStoreLinks.reviewURL(appStoreID: appStoreID) {
+                    Button {
+                        telemetryEmit(.writeReviewTapped)
+                        openURL(reviewURL)
+                    } label: {
+                        Label("Write a Review", systemImage: "star")
+                            .foregroundStyle(tint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.writeReview")
+                }
             }
 
             // 4. Notices — shared section; URLs + copyright injected via config.

@@ -125,6 +125,10 @@ public struct LiveRouteFactory: RouteFactory {
     // shape. `nil` (default) preserves the old ungated `SettingsView` behavior
     // for tests / previews that don't wire a Root VM.
     private let presentGameCenter: (@MainActor () -> Void)?
+    // #744: `presentInviteFriends` mirrors `presentGameCenter`'s shape;
+    // `telemetry` fans out share/review/invite taps (unlike MS's game-outcome stores, #699).
+    private let presentInviteFriends: (@MainActor () -> Void)?
+    private let telemetry: Telemetry?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -140,7 +144,9 @@ public struct LiveRouteFactory: RouteFactory {
         savedGameStore: MinesweeperSavedGameStore? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
-        presentGameCenter: (@MainActor () -> Void)? = nil
+        presentGameCenter: (@MainActor () -> Void)? = nil,
+        presentInviteFriends: (@MainActor () -> Void)? = nil,
+        telemetry: Telemetry? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -156,6 +162,8 @@ public struct LiveRouteFactory: RouteFactory {
         self.personalRecordStore = personalRecordStore
         self.onPresentBoard = onPresentBoard
         self.presentGameCenter = presentGameCenter
+        self.presentInviteFriends = presentInviteFriends
+        self.telemetry = telemetry
     }
 
     @MainActor
@@ -328,12 +336,12 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             )
         case .settings:
-            let version = (Bundle.main
-                .object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
-                ?? "1.0.0"
+            let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
+            let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String // #744
             let persistence = self.persistence
             let errorReporter = self.errorReporter
             let toastController = self.toastController
+            let telemetry = self.telemetry
             return AnyView(
                 SettingsView(
                     version: version,
@@ -351,6 +359,9 @@ public struct LiveRouteFactory: RouteFactory {
                     // section, byte-identical screen).
                     audioSettings: audioSettings,
                     presentGameCenter: presentGameCenter,
+                    appStoreID: appStoreID,
+                    presentInviteFriends: presentInviteFriends,
+                    telemetryEmit: { event in Task { await telemetry?.observe(event) } },
                     banner: { bannerSlot() }
                 )
             )

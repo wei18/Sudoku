@@ -34,6 +34,9 @@ public import MonetizationUI
 public import SettingsUI
 // #560: shared `GameCenterDashboard.present()` (was the per-app copy).
 internal import GameCenterClient
+// #744: `TelemetryEvent` appears in this type's public `telemetryEmit` init
+// param (mirrors `SettingsScreen`'s decoupled emit closure).
+public import Telemetry
 
 public struct SettingsView<Banner: View>: View {
     private let version: String
@@ -63,6 +66,18 @@ public struct SettingsView<Banner: View>: View {
     // leaderboard card's fallback. `nil` (default) preserves the old
     // ungated behavior for previews / tests that don't wire a root VM.
     private let presentGameCenter: (@MainActor () -> Void)?
+    // #744: this app's numeric App Store Connect id, resolved from Bundle.main
+    // at the composition root (LiveRouteFactory, mirroring the `version`
+    // read) and forwarded to `SettingsScreen`, which hides Share App / Write
+    // a Review when nil/unresolved. `nil` default preserves the byte-identical
+    // screen for previews / tests.
+    private let appStoreID: String?
+    // #744: Game Center "Invite Friends" entry point, mirrors `presentGameCenter`'s
+    // shape. `nil` default (previews / tests) keeps the row absent.
+    private let presentInviteFriends: (@MainActor () -> Void)?
+    // #744: decoupled telemetry emit, forwarded to `SettingsScreen`. No-op
+    // default keeps previews / tests side-effect-free.
+    private let telemetryEmit: @Sendable (TelemetryEvent) -> Void
 
     // #688 item 5a: read only here (row inits still take a resolved
     // `tintColor:`/`tint:` Color param, mirroring Sudoku's SettingsView).
@@ -94,6 +109,9 @@ public struct SettingsView<Banner: View>: View {
         reminderSettings: ReminderSettingsEntry? = nil,
         audioSettings: AudioSettingsModel? = nil,
         presentGameCenter: (@MainActor () -> Void)? = nil,
+        appStoreID: String? = nil,
+        presentInviteFriends: (@MainActor () -> Void)? = nil,
+        telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.version = version
@@ -103,6 +121,9 @@ public struct SettingsView<Banner: View>: View {
         self.reminderSettings = reminderSettings
         self.audioSettings = audioSettings
         self.presentGameCenter = presentGameCenter
+        self.appStoreID = appStoreID
+        self.presentInviteFriends = presentInviteFriends
+        self.telemetryEmit = telemetryEmit
         self.banner = banner()
     }
 
@@ -134,6 +155,14 @@ public struct SettingsView<Banner: View>: View {
             // signed-out taps now raise the same alert as the Home leaderboard card
             // instead of silently no-op'ing.
             onGameCenter: resolvedOnGameCenter,
+            // #744: `presentInviteFriends` is forwarded straight through — the
+            // composition root already wraps it in the same
+            // `presentGameCenterOrAlert` signed-out guard `presentGameCenter`
+            // uses before injecting it (see MinesweeperAppComposition.Live's
+            // `makeRouteFactory`).
+            appStoreID: appStoreID,
+            presentInviteFriends: presentInviteFriends,
+            telemetryEmit: telemetryEmit,
             purchases: {
                 // Purchases slot — the app's MonetizationUI rows. GameShellUI never
                 // imports MonetizationUI; the whole conditional Section lives here.

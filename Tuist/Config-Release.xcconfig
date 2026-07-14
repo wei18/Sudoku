@@ -11,3 +11,4 @@
 
 #include? "Signing.xcconfig"
 #include? "AdMob.xcconfig"
+#include? "AppStore.xcconfig"

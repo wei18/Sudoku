@@ -24,6 +24,12 @@ Tuist/Signing.xcconfig
 # Template (committed): Tuist/AdMob.xcconfig.example
 Tuist/AdMob.xcconfig
 
+# App Store Connect app id — referenced from both apps' Info.plist via
+# $(APP_STORE_ID) (#744: Share App / Write a Review rows). Generated locally
+# from .example; generated in CI from XCC env vars by ci_post_clone.sh.
+# Template (committed): Tuist/AppStore.xcconfig.example
+Tuist/AppStore.xcconfig
+
 # Xcode / build
 DerivedData/
 build/

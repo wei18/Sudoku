@@ -32,6 +32,9 @@ public import MonetizationUI
 public import SwiftUI
 // #560: shared `GameCenterDashboard.present()` (was the per-app SudokuUI copy).
 internal import GameCenterClient
+// #744: `TelemetryEvent` appears in this type's public `telemetryEmit` init
+// param (mirrors `SettingsScreen`'s decoupled emit closure).
+public import Telemetry
 
 public struct SettingsView<Banner: View>: View {
     @Bindable private var viewModel: SettingsViewModel
@@ -61,6 +64,18 @@ public struct SettingsView<Banner: View>: View {
     // leaderboard card's fallback. `nil` (default) preserves the old
     // ungated behavior for previews / tests that don't wire a root VM.
     private let presentGameCenter: (@MainActor () -> Void)?
+    // #744: this app's numeric App Store Connect id, resolved from Bundle.main
+    // at the composition root (LiveRouteFactory, mirroring the `appVersion`
+    // read) and forwarded to `SettingsScreen`, which hides Share App / Write
+    // a Review when nil/unresolved. `nil` default preserves the byte-identical
+    // screen for previews / tests.
+    private let appStoreID: String?
+    // #744: Game Center "Invite Friends" entry point, mirrors `presentGameCenter`'s
+    // shape. `nil` default (previews / tests) keeps the row absent.
+    private let presentInviteFriends: (@MainActor () -> Void)?
+    // #744: decoupled telemetry emit, forwarded to `SettingsScreen`. No-op
+    // default keeps previews / tests side-effect-free.
+    private let telemetryEmit: @Sendable (TelemetryEvent) -> Void
     @Environment(\.theme) private var theme
 
     /// #714: resolves the Game Center row's tap action, asserting in
@@ -87,6 +102,9 @@ public struct SettingsView<Banner: View>: View {
         notices: SettingsNoticesConfig? = nil,
         audioSettings: AudioSettingsModel? = nil,
         presentGameCenter: (@MainActor () -> Void)? = nil,
+        appStoreID: String? = nil,
+        presentInviteFriends: (@MainActor () -> Void)? = nil,
+        telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.viewModel = viewModel
@@ -95,6 +113,9 @@ public struct SettingsView<Banner: View>: View {
         self.notices = notices
         self.audioSettings = audioSettings
         self.presentGameCenter = presentGameCenter
+        self.appStoreID = appStoreID
+        self.presentInviteFriends = presentInviteFriends
+        self.telemetryEmit = telemetryEmit
         self.banner = banner()
     }
 
@@ -125,6 +146,15 @@ public struct SettingsView<Banner: View>: View {
             // in GameCenterClient. #685: signed-out taps now raise the same
             // alert as the Home leaderboard card instead of silently no-op'ing.
             onGameCenter: resolvedOnGameCenter,
+            // #744: `presentInviteFriends` is forwarded straight through —
+            // unlike `presentGameCenter`/`resolvedOnGameCenter` above it
+            // needs no local fallback-assert wrapper here because the
+            // composition root already wraps it in the same
+            // `presentGameCenterOrAlert` signed-out guard before injecting it
+            // (see SudokuAppComposition.Live's `makeRouteFactory`).
+            appStoreID: appStoreID,
+            presentInviteFriends: presentInviteFriends,
+            telemetryEmit: telemetryEmit,
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
             purchases: {

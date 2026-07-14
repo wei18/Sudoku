@@ -1,0 +1,36 @@
+// App Store ID configuration — template.
+//
+// COPY this file to `Tuist/AppStore.xcconfig` (gitignored) and fill in the
+// real numeric App Store Connect app id for whichever app you're building.
+// The real file must NEVER be committed.
+//
+// On a fresh clone:
+//   cp Tuist/AppStore.xcconfig.example Tuist/AppStore.xcconfig
+//   # then edit Tuist/AppStore.xcconfig and replace the value below with the
+//   # real ASC app id for the app you're building (or leave the fake value
+//   # for sandbox/debug verification — Share App / Write a Review rows
+//   # render with it, they just won't resolve to a real storefront listing).
+//   mise exec -- tuist generate
+//
+// Real ASC app ids are NOT documented here — they live in the project's
+// private memory (`asc-api-credentials`) and in `secrets/.env`
+// (`ASC_APP_ID_SUDOKU` / `ASC_APP_ID_MINESWEEPER`, shared with ASCRegister).
+// Ask the project owner if you need them.
+//
+// For CI (Xcode Cloud): no manual setup needed. The following env vars must
+// be defined in ASC → Xcode Cloud → Workflow → Environment Variables (marked
+// Secret), one per workflow / app:
+//
+//   SUDOKU_APP_STORE_ID
+//   MINESWEEPER_APP_STORE_ID
+//
+// `ci_scripts/ci_post_clone.sh` reads them and writes
+// `Tuist/AppStore.xcconfig` before `tuist generate` runs, selecting the
+// right value per workflow (mirrors AdMob.xcconfig's §3.1b).
+//
+// The value below is an obviously-fake 10-digit id — safe to commit. Info.plist
+// substitution leaves it in place until a real xcconfig is rendered; the
+// shared SettingsUI hides the Share App / Write a Review rows whenever the
+// resolved id is missing or still the unresolved `$(APP_STORE_ID)` token.
+
+APP_STORE_ID = 0000000000

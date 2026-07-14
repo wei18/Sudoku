@@ -19,6 +19,7 @@ import SettingsUI
 @testable import MinesweeperUI
 import MonetizationUI
 import Reminders
+import Telemetry
 
 @MainActor
 @Suite struct MinesweeperSettingsViewTests {
@@ -62,6 +63,40 @@ import Reminders
         #expect(called == false, "constructing/rendering must not itself invoke the closure")
         view.resolvedOnGameCenter()
         #expect(called == true, "resolvedOnGameCenter must invoke the injected presentGameCenter, not the unguarded default")
+    }
+
+    // MARK: - #744: Share App / Write a Review / Invite Friends
+
+    @Test func settingsViewConstructsWithAppStoreRowsAndInviteFriends() {
+        // A pinned FAKE id (not Bundle.main — see AppStoreLinks's header
+        // comment) proves the wired path builds with both new capabilities
+        // injected simultaneously.
+        let view = SettingsView(
+            presentGameCenter: {},
+            appStoreID: "1234567890",
+            presentInviteFriends: {}
+        )
+        _ = view.body
+    }
+
+    @Test func settingsViewOmitsAppStoreRowsWhenIDNil() {
+        // Byte-identical to settingsViewIncludesGameCenterSection —
+        // `appStoreID` defaults nil, so Share App / Write a Review stay hidden.
+        let view = SettingsView()
+        _ = view.body
+    }
+
+    @Test func settingsViewForwardsTelemetryEmitToSettingsScreen() {
+        // The closure itself is opaque from here (SettingsScreen owns firing
+        // it on row taps); this only proves construction with a non-default
+        // emit closure doesn't itself invoke it eagerly.
+        var events: [TelemetryEvent] = []
+        let view = SettingsView(
+            appStoreID: "1234567890",
+            telemetryEmit: { events.append($0) }
+        )
+        _ = view.body
+        #expect(events.isEmpty, "constructing/rendering must not itself emit telemetry")
     }
 
     @Test func settingsViewConstructsWithNoticesSection() {

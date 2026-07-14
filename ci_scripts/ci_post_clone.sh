@@ -70,6 +70,37 @@ EOF
     echo "Wrote Tuist/AdMob.xcconfig from ${APP_ID_VAR} + ${BANNER_VAR}"
 fi
 
+# 3.1c) AppStore.xcconfig from per-workflow Secret env vars (#744: Share App /
+#       Write a Review Settings rows need this app's numeric App Store
+#       Connect id). Mirrors §3.1b's scheme detection exactly.
+#       Template: Tuist/AppStore.xcconfig.example (committed). Real file is
+#       gitignored. The Info.plist `AppStoreID` substitution resolves from
+#       this value.
+if [[ ! -f "Tuist/AppStore.xcconfig" ]]; then
+    SCHEME="${CI_PRODUCT:-${CI_XCODE_SCHEME:-}}"
+    case "${SCHEME}" in
+        Sudoku)
+            APP_STORE_ID_VAR="SUDOKU_APP_STORE_ID"
+            ;;
+        Minesweeper)
+            APP_STORE_ID_VAR="MINESWEEPER_APP_STORE_ID"
+            ;;
+        *)
+            echo "ERROR: cannot determine AppStore env-var prefix — CI_PRODUCT/CI_XCODE_SCHEME='${SCHEME}' (expected Sudoku or Minesweeper)"
+            exit 1
+            ;;
+    esac
+    APP_STORE_ID="${!APP_STORE_ID_VAR:-}"
+    if [[ -z "${APP_STORE_ID}" ]]; then
+        echo "ERROR: ${APP_STORE_ID_VAR} not set in Xcode Cloud Workflow env vars; cannot generate AppStore.xcconfig"
+        exit 1
+    fi
+    cat > "Tuist/AppStore.xcconfig" <<EOF
+APP_STORE_ID = ${APP_STORE_ID}
+EOF
+    echo "Wrote Tuist/AppStore.xcconfig from ${APP_STORE_ID_VAR}"
+fi
+
 # 3.2) Generate Xcode workspace via Tuist. Tuist symlinks
 #      Game.xcworkspace/xcshareddata/swiftpm/Package.resolved →
 #      committed `.package.resolved` at repo root (#105), so xcodebuild's
