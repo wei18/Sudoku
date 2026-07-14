@@ -30,19 +30,31 @@ public struct ATTPrimerSheet: View {
     private let primaryTextColor: Color
     private let secondaryTextColor: Color
     private let backgroundColor: Color
+    // #797 (CR round 2): ink for the label ON the accent-filled Continue CTA.
+    // `.borderedProminent`'s system-default white label fails AA in dark mode
+    // against both apps' accent ramps (Sudoku sage 0x9BB87E = 2.20:1; MS blue
+    // 0x7FAFCF = 2.35:1) — the composition root injects the theme's
+    // `surface.primary` (white light / dark surface dark; Sudoku 4.83/7.42,
+    // MS 5.70/6.96 — light/dark, both AA). Injected as a fifth `Color` param
+    // (same pattern as the other four) because MonetizationUI deliberately
+    // does not depend on GameShellKit's `\.theme`. Default `.white` preserves
+    // the system-accent-with-white-label idiom for un-themed hosts/previews.
+    private let onAccentColor: Color
 
     public init(
         coordinator: ATTPrimerCoordinator,
         accentColor: Color = .accentColor,
         primaryTextColor: Color = .primary,
         secondaryTextColor: Color = .secondary,
-        backgroundColor: Color = Color(.clear)
+        backgroundColor: Color = Color(.clear),
+        onAccentColor: Color = .white
     ) {
         self.coordinator = coordinator
         self.accentColor = accentColor
         self.primaryTextColor = primaryTextColor
         self.secondaryTextColor = secondaryTextColor
         self.backgroundColor = backgroundColor
+        self.onAccentColor = onAccentColor
     }
 
     public var body: some View {
@@ -74,9 +86,15 @@ public struct ATTPrimerSheet: View {
                 Button {
                     Task { await coordinator.continueToSystemPrompt() }
                 } label: {
+                    // #797 (CR round 2): explicit on-accent ink — see
+                    // `onAccentColor`'s doc above. MUST sit on the label
+                    // content, not chained after `.buttonStyle` (the prominent
+                    // style ignores an ambient `.foregroundStyle` on the
+                    // Button itself).
                     Text("att.primer.continue")
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
+                        .foregroundStyle(onAccentColor)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -116,7 +134,8 @@ public extension View {
         accentColor: Color = .accentColor,
         primaryTextColor: Color = .primary,
         secondaryTextColor: Color = .secondary,
-        backgroundColor: Color = Color(.clear)
+        backgroundColor: Color = Color(.clear),
+        onAccentColor: Color = .white
     ) -> some View {
         if let coordinator {
             self.modifier(ATTPrimerSheetModifier(
@@ -124,7 +143,8 @@ public extension View {
                 accentColor: accentColor,
                 primaryTextColor: primaryTextColor,
                 secondaryTextColor: secondaryTextColor,
-                backgroundColor: backgroundColor
+                backgroundColor: backgroundColor,
+                onAccentColor: onAccentColor
             ))
         } else {
             self
@@ -138,6 +158,7 @@ private struct ATTPrimerSheetModifier: ViewModifier {
     let primaryTextColor: Color
     let secondaryTextColor: Color
     let backgroundColor: Color
+    let onAccentColor: Color
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $coordinator.isPrimerPresented) {
@@ -146,7 +167,8 @@ private struct ATTPrimerSheetModifier: ViewModifier {
                 accentColor: accentColor,
                 primaryTextColor: primaryTextColor,
                 secondaryTextColor: secondaryTextColor,
-                backgroundColor: backgroundColor
+                backgroundColor: backgroundColor,
+                onAccentColor: onAccentColor
             )
         }
     }

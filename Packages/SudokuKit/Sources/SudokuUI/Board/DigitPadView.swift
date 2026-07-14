@@ -139,8 +139,28 @@ struct DigitPadView: View {
         let isArmed = digit == armedDigit
         Group {
             if isArmed {
-                Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining) }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    onDigit(digit)
+                } label: {
+                    // #797: `.foregroundStyle` MUST be applied to the label
+                    // content here (not chained after `.buttonStyle` below) —
+                    // `.borderedProminent` resolves its own white label ink
+                    // internally and ignores an ambient `.foregroundStyle` set
+                    // on the Button itself (sim-verified: chaining it outside
+                    // rendered white, unchanged). `.borderedProminent`'s system
+                    // default label ink hard-fails AA against Sudoku's dark-mode
+                    // accent.primary (white on 0x9BB87E = 2.20:1). Same
+                    // on-accent-ink pattern as #786's mode toggle: `surface.primary`
+                    // (0xFFFFFF light / 0x1E2024 dark) resolves to 4.83:1 light /
+                    // 7.42:1 dark against accent.primary — both AA. Light mode
+                    // renders byte-identically (still white). The inner remaining-
+                    // count badge keeps its own explicit foregroundStyle
+                    // (unaffected — a more specific modifier wins over this
+                    // ancestor one).
+                    compactDigitLabel(digit: digit, remaining: remaining)
+                        .foregroundStyle(theme.surface.primary.resolved)
+                }
+                .buttonStyle(.borderedProminent)
             } else {
                 Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining) }
                     .buttonStyle(.bordered)
@@ -225,8 +245,14 @@ struct DigitPadView: View {
         Group {
             if pencilMode {
                 Button(action: onTogglePencil) {
+                    // #797 (CR round 2): same on-accent-ink fix + label-content
+                    // placement as `compactDigitButton` / `macDigitButton` —
+                    // this prominent branch is the same construct and had the
+                    // same dark-mode failure (white on 0x9BB87E = 2.20:1;
+                    // surface.primary = 4.83:1 light / 7.42:1 dark).
                     Label("Notes", systemImage: "pencil")
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent.primary.resolved)
@@ -265,8 +291,16 @@ struct DigitPadView: View {
         let isArmed = digit == armedDigit
         Group {
             if isArmed {
-                Button { onDigit(digit) } label: { macDigitLabel(digit: digit) }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    onDigit(digit)
+                } label: {
+                    // #797: same on-accent-ink fix as `compactDigitButton`
+                    // above, same placement requirement (label content, not
+                    // chained after `.buttonStyle`).
+                    macDigitLabel(digit: digit)
+                        .foregroundStyle(theme.surface.primary.resolved)
+                }
+                .buttonStyle(.borderedProminent)
             } else {
                 Button { onDigit(digit) } label: { macDigitLabel(digit: digit) }
                     .buttonStyle(.bordered)

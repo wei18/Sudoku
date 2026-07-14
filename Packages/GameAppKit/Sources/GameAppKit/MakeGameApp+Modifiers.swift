@@ -37,7 +37,12 @@ extension View {
                 accentColor: theme.accent.primary.resolved,
                 primaryTextColor: theme.text.primary.resolved,
                 secondaryTextColor: theme.text.secondary.resolved,
-                backgroundColor: theme.surface.background.resolved
+                backgroundColor: theme.surface.background.resolved,
+                // #797 (CR round 2): explicit AA-passing ink for the label on
+                // the accent-filled Continue CTA (the default white fails in
+                // dark mode on both apps' ramps) — see the on-accent-ink
+                // contract on `SurfaceTokens.primary` (GameShellUI).
+                onAccentColor: theme.surface.primary.resolved
             )
     }
 }

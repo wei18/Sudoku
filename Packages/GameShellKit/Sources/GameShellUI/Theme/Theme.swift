@@ -49,6 +49,19 @@ public struct ThemeColor: Sendable, Equatable, Hashable {
 
 public struct SurfaceTokens: Sendable, Equatable, Hashable {
     public let background: ThemeColor
+    /// The primary surface color — AND the canonical **on-accent ink**.
+    ///
+    /// On-accent-ink contract (#786/#797): every `.borderedProminent` (or
+    /// otherwise `accent.primary`-filled) control renders its label with
+    /// `surface.primary` instead of the system-default white, because the
+    /// accent ramp flips light↔dark opposite to the text ramp (white on the
+    /// dark-mode accent fails WCAG AA on every theme so far). A conforming
+    /// theme MUST therefore keep `surface.primary` at a contrast ratio
+    /// ≥ 4.5:1 against `accent.primary` in BOTH modes (light-on-light and
+    /// dark-on-dark pairings). Guarded per app by a WCAG-ratio unit test
+    /// (SudokuKit `ThemeTests` / MinesweeperKit
+    /// `MinesweeperThemeContrastTests`) — add the same test for any new
+    /// game's theme.
     public let primary: ThemeColor
     public let elevated: ThemeColor
     public let placeholder: ThemeColor

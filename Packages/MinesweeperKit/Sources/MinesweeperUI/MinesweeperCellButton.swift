@@ -230,13 +230,20 @@ struct MinesweeperCellButton: View {
 
     // #298 #8: the mine glyph. A filled `xmark.octagon` reads more clearly as a
     // mine/hazard than the previous `burst.fill` starburst (which looked like a
-    // generic sparkle). The detonated cell sits on the bold `mineHit` red, so
-    // its glyph is white for max contrast; a surfaced (non-detonated) mine sits
-    // on the soft `mine` fill, so its glyph uses the error token for legibility.
+    // generic sparkle). The detonated cell sits on the bold `mineHit` red; a
+    // surfaced (non-detonated) mine sits on the soft `mine` fill, so its glyph
+    // uses the error token for legibility.
+    // #797: the detonated glyph was hard-coded `.white`, which at the smallest
+    // supported cell (Beginner floor 32pt → glyphSize ≈17.6pt, below the 18pt/
+    // 14pt-bold WCAG large-text threshold, so held to 4.5:1) fails AA against
+    // dark-mode mineHit (white on 0xE66258 = 3.36:1). Same #786 on-accent-ink
+    // pattern: `surface.primary` (0xFFFFFF light / 0x1C2026 dark) resolves to
+    // 5.23:1 light / 4.87:1 dark against mineHit — both AA. Light mode renders
+    // byte-identically (still white).
     private func mineGlyph(detonated: Bool) -> some View {
         Image(systemName: "xmark.octagon.fill")
             .font(.system(size: glyphSize))
-            .foregroundStyle(detonated ? .white : theme.status.error.resolved)
+            .foregroundStyle(detonated ? theme.surface.primary.resolved : theme.status.error.resolved)
             .transition(.scale(scale: 0.9))
     }
 

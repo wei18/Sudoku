@@ -61,8 +61,19 @@ public struct PauseOverlayView: View {
                 // #510 Phase 3 (#633): stable, non-localized anchor so the E2E
                 // flow can dismiss the pause cover in any locale.
                 Button(action: onResume) {
+                    // #797: `.foregroundStyle` MUST sit on the label content
+                    // here, not chained after `.buttonStyle` below —
+                    // `.borderedProminent` resolves its own white label ink
+                    // internally and ignores an ambient `.foregroundStyle` set
+                    // on the Button itself (sim-verified: chaining it outside
+                    // rendered white, unchanged). That system-default white
+                    // fails AA in dark mode on both apps' accent ramps;
+                    // `surface.primary` clears 4.5:1 on both (Sudoku 4.83/7.42,
+                    // MS 5.70/6.96 — light/dark), same #786 pattern as
+                    // `CompletionOverlayScaffold`'s CTAs.
                     Text("Resume")
                         .frame(maxWidth: .infinity)
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
                 // Resume is the primary/safe action — solid fill so it clearly
                 // outweighs the subtle destructive Leave (avoids accidental leave).

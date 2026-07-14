@@ -84,8 +84,21 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         VStack(spacing: 12) {
             if let onPlayAgain {
                 Button(action: onPlayAgain) {
+                    // #797: `.foregroundStyle` MUST sit on the label content
+                    // here, not chained after `.buttonStyle` below —
+                    // `.borderedProminent` resolves its own white label ink
+                    // internally and ignores an ambient `.foregroundStyle` set
+                    // on the Button itself (sim-verified: chaining it outside
+                    // rendered white, unchanged). That system-default white
+                    // hard-fails AA against the dark-mode accent.primary on
+                    // BOTH apps' ramps (Sudoku sage 0x9BB87E = 2.20:1; MS blue
+                    // 0x7FAFCF = 2.35:1). Same #786 pattern: `surface.primary`
+                    // clears 4.5:1 on every accent ramp this scaffold is themed
+                    // with (Sudoku 4.83/7.42, MS 5.70/6.96 — light/dark). Light
+                    // mode renders byte-identically (still white on every theme).
                     Text("Play Again", bundle: .main)
                         .frame(maxWidth: .infinity)
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent.primary.resolved)
@@ -105,8 +118,11 @@ public struct CompletionOverlayScaffold<Card: View>: View {
                 .controlSize(.large)
             } else {
                 Button(action: onClose) {
+                    // #797: same on-accent-ink fix + placement requirement as
+                    // the "Play Again" CTA above.
                     Text("Close", bundle: .main)
                         .frame(maxWidth: .infinity)
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent.primary.resolved)

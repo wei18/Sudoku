@@ -216,13 +216,25 @@ public struct ReminderPrimerSheet: View {
     // contentShape was silently expanding the tappable zone into adjacent content.
     private var acceptButton: some View {
         Button(action: onAccept) {
+            // #797 (CR round 2): `.borderedProminent`'s system-default white
+            // label (and the spinner's old `.tint(.white)`) hard-fail AA
+            // against the dark-mode accent.primary on both apps' ramps
+            // (Sudoku sage 0x9BB87E = 2.20:1; MS blue 0x7FAFCF = 2.35:1).
+            // Same #786/#797 pattern as the shared overlay CTAs:
+            // `surface.primary` ink (white light / dark surface dark) clears
+            // 4.5:1 on both ramps (Sudoku 4.83/7.42, MS 5.70/6.96 —
+            // light/dark). MUST sit on the label content, not chained after
+            // `.buttonStyle` — the prominent style ignores an ambient
+            // `.foregroundStyle` set on the Button itself. Light mode renders
+            // byte-identically (surface.primary light is white).
             Group {
                 if isRequesting {
                     ProgressView()
-                        .tint(.white)
+                        .tint(theme.surface.primary.resolved)
                 } else {
                     Text(copy.acceptCTA)
                         .font(.body.weight(.semibold))
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 28)
@@ -326,11 +338,14 @@ public struct ReminderDeniedExplainer: View {
 
                 #if canImport(UIKit)
                 Button(action: onOpenSettings) {
+                    // #797 (CR round 2): same on-accent-ink fix + label-content
+                    // placement as `acceptButton` above.
                     Label(copy.openSettingsCTA, systemImage: "gearshape")
                         .font(.body.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 28)
                         .padding(.vertical, 11)
                         .contentShape(Rectangle())
+                        .foregroundStyle(theme.surface.primary.resolved)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
