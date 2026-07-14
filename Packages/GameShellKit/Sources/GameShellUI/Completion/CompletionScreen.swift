@@ -85,6 +85,11 @@ public struct CompletionScreen: View {
     /// affordance). `nil` for apps that don't use it.
     private let footer: AnyView?
 
+    // Hero card padding (#762 PR1 two-tier spacing contract) — content
+    // tier, wraps the icon/title/time/mistakes stack, scales with Dynamic
+    // Type.
+    @ScaledSpacing(.large) private var heroPadding
+
     public init(
         outcome: CompletionOutcome,
         elapsedLabel: String?,
@@ -106,11 +111,18 @@ public struct CompletionScreen: View {
         // centring of the whole {card + CTAs} group, and scroll-on-overflow —
         // so this view just lays out its content at its natural height and lets
         // the wrapper place it. `.padding` + max-width cap keep the card inset.
-        VStack(spacing: 24) {
+        // Section gap (#762 PR1 two-tier spacing contract) — structural,
+        // fixed rhythm between hero/actions/footer.
+        VStack(spacing: theme.spacing.large) {
             hero
             actions
             if let footer { footer }
         }
+        // spacing-exempt: 20pt (card padding) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier to route through
+        // without snapping to a neighbor and changing this card's
+        // existing layout/snapshot. Tracked as a follow-up once the
+        // token-scale gap gets an owner decision (#762).
         .padding(20)
         .frame(maxWidth: 480)
         .frame(maxWidth: .infinity)
@@ -123,6 +135,11 @@ public struct CompletionScreen: View {
     private var isHeroRevealed: Bool { heroRevealed || skipsReveal }
 
     private var hero: some View {
+        // spacing-exempt: 10pt (icon/title/time/mistakes stack gap)
+        // predates the 5-tier `SpacingTokens` scale — no matching tier to
+        // route through without snapping to a neighbor and changing this
+        // hero's existing layout/snapshot. Tracked as a follow-up once the
+        // token-scale gap gets an owner decision (#762).
         VStack(spacing: 10) {
             Image(systemName: outcome.systemImage)
                 .font(.system(size: 56))
@@ -148,6 +165,9 @@ public struct CompletionScreen: View {
             // ("Mistakes: %lld" ×7 locales in the app catalogs, resolved via
             // Bundle.main at runtime — readable English in snapshots). (Epic 4)
             if let mistakeCount {
+                // spacing-exempt: 6pt (icon-to-text gap) predates the
+                // 5-tier `SpacingTokens` scale — same rationale as the hero
+                // stack above (#762).
                 HStack(spacing: 6) {
                     Image(systemName: "xmark.circle")
                         .foregroundStyle(mistakeCount == 0 ? theme.status.success.resolved : theme.status.error.resolved)
@@ -160,7 +180,7 @@ public struct CompletionScreen: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(24)
+        .padding(heroPadding)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .combine)

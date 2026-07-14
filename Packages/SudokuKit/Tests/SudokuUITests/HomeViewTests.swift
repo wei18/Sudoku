@@ -128,6 +128,56 @@ struct HomeViewTests {
         assertViewStructure(of: host, named: "HomeView-iPhone-light", record: SnapshotMode.recordMode)
     }
 
+    // #762 PR1 spec item E — AX5 smoke snapshot. `HomeScreen` + `HomeModeCard`
+    // (GameShellUI) are the D-migration exemplar: their padding/gaps now
+    // route through `ScaledSpacing` (content tier) and `theme.spacing.*`
+    // (structural tier). This snapshot exercises the new `hostingView(...,
+    // dynamicTypeSize:)` overload (SnapshotConfig.swift) at `.accessibility5`
+    // and pins the `ScaledSpacing` multiplier's visual effect (cards render
+    // taller / more inset than `snapshotIPhoneLight`'s baseline).
+    //
+    // CAVEAT (found recording this baseline): comparing this PNG against
+    // `snapshotIPhoneLight`'s, the spacing visibly grows but the semantic
+    // `Font` sizes (`.title3`, `.caption`, …) do NOT — text renders
+    // identically to the default-size snapshot, same as `@ScaledMetric`'s
+    // documented failure to respond to `dynamicTypeSize` overrides in this
+    // repo's headless `swift test` host (see `ScaledSpacing.swift`'s PIVOT
+    // note). So this snapshot is a real, meaningful `ScaledSpacing`-scaling
+    // baseline, but it is NOT a truncation regression guard — text never
+    // grows here, so nothing could truncate. Real on-device/simulator AX5
+    // truncation testing is out of this PR's scope (would need the
+    // `mise-tasks/test/ui` XCUITest path or manual QA, not this unit/
+    // snapshot harness).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility5IPhoneLight() {
+        let (rootVM, homeVM) = makeSudokuHomeViewModel()
+        let host = hostingView(
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Sudoku",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                )
+            ),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact,
+            dynamicTypeSize: .accessibility5
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light-accessibility5")
+        }
+        assertViewStructure(of: host, named: "HomeView-iPhone-light-accessibility5", record: SnapshotMode.recordMode)
+    }
+
     // #557 Finding 1: ResumePill render-site coverage for the shared view. The
     // pill must appear as the FIRST child of HomeScreen's scroll region (above
     // the mode cards), so it scrolls WITH the content (#387 placement) — this is

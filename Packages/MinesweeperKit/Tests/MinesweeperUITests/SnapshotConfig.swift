@@ -273,4 +273,34 @@ func hostingView<V: SwiftUI.View>(
     host.layoutSubtreeIfNeeded()
     return host
 }
+
+/// AX5 / accessibility Dynamic Type variant of `hostingView(...)` (#762 PR1
+/// spec item E). Kept as a SEPARATE OVERLOAD — mirrors SudokuKit's
+/// `SnapshotConfig.swift` — rather than an added optional parameter, so
+/// every existing call site keeps resolving to the function above and its
+/// concrete `NSHostingView<...>` generic type stays byte-identical.
+@MainActor
+func hostingView<V: SwiftUI.View>(
+    _ view: V,
+    size: CGSize,
+    colorScheme: ColorScheme = .light,
+    locale: Locale? = nil,
+    sizeClass: UserInterfaceSizeClass = .compact,
+    dynamicTypeSize: DynamicTypeSize
+) -> NSView {
+    let wrapped = view
+        .environment(\.theme, MinesweeperTheme())
+        .environment(\.minesweeperCell, MinesweeperTheme().cell)
+        .environment(\.horizontalSizeClass, Optional(sizeClass))
+        .environment(\.locale, locale ?? .current)
+        .environment(\.dynamicTypeSize, dynamicTypeSize)
+        .preferredColorScheme(colorScheme)
+        .frame(width: size.width, height: size.height)
+    let host = NSHostingView(rootView: wrapped)
+    host.sizingOptions = []
+    host.frame = CGRect(origin: .zero, size: size)
+    host.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+    host.layoutSubtreeIfNeeded()
+    return host
+}
 #endif

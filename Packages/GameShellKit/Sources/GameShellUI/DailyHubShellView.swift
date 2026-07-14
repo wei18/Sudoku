@@ -44,6 +44,16 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     private let onItemTap: (Item) -> Void
     private let banner: Banner
 
+    // Structural spacing (#762 PR1 two-tier spacing contract). This shell
+    // deliberately does not read `@Environment(\.theme)` for colors (DI via
+    // init, mirrors SettingsShellView) — `SpacingTokens()`'s defaults are
+    // theme-invariant, so reading the type directly keeps `screenEdgeInset`
+    // routed through the token type without a live environment dependency.
+    // `cardGridGap` (12pt) predates the 5-tier scale and has no matching
+    // field, so it's a plain named constant instead.
+    private let screenEdgeInset = SpacingTokens().medium
+    private let cardGridGap: CGFloat = 12
+
     public init(
         title: LocalizedStringKey,
         backgroundColor: Color,
@@ -65,6 +75,8 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     }
 
     public var body: some View {
+        // spacing-exempt: zero-gap chrome seam between scroll content and
+        // the banner slot — not a spacing decision.
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -96,7 +108,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     @ViewBuilder
     private func cardList(_ items: [Item]) -> some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: cardGridGap) {
                 ForEach(items) { item in
                     Button {
                         onItemTap(item)
@@ -106,7 +118,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(screenEdgeInset)
         }
     }
 
