@@ -268,6 +268,19 @@ public struct LiveRouteFactory: RouteFactory {
                     }
                 )
             )
+        case .stats:
+            // #773: Statistics screen — PersonalRecord readout, pushed from
+            // the Home secondary entry. No banner: the proposal's scope note
+            // (§7) explicitly introduces no monetization surface here.
+            return AnyView(
+                StatsView(
+                    viewModel: StatsViewModel(
+                        persistence: persistence,
+                        errorReporter: errorReporter,
+                        telemetry: telemetry
+                    )
+                )
+            )
         case .settings:
             let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             // #744: this app's numeric App Store Connect id — same

@@ -56,10 +56,27 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
         HomeScreen(
             items: viewModel.modeItems,
             header: { resumeHeader },
+            secondaryLink: { statsLink },
             banner: { bannerSlot }
         )
         .navigationTitle(title)
         .background(theme.surface.background.resolved)
+    }
+
+    // MARK: - Statistics secondary entry (#773)
+
+    /// Secondary-weight Home entry below the four mode cards. Hidden
+    /// (`EmptyView`) when the game's `GameConfig.statsRoute` is `nil`.
+    @ViewBuilder
+    private var statsLink: some View {
+        if viewModel.showsStatsEntry {
+            HomeSecondaryEntryLink(
+                titleKey: "Statistics",
+                symbolName: "chart.bar.fill"
+            ) {
+                viewModel.selectStats()
+            }
+        }
     }
 
     // MARK: - ResumePill header (#387 / #554)

@@ -339,9 +339,8 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let rootContent: () -> AnyView
     if !config.homeModes.isEmpty {
         let homeViewModel = GameHomeViewModel(
-            rootViewModel: rootViewModel,
-            homeModes: config.homeModes,
-            presentLeaderboard: config.presentLeaderboard
+            rootViewModel: rootViewModel, homeModes: config.homeModes,
+            presentLeaderboard: config.presentLeaderboard, statsRoute: config.statsRoute
         )
         sidebarItems = HomeModeItem.sidebarItems(from: homeViewModel.modeItems)
         rootContent = {

@@ -19,4 +19,8 @@ public enum AppRoute: Hashable, Sendable, Codable {
     case board(puzzleId: String)
     case completion(puzzleId: String, elapsedSeconds: Int, mistakeCount: Int)
     case settings
+    // #773: Statistics screen (PersonalRecord readout). Pushed from the Home
+    // secondary-weight entry below the four mode cards — deliberately NOT a
+    // `HomeMode` case (owner adjudication: must not compete with the cards).
+    case stats
 }

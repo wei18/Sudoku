@@ -213,6 +213,11 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// the GK controller is not shared. `nil` → no-op (games without a leaderboard
     /// surface, or during migration).
     public let presentLeaderboard: (@MainActor () -> Void)?
+    /// #773: navigation target for the Home secondary-weight "Statistics"
+    /// entry (rendered below the four mode cards, not a `HomeMode`). `nil`
+    /// (default) → the entry is not shown, matching every other optional
+    /// content slot in this config.
+    public let statsRoute: Route?
 
     // MARK: Builder closures
 
@@ -256,6 +261,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         reminders: ReminderContentConfig,
         homeModes: [HomeMode: HomeModeContent<Route>] = [:],
         presentLeaderboard: (@MainActor () -> Void)? = nil,
+        statsRoute: Route? = nil,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
         makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
@@ -275,6 +281,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.reminders = reminders
         self.homeModes = homeModes
         self.presentLeaderboard = presentLeaderboard
+        self.statsRoute = statsRoute
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory
         self.makeHome = makeHome

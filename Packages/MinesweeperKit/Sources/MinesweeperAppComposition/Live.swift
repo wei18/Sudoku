@@ -128,6 +128,8 @@ extension MinesweeperAppComposition {
             // MS Game Center dashboard presenter. Injected here (not inside
             // GameAppKit) so GameAppKit stays free of the GK dependency.
             presentLeaderboard: { GameCenterDashboard.present() },
+            // #773: Home's secondary-weight Statistics entry pushes this route.
+            statsRoute: .stats,
             // #455 / #572: map MinesweeperSavedGameSummary into the game-agnostic
             // ResumeCandidate. Strings match the former ResumePill rendering exactly
             // so snapshot baselines do not move.
@@ -243,6 +245,7 @@ extension MinesweeperAppComposition {
             // #744: shareAppTapped / writeReviewTapped / inviteFriendsTapped —
             // simple UI-tap events, not the Sudoku-shaped game-outcome events
             // #699 scoped MS OUT of (see `telemetry` field's doc comment).
+            // #773: also fans out the Statistics screen-viewed event.
             telemetry: deps.telemetry
         )
     }

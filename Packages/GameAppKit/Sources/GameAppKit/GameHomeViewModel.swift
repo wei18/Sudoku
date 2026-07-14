@@ -33,14 +33,20 @@ public final class GameHomeViewModel<Route: Hashable & Sendable> {
     /// never imports a per-game module.
     @ObservationIgnored private let presentLeaderboard: (@MainActor () -> Void)?
 
+    /// #773: navigation target for the Home secondary-weight "Statistics"
+    /// entry. `nil` → the entry is not rendered.
+    @ObservationIgnored private let statsRoute: Route?
+
     public init(
         rootViewModel: GameRootViewModel<Route>,
         homeModes: [HomeMode: HomeModeContent<Route>],
-        presentLeaderboard: (@MainActor () -> Void)? = nil
+        presentLeaderboard: (@MainActor () -> Void)? = nil,
+        statsRoute: Route? = nil
     ) {
         self.rootViewModel = rootViewModel
         self.homeModes = homeModes
         self.presentLeaderboard = presentLeaderboard
+        self.statsRoute = statsRoute
     }
 
     // MARK: - Navigation
@@ -69,6 +75,21 @@ public final class GameHomeViewModel<Route: Hashable & Sendable> {
                 onTap: { [weak self] in self?.select(mode) }
             )
         }
+    }
+
+    // MARK: - Statistics secondary entry (#773)
+
+    /// Whether `HomeScreen`'s secondary-link slot should render the
+    /// Statistics row — mirrors the `homeModes` pattern of "content presence
+    /// implies UI presence" rather than a separate visibility flag.
+    public var showsStatsEntry: Bool { statsRoute != nil }
+
+    /// Pushes the configured Statistics route. No-op if `statsRoute` is `nil`
+    /// (the entry would not be shown, so this should be unreachable from the
+    /// UI, but stays a safe no-op for direct VM callers/tests).
+    public func selectStats() {
+        guard let statsRoute else { return }
+        rootViewModel.path.append(statsRoute)
     }
 
     public func select(_ mode: HomeMode) {

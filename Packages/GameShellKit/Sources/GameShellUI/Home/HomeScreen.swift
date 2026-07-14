@@ -124,7 +124,7 @@ public extension HomeModeItem {
 /// Layout is preserved byte-for-byte from the prior per-app bodies: padding 16
 /// on the grid, spacing 12, single-column compact / two-column regular,
 /// order header → grid → banner.
-public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
+public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Banner: View>: View {
     private let items: [HomeModeItem]
     /// Accessibility-identifier builder for each mode's Button, app-supplied so
     /// each app keeps its own namespace (Sudoku had none; MS used
@@ -132,6 +132,13 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
     private let cardAccessibilityIdentifier: (HomeMode) -> String?
     private let header: Header
     private let removeAdsCard: RemoveAds
+    /// #773: a secondary-weight entry rendered below the mode-card grid — e.g.
+    /// the Statistics link. Deliberately NOT a `HomeMode` case: `HomeMode` is
+    /// the co-equal 4-card set (also drives the sidebar), and this slot exists
+    /// precisely so a new entry can be added WITHOUT competing at that same
+    /// visual weight (owner adjudication, #773). Defaults to `EmptyView` so
+    /// games with nothing to inject here render byte-identically.
+    private let secondaryLink: SecondaryLink
     private let banner: Banner
 
     @Environment(\.theme) private var theme
@@ -150,12 +157,14 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
         cardAccessibilityIdentifier: @escaping (HomeMode) -> String? = { _ in nil },
         @ViewBuilder header: () -> Header = { EmptyView() },
         @ViewBuilder removeAdsCard: () -> RemoveAds = { EmptyView() },
+        @ViewBuilder secondaryLink: () -> SecondaryLink = { EmptyView() },
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.items = items
         self.cardAccessibilityIdentifier = cardAccessibilityIdentifier
         self.header = header()
         self.removeAdsCard = removeAdsCard()
+        self.secondaryLink = secondaryLink()
         self.banner = banner()
     }
 
@@ -177,6 +186,8 @@ public struct HomeScreen<Header: View, RemoveAds: View, Banner: View>: View {
                 removeAdsCard
             }
             .padding(theme.spacing.medium)
+
+            secondaryLink
 
             banner
         }
@@ -238,6 +249,60 @@ public struct HomeModeCard: View {
         .frame(minHeight: 72)
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - HomeSecondaryEntryLink (#773)
+
+/// A flat, plain-styled link row for the `HomeScreen.secondaryLink` slot —
+/// deliberately lighter weight than `HomeModeCard` (no glass, no title/
+/// subtitle pairing, `text.secondary` not `text.primary`) so it reads as
+/// subordinate to the four mode cards above it rather than a fifth co-equal
+/// entry (owner adjudication, #773).
+public struct HomeSecondaryEntryLink: View {
+    let titleKey: LocalizedStringKey
+    let symbolName: String
+    let onTap: @MainActor () -> Void
+    let accessibilityIdentifier: String?
+
+    @Environment(\.theme) private var theme
+    @ScaledSpacing(.small) private var rowGap
+    @ScaledSpacing(.medium) private var rowPadding
+
+    public init(
+        titleKey: LocalizedStringKey,
+        symbolName: String,
+        accessibilityIdentifier: String? = nil,
+        onTap: @escaping @MainActor () -> Void
+    ) {
+        self.titleKey = titleKey
+        self.symbolName = symbolName
+        self.accessibilityIdentifier = accessibilityIdentifier
+        self.onTap = onTap
+    }
+
+    public var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: rowGap) {
+                Image(systemName: symbolName)
+                    .font(.callout)
+                    .foregroundStyle(theme.text.secondary.resolved)
+                Text(titleKey)
+                    .font(.callout)
+                    .foregroundStyle(theme.text.secondary.resolved)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(theme.text.tertiary.resolved)
+            }
+            .padding(.horizontal, rowPadding)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .modifier(OptionalAccessibilityIdentifier(accessibilityIdentifier))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }

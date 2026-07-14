@@ -37,7 +37,10 @@ private func makeSudokuHomeViewModel(
     )
     let homeVM = GameHomeViewModel(
         rootViewModel: rootVM,
-        homeModes: sudokuHomeModes
+        homeModes: sudokuHomeModes,
+        // #773: mirrors SudokuAppComposition.live()'s statsRoute so the Home
+        // snapshots pin the secondary-weight Statistics entry below the cards.
+        statsRoute: .stats
     )
     return (rootVM, homeVM)
 }
@@ -62,7 +65,9 @@ private func makeSudokuHomeViewModelWithResume() async -> (
         }
     )
     await rootVM.bootstrap()
-    let homeVM = GameHomeViewModel(rootViewModel: rootVM, homeModes: sudokuHomeModes)
+    let homeVM = GameHomeViewModel(
+        rootViewModel: rootVM, homeModes: sudokuHomeModes, statsRoute: .stats
+    )
     return (rootVM, homeVM)
 }
 
@@ -96,6 +101,14 @@ struct HomeViewTests {
         let (rootVM, homeVM) = makeSudokuHomeViewModel()
         homeVM.select(.settings)
         #expect(rootVM.path == [.settings])
+    }
+
+    // #773: the secondary-weight Statistics entry pushes `.stats`.
+    @Test func selectStatsAppendsStatsRoute() {
+        let (rootVM, homeVM) = makeSudokuHomeViewModel()
+        #expect(homeVM.showsStatsEntry)
+        homeVM.selectStats()
+        #expect(rootVM.path == [.stats])
     }
 
     #if canImport(AppKit)

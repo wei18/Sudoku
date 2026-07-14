@@ -137,4 +137,11 @@ struct RouteFactoryTests {
         let dump = String(describing: view)
         #expect(dump.contains("SettingsView"))
     }
+
+    // #773: the Home secondary entry's pushed destination.
+    @Test func statsRouteReturnsStatsView() {
+        let view = makeFactory().view(for: .stats)
+        let dump = String(describing: view)
+        #expect(dump.contains("StatsView"))
+    }
 }

@@ -33,6 +33,13 @@ import GameShellUI
         _ = view
     }
 
+    // #773: the Home secondary entry's pushed destination.
+    @Test func factoryReturnsViewForStatsRoute() {
+        let factory = LiveRouteFactory()
+        let view = factory.view(for: .stats, path: nil)
+        _ = view
+    }
+
     // #288 / #289: the Home mode cards push these routes. Sentinel coverage —
     // a future switch refactor that drops a case fails compilation here.
 
