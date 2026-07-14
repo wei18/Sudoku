@@ -10,5 +10,10 @@
   "enabledPlugins": {
     "apple-dev-skills@apple-dev-skills": true,
     "collaboration-skills@apple-dev-skills": true
+  },
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/zw/GitHub/Wei18/design-app"
+    ]
   }
 }

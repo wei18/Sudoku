@@ -4,7 +4,7 @@
 
 本目錄收錄此專案可用的 skills，分兩部分：
 
-1. **專案綁定 skills（9）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
+1. **專案綁定 skills（10）**——下方扁平的 `SKILL.md` 目錄。這些點名本 repo 的特定
    App（Sudoku／Minesweeper）、`mise run` 任務與 pipeline，**不可移植**，
    故留在此處、無命名空間。
 2. **`apple-dev-skills` marketplace（2 個 plugin，32 skills）**——可移植的 Apple 平台／
@@ -16,7 +16,7 @@
 
 ---
 
-## 專案綁定 skills（9）
+## 專案綁定 skills（10）
 
 | Skill | 一句話 |
 |---|---|
@@ -29,6 +29,7 @@
 | [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | 以 `mise run gen:acknowledgements`（LicensePlist）從 SwiftPM 依賴圖重生 Settings.bundle 致謝頁；輸出 gitignored |
 | [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | App Store Connect／TestFlight 哪些步驟 user-owned、哪些 Leader 可經 ASC API + ASCRegister 下令 |
 | [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | 用 idb 在 iOS 模擬器驅動遊戲 App（tap／describe／screenshot），找 snapshot 測不到的 UX／佈局 bug |
+| [`design-db-uiux`](design-db-uiux/SKILL.md) | 以外部 design-app 庫（Mobbin design-db＋事前檢查表＋五階段工作流）做 UI/UX 設計與稽核；路徑 `/Users/zw/GitHub/Wei18/design-app`，讀取權由 `additionalDirectories` 開通，僅本機有效 |
 
 ---
 

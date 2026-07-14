@@ -4,7 +4,7 @@
 
 This directory holds the skills available in this project. It has two parts:
 
-1. **Project-bound skills (9)** — flat `SKILL.md` directories below. These name this
+1. **Project-bound skills (10)** — flat `SKILL.md` directories below. These name this
    repo's specific apps (Sudoku / Minesweeper), `mise run` tasks, and
    pipelines, so they are *not* portable and live here un-namespaced.
 2. **The `apple-dev-skills` marketplace (2 plugins, 32 skills)** — the portable
@@ -16,7 +16,7 @@ This directory holds the skills available in this project. It has two parts:
 
 ---
 
-## Project-bound skills (9)
+## Project-bound skills (10)
 
 | Skill | One-liner |
 |---|---|
@@ -29,6 +29,7 @@ This directory holds the skills available in this project. It has two parts:
 | [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | Regenerate Settings.bundle Acknowledgements from the SwiftPM dep graph via `mise run gen:acknowledgements` (LicensePlist); output gitignored |
 | [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | Which App Store Connect / TestFlight steps are user-owned vs Leader-orderable via the ASC API + ASCRegister |
 | [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | Drive the running game apps in the iOS Simulator with idb (tap / describe / screenshot) to find UX + layout bugs snapshot tests cannot |
+| [`design-db-uiux`](design-db-uiux/SKILL.md) | Design/audit UI-UX against the external design-app library (Mobbin design-db + pre-flight checklist + five-stage workflow) at `/Users/zw/GitHub/Wei18/design-app`; read access wired via `additionalDirectories`, machine-local |
 
 ---
 
