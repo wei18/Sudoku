@@ -21,6 +21,14 @@ public struct PracticeHubView<Banner: View>: View {
     @Bindable private var viewModel: PracticeHubViewModel
     @Environment(\.theme) private var theme
     private let banner: Banner
+    // Difficulty-picker card padding (#762 PR2 two-tier spacing contract) —
+    // content tier, wraps the segmented Picker's text labels, scales with
+    // Dynamic Type.
+    @ScaledSpacing(.small) private var pickerCardPadding
+    // Draw-card internal padding (#762 PR2 two-tier spacing contract) —
+    // content tier, wraps the title/hint/button stack, scales with Dynamic
+    // Type.
+    @ScaledSpacing(.medium) private var drawCardPadding
 
     public init(
         viewModel: PracticeHubViewModel,
@@ -59,7 +67,7 @@ public struct PracticeHubView<Banner: View>: View {
         // SwiftUI segmented Pickers don't expose per-segment tints,
         // so this is the closest we can get without a custom control.
         .tint(tint(for: viewModel.difficulty))
-        .padding(8)
+        .padding(pickerCardPadding)
         .glassEffect(.regular, in: .rect(cornerRadius: 12))
     }
 
@@ -72,6 +80,10 @@ public struct PracticeHubView<Banner: View>: View {
 
     @ViewBuilder
     private var drawCard: some View {
+        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
+        // no matching tier to route through without snapping to a neighbor
+        // and changing this card's existing layout/snapshot. Tracked as a
+        // follow-up once the token-scale gap gets an owner decision (#762 PR2).
         VStack(alignment: .leading, spacing: 12) {
             Text("Ready to play")
                 .font(.headline)
@@ -126,7 +138,7 @@ public struct PracticeHubView<Banner: View>: View {
             .controlSize(.large)
             .disabled(isDrawing)
         }
-        .padding(16)
+        .padding(drawCardPadding)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 

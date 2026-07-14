@@ -50,6 +50,10 @@ public struct BoardView: View {
     // survive body recomputes without resetting fetch / auth-check state.
     @State var completionViewModel: CompletionViewModel?
     @State var completionReminderPrimer: ReminderPrimerCoordinator?
+    // Two-row header content gaps (#762 PR2 spacing contract) — content
+    // tier; `internal` so BoardView+AccessibilityHeader.swift can read them.
+    @ScaledSpacing(.extraSmall) var headerRowGap
+    @ScaledSpacing(.small) var headerBadgeGap
 
     public init(
         viewModel: GameViewModel,
@@ -77,7 +81,9 @@ public struct BoardView: View {
                 compactLayout
             }
         }
-        .padding(16)
+        // Structural (#762 PR2) — screen margin; fixed because the board's
+        // `GeometryReader` sizes cells from the space this padding leaves.
+        .padding(theme.spacing.medium)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
         // #610: full-cover Completion overlay (MS #292/#518 mirror).
@@ -187,7 +193,10 @@ public struct BoardView: View {
     // MARK: - Compact (iPhone) layout
 
     private var compactLayout: some View {
-        VStack(spacing: 16) {
+        // Structural (#762 PR2 two-tier spacing contract) — screen rhythm
+        // between header/board/digit pad; fixed because inflating it would
+        // shrink the `GeometryReader`-sized board grid below it.
+        VStack(spacing: theme.spacing.medium) {
             header
             boardWithOverlay
             // v2.3.5: banner sits between the grid and the digit pad. It
@@ -210,9 +219,14 @@ public struct BoardView: View {
     //   - right: 260 pt control rail (history / Notes / 3×3 digit / Erase)
     //   - 24 pt gap between board and rail
     private var macLayout: some View {
-        VStack(spacing: 16) {
+        // Structural (#762 PR2 two-tier spacing contract) — same rationale
+        // as `compactLayout` above.
+        VStack(spacing: theme.spacing.medium) {
             header
-            HStack(alignment: .top, spacing: 24) {
+            // Structural — 24 pt gap between board and rail (locked in the
+            // Mac wireframe comment above); fixed because it governs how
+            // much width `macBoardColumn` gets, which drives its cell size.
+            HStack(alignment: .top, spacing: theme.spacing.large) {
                 macBoardColumn
                 digitPad
             }
@@ -223,7 +237,10 @@ public struct BoardView: View {
         }
         .frame(maxWidth: 960)
         .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 16)  // additive to outer .padding(16) → ≥ 32 pt
+        // Structural (#762 PR2 two-tier spacing contract) — additive to the
+        // outer screen-margin padding above (→ ≥ 32 pt combined); fixed for
+        // the same board-sizing reason as that outer padding.
+        .padding(.horizontal, theme.spacing.medium)
     }
 
     /// Themed shared `MonetizationUI.BannerSlotView` (#441). Board never drives
@@ -285,6 +302,8 @@ public struct BoardView: View {
             let side = min(geo.size.width, geo.size.height)
             let cellSide = side / CGFloat(Board.dimension)
             ZStack {
+                // spacing-exempt: zero-gap — the board grid's own row/column
+                // seams are cell geometry, not a spacing decision (#762 PR2).
                 VStack(spacing: 0) {
                     ForEach(0..<Board.dimension, id: \.self) { row in
                         HStack(spacing: 0) {

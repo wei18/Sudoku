@@ -46,6 +46,9 @@ public struct SettingsShellView<Sections: View, Banner: View>: View {
     }
 
     public var body: some View {
+        // spacing-exempt: zero-gap chrome seam between the Form and the
+        // banner slot — not a spacing decision (#762 PR2, mirrors
+        // GameShellUI's DailyHubShellView/PracticeHubShellView precedent).
         VStack(spacing: 0) {
             Form {
                 sections()

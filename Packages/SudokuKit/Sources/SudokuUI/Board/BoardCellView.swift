@@ -80,6 +80,9 @@ struct BoardCellView: View {
                 ErrorTriangle()
                     .fill(cell.errorBorder.resolved)
                     .frame(width: side * 0.18, height: side * 0.18)
+                    // spacing-exempt: 2pt — board-cell geometry, sized off
+                    // `side`; structural per design-system.md §Spacing scale
+                    // and not on the 5-tier `SpacingTokens` scale (#762 PR2).
                     .padding(2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .accessibilityHidden(true)
@@ -254,6 +257,8 @@ private struct PencilNotesGrid: View {
     @Environment(\.theme) private var theme
 
     var body: some View {
+        // spacing-exempt: zero-gap — the pencil-notes 3×3 sub-grid's own
+        // seams are cell geometry, not a spacing decision (#762 PR2).
         VStack(spacing: 0) {
             ForEach(0..<3, id: \.self) { row in
                 HStack(spacing: 0) {
@@ -268,6 +273,10 @@ private struct PencilNotesGrid: View {
                 }
             }
         }
+        // spacing-exempt: 2pt — board-cell geometry (this grid renders
+        // inside a single board cell, sized off `side`); structural per
+        // design-system.md §Spacing scale and not on the 5-tier
+        // `SpacingTokens` scale (#762 PR2).
         .padding(2)
     }
 }

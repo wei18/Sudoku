@@ -33,6 +33,10 @@ public struct DailyHubView<Banner: View>: View {
     // the `ResumePill` / `refreshResumeCandidate` precedent (#675).
     @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
     private let banner: Banner
+    // Exhausted-state card padding (#762 PR2 two-tier spacing contract) —
+    // content tier, wraps the icon/message/action-button stack, scales
+    // with Dynamic Type.
+    @ScaledSpacing(.large) private var exhaustedCardPadding
 
     public init(
         viewModel: DailyHubViewModel,
@@ -49,6 +53,9 @@ public struct DailyHubView<Banner: View>: View {
             state: liftedState,
             card: { card in DailyPuzzleCard(card: card) },
             failure: { reason in
+                // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
+                // scale — no matching tier without snapping and changing
+                // this block's existing layout/snapshot (#762 PR2).
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(theme.status.warning.resolved)
@@ -63,6 +70,8 @@ public struct DailyHubView<Banner: View>: View {
             // Text reuses the exact strings the alert used to show (no new
             // L10n keys). Both actions are wired unchanged from #686.
             empty: {
+                // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
+                // scale — same rationale as `failure` above (#762 PR2).
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 32))
@@ -74,6 +83,8 @@ public struct DailyHubView<Banner: View>: View {
                         .font(.caption)
                         .foregroundStyle(theme.text.secondary.resolved)
                         .multilineTextAlignment(.center)
+                    // spacing-exempt: 12pt predates the 5-tier
+                    // `SpacingTokens` scale — same rationale as above (#762 PR2).
                     HStack(spacing: 12) {
                         // #686: the label promised a difficulty picker this
                         // hub doesn't have — route to the Practice hub that
@@ -102,7 +113,7 @@ public struct DailyHubView<Banner: View>: View {
                         .controlSize(.large)
                     }
                 }
-                .padding(24)
+                .padding(exhaustedCardPadding)
             },
             onItemTap: { card in viewModel.cardTapped(card) },
             banner: { banner }
@@ -133,10 +144,17 @@ public struct DailyHubView<Banner: View>: View {
 struct DailyPuzzleCard: View {
     let card: DailyCard
     @Environment(\.theme) private var theme
+    // Card content rhythm (#762 PR2 two-tier spacing contract) — content
+    // tier, wraps the difficulty/checkmark row + mini board strip, scales
+    // with Dynamic Type.
+    @ScaledSpacing(.small) private var cardContentGap
+    // Card internal padding (#762 PR2 two-tier spacing contract) — content
+    // tier, scales with Dynamic Type.
+    @ScaledSpacing(.medium) private var cardPadding
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: cardContentGap) {
+            HStack(spacing: cardContentGap) {
                 Circle()
                     .fill(difficultyTint)
                     .frame(width: 10, height: 10)
@@ -164,7 +182,7 @@ struct DailyPuzzleCard: View {
             MiniBoardStrip()
                 .accessibilityHidden(true)
         }
-        .padding(16)
+        .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         // `.buttonStyle(.plain)` on macOS shrinks the hit area to the
         // opaque rendered content (Text + Circle + MiniBoardStrip), so
@@ -196,6 +214,10 @@ struct MiniBoardStrip: View {
     @Environment(\.theme) private var theme
 
     var body: some View {
+        // spacing-exempt: 3pt decorative mini-grid gap — a cosmetic
+        // strip of 9 tiles, not adjacent to real text/icon content and not
+        // part of the 5-tier `SpacingTokens` scale. Flagged for owner
+        // review rather than silently snapped (#762 PR2).
         HStack(spacing: 3) {
             ForEach(0..<9, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 2)
