@@ -51,6 +51,16 @@ public struct MinesweeperBoardView: View {
     // #615: dismisses the presenting fullScreenCover so the Completion overlay's
     // Close returns to the hub — mirrors Sudoku's BoardView.dismiss (close-to-hub).
     @Environment(\.dismiss) private var dismiss
+    // #762 PR3: content-tier spacing (two-tier contract, design-system.md
+    // §Spacing scale). Each wraps a self-contained content flow (the Mac
+    // control rail's own stack / the mode-toggle chip's label / the two-row
+    // status-bar fallback), mirroring GameShellUI's `PracticeHubShellView`
+    // main-content-stack and `HomeModeCard.cardPadding` precedents (PR1) —
+    // NOT screen margins, card-outer gaps, or board-cell geometry, which stay
+    // structural per the contract and are called out at their call sites below.
+    @ScaledSpacing(.medium) private var railContentGap
+    @ScaledSpacing(.small) private var toggleChipPadding
+    @ScaledSpacing(.extraSmall) private var twoRowStatusGap
 
     @State private var viewModel: MinesweeperGameViewModel
     // #278 Tier-0 #3: on-screen reveal/flag mode. View-local because it has no
@@ -222,6 +232,11 @@ public struct MinesweeperBoardView: View {
         // #298 #11: theme spacing scale. `.padding()` default is 16, identical
         // to `theme.spacing.medium`, so this is a value-preserving migration (no
         // snapshot churn).
+        // #762 PR3 re-tier: structural (screen edge inset for the whole board
+        // host) — stays fixed per the two-tier contract, especially since the
+        // `.frame(maxHeight: .infinity)` + overlay geometry below is written
+        // against this exact inset (see the comment there). Correctly a
+        // `theme.spacing.*` token already; no change.
         .padding(theme.spacing.medium)
         // #388: stretch the board's host frame to fill the whole screen BEFORE
         // attaching the Completion overlay. An `.overlay` is laid out within the
@@ -376,13 +391,24 @@ public struct MinesweeperBoardView: View {
         // recorded iPhone covered-board snapshots don't churn. The theme spacing
         // scale (#298 #11) is applied to the NEW Mac layout below; migrating the
         // compact literal would re-record baselines and is deferred to #11.
-        VStack(spacing: 12) {
+        // #762 PR3 re-tier: structural (top-level screen scaffold — mirrors
+        // `macLayout`'s analogous outer `VStack` below, both separating the
+        // board's major regions from the banner slot). Structural spacing MUST
+        // route through a token or named constant, never a bare literal, so
+        // this off-scale value (12 — no matching `SpacingTokens` tier) moves
+        // into `compactStackGap` unchanged; zero pixel/snapshot diff.
+        VStack(spacing: Self.compactStackGap) {
             statusBar
             boardGrid
             modeToggle
             bannerSlot
         }
     }
+
+    // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale — see the
+    // re-tier comment on `compactLayout` above for why this stays a fixed
+    // named constant instead of `theme.spacing.*` (#762 PR3).
+    private static let compactStackGap: CGFloat = 12
 
     // MARK: - Mac (regular) 2-column layout (#298 #6)
     //
@@ -393,6 +419,14 @@ public struct MinesweeperBoardView: View {
     // detail pane (#298 critique: the board currently renders the iPhone stack
     // in the Mac detail).
     private var macLayout: some View {
+        // #762 PR3 re-tier: all three `theme.spacing.*` uses below are
+        // structural — the outer `VStack` gap is the chrome seam to the
+        // banner slot (mirrors `compactLayout`'s equivalent seam above), the
+        // `HStack` gap is the board-vs-control-rail column split (a
+        // structural layout division, not text/icon-adjacent content), and
+        // the trailing `.padding` is the Mac screen edge inset
+        // (design-system.md §Spacing scale pairing table). Correctly
+        // `theme.spacing.*` tokens already; no change.
         VStack(spacing: theme.spacing.medium) {
             HStack(alignment: .top, spacing: theme.spacing.large) {
                 macBoardColumn
@@ -419,7 +453,13 @@ public struct MinesweeperBoardView: View {
     // vertically in a fixed-width column. #724: the toggle is the same single
     // icon button as iPhone — only the placement changes.
     private var controlRail: some View {
-        VStack(spacing: theme.spacing.medium) {
+        // #762 PR3 re-tier: content tier — this is the rail's own main
+        // content stack (statusBar + modeToggle), mirroring GameShellUI's
+        // `PracticeHubShellView` content-stack precedent (PR1), not a
+        // screen-margin or card-outer gap. The fixed rail WIDTH is untouched
+        // (this spacing only affects the vertical gap, which the trailing
+        // `Spacer` absorbs), so scaling it carries no overflow risk.
+        VStack(spacing: railContentGap) {
             statusBar
             modeToggle
             Spacer(minLength: 0)
@@ -500,7 +540,11 @@ public struct MinesweeperBoardView: View {
 
     // Two-row fallback: row 1 = mine count + status; row 2 = clock + pause.
     private var twoRowStatusBar: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        // #762 PR3 re-tier: content tier (gap between the two label rows) —
+        // 4 matches `SpacingTokens.extraSmall`. Safe to scale: the parent
+        // `statusBar` already clamps `dynamicTypeSize` to `.xLarge` (see
+        // above), which caps `ScaledSpacing`'s own multiplier at 1.05×.
+        VStack(alignment: .leading, spacing: twoRowStatusGap) {
             HStack { mineCountLabel; Spacer(); statusLabel }
             HStack { clockLabel; Spacer(); pauseToggle }
         }
@@ -695,7 +739,11 @@ public struct MinesweeperBoardView: View {
             // table reserves for card-level internal padding. The
             // `.frame(minWidth: 44, minHeight: 44)` below guarantees the HIG
             // tap-target floor independent of this padding value.
-            .padding(.horizontal, theme.spacing.small)
+            // #762 PR3 re-tier: content tier — wraps this chip's own
+            // icon/text label (mirrors `HomeModeCard.cardPadding`), and the
+            // `.frame(minWidth:minHeight:)` floor below only ever grows past
+            // 44pt as padding scales, never shrinks below it.
+            .padding(.horizontal, toggleChipPadding)
             .frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)

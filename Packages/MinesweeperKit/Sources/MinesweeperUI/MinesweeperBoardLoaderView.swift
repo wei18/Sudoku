@@ -121,6 +121,9 @@ public struct MinesweeperBoardLoaderView: View {
     }
 
     private func failedBlock(userFacing: UserFacingError) -> some View {
+        // spacing-exempt: 12pt (icon/text/buttons stack gap) predates the
+        // 5-tier `SpacingTokens` scale — no matching tier without snapping
+        // and changing this screen's existing layout/snapshot (#762 PR3).
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 32))
@@ -138,6 +141,8 @@ public struct MinesweeperBoardLoaderView: View {
             // own Leave button uses (MinesweeperBoardView.swift). Harmless
             // -but-present on macOS too (push nav already has a system back
             // chevron) — consistency over platform-splitting.
+            // spacing-exempt: 12pt (button row gap) — same off-scale
+            // rationale as the outer VStack above (#762 PR3).
             HStack(spacing: 12) {
                 Button {
                     dismiss()
@@ -153,6 +158,9 @@ public struct MinesweeperBoardLoaderView: View {
                 .buttonStyle(.bordered)
             }
         }
+        // spacing-exempt: 20pt (error card padding) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier without snapping and
+        // changing this screen's existing layout/snapshot (#762 PR3).
         .padding(20)
     }
 

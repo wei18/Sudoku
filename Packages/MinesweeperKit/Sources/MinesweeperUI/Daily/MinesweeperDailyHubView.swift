@@ -49,6 +49,10 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
             state: liftedState,
             card: { card in MinesweeperDailyCardView(card: card) },
             failure: { reason in
+                // spacing-exempt: 12pt (icon/text stack gap) predates the
+                // 5-tier `SpacingTokens` scale — no matching tier without
+                // snapping and changing this screen's existing
+                // layout/snapshot (#762 PR3).
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(theme.status.warning.resolved)
@@ -84,10 +88,18 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
 private struct MinesweeperDailyCardView: View {
     let card: MinesweeperDailyCard
     @Environment(\.theme) private var theme
+    // #762 PR3: content tier (two-tier contract, design-system.md §Spacing
+    // scale). Both wrap the card's own header row / caption stack — 8
+    // matches `SpacingTokens.small`; shared since both call sites use the
+    // same tier.
+    @ScaledSpacing(.small) private var contentGap
+    // Card outer padding — mirrors GameShellUI's `HomeModeCard.cardPadding`
+    // precedent (PR1): 16 matches `SpacingTokens.medium`.
+    @ScaledSpacing(.medium) private var cardPadding
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: contentGap) {
+            HStack(spacing: contentGap) {
                 Circle()
                     .fill(difficultyTint)
                     .frame(width: 10, height: 10)
@@ -128,7 +140,7 @@ private struct MinesweeperDailyCardView: View {
                 .foregroundStyle(theme.text.secondary.resolved)
                 .accessibilityHidden(true)
         }
-        .padding(16)
+        .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         // `.contentShape(Rectangle())` BEFORE `.glassEffect(...)` so the whole
         // card frame (incl. padding) is tap-hittable on macOS — mirrors

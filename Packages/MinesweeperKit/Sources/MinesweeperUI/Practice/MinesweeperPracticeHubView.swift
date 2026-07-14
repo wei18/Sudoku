@@ -16,6 +16,12 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
     // #765: threads MS's theme through the hub, mirroring Sudoku's
     // `PracticeHubView` — see `tint(for:)` below.
     @Environment(\.theme) private var theme
+    // #762 PR3: content-tier spacing (two-tier contract, design-system.md
+    // §Spacing scale). Both wrap a control chip's own content (segmented
+    // Picker / the "Ready to play" text+CTA stack), mirroring GameShellUI's
+    // `HomeModeCard.cardPadding` precedent (PR1).
+    @ScaledSpacing(.small) private var pickerPadding
+    @ScaledSpacing(.medium) private var startCardPadding
     private let banner: Banner
     // #720 G2: fires when the player picks a new difficulty segment so the
     // composition root can persist it (mirrors Sudoku's
@@ -76,12 +82,17 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
         // token so the active chip reads as that difficulty's color, mirroring
         // Sudoku's `PracticeHubView.difficultyPicker`.
         .tint(tint(for: difficulty))
-        .padding(8)
+        // #762 PR3: content tier (chip padding around the Picker's own
+        // text/segments) — 8 matches `SpacingTokens.small`.
+        .padding(pickerPadding)
         .glassEffect(.regular, in: .rect(cornerRadius: 12))
     }
 
     @ViewBuilder
     private var startCard: some View {
+        // spacing-exempt: 12pt (text/CTA stack gap) predates the 5-tier
+        // `SpacingTokens` scale — no matching tier without snapping and
+        // changing this card's existing layout/snapshot (#762 PR3).
         VStack(alignment: .leading, spacing: 12) {
             Text("Ready to play")
                 .font(.headline)
@@ -113,7 +124,9 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
             .controlSize(.large)
             .accessibilityIdentifier("minesweeper.practiceHub.start")
         }
-        .padding(16)
+        // #762 PR3: content tier (card padding around the text+CTA stack) —
+        // 16 matches `SpacingTokens.medium`, mirrors `HomeModeCard.cardPadding`.
+        .padding(startCardPadding)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 
