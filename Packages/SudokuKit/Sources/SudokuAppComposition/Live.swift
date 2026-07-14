@@ -116,6 +116,8 @@ extension SudokuAppComposition {
             // Sudoku's Game Center dashboard presenter. Injected here (not inside
             // GameAppKit) so GameAppKit stays free of the GK dependency.
             presentLeaderboard: { GameCenterDashboard.present() },
+            // #773: Home's secondary-weight Statistics entry pushes this route.
+            statsRoute: .stats,
             // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
             // `ResumeCandidate` (the only layer that knows the Sudoku type).
             // Strings match the former `ResumePill` rendering exactly so snapshot

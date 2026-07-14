@@ -50,4 +50,9 @@ public enum AppRoute: Hashable, Sendable {
     case daily
     case practice
     case settings
+    // #773: Statistics screen (MinesweeperPersonalRecord readout). Pushed
+    // from the Home secondary-weight entry below the four mode cards —
+    // deliberately NOT a `HomeMode` case (owner adjudication: must not
+    // compete with the cards). Mirrors Sudoku's `AppRoute.stats`.
+    case stats
 }

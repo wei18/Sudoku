@@ -128,6 +128,9 @@ public struct OSLogSink: TelemetrySink {
             logger.log(level: .info, message: "writeReviewTapped", privacy: .publicValue)
         case .inviteFriendsTapped:
             logger.log(level: .info, message: "inviteFriendsTapped", privacy: .publicValue)
+        case .statsViewed:
+            // No payload → nothing PII-adjacent to guard; .publicValue.
+            logger.log(level: .info, message: "statsViewed", privacy: .publicValue)
         }
     }
 }

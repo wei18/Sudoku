@@ -168,7 +168,7 @@ public struct LiveRouteFactory: RouteFactory {
 
     @MainActor
     // The route→view switch reads as one cohesive mapping; extracting a helper
-    // per case would obscure the route table (7 cases post-SDD-003 Epic 8).
+    // per case would obscure the route table (8 cases post-#773 stats).
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
         case .daily:
@@ -335,6 +335,8 @@ public struct LiveRouteFactory: RouteFactory {
                     }
                 )
             )
+        case .stats: // #773: Statistics screen — see LiveRouteFactory+Stats.swift.
+            return Self.statsDestination(personalRecordStore, errorReporter, telemetry)
         case .settings:
             let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String // #744
@@ -395,6 +397,4 @@ public struct LiveRouteFactory: RouteFactory {
             AnyView(EmptyView())
         }
     }
-
-    /// #331: builds the MS Notices section config. Mirrors Sudoku — the
 }

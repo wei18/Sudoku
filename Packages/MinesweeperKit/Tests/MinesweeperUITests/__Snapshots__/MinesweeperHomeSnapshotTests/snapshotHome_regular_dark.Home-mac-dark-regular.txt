@@ -8,5 +8,6 @@
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(454,16,430,72) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,100,430,72) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(454,100,430,72) b=(-) => <NSViewBackingLayer>
+            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(0,196,900,44) b=(-) => <NSViewBackingLayer>
       [  HAF    ! W U ] h=--- v=--- NSScroller f=(0,0,0,100) b=(-) => <NSViewBackingLayer>
 A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface

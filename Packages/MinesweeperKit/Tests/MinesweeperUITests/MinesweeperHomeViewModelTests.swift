@@ -47,7 +47,9 @@ private func makeVMs(
     let homeVM = GameHomeViewModel<AppRoute>(
         rootViewModel: rootVM,
         homeModes: minesweeperHomeModes,
-        presentLeaderboard: { GameCenterDashboard.present(leaderboardId: nil) }
+        presentLeaderboard: { GameCenterDashboard.present(leaderboardId: nil) },
+        // #773: mirrors MinesweeperAppComposition.live()'s statsRoute.
+        statsRoute: .stats
     )
     return (rootVM, homeVM)
 }
@@ -72,6 +74,14 @@ struct MinesweeperHomeViewModelTests {
         let (rootVM, homeVM) = await makeVMs()
         homeVM.select(.settings)
         #expect(rootVM.path == [.settings])
+    }
+
+    // #773: the secondary-weight Statistics entry pushes `.stats`.
+    @Test func selectStatsPushesStatsRoute() async {
+        let (rootVM, homeVM) = await makeVMs()
+        #expect(homeVM.showsStatsEntry)
+        homeVM.selectStats()
+        #expect(rootVM.path == [.stats])
     }
 
     // Leaderboard presents the native GC dashboard as a modal side-effect

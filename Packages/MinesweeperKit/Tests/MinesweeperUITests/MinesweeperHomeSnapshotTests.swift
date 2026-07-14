@@ -37,7 +37,10 @@ private func makeMSHomeViewModels() -> (
     )
     let homeVM = GameHomeViewModel(
         rootViewModel: rootVM,
-        homeModes: minesweeperHomeModes
+        homeModes: minesweeperHomeModes,
+        // #773: mirrors MinesweeperAppComposition.live()'s statsRoute so the
+        // Home snapshots pin the secondary-weight Statistics entry.
+        statsRoute: .stats
     )
     return (rootVM, homeVM)
 }
