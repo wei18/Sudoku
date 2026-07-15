@@ -95,6 +95,23 @@ public struct MinesweeperBoardView: View {
     // shows the SAME overlay without touching session state at all. Resume just
     // hides it again (no session call); Leave still dismisses as normal.
     @State private var showIdleLeaveOverlay = false
+    // #815: pinch-to-zoom committed scale, composed ON TOP of the #764
+    // `cellSizing` ladder result (never inside it — `cellSizing` stays a pure
+    // floor/branch decision with its own frozen unit tests). Applies only to
+    // the two SCROLL branches (`heightFitScrollHorizontal` /
+    // `pinnedFloorScrollBoth`) — see the design note on `pinchToZoomGesture`
+    // below for why the `fitted` branch (Beginner, typically) is excluded.
+    // Deliberately view-local `@State`, never written to `UserDefaults`:
+    // #815 scope requires zoom to reset per board session, not persist. It IS
+    // reset explicitly on a VM-identity change (new board) — see the
+    // `ObjectIdentifier`-keyed `.onChange` in `body` below, mirroring the
+    // existing VM-identity-keyed ticker/BGM `.task(id:)`s.
+    @State private var zoomScale: CGFloat = 1.0
+    // Live in-gesture magnification factor. `@GestureState` auto-resets to
+    // 1.0 the instant the pinch ends or is cancelled, so `pinchToZoomGesture`
+    // below has exactly one commit point (`.onEnded`) and can never leak a
+    // stale in-flight value into the next gesture.
+    @GestureState private var pinchMagnification: CGFloat = 1.0
     // U15 (2026-06-03): banner slot wiring. Optional so the merged MVP `init`
     // shapes (used by `#Preview` + tests) keep compiling without monetization.
     // Production callsites wire both via `LiveRouteFactory`.
@@ -304,6 +321,14 @@ public struct MinesweeperBoardView: View {
             } else if !isTerminal {
                 completionViewModel = nil
             }
+        }
+        // #815: zoom resets per board session — a new VM identity means a new
+        // board (fresh game, Play Again, or a loader-driven Retry), so drop
+        // any pinch-to-zoom the player left on the previous board rather than
+        // carrying it forward. Mirrors the VM-identity-keyed `.task(id:)`s
+        // below (ticker / BGM), which restart on the exact same signal.
+        .onChange(of: ObjectIdentifier(viewModel)) { _, _ in
+            zoomScale = 1.0
         }
         // #455 step 4: view-lifecycle save points.
         // #539: also pause so the elapsed clock doesn't accrue background time
@@ -850,6 +875,125 @@ public struct MinesweeperBoardView: View {
         }
     }
 
+    // MARK: - Pinch-to-zoom (#815, pure, testable)
+
+    // Zoom composes ON TOP of `cellSizing` above: the ladder still picks the
+    // branch + its floor/fitted cellSide exactly as #764 pinned it, and zoom
+    // only rescales the RESULT. `zoomedCellSide` and `clampZoomScale` are
+    // extracted as pure `nonisolated static` functions (same shape as
+    // `cellSizing`) so the clamp/rounding behavior is unit-testable without a
+    // hosted view — see `MinesweeperBoardZoomTests`.
+    //
+    // Range: 0.5×–2.0×, applied as a multiplier on the ladder's chosen
+    // cellSide (NOT on the raw floor). 0.5× approximates a whole-board
+    // overview for the boards that actually reach a scroll branch —
+    // Intermediate/Expert's pinned 44pt floor runs roughly 1.3–2× their
+    // natural "fits-in-viewport" size on a typical phone width (#764's own
+    // 375pt fixtures: Intermediate/Expert's fitted cellSide before the floor
+    // clamp lands well under 44). An exact fit-to-screen bound would need a
+    // second geometry pass re-deriving the true fitted cellSide on every
+    // gesture frame — more coupling than this pure helper should carry for a
+    // user-triggered escape hatch. 2.0× is a conservative upper bound (HIG
+    // targets are already met at 1×; zooming in past 2× has diminishing
+    // value on a board this size and risks scrolling many screens to reveal
+    // one enlarged corner). The 44pt HIG floor stays the DEFAULT (1.0×) —
+    // zooming below it is an explicit, session-only user choice, matching
+    // design-system.md's "MS BoardView cell" touch-target row (the ladder's
+    // 44pt is a default-presentation floor, not a hard interaction minimum).
+    nonisolated static let minZoomScale: CGFloat = 0.5
+    nonisolated static let maxZoomScale: CGFloat = 2.0
+
+    nonisolated static func clampZoomScale(_ scale: CGFloat) -> CGFloat {
+        min(max(scale, minZoomScale), maxZoomScale)
+    }
+
+    /// The actual rendered cell side after applying a (clamped) zoom scale to
+    /// the ladder's chosen `baseCellSide`. Floored, mirroring `cellSizing`'s
+    /// own flooring, for crisp glyph rendering (`MinesweeperCellButton`
+    /// derives its glyph size straight from `side`).
+    nonisolated static func zoomedCellSide(baseCellSide: CGFloat, zoomScale: CGFloat) -> CGFloat {
+        floor(baseCellSide * clampZoomScale(zoomScale))
+    }
+
+    // Mechanism decision (#815): `MagnifyGesture` driving a REAL cellSide
+    // change (fed back through the same `gridStack` every other branch
+    // already uses) — NOT `.scaleEffect`, and NOT a `UIScrollView`
+    // representable.
+    //   - vs `.scaleEffect`: a visual transform would leave
+    //     `MinesweeperCellButton`'s actual `.frame(width:height:)` and
+    //     glyph size (`side * 0.55`) at the pre-zoom size, so digits/mines
+    //     would blur under magnification instead of re-rendering crisp, and
+    //     the ScrollView's content size would need a second manual
+    //     `.frame(width:height:)` override to stay scrollable to the
+    //     enlarged extent. Recomputing the real cellSide gets both content
+    //     size AND crisp rendering for free from the SAME layout pass the
+    //     three-branch ladder already does.
+    //   - vs a `UIScrollView`/`NSScrollView` representable: would fork the
+    //     rendering path per-platform (no `UIScrollView` on macOS), breaking
+    //     the shared SwiftUI code path this view otherwise keeps identical
+    //     across iOS/iPadOS/macOS. `MagnifyGesture` is a cross-platform
+    //     SwiftUI API (two-finger pinch on iOS/iPadOS, trackpad pinch on
+    //     macOS) — one gesture, one code path.
+    //   - Trade-off accepted: because the content size grows via real
+    //     relayout rather than a UIScrollView's `zoomScale` +
+    //     `contentOffset` pair, the pinch does NOT anchor to the gesture's
+    //     centroid — SwiftUI's `ScrollView` keeps its current content
+    //     offset as the content grows, so zoom visually grows from the
+    //     content's current top-leading scroll position, not from under the
+    //     player's fingers. Implementing true centroid-anchoring would mean
+    //     hand-rolling scroll-offset adjustment every gesture frame — exactly
+    //     the complexity a `UIScrollView` representable gives for free, at
+    //     the cost of the cross-platform fork above. Given MS boards are
+    //     modest in extent (≤16×30 cells) and the same two-finger drag pans
+    //     immediately after a pinch, this is judged an acceptable
+    //     simplification; revisit with a `ScrollViewReader`/`scrollPosition`
+    //     offset correction if it reads as disorienting in practice.
+    //   - Gesture disambiguation: `MagnifyGesture` requires two simultaneous
+    //     touch points, which structurally cannot fire from the same
+    //     single-finger touch that drives a cell's `Button` tap/long-press —
+    //     touch count alone disambiguates pinch from tap, so no
+    //     `.exclusively` combinator is needed against the cell buttons.
+    //     Attachment is `.simultaneousGesture` (not bare `.gesture`) — the
+    //     idiomatic pinch-inside-ScrollView form (CR round 2): it lets the
+    //     magnify recognizer run alongside the ScrollView's own pan/drag
+    //     recognizers instead of competing with them, where a bare
+    //     `.gesture` risks losing recognition to the scroll drag entirely.
+    //   - Fitted-branch policy: NOT applied to `.fitted` (Beginner in
+    //     practice). Zoom exists to let the player inspect a board that
+    //     doesn't fully fit on screen; the fitted branch by definition
+    //     already shows the whole board at/above the floor, so there is
+    //     nothing off-screen to reveal and wrapping it in a scrollable/
+    //     zoomable container would only churn its long-settled centered
+    //     presentation (design-system.md's documented 36pt Beginner
+    //     exception) for no functional gain.
+    private var pinchToZoomGesture: some Gesture {
+        MagnifyGesture()
+            .updating($pinchMagnification) { value, state, _ in
+                state = value.magnification
+            }
+            .onEnded { value in
+                zoomScale = Self.clampZoomScale(zoomScale * value.magnification)
+            }
+    }
+
+    // #815: visible gap between the board's own content and the ScrollView's
+    // native scroll-indicator bar in both scroll branches, via
+    // `.contentMargins(_:for: .scrollContent)` (iOS 17+/macOS 14+, within
+    // this repo's iOS 18/macOS 15 floor). `.scrollContent` — not
+    // `.scrollIndicators` — is the correct lever (CR round 2): it insets the
+    // CONTENT away from the container edge the indicator hugs, so the gap
+    // opens between board and bar; margining the indicator placement instead
+    // would push the bar INTO the content, the opposite of the ask. Edge
+    // choice: `.all`, not just the bottom/trailing edges the indicators
+    // occupy — the inset shows whenever the player scrolls the board to ANY
+    // extreme, and clearing only two edges would read as the grid sitting
+    // flush at top/leading but floating at bottom/trailing, an asymmetry
+    // with no upside for a 4pt inset. Structural — board-geometry chrome,
+    // not text/icon-adjacent content — so it stays a fixed `theme.spacing.*`
+    // token rather than a `@ScaledSpacing` one, mirroring `cellSpacing`'s
+    // own fixed-constant treatment just above.
+    private var scrollIndicatorClearance: CGFloat { theme.spacing.extraSmall }
+
     private var boardGrid: some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
@@ -870,20 +1014,32 @@ public struct MinesweeperBoardView: View {
                 cols: cols,
                 floor: Self.minCellSide(for: viewModel.session.difficulty)
             )
+            // #815: zoom applies ONLY in the two scroll branches below — see
+            // the design note on `pinchToZoomGesture` above for why `.fitted`
+            // (this branch) is excluded. `sizing.cellSide` here is exactly
+            // #764's ladder result, untouched.
+            let effectiveCellSide = Self.zoomedCellSide(
+                baseCellSide: sizing.cellSide,
+                zoomScale: zoomScale * pinchMagnification
+            )
             switch sizing.branch {
             case .fitted:
                 gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
                     .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
             case .heightFitScrollHorizontal:
                 ScrollView(.horizontal) {
-                    gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: effectiveCellSide, spacing: spacing)
                 }
+                .contentMargins(.all, scrollIndicatorClearance, for: .scrollContent)
                 .frame(width: geo.size.width, height: geo.size.height)
+                .simultaneousGesture(pinchToZoomGesture)
             case .pinnedFloorScrollBoth:
                 ScrollView([.horizontal, .vertical]) {
-                    gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
+                    gridStack(rows: rows, cols: cols, cellSide: effectiveCellSide, spacing: spacing)
                 }
+                .contentMargins(.all, scrollIndicatorClearance, for: .scrollContent)
                 .frame(width: geo.size.width, height: geo.size.height)
+                .simultaneousGesture(pinchToZoomGesture)
             }
         }
         // Fill all available height offered by the parent VStack so the board
