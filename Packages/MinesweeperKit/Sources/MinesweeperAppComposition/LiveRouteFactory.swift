@@ -75,9 +75,11 @@ public struct LiveRouteFactory: RouteFactory {
     // U15 (2026-06-03): threaded into `MinesweeperBoardView` so it can mount
     // a `BannerSlotView` mirror below the grid. Optional so the existing
     // Phase 3 callsite (no monetization) keeps compiling; production wires
-    // both, previews pass nil.
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
+    // both, previews pass nil. `internal` (not `private`): read by
+    // `bannerSlot()`, moved to LiveRouteFactory+Helpers.swift (#814
+    // line-budget extraction).
+    let adProvider: (any AdProvider)?
+    let adGate: AdGate?
     // #291: threaded into `MinesweeperBoardView` so its `MinesweeperGameViewModel`
     // can submit a best-time to the difficulty's leaderboard on win. Optional so
     // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
@@ -95,6 +97,13 @@ public struct LiveRouteFactory: RouteFactory {
     // `makeReminderSettings`. Type changed from `MinesweeperReminderSettingsEntry`
     // to the shared `ReminderSettingsEntry` (SettingsUI) as part of #572 cleanup.
     private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
+    // #814 (mirrors Sudoku's `makeDailyReminderPrimer`, #287 Phase 2): builds a
+    // fresh daily-ready primer coordinator per Daily-WIN completion mount.
+    // Injected as a closure (not the raw Reminders seams) so ALL reminder
+    // wiring stays in composition; the board/factory only decide WHEN (Daily
+    // win, never loss/practice). `nil` in previews / tests → no primer,
+    // byte-identical Completion surfaces.
+    private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
     // #330 P2: gameplay-audio player, threaded into every `MinesweeperBoardView`
     // so the VM fires sfx + haptics and the board starts BGM. Optional so
     // preview / test callsites stay silent — when nil, the board defaults to
@@ -139,6 +148,7 @@ public struct LiveRouteFactory: RouteFactory {
         errorReporter: (any ErrorReporter)? = nil,
         toastController: ToastController? = nil,
         makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,
@@ -156,6 +166,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.errorReporter = errorReporter
         self.toastController = toastController
         self.makeReminderSettings = makeReminderSettings
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
         self.savedGameStore = savedGameStore
@@ -241,6 +252,9 @@ public struct LiveRouteFactory: RouteFactory {
                         // derived ONCE here (today's date for a daily, a singleton
                         // slot per practice difficulty) — see the store's
                         // recordName helpers for the scheme rationale.
+                        // #814: Daily-win reminder primer — the board's own
+                        // gate keeps it nil on loss / practice.
+                        makeDailyReminderPrimer: self.makeDailyReminderPrimer,
                         store: self.savedGameStore,
                         recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty),
                         personalRecordStore: self.personalRecordStore
@@ -267,7 +281,9 @@ public struct LiveRouteFactory: RouteFactory {
                         gameCenter: self.gameCenter,
                         errorReporter: self.errorReporter,
                         soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
-                        personalRecordStore: self.personalRecordStore
+                        personalRecordStore: self.personalRecordStore,
+                        // #814: a resumed daily that wins still offers the primer.
+                        makeDailyReminderPrimer: self.makeDailyReminderPrimer
                     )
                 )
             }
@@ -302,7 +318,7 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             }
 
-        case .completion(let difficulty, _):
+        case .completion(let difficulty, let mode):
             // #386: re-viewing an already-solved daily. Build the same
             // `MinesweeperCompletionView` the live board overlay uses, but
             // standalone (no board behind it) and seeded as a WIN — a solved
@@ -319,6 +335,11 @@ public struct LiveRouteFactory: RouteFactory {
             // centred-card layout of the in-board overlay (the card is intrinsic;
             // the scaffold owns bg / centring / Close).
             let closePath = path
+            // #814 (mirrors Sudoku LiveRouteFactory's `.completion` case):
+            // offer the daily-ready primer ONLY for a Daily completion — this
+            // route is a solved-daily re-view (didWin: true by definition), so
+            // the mode gate alone is the WIN gate here.
+            let reminderPrimer = mode == .daily ? makeDailyReminderPrimer?() : nil
             return AnyView(
                 CompletionOverlayScaffold(
                     onClose: { closePath?.wrappedValue.removeLast() },
@@ -329,6 +350,7 @@ public struct LiveRouteFactory: RouteFactory {
                                 elapsedSeconds: 0,
                                 leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
                             ),
+                            reminderPrimer: reminderPrimer,
                             onClose: nil,
                             showsElapsedTime: false
                         )
@@ -370,31 +392,6 @@ public struct LiveRouteFactory: RouteFactory {
         }
     }
 
-    // MARK: - Banner helper
-
-    /// Epic 5: banner slot for non-Home, non-Board screens. The cast from
-    /// `AdProvider` → `BannerViewProviding` follows the §9.1 pattern (keeps
-    /// MinesweeperAppComposition off GoogleMobileAds). When adProvider / adGate
-    /// are nil (preview / test), the slot itself is not created — the caller
-    /// passes EmptyView via the `banner: {}` default instead.
-    @MainActor
-    // Uses BannerSlotView's system-default colors, which today coincide with
-    // Sudoku's themedBanner() values. If MS adopts per-theme accents, pass
-    // theme tokens here like Sudoku's RouteFactory.themedBanner() (#468 Epic 5
-    // theming note) so hub/settings banners match the themed Home banner.
-    private func bannerSlot() -> some View {
-        if let adProvider, let adGate {
-            AnyView(
-                BannerSlotView(
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    bannerHost: adProvider as? any BannerViewProviding
-                )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            )
-        } else {
-            AnyView(EmptyView())
-        }
-    }
+    // `bannerSlot()` moved to LiveRouteFactory+Helpers.swift (#814 — this file
+    // sat at the 400-line ceiling; extraction per the repo convention).
 }

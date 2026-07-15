@@ -6361,8 +6361,7 @@
           }
         }
       }
-    }
-,
+    },
     "Share App" : {
       "comment" : "Settings row label — ShareLink sharing the app's App Store URL (#744).",
       "extractionState" : "manual",
@@ -6503,6 +6502,102 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "邀請朋友"
+          }
+        }
+      }
+    },
+    "Remind me when tomorrow's puzzle is ready" : {
+      "comment" : "#814 completion reminder affordance row (Daily solve) — CompletionView literal was missing from the catalog since #287 Phase 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remind me when tomorrow's puzzle is ready"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avísame cuando el puzle de mañana esté listo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明日のパズルが準備できたら通知"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내일의 퍼즐이 준비되면 알려주세요"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เตือนฉันเมื่อโจทย์ของพรุ่งนี้พร้อม"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天的谜题准备好时提醒我"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天的謎題準備好時提醒我"
+          }
+        }
+      }
+    },
+    "A gentle daily nudge, default 9 AM — adjustable in Settings" : {
+      "comment" : "#814 completion reminder affordance row (Daily solve) — CompletionView literal was missing from the catalog since #287 Phase 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A gentle daily nudge, default 9 AM — adjustable in Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un recordatorio suave al día, 9 a. m. por defecto — ajustable en Ajustes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1日1回のやさしい通知、デフォルトは午前9時 — 設定で変更できます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하루 한 번 가벼운 알림, 기본 오전 9시 — 설정에서 변경 가능"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เตือนเบา ๆ วันละครั้ง ค่าเริ่มต้น 9 โมงเช้า — ปรับได้ในการตั้งค่า"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天一条温和提醒，默认上午 9 点 — 可在设置中调整"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天一則溫和提醒，預設早上 9 點 — 可在設定中調整"
           }
         }
       }

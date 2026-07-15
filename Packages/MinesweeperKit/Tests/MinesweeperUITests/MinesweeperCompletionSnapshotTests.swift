@@ -14,6 +14,10 @@
 #if canImport(AppKit)
 import Foundation
 import GameShellUI
+// #814: the daily-win reminder-affordance baseline builds a
+// `ReminderPrimerCoordinator` over the `Reminders` Noop conformers.
+import Reminders
+import SettingsUI
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -66,6 +70,45 @@ struct MinesweeperCompletionSnapshotTests {
         .environment(\.completionHeroSkipsReveal, true)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - Daily-win reminder affordance (#814)
+
+    /// #814: a DAILY WIN threads a non-nil `reminderPrimer` (status
+    /// `.notDetermined`), so the shared `CompletionScreen` footer slot renders
+    /// the "Remind me when tomorrow's boards are ready" row — the affordance
+    /// Sudoku's completion has had since #287 Phase 2. Every other baseline in
+    /// this suite omits the param, pinning that loss / practice / re-view
+    /// surfaces stay affordance-free (byte-identical to their pre-#814 PNGs).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotWinDailyReminder_iPhone_light() {
+        let viewModel = MinesweeperCompletionViewModel(
+            didWin: true,
+            elapsedSeconds: 65,
+            leaderboardId: MinesweeperLeaderboardID.easyDaily
+        )
+        // Noop authorizer reports `.notDetermined` (the only status that
+        // renders the affordance); nothing is scheduled or prompted.
+        let reminderPrimer = ReminderPrimerCoordinator(
+            permissionModel: ReminderPermissionModel(authorizer: NoopNotificationAuthorizing()),
+            scheduler: NoopReminderScheduler(),
+            getFireTime: { (hour: 9, minute: 0) },
+            content: ReminderContent(title: "t", body: "b"),
+            primerCopy: ReminderPrimerCopy(
+                title: "", lede: "", bullets: [], acceptCTA: "", declineCTA: "", fineprint: ""
+            ),
+            deniedCopy: ReminderDeniedCopy(
+                title: "", message: "", openSettingsCTA: "", dismissCTA: "", macOSGuidance: ""
+            )
+        )
+        let view = MinesweeperCompletionView(
+            viewModel: viewModel,
+            reminderPrimer: reminderPrimer,
+            onClose: {}
+        )
+        .environment(\.completionHeroSkipsReveal, true)
+        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
+        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-reminder", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Win hero

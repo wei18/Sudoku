@@ -19,9 +19,21 @@
 
 public import SwiftUI
 import GameShellUI
+// #814: `ReminderPrimerCoordinator` appears in this view's public init and
+// `ReminderPrimerSheet` in its sheet — both live in SettingsUI (mirrors
+// Sudoku's CompletionView import note, #556).
+public import SettingsUI
 
 public struct MinesweeperCompletionView: View {
     @Bindable private var viewModel: MinesweeperCompletionViewModel
+    @Environment(\.theme) private var theme
+
+    // #814 (mirrors Sudoku's #287 Phase 2): optional daily-ready reminder
+    // primer. Non-nil ONLY on a DAILY WIN (MinesweeperBoardView /
+    // LiveRouteFactory gate on mode + outcome), so a Practice game, a loss —
+    // and every existing snapshot fixture that omits this param — renders
+    // byte-identically (no affordance, no sheet).
+    @State private var reminderPrimer: ReminderPrimerCoordinator?
 
     /// SDD-003 Epic 4: dismiss the completion overlay. Wired by
     /// MinesweeperBoardView to `completionViewModel = nil`.
@@ -35,10 +47,12 @@ public struct MinesweeperCompletionView: View {
 
     public init(
         viewModel: MinesweeperCompletionViewModel,
+        reminderPrimer: ReminderPrimerCoordinator? = nil,
         onClose: (() -> Void)? = nil,
         showsElapsedTime: Bool = true
     ) {
         self.viewModel = viewModel
+        self._reminderPrimer = State(initialValue: reminderPrimer)
         self.onClose = onClose
         self.showsElapsedTime = showsElapsedTime
     }
@@ -48,7 +62,77 @@ public struct MinesweeperCompletionView: View {
             outcome: outcome,
             elapsedLabel: elapsedLabel,
             mistakeCount: nil,
-            actions: { closeButton }
+            actions: { closeButton },
+            footer: { reminderAffordance }
+        )
+        .sheet(isPresented: reminderSheetBinding) {
+            if let reminderPrimer {
+                ReminderPrimerSheet(
+                    copy: reminderPrimer.primerCopy,
+                    isRequesting: reminderPrimer.isRequesting,
+                    onAccept: { Task { await reminderPrimer.acceptPrimer() } },
+                    onDecline: { reminderPrimer.declinePrimer() }
+                )
+                .presentationDetents([.medium, .large])
+            }
+        }
+    }
+
+    // MARK: - Reminder affordance (#814, mirrors Sudoku's flow S02)
+
+    // The "Remind me when tomorrow's boards are ready" row. Tapping it presents
+    // the soft primer (S03). Shown only for a Daily win (the caller gates via
+    // `reminderPrimer` nil-ness) and only while reminders are not yet
+    // authorized — once granted there is nothing left to ask. Structurally
+    // identical to Sudoku's `CompletionView.reminderAffordance`; only the row
+    // title copy is per-game ("boards" vs "puzzle").
+    @ViewBuilder
+    private var reminderAffordance: some View {
+        if let reminderPrimer, reminderPrimer.status == .notDetermined {
+            Button {
+                Task { await reminderPrimer.presentPrimer() }
+            } label: {
+                // spacing-exempt: 12pt (icon-to-text gap) mirrors Sudoku's
+                // affordance row byte-for-byte — same pre-`SpacingTokens`
+                // rationale as its #762 PR2 exemption.
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.badge")
+                        .foregroundStyle(theme.accent.primary.resolved)
+                    // spacing-exempt: 2pt (title-to-subtitle gap) — same
+                    // rationale as above.
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Remind me when tomorrow's boards are ready")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(theme.text.primary.resolved)
+                            .multilineTextAlignment(.leading)
+                        Text("A gentle daily nudge, default 9 AM — adjustable in Settings")
+                            .font(.caption)
+                            .foregroundStyle(theme.text.secondary.resolved)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(theme.text.tertiary.resolved)
+                }
+                // spacing-exempt: 14pt (row padding) mirrors Sudoku's
+                // affordance row (#762 PR2 exemption there).
+                .padding(14)
+                .frame(maxWidth: .infinity)
+                .background(theme.surface.primary.resolved, in: .rect(cornerRadius: 14))
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // Bridges the optional coordinator's `isPrimerPresented` to the sheet. With
+    // no coordinator wired the binding is inert (always false → no sheet).
+    private var reminderSheetBinding: Binding<Bool> {
+        Binding(
+            get: { reminderPrimer?.isPrimerPresented ?? false },
+            set: { reminderPrimer?.isPrimerPresented = $0 }
         )
     }
 
