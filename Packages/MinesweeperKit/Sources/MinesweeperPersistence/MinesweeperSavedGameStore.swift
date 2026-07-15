@@ -281,6 +281,32 @@ public actor MinesweeperSavedGameStore {
         )
     }
 
+    /// puzzleIds of `mode == "daily" && status == "completed"` records for the
+    /// given UTC date. Feeds `MinesweeperDailyHubViewModel.fillCompletionAndFailureOverlay`
+    /// (#816). MS's hub used to read completed ids via the shared Sudoku-shaped
+    /// `PersistenceProtocol.fetchCompletedDailyIds`, whose CK predicate is
+    /// `mode == %@ AND status == %@ AND puzzleId BEGINSWITH %@` — but MS's
+    /// `SavedGame` schema (`cloudkit/minesweeper.ckdb`) has no `puzzleId` field
+    /// and only `status` is QUERYABLE, so that query always threw and the green
+    /// check never appeared. Mirrors `fetchFailedDailyIds`'s structure exactly:
+    /// query the queryable `status` field only, then filter mode/day client-side.
+    public func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
+        let today = UTCDay.string(from: date)
+        let payloads = try await gateway.query(
+            .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "completed")
+        )
+        return Set(
+            payloads
+                .compactMap(Self.summary(from:))
+                .filter { summary in
+                    guard summary.modeRaw == GameModeRaw.daily else { return false }
+                    guard let day = Self.dailyDay(fromRecordName: summary.recordName) else { return false }
+                    return day == today
+                }
+                .map(\.recordName)
+        )
+    }
+
     static func summary(from payload: RecordPayload) -> MinesweeperSavedGameSummary? {
         guard
             case .string(let difficultyRaw) = payload.fields[Field.difficulty],

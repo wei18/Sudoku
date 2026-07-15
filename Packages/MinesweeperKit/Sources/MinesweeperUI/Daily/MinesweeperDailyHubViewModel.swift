@@ -1,14 +1,22 @@
 // MinesweeperDailyHubViewModel — owns the daily trio fetch + completion overlay.
 //
 // Mirrors `SudokuUI.DailyHubViewModel`: bootstraps by fetching today's trio
-// from a `MinesweeperDailyProviding` and the already-completed daily ids from
-// Persistence, merging them into three `MinesweeperDailyCard` rows. The
-// completion-fetch is graceful-degrade (a failure renders every card
-// un-completed, never blocks the hub) — same principle as Sudoku's Daily.
+// from a `MinesweeperDailyProviding` and the already-completed/failed daily
+// ids from `MinesweeperSavedGameStore`, merging them into three
+// `MinesweeperDailyCard` rows. The overlay fetch is graceful-degrade (a
+// failure renders every card un-completed, never blocks the hub) — same
+// principle as Sudoku's Daily.
 //
 // MS generation is synchronous + non-throwing (pure `MinesweeperDaily`), so
 // there is no `.exhausted` / generator-failure path; the only async work is
-// the optional completed-ids fetch.
+// the optional completed/failed-ids fetch.
+//
+// #816: the completed-ids fetch used to go through the Sudoku-shaped
+// `PersistenceProtocol.fetchCompletedDailyIds` — a CK predicate that assumes
+// a `puzzleId` field MS's `SavedGame` schema doesn't have, so it always threw
+// and the green check never appeared. It now reads from
+// `MinesweeperSavedGameStore.fetchCompletedDailyIds`, mirroring the
+// already-working failed-ids path below.
 
 public import Foundation
 public import SwiftUI
@@ -52,11 +60,17 @@ public final class MinesweeperDailyHubViewModel {
     private var path: Binding<[AppRoute]>
 
     private let provider: any MinesweeperDailyProviding
+    /// #816: retained for source compatibility with existing call sites, but
+    /// no longer read by `fillCompletionAndFailureOverlay` — the completed-ids
+    /// fetch moved to `savedGameStore.fetchCompletedDailyIds` (the generic
+    /// `PersistenceProtocol.fetchCompletedDailyIds` predicate assumes a
+    /// `puzzleId` field MS's schema doesn't have). Param removal is deferred
+    /// (no scope creep in the #816 fix); a follow-up can drop it.
     private let persistence: (any PersistenceProtocol)?
-    /// Epic 8 (SDD-003): MS-native store for failed-daily ids fetch. Optional
-    /// so preview / test callsites that don't thread a store keep compiling —
-    /// when nil, no cards are ever marked failed (graceful-degrade, same
-    /// principle as the completed-ids path).
+    /// MS-native store for both the failed-daily (Epic 8 / SDD-003) and,
+    /// since #816, the completed-daily ids fetch. Optional so preview / test
+    /// callsites that don't thread a store keep compiling — when nil, no
+    /// cards are ever marked completed or failed (graceful-degrade).
     private let savedGameStore: MinesweeperSavedGameStore?
     private let errorReporter: any ErrorReporter
     private let dateProvider: @Sendable () -> Date
@@ -153,9 +167,9 @@ public final class MinesweeperDailyHubViewModel {
         guard case .loaded = state else { return }
 
         var completed: Set<String> = []
-        if let persistence {
+        if let savedGameStore {
             do {
-                completed = try await persistence.fetchCompletedDailyIds(for: date)
+                completed = try await savedGameStore.fetchCompletedDailyIds(for: date)
             } catch {
                 await errorReporter.report(
                     UserFacingError.classify(error),

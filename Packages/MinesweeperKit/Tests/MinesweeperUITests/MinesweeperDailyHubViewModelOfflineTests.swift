@@ -7,20 +7,22 @@
 // forever (iCloud signed out — CK never throws, never returns) or throws
 // immediately. Mirrors `DailyHubViewModelOfflineTests` (#526 Sudoku).
 //
-// Note: `savedGameStore` is typed as the concrete `MinesweeperSavedGameStore`
-// actor (no protocol seam), so the hang-under-failed-ids path cannot be
-// injected here. The two-phase guarantee is fully proven by the
-// completed-ids hang test below: Phase 1 fires before Phase 2 regardless
-// of which Phase-2 fetch hangs.
+// #816: the completed-ids fetch moved from `PersistenceProtocol` to
+// `MinesweeperSavedGameStore` (a concrete actor, no protocol seam) — so the
+// hang/throw fakes below no longer implement `PersistenceProtocol`. Instead
+// they implement the underlying `PrivateCKGateway` seam that
+// `MinesweeperSavedGameStore` is built over (same technique
+// `MinesweeperSavedGameStoreTests.ThrowingQueryGateway` uses) and get
+// wrapped in a real `MinesweeperSavedGameStore` passed as `savedGameStore:`.
 
 import Foundation
 import Testing
-@testable import MinesweeperUI
-import SudokuGameState
 import MinesweeperEngine
+import MinesweeperGameState
+import MinesweeperPersistence
 import Persistence
 import PersistenceTesting
-import SudokuEngine  // for Mode, GameSessionSnapshot, PersonalRecord used in PersistenceProtocol stubs
+@testable import MinesweeperUI
 
 @MainActor
 @Suite("MinesweeperDailyHubViewModel — offline / iCloud-signed-out (#530)")
@@ -28,7 +30,7 @@ struct MinesweeperDailyHubViewModelOfflineTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    /// Verifies the fix for #530: when `fetchCompletedDailyIds` hangs
+    /// Verifies the fix for #530: when the completed/failed-ids fetch hangs
     /// (e.g. iCloud signed out — CK never throws, never returns), the
     /// hub must still reach `.loaded([3 cards])` promptly rather than
     /// staying in `.loading` forever.
@@ -41,10 +43,13 @@ struct MinesweeperDailyHubViewModelOfflineTests {
     /// After verifying state the test cancels the bootstrap task, which
     /// unblocks the continuation so the test finishes without leaking.
     @Test func bootstrapReachesLoadedEvenWhenCompletedIdsFetchHangsForever() async {
-        let hangingPersistence = HangingMSPersistence()
+        let hangingStore = MinesweeperSavedGameStore(
+            gateway: HangingQueryGateway(),
+            clock: { Self.fixedDate }
+        )
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
-            persistence: hangingPersistence,
+            savedGameStore: hangingStore,
             dateProvider: { Self.fixedDate }
         )
 
@@ -74,13 +79,16 @@ struct MinesweeperDailyHubViewModelOfflineTests {
         #expect(cards.allSatisfy { !$0.isFailed })
     }
 
-    /// Fast-fail path: when persistence throws `iCloudNotSignedIn` immediately,
-    /// bootstrap still reaches `.loaded` with 3 un-completed cards.
+    /// Fast-fail path: when the saved-game store throws `iCloudNotSignedIn`
+    /// immediately, bootstrap still reaches `.loaded` with 3 un-completed cards.
     @Test func bootstrapReachesLoadedWhenCompletedIdsFetchThrowsImmediately() async {
-        let throwingPersistence = ThrowingMSPersistence(error: PersistenceError.iCloudNotSignedIn)
+        let throwingStore = MinesweeperSavedGameStore(
+            gateway: ThrowingQueryGateway(error: PersistenceError.iCloudNotSignedIn),
+            clock: { Self.fixedDate }
+        )
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
-            persistence: throwingPersistence,
+            savedGameStore: throwingStore,
             dateProvider: { Self.fixedDate }
         )
 
@@ -94,19 +102,36 @@ struct MinesweeperDailyHubViewModelOfflineTests {
         #expect(cards.allSatisfy { !$0.isCompleted })
     }
 
-    /// Happy-path regression: when persistence works, completion overlays still
-    /// render after Phase 2 fills in — guards that the two-phase fix didn't
-    /// break the normal completion-marking flow.
-    @Test func bootstrapMarksCompletedCardsWhenPersistenceReturnsIds() async {
+    /// Happy-path regression: when the saved-game store works, completion
+    /// overlays still render after Phase 2 fills in — guards that the
+    /// two-phase fix didn't break the normal completion-marking flow.
+    @Test func bootstrapMarksCompletedCardsWhenSavedGameStoreReturnsIds() async {
         let date = Self.fixedDate
         let provider = LiveMinesweeperDailyProvider()
         let trio = provider.dailyTrio(date: date)
         let completedId = trio[0].puzzleId
-        let returningPersistence = ReturningMSPersistence(completed: [completedId])
+        let gateway = FakePrivateCKGateway()
+        await gateway.seed(
+            RecordPayload(
+                recordType: PrivateCKConstants.savedGameRecordType,
+                recordName: completedId,
+                fields: [
+                    "difficulty": .string("beginner"),
+                    "seed": .int(0),
+                    "mode": .string("daily"),
+                    "elapsedSeconds": .int(30),
+                    "status": .string("completed"),
+                    "lastModifiedAt": .date(date),
+                    "schemaVersion": .int(1),
+                    "stateBlob": .data(Data()),
+                ]
+            )
+        )
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { date })
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
             provider: provider,
-            persistence: returningPersistence,
+            savedGameStore: store,
             dateProvider: { date }
         )
 
@@ -124,83 +149,41 @@ struct MinesweeperDailyHubViewModelOfflineTests {
 
 // MARK: - Fakes
 //
-// Each fake is a minimal `PersistenceProtocol` conformer. The boilerplate
-// stubs below match the shape of `PersistenceTesting.FakePersistence` (actors
-// cannot inherit, so we repeat the safe defaults rather than subclassing).
+// Minimal `PrivateCKGateway` conformers wrapped in a real
+// `MinesweeperSavedGameStore` — the store is a concrete actor (no protocol
+// seam of its own), so injection happens one layer down, at the gateway it
+// is built over. Mirrors `MinesweeperSavedGameStoreTests.ThrowingQueryGateway`.
 
-/// Persistence fake whose `fetchCompletedDailyIds` suspends indefinitely —
-/// simulates a signed-out iCloud session where CloudKit never throws and
-/// never returns. Uses `Task.sleep` for a very long duration; the enclosing
-/// `Task` cancellation in the test unblocks it via structured concurrency.
-private actor HangingMSPersistence: PersistenceProtocol {
+/// Gateway fake whose `query` suspends indefinitely — simulates a
+/// signed-out iCloud session where CloudKit never throws and never returns.
+/// Uses `Task.sleep` for a very long duration; the enclosing `Task`
+/// cancellation in the test unblocks it via structured concurrency.
+private actor HangingQueryGateway: PrivateCKGateway {
+    func provisionZone() async throws {}
+    func installSubscriptionIfNeeded() async throws {}
+    func fetch(recordName: String) async throws -> RecordPayload? { nil }
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {}
+    func delete(recordName: String) async throws {}
 
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
+    func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
         try await Task.sleep(for: .seconds(3_600))
         return []
     }
-
-    func bootstrap() async throws {}
-    func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> GameSessionSnapshot {
-        throw PersistenceError.zoneNotProvisioned
-    }
-    func save(_ snapshot: GameSessionSnapshot, puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws {}
-    func markCompleted(_ summary: SavedGameSummary) async throws {}
-    func deleteAbandoned(recordName: String) async throws {}
-    func fetchPersonalRecord(mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> PersonalRecord {
-        PersonalRecord(recordName: "", mode: .daily, difficulty: .easy, bestTimeSeconds: nil,
-                       totalTimeSeconds: 0, completedCount: 0,
-                       lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: [])
-    }
-    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
 }
 
-/// Persistence fake whose `fetchCompletedDailyIds` throws immediately.
-private actor ThrowingMSPersistence: PersistenceProtocol {
+/// Gateway fake whose `query` throws immediately.
+private actor ThrowingQueryGateway: PrivateCKGateway {
+    private let error: any Error & Sendable
 
-    private let error: any Error
+    init(error: any Error & Sendable) { self.error = error }
 
-    init(error: any Error) { self.error = error }
+    func provisionZone() async throws {}
+    func installSubscriptionIfNeeded() async throws {}
+    func fetch(recordName: String) async throws -> RecordPayload? { nil }
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {}
+    func delete(recordName: String) async throws {}
 
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { throw error }
-
-    func bootstrap() async throws {}
-    func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> GameSessionSnapshot {
-        throw PersistenceError.zoneNotProvisioned
+    func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
+        throw error
     }
-    func save(_ snapshot: GameSessionSnapshot, puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws {}
-    func markCompleted(_ summary: SavedGameSummary) async throws {}
-    func deleteAbandoned(recordName: String) async throws {}
-    func fetchPersonalRecord(mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> PersonalRecord {
-        PersonalRecord(recordName: "", mode: .daily, difficulty: .easy, bestTimeSeconds: nil,
-                       totalTimeSeconds: 0, completedCount: 0,
-                       lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: [])
-    }
-    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
-}
-
-/// Persistence fake that returns a fixed set of completed daily ids.
-private actor ReturningMSPersistence: PersistenceProtocol {
-
-    private let completed: Set<String>
-
-    init(completed: Set<String>) { self.completed = completed }
-
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { completed }
-
-    func bootstrap() async throws {}
-    func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> GameSessionSnapshot {
-        throw PersistenceError.zoneNotProvisioned
-    }
-    func save(_ snapshot: GameSessionSnapshot, puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws {}
-    func markCompleted(_ summary: SavedGameSummary) async throws {}
-    func deleteAbandoned(recordName: String) async throws {}
-    func fetchPersonalRecord(mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> PersonalRecord {
-        PersonalRecord(recordName: "", mode: .daily, difficulty: .easy, bestTimeSeconds: nil,
-                       totalTimeSeconds: 0, completedCount: 0,
-                       lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: [])
-    }
-    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
 }

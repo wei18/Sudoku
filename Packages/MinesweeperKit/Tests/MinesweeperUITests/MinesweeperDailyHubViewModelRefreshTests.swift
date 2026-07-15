@@ -5,14 +5,22 @@
 // `refresh()`: the phase-2-only re-fetch that bypasses the `hasBootstrapped`
 // one-shot latch so a just-solved daily's card flips to completed on
 // return-to-hub, without a full hub remount.
+//
+// #816: the completed-ids half of phase-2 moved from `PersistenceProtocol`
+// to `MinesweeperSavedGameStore` (the generic Sudoku-shaped completed-ids
+// query assumes a `puzzleId` field MS's schema doesn't have). These tests
+// now seed completed/failed daily records on a `FakePrivateCKGateway`-backed
+// `MinesweeperSavedGameStore` instead of a `PersistenceProtocol` fake, and
+// count phase-2 fetches via the gateway's recorded `.query` operations.
 
 import Foundation
 import Testing
-@testable import MinesweeperUI
-import SudokuGameState
 import MinesweeperEngine
+import MinesweeperGameState
+import MinesweeperPersistence
 import Persistence
-import SudokuEngine  // for Mode, GameSessionSnapshot, PersonalRecord used in PersistenceProtocol stubs
+import PersistenceTesting
+@testable import MinesweeperUI
 
 @MainActor
 @Suite("MinesweeperDailyHubViewModel — refresh (#761)")
@@ -20,58 +28,87 @@ struct MinesweeperDailyHubViewModelRefreshTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
+    private func dailyRecordPayload(
+        recordName: String,
+        status: String,
+        mode: String = "daily",
+        difficulty: String = "beginner"
+    ) -> RecordPayload {
+        RecordPayload(
+            recordType: PrivateCKConstants.savedGameRecordType,
+            recordName: recordName,
+            fields: [
+                "difficulty": .string(difficulty),
+                "seed": .int(0),
+                "mode": .string(mode),
+                "elapsedSeconds": .int(30),
+                "status": .string(status),
+                "lastModifiedAt": .date(Self.fixedDate),
+                "schemaVersion": .int(1),
+                "stateBlob": .data(Data()),
+            ]
+        )
+    }
+
+    private func queryOpCount(_ gateway: FakePrivateCKGateway) async -> Int {
+        await gateway.operations.filter { $0 == .query }.count
+    }
+
     /// Sanity re-check: `refresh()` is additive — `bootstrap()`'s own
     /// idempotency latch must be unaffected.
     @Test func bootstrapIsStillIdempotentAfterAddingRefresh() async {
-        let persistence = MutableMSPersistence()
+        let gateway = FakePrivateCKGateway()
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
-            persistence: persistence,
+            savedGameStore: store,
             dateProvider: { Self.fixedDate }
         )
 
         await viewModel.bootstrap()
         await viewModel.bootstrap()
 
-        let fetchCount = await persistence.fetchCount
-        #expect(fetchCount == 1)
+        // One phase-2 run == 2 queries (completed + failed); a second
+        // `bootstrap()` call must be a no-op (`hasBootstrapped` latch).
+        #expect(await queryOpCount(gateway) == 2)
     }
 
     /// `refresh()` called before any `bootstrap()` has landed must be a
-    /// complete no-op: no persistence traffic, state stays `.idle`. This is
+    /// complete no-op: no CK traffic, state stays `.idle`. This is
     /// what makes it safe to fire `refresh()` from any external trigger — the
     /// production `.onChange(of: gameSessionTeardownCount)` included — no
     /// matter how it interleaves with `.task { bootstrap() }` around first mount.
     @Test func refreshBeforeBootstrapIsNoOp() async {
-        let persistence = MutableMSPersistence()
+        let gateway = FakePrivateCKGateway()
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { Self.fixedDate })
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
-            persistence: persistence,
+            savedGameStore: store,
             dateProvider: { Self.fixedDate }
         )
 
         await viewModel.refresh()
 
         #expect(viewModel.state == .idle)
-        let fetchCount = await persistence.fetchCount
-        #expect(fetchCount == 0)
+        #expect(await queryOpCount(gateway) == 0)
     }
 
     /// The regression itself: after `bootstrap()` renders 3 un-completed
     /// cards, a puzzle gets completed (e.g. via a Completion overlay close
     /// popping back onto this same, un-destroyed hub instance) — simulated
-    /// here by flipping the mutable fake persistence's completed set.
-    /// `refresh()` must pick that up and flip the matching card, WITHOUT
-    /// re-fetching the trio (today's boards never change).
+    /// here by seeding a completed record on the gateway between bootstrap
+    /// and refresh. `refresh()` must pick that up and flip the matching
+    /// card, WITHOUT re-fetching the trio (today's boards never change).
     @Test func refreshAfterBootstrapPicksUpNewlyCompletedPuzzle() async {
         let date = Self.fixedDate
         let provider = LiveMinesweeperDailyProvider()
         let trio = provider.dailyTrio(date: date)
-        let persistence = MutableMSPersistence()
+        let gateway = FakePrivateCKGateway()
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { date })
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
             provider: provider,
-            persistence: persistence,
+            savedGameStore: store,
             dateProvider: { date }
         )
 
@@ -85,7 +122,7 @@ struct MinesweeperDailyHubViewModelRefreshTests {
 
         // Simulate the puzzle being completed between bootstrap and the hub
         // reappearing (e.g. the board/Completion flow persisting the win).
-        await persistence.setCompleted([justSolved.puzzleId])
+        await gateway.seed(dailyRecordPayload(recordName: justSolved.puzzleId, status: "completed"))
 
         await viewModel.refresh()
 
@@ -97,11 +134,11 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         #expect(refreshedCard?.isCompleted == true)
         #expect(refreshedCards.filter(\.isCompleted).count == 1)
 
-        // Phase-2 (completed ids) must have re-run exactly twice (bootstrap +
-        // refresh); the trio itself has no fetch counter to assert against
-        // since `dailyTrio` is a pure synchronous call, not a service seam.
-        let fetchCount = await persistence.fetchCount
-        #expect(fetchCount == 2)
+        // Phase-2 (completed + failed ids) must have re-run exactly twice
+        // (bootstrap + refresh) — 2 queries per run == 4 total; the trio
+        // itself has no fetch counter to assert against since `dailyTrio`
+        // is a pure synchronous call, not a service seam.
+        #expect(await queryOpCount(gateway) == 4)
     }
 
     /// A `refresh()` with no completion changes must be a harmless re-fetch:
@@ -109,11 +146,12 @@ struct MinesweeperDailyHubViewModelRefreshTests {
     @Test func refreshWithNoChangeLeavesCardsUncompleted() async {
         let date = Self.fixedDate
         let provider = LiveMinesweeperDailyProvider()
-        let persistence = MutableMSPersistence()
+        let gateway = FakePrivateCKGateway()
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { date })
         let viewModel = MinesweeperDailyHubViewModel(
             path: .constant([]),
             provider: provider,
-            persistence: persistence,
+            savedGameStore: store,
             dateProvider: { date }
         )
 
@@ -127,38 +165,38 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         #expect(cards.count == 3)
         #expect(cards.allSatisfy { !$0.isCompleted })
     }
-}
 
-/// Persistence fake whose completed-ids set can be mutated AFTER
-/// construction (unlike `ReturningMSPersistence`, which bakes it in at
-/// `init`) — needed to simulate "completed between bootstrap and refresh".
-/// Tracks a fetch count so tests can assert `refresh()` re-queries phase-2.
-private actor MutableMSPersistence: PersistenceProtocol {
+    /// #816 pin: a single `bootstrap()` must mark BOTH a completed AND a
+    /// failed card from `savedGameStore`-sourced ids — the repointed read
+    /// path (completed moved off `PersistenceProtocol`) and the
+    /// already-working failed path both feed `mergeCards`.
+    @Test func bootstrapMarksBothCompletedAndFailedCardsFromSavedGameStore() async {
+        let date = Self.fixedDate
+        let provider = LiveMinesweeperDailyProvider()
+        let trio = provider.dailyTrio(date: date)
+        let gateway = FakePrivateCKGateway()
+        await gateway.seed(dailyRecordPayload(recordName: trio[0].puzzleId, status: "completed"))
+        await gateway.seed(dailyRecordPayload(recordName: trio[1].puzzleId, status: "failed"))
+        let store = MinesweeperSavedGameStore(gateway: gateway, clock: { date })
+        let viewModel = MinesweeperDailyHubViewModel(
+            path: .constant([]),
+            provider: provider,
+            savedGameStore: store,
+            dateProvider: { date }
+        )
 
-    private(set) var fetchCount = 0
-    private var completed: Set<String> = []
+        await viewModel.bootstrap()
 
-    func setCompleted(_ ids: Set<String>) {
-        self.completed = ids
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let completedCard = cards.first { $0.id == trio[0].puzzleId }
+        let failedCard = cards.first { $0.id == trio[1].puzzleId }
+        let untouchedCard = cards.first { $0.id == trio[2].puzzleId }
+        #expect(completedCard?.isCompleted == true)
+        #expect(failedCard?.isFailed == true)
+        #expect(untouchedCard?.isCompleted == false)
+        #expect(untouchedCard?.isFailed == false)
     }
-
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
-        fetchCount += 1
-        return completed
-    }
-
-    func bootstrap() async throws {}
-    func latestInProgress() async throws -> SavedGameSummary? { nil }
-    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> GameSessionSnapshot {
-        throw PersistenceError.zoneNotProvisioned
-    }
-    func save(_ snapshot: GameSessionSnapshot, puzzleId: String, mode: Mode, difficulty: SudokuEngine.Difficulty) async throws {}
-    func markCompleted(_ summary: SavedGameSummary) async throws {}
-    func deleteAbandoned(recordName: String) async throws {}
-    func fetchPersonalRecord(mode: Mode, difficulty: SudokuEngine.Difficulty) async throws -> PersonalRecord {
-        PersonalRecord(recordName: "", mode: .daily, difficulty: .easy, bestTimeSeconds: nil,
-                       totalTimeSeconds: 0, completedCount: 0,
-                       lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: [])
-    }
-    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
 }
