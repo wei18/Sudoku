@@ -5,6 +5,9 @@
 
 internal import SwiftUI
 internal import MonetizationUI
+// #814: `bannerSlot()` moved here from LiveRouteFactory.swift (400-line
+// ceiling); it binds the `adProvider` / `adGate` existentials (MonetizationCore).
+internal import MonetizationCore
 internal import MinesweeperUI
 internal import GameShellUI
 internal import SettingsUI
@@ -14,6 +17,34 @@ internal import MinesweeperPersistence
 internal import Foundation
 
 extension LiveRouteFactory {
+
+    // MARK: - Banner helper
+
+    /// Epic 5: banner slot for non-Home, non-Board screens. The cast from
+    /// `AdProvider` → `BannerViewProviding` follows the §9.1 pattern (keeps
+    /// MinesweeperAppComposition off GoogleMobileAds). When adProvider / adGate
+    /// are nil (preview / test), the slot itself is not created — the caller
+    /// passes EmptyView via the `banner: {}` default instead.
+    @MainActor
+    // Uses BannerSlotView's system-default colors, which today coincide with
+    // Sudoku's themedBanner() values. If MS adopts per-theme accents, pass
+    // theme tokens here like Sudoku's RouteFactory.themedBanner() (#468 Epic 5
+    // theming note) so hub/settings banners match the themed Home banner.
+    func bannerSlot() -> some View {
+        if let adProvider, let adGate {
+            AnyView(
+                BannerSlotView(
+                    adProvider: adProvider,
+                    adGate: adGate,
+                    bannerHost: adProvider as? any BannerViewProviding
+                )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            )
+        } else {
+            AnyView(EmptyView())
+        }
+    }
     /// acknowledgements row deep-links to the app's iOS Settings page where
     /// LicensePlist's `Settings.bundle` surfaces (omitted on macOS, no
     /// deep-link); copyright derived locally; privacy/support URLs unwired

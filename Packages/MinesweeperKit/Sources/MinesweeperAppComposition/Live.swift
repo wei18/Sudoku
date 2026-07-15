@@ -212,6 +212,9 @@ extension MinesweeperAppComposition {
             errorReporter: deps.errorReporter,
             toastController: deps.toastController,
             makeReminderSettings: deps.makeReminderSettings,
+            // #814: Daily-win reminder primer builder off the shared deps bag
+            // (mirrors Sudoku's makeRouteFactory wiring).
+            makeDailyReminderPrimer: deps.makeDailyReminderPrimer,
             soundPlayer: deps.soundPlayer,
             audioSettings: deps.audioSettings,
             savedGameStore: savedGameStore,

@@ -34,6 +34,9 @@ public import Telemetry
 // MinesweeperUI already depends on GameAppKit for `GameRootViewModel`, so this
 // is not a new module edge.
 internal import GameAppKit
+// #814: `ReminderPrimerCoordinator` (SettingsUI) appears in the public inits'
+// `makeDailyReminderPrimer` builder — mirrors Sudoku's BoardView import.
+public import SettingsUI
 
 public struct MinesweeperBoardView: View {
 
@@ -86,6 +89,11 @@ public struct MinesweeperBoardView: View {
     // terminal state, cleared on Retry. swiftui-interaction-footguns: a
     // recompute-rebuilt @Observable VM loses its loaded state + re-fires .task.
     @State private var completionViewModel: MinesweeperCompletionViewModel?
+    // #814 (mirrors Sudoku BoardView's `completionReminderPrimer`, #610): the
+    // Daily-win reminder primer coordinator, built alongside the Completion VM
+    // on the terminal transition and cleared with it. Held in `@State` so it
+    // survives body recomputes without resetting its auth-check state.
+    @State private var completionReminderPrimer: ReminderPrimerCoordinator?
     // #681: the pre-first-tap `.idle` board has no exit — `PauseOverlayView` is
     // only mounted while `viewModel.isPaused` (== session `.paused`), and
     // `MinesweeperSession.pause()` deliberately no-ops unless `.playing` (mine
@@ -145,6 +153,13 @@ public struct MinesweeperBoardView: View {
     // dismiss and start a fresh board at the same level. `nil` → Close-only
     // (existing behavior; snapshot tests are unaffected).
     private let onPlayAgain: ((Difficulty) -> Void)?
+    // #814 (mirrors Sudoku BoardView's `makeDailyReminderPrimer`, #610): builds
+    // a fresh daily-ready primer coordinator per Daily-WIN completion mount.
+    // Injected as a closure so ALL reminder wiring stays in composition
+    // (LiveRouteFactory ← Live.swift ← GameDeps); this view only decides WHEN
+    // (Daily win — see `makeReminderPrimer()` below). `nil` in previews /
+    // tests → no primer, byte-identical Completion overlay.
+    private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
     // #796: the store backing the tap-mode toggle's seed/persist round trip
     // (#720 G3). Defaults `.standard` so every production call site compiles
     // and behaves unchanged; snapshot/ASC-screenshot tests MUST pass an
@@ -160,6 +175,7 @@ public struct MinesweeperBoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil,
         tapModeDefaults: UserDefaults = .standard
@@ -170,6 +186,7 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
         // seeded terminal board renders WITH the overlay mounted (the in-body
@@ -195,6 +212,7 @@ public struct MinesweeperBoardView: View {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
@@ -216,6 +234,7 @@ public struct MinesweeperBoardView: View {
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.suppressTickerForSnapshot = false
         self.mode = mode
         self.tapModeDefaults = tapModeDefaults
@@ -318,8 +337,12 @@ public struct MinesweeperBoardView: View {
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
             if isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
+                // #814: build the Daily-win reminder primer alongside the VM
+                // (mirrors Sudoku BoardView's onChange seed, #610).
+                completionReminderPrimer = makeReminderPrimer()
             } else if !isTerminal {
                 completionViewModel = nil
+                completionReminderPrimer = nil
             }
         }
         // #815: zoom resets per board session — a new VM identity means a new
@@ -394,6 +417,9 @@ public struct MinesweeperBoardView: View {
             await viewModel.refresh()
             if viewModel.isTerminal, completionViewModel == nil {
                 completionViewModel = makeCompletionViewModel()
+                // #814: same primer seed as `.onChange` above — a board
+                // restored into a terminal state never fires the transition.
+                completionReminderPrimer = makeReminderPrimer()
             }
             // Then poll once per second while the game is live. The elapsed
             // label re-renders because `refresh()` republishes the @Observable
@@ -1093,6 +1119,30 @@ public struct MinesweeperBoardView: View {
         )
     }
 
+    // MARK: - Reminder primer gate (#814)
+
+    /// Whether the completion surface should offer the daily-ready reminder
+    /// primer. DAILY WIN only: a Practice game has no "tomorrow's boards"
+    /// moment, and a loss is the wrong tone for a retention ask (Sudoku's
+    /// equivalent gate is Daily-only by construction — a Sudoku completion is
+    /// always a solve). `internal` + `nonisolated` so
+    /// `MinesweeperReminderPrimerGatingTests` can table-test the rule without
+    /// a live SwiftUI render tree — mirrors the `tapModeStore` test-seam
+    /// precedent (#796).
+    nonisolated static func shouldOfferReminderPrimer(mode: GameMode, didWin: Bool) -> Bool {
+        mode == .daily && didWin
+    }
+
+    /// Build the optional Daily-win reminder primer (#814, mirrors Sudoku's
+    /// `BoardView+Completion.makeReminderPrimer`). Returns non-nil only when
+    /// `makeDailyReminderPrimer` was wired AND the gate above passes.
+    private func makeReminderPrimer() -> ReminderPrimerCoordinator? {
+        guard Self.shouldOfferReminderPrimer(mode: mode, didWin: viewModel.status == .won) else {
+            return nil
+        }
+        return makeDailyReminderPrimer?()
+    }
+
     // The themed post-game surface. Retry rebuilds the session in place at the
     // SAME difficulty + seed, and clears the Completion VM so the next terminal
     // state rebuilds a fresh slice. Note: mine placement is deferred to the
@@ -1138,6 +1188,10 @@ public struct MinesweeperBoardView: View {
             card: {
                 MinesweeperCompletionView(
                     viewModel: completionViewModel,
+                    // #814: Daily-win reminder primer (nil on loss / practice —
+                    // see makeReminderPrimer()); mirrors Sudoku's
+                    // BoardView+Completion completionSurface.
+                    reminderPrimer: completionReminderPrimer,
                     onClose: nil
                 )
             }

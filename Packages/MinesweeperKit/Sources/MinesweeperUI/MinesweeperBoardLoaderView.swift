@@ -31,6 +31,9 @@ public import MinesweeperGameState
 public import MinesweeperPersistence
 public import MonetizationCore
 public import Telemetry
+// #814: `ReminderPrimerCoordinator` (SettingsUI) appears in the public init's
+// `makeDailyReminderPrimer` builder — mirrors Sudoku's BoardLoaderView (#610).
+public import SettingsUI
 internal import GameShellUI
 // #719: `UITestLaunchArg.loaderFail` DEBUG hook.
 import GameAppKit
@@ -54,6 +57,11 @@ public struct MinesweeperBoardLoaderView: View {
     // #699: threaded into the restored VM so a resumed daily board that wins
     // still records the personal best — same seam as `store`.
     private let personalRecordStore: MinesweeperPersonalRecordStore?
+    // #814: Daily-win reminder primer builder, forwarded into the restored
+    // board so a resumed daily that wins still offers the primer (mirrors
+    // Sudoku BoardLoaderView's `makeDailyReminderPrimer`, #610). Defaults nil
+    // so existing callsites (tests, previews) compile unchanged.
+    private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
     // #719: snapshot/test-only seam — when non-nil, `state` is pre-seeded to
     // `.failed(_)` and the `.task`-driven `load()` is skipped, so a
     // deterministic test can render `failedBlock` without a live persistence
@@ -76,6 +84,7 @@ public struct MinesweeperBoardLoaderView: View {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
+        makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         failedForSnapshot: UserFacingError? = nil
     ) {
         self.recordName = recordName
@@ -87,6 +96,7 @@ public struct MinesweeperBoardLoaderView: View {
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
         self.personalRecordStore = personalRecordStore
+        self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.failedForSnapshot = failedForSnapshot
         self._state = State(initialValue: failedForSnapshot.map { .failed($0) } ?? .loading)
     }
@@ -113,7 +123,11 @@ public struct MinesweeperBoardLoaderView: View {
                 adProvider: adProvider,
                 adGate: adGate,
                 gameCenter: gameCenter,
-                soundPlayer: soundPlayer
+                soundPlayer: soundPlayer,
+                // #814: Daily-win reminder primer for the resumed board's
+                // completion overlay (the board's own gate keeps it nil on
+                // loss / practice).
+                makeDailyReminderPrimer: makeDailyReminderPrimer
             )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
