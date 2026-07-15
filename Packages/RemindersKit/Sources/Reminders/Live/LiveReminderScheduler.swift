@@ -58,6 +58,11 @@ public struct LiveReminderScheduler: ReminderScheduler {
         center.removePendingNotificationRequests(withIdentifiers: [kind.rawValue])
     }
 
+    public func hasPending(kind: ReminderKind) async -> Bool {
+        await center.pendingNotificationRequests()
+            .contains { $0.identifier == kind.rawValue }
+    }
+
     public func cancelAll() async {
         // Scoped to OUR known kind identifiers — not a system-wide removeAll (§3.4).
         center.removePendingNotificationRequests(

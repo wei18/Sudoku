@@ -39,6 +39,15 @@ struct ReminderSettingsModelTests {
         init(_ time: (hour: Int, minute: Int)) { self.time = time }
     }
 
+    /// In-memory `isScheduled` seam (replaces the UserDefaults-backed
+    /// `getIsScheduled`/`setIsScheduled` closures from `MakeGameApp.swift`).
+    /// Tri-state like the real seam: `nil` = no persisted value yet (an install
+    /// predating the flag), which makes `onAppear()` seed from ground truth.
+    private final class ScheduledBox {
+        var isScheduled: Bool?
+        init(_ isScheduled: Bool? = true) { self.isScheduled = isScheduled }
+    }
+
     /// `Sendable` event recorder — the model's `emit` is `@Sendable`, so it can't
     /// capture a mutable local. An actor gives data-race-free recording.
     private actor EventRecorder {
@@ -50,6 +59,7 @@ struct ReminderSettingsModelTests {
         scheduler: FakeReminderScheduler,
         authorizer: FakeNotificationAuthorizing,
         box: TimeBox,
+        scheduledBox: ScheduledBox = ScheduledBox(),
         emit: @escaping @Sendable (ReminderSettingsModel.Event) -> Void = { _ in }
     ) -> ReminderSettingsModel {
         ReminderSettingsModel(
@@ -59,6 +69,8 @@ struct ReminderSettingsModelTests {
             content: ReminderContent(title: "t", body: "b"),
             getFireTime: { box.time },
             setFireTime: { box.time = $0 },
+            getIsScheduled: { scheduledBox.isScheduled },
+            setIsScheduled: { scheduledBox.isScheduled = $0 },
             emit: emit,
             calendar: utc
         )
@@ -259,6 +271,54 @@ struct ReminderSettingsModelTests {
         #expect(cancels == [.dailyReady])
         let events = try await settledEvents(recorder, containing: .cancelled(kind: "dailyReady"))
         #expect(events.contains(.cancelled(kind: "dailyReady")))
+    }
+
+    /// #817 root cause: `disable()` cancelled the scheduler + emitted an
+    /// event, but touched no `@Observable` state the section's `switch
+    /// model.status` reads, so the row on screen never moved after the tap.
+    /// Pins `status` staying `.authorized` (the trap) vs. `isScheduled` (the
+    /// fix — see `ReminderSettingsSection`'s `model.isScheduled` branch).
+    @Test("#817: disable() flips isScheduled without touching status (the section's real render key)")
+    func disableFlipsIsScheduledNotStatus() async throws {
+        let scheduler = FakeReminderScheduler()
+        let model = makeModel(
+            scheduler: scheduler,
+            authorizer: FakeNotificationAuthorizing(status: .authorized),
+            box: TimeBox((hour: 9, minute: 0))
+        )
+        await model.onAppear()
+        #expect(model.status == .authorized)
+        #expect(model.isScheduled == true) // On rows showing
+
+        await model.disable()
+
+        // The trap: status is untouched (OS permission isn't revoked by this).
+        #expect(model.status == .authorized)
+        // The fix: isScheduled is the state the section actually branches on.
+        #expect(model.isScheduled == false)
+    }
+
+    /// #817: `isScheduled` must be PERSISTED (same DI shape as
+    /// `getFireTime`/`setFireTime`) — otherwise a relaunch re-reads the
+    /// still-`.authorized` OS status and the section reverts to "On" even
+    /// though the reminder was cancelled last session.
+    @Test("#817: disable() persists isScheduled=false via the injected seam; scheduleDaily() persists true")
+    func disablePersistsViaSeam() async throws {
+        let scheduler = FakeReminderScheduler()
+        let scheduledBox = ScheduledBox(true)
+        let model = makeModel(
+            scheduler: scheduler,
+            authorizer: FakeNotificationAuthorizing(status: .authorized),
+            box: TimeBox((hour: 9, minute: 0)),
+            scheduledBox: scheduledBox
+        )
+        await model.onAppear()
+
+        await model.disable()
+        #expect(scheduledBox.isScheduled == false) // persisted, not just in-memory
+
+        await model.scheduleDaily()
+        #expect(scheduledBox.isScheduled == true) // re-enabling persists back
     }
 
     @Test("enable() is a no-op while the primer is already presented (double-tap guard)")

@@ -76,3 +76,61 @@ func makeAudioSettings(player: any SoundPlaying, keyPrefix: String) -> AudioSett
         setMusicEnabled: { defaults.set($0, forKey: musicEnabledKey) }
     )
 }
+
+// MARK: - Reminder persistence helper
+
+/// The `UserDefaults`-backed persistence seams the shared Settings reminder
+/// entry (#287) needs, rooted under `subsystem` so Sudoku/Minesweeper never
+/// collide. Grouped into one type so `makeGameApp` wires one value instead of
+/// four loose closures.
+struct ReminderPersistence {
+    let getFireTime: () -> (hour: Int, minute: Int)
+    let setFireTime: (_ hour: Int, _ minute: Int) -> Void
+    /// Whether the daily-ready reminder is currently scheduled — distinct
+    /// from OS authorization (#817: `ReminderSettingsModel.disable()` needs
+    /// this so the OFF affordance's effect survives relaunch; the OS
+    /// authorization status alone can't represent "authorized but the user
+    /// turned in-app scheduling off"). Tri-state: a missing key reads `nil`,
+    /// which tells `ReminderSettingsModel.onAppear()` to seed the flag once
+    /// from scheduler ground truth (`hasPending(kind:)`) and persist it —
+    /// installs that tapped the pre-#817 "Turn off reminders" genuinely
+    /// cancelled their notification with nowhere to record it, so a blind
+    /// `true` default would show them "On" while reality is off.
+    let getIsScheduled: () -> Bool?
+    let setIsScheduled: (Bool) -> Void
+}
+
+/// Builds `ReminderPersistence` over `UserDefaults.standard`. Fire time
+/// defaults to 9:00 AM local when unset; keys match each game's prior store
+/// (`<subsystem>.reminder.dailyReady{Hour,Minute}`) so persisted values +
+/// scheduled reminders carry over byte-identically. Device-local pref — the
+/// OS schedules locally so none of this is CloudKit-synced.
+func makeReminderPersistence(subsystem: String) -> ReminderPersistence {
+    let defaults = UserDefaults.standard
+    let fireTimeHourKey = "\(subsystem).reminder.dailyReadyHour"
+    let fireTimeMinuteKey = "\(subsystem).reminder.dailyReadyMinute"
+    let isScheduledKey = "\(subsystem).reminder.dailyReadyScheduled"
+
+    return ReminderPersistence(
+        getFireTime: {
+            guard defaults.object(forKey: fireTimeHourKey) != nil else {
+                return (hour: 9, minute: 0)
+            }
+            return (
+                hour: defaults.integer(forKey: fireTimeHourKey),
+                minute: defaults.integer(forKey: fireTimeMinuteKey)
+            )
+        },
+        setFireTime: { hour, minute in
+            defaults.set(hour, forKey: fireTimeHourKey)
+            defaults.set(minute, forKey: fireTimeMinuteKey)
+        },
+        getIsScheduled: {
+            guard defaults.object(forKey: isScheduledKey) != nil else { return nil }
+            return defaults.bool(forKey: isScheduledKey)
+        },
+        setIsScheduled: { scheduled in
+            defaults.set(scheduled, forKey: isScheduledKey)
+        }
+    )
+}

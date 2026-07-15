@@ -57,6 +57,16 @@ public final class ReminderSettingsModel {
     /// Re-exposed for the primer CTA spinner binding.
     public var isRequesting: Bool { permissionModel.isRequesting }
 
+    /// Whether the managed reminder is currently scheduled — distinct from the
+    /// OS `status`. A user can be `.authorized` yet have turned scheduling off
+    /// in-app via `disable()`; the OS permission itself is never revoked by
+    /// that action (only iOS/Settings.app can revoke it). This is what the
+    /// section's row switch keys on to show the On rows vs. the enable row
+    /// (#817: `disable()` used to leave this section with no observable state
+    /// change at all — `status` never moved off `.authorized`, so the row the
+    /// user was looking at didn't change and the tap looked dead).
+    public private(set) var isScheduled: Bool
+
     /// The picked daily fire time, surfaced to the `DatePicker` as a `Date`
     /// (today's date at the persisted hour/minute — the picker shows only
     /// hour+minute). Seeded from the persisted value in `init`. `didSet` fires on
@@ -76,6 +86,17 @@ public final class ReminderSettingsModel {
     /// Persisted fire time read/write seam — injected so this model is store-agnostic.
     @ObservationIgnored private let getFireTime: () -> (hour: Int, minute: Int)
     @ObservationIgnored private let setFireTime: ((hour: Int, minute: Int)) -> Void
+    /// Persisted `isScheduled` read/write seam, same DI shape as `getFireTime` /
+    /// `setFireTime` — so the on/off flip survives relaunch instead of reverting
+    /// to "On" the next time `onAppear()` re-reads the (still-authorized) OS
+    /// status. Tri-state read: `nil` means no value was ever persisted (an
+    /// install predating the flag), in which case `onAppear()` seeds it ONCE
+    /// from scheduler ground truth (`hasPending(kind:)`) and persists the
+    /// result — correct for every legacy population, including users whose
+    /// pre-#817 `disable()` tap genuinely cancelled the notification but had
+    /// nowhere to record it.
+    @ObservationIgnored private let getIsScheduled: () -> Bool?
+    @ObservationIgnored private let setIsScheduled: (Bool) -> Void
     /// Telemetry-decoupled emit — host bridges to `Telemetry.observe`.
     @ObservationIgnored private let emit: @Sendable (Event) -> Void
     @ObservationIgnored private let calendar: Calendar
@@ -90,6 +111,8 @@ public final class ReminderSettingsModel {
         content: ReminderContent,
         getFireTime: @escaping () -> (hour: Int, minute: Int),
         setFireTime: @escaping ((hour: Int, minute: Int)) -> Void,
+        getIsScheduled: @escaping () -> Bool? = { true },
+        setIsScheduled: @escaping (Bool) -> Void = { _ in },
         emit: @escaping @Sendable (Event) -> Void = { _ in },
         calendar: Calendar = .current
     ) {
@@ -99,10 +122,15 @@ public final class ReminderSettingsModel {
         self.content = content
         self.getFireTime = getFireTime
         self.setFireTime = setFireTime
+        self.getIsScheduled = getIsScheduled
+        self.setIsScheduled = setIsScheduled
         self.emit = emit
         self.calendar = calendar
         let time = getFireTime()
         self.fireDate = Self.date(hour: time.hour, minute: time.minute, calendar: calendar)
+        // No persisted value yet → assume scheduled until `onAppear()` seeds
+        // from ground truth (keeps the pre-#817 render for the first frame).
+        self.isScheduled = getIsScheduled() ?? true
     }
 
     /// Whether reminders are effectively on (a pending request can land).
@@ -116,9 +144,26 @@ public final class ReminderSettingsModel {
     /// have changed it in Settings.app). Also re-seeds the picker from the
     /// persisted value in case the post-Daily primer changed nothing but another
     /// surface did.
+    ///
+    /// One-time migration (#817): when NO persisted `isScheduled` value exists
+    /// (an install predating the flag), seed it from scheduler ground truth —
+    /// does a pending request for our kind actually exist? — then persist.
+    /// This covers users whose pre-#817 "Turn off reminders" tap genuinely
+    /// cancelled the notification but had nowhere to record it: a blind `true`
+    /// default would show them "On" while reality is off.
     public func onAppear() async {
         await permissionModel.refreshStatus()
         status = permissionModel.status
+        if getIsScheduled() == nil {
+            let pendingExists = await scheduler.hasPending(kind: kind)
+            // #817 CR round-2: re-check after the await — a concurrent
+            // disable()/scheduleDaily() during the suspension may have already
+            // persisted the user's EXPLICIT intent; the one-shot ground-truth
+            // seed must never clobber it (TOCTOU guard).
+            guard getIsScheduled() == nil else { return }
+            isScheduled = pendingExists
+            setIsScheduled(pendingExists)
+        }
     }
 
     // MARK: - Enable / permission flow
@@ -179,14 +224,22 @@ public final class ReminderSettingsModel {
             content: content,
             on: .dailyAt(hour: time.hour, minute: time.minute)
         )
+        isScheduled = true
+        setIsScheduled(true)
         emit(.scheduled(kind: kind.rawValue))
     }
 
-    /// User turned reminders off from the section → cancel the pending request.
-    /// (The system authorization itself is owned by iOS; this only removes our
-    /// scheduled reminder so it stops firing.)
+    /// User turned reminders off from the section → cancel the pending request
+    /// and flip `isScheduled` (persisted) so the section immediately swaps off
+    /// the On rows (#817: previously only the scheduler-side cancel happened;
+    /// no observable state changed, so the row on screen never moved and the
+    /// tap looked like it did nothing). The system authorization itself is
+    /// owned by iOS; this only removes our scheduled reminder so it stops
+    /// firing — `status` stays `.authorized`/`.provisional`.
     public func disable() async {
         await scheduler.cancel(kind: kind)
+        isScheduled = false
+        setIsScheduled(false)
         emit(.cancelled(kind: kind.rawValue))
     }
 
@@ -203,7 +256,7 @@ public final class ReminderSettingsModel {
     /// Reschedule at `time` — only if the status permits a pending request to
     /// land. Identifier-scoped: replaces the kind's pending request (proposal §3.2).
     private func reschedule(_ time: (hour: Int, minute: Int)) async {
-        guard isEnabled else { return }
+        guard isEnabled, isScheduled else { return }
         if Task.isCancelled { return } // superseded by a newer pick
         await scheduler.schedule(
             kind: kind,

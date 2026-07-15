@@ -104,9 +104,20 @@ public struct ReminderSettingsSection: View {
         Section(copy.sectionTitle) {
             switch model.status {
             case .authorized, .provisional:
-                enabledStatusRow
-                timeRow
-                disableRow
+                if model.isScheduled {
+                    enabledStatusRow
+                    timeRow
+                    disableRow
+                } else {
+                    // Authorized but the user turned scheduling off in-app via
+                    // `disableRow` (#817) — the OS permission is untouched, so
+                    // we fall back to the same tappable "enable" row rather
+                    // than a separate re-authorization case. Tapping it
+                    // re-presents the primer; since the OS is already
+                    // authorized, accepting resolves instantly with no system
+                    // dialog and reschedules.
+                    enableRow
+                }
             case .denied:
                 deniedRow
             case .notDetermined:

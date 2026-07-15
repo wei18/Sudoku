@@ -212,27 +212,13 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: config.subsystem)
     let reminderScheduler = LiveReminderScheduler(subsystem: config.subsystem)
 
-    // Persisted daily-ready fire time. `UserDefaults`-backed under the game's
-    // subsystem prefix (device-local pref; the OS schedules locally so it is
-    // never CloudKit-synced). Defaults to 9:00 AM local when unset. Keys match
-    // each game's prior store (`<subsystem>.reminder.dailyReady{Hour,Minute}`)
-    // so persisted values + scheduled reminders carry over byte-identically.
-    let fireTimeHourKey = "\(config.subsystem).reminder.dailyReadyHour"
-    let fireTimeMinuteKey = "\(config.subsystem).reminder.dailyReadyMinute"
-    let reminderDefaults = UserDefaults.standard
-    let getFireTime: () -> (hour: Int, minute: Int) = {
-        guard reminderDefaults.object(forKey: fireTimeHourKey) != nil else {
-            return (hour: 9, minute: 0)
-        }
-        return (
-            hour: reminderDefaults.integer(forKey: fireTimeHourKey),
-            minute: reminderDefaults.integer(forKey: fireTimeMinuteKey)
-        )
-    }
-    let setFireTime: (_ hour: Int, _ minute: Int) -> Void = { hour, minute in
-        reminderDefaults.set(hour, forKey: fireTimeHourKey)
-        reminderDefaults.set(minute, forKey: fireTimeMinuteKey)
-    }
+    // Persisted daily-ready fire time + isScheduled flag. See
+    // `ReminderPersistence` (MakeGameApp+Helpers.swift) for key shape + defaults.
+    let reminderPersistence = makeReminderPersistence(subsystem: config.subsystem)
+    let getFireTime = reminderPersistence.getFireTime
+    let setFireTime = reminderPersistence.setFireTime
+    let getIsScheduled = reminderPersistence.getIsScheduled
+    let setIsScheduled = reminderPersistence.setIsScheduled
 
     let dailyReadyContent = config.reminders.dailyReadyContent
 
@@ -274,6 +260,8 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
             content: dailyReadyContent,
             getFireTime: getFireTime,
             setFireTime: { time in setFireTime(time.hour, time.minute) },
+            getIsScheduled: getIsScheduled,
+            setIsScheduled: setIsScheduled,
             emit: reminderEmit
         )
         return ReminderSettingsEntry(
