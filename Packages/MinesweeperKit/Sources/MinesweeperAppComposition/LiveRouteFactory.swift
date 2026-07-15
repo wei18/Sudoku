@@ -185,10 +185,10 @@ public struct LiveRouteFactory: RouteFactory {
         case .daily:
             // #290: date-seeded daily trio + completion overlay. The hub VM
             // pulls the three boards from `LiveMinesweeperDailyProvider`
-            // (pure, deterministic per UTC day), marks completed cards via
-            // `PersistenceProtocol.fetchCompletedDailyIds`, and marks failed
-            // cards via `MinesweeperSavedGameStore.fetchFailedDailyIds`
-            // (Epic 8 / SDD-003).
+            // (pure, deterministic per UTC day) and marks completed/failed
+            // cards via `MinesweeperSavedGameStore.fetchCompletedDailyIds` /
+            // `fetchFailedDailyIds` (Epic 8 / SDD-003; #816 moved completed
+            // off the `puzzleId`-assuming `PersistenceProtocol` query).
             return AnyView(
                 MinesweeperDailyHubView(
                     viewModel: MinesweeperDailyHubViewModel(
