@@ -26,4 +26,6 @@ public struct NoopReminderScheduler: ReminderScheduler {
     public func cancel(kind: ReminderKind) async {}
 
     public func cancelAll() async {}
+
+    public func hasPending(kind: ReminderKind) async -> Bool { false }
 }

@@ -50,7 +50,23 @@ public actor FakeReminderScheduler: ReminderScheduler {
         cancelAllCount += 1
     }
 
+    public func hasPending(kind: ReminderKind) async -> Bool {
+        seededPendingKinds.contains(kind) || pending[kind] != nil
+    }
+
     // MARK: - Test helpers
+
+    /// Kinds scripted as already-pending via `seedPending(kind:)` (a request
+    /// scheduled in an earlier session) — reported by `hasPending(kind:)` without
+    /// polluting `scheduleCalls`/`pending` assertions.
+    private var seededPendingKinds: Set<ReminderKind> = []
+
+    /// Script a pre-existing pending request for `kind` (e.g. scheduled last
+    /// session) without counting as a `schedule` call — #817
+    /// seed-from-ground-truth tests use this.
+    public func seedPending(kind: ReminderKind) {
+        seededPendingKinds.insert(kind)
+    }
 
     /// The currently-pending reminder per kind, applying identifier-scoped
     /// replacement (last schedule wins) and removing cancelled kinds. This is the

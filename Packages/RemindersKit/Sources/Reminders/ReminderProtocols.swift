@@ -31,6 +31,12 @@ public protocol ReminderScheduler: Sendable {
     /// Cancel the pending request for one `kind`.
     func cancel(kind: ReminderKind) async
 
+    /// Whether a pending request currently exists for `kind` — the
+    /// scheduler-side ground truth (#817: used to seed the persisted
+    /// `isScheduled` flag once for installs that predate it, instead of
+    /// guessing a default).
+    func hasPending(kind: ReminderKind) async -> Bool
+
     /// Cancel all of our reminder kinds (teardown / master opt-out, §3.4). Scoped
     /// to our known kind identifiers — not a system-wide `removeAll`.
     func cancelAll() async
