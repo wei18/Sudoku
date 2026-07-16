@@ -9,6 +9,10 @@
 // operation-tracking for SudokuUI VM call-shape assertions; it is intentionally
 // left in place. This type is the minimal shared seam — it tracks nothing and
 // returns empty defaults, which is all a zero-IO Preview/composition needs.
+//
+// This type does not override `loadIfExists` — a re-view test needing the
+// #830 nil-vs-throw tri-state should reach for `SudokuKitTesting.FakePersistence`
+// instead; calling `loadIfExists` here hits the loud-throw default (#834).
 
 public import Foundation
 public import SudokuGameState

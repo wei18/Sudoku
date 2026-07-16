@@ -98,17 +98,33 @@ public protocol PersistenceProtocol: Sendable {
 }
 
 public extension PersistenceProtocol {
-    /// Default: delegates to `loadOrCreate`, which cannot distinguish
-    /// confirmed absence from fetch failure (#830). Conformers that need the
-    /// real tri-state — `LivePersistence`, and fakes exercising the #830
-    /// re-view fix — override this directly. Every other conformer (mostly
-    /// test stubs unrelated to the re-view path) keeps compiling unchanged.
+    /// Default: throws loudly instead of silently delegating to
+    /// `loadOrCreate` (#834 — closes a latent trap left by #830). Delegating
+    /// would let an inheriting conformer return a synthesized virgin
+    /// snapshot where the contract promises nil-on-confirmed-absence /
+    /// throw-on-fetch-failure; a future test author reaching for a fake that
+    /// doesn't override this would silently get that wrong tri-state instead
+    /// of a compiler or runtime signal. No conformer relies on this default
+    /// today (only `LivePersistence` and `SudokuKitTesting.FakePersistence`
+    /// are ever driven through `loadIfExists`, and both override it), so the
+    /// loud throw is a zero-behavior-change tripwire: any conformer that
+    /// starts needing real `loadIfExists` semantics must override it
+    /// explicitly rather than inherit whatever `loadOrCreate` happens to do.
     func loadIfExists(
         puzzleId: String,
         mode: Mode,
         difficulty: Difficulty
     ) async throws -> GameSessionSnapshot? {
-        try await loadOrCreate(puzzleId: puzzleId, mode: mode, difficulty: difficulty)
+        throw PersistenceError.underlying(
+            domain: "PersistenceProtocol.loadIfExists",
+            code: -1,
+            description: """
+            \(type(of: self)) does not override loadIfExists — the default \
+            extension no longer delegates to loadOrCreate (#834). Override \
+            loadIfExists explicitly if this conformer needs the nil-vs-throw \
+            tri-state contract (#830).
+            """
+        )
     }
 
     /// Default implementation: fetch → recordingCompletion → upsert.
