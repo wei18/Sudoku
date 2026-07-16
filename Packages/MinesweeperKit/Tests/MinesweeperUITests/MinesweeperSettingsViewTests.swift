@@ -8,6 +8,12 @@
 // `GameShellUI.SettingsAboutVersionRow` / `SettingsStorageSection` (the
 // "Coming soon" stub is gone). Construction stays the same via defaults.
 //
+// #832: `SettingsView` is now the shared `GameAppKit.SettingsView`, driven by
+// a mandatory `viewModel: SettingsViewModel` (was primitive `version:`/
+// `clearCache:` params) — every construction below now builds one over the
+// shared zero-IO `PersistenceTesting.FakePersistence`, mirroring Sudoku's
+// `SettingsViewTests` fixture shape exactly.
+//
 // No snapshot infra this round (defer per Track A precedent).
 
 import SwiftUI
@@ -18,6 +24,7 @@ import Testing
 import SettingsUI
 @testable import MinesweeperUI
 import MonetizationUI
+import PersistenceTesting
 import Reminders
 import Telemetry
 
@@ -26,9 +33,10 @@ import Telemetry
 
     @Test func settingsViewConstructsWithoutController() {
         // No monetization controller → Purchases section omitted; About +
-        // Storage shared sections still render (defaults: version "1.0.0",
-        // no-op clearCache).
-        let view = SettingsView()
+        // Storage shared sections still render (defaults: appVersion "1.0.0",
+        // no MS Generator row).
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel)
         _ = view.body
     }
 
@@ -36,14 +44,16 @@ import Telemetry
         // Controller from `.preview()` is wired against
         // `minesweeperRemoveAdsProductId` and FakeIAPClient.
         let bag = MinesweeperAppComposition.preview()
-        let view = SettingsView(monetizationController: bag.monetizationController)
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel, monetizationController: bag.monetizationController)
         _ = view.body
     }
 
     @Test func settingsViewIncludesGameCenterSection() {
         // Verifies the Game Center `onGameCenter` closure is wired into
         // SettingsScreen — the body builds without crashing.
-        let view = SettingsView()
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel)
         _ = view.body
     }
 
@@ -57,8 +67,9 @@ import Telemetry
     // closure passed as `onGameCenter:`) directly to prove the injected
     // presenter — not the unguarded fallback — actually fires.
     @Test func settingsViewUsesInjectedPresentGameCenterOverDefault() {
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
         var called = false
-        let view = SettingsView(presentGameCenter: { called = true })
+        let view = SettingsView(viewModel: viewModel, presentGameCenter: { called = true })
         _ = view.body
         #expect(called == false, "constructing/rendering must not itself invoke the closure")
         view.resolvedOnGameCenter()
@@ -71,7 +82,9 @@ import Telemetry
         // A pinned FAKE id (not Bundle.main — see AppStoreLinks's header
         // comment) proves the wired path builds with both new capabilities
         // injected simultaneously.
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
         let view = SettingsView(
+            viewModel: viewModel,
             presentGameCenter: {},
             appStoreID: "1234567890",
             presentInviteFriends: {}
@@ -82,7 +95,8 @@ import Telemetry
     @Test func settingsViewOmitsAppStoreRowsWhenIDNil() {
         // Byte-identical to settingsViewIncludesGameCenterSection —
         // `appStoreID` defaults nil, so Share App / Write a Review stay hidden.
-        let view = SettingsView()
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel)
         _ = view.body
     }
 
@@ -91,7 +105,9 @@ import Telemetry
         // it on row taps); this only proves construction with a non-default
         // emit closure doesn't itself invoke it eagerly.
         var events: [TelemetryEvent] = []
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
         let view = SettingsView(
+            viewModel: viewModel,
             appStoreID: "1234567890",
             telemetryEmit: { events.append($0) }
         )
@@ -102,7 +118,9 @@ import Telemetry
     @Test func settingsViewConstructsWithNoticesSection() {
         // #331: injecting a populated notices config mounts the shared
         // SettingsNoticesSection. Confirms the wired path builds.
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
         let view = SettingsView(
+            viewModel: viewModel,
             notices: SettingsNoticesConfig(
                 onAcknowledgements: {},
                 privacyPolicyURL: URL(string: "https://example.com/privacy"),
@@ -148,7 +166,8 @@ import Telemetry
                 dismissCTA: "d", macOSGuidance: "g"
             )
         )
-        let view = SettingsView(reminderSettings: entry)
+        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        let view = SettingsView(viewModel: viewModel, reminderSettings: entry)
         _ = view.body
     }
 }

@@ -20,6 +20,7 @@ import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
 import Persistence
+import SudokuEngine
 import SudokuKitTesting
 import Telemetry
 
@@ -105,7 +106,13 @@ struct SettingsViewAppStoreRowsTests {
         colorScheme: ColorScheme,
         sizeClass: UserInterfaceSizeClass
     ) -> NSView {
-        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        // #832: pass Sudoku's production `generatorVersionLabel` explicitly —
+        // the shared VM defaults to nil (MS has no Generator row); this
+        // snapshot predates #832 and must keep showing the row.
+        let viewModel = SettingsViewModel(
+            generatorVersionLabel: GeneratorVersion.v1.rawValue,
+            persistence: FakePersistence()
+        )
         let view = NavigationStack {
             SettingsView(
                 viewModel: viewModel,

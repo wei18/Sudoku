@@ -9,22 +9,16 @@
 // `MonetizationStateController` through so SettingsView can mount the
 // shared `MonetizationUI` Purchases rows.
 //
-// #277: factory also threads `persistence` so the shared
-// `SettingsStorageSection` "Clear cache" action wires to the same
-// `PersistenceProtocol.latestInProgress()` → `deleteAbandoned(recordName:)`
-// shape Sudoku's `SettingsViewModel` uses. Parity-only until MS save-flow
-// lands (`latestInProgress()` returns nil today → the delete is a safe
-// no-op), but it IS the real protocol method, not a fake button. Version is
-// read from `Bundle.main` (CFBundleShortVersionString) at the callsite.
-//
-// #284: clear-cache now surfaces user feedback, mirroring Sudoku's
-// `SettingsViewModel.clearCache()`. Success → a success toast on the shared
-// `ToastController` (mounted on `MinesweeperRoot` via `.toastOverlay`); a
-// thrown delete error → the existing `errorReporter` funnel PLUS a failure
-// toast (Sudoku reports + shows success-anyway; MS shows the failure so the
-// user isn't told "cleared" when it wasn't). The success path is cosmetic
-// today — no MS save-flow → `latestInProgress()` returns nil → nothing to
-// delete — but the error path is the real future-proofing.
+// #277/#284/#832: factory also threads `persistence` into the shared
+// `GameAppKit.SettingsViewModel` (was a hand-duplicated `Self.clearCache`
+// free function until #832 unified both apps' Settings wrapper), so
+// "Clear cache" wires to the same `PersistenceProtocol.latestInProgress()` →
+// `deleteAbandoned(recordName:)` shape + success/failure toast behavior
+// Sudoku uses — literally the same class now, not a mirrored copy.
+// Parity-only until MS save-flow lands (`latestInProgress()` returns nil
+// today → the delete is a safe no-op), but it IS the real protocol method,
+// not a fake button. Version is read from `Bundle.main`
+// (CFBundleShortVersionString) at the callsite.
 //
 // #448: the divergent in-play toolbar "New Game" button was removed to restore
 // parity with Sudoku's board route. #697: the `.completion` route's Close CTA
@@ -47,6 +41,10 @@ public import MonetizationCore
 public import MonetizationUI
 public import MinesweeperPersistence
 public import Persistence
+// #832: `.settings`'s SettingsViewModel needs a non-optional persistence;
+// falls back to the zero-IO fake when `self.persistence` is nil (existing
+// preview/test callsites), mirroring `.preview()`'s own wiring.
+internal import PersistenceTesting
 public import Telemetry
 // #330 P2: `SoundPlaying` is threaded into `MinesweeperBoardView` (gameplay audio)
 // and `AudioSettingsModel` (in SettingsUI) into the Settings screen. Public
@@ -364,23 +362,26 @@ public struct LiveRouteFactory: RouteFactory {
         case .settings:
             let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String // #744
-            let persistence = self.persistence
-            let errorReporter = self.errorReporter
             let toastController = self.toastController
             let telemetry = self.telemetry
             return AnyView(
                 SettingsView(
-                    version: version,
-                    clearCache: {
-                        await Self.clearCache(
-                            persistence: persistence,
-                            errorReporter: errorReporter,
-                            toastController: toastController
-                        )
-                    },
+                    // #832: MS now shares Sudoku's `SettingsViewModel` bootstrap
+                    // (previously a free `Self.clearCache` helper duplicating the
+                    // same latestInProgress()/deleteAbandoned() shape). `self.persistence`
+                    // is optional so existing nil-persistence previews/tests keep
+                    // compiling — falls back to the zero-IO `FakePersistence` those
+                    // callsites already expect (mirrors `.preview()`'s own wiring).
+                    // No generatorVersionLabel — MS has no Generator row.
+                    viewModel: SettingsViewModel(
+                        appVersion: version,
+                        persistence: persistence ?? FakePersistence(),
+                        errorReporter: errorReporter ?? NoopErrorReporter(),
+                        toastController: toastController
+                    ),
                     monetizationController: monetizationController,
-                    notices: Self.makeSettingsNotices(),
                     reminderSettings: makeReminderSettings?(),
+                    notices: Self.makeSettingsNotices(),
                     // #330 P2: the shared Sound section (nil in preview/test → no
                     // section, byte-identical screen).
                     audioSettings: audioSettings,

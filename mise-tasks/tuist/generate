@@ -7,6 +7,13 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 WORKSPACE="$REPO_ROOT/Game.xcworkspace"
 
+# #832: re-sync the shared Settings.bundle Root.plist into both apps before
+# every generate — see `gen:settings_root` for why this must run BEFORE
+# `tuist generate` (Tuist's glob resource needs the directory to physically
+# contain a file at generate time).
+echo "==> gen:settings_root"
+mise run gen:settings_root
+
 if [ "${usage_no_install:-false}" != "true" ]; then
     echo "==> tuist install"
     mise exec -- tuist install

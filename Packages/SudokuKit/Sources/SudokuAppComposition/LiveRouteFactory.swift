@@ -291,6 +291,11 @@ public struct LiveRouteFactory: RouteFactory {
             return AnyView(
                 SettingsView(
                     viewModel: SettingsViewModel(
+                        // #832: the shared VM took over the Generator row via a
+                        // plain label (GameAppKit must not depend on
+                        // SudokuEngine's `GeneratorVersion`) — always `.v1`,
+                        // matching the prior default-`.v1` VM field exactly.
+                        generatorVersionLabel: GeneratorVersion.v1.rawValue,
                         appVersion: appVersion,
                         persistence: persistence,
                         errorReporter: errorReporter,

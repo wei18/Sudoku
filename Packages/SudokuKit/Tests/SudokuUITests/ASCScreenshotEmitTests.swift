@@ -126,8 +126,17 @@ struct ASCScreenshotEmitTests {
             adGate: AdGate(store: store)
         )
         await controller.bootstrap()
+        // #832: pass Sudoku's production `generatorVersionLabel` explicitly —
+        // the shared VM defaults to nil (MS has no Generator row); this ASC
+        // screenshot predates #832 and must keep showing the row.
         return NavigationStack {
-            SettingsView(viewModel: SettingsViewModel(persistence: FakePersistence()), monetizationController: controller)
+            SettingsView(
+                viewModel: SettingsViewModel(
+                    generatorVersionLabel: GeneratorVersion.v1.rawValue,
+                    persistence: FakePersistence()
+                ),
+                monetizationController: controller
+            )
         }
         .formStyle(.grouped)
     }
