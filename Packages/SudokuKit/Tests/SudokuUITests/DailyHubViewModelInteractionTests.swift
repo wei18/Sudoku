@@ -258,6 +258,10 @@ struct DailyHubViewModelInteractionTests {
         #expect(box.routes == [.board(puzzleId: tapped.envelope.identity.puzzleId)])
     }
 
+    /// #830: `openCompleted` now calls `persistence.loadIfExists`, not
+    /// `loadOrCreate` — a fetch failure here is `loadIfExists` THROWING
+    /// (never swallowed into a virgin snapshot). Falls back to `.board`,
+    /// same #379 contract as before.
     @Test func completedCardLoadFailureReportsAndFallsBackToBoard() async {
         let provider = FakePuzzleProvider()
         let persistence = FakePersistence()
@@ -288,6 +292,41 @@ struct DailyHubViewModelInteractionTests {
         #expect(box.routes == [.board(puzzleId: cards[2].envelope.identity.puzzleId)])
         let count = await reporter.reportCount
         #expect(count == 1)
+    }
+
+    /// #830: `loadIfExists` returning `nil` (confirmed absence — no error,
+    /// no scripted snapshot) must ALSO fall back to `.board`, not synthesize
+    /// a virgin `.completion(elapsedSeconds: 0, mistakeCount: 0)`. Unlike the
+    /// error case above this does NOT report through the funnel — nil is not
+    /// an error, just "nothing to review".
+    @Test func completedCardConfirmedAbsentFallsBackToBoardWithoutReporting() async {
+        let provider = FakePuzzleProvider()
+        let persistence = FakePersistence()
+        let reporter = RecordingErrorReporter()
+        let box = RoutePathBox()
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            errorReporter: reporter,
+            dateProvider: { Self.fixedDate },
+            path: box.binding
+        )
+        await viewModel.bootstrap()
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        let completedCard = DailyCard(envelope: cards[2].envelope, isCompleted: true)
+
+        await viewModel.openCompleted(
+            puzzleId: completedCard.envelope.identity.puzzleId,
+            difficulty: completedCard.difficulty
+        )
+
+        #expect(box.routes == [.board(puzzleId: cards[2].envelope.identity.puzzleId)])
+        let count = await reporter.reportCount
+        #expect(count == 0)
     }
 
     // MARK: - #686: `.exhausted` alert CTAs

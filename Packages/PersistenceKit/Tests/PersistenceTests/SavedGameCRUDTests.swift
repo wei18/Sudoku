@@ -222,4 +222,63 @@ struct SavedGameCRUDTests {
         let after = try await gateway.fetch(recordName: recordName)
         #expect(after == before)
     }
+
+    // MARK: - #830 tri-state: loadIfExists must not swallow fetch failures
+
+    /// Confirmed absence: no record for `puzzleId`, no fetch error → `nil`,
+    /// no throw. The "record simply doesn't exist" leg of the tri-state.
+    @Test func loadIfExists_noRecord_returnsNil() async throws {
+        let (store, _, _) = await makeStore()
+        let result = try await store.loadIfExists(
+            puzzleId: "2026-05-19-easy",
+            mode: .daily,
+            difficulty: .easy
+        )
+        #expect(result == nil)
+    }
+
+    /// A real record exists and the fetch succeeds → the mapped snapshot,
+    /// same shape `loadOrCreate` would hand back for the same record.
+    @Test func loadIfExists_existingRecord_returnsSnapshot() async throws {
+        let (store, _, _) = await makeStore()
+        let puzzle = PuzzleFixtures.latinSquarePuzzle()
+        let session = GameSession(puzzle: puzzle)
+        try await session.start()
+        try await session.placeDigit(row: 0, col: 0, digit: 1)
+        let snapshot = await session.snapshot()
+        try await store.save(snapshot, puzzleId: "p1", mode: .practice, difficulty: .easy)
+
+        let loaded = try await store.loadIfExists(puzzleId: "p1", mode: .practice, difficulty: .easy)
+
+        #expect(loaded?.currentBoard == snapshot.currentBoard)
+        #expect(loaded?.status == snapshot.status)
+    }
+
+    /// THE #830 REGRESSION: a completed game's record exists, but the fetch
+    /// fails transiently (network blip / cold cache). Unlike `loadOrCreate`
+    /// (which swallows this into a virgin idle snapshot — see
+    /// `loadOrCreate_fetchErrorWithExistingSave_doesNotOverwrite` above),
+    /// `loadIfExists` must PROPAGATE the error so a re-view caller can fall
+    /// back to `.board` instead of rendering "0:00, 0 mistakes" for a game
+    /// that really was completed.
+    @Test func loadIfExists_fetchError_throwsInsteadOfSwallowing() async throws {
+        let (store, gateway, _) = await makeStore()
+
+        // Seed a completed save with a non-zero elapsed time / mistake count
+        // — the exact shape a virgin swallow would misrepresent as 0/0.
+        let puzzle = PuzzleFixtures.latinSquarePuzzle()
+        let session = GameSession(puzzle: puzzle)
+        try await session.start()
+        try await session.placeDigit(row: 0, col: 0, digit: 1)
+        let completed = await session.snapshot()
+        try await store.save(completed, puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy)
+
+        await gateway.setFetchError(
+            PersistenceError.underlying(domain: "Persistence", code: -1009, description: "network blip")
+        )
+
+        await #expect(throws: PersistenceError.self) {
+            _ = try await store.loadIfExists(puzzleId: "2026-05-19-easy", mode: .daily, difficulty: .easy)
+        }
+    }
 }

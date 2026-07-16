@@ -233,9 +233,27 @@ struct DailyHubViewModelDayTapTests {
 
     /// The past-day fetch failure funnels + falls back to `.board` — the
     /// same never-stuck contract as the completed-card path (#379).
+    ///
+    /// #830: `openCompleted` (shared by this path and the completed-card
+    /// path) now calls `persistence.loadIfExists`, not `loadOrCreate` — this
+    /// is `loadIfExists` THROWING, never swallowed into a virgin snapshot.
     @Test func pastDayLoadFailureFallsBackToBoard() async {
         let persistence = FakePersistence()
         await persistence.setLoadOrCreateError(.zoneNotProvisioned)
+        let box = RoutePathBox()
+        let viewModel = makeViewModel(persistence: persistence, box: box)
+
+        viewModel.dayTapped(pastDay(completedPuzzleIds: ["2026-07-14-medium"]))
+        await waitForRouteCount(box, atLeast: 1)
+
+        #expect(box.routes == [.board(puzzleId: "2026-07-14-medium")])
+    }
+
+    /// #830: a confirmed-absent record (no error, no scripted snapshot) also
+    /// falls back to `.board` — mirrors `completedCardConfirmedAbsentFallsBackToBoardWithoutReporting`
+    /// for the past-day dot entry point.
+    @Test func pastDayConfirmedAbsentFallsBackToBoard() async {
+        let persistence = FakePersistence()
         let box = RoutePathBox()
         let viewModel = makeViewModel(persistence: persistence, box: box)
 

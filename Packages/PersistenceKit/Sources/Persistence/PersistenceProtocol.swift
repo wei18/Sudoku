@@ -34,6 +34,21 @@ public protocol PersistenceProtocol: Sendable {
         difficulty: Difficulty
     ) async throws -> GameSessionSnapshot
 
+    /// Fetch the SavedGame snapshot for `puzzleId` without creating one on
+    /// absence. Distinguishes **confirmed absence** (`nil`) from **fetch
+    /// failure, existence unknown** (throws) — unlike `loadOrCreate`, which
+    /// swallows fetch failures into "treat as absent" so resume/new-game
+    /// callers always progress. Completed-game re-open callers (Sudoku's
+    /// completed-card tap, past-day strip taps) use this instead: they must
+    /// never render a virgin `.completion(elapsedSeconds: 0, mistakeCount: 0)`
+    /// for a legitimately-completed game whose record merely failed to fetch
+    /// (#830).
+    func loadIfExists(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot?
+
     /// Persist the current snapshot. Debounced upstream by the VM; the
     /// store itself is idempotent on the same `(puzzleId, mode, difficulty)`.
     ///
@@ -83,6 +98,19 @@ public protocol PersistenceProtocol: Sendable {
 }
 
 public extension PersistenceProtocol {
+    /// Default: delegates to `loadOrCreate`, which cannot distinguish
+    /// confirmed absence from fetch failure (#830). Conformers that need the
+    /// real tri-state — `LivePersistence`, and fakes exercising the #830
+    /// re-view fix — override this directly. Every other conformer (mostly
+    /// test stubs unrelated to the re-view path) keeps compiling unchanged.
+    func loadIfExists(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot? {
+        try await loadOrCreate(puzzleId: puzzleId, mode: mode, difficulty: difficulty)
+    }
+
     /// Default implementation: fetch → recordingCompletion → upsert.
     /// Suitable for fakes and test spies; does NOT use optimistic concurrency.
     /// `LivePersistence` overrides this with the `.ifUnchanged` retry loop.
