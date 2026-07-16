@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#MISE description="Settings.bundle Root.plist sync gate: both per-app copies must stay byte-identical to the shared source (issue #832 single-sourcing / #837 — a hand-edited per-app copy committed without regenerating isn't otherwise caught)."
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SRC="$REPO_ROOT/App/Shared/Settings.bundle/Root.plist"
+
+fail=0
+
+if [ ! -f "$SRC" ]; then
+  echo "ERROR [settings_root]: shared source not found at $SRC" >&2
+  exit 1
+fi
+
+for app in Sudoku Minesweeper; do
+  DST="$REPO_ROOT/App/$app/Resources/Settings.bundle/Root.plist"
+  if [ ! -f "$DST" ]; then
+    echo "FAIL [settings_root]: $DST missing. Run: mise run gen:settings_root" >&2
+    fail=1
+    continue
+  fi
+  if ! cmp -s "$SRC" "$DST"; then
+    echo "FAIL [settings_root]: $DST drifted from shared source $SRC. Edit App/Shared instead, then run: mise run gen:settings_root" >&2
+    fail=1
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo "Settings.bundle Root.plist sync gate FAILED." >&2
+  exit 1
+fi
+echo "Settings.bundle Root.plist sync gate passed: both per-app copies match the shared source."

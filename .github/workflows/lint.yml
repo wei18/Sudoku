@@ -1,12 +1,13 @@
-# Consolidated lint workflow — 4 jobs:
+# Consolidated lint workflow — 5 jobs:
 #   1. pr-metadata   — Conventional Commits PR title (ubuntu, no source)
 #   2. docs-link-check — lychee scan of docs/ + meetings/ (ubuntu, no source)
 #   3. swift-lint    — swiftlint + swiftformat on changed Swift files (macos)
 #   4. l10n          — L10n catalog completeness gate (ubuntu, no source)
+#   5. settings-root — Settings.bundle Root.plist sync gate (ubuntu, no source)
 #
 # Workflow-level path filter is omitted so the workflow always runs and each
 # job's own `if:` (or path-aware logic) decides whether to do work; this keeps
-# the required-status-check setup simple — one workflow name, four job
+# the required-status-check setup simple — one workflow name, five job
 # names — once branch protection lands (user-owned).
 
 name: Lint
@@ -153,3 +154,21 @@ jobs:
 
       - name: Run L10n completeness gate
         run: mise run scan:l10n
+
+  settings-root:
+    name: Settings.bundle Root.plist sync (single-sourced #832)
+    # Catches a per-app Root.plist hand-edited and committed without
+    # regenerating via `mise run gen:settings_root` (#837). Pure `cmp`, no
+    # macOS-only tooling needed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + pinned tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Run Settings.bundle Root.plist sync gate
+        run: mise run scan:settings_root
