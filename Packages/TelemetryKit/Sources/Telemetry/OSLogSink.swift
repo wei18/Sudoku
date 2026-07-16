@@ -13,6 +13,7 @@
 //   - sessionStarted / sessionPaused / sessionResumed     → .info
 //   - puzzleCompleted / sessionAbandoned                   → .notice
 //   - errorOccurred                                        → .error
+//   - bootStepSucceeded                                    → .info
 //   - metricKitReport                                      → .info
 
 internal import os
@@ -84,6 +85,13 @@ public struct OSLogSink: TelemetrySink {
                 level: .error,
                 message: "errorOccurred source=\(source) code=\(code) message=\(message)",
                 privacy: .privateValue
+            )
+        case .bootStepSucceeded(let source, let step):
+            // source + step are stable taxonomy strings, not PII → .publicValue.
+            logger.log(
+                level: .info,
+                message: "bootStepSucceeded source=\(source) step=\(step)",
+                privacy: .publicValue
             )
         case .gameSaved(let puzzleId):
             // puzzleId is .publicValue (deterministic, non-PII).

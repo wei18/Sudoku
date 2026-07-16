@@ -429,7 +429,7 @@
 <header class="header">
   <div class="header-left">
     <h1>Minesweeper — App Flow</h1>
-    <div class="meta">⚠️ SUPERSEDED (pre-SDD-003 snapshot · Generated 2026-06-03 · re-tagged 2026-06-10 #459) — the board-entry / completion flow drawn below is the OLD push-based navigation. SDD-003 ships board-as-<code>fullScreenCover</code> modal + [X] close + "Leave Game?" + popup completion in the SHARED <code>GameAppKit/GameRoot.swift</code>, which Minesweeper inherits via the mirror principle. Kept as a historical snapshot. (#592) The completion mock below also predates the #652 Play Again CTA (practice-mode only, added later on top of the shared <code>CompletionOverlayScaffold</code>). Also predates SDD-003 Epic 7 (Home Cleanup): the Remove Ads card shown on the M02 Home mock below was removed from Home (Settings entry kept) — see the tag on M02.</div>
+    <div class="meta">⚠️ SUPERSEDED (pre-SDD-003 snapshot · Generated 2026-06-03 · re-tagged 2026-06-10 #459) — the board-entry / completion flow drawn below is the OLD push-based navigation. SDD-003 ships board-as-<code>fullScreenCover</code> modal + [X] close + "Leave Game?" + popup completion in the SHARED <code>GameAppKit/GameRoot.swift</code>, which Minesweeper inherits via the mirror principle. Kept as a historical snapshot. (#592) The completion mock below also predates the #652 Play Again CTA (practice-mode only, added later on top of the shared <code>CompletionOverlayScaffold</code>). Also predates SDD-003 Epic 7 (Home Cleanup): the Remove Ads card shown on the M02 Home mock below was removed from Home (Settings entry kept) — see the tag on M02. Also predates the Statistics screen (#773, shipped #820): a secondary-weight "Statistics" link now renders below the M02 mode-card grid and pushes <code>MinesweeperStatsView</code> (PersonalRecord readout), mirroring Sudoku's S02 — not drawn below, see the tag on M02.</div>
   </div>
   <div class="legend">
     <div class="legend-item"><svg width="38" height="10"><line x1="0" y1="5" x2="32" y2="5" stroke="#3E6B8C" stroke-width="2"/><path d="M32 1 L38 5 L32 9 z" fill="#3E6B8C"/></svg><span>push (path.append AppRoute)</span></div>
@@ -445,7 +445,7 @@
   <section class="flow" id="flow-home">
     <h2 class="flow-title">Entry &amp; Home <span class="chip shipped">SHIPPED (#288/#289)</span></h2>
     <p class="flow-sub">
-      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> <code>MinesweeperRoot</code> wraps the shared <code>GameRoot</code> → <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>MinesweeperHomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>The Home resume pill (M01) shipped via #455 (#463/#465) — saved-game persistence is wired.</em>
+      <b>Mirror of Sudoku's <code>HomeView</code> + <code>RootShellView</code>.</b> <code>MinesweeperRoot</code> wraps the shared <code>GameRoot</code> → <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact it collapses and shows <code>MinesweeperHomeView</code> directly. A mode-card grid + optional Remove Ads card + banner slot. <em>The Home resume pill (M01) shipped via #455 (#463/#465) — saved-game persistence is wired.</em> <em>A secondary-weight "Statistics" link (#773, shipped #820) now renders below the M02 mode-card grid and pushes <code>MinesweeperStatsView</code> — not drawn in the M02 mock below.</em>
     </p>
     <div class="flow-frames">
 
@@ -488,8 +488,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">M02 — Home (4 mode cards + banner) <span class="built-tag s">SHIPPED</span> <span class="built-tag t">Remove Ads card shown below REMOVED (Epic 7 Home Cleanup)</span></div>
-        <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView</div>
+        <div class="phone-label">M02 — Home (4 mode cards + banner) <span class="built-tag s">SHIPPED</span> <span class="built-tag t">Remove Ads card shown below REMOVED (Epic 7 Home Cleanup)</span> <span class="built-tag t">missing "Statistics" link (#773, shipped #820)</span></div>
+        <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView · mock predates #820's Statistics link</div>
       </div>
 
       <!-- M03 Home on macOS (NavigationSplitView) -->

@@ -434,7 +434,7 @@
 <header class="header">
   <div class="header-left">
     <h1>Sudoku — App Flow</h1>
-    <div class="meta">⚠️ SUPERSEDED (pre-SDD-003 v2.4.x snapshot · Generated 2026-06-03) — the board-entry / completion flow drawn below is the OLD push-based navigation. The shipped v2.6 flow (SDD-003, landed 2026-06-12) presents the board as a <code>fullScreenCover</code> modal with an [X] close + "Leave Game?" confirmation and a popup completion screen; see <code>GameAppKit/GameRoot.swift</code>. Kept as a historical snapshot. (#592) The completion mock below also predates the #652 Play Again CTA (practice-mode only, added later on top of the shared <code>CompletionOverlayScaffold</code>). Also predates SDD-003 Epic 7 (Home Cleanup): the Remove Ads card shown on the S02 Home mock below was removed from Home (Settings entry kept) — see the tag on S02.</div>
+    <div class="meta">⚠️ SUPERSEDED (pre-SDD-003 v2.4.x snapshot · Generated 2026-06-03) — the board-entry / completion flow drawn below is the OLD push-based navigation. The shipped v2.6 flow (SDD-003, landed 2026-06-12) presents the board as a <code>fullScreenCover</code> modal with an [X] close + "Leave Game?" confirmation and a popup completion screen; see <code>GameAppKit/GameRoot.swift</code>. Kept as a historical snapshot. (#592) The completion mock below also predates the #652 Play Again CTA (practice-mode only, added later on top of the shared <code>CompletionOverlayScaffold</code>). Also predates SDD-003 Epic 7 (Home Cleanup): the Remove Ads card shown on the S02 Home mock below was removed from Home (Settings entry kept) — see the tag on S02. Also predates the Statistics screen (#773, shipped #820): a secondary-weight "Statistics" link now renders below the S02 mode-card grid and pushes <code>StatsView</code> (PersonalRecord readout) — not drawn below, see the note on S02.</div>
   </div>
   <div class="legend">
     <div class="legend-item">
@@ -458,7 +458,7 @@
   <section class="flow" id="flow-entry">
     <h2 class="flow-title">Entry &amp; Home</h2>
     <p class="flow-sub">
-      <code>RootView</code> wraps <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact the sidebar collapses and the detail column shows <code>HomeView</code> directly. The root content is HomeView with an optional <code>ResumePill</code> on top. Navigation is a single <code>path: Binding&lt;[AppRoute]&gt;</code> stack. The S02 frame below predates SDD-003 Epic 7 (Home Cleanup) and still shows the superseded Remove Ads mode card — see its label.
+      <code>RootView</code> wraps <code>GameShellUI.RootShellView</code> — a <b>NavigationSplitView</b>: on macOS / iPad-regular a sidebar (Daily · Practice · Leaderboard · Settings) sits beside the detail column; on iPhone-compact the sidebar collapses and the detail column shows <code>HomeView</code> directly. The root content is HomeView with an optional <code>ResumePill</code> on top. Navigation is a single <code>path: Binding&lt;[AppRoute]&gt;</code> stack. The S02 frame below predates SDD-003 Epic 7 (Home Cleanup) and still shows the superseded Remove Ads mode card — see its label. It also predates the Statistics screen (#773, shipped #820): a secondary-weight "Statistics" link sits below the mode-card grid and pushes <code>StatsView</code>, a PersonalRecord readout — not drawn in the S02 mock below.
     </p>
     <div class="flow-frames">
 
@@ -502,8 +502,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">S02 — Home (4 mode cards + Remove Ads + banner) — SUPERSEDED: Remove Ads card removed from Home (Epic 7 Home Cleanup)</div>
-        <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView · mock predates SDD-003 Epic 7's card removal</div>
+        <div class="phone-label">S02 — Home (4 mode cards + Remove Ads + banner) — SUPERSEDED: Remove Ads card removed from Home (Epic 7 Home Cleanup); also missing the "Statistics" secondary link (#773, shipped #820) that renders below the grid</div>
+        <div class="phone-source">HomeView · ModeCard · RemoveAdsCard · BannerSlotView · mock predates SDD-003 Epic 7's card removal and #820's Statistics link</div>
       </div>
 
     </div>

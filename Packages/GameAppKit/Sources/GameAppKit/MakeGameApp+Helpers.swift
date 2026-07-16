@@ -33,7 +33,11 @@ func bootMonetization(adProvider: any AdProvider, telemetry: Telemetry) async {
                     )
                 }
             } else {
-                print("[MonetizationBoot] step=\(outcome.step.rawValue) succeeded")
+                Task {
+                    await telemetryHandle.observe(
+                        .bootStepSucceeded(source: "MonetizationBoot", step: outcome.step.rawValue)
+                    )
+                }
             }
         }
     )

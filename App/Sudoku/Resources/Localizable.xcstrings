@@ -3353,54 +3353,6 @@
         }
       }
     },
-    "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard." : {
-      "comment" : "NSGameKitFriendListUsageDescription — system prompt when requesting friends authorization.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sudoku uses your friend list to show your friends’ best times on the daily leaderboard."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sudoku usa tu lista de amigos para mostrar los mejores tiempos de tus amigos en la clasificación diaria."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sudoku は Game Center のフレンドリストを参照して、デイリーランキングにフレンドのベストタイムを表示します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sudoku는 Game Center 친구 목록을 이용해 데일리 리더보드에 친구들의 최고 기록을 표시합니다."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sudoku ใช้รายชื่อเพื่อนของคุณเพื่อแสดงเวลาที่ดีที่สุดของเพื่อนบนกระดานผู้นำประจำวัน"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "数独会读取您的 Game Center 好友列表，以在每日排行榜上显示您好友的最佳成绩。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "數獨會讀取您的 Game Center 朋友列表，以在每日排行榜上顯示您朋友的最佳成績。"
-          }
-        }
-      }
-    },
     "Tap to resume" : {
       "extractionState" : "stale",
       "localizations" : {

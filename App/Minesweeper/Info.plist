@@ -69,6 +69,8 @@
     <string>public.app-category.puzzle-games</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSGameKitFriendListUsageDescription</key>
+    <string>Minesweeper uses your friend list to show your friends’ best times on the daily leaderboard.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>
