@@ -39,7 +39,17 @@ public enum AppRoute: Hashable, Sendable {
     // Sudoku #379). MS stores no elapsed (no save-flow, #284), so the route
     // carries only `difficulty` (→ the daily leaderboard id) and `mode`; the
     // hero time is a placeholder and the real ranked time shows in the slice.
-    case completion(difficulty: Difficulty, mode: GameMode)
+    // #826: widened with `day` (a `UTCDay.string(from:)` value, e.g.
+    // "2026-07-14") so a past-day dot tap in the #774 week strip can push a
+    // review distinct from today's — defaulted to `nil` so every pre-#826
+    // call site (today's completed-card re-view) keeps compiling unchanged;
+    // `nil` means "today" exactly as before. NOTE: `day` currently has no
+    // runtime effect inside `LiveRouteFactory`'s `.completion` case beyond
+    // route/Hashable identity — the leaderboard-slice fetch this was meant to
+    // key was already deleted in #698 before #826 landed (`MinesweeperCompletionViewModel`
+    // is fully synthetic: hardcoded `didWin: true, elapsedSeconds: 0`). Kept
+    // per owner-adjudication for future re-wiring if the slice returns.
+    case completion(difficulty: Difficulty, mode: GameMode, day: String? = nil)
     // #455 step 4: resume a persisted in-progress board. Carries the CloudKit
     // recordName (the save's identity) + the mode qualifier; the route factory
     // mounts `MinesweeperBoardLoaderView`, which fetches the snapshot and

@@ -55,7 +55,7 @@ public struct DailyHubView<Banner: View>: View {
         // independent fetch and shouldn't disappear just because the
         // trio failed to generate.
         VStack(spacing: 0) {
-            DailyStripView(snapshot: viewModel.weekStrip)
+            DailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
                 .padding(.horizontal, theme.spacing.medium)
                 .padding(.top, theme.spacing.medium)
             dailyHubShell
@@ -69,6 +69,26 @@ public struct DailyHubView<Banner: View>: View {
         // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
         // no new trigger.
         .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+        // #826: a past day with >1 completed difficulty presents this picker
+        // instead of opening directly (owner adjudication 2026-07-16).
+        // `presenting:` hands the whole array to `actions:` so `ForEach` can
+        // build one row per completed difficulty.
+        .confirmationDialog(
+            "Difficulty",
+            isPresented: Binding(
+                get: { viewModel.reviewPickerChoices != nil },
+                set: { isPresented in
+                    if !isPresented { viewModel.dismissReviewPicker() }
+                }
+            ),
+            presenting: viewModel.reviewPickerChoices
+        ) { choices in
+            ForEach(choices) { choice in
+                Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
+                    viewModel.reviewChoiceSelected(choice)
+                }
+            }
+        }
     }
 
     private var dailyHubShell: some View {

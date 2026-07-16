@@ -18,6 +18,16 @@
 //     completing.
 
 public import Foundation
+public import MinesweeperEngine
+
+/// #826: a completed daily puzzleId paired with its parsed difficulty —
+/// mirrors `SudokuUI.DailyReviewChoice`. The confirmationDialog picker's row
+/// when a tapped past day has more than one completed difficulty.
+public struct MinesweeperDailyReviewChoice: Sendable, Equatable, Identifiable {
+    public let puzzleId: String
+    public let difficulty: Difficulty
+    public var id: String { puzzleId }
+}
 
 public struct MinesweeperDailyStripDay: Sendable, Equatable, Identifiable {
     public let offsetFromToday: Int
@@ -27,14 +37,28 @@ public struct MinesweeperDailyStripDay: Sendable, Equatable, Identifiable {
     /// `UTCDay` contract.
     public let date: Date
     public let isCompleted: Bool
+    /// #826: the daily puzzleIds completed on this day (empty when not
+    /// completed, or when this day was hand-built without the underlying
+    /// fetch). Lets a past-day dot tap derive which difficulty/difficulties
+    /// to open without a second fetch — see
+    /// `MinesweeperDailyHubViewModel.dayTapped`.
+    public let completedPuzzleIds: Set<String>
+    /// #826 (CR round 2): `true` iff at least one `completedPuzzleIds` entry
+    /// parses into a known `Difficulty`. Derived IN INIT (never an
+    /// independent init parameter), so a "tappable but inert" dot is
+    /// unrepresentable — mirrors `SudokuUI.DailyStripDay.isReviewable`; see
+    /// that doc for the malformed-ids rationale.
+    public let isReviewable: Bool
 
     public var isToday: Bool { offsetFromToday == 0 }
     public var id: Int { offsetFromToday }
 
-    public init(offsetFromToday: Int, date: Date, isCompleted: Bool) {
+    public init(offsetFromToday: Int, date: Date, isCompleted: Bool, completedPuzzleIds: Set<String> = []) {
         self.offsetFromToday = offsetFromToday
         self.date = date
         self.isCompleted = isCompleted
+        self.completedPuzzleIds = completedPuzzleIds
+        self.isReviewable = !MinesweeperDailyStripLogic.reviewChoices(from: completedPuzzleIds).isEmpty
     }
 }
 
@@ -76,5 +100,28 @@ public enum MinesweeperDailyStripLogic {
             index -= 1
         }
         return streak
+    }
+
+    /// #826: parses each puzzleId's trailing `-{difficulty}` segment
+    /// (`MinesweeperDaily.puzzleId(day:difficulty:)`'s format, e.g.
+    /// "daily-2026-07-16-beginner") and sorts beginner → intermediate →
+    /// expert for a stable picker order. No reverse-parser exists in
+    /// `MinesweeperEngine` (only a day-extractor,
+    /// `MinesweeperSavedGameStore.dailyDay(fromRecordName:)`). An id whose
+    /// suffix isn't a known `Difficulty` is silently dropped — the SINGLE
+    /// parse both `MinesweeperDailyStripDay.isReviewable` (the view's
+    /// tappable gate) and `MinesweeperDailyHubViewModel.dayTapped` (the open
+    /// path) are built on, so the two can never disagree (CR round 2).
+    public static func reviewChoices(from puzzleIds: Set<String>) -> [MinesweeperDailyReviewChoice] {
+        puzzleIds
+            .compactMap { puzzleId -> MinesweeperDailyReviewChoice? in
+                guard let token = puzzleId.split(separator: "-").last,
+                      let difficulty = Difficulty(rawValue: String(token)) else { return nil }
+                return MinesweeperDailyReviewChoice(puzzleId: puzzleId, difficulty: difficulty)
+            }
+            .sorted { lhs, rhs in
+                let order = Difficulty.allCases
+                return (order.firstIndex(of: lhs.difficulty) ?? 0) < (order.firstIndex(of: rhs.difficulty) ?? 0)
+            }
     }
 }

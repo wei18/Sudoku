@@ -172,13 +172,18 @@ struct MinesweeperDailyHubSnapshotTests {
     nonisolated private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
     /// Mixed strip: today + yesterday completed, earlier days missed →
-    /// last two dots filled, "2 day streak" caption.
+    /// last two dots filled, "2 day streak" caption. Completed days carry a
+    /// production-shaped puzzleId (#826 CR round 2: the tappable gate is
+    /// `isReviewable`, derived from the ids in init — an id-less completed
+    /// day would render inert and silently drop yesterday's dot-button from
+    /// the structure baseline).
     private static func partialStreakStrip() -> MinesweeperDailyStripSnapshot {
         let days = (0...6).reversed().map { offset in
             MinesweeperDailyStripDay(
                 offsetFromToday: offset,
                 date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
-                isCompleted: offset <= 1
+                isCompleted: offset <= 1,
+                completedPuzzleIds: offset <= 1 ? ["daily-2024-05-06-beginner"] : []
             )
         }
         return MinesweeperDailyStripSnapshot(days: days, streak: 2)

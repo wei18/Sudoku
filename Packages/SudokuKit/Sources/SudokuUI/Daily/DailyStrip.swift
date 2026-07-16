@@ -19,6 +19,17 @@
 // (kept as a defensive View-layer case, never actually produced here).
 
 public import Foundation
+public import SudokuEngine
+
+/// #826: a completed daily puzzleId paired with its parsed difficulty —
+/// the confirmationDialog picker's row when a tapped past day has more than
+/// one completed difficulty. `Identifiable` on `puzzleId` (unique per day)
+/// so `DailyHubView` can drive the dialog straight off `ForEach`.
+public struct DailyReviewChoice: Sendable, Equatable, Identifiable {
+    public let puzzleId: String
+    public let difficulty: Difficulty
+    public var id: String { puzzleId }
+}
 
 /// One day's dot state within the rolling 7-day strip. `offsetFromToday == 0`
 /// is always today (the rightmost dot); `6` is the oldest (leftmost) day.
@@ -32,14 +43,30 @@ public struct DailyStripDay: Sendable, Equatable, Identifiable {
     /// carries the `Date` used to fetch this slot for display purposes.
     public let date: Date
     public let isCompleted: Bool
+    /// #826: the daily puzzleIds completed on this day (empty when not
+    /// completed, or when this `DailyStripDay` was hand-built without the
+    /// underlying fetch — e.g. `DailyStripLogicTests`'s pure streak matrix).
+    /// Lets a past-day dot tap derive which difficulty/difficulties to open
+    /// without a second fetch — see `DailyHubViewModel.dayTapped`.
+    public let completedPuzzleIds: Set<String>
+    /// #826 (CR round 2): `true` iff at least one `completedPuzzleIds` entry
+    /// parses into a known `Difficulty` — i.e. a tap can actually open a
+    /// review. Derived IN INIT (never an independent init parameter), so a
+    /// "tappable but inert" dot is unrepresentable: a day whose ids are ALL
+    /// malformed (legacy schema / format drift) is simply not reviewable and
+    /// never renders as a button. `isCompleted` alone still drives the dot's
+    /// fill + streak math — a malformed-id day stays visually completed.
+    public let isReviewable: Bool
 
     public var isToday: Bool { offsetFromToday == 0 }
     public var id: Int { offsetFromToday }
 
-    public init(offsetFromToday: Int, date: Date, isCompleted: Bool) {
+    public init(offsetFromToday: Int, date: Date, isCompleted: Bool, completedPuzzleIds: Set<String> = []) {
         self.offsetFromToday = offsetFromToday
         self.date = date
         self.isCompleted = isCompleted
+        self.completedPuzzleIds = completedPuzzleIds
+        self.isReviewable = !DailyStripLogic.reviewChoices(from: completedPuzzleIds).isEmpty
     }
 }
 
@@ -94,5 +121,27 @@ public enum DailyStripLogic {
             index -= 1
         }
         return streak
+    }
+
+    /// #826: parses each puzzleId's trailing `-{difficulty}` segment
+    /// (`PuzzleIdentity.daily`'s format, e.g. "2026-07-16-hard") and sorts
+    /// easy → medium → hard for a stable picker order. `PuzzleStore.parse`
+    /// does the same job with fuller shape validation but is `internal` to
+    /// `SudokuPersistence`; this trivial suffix read avoids widening that
+    /// visibility. An id whose suffix isn't a known `Difficulty` is silently
+    /// dropped — the SINGLE parse both `DailyStripDay.isReviewable` (the
+    /// views' tappable gate) and `DailyHubViewModel.dayTapped` (the open
+    /// path) are built on, so the two can never disagree (CR round 2).
+    public static func reviewChoices(from puzzleIds: Set<String>) -> [DailyReviewChoice] {
+        puzzleIds
+            .compactMap { puzzleId -> DailyReviewChoice? in
+                guard let token = puzzleId.split(separator: "-").last,
+                      let difficulty = Difficulty(rawValue: String(token)) else { return nil }
+                return DailyReviewChoice(puzzleId: puzzleId, difficulty: difficulty)
+            }
+            .sorted { lhs, rhs in
+                let order = Difficulty.allCases
+                return (order.firstIndex(of: lhs.difficulty) ?? 0) < (order.firstIndex(of: rhs.difficulty) ?? 0)
+            }
     }
 }

@@ -60,14 +60,29 @@ import MinesweeperEngine
     // #386: the solved-daily re-view route carries difficulty + mode (no seed /
     // elapsed — MS has no stored snapshot). Payload drives equality, and it is
     // distinct from a `.board` with the same difficulty.
+    // #826: widened with `day` (nil == today) — the default keeps every
+    // pre-#826 construction compiling with unchanged semantics.
     @Test func completionCarriesDifficultyAndMode() {
         let route = AppRoute.completion(difficulty: .intermediate, mode: .daily)
-        guard case .completion(let difficulty, let mode) = route else {
+        guard case .completion(let difficulty, let mode, let day) = route else {
             Issue.record("expected .completion case")
             return
         }
         #expect(difficulty == .intermediate)
         #expect(mode == .daily)
+        #expect(day == nil)
+    }
+
+    // #826: a past-day review carries its UTC day-string.
+    @Test func completionCarriesPastDay() {
+        let route = AppRoute.completion(difficulty: .expert, mode: .daily, day: "2026-07-14")
+        guard case .completion(let difficulty, let mode, let day) = route else {
+            Issue.record("expected .completion case")
+            return
+        }
+        #expect(difficulty == .expert)
+        #expect(mode == .daily)
+        #expect(day == "2026-07-14")
     }
 
     @Test func completionIsDistinctFromBoard() {
@@ -82,6 +97,16 @@ import MinesweeperEngine
         let other = AppRoute.completion(difficulty: .beginner, mode: .daily)
         #expect(lhs == rhs)
         #expect(lhs != other)
+    }
+
+    // #826: same difficulty/mode but different day are distinct routes — a
+    // past-day review must not collide with today's re-view in the stack.
+    @Test func completionEqualityDistinguishesDay() {
+        let today = AppRoute.completion(difficulty: .expert, mode: .daily)
+        let past = AppRoute.completion(difficulty: .expert, mode: .daily, day: "2026-07-14")
+        let otherPast = AppRoute.completion(difficulty: .expert, mode: .daily, day: "2026-07-13")
+        #expect(today != past)
+        #expect(past != otherPast)
     }
 
     // Epic 8 (SDD-003): .replayDailyBoard carries difficulty + seed and is
