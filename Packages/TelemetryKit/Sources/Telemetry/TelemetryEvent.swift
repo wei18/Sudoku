@@ -28,6 +28,13 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     case puzzleCompleted(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int, mistakeCount: Int)
     case sessionAbandoned(puzzleId: String, mode: Mode, difficulty: Difficulty, elapsedSeconds: Int)
     case errorOccurred(source: String, code: String, message: String)
+    /// A monetization boot step (UMP consent / ATT / AdMob init) succeeded.
+    /// `source` mirrors `errorOccurred`'s field (component name); `step` is
+    /// the stable `BootStep.rawValue` string — kept as plain `String` (not
+    /// the typed `BootStep` enum) so this leaf observability module doesn't
+    /// import `AdsAdMob`/`MonetizationCore`, mirroring how `Mode`/`Difficulty`
+    /// are the one deliberate exception documented at the top of this file.
+    case bootStepSucceeded(source: String, step: String)
     /// Successful Persistence save (Phase 5.4). Emitted after a SavedGame
     /// record has been persisted to CloudKit Private DB.
     case gameSaved(puzzleId: String)

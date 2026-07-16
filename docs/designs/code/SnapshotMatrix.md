@@ -7,7 +7,7 @@ Conventions:
 - **Source file**: under `docs/designs/code/Components/` or `docs/designs/code/Views/`.
 - **Variant params**: locale / colorScheme / dynamicTypeSize / sizeClass. Omitted columns inherit `en / light / .large / .compact`.
 - **Mac variants**: Developer chooses the precise device trait (e.g. `.fixed(width: 900, height: 700)`) — see `// TODO: Developer chooses precise device size` below the table.
-- **Total target**: ≈ 50 snapshots (21 view + 16 component-base + 13 component-variant).
+- **Total target**: 58 snapshots (21 §How.5.8 baseline views + 13 additional view variants + 17 component base + 7 CellView state grid) — see the Coverage summary below.
 
 ---
 
@@ -100,7 +100,7 @@ Conventions:
 
 ---
 
-## §4 CellView state variants (6 — drives the BoardView visual primitive)
+## §4 CellView state variants (7 — drives the BoardView visual primitive)
 
 | # | Test name | Source file | Variant params | Notes |
 |---|---|---|---|---|
