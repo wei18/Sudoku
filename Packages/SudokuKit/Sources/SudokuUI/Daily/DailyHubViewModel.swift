@@ -32,6 +32,12 @@ public enum DailyHubState: Sendable, Equatable {
 @Observable
 public final class DailyHubViewModel {
     public private(set) var state: DailyHubState = .idle
+    /// #774: the rolling 7-day week strip + streak. `.unknown` (empty days,
+    /// nil streak) until the first successful `fetchWeekWindow` — see
+    /// `fillCompletionOverlay`, which is this state's sole writer (same
+    /// method that already drives the trio's completion overlay, so both
+    /// share the same CK round-trips and the same #761 `refresh()` re-entry).
+    public private(set) var weekStrip: DailyStripSnapshot = .unknown
 
     /// Navigation path store (issue #240): routes through an injected
     /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`
@@ -143,12 +149,18 @@ public final class DailyHubViewModel {
         await fillCompletionOverlay(trio: cards.map(\.envelope), date: dateProvider())
     }
 
-    /// Phase-2 completion overlay: fetches completed daily ids and re-merges
-    /// them with the already-rendered cards. Called after `state` is already
-    /// `.loaded` so a hang or failure here cannot block the initial render.
-    /// Errors are funneled through `errorReporter` (OSLog-observable) and
-    /// degrade silently to "no cards completed" — same M10 contract as before.
-    /// Also the target of `refresh()`'s re-fetch (#761).
+    /// Phase-2 completion overlay: fetches the rolling 7-day completed-ids
+    /// window and re-merges it with the already-rendered cards (today's
+    /// slot) AND the week strip (all 7 slots). Called after `state` is
+    /// already `.loaded` so a hang or failure here cannot block the initial
+    /// render. Errors are funneled through `errorReporter` (OSLog-observable)
+    /// and degrade silently — same M10 contract as before. Also the target
+    /// of `refresh()`'s re-fetch (#761).
+    ///
+    /// #774: today's slot in the fetched window is reused for the trio-card
+    /// overlay instead of issuing a second, duplicate `fetchCompletedDailyIds`
+    /// call for the same date — the dispatch spec's "×7 total" fetch budget
+    /// (not "×7 in addition to the existing 1") depends on this reuse.
     private func fillCompletionOverlay(trio: [PuzzleEnvelope], date: Date) async {
         // #788: guard `.loaded` before AND after the fetch — mirrors MS's
         // `fillCompletionAndFailureOverlay`. Since #761 this method is
@@ -156,23 +168,62 @@ public final class DailyHubViewModel {
         // transition landing mid-fetch must not resurrect a stale `.loaded`
         // write over whatever state replaced it.
         guard case .loaded = state else { return }
-        let completed: Set<String>
-        do {
-            completed = try await persistence.fetchCompletedDailyIds(for: date)
-        } catch {
-            await errorReporter.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "DailyHubViewModel.fetchCompletedDailyIds"
-            )
-            return // degrade: cards remain un-completed
+        guard let window = await fetchWeekWindow(referenceDate: date) else {
+            // #774: any single day's fetch failing degrades the WHOLE window
+            // rather than risk showing a wrong "missed" dot for a day whose
+            // fetch actually failed — see `fetchWeekWindow`.
+            weekStrip = .unknown
+            return // degrade: cards + strip both remain un-completed/unknown
         }
         guard case .loaded = state else { return }
-        guard !completed.isEmpty else { return }
-        let cards = trio.map { envelope in
-            DailyCard(envelope: envelope, isCompleted: completed.contains(envelope.identity.puzzleId))
+        let todayCompleted = window.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
+        if !todayCompleted.isEmpty {
+            let cards = trio.map { envelope in
+                DailyCard(envelope: envelope, isCompleted: todayCompleted.contains(envelope.identity.puzzleId))
+            }
+            state = .loaded(cards)
         }
-        state = .loaded(cards)
+        let days = window.map { slot in
+            DailyStripDay(offsetFromToday: slot.offsetFromToday, date: slot.date, isCompleted: !slot.completedPuzzleIds.isEmpty)
+        }
+        let rawStreak = DailyStripLogic.computeStreak(days: days)
+        weekStrip = DailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
+    }
+
+    private struct WeekWindowSlot {
+        let offsetFromToday: Int
+        let date: Date
+        let completedPuzzleIds: Set<String>
+    }
+
+    /// #774: the rolling window size — also the streak display's cap (see
+    /// the "7+" caption branch in `DailyStripView`). 7 matches the strip's own 7
+    /// dots; changing this changes both simultaneously by construction.
+    private static let weekStripWindowSize = 7
+
+    /// Fetches `fetchCompletedDailyIds(for:)` once per day in the rolling
+    /// window, oldest (`offsetFromToday: 6`) to newest (`offsetFromToday: 0`
+    /// == today). Returns `nil` on the first failure — an all-or-nothing
+    /// degrade, not a partial window, so a transient fetch failure on one day
+    /// can never render as a false "missed" dot next to 6 real ones.
+    private func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
+        var slots: [WeekWindowSlot] = []
+        slots.reserveCapacity(Self.weekStripWindowSize)
+        for offset in stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1) {
+            let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
+            do {
+                let completed = try await persistence.fetchCompletedDailyIds(for: dayDate)
+                slots.append(WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed))
+            } catch {
+                await errorReporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "DailyHubViewModel.fetchWeekWindow"
+                )
+                return nil
+            }
+        }
+        return slots
     }
 
     /// Synchronous tap entry point (the DailyHubView shell closure is sync).

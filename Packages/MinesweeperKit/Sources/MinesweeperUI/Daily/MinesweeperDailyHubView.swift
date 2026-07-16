@@ -43,6 +43,30 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     }
 
     public var body: some View {
+        // #774: the week strip sits above the trio, outside
+        // `DailyHubShellView` (GameShellKit stays untouched — see
+        // `MinesweeperDailyStripView`'s header comment on the "no shared
+        // widget" scope note). It renders regardless of the shell's own
+        // idle/loading/loaded state — the strip has its own independent
+        // fetch. Mirrors Sudoku's `DailyHubView`.
+        VStack(spacing: 0) {
+            MinesweeperDailyStripView(snapshot: viewModel.weekStrip)
+                .padding(.horizontal, theme.spacing.medium)
+                .padding(.top, theme.spacing.medium)
+            dailyHubShell
+        }
+        .background(theme.surface.background.resolved)
+        .task { await viewModel.bootstrap() }
+        // #761: driven by `GameRoot`'s explicit teardown counter (not
+        // `.onAppear` — see the property doc above for why that doesn't
+        // work). `refresh()`'s own `.loaded`-state guard still protects
+        // against a spurious fetch before `bootstrap()` has landed. Also
+        // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
+        // no new trigger. Mirrors Sudoku's `DailyHubView`.
+        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+    }
+
+    private var dailyHubShell: some View {
         DailyHubShellView(
             title: "Daily",
             backgroundColor: theme.surface.background.resolved,
@@ -64,13 +88,6 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
             onItemTap: { card in viewModel.cardTapped(card) },
             banner: { banner }
         )
-        .task { await viewModel.bootstrap() }
-        // #761: driven by `GameRoot`'s explicit teardown counter (not
-        // `.onAppear` — see the property doc above for why that doesn't
-        // work). `refresh()`'s own `.loaded`-state guard still protects
-        // against a spurious fetch before `bootstrap()` has landed. Mirrors
-        // Sudoku's `DailyHubView`.
-        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
     }
 
     /// Translates the MS daily state into the generic shell input. MS has no

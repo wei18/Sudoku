@@ -56,6 +56,10 @@ public enum MinesweeperDailyHubState: Sendable, Equatable {
 @Observable
 public final class MinesweeperDailyHubViewModel {
     public private(set) var state: MinesweeperDailyHubState = .idle
+    /// #774: the rolling 7-day week strip + streak. `.unknown` (empty days,
+    /// nil streak) until the first successful `fetchWeekWindow` — see
+    /// `fillCompletionAndFailureOverlay`, which is this state's sole writer.
+    public private(set) var weekStrip: MinesweeperDailyStripSnapshot = .unknown
 
     private var path: Binding<[AppRoute]>
 
@@ -102,6 +106,14 @@ public final class MinesweeperDailyHubViewModel {
     public func setStateForTesting(_ state: MinesweeperDailyHubState) {
         self.state = state
         self.hasBootstrapped = true
+    }
+
+    /// #774: seed the week strip for previews / snapshot tests, mirroring
+    /// `setStateForTesting` (which latches `hasBootstrapped`, so the view's
+    /// `.task { bootstrap() }` can't overwrite this either). Production never
+    /// calls this; the live `fillCompletionAndFailureOverlay` path is untouched.
+    public func setWeekStripForTesting(_ snapshot: MinesweeperDailyStripSnapshot) {
+        self.weekStrip = snapshot
     }
 
     public func bootstrap() async {
@@ -163,21 +175,18 @@ public final class MinesweeperDailyHubViewModel {
     /// render. Errors are funneled through `errorReporter` (OSLog-observable)
     /// and degrade silently to "no cards marked" — same M10 contract as #526.
     /// Also the target of `refresh()`'s re-fetch (#761).
+    /// #774: `completed` is now sourced from the rolling 7-day week-strip
+    /// window (today's slot) instead of a standalone single-day fetch — the
+    /// dispatch spec's "×7 total" fetch budget (not "×7 in addition to the
+    /// existing 1") depends on this reuse. `failed` stays an independent,
+    /// single-day fetch (unrelated to the strip/streak — see
+    /// `MinesweeperDailyStrip`'s header comment on why a mine-hit loss never
+    /// feeds the streak model at all).
     private func fillCompletionAndFailureOverlay(trio: [MinesweeperDailyEntry], date: Date) async {
         guard case .loaded = state else { return }
 
-        var completed: Set<String> = []
-        if let savedGameStore {
-            do {
-                completed = try await savedGameStore.fetchCompletedDailyIds(for: date)
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperDailyHubViewModel.fetchCompletedDailyIds"
-                )
-            }
-        }
+        let window = await fetchWeekWindow(referenceDate: date)
+        let completed: Set<String> = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
 
         var failed: Set<String> = []
         if let savedGameStore {
@@ -193,9 +202,56 @@ public final class MinesweeperDailyHubViewModel {
         }
 
         guard case .loaded = state else { return }
+        if let window {
+            let days = window.map { slot in
+                MinesweeperDailyStripDay(offsetFromToday: slot.offsetFromToday, date: slot.date, isCompleted: !slot.completedPuzzleIds.isEmpty)
+            }
+            let rawStreak = MinesweeperDailyStripLogic.computeStreak(days: days)
+            weekStrip = MinesweeperDailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
+        } else {
+            // #774: any single day's fetch failing (or no `savedGameStore`
+            // injected at all — preview/test callsites) degrades the WHOLE
+            // window rather than risk a false "missed" dot.
+            weekStrip = .unknown
+        }
         if !completed.isEmpty || !failed.isEmpty {
             state = .loaded(Self.mergeCards(trio: trio, completed: completed, failed: failed))
         }
+    }
+
+    private struct WeekWindowSlot {
+        let offsetFromToday: Int
+        let date: Date
+        let completedPuzzleIds: Set<String>
+    }
+
+    /// #774: the rolling window size — also the streak display's cap (see
+    /// the "7+" caption branch in `MinesweeperDailyStripView`).
+    private static let weekStripWindowSize = 7
+
+    /// Fetches `savedGameStore.fetchCompletedDailyIds(for:)` once per day in
+    /// the rolling window, oldest (`offsetFromToday: 6`) to newest
+    /// (`offsetFromToday: 0` == today). Returns `nil` when `savedGameStore`
+    /// is absent, or on the first fetch failure — an all-or-nothing degrade.
+    private func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
+        guard let savedGameStore else { return nil }
+        var slots: [WeekWindowSlot] = []
+        slots.reserveCapacity(Self.weekStripWindowSize)
+        for offset in stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1) {
+            let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
+            do {
+                let completed = try await savedGameStore.fetchCompletedDailyIds(for: dayDate)
+                slots.append(WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed))
+            } catch {
+                await errorReporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "MinesweeperDailyHubViewModel.fetchWeekWindow"
+                )
+                return nil
+            }
+        }
+        return slots
     }
 
     /// Route for a tapped daily card:

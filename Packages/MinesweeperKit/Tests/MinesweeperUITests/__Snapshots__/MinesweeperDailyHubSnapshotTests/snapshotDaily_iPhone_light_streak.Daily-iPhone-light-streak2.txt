@@ -1,7 +1,7 @@
 [   AF    ! WlU ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentGS1_GS1_GS1_GS1_GS1_GVS_15NavigationStackVS_14NavigationPathGV13MinesweeperUI23MinesweeperDailyHubViewVS_9EmptyView__GVS_30_EnvironmentKeyWritingModifierP11GameShellUI5Theme___GS7_VS4_21MinesweeperCellTokens__GS7_GSqOS_22UserInterfaceSizeClass___GS7_V10Foundation6Locale__GVS_26_PreferenceWritingModifierVS_23PreferredColorSchemeKey__VS_12_FrameLayout__ f=(0,0,393,852) b=(-) => <NSViewBackingLayer>
-  [   A     ! WlU ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer f=(0,32,393,820) b=(-) => <NSViewBackingLayer>
-    [   AF    ! wLU ] h=--- v=--- SwiftUI.HostingScrollView f=(0,0,393,820) b=(-) => <NSViewBackingLayer>
-      [   AF    ! wLU ] h=--- v=--- NSClipView f=(0,0,393,820) b=(-) => <NSViewBackingLayer>
+  [   A     ! WlU ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer f=(0,53,393,799) b=(-) => <NSViewBackingLayer>
+    [   AF    ! wLU ] h=--- v=--- SwiftUI.HostingScrollView f=(0,0,393,799) b=(-) => <NSViewBackingLayer>
+      [   AF    ! wLU ] h=--- v=--- NSClipView f=(0,0,393,799) b=(-) => <NSViewBackingLayer>
         [   AF    ! wLU ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
           [   AF    ! W U ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,16,361,72) b=(-) => <NSViewBackingLayer>

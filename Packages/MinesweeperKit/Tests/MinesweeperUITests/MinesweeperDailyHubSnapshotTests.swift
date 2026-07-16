@@ -160,5 +160,75 @@ struct MinesweeperDailyHubSnapshotTests {
         )
         assertViewStructure(of: host, named: "Daily-mac-dark-regular", record: SnapshotMode.recordMode)
     }
+
+    // MARK: - #774 week-strip states
+    //
+    // The base fixtures above leave `weekStrip == .unknown` (skeleton dots) —
+    // that IS the degraded baseline. The two below pin the with-streak state
+    // and the AX3 layout. Fixed dates (relative to a deterministic anchor)
+    // keep the VoiceOver weekday labels — and hence the structure snapshot —
+    // stable.
+
+    nonisolated private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
+
+    /// Mixed strip: today + yesterday completed, earlier days missed →
+    /// last two dots filled, "2 day streak" caption.
+    private static func partialStreakStrip() -> MinesweeperDailyStripSnapshot {
+        let days = (0...6).reversed().map { offset in
+            MinesweeperDailyStripDay(
+                offsetFromToday: offset,
+                date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
+                isCompleted: offset <= 1
+            )
+        }
+        return MinesweeperDailyStripSnapshot(days: days, streak: 2)
+    }
+
+    private func dailyHubViewWithStreak() -> some View {
+        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
+        viewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        viewModel.setWeekStripForTesting(Self.partialStreakStrip())
+        return NavigationStack {
+            MinesweeperDailyHubView(viewModel: viewModel)
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDaily_iPhone_light_streak() {
+        let host = hostingView(
+            dailyHubViewWithStreak(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(
+            of: host,
+            as: .image,
+            named: "Daily-iPhone-light-streak2",
+            record: SnapshotMode.recordMode
+        )
+        assertViewStructure(of: host, named: "Daily-iPhone-light-streak2", record: SnapshotMode.recordMode)
+    }
+
+    /// AX3 Dynamic Type layout pin — dots are structural (fixed 16pt, never
+    /// wrap); caption + card text scale. Env-injected Dynamic Type snapshots
+    /// are a layout pin only (memory: dynamic-type-sim-verify-and-cap); sim
+    /// verification is the authority for AX bugs.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDaily_iPhone_light_streak_ax3() {
+        let host = hostingView(
+            dailyHubViewWithStreak().dynamicTypeSize(.accessibility3),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(
+            of: host,
+            as: .image,
+            named: "Daily-iPhone-light-streak-AX3",
+            record: SnapshotMode.recordMode
+        )
+        assertViewStructure(of: host, named: "Daily-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
+    }
 }
 #endif

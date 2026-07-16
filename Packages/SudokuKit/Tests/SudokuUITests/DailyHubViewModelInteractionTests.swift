@@ -25,6 +25,16 @@ struct DailyHubViewModelInteractionTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
+    /// #774: the week-strip window fetches `fetchCompletedDailyIds` once per
+    /// day, oldest (`offset: 6`) → newest (`offset: 0` == today) — mirrors
+    /// `DailyHubViewModel.fetchWeekWindow`'s own arithmetic exactly so tests
+    /// assert the real call shape instead of just a count.
+    private static func weekWindowDates(endingAt referenceDate: Date) -> [Date] {
+        stride(from: 6, through: 0, by: -1).map { offset in
+            referenceDate.addingTimeInterval(-Double(offset) * 86_400)
+        }
+    }
+
     private func makeViewModel(
         provider: FakePuzzleProvider,
         persistence: FakePersistence,
@@ -49,7 +59,11 @@ struct DailyHubViewModelInteractionTests {
         let providerOps = await provider.operations
         let persistenceOps = await persistence.operations
         #expect(providerOps == [.fetchDailyTrio(date: Self.fixedDate)])
-        #expect(persistenceOps == [.fetchCompletedDailyIds(date: Self.fixedDate)])
+        // #774: 7 calls (the week-strip window), not 1 — today's slot
+        // (offset 0, the last date below) is reused for the trio-card
+        // overlay instead of issuing a duplicate 8th call.
+        let expectedDates = Self.weekWindowDates(endingAt: Self.fixedDate)
+        #expect(persistenceOps == expectedDates.map { .fetchCompletedDailyIds(date: $0) })
     }
 
     @Test func bootstrapIsIdempotent() async {
