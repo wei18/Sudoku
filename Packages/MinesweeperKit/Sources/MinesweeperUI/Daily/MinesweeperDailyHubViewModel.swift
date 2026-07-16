@@ -60,6 +60,9 @@ public final class MinesweeperDailyHubViewModel {
     /// nil streak) until the first successful `fetchWeekWindow` — see
     /// `fillCompletionAndFailureOverlay`, which is this state's sole writer.
     public private(set) var weekStrip: MinesweeperDailyStripSnapshot = .unknown
+    /// #826: non-nil while the confirmationDialog picker is showing. Mirrors
+    /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`.
+    public private(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
 
     private var path: Binding<[AppRoute]>
 
@@ -204,7 +207,12 @@ public final class MinesweeperDailyHubViewModel {
         guard case .loaded = state else { return }
         if let window {
             let days = window.map { slot in
-                MinesweeperDailyStripDay(offsetFromToday: slot.offsetFromToday, date: slot.date, isCompleted: !slot.completedPuzzleIds.isEmpty)
+                MinesweeperDailyStripDay(
+                    offsetFromToday: slot.offsetFromToday,
+                    date: slot.date,
+                    isCompleted: !slot.completedPuzzleIds.isEmpty,
+                    completedPuzzleIds: slot.completedPuzzleIds
+                )
             }
             let rawStreak = MinesweeperDailyStripLogic.computeStreak(days: days)
             weekStrip = MinesweeperDailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
@@ -272,6 +280,47 @@ public final class MinesweeperDailyHubViewModel {
         } else {
             path.wrappedValue.append(.board(difficulty: card.difficulty, seed: card.seed, mode: .daily))
         }
+    }
+
+    /// #826: tap entry point for a dot in the #774 week strip. Mirrors
+    /// `SudokuUI.DailyHubViewModel.dayTapped` — only a REVIEWABLE (≥1
+    /// parseable completed id, `MinesweeperDailyStripDay.isReviewable`),
+    /// PAST day reacts. The view's tappable gate and this guard are built on
+    /// the SAME `MinesweeperDailyStripLogic.reviewChoices` parse, so a dot
+    /// can never render as a button whose tap would no-op here (CR round 2).
+    /// Owner adjudication 2026-07-16: exactly one completed difficulty opens
+    /// its Completion directly; more than one presents `reviewPickerChoices`.
+    /// Unlike Sudoku, MS's `.completion` push needs no async fetch (no
+    /// stored elapsed, #284) — fully synchronous, no in-flight latch needed.
+    public func dayTapped(_ day: MinesweeperDailyStripDay) {
+        guard !day.isToday else { return }
+        let choices = MinesweeperDailyStripLogic.reviewChoices(from: day.completedPuzzleIds)
+        guard !choices.isEmpty else { return }
+        if choices.count == 1 {
+            openReview(choices[0])
+        } else {
+            reviewPickerChoices = choices
+        }
+    }
+
+    /// The confirmationDialog picker's row selection (#826).
+    public func reviewChoiceSelected(_ choice: MinesweeperDailyReviewChoice) {
+        reviewPickerChoices = nil
+        openReview(choice)
+    }
+
+    /// The confirmationDialog picker's Cancel / dismiss (#826).
+    public func dismissReviewPicker() {
+        reviewPickerChoices = nil
+    }
+
+    private func openReview(_ choice: MinesweeperDailyReviewChoice) {
+        // `MinesweeperSavedGameStore.dailyDay(fromRecordName:)` reuses the
+        // exact same day-parse #700's achievement streak already relies on
+        // (puzzleId == recordName for daily records) rather than
+        // re-deriving the day substring here.
+        let day = MinesweeperSavedGameStore.dailyDay(fromRecordName: choice.puzzleId)
+        path.wrappedValue.append(.completion(difficulty: choice.difficulty, mode: .daily, day: day))
     }
 
     /// Merge the daily trio with the sets of completed and failed daily ids into

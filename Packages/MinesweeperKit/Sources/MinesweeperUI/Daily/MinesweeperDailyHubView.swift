@@ -50,7 +50,7 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
         // idle/loading/loaded state — the strip has its own independent
         // fetch. Mirrors Sudoku's `DailyHubView`.
         VStack(spacing: 0) {
-            MinesweeperDailyStripView(snapshot: viewModel.weekStrip)
+            MinesweeperDailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
                 .padding(.horizontal, theme.spacing.medium)
                 .padding(.top, theme.spacing.medium)
             dailyHubShell
@@ -64,6 +64,29 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
         // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
         // no new trigger. Mirrors Sudoku's `DailyHubView`.
         .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+        // #826: mirrors Sudoku's `DailyHubView` picker — a past day with >1
+        // completed difficulty presents this instead of opening directly
+        // (owner adjudication 2026-07-16).
+        .confirmationDialog(
+            "Difficulty",
+            isPresented: Binding(
+                get: { viewModel.reviewPickerChoices != nil },
+                set: { isPresented in
+                    if !isPresented { viewModel.dismissReviewPicker() }
+                }
+            ),
+            presenting: viewModel.reviewPickerChoices
+        ) { choices in
+            ForEach(choices) { choice in
+                // `.rawValue.capitalized` maps beginner/intermediate/expert →
+                // the existing "Beginner"/"Intermediate"/"Expert" L10n keys —
+                // byte-mirrors Sudoku's picker rows (whose capitalized
+                // rawValues likewise hit its "Easy"/"Medium"/"Hard" keys).
+                Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
+                    viewModel.reviewChoiceSelected(choice)
+                }
+            }
+        }
     }
 
     private var dailyHubShell: some View {

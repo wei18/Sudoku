@@ -38,6 +38,11 @@ public final class DailyHubViewModel {
     /// method that already drives the trio's completion overlay, so both
     /// share the same CK round-trips and the same #761 `refresh()` re-entry).
     public private(set) var weekStrip: DailyStripSnapshot = .unknown
+    /// #826: non-nil while the confirmationDialog picker is showing (a
+    /// tapped past day had more than one completed difficulty). `DailyHubView`
+    /// binds its `.confirmationDialog(isPresented:)` to `!= nil` and calls
+    /// `reviewChoiceSelected(_:)` / `dismissReviewPicker()`.
+    public private(set) var reviewPickerChoices: [DailyReviewChoice]?
 
     /// Navigation path store (issue #240): routes through an injected
     /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`
@@ -184,7 +189,12 @@ public final class DailyHubViewModel {
             state = .loaded(cards)
         }
         let days = window.map { slot in
-            DailyStripDay(offsetFromToday: slot.offsetFromToday, date: slot.date, isCompleted: !slot.completedPuzzleIds.isEmpty)
+            DailyStripDay(
+                offsetFromToday: slot.offsetFromToday,
+                date: slot.date,
+                isCompleted: !slot.completedPuzzleIds.isEmpty,
+                completedPuzzleIds: slot.completedPuzzleIds
+            )
         }
         let rawStreak = DailyStripLogic.computeStreak(days: days)
         weekStrip = DailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
@@ -242,7 +252,48 @@ public final class DailyHubViewModel {
         // above is synchronous and not latched (unchanged prior behavior).
         guard !isOpeningCompleted else { return }
         isOpeningCompleted = true
-        Task { await openCompleted(card) }
+        Task { await openCompleted(puzzleId: card.envelope.identity.puzzleId, difficulty: card.difficulty) }
+    }
+
+    /// #826: tap entry point for a dot in the #774 week strip. Only a
+    /// REVIEWABLE (≥1 parseable completed id — see
+    /// `DailyStripDay.isReviewable`), PAST day reacts. The view's tappable
+    /// gate (`DailyStripView.isTappable`) and this guard are built on the
+    /// SAME `DailyStripLogic.reviewChoices` parse, so a dot can never render
+    /// as a button whose tap would no-op here (CR round 2). Owner
+    /// adjudication 2026-07-16: exactly one completed difficulty opens its
+    /// Completion directly (reusing `openCompleted`'s async fetch path, same
+    /// as `cardTapped`'s completed branch); more than one presents
+    /// `reviewPickerChoices`, a confirmationDialog hosted by `DailyHubView`.
+    public func dayTapped(_ day: DailyStripDay) {
+        guard !day.isToday else { return }
+        let choices = DailyStripLogic.reviewChoices(from: day.completedPuzzleIds)
+        guard !choices.isEmpty else { return }
+        if choices.count == 1 {
+            openReview(choices[0])
+        } else {
+            reviewPickerChoices = choices
+        }
+    }
+
+    /// The confirmationDialog picker's row selection (#826).
+    public func reviewChoiceSelected(_ choice: DailyReviewChoice) {
+        reviewPickerChoices = nil
+        openReview(choice)
+    }
+
+    /// The confirmationDialog picker's Cancel / dismiss (#826).
+    public func dismissReviewPicker() {
+        reviewPickerChoices = nil
+    }
+
+    private func openReview(_ choice: DailyReviewChoice) {
+        // Same in-flight latch as `cardTapped`'s completed branch (#385) —
+        // a picker row tap and a direct single-difficulty open both fan out
+        // through the same async `openCompleted`.
+        guard !isOpeningCompleted else { return }
+        isOpeningCompleted = true
+        Task { await openCompleted(puzzleId: choice.puzzleId, difficulty: choice.difficulty) }
     }
 
     /// Loads the completed daily's saved snapshot to recover its frozen
@@ -273,17 +324,21 @@ public final class DailyHubViewModel {
         }
     }
 
-    func openCompleted(_ card: DailyCard) async {
+    /// #826: widened from `(_ card: DailyCard)` to `(puzzleId:difficulty:)` —
+    /// the only two fields the body ever read — so a past-day tap
+    /// (`dayTapped`/`openReview`, which has no `DailyCard`/`PuzzleEnvelope`
+    /// for a day outside today's trio) can reuse this exact fetch path
+    /// instead of duplicating it.
+    func openCompleted(puzzleId: String, difficulty: Difficulty) async {
         // Reset on both success and the error/fallback path so a later tap
         // (#385) re-enters cleanly. `@MainActor` guarantees this runs without
         // an interleaved `cardTapped` between the route append and the clear.
         defer { isOpeningCompleted = false }
-        let puzzleId = card.envelope.identity.puzzleId
         do {
             let snapshot = try await persistence.loadOrCreate(
                 puzzleId: puzzleId,
                 mode: .daily,
-                difficulty: card.difficulty
+                difficulty: difficulty
             )
             path.append(.completion(
                 puzzleId: puzzleId,

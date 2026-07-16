@@ -85,6 +85,20 @@ import GameShellUI
         }
     }
 
+    // #826: the widened `.completion` payload — a PAST day's review (week-strip
+    // dot tap) carries its UTC day-string. Sentinel: the factory must construct
+    // for a non-nil `day` exactly as it does for the nil/today default.
+    @Test func factoryReturnsViewForPastDayCompletionRoute() {
+        let factory = LiveRouteFactory()
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let view = factory.view(
+            for: .completion(difficulty: .expert, mode: .daily, day: "2026-07-14"),
+            path: binding
+        )
+        _ = view
+    }
+
     @Test func factoryHandlesAllDifficultyCases() {
         let factory = LiveRouteFactory()
         for difficulty in Difficulty.allCases {

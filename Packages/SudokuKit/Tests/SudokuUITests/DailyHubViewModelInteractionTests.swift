@@ -130,7 +130,10 @@ struct DailyHubViewModelInteractionTests {
         let base = cards[1]
         let completedCard = DailyCard(envelope: base.envelope, isCompleted: true)
 
-        await viewModel.openCompleted(completedCard)
+        await viewModel.openCompleted(
+            puzzleId: completedCard.envelope.identity.puzzleId,
+            difficulty: completedCard.difficulty
+        )
 
         #expect(box.routes == [
             .completion(puzzleId: base.envelope.identity.puzzleId, elapsedSeconds: 742, mistakeCount: 0)
@@ -276,7 +279,10 @@ struct DailyHubViewModelInteractionTests {
         }
         let completedCard = DailyCard(envelope: cards[2].envelope, isCompleted: true)
 
-        await viewModel.openCompleted(completedCard)
+        await viewModel.openCompleted(
+            puzzleId: completedCard.envelope.identity.puzzleId,
+            difficulty: completedCard.difficulty
+        )
 
         // Never worse than today's behavior: still navigates to the board.
         #expect(box.routes == [.board(puzzleId: cards[2].envelope.identity.puzzleId)])
