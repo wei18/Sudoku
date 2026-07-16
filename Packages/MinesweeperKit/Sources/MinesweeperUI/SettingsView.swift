@@ -1,6 +1,6 @@
 // SettingsView — Minesweeper Settings.
 //
-// Wraps `GameShellUI.SettingsShellView` to inherit the shared grouped-Form
+// Wraps `SettingsUI.SettingsScreen` to inherit the shared grouped-Form
 // chrome (PR X4).
 //
 // MS monetization wire Phase 3 (2026-06-03): mounts the shared
