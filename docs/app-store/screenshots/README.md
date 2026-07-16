@@ -36,7 +36,7 @@ The baselines are raw `NSHostingView` renders at the snapshot layout sizes
 |---|---|---|---|
 | iPhone snapshot | 786 × 1704, RGBA | 1290 × 2796 (exact, no tolerance), **no alpha** | ✗ size + alpha |
 | Mac snapshot | 1800 × 1200, RGBA | ≥ 1280 × 800, **no alpha** | ✗ alpha (size ok) |
-| iPad | *(no baselines exist)* | 2048 × 2732 | ✗ unwired |
+| iPad 13" (#506) | 2064 × 2752, RGBA | 2048 × 2732 or 2064 × 2752 | ✗ alpha only (size already ASC-exact) |
 
 App Store Connect rejects the upload at the dimension/alpha check before review.
 So this tree lets reviewers and the Leader eyeball the 5-shot store storyline

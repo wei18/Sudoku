@@ -139,7 +139,7 @@ The snapshot PNGs are raw `NSHostingView` renders at the snapshot layout sizes,
 |---|---|---|---|
 | iPhone snapshot (393×852 @2x) | 786 × 1704, RGBA | iPhone 6.9": 1290×2796 / 1320×2868 — **exact, zero tolerance**, no alpha | ✗ size + alpha |
 | Mac snapshot (900×600 @2x) | 1800 × 1200, RGBA | Mac: ≥ 1280×800, larger OK, no alpha | ✗ alpha (dimensions pass) |
-| iPad | *(no baselines exist)* | iPad 13": 2048×2732 / 2064×2752 | ✗ unwired |
+| iPad 13" (#506) | 2064 × 2752, RGBA | iPad 13": 2048×2732 / 2064×2752 | ✗ alpha only (size already ASC-exact) |
 
 ASC rejects the upload at the dimension/alpha check **before** review, so the
 symlinked tree is for eyeballing the storyline from one source — it is **not**
@@ -149,6 +149,7 @@ an upload path.
 
 A **marketing-frame / upscale pass** consumes these baselines and emits
 ASC-exact RGB (no-alpha) PNGs at the required device dimensions, applying the
-overlay copy tabled above and (optionally) a device frame. That pass — plus
-adding **iPad snapshot fixtures** for the iPad slot — is what closes the gap to
-a real ASC upload. #311 delivers the wiring + this honest gap doc only.
+overlay copy tabled above and (optionally) a device frame — that pass (dropping
+the alpha channel; iPad's baseline dimensions are already ASC-exact, iPhone and
+Mac still need the upscale) is what closes the gap to a real ASC upload. #311
+delivers the wiring + this honest gap doc only.
