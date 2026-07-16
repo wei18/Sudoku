@@ -90,6 +90,16 @@ public final class GameViewModel {
     private let saveDebounceNanos: UInt64
     private var pendingSaveTask: Task<Void, Never>?
 
+    /// #823: handle to the most recently spawned terminal-completion persist
+    /// Task (set only inside `markCompletedIfNeeded`). The board view
+    /// registers this with the shared `GameAppKit.TerminalPersistJoin` right
+    /// before calling `dismiss()` / popping `path`, so the hub's
+    /// teardown-triggered refresh can wait — bounded — for the save to land
+    /// instead of racing ahead of it. `nil` until the puzzle completes;
+    /// awaiting a stale (already-finished) Task is instant, so it is never
+    /// explicitly cleared.
+    public private(set) var pendingTerminalPersistTask: Task<Void, Never>?
+
     /// Injectable "now" — used by `isLateCompletion` to detect daily puzzles
     /// from a past UTC day. Defaults to `Date()`; tests fast-forward.
     private let clock: @Sendable () -> Date
@@ -580,15 +590,27 @@ public final class GameViewModel {
             status: "completed",
             generatorVersion: 1
         )
-        do {
-            try await persistence.markCompleted(summary)
-        } catch {
-            await errorReporter.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "GameViewModel.markCompletedIfNeeded"
-            )
+        // #823: wrap in a child Task (instead of a bare `await`) so its
+        // handle can be published to `pendingTerminalPersistTask` BEFORE we
+        // await it — the board view reads that handle when the completion
+        // overlay's Close/Play Again fires, which can happen while this same
+        // `await` is still in flight (a slow CloudKit save). Awaiting the
+        // Task here still means this function completes at the same point it
+        // always did — behavior is unchanged for existing callers.
+        let reporter = errorReporter
+        let task = Task {
+            do {
+                try await persistence.markCompleted(summary)
+            } catch {
+                await reporter.report(
+                    UserFacingError.classify(error),
+                    underlying: error,
+                    source: "GameViewModel.markCompletedIfNeeded"
+                )
+            }
         }
+        pendingTerminalPersistTask = task
+        await task.value
     }
 
     // MARK: - Persistence

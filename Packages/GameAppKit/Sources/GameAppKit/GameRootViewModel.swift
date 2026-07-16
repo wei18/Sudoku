@@ -184,14 +184,22 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     /// (interactive dismiss — disabled for fullScreenCover, so in practice this
     /// fires when the board's `dismiss()` environment action collapses the cover).
     /// Safe to call when nothing is presented.
-    public func dismissGame() {
+    ///
+    /// - Parameter persistJoin: #823 — the shared `TerminalPersistJoin` the
+    ///   dismissing board registered its in-flight terminal-persist task
+    ///   with (if any). Threaded straight into `gameSessionDidTearDown` so
+    ///   the `sessionTeardownCount` bump — NOT this call, which stays
+    ///   synchronous/instant — can wait for a slow CloudKit save to land.
+    ///   `nil` (the default) preserves the original unconditional-bump
+    ///   behavior for callers that don't have a join point.
+    public func dismissGame(persistJoin: TerminalPersistJoin? = nil) {
         isGamePresented = false
         activeGameRoute = nil
         // #675: the just-torn-down session may have just completed (marked
         // via `markCompleted`) or been abandoned — refresh so Home stops
         // offering a stale pill until the next launch.
         Task { await refreshResumeCandidate() }
-        gameSessionDidTearDown()
+        gameSessionDidTearDown(persistJoin: persistJoin)
     }
 
     /// Signals that a game session just ended. Called by `dismissGame()` (iOS
@@ -208,8 +216,23 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     /// `refreshResumeCandidate()` call has since #675. Consumers must treat a
     /// bump as "a session MAY have just ended" and stay idempotent/cheap, like
     /// the hubs' guarded `refresh()`.
-    public func gameSessionDidTearDown() {
-        sessionTeardownCount += 1
+    ///
+    /// - Parameter persistJoin: #823 — when supplied, the bump is deferred
+    ///   into an unstructured `Task` that first awaits
+    ///   `persistJoin.awaitPending()` (bounded — see `TerminalPersistJoin`),
+    ///   closing the race where this bump (and the hub refresh it drives)
+    ///   could run before a terminal-transition CloudKit save had landed.
+    ///   `nil` (the default) preserves the original synchronous bump, so
+    ///   existing callers/tests that have no join point are unaffected.
+    public func gameSessionDidTearDown(persistJoin: TerminalPersistJoin? = nil) {
+        guard let persistJoin else {
+            sessionTeardownCount += 1
+            return
+        }
+        Task {
+            await persistJoin.awaitPending()
+            sessionTeardownCount += 1
+        }
     }
 
     // MARK: - Game Center signed-out guard (#685)

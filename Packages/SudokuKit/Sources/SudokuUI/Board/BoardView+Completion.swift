@@ -103,7 +103,8 @@ extension BoardView {
     @ViewBuilder
     func completionSurface(
         _ cvm: CompletionViewModel,
-        dismiss: DismissAction
+        dismiss: DismissAction,
+        persistJoin: TerminalPersistJoin?
     ) -> some View {
         // #615: the centred-card + bottom-pinned accent-Close layout now lives in
         // the shared `CompletionOverlayScaffold` (GameShellUI) so Minesweeper and
@@ -112,6 +113,10 @@ extension BoardView {
         CompletionOverlayScaffold(
             onClose: {
                 self.completionViewModel = nil
+                // #823: register before tearing down — synchronous, adds no
+                // latency to Close — so the teardown-triggered hub refresh
+                // waits (bounded) for this save to land.
+                persistJoin?.register(viewModel.pendingTerminalPersistTask)
                 exitToHub(dismiss: dismiss)
             },
             onPlayAgain: onPlayAgain.map { playAgain in
@@ -121,6 +126,7 @@ extension BoardView {
                 // before the new board modal is presented.
                 {
                     self.completionViewModel = nil
+                    persistJoin?.register(viewModel.pendingTerminalPersistTask)
                     exitToHub(dismiss: dismiss)
                     playAgain(difficulty)
                 }

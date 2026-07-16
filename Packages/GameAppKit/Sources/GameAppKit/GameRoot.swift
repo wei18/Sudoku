@@ -63,6 +63,13 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
     @State private var chromeState = GameChromeState()
     #endif
 
+    // #823: shared join point between a board's terminal-persist Task and
+    // the teardown-triggered hub refresh. Not `#if os(iOS)`-gated like
+    // `chromeState` — the macOS path-shrink branch in `shellContent` below
+    // needs it too (mac boards are a NavigationStack push, not a
+    // fullScreenCover). See `TerminalPersistJoin`'s doc for the full race.
+    @State private var persistJoin = TerminalPersistJoin()
+
     public init(
         viewModel: GameRootViewModel<Route>,
         title: LocalizedStringKey,
@@ -89,6 +96,9 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
             // #761: route views (e.g. the Daily hubs) read this to refresh
             // after a game session ends — see `GameRootViewModel.sessionTeardownCount`.
             .environment(\.gameSessionTeardownCount, viewModel.sessionTeardownCount)
+            // #823: board views register their in-flight terminal-persist
+            // Task here before dismissing — see `TerminalPersistJoin`.
+            .environment(\.terminalPersistJoin, persistJoin)
             // #685: moved here from the former `universalRootModifiers` helper
             // (called once from the plain `makeGameApp` function, outside any
             // View's own `body`). That outer attachment point never got
@@ -127,7 +137,10 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                     // fullScreenCover doesn't support interactive dismiss by default,
                     // so in practice this setter only fires when we set it to `false`.
                     if !presented {
-                        viewModel.dismissGame()
+                        // #823: pass the join so the teardown counter bump
+                        // waits (bounded) for any in-flight terminal-persist
+                        // save the dismissing board registered.
+                        viewModel.dismissGame(persistJoin: persistJoin)
                         chromeState.reset()
                     }
                 }
@@ -165,7 +178,10 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                     // hubs) refresh, mirroring `dismissGame()`'s iOS wiring.
                     if newPath.count < viewModel.path.count {
                         Task { await viewModel.refreshResumeCandidate() }
-                        viewModel.gameSessionDidTearDown()
+                        // #823: same join as the iOS fullScreenCover branch
+                        // above — macOS boards pop `path` instead of
+                        // dismissing a cover, but the race is identical.
+                        viewModel.gameSessionDidTearDown(persistJoin: persistJoin)
                     }
                     viewModel.path = newPath
                 }

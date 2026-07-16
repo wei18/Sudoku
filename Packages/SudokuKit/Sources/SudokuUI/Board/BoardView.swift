@@ -45,6 +45,10 @@ public struct BoardView: View {
     // completion overlay. `DismissAction` is a no-op outside a presented context
     // (previews / snapshot tests / macOS push path — all safe to call).
     @Environment(\.dismiss) private var dismiss
+    // #823: join point `completionSurface`'s Close/Play Again handlers
+    // register the in-flight terminal-persist Task with, right before
+    // dismissing — see `GameAppKit.TerminalPersistJoin`.
+    @Environment(\.terminalPersistJoin) private var persistJoin
     @FocusState private var keyboardFocus: Bool
     // #610: Completion overlay VM + Daily primer. Both held in @State so they
     // survive body recomputes without resetting fetch / auth-check state.
@@ -90,7 +94,7 @@ public struct BoardView: View {
         // fix *2: pass dismiss so Close returns the user to the hub.
         .overlay {
             if let completionViewModel {
-                completionSurface(completionViewModel, dismiss: dismiss)
+                completionSurface(completionViewModel, dismiss: dismiss, persistJoin: persistJoin)
             }
             // Pause menu — full-screen mask + screen-centred card (merged close+pause).
             if viewModel.isPaused {
@@ -375,25 +379,8 @@ public struct BoardView: View {
         await viewModel.keypadDigit(digit)
     }
 
-    // `internal` (not `private`) — the header's `timerLabel` in
-    // BoardView+AccessibilityHeader.swift reads this across files.
-    var elapsedLabel: String {
-        let total = viewModel.elapsedSeconds
-        let minutes = total / 60
-        let seconds = total % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    /// #790 fix 2: message posted via `AccessibilityNotification.Announcement`
-    /// when `armedDigit` changes. Extracted as a pure `static func` (not
-    /// inlined in the `.onChange` closure above) so the message text is
-    /// unit-testable without posting a real accessibility notification —
-    /// `AccessibilityNotification.Announcement.post()` itself has no mock
-    /// point and requires a live VoiceOver session to observe.
-    static func armedAnnouncementMessage(for armedDigit: Int?) -> String {
-        if let armedDigit {
-            return String(localized: "Digit \(armedDigit) armed", bundle: .main)
-        }
-        return String(localized: "Digit unarmed", bundle: .main)
-    }
+    // #823: `elapsedLabel` + `armedAnnouncementMessage` moved to
+    // BoardView+AccessibilityHeader.swift (same file-split rationale as that
+    // file's header extraction) to keep this file under the 400-line lint
+    // ceiling after the terminal-persist join wiring landed.
 }

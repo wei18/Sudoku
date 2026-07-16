@@ -93,6 +93,15 @@ public final class MinesweeperGameViewModel {
     /// so `onRetry` re-threads it (same save slot; fresh state overwrites).
     let recordName: String?
 
+    /// #823: handle to the most recently spawned terminal-transition persist
+    /// Task (set only on the `.won`/`.lost` branch of `reveal()`). The board
+    /// view registers this with the shared `GameAppKit.TerminalPersistJoin`
+    /// right before calling `dismiss()`, so the hub's teardown-triggered
+    /// refresh can wait — bounded — for the save to land instead of racing
+    /// ahead of it. `nil` until the first terminal reveal; awaiting a stale
+    /// (already-finished) Task is instant, so it is never explicitly cleared.
+    public private(set) var pendingTerminalPersistTask: Task<Void, Never>?
+
     // MARK: - Personal record (#699)
 
     /// Per-(mode × difficulty) best-time store. `nil` → no-op. Best-effort,
@@ -110,11 +119,20 @@ public final class MinesweeperGameViewModel {
     /// otherwise overwrite the seed with the actor's idle snapshot). Production
     /// callsites never set this — it defaults to `false`, preserving the live
     /// actor-backed refresh path verbatim.
-    private let isSeeded: Bool
+    ///
+    /// #823: was `private`; widened to `internal` so
+    /// `MinesweeperGameViewModel+Persistence.swift`'s `persistCurrentState()`
+    /// (moved out to keep this file under the 400-line lint ceiling) can read
+    /// the same fixture-safety guard the other mutators use.
+    let isSeeded: Bool
 
     // MARK: - Cached snapshot
 
-    public private(set) var snapshot: MinesweeperSessionSnapshot
+    // #823 file-split: setter was `private`; widened to `internal` so
+    // `+Persistence.swift`'s `pause()`/`resume()` (moved out to keep this
+    // file under the 400-line lint ceiling) can re-publish the actor's
+    // snapshot. Still read-only outside the module.
+    public internal(set) var snapshot: MinesweeperSessionSnapshot
 
     // MARK: - Convenience accessors (read-only projections of snapshot)
 
@@ -262,52 +280,46 @@ public final class MinesweeperGameViewModel {
             reportIssue("reveal out-of-bounds from well-formed grid: \(error)")
         }
         fireRevealAudio(previousStatus: previousStatus, revealedBefore: revealedBefore)
-        // #291: a reveal is the only action that can transition to `.won`
-        // (flagging never wins). Submit the best time once we cross into the
-        // won state.
-        await submitWinIfWon()
-        // #700: achievement evaluation is NOT daily-gated (unlike the Game
-        // Center submit above; the personal-record write is no longer
-        // daily-gated either, #705). Gated on the LIVE transition (pre-reveal
-        // status was not already .won): a
-        // no-op reveal on a restored already-won board returns the same .won
-        // snapshot, and re-evaluating it would inflate the non-idempotent
-        // cumulative win tally (that win was counted when it happened live).
-        if previousStatus != .won {
-            await evaluateAchievementsIfWon()
-        }
-        // #455: a terminal board persists immediately — `wireStatus` maps
-        // won/lost → "completed", which removes it from the resume-candidate
-        // set (the upsert also covers a board that was never saved mid-play).
+        // Post-flip chain, in the original order: #291 GC submit-on-win →
+        // #700 achievement evaluation (LIVE-transition-gated: a no-op reveal
+        // on a restored already-won board must not re-inflate the
+        // non-idempotent win tally) → #455 terminal persist (`wireStatus`
+        // maps won/lost → "completed", leaving the resume-candidate set).
+        //
+        // #823 INVARIANT: `pendingTerminalPersistTask` must be non-nil
+        // before the FIRST post-flip suspension. The `snapshot` flip above
+        // makes the completion overlay tappable at the next scheduler slot,
+        // and the win path's submit + personal-record writes are real
+        // network suspensions — a fast Close during them would `register(
+        // nil)` if the handle were assigned any later (round-1 CR finding).
+        // So the ENTIRE remaining terminal chain runs inside one child Task
+        // whose handle is published synchronously; awaiting `task.value`
+        // keeps `reveal()`'s completion point and ordering unchanged.
         if snapshot.status == .won || snapshot.status == .lost {
-            await persistCurrentState()
+            let isLiveWinTransition = previousStatus != .won
+            let task = Task {
+                await self.submitWinIfWon()
+                if isLiveWinTransition {
+                    await self.evaluateAchievementsIfWon()
+                }
+                await self.persistCurrentState()
+            }
+            pendingTerminalPersistTask = task
+            await task.value
+        } else {
+            // Non-terminal reveal: both are status-guarded no-ops here, but
+            // keep the calls (original shape) so the guard stays theirs.
+            await submitWinIfWon()
+            if previousStatus != .won {
+                await evaluateAchievementsIfWon()
+            }
         }
     }
 
-    // MARK: - Persistence (#455 step 4)
-
-    /// Persist the current board through the saved-game store. Trigger points:
-    /// pause, terminal reveal (above), and the view-lifecycle hooks
-    /// (`scenePhase == .background`, `onDisappear`) in `MinesweeperBoardView`.
-    /// No-ops when the persistence seam isn't threaded (MVP/preview/tests),
-    /// when seeded (#297 fixtures must stay side-effect-free), or while the
-    /// board is still `.idle` (a zero-information pre-first-reveal save would
-    /// occupy the resume pill for nothing). Failures funnel — a failed save
-    /// never interrupts gameplay (mirrors Sudoku's flush; conflict policy is
-    /// the documented MVP bare-throw → funnel, #463 CR).
-    public func persistCurrentState() async {
-        guard !isSeeded, let store, let recordName else { return }
-        guard snapshot.status != .idle else { return }
-        do {
-            try await store.save(snapshot, modeRaw: mode.rawValue, recordName: recordName)
-        } catch {
-            await errorReporter?.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "MinesweeperGameViewModel.persistCurrentState"
-            )
-        }
-    }
+    // Persistence (#455 step 4): `persistCurrentState()` lives in
+    // MinesweeperGameViewModel+Persistence.swift — same file-split rationale
+    // as `submitWinIfWon()` / `evaluateAchievementsIfWon()` below (keeps this
+    // file under the 400-line lint ceiling).
 
     public func toggleFlag(row: Int, col: Int) async {
         let flagsBefore = snapshot.flagCount
@@ -364,26 +376,9 @@ public final class MinesweeperGameViewModel {
         }
     }
 
-    // MARK: - Pause / resume (#434)
-
-    /// Pause the game: freeze the elapsed clock + flip to `.paused`. No-op when
-    /// seeded (preview/snapshot) or when the actor isn't `.playing` (the actor
-    /// itself guards the transition). Mirrors Sudoku's `GameViewModel.pause()`.
-    public func pause() async {
-        guard !isSeeded else { return }
-        snapshot = await session.pause()
-        // #455: a pause is a natural save point (mirrors Sudoku's
-        // pause-triggered flush, §How.5.5).
-        await persistCurrentState()
-    }
-
-    /// Resume the game: restart the clock + flip back to `.playing`. No-op when
-    /// seeded or when the actor isn't `.paused`. Mirrors Sudoku's
-    /// `GameViewModel.resume()`.
-    public func resume() async {
-        guard !isSeeded else { return }
-        snapshot = await session.resume()
-    }
+    // Pause / resume (#434): `pause()` / `resume()` live in
+    // MinesweeperGameViewModel+Persistence.swift (pause is itself a persist
+    // trigger point) — same file-split rationale as the notes below.
 
     // Game Center + personal-record submit-on-win (#291, #329, #699, #705):
     // `submitWinIfWon()` lives in MinesweeperGameViewModel+SubmitOnWin.swift

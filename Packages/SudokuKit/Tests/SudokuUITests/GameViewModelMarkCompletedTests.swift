@@ -122,4 +122,25 @@ struct GameViewModelMarkCompletedTests {
         }
         #expect(markCompletedOps.isEmpty, "markCompleted must NOT be called on a non-completing move")
     }
+
+    // #823 invariant mirror: the solve must publish the terminal-persist
+    // Task handle (`pendingTerminalPersistTask`), which the completion
+    // overlay's Close/Play Again registers with the shared
+    // `TerminalPersistJoin` before dismissing. Sudoku's flip → handle
+    // assignment is synchronous today (unlike MS's round-1 gap, see
+    // MinesweeperTerminalPersistHandleTests), so a plain post-solve
+    // assertion suffices — this is cheap insurance against a future
+    // reshuffle inserting a suspension before the assignment.
+    @Test("solve publishes the #823 terminal-persist join handle")
+    func solvePublishesTerminalPersistHandle() async throws {
+        let (viewModel, _) = makeViewModel(identity: Self.dailyIdentity)
+        viewModel.selection = GridCoordinate(row: 0, column: 0)
+        await viewModel.startOrResume()
+        #expect(viewModel.pendingTerminalPersistTask == nil)
+
+        await viewModel.placeDigit(1)
+
+        #expect(viewModel.status == .completed)
+        #expect(viewModel.pendingTerminalPersistTask != nil)
+    }
 }
