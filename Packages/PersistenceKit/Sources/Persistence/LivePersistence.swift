@@ -96,6 +96,18 @@ public actor LivePersistence: PersistenceProtocol {
         )
     }
 
+    public func loadIfExists(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot? {
+        try await savedGameStore().loadIfExists(
+            puzzleId: puzzleId,
+            mode: mode,
+            difficulty: difficulty
+        )
+    }
+
     public func save(
         _ snapshot: GameSessionSnapshot,
         puzzleId: String,

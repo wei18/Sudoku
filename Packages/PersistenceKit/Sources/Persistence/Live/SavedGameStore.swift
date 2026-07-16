@@ -136,6 +136,33 @@ internal actor SavedGameStore: Sendable {
         return await session.snapshot()
     }
 
+    /// Fetch the SavedGame snapshot for `puzzleId` **without** creating one on
+    /// absence. Unlike `loadOrCreate`, this distinguishes **confirmed
+    /// absence** (returns `nil`) from **fetch failure, existence unknown**
+    /// (throws) — the fetch error is propagated, never swallowed.
+    ///
+    /// `loadOrCreate`'s swallow-to-create semantics are correct for
+    /// resume/new-game callers (a board that can't confirm a save must still
+    /// be playable). They are WRONG for completed-game re-open callers
+    /// (Sudoku's completed-card tap, past-day strip taps): a transient CK
+    /// fetch error there must not synthesize a virgin
+    /// `.completion(elapsedSeconds: 0, mistakeCount: 0)` for a legitimately
+    /// completed game — #830. Those callers use `loadIfExists` instead and
+    /// treat both `nil` and a thrown error as "fall back to `.board`"
+    /// (#379 contract).
+    func loadIfExists(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot? {
+        let recordName = Self.recordName(for: puzzleId, mode: mode)
+        guard let existing = try await gateway.fetch(recordName: recordName) else {
+            return nil
+        }
+        let puzzle = try await puzzleLoader(puzzleId)
+        return try SavedGameMapper.snapshot(from: existing, puzzle: puzzle)
+    }
+
     /// Qualified save — `mode` cannot be inferred from `GameSessionSnapshot`
     /// alone (the snapshot carries `Puzzle` but not "daily vs practice").
     /// The VM layer holds the mode and calls this variant. The previously

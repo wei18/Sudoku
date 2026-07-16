@@ -300,6 +300,15 @@ public final class DailyHubViewModel {
     /// `elapsedSeconds`, then routes to the Completion screen. On a load
     /// failure we report through the funnel and fall back to `.board` — never
     /// worse than the pre-#379 behavior, and never silently stuck.
+    ///
+    /// #830: uses `loadIfExists`, not `loadOrCreate` — the latter swallows a
+    /// fetch failure into "treat as absent" and would synthesize a virgin
+    /// `.completion(elapsedSeconds: 0, mistakeCount: 0)` for a
+    /// legitimately-completed game whose record simply failed to fetch
+    /// (transient CK error, cold cache). A `nil` result (confirmed absence —
+    /// unexpected for a card the caller already believes is completed) is
+    /// treated the same as a thrown fetch error: neither has real completion
+    /// data to show, so both fall back to `.board`.
     /// #686: the `.exhausted` alert's primary CTA. The Daily hub has no
     /// difficulty picker of its own — the Practice hub does — so "try
     /// another difficulty" routes there. The hub was PUSHED from Home, so
@@ -335,11 +344,16 @@ public final class DailyHubViewModel {
         // an interleaved `cardTapped` between the route append and the clear.
         defer { isOpeningCompleted = false }
         do {
-            let snapshot = try await persistence.loadOrCreate(
+            guard let snapshot = try await persistence.loadIfExists(
                 puzzleId: puzzleId,
                 mode: .daily,
                 difficulty: difficulty
-            )
+            ) else {
+                // Confirmed absence: no record to review. Never worse than a
+                // fetch failure — fall back to `.board` the same way.
+                path.append(.board(puzzleId: puzzleId))
+                return
+            }
             path.append(.completion(
                 puzzleId: puzzleId,
                 elapsedSeconds: snapshot.elapsedSeconds,

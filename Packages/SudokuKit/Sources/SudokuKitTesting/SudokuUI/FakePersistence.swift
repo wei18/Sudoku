@@ -15,6 +15,7 @@ public actor FakePersistence: PersistenceProtocol {
         case bootstrap
         case latestInProgress
         case loadOrCreate(puzzleId: String)
+        case loadIfExists(puzzleId: String)
         case save(puzzleId: String)
         case markCompleted(recordName: String)
         case deleteAbandoned(recordName: String)
@@ -52,9 +53,11 @@ public actor FakePersistence: PersistenceProtocol {
     public var loadOrCreateError: PersistenceError?
     public var latestInProgressError: PersistenceError?
     public var deleteAbandonedError: PersistenceError?
-    /// When set, `loadOrCreate` returns this snapshot instead of the loud
-    /// default throw. Used by tests that exercise the completed-daily
-    /// → Completion route (#379).
+    /// When set, `loadOrCreate` AND `loadIfExists` return this snapshot
+    /// instead of the loud default throw / nil. Used by tests that exercise
+    /// the completed-daily → Completion route (#379) via either method —
+    /// both read the same "canned fetch result" knob, mirroring how a real
+    /// backing store's response doesn't depend on which method asked for it.
     public var loadOrCreateSnapshot: GameSessionSnapshot?
 
     public init(
@@ -138,6 +141,24 @@ public actor FakePersistence: PersistenceProtocol {
         // (`setLoadOrCreateSnapshot`) or override `loadOrCreateError`. Default
         // raises zoneNotProvisioned so accidental hits are loud.
         throw PersistenceError.zoneNotProvisioned
+    }
+
+    /// #830: re-view callers (`DailyHubViewModel.openCompleted`) use this
+    /// instead of `loadOrCreate`. Reads the SAME `loadOrCreateSnapshot` /
+    /// `loadOrCreateError` knobs — unlike `loadOrCreate`, an unscripted call
+    /// (no snapshot, no error) is NOT loud here: `nil` (confirmed absence) is
+    /// an ordinary, expected result for this method, not a test-authoring
+    /// mistake.
+    public func loadIfExists(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot? {
+        operations.append(.loadIfExists(puzzleId: puzzleId))
+        if let error = loadOrCreateError {
+            throw error
+        }
+        return loadOrCreateSnapshot
     }
 
     public func save(
