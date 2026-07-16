@@ -54,6 +54,10 @@ public struct MinesweeperBoardView: View {
     // #615: dismisses the presenting fullScreenCover so the Completion overlay's
     // Close returns to the hub — mirrors Sudoku's BoardView.dismiss (close-to-hub).
     @Environment(\.dismiss) private var dismiss
+    // #823: join point the Close/Play Again handlers register the in-flight
+    // terminal-persist Task with, right before calling `dismiss()` — see
+    // `TerminalPersistJoin`.
+    @Environment(\.terminalPersistJoin) private var persistJoin
     // #762 PR3: content-tier spacing (two-tier contract, design-system.md
     // §Spacing scale). Each wraps a self-contained content flow (the Mac
     // control rail's own stack / the mode-toggle chip's label / the two-row
@@ -1176,11 +1180,16 @@ public struct MinesweeperBoardView: View {
         CompletionOverlayScaffold(
             onClose: {
                 self.completionViewModel = nil
+                // #823: register before dismissing — synchronous, adds no
+                // latency to Close — so the teardown-triggered hub refresh
+                // waits (bounded) for this save to land.
+                persistJoin?.register(viewModel.pendingTerminalPersistTask)
                 dismiss()
             },
             onPlayAgain: onPlayAgain.map { playAgain in
                 {
                     self.completionViewModel = nil
+                    persistJoin?.register(viewModel.pendingTerminalPersistTask)
                     dismiss()
                     playAgain(difficulty)
                 }

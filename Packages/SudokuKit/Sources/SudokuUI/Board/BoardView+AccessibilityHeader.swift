@@ -160,4 +160,32 @@ extension BoardView {
         .hidden()
         .accessibilityHidden(true)
     }
+
+    // MARK: - Elapsed label + armed-digit announcement
+    //
+    // #823: moved here from BoardView.swift (same "keep that file under the
+    // 400-line ceiling" rationale as `undoRedoShortcuts` above) after the
+    // terminal-persist join wiring pushed it over.
+
+    // `internal` (not `private`) — the header's `timerLabel` above reads
+    // this across files (both live in this file now).
+    var elapsedLabel: String {
+        let total = viewModel.elapsedSeconds
+        let minutes = total / 60
+        let seconds = total % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// #790 fix 2: message posted via `AccessibilityNotification.Announcement`
+    /// when `armedDigit` changes. Extracted as a pure `static func` (not
+    /// inlined in the `.onChange` closure in BoardView.swift) so the message
+    /// text is unit-testable without posting a real accessibility
+    /// notification — `AccessibilityNotification.Announcement.post()` itself
+    /// has no mock point and requires a live VoiceOver session to observe.
+    static func armedAnnouncementMessage(for armedDigit: Int?) -> String {
+        if let armedDigit {
+            return String(localized: "Digit \(armedDigit) armed", bundle: .main)
+        }
+        return String(localized: "Digit unarmed", bundle: .main)
+    }
 }
