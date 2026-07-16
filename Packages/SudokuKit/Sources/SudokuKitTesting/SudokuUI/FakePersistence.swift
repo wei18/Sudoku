@@ -27,6 +27,15 @@ public actor FakePersistence: PersistenceProtocol {
 
     public var resumeCandidate: SavedGameSummary?
     public var completedDailyIds: Set<String> = []
+    /// #774: per-date overrides for `fetchCompletedDailyIds` — the week strip
+    /// fetches 7 distinct dates in one bootstrap/refresh, so a single global
+    /// `completedDailyIds` can't script a realistic (mixed completed/missed)
+    /// week. Any `Date` not present here falls back to `completedDailyIds`,
+    /// so single-day tests (today-only) are unaffected.
+    public var completedDailyIdsByDate: [Date: Set<String>] = [:]
+    /// When set, every `fetchCompletedDailyIds` call throws this error — used
+    /// to test the week-strip's all-or-nothing degrade (#774).
+    public var fetchCompletedDailyIdsError: PersistenceError?
     public var personalRecord: PersonalRecord = PersonalRecord(
         recordName: "",
         // M5 (issue #65): default mode/difficulty must be valid enum cases;
@@ -62,6 +71,16 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func setCompletedDailyIds(_ ids: Set<String>) {
         self.completedDailyIds = ids
+    }
+
+    /// #774: scripts one specific date's result independent of the global
+    /// `completedDailyIds` default — see the property doc above.
+    public func setCompletedDailyIds(_ ids: Set<String>, for date: Date) {
+        completedDailyIdsByDate[date] = ids
+    }
+
+    public func setFetchCompletedDailyIdsError(_ error: PersistenceError?) {
+        self.fetchCompletedDailyIdsError = error
     }
 
     public func setLatestInProgressError(_ error: PersistenceError?) {
@@ -144,7 +163,10 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
         operations.append(.fetchCompletedDailyIds(date: date))
-        return completedDailyIds
+        if let error = fetchCompletedDailyIdsError {
+            throw error
+        }
+        return completedDailyIdsByDate[date] ?? completedDailyIds
     }
 
     public func fetchPersonalRecord(

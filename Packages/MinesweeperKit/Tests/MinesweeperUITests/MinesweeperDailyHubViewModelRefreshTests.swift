@@ -68,9 +68,10 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         await viewModel.bootstrap()
         await viewModel.bootstrap()
 
-        // One phase-2 run == 2 queries (completed + failed); a second
-        // `bootstrap()` call must be a no-op (`hasBootstrapped` latch).
-        #expect(await queryOpCount(gateway) == 2)
+        // One phase-2 run == 8 queries (7 week-strip window days (#774)
+        // + 1 failed); a second `bootstrap()` call must be a no-op
+        // (`hasBootstrapped` latch).
+        #expect(await queryOpCount(gateway) == 8)
     }
 
     /// `refresh()` called before any `bootstrap()` has landed must be a
@@ -134,11 +135,12 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         #expect(refreshedCard?.isCompleted == true)
         #expect(refreshedCards.filter(\.isCompleted).count == 1)
 
-        // Phase-2 (completed + failed ids) must have re-run exactly twice
-        // (bootstrap + refresh) — 2 queries per run == 4 total; the trio
-        // itself has no fetch counter to assert against since `dailyTrio`
-        // is a pure synchronous call, not a service seam.
-        #expect(await queryOpCount(gateway) == 4)
+        // Phase-2 (7-day week-strip window + failed ids, #774) must have
+        // re-run exactly twice (bootstrap + refresh) — 8 queries per run
+        // == 16 total; the trio itself has no fetch counter to assert
+        // against since `dailyTrio` is a pure synchronous call, not a
+        // service seam.
+        #expect(await queryOpCount(gateway) == 16)
     }
 
     /// A `refresh()` with no completion changes must be a harmless re-fetch:

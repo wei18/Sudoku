@@ -186,5 +186,94 @@ struct DailyHubViewTests {
         }
         assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
     }
+
+    // MARK: - #774 week-strip states
+
+    /// Partial streak: today + yesterday completed via per-date scripting →
+    /// last two dots filled, "2 day streak" caption. (The global-set fixtures
+    /// above light ALL 7 dots — every window date falls back to the same
+    /// non-empty set — so this is the only baseline pinning a MIXED strip.)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripPartialStreakIPhoneLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let easyId = envelopes[0].identity.puzzleId
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(envelopes))
+        let persistence = FakePersistence()
+        await persistence.setCompletedDailyIds([easyId], for: Self.fixedDate)
+        await persistence.setCompletedDailyIds(["yesterday-easy"], for: Self.fixedDate.addingTimeInterval(-86_400))
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            dateProvider: { Self.fixedDate }
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.weekStrip.streak == 2)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-streak2")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak2", record: SnapshotMode.recordMode)
+    }
+
+    /// Degraded strip: the completed-ids fetch fails (offline / signed-out) →
+    /// all-subdued skeleton dots, NO streak caption (never a false "0"), trio
+    /// still rendered un-completed.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripDegradedIPhoneLight() async {
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
+        let persistence = FakePersistence()
+        await persistence.setFetchCompletedDailyIdsError(.iCloudNotSignedIn)
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            dateProvider: { Self.fixedDate }
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.weekStrip == .unknown)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-stripDegraded")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-stripDegraded", record: SnapshotMode.recordMode)
+    }
+
+    /// AX3 Dynamic Type: the strip's dots are structural (fixed 16pt, never
+    /// wrap); the caption + trio text scale. Env-injected Dynamic Type
+    /// snapshots are a layout pin only, not proof of runtime behavior
+    /// (see memory: dynamic-type-sim-verify-and-cap) — sim verification is
+    /// the authority for AX bugs.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripStreakAX3IPhoneLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(envelopes))
+        let persistence = FakePersistence()
+        await persistence.setCompletedDailyIds([envelopes[0].identity.puzzleId], for: Self.fixedDate)
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            dateProvider: { Self.fixedDate }
+        )
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel).dynamicTypeSize(.accessibility3),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-streak-AX3")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
+    }
     #endif
 }

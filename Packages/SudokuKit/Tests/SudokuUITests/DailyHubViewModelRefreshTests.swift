@@ -102,8 +102,10 @@ struct DailyHubViewModelRefreshTests {
         // phase-2 (completed ids) re-runs.
         let providerOps = await provider.operations
         #expect(providerOps.count == 1)
+        // #774: each run fetches the 7-day week-strip window (not a single
+        // "today" call) — bootstrap + refresh = 7 + 7 = 14.
         let persistenceOps = await persistence.operations
-        #expect(persistenceOps.filter { if case .fetchCompletedDailyIds = $0 { true } else { false } }.count == 2)
+        #expect(persistenceOps.filter { if case .fetchCompletedDailyIds = $0 { true } else { false } }.count == 14)
     }
 
     /// A `refresh()` with no completion changes must be a harmless re-fetch:
