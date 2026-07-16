@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#MISE description="Sync the shared Settings.bundle Root.plist into both apps' per-app Settings.bundle (issue #832 — kills hand-duplicated drift)."
+set -euo pipefail
+
+# `Root.plist` is the mandatory Settings.bundle entry point (PSChildPaneSpecifier
+# -> Acknowledgements) that LicensePlist never writes — see .gitignore's comment
+# on `App/*/Resources/Settings.bundle/*`. Its directory must also physically
+# contain a file BEFORE `tuist generate` runs, or Tuist's glob resource never
+# registers a Settings.bundle folder for that target at all (verified empirically
+# — an empty/missing dir at generate time produces zero PBXFileReference entries,
+# even though license-plist populates the directory afterward in
+# ci_scripts/ci_post_clone.sh's step order).
+#
+# A tracked symlink into `App/Shared/Settings.bundle/Root.plist` was tried and
+# reverted: Xcode's Copy Bundle Resources phase preserves symlinks verbatim
+# (does not dereference them), so the RELATIVE symlink target resolves inside
+# this repo checkout but is BROKEN once copied into the built .app (verified via
+# a local xcodebuild run — `file Sudoku.app/Settings.bundle/Root.plist` reported
+# "broken symbolic link"). A second Tuist resource entry pointing straight at the
+# shared path was also tried and reverted: two different source folders both
+# landing at `Settings.bundle` inside one target collide with Xcode's "Multiple
+# commands produce" once license-plist's per-app output exists alongside it.
+#
+# So the two per-app `Root.plist` files stay real, git-tracked, byte-identical
+# copies — but humans only ever edit the ONE canonical source below; this task
+# (run by `mise-tasks/tuist/generate` and `ci_scripts/ci_post_clone.sh` before
+# every `tuist generate`) re-syncs both copies from it every time, so a stale or
+# hand-edited per-app copy cannot survive the next generate/build.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SRC="$REPO_ROOT/App/Shared/Settings.bundle/Root.plist"
+
+for app in Sudoku Minesweeper; do
+    DST="$REPO_ROOT/App/$app/Resources/Settings.bundle/Root.plist"
+    mkdir -p "$(dirname "$DST")"
+    cp "$SRC" "$DST"
+    echo "Synced $DST (byte-copy of $SRC)"
+done

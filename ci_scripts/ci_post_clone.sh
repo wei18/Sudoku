@@ -101,6 +101,14 @@ EOF
     echo "Wrote Tuist/AppStore.xcconfig from ${APP_STORE_ID_VAR}"
 fi
 
+# 3.1d) #832: re-sync the shared Settings.bundle Root.plist (single committed
+#       source at App/Shared/Settings.bundle/Root.plist) into both apps' own
+#       Settings.bundle BEFORE `tuist generate` — Tuist's glob resource below
+#       only registers a target's Settings.bundle folder if the directory
+#       physically contains a file at generate time (license-plist runs after,
+#       in step 3.3, and never touches Root.plist).
+mise run gen:settings_root
+
 # 3.2) Generate Xcode workspace via Tuist. Tuist symlinks
 #      Game.xcworkspace/xcshareddata/swiftpm/Package.resolved →
 #      committed `.package.resolved` at repo root (#105), so xcodebuild's

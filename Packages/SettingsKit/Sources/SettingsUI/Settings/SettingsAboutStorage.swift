@@ -1,8 +1,13 @@
 // SettingsAboutStorage — app-agnostic About(Version) row + Storage section.
 //
-// The two genuinely cross-game pieces of a game's Settings page:
+// The genuinely cross-game pieces of a game's Settings page:
 //   - `SettingsAboutVersionRow` — the "Version" row (icon-left / label /
 //     spacer / value-right pill).
+//   - `SettingsAboutExtraRow` — a generic icon/label/value pill for an
+//     optional extra About row. #832: extracted from the per-app `AboutRow`
+//     (originally SudokuUI-only, rendering the Generator version) so the
+//     unified `GameAppKit.SettingsView` can mount it generically — it carries
+//     no Sudoku dependency, just the three primitives.
 //   - `SettingsStorageSection` — a `Section("Storage")` with a destructive
 //     "Clear cache" button + confirmation dialog.
 //
@@ -47,6 +52,41 @@ public struct SettingsAboutVersionRow: View {
             Text("Version")
             Spacer()
             Text(version)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - About: generic extra row
+
+/// Static icon-left / label / spacer / value-right row matching
+/// `SettingsAboutVersionRow`'s pill shape (issue #197), for an app-injected
+/// extra About row. Today's only consumer is Sudoku's "Generator" row
+/// (`GameAppKit.SettingsView`, gated on `SettingsViewModel.generatorVersionLabel`).
+/// `tintColor` is required (no default) — same theme-decoupling as
+/// `SettingsAboutVersionRow` above; the host resolves it at the call site.
+public struct SettingsAboutExtraRow: View {
+    private let systemImage: String
+    private let title: LocalizedStringKey
+    private let value: String
+    private let tintColor: Color
+
+    public init(systemImage: String, title: LocalizedStringKey, value: String, tintColor: Color) {
+        self.systemImage = systemImage
+        self.title = title
+        self.value = value
+        self.tintColor = tintColor
+    }
+
+    public var body: some View {
+        HStack {
+            Image(systemName: systemImage)
+                .foregroundStyle(tintColor)
+            Text(title)
+            Spacer()
+            Text(value)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

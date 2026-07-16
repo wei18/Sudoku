@@ -64,9 +64,21 @@ let sudokuTarget = Target.target(
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Sudoku/license_plist.yml`. Regenerated
         // on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`; not
-        // committed (.gitignore'd). Glob pattern so Tuist doesn't require the
-        // directory to exist at `tuist generate` time on dev machines.
-        .glob(pattern: "App/Sudoku/Resources/Settings.bundle/**")
+        // committed (.gitignore'd) — EXCEPT `Root.plist`, a tracked BYTE-COPY
+        // (#832) of `App/Shared/Settings.bundle/Root.plist`, the single
+        // editable source, resynced by `mise run gen:settings_root` (direct
+        // edits to the copy are silently overwritten on the next generate).
+        // Glob pattern so Tuist doesn't require the directory to exist at
+        // `tuist generate` time on dev machines; the
+        // tracked copy ensures the directory DOES exist on a fresh CI
+        // checkout (before `tuist generate` runs, ahead of the license-plist
+        // step that populates the rest) — a bare `App/Shared/...` resource
+        // entry was tried and reverted: Xcode treats `Settings.bundle` as an
+        // opaque folder wrapper per SOURCE path, so two different source
+        // folders both landing at `Settings.bundle` in the SAME target
+        // collide with "Multiple commands produce" once license-plist's
+        // output exists alongside it (verified via a local xcodebuild run).
+        .glob(pattern: "App/Sudoku/Resources/Settings.bundle/**"),
     ],
     entitlements: .file(path: "App/Sudoku/Sudoku.entitlements"),
     dependencies: [
@@ -115,8 +127,8 @@ let minesweeperTarget = Target.target(
         // LicensePlist-generated Settings.bundle (App Store Acknowledgements
         // page). Source of truth: `App/Minesweeper/license_plist.yml`.
         // Regenerated on every Xcode Cloud build via `ci_scripts/ci_post_clone.sh`;
-        // not committed (.gitignore'd). Glob pattern so Tuist doesn't require the
-        // directory to exist at `tuist generate` time on dev machines.
+        // not committed (.gitignore'd) except the tracked `Root.plist` byte-copy —
+        // see sudokuTarget's comment above for the full #832 rationale.
         .glob(pattern: "App/Minesweeper/Resources/Settings.bundle/**"),
     ],
     entitlements: .file(path: "App/Minesweeper/Minesweeper.entitlements"),

@@ -1,26 +1,39 @@
 // SettingsViewModel — read-only status surface + clear-cache action.
 //
-// Per docs/designs/08-settings.md. Synchronous reads + memoized snapshots;
-// no loading state. `clearCache()` deletes the active in-progress saved
-// game (if any) via Persistence — the closest "session cache" hook on the
-// PersistenceProtocol surface today.
+// #832: unified from `SudokuUI.SettingsViewModel` (Minesweeper had no
+// equivalent — its wrapper took primitive `version:`/`clearCache:` closures
+// and duplicated this exact bootstrap/clear-cache logic as a free function on
+// `LiveRouteFactory`). Lives in GameAppKit — the "shared composition, deps
+// allowed" layer — because it needs `Persistence`/`Telemetry`, which the
+// zero-dep GameShellKit must never import.
 //
-// v2.4.6: clear-cache success surfaces via `ToastController` (bottom-center
-// capsule mounted on `RootView`) instead of an inline `Label` row in the
-// Form. `clearCacheConfirmation` stays as the VoiceOver / test source of
-// truth — toasts are transient and not reliably announced by VoiceOver.
+// `persistence: any PersistenceProtocol` is the game-agnostic CloudKit seam
+// both apps' composition roots already wire from the SAME `LivePersistence`
+// (see `MakeGameApp.swift`) for exactly this "in-progress saved game"
+// resume/clear-cache flow — it is not Sudoku-exclusive despite `SavedGameSummary`
+// living in the `Persistence` module. `clearCache()` deletes the active
+// in-progress record (if any) via that seam — the closest "session cache" hook
+// on `PersistenceProtocol` today.
+//
+// Toast/confirmation behavior (v2.4.6 era): success/failure surfaces via
+// `ToastController` (bottom-center capsule mounted on the app's RootView);
+// `clearCacheConfirmation` stays the VoiceOver / test source of truth since
+// toasts are transient and not reliably announced by VoiceOver.
 
 public import Foundation
 public import MonetizationUI
 public import Persistence
-public import SudokuEngine
 public import Telemetry
 
 @MainActor
 @Observable
 public final class SettingsViewModel {
 
-    public let generatorVersion: GeneratorVersion
+    /// #832: replaces Sudoku-only `GeneratorVersion` (a `SudokuEngine` type
+    /// GameAppKit must not depend on) with a plain label. `nil` (Minesweeper)
+    /// hides the About section's extra "Generator" row entirely; Sudoku's
+    /// composition root passes `GeneratorVersion.v1.rawValue`.
+    public let generatorVersionLabel: String?
     public let appVersion: String
 
     /// Most-recent in-progress record, captured once at bootstrap; consumed
@@ -40,13 +53,13 @@ public final class SettingsViewModel {
     private let toastController: ToastController?
 
     public init(
-        generatorVersion: GeneratorVersion = .v1,
+        generatorVersionLabel: String? = nil,
         appVersion: String = "1.0.0",
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         toastController: ToastController? = nil
     ) {
-        self.generatorVersion = generatorVersion
+        self.generatorVersionLabel = generatorVersionLabel
         self.appVersion = appVersion
         self.persistence = persistence
         self.errorReporter = errorReporter

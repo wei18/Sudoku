@@ -33,14 +33,15 @@ import SnapshotTesting
 struct SettingsViewTests {
 
     @Test func generatorVersionRow_displaysV1() {
+        // #832: the shared VM took `generatorVersion: GeneratorVersion` down to
+        // a plain `generatorVersionLabel: String?` (GameAppKit must not depend
+        // on SudokuEngine); SudokuAppComposition's LiveRouteFactory passes
+        // `GeneratorVersion.v1.rawValue` at the call site.
         let viewModel = SettingsViewModel(
-            generatorVersion: .v1,
+            generatorVersionLabel: GeneratorVersion.v1.rawValue,
             persistence: FakePersistence()
         )
-        // Asserts the value passed into the SettingsView label matches the
-        // current GeneratorVersion.v1.rawValue. The View renders this via
-        // `LabeledContent("Generator", value: viewModel.generatorVersion.rawValue)`.
-        #expect(viewModel.generatorVersion.rawValue == "v1")
+        #expect(viewModel.generatorVersionLabel == "v1")
     }
 
     @Test func clearCache_deletesResumeCandidateAndSetsConfirmation() async {
@@ -239,7 +240,13 @@ struct SettingsViewTests {
         colorScheme: ColorScheme,
         sizeClass: UserInterfaceSizeClass
     ) -> NSView {
-        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        // #832: the shared VM defaults `generatorVersionLabel` to nil (MS has
+        // no Generator row); pass Sudoku's production value explicitly so
+        // these pre-#832 baselines keep showing the row.
+        let viewModel = SettingsViewModel(
+            generatorVersionLabel: GeneratorVersion.v1.rawValue,
+            persistence: FakePersistence()
+        )
         let view = NavigationStack {
             SettingsView(viewModel: viewModel, monetizationController: controller)
         }

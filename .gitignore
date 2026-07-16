@@ -65,7 +65,19 @@ NOTES.md.private
 # `ci_scripts/ci_post_clone.sh`; `license_plist*.yml` are the sources of truth).
 # Root.plist is the exception: it's the mandatory Settings.bundle entry point
 # (PSChildPaneSpecifier -> Acknowledgements) that LicensePlist never writes —
-# it must be a committed seed, not gitignored generated output (#721).
+# it must be a committed seed, not gitignored generated output (#721), AND its
+# directory must physically exist before `tuist generate` runs (Tuist's glob
+# below only wires up a folder Xcode later re-scans at build time if at least
+# one match exists at generate time). #832: single-sourced content — each
+# per-app Root.plist is a tracked BYTE-COPY of the one real file at
+# `App/Shared/Settings.bundle/Root.plist`, resynced by `mise run
+# gen:settings_root` (runs before every tuist generate + in CI post-clone) —
+# edit ONLY the App/Shared source; direct edits to a per-app copy are
+# silently overwritten on the next generate (a second Tuist resource entry
+# pointing straight at the shared path was tried and reverted: two different
+# source folders both landing at `Settings.bundle` in the same target collide
+# with Xcode's "Multiple commands produce" once license-plist's per-app
+# output exists alongside it).
 App/Sudoku/Resources/Settings.bundle/*
 !App/Sudoku/Resources/Settings.bundle/Root.plist
 App/Minesweeper/Resources/Settings.bundle/*

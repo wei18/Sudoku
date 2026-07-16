@@ -35,6 +35,7 @@ import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
 import Persistence
+import SudokuEngine
 import SudokuKitTesting
 
 #if canImport(AppKit)
@@ -76,7 +77,15 @@ struct SettingsViewWindowSnapshotTests {
     private func makeSettingsView(
         controller: MonetizationStateController
     ) -> some View {
-        let viewModel = SettingsViewModel(persistence: FakePersistence())
+        // #832: the shared VM defaults `generatorVersionLabel` to nil (MS has no
+        // Generator row); pass Sudoku's production value explicitly so this
+        // matches `SettingsViewTests.makeSettingsHost`'s tree exactly (this
+        // file's whole point is isolating the NSWindow-vs-NSHostingView delta,
+        // not the Generator row).
+        let viewModel = SettingsViewModel(
+            generatorVersionLabel: GeneratorVersion.v1.rawValue,
+            persistence: FakePersistence()
+        )
         return NavigationStack {
             SettingsView(viewModel: viewModel, monetizationController: controller)
         }
