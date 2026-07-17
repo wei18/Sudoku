@@ -9,6 +9,8 @@ Conventions:
 - **Mac variants**: Developer chooses the precise device trait (e.g. `.fixed(width: 900, height: 700)`) — see `// TODO: Developer chooses precise device size` below the table.
 - **Total target**: 58 snapshots (21 §How.5.8 baseline views + 13 additional view variants + 17 component base + 7 CellView state grid) — see the Coverage summary below.
 
+> **⚠️ SUPERSEDED** — The **"Source file"** column references `*_Designs.swift` files that do not exist in this directory (see `docs/designs/README.md` line 23). The live source of truth for snapshot test names and suite structure is **`Packages/{SudokuKit,MinesweeperKit}/Tests/*UITests/__Snapshots__/`** — consult that tree for the canonical test class names (e.g., `BoardViewTests`, `DailyHubViewTests`, `CompletionViewTests`) and their individual snapshot files. The sections below are preserved as a historical inventory mapping; refer to the actual `__Snapshots__/` directory tree for the current suite architecture. (2026-07-17, #865)
+
 ---
 
 ## §1 View snapshots — §How.5.8 baseline (21)
