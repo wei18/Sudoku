@@ -4,7 +4,7 @@
 //
 //   • iPhone (compact size class): unified secondary-action row
 //     (Undo / Redo / Notes / Erase, icon-only, 4 × 44pt) sits BETWEEN
-//     the board and the 1×9 digit strip (#210, 2026-05-30).
+//     the board and the 3×3 digit `Grid` (56pt keys) (#210, 2026-05-30).
 //   • Mac (regular size class): vertical right rail — history row, Notes
 //     toggle (button-styled), 3×3 digit `Grid`, Erase row. The board
 //     itself is laid out by BoardView; this view just owns the controls.
@@ -73,8 +73,16 @@ struct DigitPadView: View {
         // across the digit-strip width, not a spacing decision (#762 PR2).
         HStack(spacing: 0) {
             Button(action: onUndo) {
+                // #855 F-5 (sim-confirmed): an unconditional `.foregroundStyle`
+                // here made a `.disabled` Undo render IDENTICAL to the always-
+                // enabled Erase icon — same footgun class as #797 (explicit
+                // ink on the label content wins over the environment's
+                // automatic disabled-dimming). Conditioning the ink on
+                // `canUndo` restores the gray-out; `text.tertiary` matches
+                // the documented disabled convention (docs/designs/05-board.md
+                // §d "Undo/Redo … disabled = text.tertiary").
                 Image(systemName: "arrow.uturn.backward")
-                    .foregroundStyle(theme.accent.primary.resolved)
+                    .foregroundStyle(canUndo ? theme.accent.primary.resolved : theme.text.tertiary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .frame(minWidth: 44, minHeight: 44)
@@ -82,8 +90,9 @@ struct DigitPadView: View {
             .accessibilityLabel("Undo")
 
             Button(action: onRedo) {
+                // #855 F-5: same fix as Undo above.
                 Image(systemName: "arrow.uturn.forward")
-                    .foregroundStyle(theme.accent.primary.resolved)
+                    .foregroundStyle(canRedo ? theme.accent.primary.resolved : theme.text.tertiary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .frame(minWidth: 44, minHeight: 44)
@@ -99,7 +108,7 @@ struct DigitPadView: View {
             }
             .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("Notes")
-            .accessibilityValue(pencilMode ? "On" : "Off")
+            .accessibilityValue(Self.pencilModeAccessibilityValue(pencilMode))
             .accessibilityAddTraits(.isToggle)
 
             Button(action: onErase) {
@@ -146,6 +155,12 @@ struct DigitPadView: View {
     @ViewBuilder
     private func compactDigitButton(digit: Int, remaining: Int) -> some View {
         let isArmed = digit == armedDigit
+        // #855 adjudicated extra: the selected-cell gate only blocks DIRECT
+        // PLACEMENT of an exhausted digit — pencil notes are annotations and
+        // don't care about remaining count, so an exhausted digit stays
+        // tappable while `pencilMode` is on (matches the digit-first/no-
+        // selection path, which never gated on remaining count either).
+        let isDisabled = Self.isDigitDisabled(hasSelection: hasSelection, remaining: remaining, pencilMode: pencilMode)
         Group {
             if isArmed {
                 Button {
@@ -162,41 +177,33 @@ struct DigitPadView: View {
                     // on-accent-ink pattern as #786's mode toggle: `surface.primary`
                     // (0xFFFFFF light / 0x1E2024 dark) resolves to 4.83:1 light /
                     // 7.42:1 dark against accent.primary — both AA. Light mode
-                    // renders byte-identically (still white). The inner remaining-
-                    // count badge keeps its own explicit foregroundStyle
-                    // (unaffected — a more specific modifier wins over this
-                    // ancestor one).
-                    compactDigitLabel(digit: digit, remaining: remaining)
+                    // renders byte-identically (still white). #855 F-1: the
+                    // inner remaining-count badge now ALSO takes this ink when
+                    // armed (passed through `isArmed`) — previously it kept its
+                    // own explicit `foregroundStyle` (a more specific modifier
+                    // wins over this ancestor one), which on the solid accent
+                    // fill measured 1.45:1 light / 1.02:1 dark. Routing the
+                    // badge through the same on-accent ink brings it to the
+                    // same 4.83:1 / 7.42:1 as the digit glyph.
+                    compactDigitLabel(digit: digit, remaining: remaining, isArmed: true)
                         .foregroundStyle(theme.surface.primary.resolved)
                 }
                 .buttonStyle(.borderedProminent)
             } else {
-                Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining) }
+                Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining, isArmed: false) }
                     .buttonStyle(.bordered)
             }
         }
         .tint(theme.accent.primary.resolved)
-        // #722: only the direct-placement path (a cell is selected) gates on
-        // remaining count — with no selection, a tap only arms, and arming an
-        // already-fully-placed digit is still valid for notes use.
-        .disabled(hasSelection && remaining == 0)
-        .opacity(Self.digitButtonOpacity(remaining: remaining, isArmed: isArmed))
+        .disabled(isDisabled)
+        .opacity(Self.digitButtonOpacity(remaining: remaining, isArmed: isArmed, isDisabled: isDisabled))
         .accessibilityLabel("Digit \(digit)")
-        .accessibilityValue(remaining > 0 ? "\(remaining) remaining" : "fully placed")
+        .accessibilityValue(Self.digitAccessibilityValue(remaining: remaining))
+        .accessibilityHint(Self.digitAccessibilityHint(hasSelection: hasSelection))
         .accessibilityAddTraits(isArmed ? .isSelected : [])
     }
 
-    /// #790 fix 3: an exhausted-but-armed digit (remaining == 0, armed for
-    /// notes use per `hasSelection`'s doc above) must stay full-opacity —
-    /// dimming it to 0.35 while it renders `.borderedProminent` accent fill
-    /// mixes "disabled" and "active" visual language. Extracted as a pure
-    /// `static func` (not inlined in `.opacity(...)`) so this decision is
-    /// unit-testable without rendering the view.
-    static func digitButtonOpacity(remaining: Int, isArmed: Bool) -> Double {
-        remaining == 0 && !isArmed ? 0.35 : 1.0
-    }
-
-    private func compactDigitLabel(digit: Int, remaining: Int) -> some View {
+    private func compactDigitLabel(digit: Int, remaining: Int, isArmed: Bool) -> some View {
         // spacing-exempt: 2pt — digit-key face geometry (this VStack sits
         // inside a fixed `minHeight: 56` key); board/digit-pad cell/key
         // geometry stays structural and must not scale with Dynamic Type
@@ -208,9 +215,21 @@ struct DigitPadView: View {
             if remaining > 0 {
                 Text("\(remaining)")
                     .font(.caption2)
-                    .foregroundStyle(remaining == 1
-                        ? theme.accent.primary.resolved
-                        : theme.text.secondary.resolved)
+                    .foregroundStyle(isArmed
+                        ? theme.surface.primary.resolved
+                        : (remaining == 1
+                            ? theme.accent.primary.resolved
+                            : theme.text.secondary.resolved))
+            } else {
+                // #855 F-2: "fully placed" is now a positive signal (a small
+                // checkmark) rather than pure whole-key dimming — dimming
+                // alone reads as "disabled" even on the still-tappable
+                // exhausted-but-enabled key. `text.secondary` ink at full
+                // opacity measures ≥6.6:1 against the pad background in
+                // both themes.
+                Image(systemName: "checkmark")
+                    .font(.caption2)
+                    .foregroundStyle(isArmed ? theme.surface.primary.resolved : theme.text.secondary.resolved)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 56)
@@ -284,7 +303,7 @@ struct DigitPadView: View {
             }
         }
         .accessibilityLabel("Notes")
-        .accessibilityValue(pencilMode ? "On" : "Off")
+        .accessibilityValue(Self.pencilModeAccessibilityValue(pencilMode))
         .accessibilityAddTraits(.isToggle)
     }
 
@@ -328,6 +347,9 @@ struct DigitPadView: View {
         // Palette sweep (#610 fix *5): match iPhone digit tint.
         .tint(theme.accent.primary.resolved)
         .accessibilityLabel("Digit \(digit)")
+        // #855 F-8: same digit-first arm-vs-place disambiguation as
+        // `compactDigitButton` — Mac shares the same `onDigit` semantics.
+        .accessibilityHint(Self.digitAccessibilityHint(hasSelection: hasSelection))
         .accessibilityAddTraits(isArmed ? .isSelected : [])
     }
 
