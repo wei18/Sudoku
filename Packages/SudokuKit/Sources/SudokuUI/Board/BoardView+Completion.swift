@@ -43,13 +43,13 @@ extension BoardView {
 
     // MARK: - Overlay-active predicate (#763)
 
-    /// True whenever this board's own Pause or Completion overlay is up.
-    /// MUST track the EXACT same condition as the `.overlay { … }` mounted in
-    /// `BoardView.body` — it feeds the `.preference` published right after
-    /// that overlay, which `RootShellView` uses to mask + disable the macOS
-    /// sidebar (see `BoardModalOverlayActivePreferenceKey`).
+    /// True whenever this board's own Pause/ready-leave or Completion overlay
+    /// is up. MUST track the EXACT same condition as the `.overlay { … }`
+    /// mounted in `BoardView.body` — it feeds the `.preference` published
+    /// right after that overlay, which `RootShellView` uses to mask + disable
+    /// the macOS sidebar (see `BoardModalOverlayActivePreferenceKey`).
     var isModalOverlayActive: Bool {
-        completionViewModel != nil || viewModel.isPaused
+        completionViewModel != nil || viewModel.isPaused || showReadyLeaveOverlay
     }
 
     // MARK: - Factories (called once per .completed transition)

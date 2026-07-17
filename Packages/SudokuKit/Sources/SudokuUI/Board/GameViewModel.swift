@@ -107,6 +107,15 @@ public final class GameViewModel {
     // MARK: - Init
 
     /// Live init — bind to a real `GameSession` + `Persistence`.
+    ///
+    /// #849 (CR round 2, Finding 2): `BoardLoaderView.mountLoaded` sets
+    /// `state = .loaded(viewModel)` — which SwiftUI renders immediately —
+    /// BEFORE `await viewModel.startOrResume()` runs and resyncs `canUndo`
+    /// from the restored session. Without `initialCanUndo`, a resumed
+    /// mid-game board (real undo history, but this property defaulting to
+    /// `false`) could render the leave/pause toolbar with the wrong label
+    /// for that one frame. `initialCanUndo` threads the restored value in at
+    /// construction so there is no transient wrong state to render.
     public init(
         identity: PuzzleIdentity,
         session: GameSession,
@@ -115,6 +124,7 @@ public final class GameViewModel {
         initialStatus: GameSessionStatus = .idle,
         initialElapsedSeconds: Int = 0,
         initialMistakeCount: Int = 0,
+        initialCanUndo: Bool = false,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -128,6 +138,7 @@ public final class GameViewModel {
         self.status = initialStatus
         self.elapsedSeconds = initialElapsedSeconds
         self.mistakeCount = initialMistakeCount
+        self.canUndo = initialCanUndo
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer

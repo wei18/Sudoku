@@ -634,71 +634,45 @@ public struct MinesweeperBoardView: View {
         .minimumScaleFactor(0.6)
     }
 
-    // MARK: - Pause / resume toggle (#434)
+    // MARK: - Leave / pause toggle (#434, state-aware mapping #849)
 
-    // Mirrors Sudoku's BoardView toolbar toggle: a single button flipping
-    // between Pause and Resume, icon-only on iPhone (compact) and icon + text
-    // on Mac (regular). Hidden only in terminal states (won/lost — the
-    // Completion overlay owns the exit there). #681: also rendered in `.idle`
-    // (pre-first-tap) — that state has no timer to freeze, so tapping opens the
-    // same overlay as a leave-confirm rather than calling `pause()` (which
-    // no-ops on `.idle` by design). The board-cover overlay handles
-    // resume-by-tapping-the-board; this is the explicit header control.
+    // #849: extracted to the shared `BoardLeaveOrPauseButton` (GameShellUI) so
+    // Sudoku's mirror uses the SAME state→label/icon mapping instead of a
+    // hand-copied one — this view only decides WHICH `BoardLeaveOrPauseState`
+    // applies and what the tap does. Hidden only in terminal states (won/lost
+    // — the Completion overlay owns the exit there). #681: `.idle`
+    // (pre-first-tap) maps to `.leaveReady` — that state has no timer to
+    // freeze, so tapping opens the same overlay as a leave-confirm rather than
+    // calling `pause()` (which no-ops on `.idle` by design). The board-cover
+    // overlay handles resume-by-tapping-the-board; this is the explicit header
+    // control. `internal` (not `private`) so `MinesweeperLeaveOrPauseStateTests`
+    // can pin the mapping directly, matching this file's existing
+    // internal-for-testability convention (see `tapModeKey` below).
+    var leaveOrPauseState: BoardLeaveOrPauseState {
+        if viewModel.status == .idle {
+            return .leaveReady
+        }
+        return viewModel.isPaused ? .resume : .pause
+    }
+
     @ViewBuilder
     private var pauseToggle: some View {
         if viewModel.status == .playing || viewModel.isPaused || viewModel.status == .idle {
-            Button {
-                if viewModel.isPaused {
-                    Task { await viewModel.resume() }
-                } else if viewModel.status == .idle {
+            BoardLeaveOrPauseButton(
+                state: leaveOrPauseState,
+                sizeClass: sizeClass,
+                accessibilityIdentifier: "minesweeper.board.pauseToggle"
+            ) {
+                switch leaveOrPauseState {
+                case .leaveReady:
                     showIdleLeaveOverlay = true
-                } else {
+                case .pause:
                     Task { await viewModel.pause() }
-                }
-            } label: {
-                if viewModel.status == .idle {
-                    // #681 CR: label/behavior match — in `.idle` the tap opens
-                    // the Leave confirm, not a pause, so show ✕ / "Leave"
-                    // (reusing the pause overlay's own `leave.game.leave` key
-                    // from the app catalog; no new string).
-                    if sizeClass == .regular {
-                        Label("leave.game.leave", systemImage: "xmark")
-                    } else {
-                        Image(systemName: "xmark")
-                    }
-                } else if sizeClass == .regular {
-                    Label(
-                        pauseToggleTitle,
-                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
-                    )
-                } else {
-                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                case .resume:
+                    Task { await viewModel.resume() }
                 }
             }
-            // #647: expand tap target to ≥44×44 pt (HIG minimum) without
-            // enlarging the visible glyph. `.contentShape(Rectangle())` makes
-            // the full frame hit-testable under `.plain` button style.
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
-            .accessibilityLabel(
-                viewModel.status == .idle
-                    ? Text("leave.game.leave")
-                    : Text(pauseToggleTitle)
-            )
-            .accessibilityIdentifier("minesweeper.board.pauseToggle")
         }
-    }
-
-    // #741: the Mac-regular `Label` title and the accessibility label both
-    // showed the same Resume/Pause word via a bare ternary literal — that
-    // expression resolves to a runtime `String`, not a `LocalizedStringKey`,
-    // so it bypassed the catalog entirely (same bug class as the mode-toggle
-    // strings #731 already fixed below). Reuses the "Pause"/"Resume" keys
-    // #434 already added for this same toolbar toggle.
-    private var pauseToggleTitle: String {
-        viewModel.isPaused
-            ? String(localized: "Resume", bundle: .main)
-            : String(localized: "Pause", bundle: .main)
     }
 
     private var statusText: String {

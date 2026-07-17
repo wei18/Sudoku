@@ -54,6 +54,12 @@ public struct BoardView: View {
     // survive body recomputes without resetting fetch / auth-check state.
     @State var completionViewModel: CompletionViewModel?
     @State var completionReminderPrimer: ReminderPrimerCoordinator?
+    // #849: mirrors MinesweeperBoardView's `showIdleLeaveOverlay`. Sudoku has
+    // no `.idle` board render, so the Ready signal is "no move made yet on a
+    // live session" (`leaveOrPauseState` in BoardView+AccessibilityHeader.swift)
+    // — pausing an untouched board is meaningless, so this view-local flag
+    // shows the Leave Game overlay without touching session state.
+    @State var showReadyLeaveOverlay = false
     // Two-row header content gaps (#762 PR2 spacing contract) — content
     // tier; `internal` so BoardView+AccessibilityHeader.swift can read them.
     @ScaledSpacing(.extraSmall) var headerRowGap
@@ -97,10 +103,18 @@ public struct BoardView: View {
                 completionSurface(completionViewModel, dismiss: dismiss, persistJoin: persistJoin)
             }
             // Pause menu — full-screen mask + screen-centred card (merged close+pause).
-            if viewModel.isPaused {
+            // #849: also mounted for `showReadyLeaveOverlay` — Resume then just
+            // hides the local flag instead of calling `viewModel.resume()`.
+            if viewModel.isPaused || showReadyLeaveOverlay {
                 PauseOverlayView(
                     onLeave: { dismiss() },
-                    onResume: { Task { await viewModel.resume() } }
+                    onResume: {
+                        if viewModel.isPaused {
+                            Task { await viewModel.resume() }
+                        } else {
+                            showReadyLeaveOverlay = false
+                        }
+                    }
                 )
             }
         }
