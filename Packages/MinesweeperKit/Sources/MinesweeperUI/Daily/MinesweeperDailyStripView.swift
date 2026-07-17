@@ -1,7 +1,8 @@
 // MinesweeperDailyStripView — the rolling 7-day completion strip + streak
-// caption. Mirrors `SudokuUI.DailyStripView` (copy-paste-adapt per the
+// caption, rendered as a card-contained calendar strip (#843 redesign,
+// Option A). Mirrors `SudokuUI.DailyStripView` (copy-paste-adapt per the
 // proposal's scope note — see that file's header comment for the full
-// interaction-scope rationale, not repeated here).
+// interaction-scope + card-anatomy + degrade rationale, not repeated here).
 //
 // Interaction scope (#826, owner adjudication 2026-07-16): a COMPLETED PAST
 // day's dot is a button — tap opens that day's Completion review (exactly one
@@ -20,9 +21,15 @@ struct MinesweeperDailyStripView: View {
     var onDayTap: (MinesweeperDailyStripDay) -> Void = { _ in }
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledSpacing(.small) private var captionGap
-    private let dotDiameter: CGFloat = 16
+
+    @ScaledSpacing(.small) private var headerToDotGap
+    @ScaledSpacing(.medium) private var cardPadding
+    @ScaledSpacing(.extraSmall) private var headerIconGap
+
+    private let dotDiameter: CGFloat = 28
     private let dotGap: CGFloat = 8
+    private let dotLabelGap: CGFloat = 4
+    private let cardCornerRadius: CGFloat = 16
     private let tapTargetDiameter: CGFloat = 44
 
     /// #826: mirrors `SudokuUI.DailyStripView.isTappable` — keyed on
@@ -34,43 +41,72 @@ struct MinesweeperDailyStripView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: captionGap) {
-            HStack(spacing: dotGap) {
-                if snapshot.days.isEmpty {
-                    ForEach(0..<7, id: \.self) { _ in placeholderDot }
-                } else {
-                    ForEach(snapshot.days) { day in dotView(for: day) }
-                }
-            }
-            .accessibilityElement(children: snapshot.days.isEmpty ? .ignore : .contain)
-            .accessibilityHidden(snapshot.days.isEmpty)
-            if let streak = snapshot.streak {
-                // Two keys instead of one interpolated "%@ day streak" — see
-                // `SudokuUI.DailyStripView` for the plural-agreement
-                // rationale. 7 == the fetch window size (streak saturates
-                // there).
-                Group {
-                    if streak >= 7 {
-                        Text("7+ day streak")
-                    } else {
-                        Text("\(streak) day streak")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(theme.text.secondary.resolved)
-            }
+        if snapshot.days.isEmpty {
+            // #843: all-or-nothing degrade — the whole card is omitted from
+            // layout rather than showing a subdued skeleton. Mirrors
+            // `SudokuUI.DailyStripView`.
+            EmptyView()
+        } else {
+            card
         }
-        // Align the strip with the trio cards' leading screen-edge inset —
-        // without this the VStack shrinks to content and gets centered.
-        // Mirrors `SudokuUI.DailyStripView`.
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: snapshot)
     }
 
-    private var placeholderDot: some View {
-        Circle()
-            .strokeBorder(theme.text.tertiary.resolved.opacity(0.3), lineWidth: 1)
-            .frame(width: dotDiameter, height: dotDiameter)
+    private var card: some View {
+        VStack(alignment: .leading, spacing: headerToDotGap) {
+            if let streak = snapshot.streak {
+                header(streak: streak)
+            }
+            dotRow
+        }
+        .padding(cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.surface.elevated.resolved, in: RoundedRectangle(cornerRadius: cardCornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardCornerRadius)
+                .strokeBorder(theme.text.tertiary.resolved.opacity(0.14), lineWidth: 1)
+        )
+        .animation(MotionGate.animation(.easeInOut(duration: 0.2), reduceMotion: reduceMotion), value: snapshot)
+    }
+
+    @ViewBuilder
+    private func header(streak: Int) -> some View {
+        HStack(spacing: headerIconGap) {
+            Image(systemName: "flame.fill")
+                .foregroundStyle(theme.status.warning.resolved)
+                .accessibilityHidden(true)
+            streakCaption(streak: streak)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(theme.text.primary.resolved)
+        }
+        // #843 spec: AX3 cap on the header text, mirroring
+        // `CompletionOverlayScaffold`'s `.dynamicTypeSize(...accessibility2)`
+        // cap. Mirrors `SudokuUI.DailyStripView`.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Two keys instead of one interpolated "%@ day streak" — see
+    /// `SudokuUI.DailyStripView` for the plural-agreement + spec-deviation
+    /// rationale (not repeated here). Reuses the existing keys verbatim.
+    private func streakCaption(streak: Int) -> Text {
+        streak >= 7 ? Text("7+ day streak") : Text("\(streak) day streak")
+    }
+
+    private var dotRow: some View {
+        HStack(spacing: dotGap) {
+            ForEach(snapshot.days) { day in dayColumn(for: day) }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func dayColumn(for day: MinesweeperDailyStripDay) -> some View {
+        VStack(spacing: dotLabelGap) {
+            dotView(for: day)
+            Text(weekdayInitial(for: day.date))
+                .font(.caption2)
+                .foregroundStyle(theme.text.tertiary.resolved)
+                .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder
@@ -98,11 +134,19 @@ struct MinesweeperDailyStripView: View {
     private func dotShape(for day: MinesweeperDailyStripDay) -> some View {
         Group {
             if day.isCompleted {
-                Circle().fill(theme.accent.primary.resolved)
+                Circle()
+                    .fill(theme.accent.primary.resolved)
+                    .overlay {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: dotDiameter * 0.5, weight: .bold))
+                            .foregroundStyle(theme.surface.onTintInk(for: theme.accent.primary))
+                    }
             } else if day.isToday {
-                Circle().strokeBorder(theme.accent.primary.resolved, lineWidth: 1.5)
+                Circle()
+                    .strokeBorder(theme.accent.primary.resolved, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
             } else {
-                Circle().strokeBorder(theme.text.tertiary.resolved.opacity(0.3), lineWidth: 1)
+                Circle()
+                    .strokeBorder(theme.text.tertiary.resolved.opacity(0.4), lineWidth: 1)
             }
         }
         .frame(width: dotDiameter, height: dotDiameter)
@@ -122,5 +166,16 @@ struct MinesweeperDailyStripView: View {
         return day.isCompleted
             ? String(localized: "\(weekday), completed", bundle: .main)
             : String(localized: "\(weekday), missed", bundle: .main)
+    }
+
+    /// Locale-correct weekday initial, sourced from
+    /// `Calendar.current.veryShortWeekdaySymbols` — NOT a new translatable
+    /// string. Mirrors `SudokuUI.DailyStripView.weekdayInitial(for:)`.
+    private func weekdayInitial(for date: Date) -> String {
+        let calendar = Calendar.current
+        let symbols = calendar.veryShortWeekdaySymbols
+        let index = calendar.component(.weekday, from: date) - 1
+        guard symbols.indices.contains(index) else { return "" }
+        return symbols[index]
     }
 }
