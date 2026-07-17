@@ -2,7 +2,9 @@
 //
 // Per docs/designs/05-board.md. Five visual variants:
 //   - empty / given / userFilled / error / selected
-// Color-blind dual encoding for errors: bg tint + corner triangle.
+// Color-blind dual encoding for errors: bg tint + corner triangle + a
+// cell-wrapping inset border (#850 — the only bordered board state, so
+// error stays structurally dominant over the neutral `sameDigit` fill).
 
 import SwiftUI
 import SudokuEngine
@@ -77,14 +79,32 @@ struct BoardCellView: View {
             content
                 .animation(digitAnimation, value: digit)
             if isError {
+                // #850: bumped 0.18 → 0.30 of `side` — the triangle is a
+                // colorblind-independent (shape, not hue) cue, and the
+                // audit found the error state read weaker than the neutral
+                // `sameDigit` green highlight at the old size.
                 ErrorTriangle()
                     .fill(cell.errorBorder.resolved)
-                    .frame(width: side * 0.18, height: side * 0.18)
+                    .frame(width: side * 0.30, height: side * 0.30)
                     // spacing-exempt: 2pt — board-cell geometry, sized off
                     // `side`; structural per design-system.md §Spacing scale
                     // and not on the 5-tier `SpacingTokens` scale (#762 PR2).
                     .padding(2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .accessibilityHidden(true)
+                // #850: cell-wrapping inset border — the ONLY bordered
+                // state on the board (every other background priority tier
+                // is a flat fill, see `background` below), so error stays
+                // structurally dominant over `sameDigit`/`selected`/
+                // `highlighted` regardless of how those fills get tuned
+                // later. Third colorblind-independent channel alongside the
+                // triangle and the (typical-vision) wash retune.
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(cell.errorBorder.resolved, lineWidth: 3)
+                    // spacing-exempt: 1.5pt — board-cell geometry, sized off
+                    // `side`/the stroke width, not on the 5-tier
+                    // `SpacingTokens` scale (#762 PR2 precedent).
+                    .padding(1.5)
                     .accessibilityHidden(true)
             }
         }

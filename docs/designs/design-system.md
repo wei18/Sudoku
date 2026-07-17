@@ -37,8 +37,8 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `cell.userFilled` | `#FFFFFF` | `#1E2024` | User-entered digit (same as base; differentiated by text color) |
 | `cell.highlighted` | `#EBF0E2` | `#252D1F` | Same row / col / box as selected |
 | `cell.selected` | `#DCE6D0` | `#3A4A30` | The single tapped cell |
-| `cell.error` | `#FBE3E1` | `#4A2724` | Conflict highlight (paired with `icon.errorMark`) |
-| `cell.errorBorder` | `#C8362B` | `#E66258` | Top-left triangle + thicker border (color-blind dual encoding) |
+| `cell.error` | `#F2C4C0` | `#602924` | Conflict highlight (paired with `icon.errorMark`). #850: retuned — the old `#FBE3E1`/`#4A2724` pair sat LIGHTER than `cell.sameDigit` (1.22:1 / 1.25:1 vs. white/dark base), reading weaker than a neutral highlight; new values clear 1.56:1 / 1.43:1, ahead of `sameDigit`'s 1.41:1 / 1.37:1 |
+| `cell.errorBorder` | `#C8362B` | `#E66258` | Top-left triangle (0.30 of cell side, up from 0.18, #850) + a cell-wrapping inset border (3pt stroke, 1.5pt inset, #850) — the ONLY bordered board state, structurally dominant over any fill; color-blind triple encoding with the wash tint |
 
 ### Text
 
@@ -84,7 +84,8 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 - `text.primary` / `surface.primary` light: 16.1:1 — AAA
 - `text.user` (`#5C7A4F`) / `cell.base` (`#FFFFFF`) light: 4.84:1 — AA (normal & large) ✓
 - `text.user` (`#9BB87E`) / `cell.base` (`#1E2024`) dark: 7.52:1 — AAA ✓
-- `text.errorDigit` / `cell.error` light: 4.7:1 — AA (normal)
+- `text.errorDigit` / `cell.error` light: 4.55:1 — AA (normal, tight margin; retuned wash, #850) / dark: 4.68:1 — AA
+- `cell.error` / `surface.primary` (board base cell): light 1.56:1, dark 1.43:1 — both now exceed `cell.sameDigit`'s 1.41:1 / 1.37:1 (#850; was 1.22:1 / 1.25:1, weaker than the neutral highlight it needed to dominate)
 - `accent.primary` (`#5C7A4F`) / `surface.primary` (`#FFFFFF`) light: 4.84:1 — AA normal text ✓; AA UI components (≥3:1) ✓
 - `accent.primary` (`#9BB87E`) / `surface.primary` (`#1E2024`) dark: 7.52:1 — AAA ✓
 - `text.onAccent` (`surface.primary` reused, `#FFFFFF`/`#1E2024`) / `accent.primary` (`#5C7A4F`/`#9BB87E`): 4.83:1 light / 7.42:1 dark — AA both (#855 F-1: fixes DigitPadView's armed-key remaining badge, which previously kept `text.secondary` ink on the same fill — 1.45:1 light / 1.02:1 dark, AA fail)
