@@ -47,9 +47,16 @@ public struct SettingsAboutVersionRow: View {
 
     public var body: some View {
         HStack {
-            Image(systemName: "info.circle")
-                .foregroundStyle(tintColor)
-            Text("Version")
+            // #845: `Label { } icon: { }` (not a raw `Image + Text` HStack) —
+            // matches `AudioSettingsSection`'s row shape so the icon column
+            // gets the same system-standard leading width as every other
+            // settings row instead of a tighter ad-hoc HStack gap.
+            Label {
+                Text("Version")
+            } icon: {
+                Image(systemName: "info.circle")
+                    .foregroundStyle(tintColor)
+            }
             Spacer()
             Text(version)
                 .foregroundStyle(.secondary)
@@ -82,9 +89,13 @@ public struct SettingsAboutExtraRow: View {
 
     public var body: some View {
         HStack {
-            Image(systemName: systemImage)
-                .foregroundStyle(tintColor)
-            Text(title)
+            // #845: same `Label` fix as `SettingsAboutVersionRow` above.
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(tintColor)
+            }
             Spacer()
             Text(value)
                 .foregroundStyle(.secondary)
