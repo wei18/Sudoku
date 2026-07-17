@@ -105,6 +105,37 @@ extension BoardView {
             .minimumScaleFactor(0.6)
     }
 
+    // #849 (CR round 2, Finding 1): Sudoku's clock model is NOT the same as
+    // MS's, so this is not a straight parity claim — document the asymmetry
+    // honestly. MS's `.idle` means "no reveal/flag yet AND the clock hasn't
+    // started" (mines aren't even placed). Sudoku's clock starts at
+    // `GameSession.start()`, which `BoardLoaderView` calls while the board is
+    // still loading — BEFORE this header ever mounts — so by the time a
+    // player can see the toolbar, `status` is already `.playing` and the
+    // clock is already running (`GameSessionElapsedTests.startAtZero`
+    // empirically confirms `elapsedSeconds == 0` at the instant `start()`
+    // returns; it only advances once real wall-clock time passes via the
+    // 1 Hz ticker in `BoardView`'s `.task`, or a mutation resyncs it).
+    //
+    // So Sudoku's Ready window is real but much narrower than MS's: only
+    // while BOTH `elapsedSeconds == 0` (no wall-clock time has ticked past
+    // yet) AND `!canUndo` (no digit placed/erased — `canUndo` mirrors the
+    // undo stack, see `GameViewModel.resyncFromSession()`) is pausing
+    // genuinely meaningless (nothing accrued to freeze). The instant either
+    // condition flips — a second ticks by, or a move is made — Pause must be
+    // offered and must actually freeze the clock (`GameSession.pause()`
+    // stops `runningSince` accruing into `elapsedSeconds`, verified by
+    // `GameSessionElapsedTests.pauseFreezes`). `internal` (not `private`) so
+    // `BoardLeaveOrPauseStateTests` can pin the mapping directly, matching
+    // this file's existing internal-for-testability convention (see
+    // `elapsedLabel` above).
+    var leaveOrPauseState: BoardLeaveOrPauseState {
+        if viewModel.status == .playing, viewModel.elapsedSeconds == 0, !viewModel.canUndo {
+            return .leaveReady
+        }
+        return viewModel.isPaused ? .resume : .pause
+    }
+
     // #667 (SDD-003 2B, audit P2): hidden at terminal status, mirroring
     // Minesweeper's `pauseToggle` guard. The completion overlay already covers
     // the whole board once solved, so this is defense-in-depth (a stray
@@ -114,33 +145,22 @@ extension BoardView {
     @ViewBuilder
     private var pauseButton: some View {
         if viewModel.status == .playing || viewModel.isPaused {
-            Button {
-                Task {
-                    if viewModel.isPaused { await viewModel.resume() } else { await viewModel.pause() }
-                }
-            } label: {
-                if sizeClass == .regular {
-                    Label(  // Mac: icon + text per board-mac-redesign wireframe.
-                        viewModel.isPaused ? "Resume" : "Pause",
-                        systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
-                    )
-                } else {
-                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+            BoardLeaveOrPauseButton(
+                state: leaveOrPauseState,
+                sizeClass: sizeClass,
+                accessibilityIdentifier: "sudoku.board.pauseToggle"
+            ) {
+                switch leaveOrPauseState {
+                case .leaveReady:
+                    showReadyLeaveOverlay = true
+                case .pause:
+                    Task { await viewModel.pause() }
+                case .resume:
+                    Task { await viewModel.resume() }
                 }
             }
-            // #647: expand tap target to ≥44×44 pt (HIG minimum) without enlarging
-            // the visible glyph. `.contentShape(Rectangle())` makes the full frame
-            // hit-testable under `.plain` button style.
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
             // Palette sweep (#610 fix *5): replace system-blue default with brand accent.
             .tint(theme.accent.primary.resolved)
-            .accessibilityLabel(viewModel.isPaused ? "Resume" : "Pause")
-            // #688 item 5b: MS's mirror (`pauseToggle`) has both a label AND
-            // an identifier; this button had only the label. Adds the
-            // missing UI-test hook, matching MS's `"minesweeper.board.pauseToggle"`
-            // naming (`<app>.board.pauseToggle`).
-            .accessibilityIdentifier("sudoku.board.pauseToggle")
         }
     }
 

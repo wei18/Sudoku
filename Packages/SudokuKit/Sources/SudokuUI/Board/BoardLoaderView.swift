@@ -343,6 +343,11 @@ public struct BoardLoaderView: View {
             initialStatus: snapshot.status,
             initialElapsedSeconds: snapshot.elapsedSeconds,
             initialMistakeCount: snapshot.mistakeCount,
+            // #849 Finding 2: thread the restored undo state in at
+            // construction so the leave/pause toolbar never renders a
+            // transient wrong label for a resumed mid-game board while
+            // `startOrResume()`'s resync is still in flight.
+            initialCanUndo: !snapshot.undoMoves.isEmpty,
             persistence: persistence,
             errorReporter: errorReporter,
             soundPlayer: soundPlayer

@@ -21,12 +21,6 @@ struct BoardViewTests {
 
     // MARK: - Fixtures
 
-    /// Build a board from an 81-char digit string (`.` or `0` = empty). All
-    /// non-empty cells are flagged as given (clues).
-    private func board(clues: String) throws -> Board {
-        try Board(clues: clues)
-    }
-
     /// Empty 81-character clue string.
     private static let emptyClues = String(repeating: ".", count: 81)
 
@@ -60,13 +54,16 @@ struct BoardViewTests {
         difficulty: .easy
     )
 
-    /// Build a preview VM with the given clue string + selection + errors.
+    /// Build a preview VM. #849: `canUndo` defaults to `!userCells.isEmpty`
+    /// (faithful to `!undoStack.isEmpty`, independent of `elapsedSeconds`);
+    /// pass an explicit `canUndo` where they must diverge.
     private func makeViewModel(
         clues: String,
         userCells: [(row: Int, col: Int, digit: Int)] = [],
         errorCells: [(row: Int, col: Int)] = [],
         selection: GridCoordinate? = nil,
-        elapsedSeconds: Int = 0
+        elapsedSeconds: Int = 0,
+        canUndo: Bool? = nil
     ) throws -> GameViewModel {
         var board = try Board(clues: clues)
         for entry in userCells {
@@ -79,7 +76,8 @@ struct BoardViewTests {
             status: .playing,
             elapsedSeconds: elapsedSeconds,
             errorIndices: errorIndices,
-            selection: selection
+            selection: selection,
+            canUndo: canUndo ?? !userCells.isEmpty
         )
     }
 
@@ -227,7 +225,8 @@ struct BoardViewTests {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
-            elapsedSeconds: 555
+            elapsedSeconds: 555,
+            canUndo: true
         )
         let host = hostingView(
             BoardView(viewModel: viewModel),
@@ -245,7 +244,8 @@ struct BoardViewTests {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
-            elapsedSeconds: 555
+            elapsedSeconds: 555,
+            canUndo: true
         )
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -257,7 +257,8 @@ struct BoardViewTests {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
-            elapsedSeconds: 555
+            elapsedSeconds: 555,
+            canUndo: true
         )
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
@@ -269,7 +270,8 @@ struct BoardViewTests {
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),
-            elapsedSeconds: 555
+            elapsedSeconds: 555,
+            canUndo: true
         )
         let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {

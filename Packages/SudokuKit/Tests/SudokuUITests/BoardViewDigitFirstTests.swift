@@ -55,7 +55,10 @@ struct BoardViewDigitFirstTests {
             status: .playing,
             elapsedSeconds: 201,
             selection: nil,
-            armedDigit: 6
+            armedDigit: 6,
+            // #849: a placed digit means a real session would have undo
+            // history — see the matching note on BoardViewTests.makeViewModel.
+            canUndo: true
         )
         let host = hostingView(
             BoardView(viewModel: viewModel),
