@@ -18,6 +18,8 @@ exists wastes time and tokens — this index exists so that never happens.
 | `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e]` | CloudKit schema export / validate / dev-deploy | prod promote = Console-only (user-owned); task prints steps + exit 2 | [[cloudkit-schema-ops]] |
 | `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | sync ASC screenshot PREVIEWS from snapshot baselines (symlinks) | safe; PREVIEW-ONLY (not ASC-spec) | [[appstore-screenshot-pipeline]] |
 | `mise run gen:acknowledgements [--config-path …]` | regenerate Settings.bundle license page | safe; output gitignored | [[acknowledgements-generation]] |
+| `mise run gen:settings_root` | sync the shared `App/Shared/Settings.bundle/Root.plist` into both apps' per-app copies (#832 single-sourcing; run by `tuist:generate` and `ci_post_clone.sh` before every generate) | safe; output git-tracked (Tuist needs a physical file pre-generate) | — (#832/#837) |
+| `mise run scan:settings_root` | drift gate: both per-app `Root.plist` copies must stay byte-identical to the shared source (#837, required CI job in `lint.yml`) | safe (read-only gate) | — (#832/#837/#839) |
 | `mise run gen:l10n_fixture` | regenerate AppCompositionTests L10n fixture (byte-copy of Sudoku catalog) | safe | [[apple-dev-skills:ai-translated-localization]] |
 | `mise run gen:privacy_fixture` | regenerate SudokuAppCompositionTests PrivacyInfo fixture (byte-copy of shipping manifest, #361 group C) | safe | — (#361) |
 | `mise run tuist:generate [--open]` | resolve packages + regenerate Game.xcworkspace (tuist install + generate) | safe; run after Project.swift / package changes | [[game-factory-composition]] |
