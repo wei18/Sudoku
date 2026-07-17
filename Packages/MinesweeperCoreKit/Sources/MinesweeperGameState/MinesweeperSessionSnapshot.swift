@@ -33,6 +33,18 @@ public struct MinesweeperSessionSnapshot: Sendable, Equatable, Hashable, Codable
     public var rows: Int { difficulty.rows }
     public var columns: Int { difficulty.columns }
 
+    /// Board indices where `cells[i].isMine`, regardless of reveal state
+    /// (#841). `cells` always carries the full mine layout — even for
+    /// hidden cells — so any snapshot (in-progress, won, or lost) captured
+    /// after mine placement can hand its layout to
+    /// `MinesweeperSession.init(difficulty:seed:fixedMineIndices:)` to
+    /// replay the identical board. Feeds the daily-retry loader, which
+    /// reads this off a "failed" record `loadInProgress` deliberately
+    /// excludes.
+    public var mineIndices: Set<Int> {
+        Set(cells.indices.filter { cells[$0].isMine })
+    }
+
     public init(
         difficulty: Difficulty,
         seed: UInt64 = 0,

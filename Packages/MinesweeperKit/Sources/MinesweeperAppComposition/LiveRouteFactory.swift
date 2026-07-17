@@ -286,35 +286,20 @@ public struct LiveRouteFactory: RouteFactory {
                 )
             }
         case .replayDailyBoard(let difficulty, let seed):
-            // Epic 8 (SDD-003) / #491 / #559: unscored free replay after a failed
-            // daily. Built WITHOUT store/recordName (no persistence side-effects)
-            // and WITHOUT gameCenter (mode == .practice guards GC submit).
-            // Two-context contract delegated to shared `boardDestination` helper.
-            return boardDestination(
-                route: route,
-                path: path,
+            // Epic 8 (SDD-003) / #491 / #559: unscored free replay after a
+            // failed daily. #841: now delegated to `replayDailyBoardDestination`
+            // (LiveRouteFactory+ReplayDailyBoard.swift, extracted to keep this
+            // file under the 400-line ceiling) — it fetches the daily's
+            // persisted mine layout so every retry reproduces the same board.
+            return Self.replayDailyBoardDestination(
+                route, path, difficulty, seed,
+                adProvider: adProvider,
+                adGate: adGate,
+                errorReporter: errorReporter,
+                soundPlayer: soundPlayer,
+                savedGameStore: savedGameStore,
                 onPresentBoard: onPresentBoard
-            ) {
-                AnyView(
-                    MinesweeperBoardView(
-                        difficulty: difficulty,
-                        seed: seed,
-                        mode: .practice,
-                        adProvider: self.adProvider,
-                        adGate: self.adGate,
-                        gameCenter: nil,
-                        errorReporter: self.errorReporter,
-                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying()
-                        // store: nil, recordName: nil — intentionally omitted so no
-                        // save is written and the Failed record stays intact.
-                        // personalRecordStore: nil — ALSO intentional: #705 widened
-                        // practice-mode personal-record writes, so wiring a store
-                        // here would record unscored daily replays as practice PBs
-                        // (the replay reuses the daily seed, so each replayed board
-                        // would mint a stable practice-{base32(seed)} dedup id).
-                    )
-                )
-            }
+            )
 
         case .completion(let difficulty, let mode, _):
             // #826: `day` intentionally unused — the slice fetch it would key

@@ -168,6 +168,98 @@ private func revealAllSafe(_ engine: inout MinesweeperEngine) throws {
     }
 }
 
+// MARK: - FixedLayoutTests (#841)
+
+/// #841 "daily retry after loss generates a different board per first click
+/// — daily must be one fixed game": `MinesweeperEngine.init(difficulty:seed:
+/// fixedMineIndices:)` places mines immediately, decoupled from any click —
+/// the mechanism the daily-replay loader uses to reproduce the exact board
+/// a player already lost on, regardless of where the retry's first tap
+/// lands. These tests cover the engine contract directly (no CloudKit /
+/// SwiftUI involved); `MinesweeperDailyReplayLoaderView` in MinesweeperKit
+/// covers the end-to-end persisted-record recovery.
+@Suite struct FixedLayoutTests {
+    @Test func placesMinesExactlyAtGivenIndices() throws {
+        let indices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        let e = try MinesweeperEngine(difficulty: .beginner, seed: 42, fixedMineIndices: indices)
+        #expect(e.minesPlaced == true)
+        let actualMineIndices = Set(e.cells.indices.filter { e.cells[$0].isMine })
+        #expect(actualMineIndices == indices)
+    }
+
+    /// The core #841 acceptance criterion: a fixed-layout engine reveals the
+    /// IDENTICAL mine layout no matter which cell is clicked first — unlike
+    /// the deferred/salted path (`differentFirstClicksProduceDifferentLayouts`
+    /// above), the layout is already baked in at construction.
+    @Test func sameFixedIndicesProduceSameLayoutRegardlessOfFirstClick() throws {
+        let indices: Set<Int> = [5, 17, 33, 44, 55, 61, 70, 72, 80, 12]
+        var a = try MinesweeperEngine(difficulty: .beginner, seed: 1, fixedMineIndices: indices)
+        var b = try MinesweeperEngine(difficulty: .beginner, seed: 2, fixedMineIndices: indices)
+        // Different retries can even carry different seeds — the fixed
+        // layout wins either way, matching how the replay loader threads
+        // the daily's original seed but the layout is what actually matters.
+        _ = try? a.reveal(row: 0, col: 0)
+        _ = try? b.reveal(row: 8, col: 8)
+        #expect(a.cells.map(\.isMine) == b.cells.map(\.isMine))
+        #expect(a.cells.map(\.isMine).filter { $0 }.count == Difficulty.beginner.mineCount)
+    }
+
+    @Test func neighborCountsAreComputedForFixedLayout() throws {
+        // A single mine at index 0 plus 9 far-away filler mines (row 8) so
+        // the count stays exactly `Difficulty.beginner.mineCount` (10)
+        // without disturbing the neighbor cells under test.
+        let indices: Set<Int> = [0, 72, 73, 74, 75, 76, 77, 78, 79, 80]
+        var e = try MinesweeperEngine(difficulty: .beginner, seed: 7, fixedMineIndices: indices)
+        try e.reveal(row: 4, col: 4)
+        // Cell (0,1) and (1,0) and (1,1) neighbor the mine at index 0.
+        #expect(e.cells[e.index(row: 0, col: 1)].neighborMineCount == 1)
+        #expect(e.cells[e.index(row: 1, col: 0)].neighborMineCount == 1)
+        #expect(e.cells[e.index(row: 1, col: 1)].neighborMineCount == 1)
+    }
+
+    /// Second-attempt semantics (explicit dispatch decision): a fixed replay
+    /// layout has NO first-click safety — clicking directly on a fixed mine
+    /// loses immediately, same as any other reveal. No special-casing.
+    @Test func firstClickOnFixedLayoutCanHitAMine() throws {
+        let indices: Set<Int> = [0, 72, 73, 74, 75, 76, 77, 78, 79, 80]
+        var e = try MinesweeperEngine(difficulty: .beginner, seed: 7, fixedMineIndices: indices)
+        try e.reveal(row: 0, col: 0)
+        #expect(e.isLost == true)
+        #expect(e.cells[0].state == .revealed)
+    }
+
+    @Test func fixedLayoutWithWrongMineCountThrows() {
+        let tooFew: Set<Int> = [0, 1, 2]
+        #expect(throws: MinesweeperError.invalidFixedLayout(expected: Difficulty.beginner.mineCount, found: 3)) {
+            _ = try MinesweeperEngine(difficulty: .beginner, seed: 1, fixedMineIndices: tooFew)
+        }
+    }
+
+    @Test func fixedLayoutWithOutOfBoundsIndexThrows() {
+        var indices = Set(0..<9)
+        indices.insert(Difficulty.beginner.cellCount) // one past the end
+        #expect(throws: MinesweeperError.self) {
+            _ = try MinesweeperEngine(difficulty: .beginner, seed: 1, fixedMineIndices: indices)
+        }
+    }
+
+    @Test func fixedLayoutEngineWinsNormallyWhenAllSafeRevealed() throws {
+        // Mines in a corner region; reveal everything else via the flood
+        // fill from an opposite corner.
+        var e = try MinesweeperEngine(difficulty: .beginner, seed: 1, fixedMineIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 17])
+        try e.reveal(row: 8, col: 8)
+        for r in 0..<e.rows {
+            for c in 0..<e.columns {
+                let cell = try e.cell(at: r, col: c)
+                if !cell.isMine && cell.state == .hidden {
+                    try e.reveal(row: r, col: c)
+                }
+            }
+        }
+        #expect(e.isWon == true)
+    }
+}
+
 // MARK: - NeighborCountTests
 
 @Suite struct NeighborCountTests {
