@@ -324,13 +324,25 @@ public struct LiveRouteFactory: RouteFactory {
     /// Board never calls this; it owns its own `themedBanner` method.
     /// The cast from `AdProvider` → `BannerViewProviding` follows the same
     /// pattern as HomeView and BoardView (§9.1: keeps SudokuUI off AdsAdMob).
+    ///
+    /// #851: `backgroundColor` was `Color.secondary.opacity(0.12)` — a
+    /// translucent SYSTEM-GRAY tint left over from before #688 gave
+    /// `BannerSlotView` a themed default. Composited over the app's actual
+    /// warm-dark page background (`DefaultTheme.surface.background.dark`,
+    /// 0x15171A) it painted a visibly lighter 50pt rounded band across the
+    /// bottom of Daily/Practice/Settings whenever the ad gate opened —
+    /// exactly the "faint horizontal banding" reported. `LiveRouteFactory` is
+    /// a plain struct (not a `View`), so it cannot read `@Environment(\.theme)`
+    /// like `BoardView.themedBanner` does; `DefaultTheme()` is the same
+    /// concrete theme the app injects into the environment everywhere else,
+    /// so resolving it directly here yields an identical color.
     @MainActor
     private func themedBanner() -> some View {
         BannerSlotView(
             adProvider: adProvider,
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
-            backgroundColor: Color.secondary.opacity(0.12),
+            backgroundColor: DefaultTheme().surface.background.resolved,
             progressTint: .accentColor,
             captionColor: .secondary,
             dismissTint: Color.secondary.opacity(0.7)

@@ -23,17 +23,21 @@ extension LiveRouteFactory {
     /// are nil (preview / test), the slot itself is not created — the caller
     /// passes EmptyView via the `banner: {}` default instead.
     @MainActor
-    // Uses BannerSlotView's system-default colors, which today coincide with
-    // Sudoku's themedBanner() values. If MS adopts per-theme accents, pass
-    // theme tokens here like Sudoku's RouteFactory.themedBanner() (#468 Epic 5
-    // theming note) so hub/settings banners match the themed Home banner.
+    // #851: was relying on `BannerSlotView`'s bare default (`.clear`) — the
+    // #468 Epic 5 theming note above already flagged this as unfinished
+    // ("if MS adopts per-theme accents, pass theme tokens here like Sudoku's
+    // RouteFactory.themedBanner()"). Now does exactly that, mirroring
+    // `MinesweeperBoardView.themedBanner`'s `theme.surface.background.resolved`
+    // so the Daily/Practice/Settings banner slot matches the themed Home/Board
+    // banner instead of depending on an un-themed transparent default.
     func bannerSlot() -> some View {
         if let adProvider, let adGate {
             AnyView(
                 BannerSlotView(
                     adProvider: adProvider,
                     adGate: adGate,
-                    bannerHost: adProvider as? any BannerViewProviding
+                    bannerHost: adProvider as? any BannerViewProviding,
+                    backgroundColor: MinesweeperTheme().surface.background.resolved
                 )
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
