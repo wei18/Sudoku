@@ -36,9 +36,16 @@ public struct RemoveAdsRow: View {
             Task { await controller.purchaseRemoveAds() }
         } label: {
             HStack {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(tintColor)
-                Text("Remove Ads")
+                // #845/#848: `Label { } icon: { }` (not a raw `Image + Text`
+                // HStack) — matches the standard row shape so the icon
+                // column gets the same system-standard leading width as
+                // every other settings row.
+                Label {
+                    Text("Remove Ads")
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(tintColor)
+                }
                 Spacer()
                 Group {
                     if controller.purchaseInFlight {
@@ -104,9 +111,13 @@ public struct RestorePurchasesRow: View {
             Task { await controller.restorePurchases() }
         } label: {
             HStack {
-                Image(systemName: "arrow.clockwise")
-                    .foregroundStyle(tintColor)
-                Text("Restore Purchases")
+                // #845/#848: same `Label` fix as `RemoveAdsRow` above.
+                Label {
+                    Text("Restore Purchases")
+                } icon: {
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundStyle(tintColor)
+                }
                 Spacer()
                 Group {
                     if controller.restoreInFlight {
