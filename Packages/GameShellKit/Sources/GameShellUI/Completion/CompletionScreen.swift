@@ -181,8 +181,18 @@ public struct CompletionScreen: View {
         }
         .frame(maxWidth: .infinity)
         .padding(heroPadding)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+        .background(theme.surface.elevated.resolved, in: RoundedRectangle(cornerRadius: 20))
+        // #846: card blended into the near-white/warm-paper page background
+        // (measured light-mode contrast ratio ~1.06:1 — no darker flat
+        // "elevated" token exists in this theme system to swap to). Border
+        // is the load-bearing a11y cue (survives Reduce Transparency /
+        // Increase Contrast); shadow roughly doubled for a real lifted-card
+        // read. Zero new color tokens — reuses `theme.text.tertiary`.
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(theme.text.tertiary.resolved.opacity(0.14), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(outcome.accessibilityLabel)
         // #510 Phase 3: stable, non-localized anchor so the host-driven
