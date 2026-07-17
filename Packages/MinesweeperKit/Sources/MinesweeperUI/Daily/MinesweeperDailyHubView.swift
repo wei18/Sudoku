@@ -43,50 +43,46 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     }
 
     public var body: some View {
-        // #774: the week strip sits above the trio, outside
-        // `DailyHubShellView` (GameShellKit stays untouched — see
+        // #840: the week strip is injected into `DailyHubShellView`'s
+        // `header` slot (GameShellKit stays untouched — see
         // `MinesweeperDailyStripView`'s header comment on the "no shared
-        // widget" scope note). It renders regardless of the shell's own
-        // idle/loading/loaded state — the strip has its own independent
-        // fetch. Mirrors Sudoku's `DailyHubView`.
-        VStack(spacing: 0) {
-            MinesweeperDailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
-                .padding(.horizontal, theme.spacing.medium)
-                .padding(.top, theme.spacing.medium)
-            dailyHubShell
-        }
-        .background(theme.surface.background.resolved)
-        .task { await viewModel.bootstrap() }
-        // #761: driven by `GameRoot`'s explicit teardown counter (not
-        // `.onAppear` — see the property doc above for why that doesn't
-        // work). `refresh()`'s own `.loaded`-state guard still protects
-        // against a spurious fetch before `bootstrap()` has landed. Also
-        // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
-        // no new trigger. Mirrors Sudoku's `DailyHubView`.
-        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
-        // #826: mirrors Sudoku's `DailyHubView` picker — a past day with >1
-        // completed difficulty presents this instead of opening directly
-        // (owner adjudication 2026-07-16).
-        .confirmationDialog(
-            "Difficulty",
-            isPresented: Binding(
-                get: { viewModel.reviewPickerChoices != nil },
-                set: { isPresented in
-                    if !isPresented { viewModel.dismissReviewPicker() }
-                }
-            ),
-            presenting: viewModel.reviewPickerChoices
-        ) { choices in
-            ForEach(choices) { choice in
-                // `.rawValue.capitalized` maps beginner/intermediate/expert →
-                // the existing "Beginner"/"Intermediate"/"Expert" L10n keys —
-                // byte-mirrors Sudoku's picker rows (whose capitalized
-                // rawValues likewise hit its "Easy"/"Medium"/"Hard" keys).
-                Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
-                    viewModel.reviewChoiceSelected(choice)
+        // widget" scope note) instead of sitting as a fixed sibling above
+        // the shell (#774's original placement — owner-reported regression:
+        // the trio scrolled UNDER a pinned strip). The shell renders
+        // `header` in every load state, so it still can't disappear.
+        // Mirrors Sudoku's `DailyHubView`.
+        dailyHubShell
+            .task { await viewModel.bootstrap() }
+            // #761: driven by `GameRoot`'s explicit teardown counter (not
+            // `.onAppear` — see the property doc above for why that doesn't
+            // work). `refresh()`'s own `.loaded`-state guard still protects
+            // against a spurious fetch before `bootstrap()` has landed. Also
+            // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
+            // no new trigger. Mirrors Sudoku's `DailyHubView`.
+            .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+            // #826: mirrors Sudoku's `DailyHubView` picker — a past day with
+            // >1 completed difficulty presents this instead of opening
+            // directly (owner adjudication 2026-07-16).
+            .confirmationDialog(
+                "Difficulty",
+                isPresented: Binding(
+                    get: { viewModel.reviewPickerChoices != nil },
+                    set: { isPresented in
+                        if !isPresented { viewModel.dismissReviewPicker() }
+                    }
+                ),
+                presenting: viewModel.reviewPickerChoices
+            ) { choices in
+                ForEach(choices) { choice in
+                    // `.rawValue.capitalized` maps beginner/intermediate/expert →
+                    // the existing "Beginner"/"Intermediate"/"Expert" L10n keys —
+                    // byte-mirrors Sudoku's picker rows (whose capitalized
+                    // rawValues likewise hit its "Easy"/"Medium"/"Hard" keys).
+                    Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
+                        viewModel.reviewChoiceSelected(choice)
+                    }
                 }
             }
-        }
     }
 
     private var dailyHubShell: some View {
@@ -109,6 +105,11 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
                 }
             },
             onItemTap: { card in viewModel.cardTapped(card) },
+            header: {
+                MinesweeperDailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
+                    .padding(.horizontal, theme.spacing.medium)
+                    .padding(.top, theme.spacing.medium)
+            },
             banner: { banner }
         )
     }
