@@ -2267,6 +2267,54 @@
         }
       }
     },
+    "Couldn't load saved game." : {
+      "comment" : "#854 — MinesweeperBoardLoaderView / MinesweeperDailyReplayLoaderView .failed block title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load saved game."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar la partida guardada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存済みのゲームを読み込めませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 게임을 불러오지 못했습니다."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถโหลดเกมที่บันทึกไว้ได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法加载已保存的游戏。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法載入已儲存的遊戲。"
+          }
+        }
+      }
+    },
     "Leaderboard" : {
       "comment" : "#421 Completion screen — shared CompletionScreen leaderboard-section header (matches Sudoku key spelling).",
       "extractionState" : "manual",
