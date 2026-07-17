@@ -79,10 +79,14 @@ import MinesweeperEngine
 
     // #386: re-tapping an already-SOLVED daily routes to `.completion` (re-see
     // the result + leaderboard), NOT a fresh `.board` (dead replay).
-    @Test func solvedCardTapPushesCompletionRoute() {
+    @Test func solvedCardTapPushesCompletionRoute() async {
         var path: [AppRoute] = []
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        // #842: `cardTapped` no-ops while `isPhase2Pending` — bootstrap first
+        // so the gate has cleared (no `savedGameStore` wired here, so phase-2
+        // resolves with no CK traffic).
+        await viewModel.bootstrap()
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
         let solved = MinesweeperDailyCard(entry: entry, isCompleted: true)
@@ -92,10 +96,11 @@ import MinesweeperEngine
 
     // #386: an un-solved daily card still pushes the daily-mode board (unchanged
     // pre-#386 behavior) so a first solve submits to the daily leaderboard.
-    @Test func unsolvedCardTapPushesDailyBoardRoute() {
+    @Test func unsolvedCardTapPushesDailyBoardRoute() async {
         var path: [AppRoute] = []
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        await viewModel.bootstrap()
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
         let unsolved = MinesweeperDailyCard(entry: entry, isCompleted: false)
@@ -137,10 +142,11 @@ import MinesweeperEngine
     }
 
     // A failed card tap pushes `.replayDailyBoard` (unscored, no persistence).
-    @Test func failedCardTapPushesReplayRoute() {
+    @Test func failedCardTapPushesReplayRoute() async {
         var path: [AppRoute] = []
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        await viewModel.bootstrap()
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
         let failedCard = MinesweeperDailyCard(entry: entry, isCompleted: false, isFailed: true)
@@ -149,10 +155,11 @@ import MinesweeperEngine
     }
 
     // A failed-card replay route is distinct from the scored daily route.
-    @Test func replayRouteIsDistinctFromScoredDaily() {
+    @Test func replayRouteIsDistinctFromScoredDaily() async {
         var path: [AppRoute] = []
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let viewModel = MinesweeperDailyHubViewModel(path: binding)
+        await viewModel.bootstrap()
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
         let failedCard = MinesweeperDailyCard(entry: entry, isCompleted: false, isFailed: true)
