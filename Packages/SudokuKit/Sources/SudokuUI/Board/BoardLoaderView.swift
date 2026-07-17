@@ -18,6 +18,29 @@
 // board's own Leave button uses (BoardView.swift), and a DEBUG-only launch
 // hook (`UITestLaunchArg.loaderFail`) lets sim E2E drive straight into
 // `.failed(.unknown)` without a real persistence failure.
+//
+// #842: this is the ONE seam every `.board` mount funnels through regardless
+// of caller (a hub card tap, a deep link, a future resume path) — including
+// `DailyHubViewModel.cardTapped`'s NOT-completed branch, which never checked
+// anything before pushing `.board(puzzleId:)` (the VM's `card.isCompleted` is
+// phase-1-stale until the hub's phase-2 overlay fetch lands, #530/#774). A
+// fast tap on a card whose REAL daily status was already `.completed`
+// therefore used to mount a fully playable board (timer restarts, replayable)
+// instead of the Completion re-view. Fix: for a DAILY puzzleId, `load()` now
+// re-verifies against the store's truth (`persistence.loadIfExists`, the same
+// #830 seam `openCompleted` already uses) BEFORE ever building a `GameViewModel`
+// — race-proof by construction, since this loader is unconditionally on the
+// path to every daily board mount. A confirmed-`.completed` record renders the
+// SAME Completion surface `openCompleted`'s `.completion` route would, just
+// inline — the `.completion` AppRoute can't push here: boards mount with
+// `path == nil` in the real (modal) presentation context (see `boardDestination`
+// below), which is exactly why `BoardView+Completion` (#667) also renders its
+// post-solve overlay inline rather than routing. A fetch FAILURE is honest —
+// `.failed`, never a silently-minted fresh board — mirroring the #830/#841
+// tri-state (existence unknown must not be treated as "confirmed absent").
+// Practice puzzles are untouched (`identity.kind != .daily` skips the precheck
+// entirely) — Practice never re-opens a previously-completed puzzleId (the
+// hub always draws a fresh one), so there is nothing to race here.
 
 public import MonetizationCore
 public import SwiftUI
@@ -34,6 +57,8 @@ import SudokuGameState
 public import SudokuEngine
 // #719: `UITestLaunchArg.loaderFail` DEBUG hook.
 import GameAppKit
+// #842: `CompletionOverlayScaffold` for the inline completed-daily redirect.
+import GameShellUI
 
 @MainActor
 public struct BoardLoaderView: View {
@@ -41,6 +66,13 @@ public struct BoardLoaderView: View {
     private enum LoadState {
         case loading
         case loaded(GameViewModel)
+        /// #842: the daily open-time precheck (`load()`) found the store's
+        /// SavedGame record already `.completed` — render the Completion
+        /// surface inline instead of ever building a playable `GameViewModel`.
+        /// Carries the reminder-primer coordinator built once alongside the VM
+        /// (mirrors `BoardView`'s `completionReminderPrimer`, built once on the
+        /// terminal transition) so recomputes don't rebuild it.
+        case completedRedirect(CompletionViewModel, ReminderPrimerCoordinator?)
         /// M10 (issue #67): carries a `UserFacingError` (typed bucket) instead
         /// of a raw `String(describing: error)`. UI renders localized copy via
         /// the enum's `messageKey`; engineering still sees the underlying
@@ -143,9 +175,36 @@ public struct BoardLoaderView: View {
                 onPlayAgain: onPlayAgain,
                 path: path
             )
+        case .completedRedirect(let completionViewModel, let reminderPrimer):
+            // #842: same scaffold + card `LiveRouteFactory`'s `.completion`
+            // route builds for `openCompleted`'s redirect — byte-identical
+            // rendering, just reached from a different (pre-mount) seam, so
+            // this introduces no new visual state to snapshot.
+            CompletionOverlayScaffold(
+                onClose: { exitToHub() },
+                card: {
+                    CompletionView(
+                        viewModel: completionViewModel,
+                        reminderPrimer: reminderPrimer,
+                        onClose: nil
+                    )
+                }
+            )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
         }
+    }
+
+    /// #842: mirrors `BoardView+Completion.exitToHub` exactly — Close on the
+    /// redirect surface must land the player back on the hub on every
+    /// platform, same as the real post-solve overlay's Close.
+    private func exitToHub() {
+        guard let path else {
+            dismiss()
+            return
+        }
+        guard !path.wrappedValue.isEmpty else { return }
+        path.wrappedValue.removeLast()
     }
 
     private func failedBlock(userFacing: UserFacingError) -> some View {
@@ -212,40 +271,39 @@ public struct BoardLoaderView: View {
         #endif
         let identity = Self.identity(from: puzzleId)
         do {
+            // #842: daily-only open-time precheck. Never throws — a fetch
+            // failure degrades to `.absent` internally (see `dailyPrecheck`'s
+            // doc: local-first, must never block play, #526).
+            if identity.kind == .daily {
+                switch await Self.dailyPrecheck(
+                    puzzleId: puzzleId,
+                    identity: identity,
+                    persistence: persistence,
+                    errorReporter: errorReporter
+                ) {
+                case .completed(let completionViewModel):
+                    state = .completedRedirect(completionViewModel, makeDailyReminderPrimer?())
+                    return
+                case .notCompleted(let existing):
+                    // Build directly from THIS already-fetched snapshot instead
+                    // of re-fetching the same record via `loadOrCreate` below
+                    // (pure waste — same recordName, same store).
+                    await mountLoaded(from: existing, identity: identity)
+                    return
+                case .absent:
+                    // Confirmed absent OR the precheck's own fetch failed —
+                    // both fall through to `loadOrCreate`, which creates the
+                    // fresh session (and is itself local-first: its own fetch
+                    // failure ALSO degrades to a fresh session, never blocks).
+                    break
+                }
+            }
             let snapshot = try await persistence.loadOrCreate(
                 puzzleId: puzzleId,
                 mode: identity.kind,
                 difficulty: identity.difficulty
             )
-            // #579 phase 1: build a per-session adapter when Telemetry is wired;
-            // fall back to NoOp so previews / tests are unaffected.
-            let gameTelemetry: any GameStateTelemetry = telemetry.map {
-                GameStateTelemetryAdapter(
-                    telemetry: $0,
-                    puzzleId: puzzleId,
-                    mode: identity.kind,
-                    difficulty: identity.difficulty
-                )
-            } ?? NoOpGameStateTelemetry()
-            let session = await GameSession.restore(from: snapshot, telemetry: gameTelemetry)
-            let viewModel = GameViewModel(
-                identity: identity,
-                session: session,
-                initialBoard: snapshot.currentBoard,
-                initialNotes: snapshot.notes,
-                initialStatus: snapshot.status,
-                initialElapsedSeconds: snapshot.elapsedSeconds,
-                initialMistakeCount: snapshot.mistakeCount,
-                persistence: persistence,
-                errorReporter: errorReporter,
-                soundPlayer: soundPlayer
-            )
-            state = .loaded(viewModel)
-            // #227: kick the session into `.playing` (idle → start, paused →
-            // resume). Without this, digit-pad taps fail the `.playing` gate
-            // inside `GameSession` and are silently absorbed by `runSession`,
-            // and `elapsedSeconds` stays at 0 because `runningSince` is nil.
-            await viewModel.startOrResume()
+            await mountLoaded(from: snapshot, identity: identity)
         } catch {
             // M10 (issue #67): typed bucket + funnel report. The view
             // displays the localized bucket copy; engineering OSLog / the
@@ -258,6 +316,43 @@ public struct BoardLoaderView: View {
             )
             state = .failed(bucket)
         }
+    }
+
+    /// Builds the live `GameViewModel` from an already-resolved snapshot and
+    /// starts/resumes its session. Shared by the fresh-session path
+    /// (`loadOrCreate`) and the #842 daily precheck's not-yet-completed
+    /// branch (`loadIfExists`) so both mount identically without duplicating
+    /// this construction.
+    private func mountLoaded(from snapshot: GameSessionSnapshot, identity: PuzzleIdentity) async {
+        // #579 phase 1: build a per-session adapter when Telemetry is wired;
+        // fall back to NoOp so previews / tests are unaffected.
+        let gameTelemetry: any GameStateTelemetry = telemetry.map {
+            GameStateTelemetryAdapter(
+                telemetry: $0,
+                puzzleId: puzzleId,
+                mode: identity.kind,
+                difficulty: identity.difficulty
+            )
+        } ?? NoOpGameStateTelemetry()
+        let session = await GameSession.restore(from: snapshot, telemetry: gameTelemetry)
+        let viewModel = GameViewModel(
+            identity: identity,
+            session: session,
+            initialBoard: snapshot.currentBoard,
+            initialNotes: snapshot.notes,
+            initialStatus: snapshot.status,
+            initialElapsedSeconds: snapshot.elapsedSeconds,
+            initialMistakeCount: snapshot.mistakeCount,
+            persistence: persistence,
+            errorReporter: errorReporter,
+            soundPlayer: soundPlayer
+        )
+        state = .loaded(viewModel)
+        // #227: kick the session into `.playing` (idle → start, paused →
+        // resume). Without this, digit-pad taps fail the `.playing` gate
+        // inside `GameSession` and are silently absorbed by `runSession`,
+        // and `elapsedSeconds` stays at 0 because `runningSince` is nil.
+        await viewModel.startOrResume()
     }
 
     #if DEBUG

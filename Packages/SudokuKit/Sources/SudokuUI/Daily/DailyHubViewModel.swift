@@ -44,6 +44,18 @@ public final class DailyHubViewModel {
     /// `reviewChoiceSelected(_:)` / `dismissReviewPicker()`.
     public private(set) var reviewPickerChoices: [DailyReviewChoice]?
 
+    /// #842: `true` from `.loaded`'s first render until `fillCompletionOverlay`
+    /// (phase 2 — the completion overlay fetch) resolves at least once, for
+    /// EITHER `bootstrap()`'s initial run or a later `refresh()` re-entry.
+    /// `cardTapped` no-ops while this is `true` — a tap landing in that window
+    /// has only phase-1-stale `card.isCompleted` data to show, so gating avoids
+    /// a wasted/flickering navigation rather than fixing correctness (that is
+    /// `BoardLoaderView`'s job — see its `#842` precheck, the airtight half of
+    /// this defense-in-depth pair). Deliberately not visual (no snapshot
+    /// churn): the issue's UX ask allows either a disabled affordance or a
+    /// tap no-op, and a no-op is the smallest mirror-consistent mechanism.
+    public private(set) var isPhase2Pending = true
+
     /// Navigation path store (issue #240): routes through an injected
     /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`
     /// via `init(path:)`, otherwise a local stub (previews / unit tests).
@@ -167,6 +179,12 @@ public final class DailyHubViewModel {
     /// call for the same date — the dispatch spec's "×7 total" fetch budget
     /// (not "×7 in addition to the existing 1") depends on this reuse.
     private func fillCompletionOverlay(trio: [PuzzleEnvelope], date: Date) async {
+        // #842: re-armed on every entry (bootstrap AND refresh) and cleared via
+        // `defer` regardless of which return path fires below — the tap gate
+        // must cover a `refresh()` re-fetch window too (e.g. returning to the
+        // hub right after a solve), not just the very first bootstrap.
+        isPhase2Pending = true
+        defer { isPhase2Pending = false }
         // #788: guard `.loaded` before AND after the fetch — mirrors MS's
         // `fillCompletionAndFailureOverlay`. Since #761 this method is
         // re-entrant via `refresh()` (the session-teardown signal), so a state
@@ -243,6 +261,10 @@ public final class DailyHubViewModel {
     /// and routes to `.completion`. The helper is `await`-able directly so
     /// tests don't depend on fire-and-forget `Task` timing.
     public func cardTapped(_ card: DailyCard) {
+        // #842: UX-responsiveness half of the defense-in-depth pair — see
+        // `isPhase2Pending`'s doc. Correctness is `BoardLoaderView`'s job even
+        // when this gate is bypassed or races closed anyway.
+        guard !isPhase2Pending else { return }
         guard card.isCompleted else {
             path.append(.board(puzzleId: card.envelope.identity.puzzleId))
             return

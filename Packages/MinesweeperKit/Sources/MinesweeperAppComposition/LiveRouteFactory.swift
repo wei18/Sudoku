@@ -216,49 +216,24 @@ public struct LiveRouteFactory: RouteFactory {
             )
         case .board(let difficulty, let seed, let mode):
             // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
-            // shared `boardDestination` helper in GameAppKit.
-            return boardDestination(
-                route: route,
-                path: path,
+            // shared `boardDestination` helper in GameAppKit. #842: the
+            // daily-vs-practice branch (including the new open-time guard)
+            // is delegated to `boardOpenDestination`
+            // (LiveRouteFactory+DailyBoardOpen.swift, extracted to keep this
+            // file under the 400-line ceiling) — same route table, not a
+            // separate concern.
+            return Self.boardOpenDestination(
+                route, path, difficulty, seed, mode,
+                adProvider: adProvider,
+                adGate: adGate,
+                gameCenter: gameCenter,
+                errorReporter: errorReporter,
+                soundPlayer: soundPlayer,
+                makeDailyReminderPrimer: makeDailyReminderPrimer,
+                savedGameStore: savedGameStore,
+                personalRecordStore: personalRecordStore,
                 onPresentBoard: onPresentBoard
-            ) {
-                AnyView(
-                    MinesweeperBoardView(
-                        difficulty: difficulty,
-                        seed: seed,
-                        mode: mode,
-                        adProvider: self.adProvider,
-                        adGate: self.adGate,
-                        gameCenter: self.gameCenter,
-                        errorReporter: self.errorReporter,
-                        // #330 P2: gameplay audio. nil (preview / test) → silent Noop.
-                        soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
-                        // #652: Play Again — dismiss current board and present a new
-                        // practice board at the same difficulty with a fresh seed.
-                        // Only wired when `onPresentBoard` is available AND this is a
-                        // practice board: a daily is one-per-day, so Play Again would
-                        // silently hand back a practice board (it draws mode: .practice).
-                        onPlayAgain: mode == .practice
-                            ? onPresentBoard.map { presenter in
-                                { @MainActor difficulty in
-                                    let seed = UInt64.random(in: .min ... .max)
-                                    presenter(.board(difficulty: difficulty, seed: seed, mode: .practice))
-                                }
-                            }
-                            : nil,
-                        // #455 step 4: persistence seam. The save's identity is
-                        // derived ONCE here (today's date for a daily, a singleton
-                        // slot per practice difficulty) — see the store's
-                        // recordName helpers for the scheme rationale.
-                        // #814: Daily-win reminder primer — the board's own
-                        // gate keeps it nil on loss / practice.
-                        makeDailyReminderPrimer: self.makeDailyReminderPrimer,
-                        store: self.savedGameStore,
-                        recordName: MinesweeperSavedGameStore.recordName(mode: mode, difficulty: difficulty),
-                        personalRecordStore: self.personalRecordStore
-                    )
-                )
-            }
+            )
         case .resumeBoard(let recordName, let mode):
             // #455 step 4 / #491 / #559: same two-context contract as `.board`,
             // delegated to shared `boardDestination` helper.

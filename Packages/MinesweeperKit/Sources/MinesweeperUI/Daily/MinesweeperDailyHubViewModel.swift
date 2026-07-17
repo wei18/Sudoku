@@ -64,6 +64,17 @@ public final class MinesweeperDailyHubViewModel {
     /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`.
     public private(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
 
+    /// #842: `true` from `.loaded`'s first render until
+    /// `fillCompletionAndFailureOverlay` (phase 2) resolves at least once, for
+    /// EITHER `bootstrap()`'s initial run or a later `refresh()` re-entry.
+    /// `cardTapped` no-ops while this is `true` — mirrors
+    /// `SudokuUI.DailyHubViewModel.isPhase2Pending` exactly. Correctness
+    /// (never mounting a scored/playable board for an actually completed or
+    /// failed daily) is `MinesweeperDailyOpenGuardView`'s job even when this
+    /// gate is bypassed or races closed anyway — this is the UX-responsiveness
+    /// half of the #842 defense-in-depth pair, not the airtight half.
+    public private(set) var isPhase2Pending = true
+
     private var path: Binding<[AppRoute]>
 
     private let provider: any MinesweeperDailyProviding
@@ -186,6 +197,11 @@ public final class MinesweeperDailyHubViewModel {
     /// `MinesweeperDailyStrip`'s header comment on why a mine-hit loss never
     /// feeds the streak model at all).
     private func fillCompletionAndFailureOverlay(trio: [MinesweeperDailyEntry], date: Date) async {
+        // #842: re-armed on every entry (bootstrap AND refresh) and cleared
+        // via `defer` regardless of which return path fires below — mirrors
+        // `SudokuUI.DailyHubViewModel.fillCompletionOverlay`'s gate exactly.
+        isPhase2Pending = true
+        defer { isPhase2Pending = false }
         guard case .loaded = state else { return }
 
         let window = await fetchWeekWindow(referenceDate: date)
@@ -271,6 +287,11 @@ public final class MinesweeperDailyHubViewModel {
     ///   board knows not to persist or submit GC on this attempt.
     /// - Not-yet-played: pushes the `.board` normally (daily-mode, scored).
     public func cardTapped(_ card: MinesweeperDailyCard) {
+        // #842: UX-responsiveness half of the defense-in-depth pair — see
+        // `isPhase2Pending`'s doc. Correctness is
+        // `MinesweeperDailyOpenGuardView`'s job even when this gate is
+        // bypassed or races closed anyway.
+        guard !isPhase2Pending else { return }
         if card.isCompleted {
             path.wrappedValue.append(.completion(difficulty: card.difficulty, mode: .daily))
         } else if card.isFailed {
