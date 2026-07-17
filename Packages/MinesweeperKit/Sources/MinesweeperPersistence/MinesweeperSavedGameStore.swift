@@ -171,14 +171,7 @@ public actor MinesweeperSavedGameStore {
     /// resume pill that loads nothing (#463 CR). The caller rebuilds the live
     /// board via `MinesweeperSession.restore(from:)`.
     public func loadInProgress(recordName: String) async throws -> MinesweeperSessionSnapshot? {
-        let payload: RecordPayload?
-        do {
-            payload = try await gateway.fetch(recordName: recordName)
-        } catch {
-            if UserFacingError.classify(error) == .iCloudSignedOut { return nil }
-            throw error
-        }
-        guard let payload else { return nil }
+        guard let payload = try await fetchPayload(recordName: recordName) else { return nil }
         // #700 CR: a terminal record ("completed" / "failed") is not
         // resumable — mirror `latestInProgress()`'s status filter. Handing a
         // `.won` session to a fresh ViewModel (whose per-instance latches are
@@ -189,6 +182,38 @@ public actor MinesweeperSavedGameStore {
            status != "inProgress" {
             return nil
         }
+        return try Self.decodeSnapshot(from: payload)
+    }
+
+    /// Decode the stored snapshot for `recordName` regardless of `status`
+    /// (#841). Unlike `loadInProgress`, this does NOT exclude terminal
+    /// records — it exists specifically to recover a "failed" daily's
+    /// persisted mine layout for the free-replay loader (`.replayDailyBoard`),
+    /// which needs the exact board the player already saw once, not a
+    /// resumable in-progress game. Same iCloud-signed-out /
+    /// schema-too-new / corrupt-blob handling as `loadInProgress`, minus the
+    /// status gate.
+    public func loadSnapshot(recordName: String) async throws -> MinesweeperSessionSnapshot? {
+        guard let payload = try await fetchPayload(recordName: recordName) else { return nil }
+        return try Self.decodeSnapshot(from: payload)
+    }
+
+    /// Shared fetch step for `loadInProgress` / `loadSnapshot`: resolve the
+    /// record, degrading a signed-out iCloud fetch to "no record" (#515)
+    /// rather than throwing.
+    private func fetchPayload(recordName: String) async throws -> RecordPayload? {
+        do {
+            return try await gateway.fetch(recordName: recordName)
+        } catch {
+            if UserFacingError.classify(error) == .iCloudSignedOut { return nil }
+            throw error
+        }
+    }
+
+    /// Shared decode step: schema-too-new throws (distinguishable from "no
+    /// save" so a caller can hide/delete a broken candidate), a missing blob
+    /// is `nil`, otherwise decode the `MinesweeperSessionSnapshot`.
+    private static func decodeSnapshot(from payload: RecordPayload) throws -> MinesweeperSessionSnapshot? {
         if case .int(let version) = payload.fields[Field.schemaVersion],
            version > Self.currentSchemaVersion {
             throw PersistenceError.schemaVersionTooNew(

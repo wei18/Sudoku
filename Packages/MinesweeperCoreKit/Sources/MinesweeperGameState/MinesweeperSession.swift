@@ -66,6 +66,28 @@ public actor MinesweeperSession {
         self.clock = clock
     }
 
+    /// Construct a session whose mines are placed immediately at fixed
+    /// positions (#841 daily-retry fix) — the underlying engine skips
+    /// deferred, first-click-salted placement entirely, so `reveal()` never
+    /// re-derives a layout from THIS session's first click. Used to replay a
+    /// daily board with the canonical layout captured on the day's
+    /// first-ever attempt. Throws `MinesweeperError.invalidFixedLayout` if
+    /// `fixedMineIndices` doesn't exactly match `difficulty.mineCount`
+    /// in-bounds indices (a corrupt/legacy persisted layout) — callers
+    /// should fall back to the deferred, first-click-safe init above rather
+    /// than propagate a malformed board.
+    public init(
+        difficulty: Difficulty,
+        seed: UInt64,
+        fixedMineIndices: Set<Int>,
+        clock: any MonotonicClock = LiveMonotonicClock()
+    ) throws {
+        self.difficulty = difficulty
+        self.seed = seed
+        self.engine = try MinesweeperEngine(difficulty: difficulty, seed: seed, fixedMineIndices: fixedMineIndices)
+        self.clock = clock
+    }
+
     // MARK: - Snapshot
 
     public func snapshot() -> MinesweeperSessionSnapshot {

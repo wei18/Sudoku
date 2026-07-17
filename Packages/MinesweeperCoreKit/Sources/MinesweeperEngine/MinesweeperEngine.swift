@@ -60,6 +60,37 @@ public struct MinesweeperEngine: Sendable {
         self.isLost = isLost
     }
 
+    /// Construct an engine with mines already placed at fixed board indices
+    /// (#841 — daily-retry-must-be-one-fixed-game). Skips the deferred,
+    /// first-click-salted placement path entirely: `minesPlaced` is `true`
+    /// the moment this initializer returns, so `reveal()`'s
+    /// `if !minesPlaced { placeMines(firstClickRow:col:) }` branch never
+    /// fires and the layout can never be re-derived from THIS session's
+    /// click. Used to replay a daily board with the canonical layout
+    /// captured on the day's first-ever attempt — every retry (any first
+    /// click) reproduces the identical board.
+    ///
+    /// No first-click safety: the fixed layout may already have a mine
+    /// under the very first tap. That is the intended, documented contract
+    /// for a fixed board (first-click safety only ever applied to the
+    /// first-ever attempt, which is what produced this layout) — a mine hit
+    /// here is a normal loss, not special-cased.
+    ///
+    /// Throws `.invalidFixedLayout` if `fixedMineIndices` doesn't contain
+    /// exactly `difficulty.mineCount` in-bounds indices (a corrupt or
+    /// legacy persisted layout) — callers should treat that as "no usable
+    /// layout" and fall back to fresh (deferred, first-click-safe)
+    /// placement rather than silently playing a malformed board.
+    public init(difficulty: Difficulty, seed: UInt64, fixedMineIndices: Set<Int>) throws {
+        self.difficulty = difficulty
+        self.seed = seed
+        self.cells = Array(repeating: Cell(), count: difficulty.cellCount)
+        self.moves = []
+        self.minesPlaced = false
+        self.isLost = false
+        try placeMines(atFixedIndices: fixedMineIndices)
+    }
+
     // MARK: - Indexing
 
     public func index(row: Int, col: Int) -> Int { row * columns + col }
@@ -166,8 +197,28 @@ public struct MinesweeperEngine: Sendable {
             let j = i + rng.nextInt(upperBound: candidates.count - i)
             candidates.swapAt(i, j)
         }
-        for k in 0..<mineCount {
-            cells[candidates[k]].isMine = true
+        finalizePlacement(mineIndices: candidates[0..<mineCount])
+    }
+
+    /// #841: place mines at an externally-supplied, already-computed set of
+    /// board indices — no RNG, no first-click safe zone. The caller (a
+    /// daily-replay loader) is responsible for having captured a valid
+    /// layout from the day's first-ever attempt; this just applies it.
+    private mutating func placeMines(atFixedIndices indices: Set<Int>) throws {
+        guard indices.count == mineCount, indices.allSatisfy({ (0..<cells.count).contains($0) }) else {
+            throw MinesweeperError.invalidFixedLayout(expected: mineCount, found: indices.count)
+        }
+        finalizePlacement(mineIndices: indices)
+    }
+
+    /// Shared tail of both placement paths: flip `isMine` for every index in
+    /// `mineIndices`, compute `neighborMineCount` for every non-mine cell,
+    /// and flip `minesPlaced`. Pulled out of `placeMines(firstClickRow:col:)`
+    /// verbatim (#841) — same statements, same order, so the frozen
+    /// determinism vectors that path feeds are untouched.
+    private mutating func finalizePlacement(mineIndices: some Sequence<Int>) {
+        for i in mineIndices {
+            cells[i].isMine = true
         }
 
         // Compute neighbor counts for every non-mine cell.

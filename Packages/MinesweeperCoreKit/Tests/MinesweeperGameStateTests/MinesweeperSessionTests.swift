@@ -326,4 +326,55 @@ private final class FakeClock: MonotonicClock, @unchecked Sendable {
     }
 }
 
+// MARK: - Fixed-layout construction (#841)
+
+/// #841 "daily retry after loss generates a different board per first click
+/// — daily must be one fixed game": `MinesweeperSession.init(difficulty:
+/// seed:fixedMineIndices:)` is the session-layer entry point the daily-replay
+/// loader uses to reproduce an already-lost daily's exact mine layout.
+@Suite struct MinesweeperSessionFixedLayoutTests {
+    @Test func fixedLayoutSessionHasMinesPlacedImmediately() async throws {
+        let indices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        let session = try MinesweeperSession(
+            difficulty: .beginner, seed: 42, fixedMineIndices: indices, clock: FakeClock()
+        )
+        let snap = await session.snapshot()
+        // Mines are set on the underlying cells even though nothing has
+        // been revealed yet — `mineIndices` reads them straight off the
+        // idle snapshot (this is exactly what the daily's terminal-save
+        // blob already captures for the ORIGINAL first-ever attempt).
+        #expect(snap.mineIndices == indices)
+        #expect(snap.status == .idle)
+    }
+
+    /// The end-to-end #841 acceptance test at the session layer: two
+    /// sessions built from the SAME persisted layout but revealed at
+    /// DIFFERENT first cells still produce an IDENTICAL mine layout — the
+    /// exact scenario the issue reported (lose a daily, retry with a
+    /// different first click, get a different board).
+    @Test func retryWithDifferentFirstClickReproducesIdenticalLayout() async throws {
+        let indices: Set<Int> = [5, 17, 33, 44, 55, 61, 70, 72, 80, 12]
+        let firstAttempt = try MinesweeperSession(
+            difficulty: .beginner, seed: 99, fixedMineIndices: indices, clock: FakeClock()
+        )
+        let retry = try MinesweeperSession(
+            difficulty: .beginner, seed: 99, fixedMineIndices: indices, clock: FakeClock()
+        )
+        _ = try await firstAttempt.reveal(row: 0, col: 0)
+        _ = try await retry.reveal(row: 8, col: 8)
+        let firstSnap = await firstAttempt.snapshot()
+        let retrySnap = await retry.snapshot()
+        #expect(firstSnap.mineIndices == retrySnap.mineIndices)
+        #expect(firstSnap.mineIndices == indices)
+    }
+
+    @Test func wrongMineCountThrowsInvalidFixedLayout() {
+        #expect(throws: MinesweeperError.self) {
+            _ = try MinesweeperSession(
+                difficulty: .beginner, seed: 1, fixedMineIndices: [0, 1], clock: FakeClock()
+            )
+        }
+    }
+}
+
 // swiftlint:enable identifier_name
