@@ -124,10 +124,15 @@ public struct SettingsNoticesSection: View {
 
             if let copyright {
                 HStack {
-                    Image(systemName: "c.circle")
-                        .foregroundStyle(tintColor)
-                    Text(verbatim: copyright)
-                        .foregroundStyle(.secondary)
+                    // #845: `Label` icon column (was a raw `Image + Text`
+                    // HStack) — matches the standard row shape below.
+                    Label {
+                        Text(verbatim: copyright)
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "c.circle")
+                            .foregroundStyle(tintColor)
+                    }
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -149,10 +154,16 @@ private struct NoticeRowLabel: View {
 
     var body: some View {
         HStack {
-            Image(systemName: systemImage)
-                .foregroundStyle(tintColor)
-            Text(title)
-                .foregroundStyle(.primary)
+            // #845: `Label` icon column (was a raw `Image + Text` HStack) —
+            // Acknowledgements / Privacy Policy / Support shared the same
+            // tighter gap as the About rows; converge to the standard shape.
+            Label {
+                Text(title)
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(tintColor)
+            }
             Spacer()
             if showsDisclosure {
                 Image(systemName: "chevron.forward")
