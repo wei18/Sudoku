@@ -24,6 +24,17 @@
 //     #768: Sudoku now supplies an inline icon+message+action block here
 //     instead of layering a system `.alert` on top of a blank shell.
 //   - the per-item tap action
+//   - the `header` slot (#840): rendered ABOVE the content in every state —
+//     idle/loading/loaded/empty/failed — mirroring `HomeScreen.header`'s
+//     injected-slot shape. Defaults to `EmptyView` so existing callers
+//     compile unchanged. Sudoku/MS inject their `DailyStripView` /
+//     `MinesweeperDailyStripView` week strip here so it SCROLLS WITH the
+//     card grid in `.loaded` (it now lives inside the same `ScrollView`,
+//     ahead of the `LazyVGrid`) instead of being pinned above a fixed
+//     shell (#840 — owner-reported: the trio scrolled UNDER a fixed strip).
+//     For the non-scrolling states (idle/loading/empty/failed) there is no
+//     scroll container to join, so the header still renders, just above
+//     the centered content, preserving the #774 "never disappears" property.
 //   - the `banner` slot (injected by each app; EmptyView default for
 //     previews/tests; the actual BannerSlotView is never imported here)
 //
@@ -33,8 +44,8 @@
 
 public import SwiftUI
 
-public struct DailyHubShellView<Item, Card, Failure, Empty, Banner>: View
-where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Banner: View {
+public struct DailyHubShellView<Item, Card, Failure, Empty, Header, Banner>: View
+where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Header: View, Banner: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let state: HubLoadState<Item>
@@ -42,6 +53,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     private let failure: (String) -> Failure
     private let empty: () -> Empty
     private let onItemTap: (Item) -> Void
+    private let header: Header
     private let banner: Banner
 
     // Structural spacing (#762 PR1 two-tier spacing contract). This shell
@@ -62,6 +74,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         @ViewBuilder failure: @escaping (String) -> Failure,
         @ViewBuilder empty: @escaping () -> Empty = { Color.clear },
         onItemTap: @escaping (Item) -> Void,
+        @ViewBuilder header: () -> Header = { EmptyView() },
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
         self.title = title
@@ -71,6 +84,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         self.failure = failure
         self.empty = empty
         self.onItemTap = onItemTap
+        self.header = header()
         self.banner = banner()
     }
 
@@ -90,35 +104,54 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     private var content: some View {
         switch state {
         case .idle, .loading:
-            ProgressView().controlSize(.large)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // #840: `header` joins every non-scrolling state too (no
+            // ScrollView to ride here — see `cardList` for the `.loaded`
+            // case, where it scrolls WITH the grid instead).
+            VStack(spacing: 0) {
+                header
+                ProgressView().controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .loaded(let items):
             cardList(items)
         case .empty:
             // #768: caller-provided inline block (defaults to `Color.clear`
             // for callers with no reachable `.empty` state, e.g. Minesweeper).
-            empty()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 0) {
+                header
+                empty()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .failed(let reason):
-            failure(reason)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 0) {
+                header
+                failure(reason)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
     }
 
     @ViewBuilder
     private func cardList(_ items: [Item]) -> some View {
+        // #840: `header` sits ahead of the grid INSIDE the same `ScrollView`
+        // so it scrolls with the trio instead of staying pinned above a
+        // fixed shell (owner-reported regression from #774's original
+        // "sibling above the shell" placement).
         ScrollView {
-            LazyVGrid(columns: columns, spacing: cardGridGap) {
-                ForEach(items) { item in
-                    Button {
-                        onItemTap(item)
-                    } label: {
-                        card(item)
+            VStack(spacing: 0) {
+                header
+                LazyVGrid(columns: columns, spacing: cardGridGap) {
+                    ForEach(items) { item in
+                        Button {
+                            onItemTap(item)
+                        } label: {
+                            card(item)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(screenEdgeInset)
             }
-            .padding(screenEdgeInset)
         }
     }
 

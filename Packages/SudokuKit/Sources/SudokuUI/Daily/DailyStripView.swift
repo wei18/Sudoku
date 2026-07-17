@@ -1,10 +1,14 @@
 // DailyStripView — the rolling 7-day completion strip + streak caption.
 //
-// #774. Renders above `DailyHubShellView` inside `DailyHubView` (own file,
-// own VStack — GameShellKit's `DailyHubShellView` is untouched, keeping the
-// "no shared streak-widget abstraction" scope note (proposal §7) literal:
-// this whole file is per-app, copy-paste-adapted into
-// `MinesweeperUI.MinesweeperDailyStripView`).
+// #774. Injected into `DailyHubShellView`'s generic `header` slot (#840) by
+// `DailyHubView` — GameShellKit's shell stays untouched (it only knows
+// `Header: View`), keeping the "no shared streak-widget abstraction" scope
+// note (proposal §7) literal: this whole file is per-app, copy-paste-adapted
+// into `MinesweeperUI.MinesweeperDailyStripView`. The shell renders `header`
+// in every load state and, for `.loaded`, inside the same `ScrollView` as
+// the card grid — so the strip scrolls WITH the trio instead of staying
+// pinned above it (#840 — owner-reported regression from #774's original
+// "fixed sibling above the shell" placement).
 //
 // Interaction scope (#826, owner adjudication 2026-07-16): a COMPLETED PAST
 // day's dot is a button — tap opens that day's Completion review (exactly one

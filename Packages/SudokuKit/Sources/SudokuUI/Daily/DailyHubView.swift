@@ -47,48 +47,45 @@ public struct DailyHubView<Banner: View>: View {
     }
 
     public var body: some View {
-        // #774: the week strip sits above the trio, outside
-        // `DailyHubShellView` (GameShellKit stays untouched — see
+        // #840: the week strip is injected into `DailyHubShellView`'s
+        // `header` slot (GameShellKit stays untouched — see
         // `DailyStripView`'s header comment on the "no shared widget"
-        // scope note). It renders regardless of the shell's own
-        // idle/loading/loaded/failed state — the strip has its own
-        // independent fetch and shouldn't disappear just because the
-        // trio failed to generate.
-        VStack(spacing: 0) {
-            DailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
-                .padding(.horizontal, theme.spacing.medium)
-                .padding(.top, theme.spacing.medium)
-            dailyHubShell
-        }
-        .background(theme.surface.background.resolved)
-        .task { await viewModel.bootstrap() }
-        // #761: driven by `GameRoot`'s explicit teardown counter (not
-        // `.onAppear` — see the property doc above for why that doesn't
-        // work). `refresh()`'s own `.loaded`-state guard still protects
-        // against a spurious fetch before `bootstrap()` has landed. Also
-        // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
-        // no new trigger.
-        .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
-        // #826: a past day with >1 completed difficulty presents this picker
-        // instead of opening directly (owner adjudication 2026-07-16).
-        // `presenting:` hands the whole array to `actions:` so `ForEach` can
-        // build one row per completed difficulty.
-        .confirmationDialog(
-            "Difficulty",
-            isPresented: Binding(
-                get: { viewModel.reviewPickerChoices != nil },
-                set: { isPresented in
-                    if !isPresented { viewModel.dismissReviewPicker() }
-                }
-            ),
-            presenting: viewModel.reviewPickerChoices
-        ) { choices in
-            ForEach(choices) { choice in
-                Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
-                    viewModel.reviewChoiceSelected(choice)
+        // scope note) instead of sitting as a fixed sibling above the
+        // shell (#774's original placement, which made the trio scroll
+        // UNDER a pinned strip — owner-reported regression). The shell
+        // renders `header` in every state — idle/loading/loaded/empty/
+        // failed — so the strip still can't disappear just because the
+        // trio failed to generate, and in `.loaded` it now scrolls WITH
+        // the card grid.
+        dailyHubShell
+            .task { await viewModel.bootstrap() }
+            // #761: driven by `GameRoot`'s explicit teardown counter (not
+            // `.onAppear` — see the property doc above for why that doesn't
+            // work). `refresh()`'s own `.loaded`-state guard still protects
+            // against a spurious fetch before `bootstrap()` has landed. Also
+            // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
+            // no new trigger.
+            .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+            // #826: a past day with >1 completed difficulty presents this
+            // picker instead of opening directly (owner adjudication
+            // 2026-07-16). `presenting:` hands the whole array to `actions:`
+            // so `ForEach` can build one row per completed difficulty.
+            .confirmationDialog(
+                "Difficulty",
+                isPresented: Binding(
+                    get: { viewModel.reviewPickerChoices != nil },
+                    set: { isPresented in
+                        if !isPresented { viewModel.dismissReviewPicker() }
+                    }
+                ),
+                presenting: viewModel.reviewPickerChoices
+            ) { choices in
+                ForEach(choices) { choice in
+                    Button(LocalizedStringKey(choice.difficulty.rawValue.capitalized)) {
+                        viewModel.reviewChoiceSelected(choice)
+                    }
                 }
             }
-        }
     }
 
     private var dailyHubShell: some View {
@@ -161,6 +158,11 @@ public struct DailyHubView<Banner: View>: View {
                 .padding(exhaustedCardPadding)
             },
             onItemTap: { card in viewModel.cardTapped(card) },
+            header: {
+                DailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
+                    .padding(.horizontal, theme.spacing.medium)
+                    .padding(.top, theme.spacing.medium)
+            },
             banner: { banner }
         )
     }
