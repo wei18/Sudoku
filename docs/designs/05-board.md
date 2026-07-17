@@ -34,11 +34,14 @@ iPhone (compact)                       Mac (regular)
 │ │  │  │  │  │  │  │ │               │  │                 │ │ 7 8 9    │  │
 │ └──┴──┴──┴──┴──┴──┘ │               │  │                 │ │ ⌫       │  │
 │                      │               │  └─────────────────┘ └──────────┘  │
-│ ↶  ↷  ✏              │               │                                    │
-│ ┌─┬─┬─┬─┬─┬─┬─┬─┬─┐ │               │                                    │
-│ │1│2│3│4│5│6│7│8│9│ │               │                                    │
-│ └─┴─┴─┴─┴─┴─┴─┴─┴─┘ │               │                                    │
-│        ⌫             │               │                                    │
+│ ↶  ↷  ✏  ⌫            │               │                                    │
+│      ┌────┬────┬────┐│               │                                    │
+│      │ 1  │ 2  │ 3  ││               │                                    │
+│      ├────┼────┼────┤│               │                                    │
+│      │ 4  │ 5  │ 6  ││               │                                    │
+│      ├────┼────┼────┤│               │                                    │
+│      │ 7  │ 8  │ 9  ││               │                                    │
+│      └────┴────┴────┘│               │                                    │
 └──────────────────────┘               └────────────────────────────────────┘
 ```
 
@@ -170,15 +173,22 @@ struct BoardView_Designs: View {
         .font(.title2)
     }
 
+    // AS-BUILT (#210, 2026-05-30): the digit pad is a 3×3 `Grid`, not a
+    // 1×9 row — Erase moved into the unified Undo/Redo/Notes/Erase control
+    // row above (`controls`, illustrative here; see `DigitPadView.swift`
+    // for the shipping `compactControlRow`).
     private var digitPad: some View {
-        HStack(spacing: 8) {
-            ForEach(1...9, id: \.self) { d in
-                Button("\(d)") { }
-                    .frame(minWidth: 36, minHeight: 44)
-                    .buttonStyle(.bordered)
+        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+            ForEach(0..<3, id: \.self) { row in
+                GridRow {
+                    ForEach(1...3, id: \.self) { col in
+                        let d = row * 3 + col
+                        Button("\(d)") { }
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .buttonStyle(.bordered)
+                    }
+                }
             }
-            Button { } label: { Image(systemName: "delete.left") }
-                .frame(minWidth: 36, minHeight: 44)
         }
     }
 
@@ -277,7 +287,7 @@ private struct Triangle: Shape {
 | Pause button | `accent.primary` | default | SF `pause.fill` / `play.fill` |
 | Undo/Redo | `text.primary` | enabled; disabled = `text.tertiary` | SF `arrow.uturn.{backward,forward}` |
 | Pencil toggle | `accent.primary` when on | toggle | `.button` toggle style |
-| Digit pad button | `text.primary` | default | `.bordered`, ≥44 pt height, ≥36 pt width |
+| Digit pad button | `text.primary` | default | `.bordered`, 3×3 `Grid`, 56 pt key height (iPhone); 64 pt (Mac). Control row (Undo/Redo/Notes/Erase) is 4 × 44 pt icon-only |
 | Delete button | `text.primary` | default | `delete.left` SF |
 | Pause overlay | `.ultraThinMaterial` | paused only | full-cover blur |
 
@@ -305,6 +315,8 @@ The board is the product. Two non-negotiables drove the design:
 2. **Color-blind dual encoding** for error state. ~8% of male users have some form of color blindness; relying on red-only would mark our error UI as broken on a meaningful population slice. The corner triangle adds shape to the channel.
 
 Mac layout splits board and controls horizontally because keyboard users rarely tap, and pointer users benefit from larger controls in dedicated real estate. The 9-digit pad on Mac is *retained* (not removed) because new users discover the interaction model from it before learning the keyboard shortcut.
+
+**Adjudicated won't-fix (#855, owner 2026-07-17)**: unlike the iPhone digit pad, the Mac digit `Grid` never renders a per-key remaining-count badge (`DigitPadView.macDigitButton` — "Mac never disabled on remaining count" per its own doc comment). A #855 design audit flagged this as an information gap between platforms. Adjudication: **keep as-is** — the omission is deliberate (Mac's larger dedicated digit-pad real estate and keyboard-shortcut affordance make the remaining-count less load-bearing than on the space-constrained iPhone pad), not a bug. No badge is being added to the Mac grid; this note documents the decision so a future audit doesn't re-flag it.
 
 Rejected: (1) "ghost digit" preview when hovering before tap on Mac — adds latency and surprises keyboard users; (2) animated streak / combo counters — gamification anti-pattern for a contemplation puzzle; (3) sound effects for cell taps — descoped to v2 backlog if at all.
 

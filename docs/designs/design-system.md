@@ -50,6 +50,7 @@ Semantic names. Hex pairs are `light / dark`. All values are sRGB.
 | `text.given` | `#1A1D21` | `#F2F3F5` | digits in prefilled cells (bold weight) |
 | `text.user` | `#5C7A4F` | `#9BB87E` | digits user entered (accent-tinted, regular weight). 4.8 / 7.5 — AA |
 | `text.errorDigit` | `#A52A20` | `#FF8077` | digit in error cell. 6.1 / 5.4 — AA |
+| `text.onAccent` (alias) | `#FFFFFF` | `#1E2024` | ink for text/icons sitting ON a solid `accent.primary` fill (e.g. `.borderedProminent` labels + badges). **Not a distinct token** — implemented as `surface.primary` reused for this role (#786, #797, #855 F-1). 4.83 / 7.42 — AA. `accent.primary`'s own default label ink (system white) hard-fails dark mode (2.20:1); any new `.borderedProminent`-on-`accent.primary` construct MUST route its label AND any nested badge/secondary text through this ink, not the system default. |
 
 ### Accent
 
@@ -86,6 +87,7 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 - `text.errorDigit` / `cell.error` light: 4.7:1 — AA (normal)
 - `accent.primary` (`#5C7A4F`) / `surface.primary` (`#FFFFFF`) light: 4.84:1 — AA normal text ✓; AA UI components (≥3:1) ✓
 - `accent.primary` (`#9BB87E`) / `surface.primary` (`#1E2024`) dark: 7.52:1 — AAA ✓
+- `text.onAccent` (`surface.primary` reused, `#FFFFFF`/`#1E2024`) / `accent.primary` (`#5C7A4F`/`#9BB87E`): 4.83:1 light / 7.42:1 dark — AA both (#855 F-1: fixes DigitPadView's armed-key remaining badge, which previously kept `text.secondary` ink on the same fill — 1.45:1 light / 1.02:1 dark, AA fail)
 - `accent.muted` is a background token only (text on top is `text.primary`, which retains 14–16:1)
 - All dark-mode pairings ≥ 4.5:1 against their cell/surface backgrounds.
 
