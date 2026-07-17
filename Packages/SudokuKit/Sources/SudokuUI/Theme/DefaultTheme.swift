@@ -32,7 +32,11 @@ public struct DefaultTheme: Theme {
         highlighted: ThemeColor(light: 0xEBF0E2, dark: 0x252D1F),
         sameDigit: ThemeColor(light: 0xC8E1B4, dark: 0x2A3C20),
         selected: ThemeColor(light: 0xDCE6D0, dark: 0x3A4A30),
-        error: ThemeColor(light: 0xFBE3E1, dark: 0x4A2724),
+        // #850: retuned so the error wash out-weighs `sameDigit` green
+        // (light 1.56:1 vs. 1.41:1; dark 1.43:1 vs. 1.37:1 against the
+        // respective base cell) — see docs/designs/design-system.md
+        // §Color tokens and #850 designer spec for the WCAG math.
+        error: ThemeColor(light: 0xF2C4C0, dark: 0x602924),
         errorBorder: ThemeColor(light: 0xC8362B, dark: 0xE66258)
     )
 
