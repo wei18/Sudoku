@@ -132,12 +132,15 @@ public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Ban
     private let cardAccessibilityIdentifier: (HomeMode) -> String?
     private let header: Header
     private let removeAdsCard: RemoveAds
-    /// #773: a secondary-weight entry rendered below the mode-card grid — e.g.
-    /// the Statistics link. Deliberately NOT a `HomeMode` case: `HomeMode` is
-    /// the co-equal 4-card set (also drives the sidebar), and this slot exists
-    /// precisely so a new entry can be added WITHOUT competing at that same
-    /// visual weight (owner adjudication, #773). Defaults to `EmptyView` so
-    /// games with nothing to inject here render byte-identically.
+    /// #773 / #844: an entry rendered below the mode-card grid — e.g. the
+    /// Statistics card. Deliberately NOT a `HomeMode` case: `HomeMode` is the
+    /// co-equal 4-card set that also drives the sidebar, and this slot exists
+    /// so a new entry can be added without joining that sidebar-generating
+    /// set. #844 owner override: the entry rendered here now reuses the SAME
+    /// `HomeModeCard` visual format as the four modes (was a lighter-weight
+    /// flat row under #773's original secondary-weight adjudication) — only
+    /// its POSITION stays separate, not its visual weight. Defaults to
+    /// `EmptyView` so games with nothing to inject here render byte-identically.
     private let secondaryLink: SecondaryLink
     private let banner: Banner
 
@@ -177,7 +180,11 @@ public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Ban
                     Button {
                         item.onTap()
                     } label: {
-                        HomeModeCard(mode: item.mode, subtitleKey: item.subtitleKey)
+                        HomeModeCard(
+                            symbolName: item.mode.symbolName,
+                            titleKey: item.mode.titleKey,
+                            subtitleKey: item.subtitleKey
+                        )
                     }
                     .buttonStyle(.plain)
                     .modifier(OptionalAccessibilityIdentifier(cardAccessibilityIdentifier(item.mode)))
@@ -204,12 +211,16 @@ public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Ban
 
 // MARK: - Shared mode card
 
-/// One shared mode card driven by the model. The two apps' cards were
-/// byte-identical (same HStack/symbol/title/subtitle/chevron, same padding 16,
-/// minHeight 72, glass corner radius 16, same theme tokens), so there is no
-/// per-app tint/appearance to inject — only the data differs.
+/// One shared mode card driven by explicit content (icon/title/subtitle), not
+/// tied to the fixed `HomeMode` case set — #844 reuses it for the Statistics
+/// entry, which is deliberately NOT a `HomeMode` (see `secondaryLink` doc).
+/// The two apps' four mode cards were byte-identical (same
+/// HStack/symbol/title/subtitle/chevron, same padding 16, minHeight 72, glass
+/// corner radius 16, same theme tokens), so there is no per-app tint/
+/// appearance to inject — only the data differs.
 public struct HomeModeCard: View {
-    let mode: HomeMode
+    let symbolName: String
+    let titleKey: LocalizedStringKey
     let subtitleKey: LocalizedStringKey
     @Environment(\.theme) private var theme
     // Card internal padding (#762 PR1 two-tier spacing contract) — content
@@ -217,8 +228,9 @@ public struct HomeModeCard: View {
     // Type.
     @ScaledSpacing(.medium) private var cardPadding
 
-    public init(mode: HomeMode, subtitleKey: LocalizedStringKey) {
-        self.mode = mode
+    public init(symbolName: String, titleKey: LocalizedStringKey, subtitleKey: LocalizedStringKey) {
+        self.symbolName = symbolName
+        self.titleKey = titleKey
         self.subtitleKey = subtitleKey
     }
 
@@ -227,14 +239,14 @@ public struct HomeModeCard: View {
         // `SpacingTokens` scale — no matching tier without snapping and
         // changing this card's existing layout/snapshot (#762).
         HStack(spacing: 14) {
-            Image(systemName: mode.symbolName)
+            Image(systemName: symbolName)
                 .font(.title2)
                 .foregroundStyle(theme.accent.primary.resolved)
                 .frame(width: 36, height: 36)
             // spacing-exempt: 2pt (title-to-subtitle gap) predates the
             // 5-tier `SpacingTokens` scale — same rationale as above (#762).
             VStack(alignment: .leading, spacing: 2) {
-                Text(mode.titleKey)
+                Text(titleKey)
                     .font(.title3.weight(.medium))
                     .foregroundStyle(theme.text.primary.resolved)
                 Text(subtitleKey)
@@ -249,60 +261,6 @@ public struct HomeModeCard: View {
         .frame(minHeight: 72)
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-    }
-}
-
-// MARK: - HomeSecondaryEntryLink (#773)
-
-/// A flat, plain-styled link row for the `HomeScreen.secondaryLink` slot —
-/// deliberately lighter weight than `HomeModeCard` (no glass, no title/
-/// subtitle pairing, `text.secondary` not `text.primary`) so it reads as
-/// subordinate to the four mode cards above it rather than a fifth co-equal
-/// entry (owner adjudication, #773).
-public struct HomeSecondaryEntryLink: View {
-    let titleKey: LocalizedStringKey
-    let symbolName: String
-    let onTap: @MainActor () -> Void
-    let accessibilityIdentifier: String?
-
-    @Environment(\.theme) private var theme
-    @ScaledSpacing(.small) private var rowGap
-    @ScaledSpacing(.medium) private var rowPadding
-
-    public init(
-        titleKey: LocalizedStringKey,
-        symbolName: String,
-        accessibilityIdentifier: String? = nil,
-        onTap: @escaping @MainActor () -> Void
-    ) {
-        self.titleKey = titleKey
-        self.symbolName = symbolName
-        self.accessibilityIdentifier = accessibilityIdentifier
-        self.onTap = onTap
-    }
-
-    public var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: rowGap) {
-                Image(systemName: symbolName)
-                    .font(.callout)
-                    .foregroundStyle(theme.text.secondary.resolved)
-                Text(titleKey)
-                    .font(.callout)
-                    .foregroundStyle(theme.text.secondary.resolved)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(theme.text.tertiary.resolved)
-            }
-            .padding(.horizontal, rowPadding)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .modifier(OptionalAccessibilityIdentifier(accessibilityIdentifier))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }
