@@ -63,19 +63,28 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
         .background(theme.surface.background.resolved)
     }
 
-    // MARK: - Statistics secondary entry (#773)
+    // MARK: - Statistics entry (#773 / #844)
 
-    /// Secondary-weight Home entry below the four mode cards. Hidden
-    /// (`EmptyView`) when the game's `GameConfig.statsRoute` is `nil`.
+    /// Home entry below the four mode cards. Hidden (`EmptyView`) when the
+    /// game's `GameConfig.statsRoute` is `nil`. #844 owner override: renders
+    /// with the SAME `HomeModeCard` the four modes use (was a lighter-weight
+    /// `HomeSecondaryEntryLink` flat row under #773's original adjudication)
+    /// — position stays the 5th entry below the grid, only the format changed.
     @ViewBuilder
     private var statsLink: some View {
         if viewModel.showsStatsEntry {
-            HomeSecondaryEntryLink(
-                titleKey: "Statistics",
-                symbolName: "chart.bar.fill"
-            ) {
+            Button {
                 viewModel.selectStats()
+            } label: {
+                HomeModeCard(
+                    symbolName: "chart.bar.fill",
+                    titleKey: "Statistics",
+                    subtitleKey: viewModel.statsCardSubtitleKey
+                )
             }
+            .buttonStyle(.plain)
+            .padding(.horizontal, theme.spacing.medium)
+            .padding(.bottom, theme.spacing.medium)
         }
     }
 

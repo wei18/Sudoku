@@ -128,8 +128,12 @@ extension MinesweeperAppComposition {
             // MS Game Center dashboard presenter. Injected here (not inside
             // GameAppKit) so GameAppKit stays free of the GK dependency.
             presentLeaderboard: { GameCenterDashboard.present() },
-            // #773: Home's secondary-weight Statistics entry pushes this route.
+            // #773: Home's Statistics entry pushes this route.
             statsRoute: .stats,
+            // #844: Statistics now renders as a mode-format card (owner
+            // override of #773's flat-row format), so it needs a subtitle
+            // like the four modes above.
+            statsSubtitleKey: "Wins / times / averages",
             // #455 / #572: map MinesweeperSavedGameSummary into the game-agnostic
             // ResumeCandidate. Strings match the former ResumePill rendering exactly
             // so snapshot baselines do not move.

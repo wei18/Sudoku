@@ -33,20 +33,28 @@ public final class GameHomeViewModel<Route: Hashable & Sendable> {
     /// never imports a per-game module.
     @ObservationIgnored private let presentLeaderboard: (@MainActor () -> Void)?
 
-    /// #773: navigation target for the Home secondary-weight "Statistics"
-    /// entry. `nil` → the entry is not rendered.
+    /// #773: navigation target for the Home "Statistics" entry. `nil` → the
+    /// entry is not rendered.
     @ObservationIgnored private let statsRoute: Route?
+
+    /// #844: subtitle copy for the Statistics entry — it renders as a
+    /// `HomeModeCard` (owner override of #773's flat-row format) and needs
+    /// the same subtitle slot the four modes have. Ignored when `statsRoute`
+    /// is `nil` (the entry is not shown).
+    @ObservationIgnored private let statsSubtitleKey: LocalizedStringKey
 
     public init(
         rootViewModel: GameRootViewModel<Route>,
         homeModes: [HomeMode: HomeModeContent<Route>],
         presentLeaderboard: (@MainActor () -> Void)? = nil,
-        statsRoute: Route? = nil
+        statsRoute: Route? = nil,
+        statsSubtitleKey: LocalizedStringKey = ""
     ) {
         self.rootViewModel = rootViewModel
         self.homeModes = homeModes
         self.presentLeaderboard = presentLeaderboard
         self.statsRoute = statsRoute
+        self.statsSubtitleKey = statsSubtitleKey
     }
 
     // MARK: - Navigation
@@ -83,6 +91,10 @@ public final class GameHomeViewModel<Route: Hashable & Sendable> {
     /// Statistics row — mirrors the `homeModes` pattern of "content presence
     /// implies UI presence" rather than a separate visibility flag.
     public var showsStatsEntry: Bool { statsRoute != nil }
+
+    /// #844: subtitle text for the Statistics card, resolved from the app's
+    /// own catalog (Bundle.main), matching the `HomeModeItem.subtitleKey` pattern.
+    public var statsCardSubtitleKey: LocalizedStringKey { statsSubtitleKey }
 
     /// Pushes the configured Statistics route. No-op if `statsRoute` is `nil`
     /// (the entry would not be shown, so this should be unreachable from the

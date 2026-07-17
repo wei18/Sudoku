@@ -38,9 +38,11 @@ private func makeSudokuHomeViewModel(
     let homeVM = GameHomeViewModel(
         rootViewModel: rootVM,
         homeModes: sudokuHomeModes,
-        // #773: mirrors SudokuAppComposition.live()'s statsRoute so the Home
-        // snapshots pin the secondary-weight Statistics entry below the cards.
-        statsRoute: .stats
+        // #773 / #844: mirrors SudokuAppComposition.live()'s statsRoute +
+        // statsSubtitleKey so the Home snapshots pin the mode-format
+        // Statistics card exactly as shipped.
+        statsRoute: .stats,
+        statsSubtitleKey: "Wins / times / averages"
     )
     return (rootVM, homeVM)
 }
@@ -66,7 +68,8 @@ private func makeSudokuHomeViewModelWithResume() async -> (
     )
     await rootVM.bootstrap()
     let homeVM = GameHomeViewModel(
-        rootViewModel: rootVM, homeModes: sudokuHomeModes, statsRoute: .stats
+        rootViewModel: rootVM, homeModes: sudokuHomeModes,
+        statsRoute: .stats, statsSubtitleKey: "Wins / times / averages"
     )
     return (rootVM, homeVM)
 }

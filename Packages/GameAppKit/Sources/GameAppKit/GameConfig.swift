@@ -213,11 +213,15 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// the GK controller is not shared. `nil` → no-op (games without a leaderboard
     /// surface, or during migration).
     public let presentLeaderboard: (@MainActor () -> Void)?
-    /// #773: navigation target for the Home secondary-weight "Statistics"
-    /// entry (rendered below the four mode cards, not a `HomeMode`). `nil`
-    /// (default) → the entry is not shown, matching every other optional
-    /// content slot in this config.
+    /// #773: navigation target for the Home "Statistics" entry (rendered
+    /// below the four mode cards, not a `HomeMode`). `nil` (default) → the
+    /// entry is not shown, matching every other optional content slot in
+    /// this config.
     public let statsRoute: Route?
+    /// #844: subtitle copy for the Statistics entry — it renders as a
+    /// `HomeModeCard` (same format as the four modes), so it needs a
+    /// subtitle like theirs. Ignored when `statsRoute` is `nil`.
+    public let statsSubtitleKey: LocalizedStringKey
 
     // MARK: Builder closures
 
@@ -262,6 +266,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         homeModes: [HomeMode: HomeModeContent<Route>] = [:],
         presentLeaderboard: (@MainActor () -> Void)? = nil,
         statsRoute: Route? = nil,
+        statsSubtitleKey: LocalizedStringKey = "",
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
         makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
@@ -282,6 +287,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.homeModes = homeModes
         self.presentLeaderboard = presentLeaderboard
         self.statsRoute = statsRoute
+        self.statsSubtitleKey = statsSubtitleKey
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory
         self.makeHome = makeHome
