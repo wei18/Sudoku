@@ -231,7 +231,12 @@ public struct ReminderSettingsSection: View {
         .accessibilityIdentifier("reminders.settings.disable")
     }
 
-    /// Denied: a tappable row opening the recovery explainer.
+    /// Denied: a tappable row opening the recovery explainer, which in turn
+    /// deep-links to Settings.app — unlike `enableRow`'s instant in-app
+    /// toggle, this row's flow leaves the app. #880 (#874 F-11): the trailing
+    /// `arrow.up.forward.square` glyph is the standard iOS "leaves the app"
+    /// affordance, distinguishing it at a glance from `enableRow`'s otherwise
+    /// near-identical layout/tint.
     private var deniedRow: some View {
         Button { model.showDeniedExplainer() } label: {
             HStack {
@@ -242,11 +247,19 @@ public struct ReminderSettingsSection: View {
                 Spacer()
                 Text(copy.deniedCTA)
                     .foregroundStyle(tintColor)
+                Image(systemName: "arrow.up.forward.square")
+                    .foregroundStyle(tintColor)
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("reminders.settings.denied")
+        // Reuses the existing "Open Settings" CTA copy as the VoiceOver hint
+        // (no new localized string needed) — signals the out-of-app
+        // consequence of this row's flow.
+        .accessibilityHint(deniedCopy.openSettingsCTA)
     }
 }
