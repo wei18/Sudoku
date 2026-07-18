@@ -81,16 +81,20 @@ struct MinesweeperBoardRevealedSnapshotTests {
         return cells
     }
 
-    /// A loss board: one detonated mine (revealed + isMine → bold mineHit) plus
-    /// two still-hidden mines (surfaced as soft `mine` fill because
-    /// `revealMines` is on for `.lost`), surrounded by revealed numbers.
+    /// A loss board: one detonated mine (revealed + isMine → bold mineHit),
+    /// one still-hidden mine (surfaced as soft `mine` fill because
+    /// `revealMines` is on for `.lost`), and one correctly-flagged mine
+    /// (also surfaced on `mine` fill, but drawing the flag glyph in
+    /// `tokens.lostMineFlagInk` rather than the mine glyph — #876 / #874 F-1),
+    /// surrounded by revealed numbers.
     private func mineHitCells() -> [Cell] {
         var cells = midRevealCells()
         // Detonated cell (the one the player hit): revealed mine → mineHit red.
         cells[index(row: 4, col: 4)] = Cell(isMine: true, state: .revealed)
-        // Still-hidden mines: surfaced on loss via the board's revealMines path.
+        // Still-hidden mine: surfaced on loss via the board's revealMines path.
         cells[index(row: 5, col: 2)] = Cell(isMine: true, state: .hidden)
-        cells[index(row: 6, col: 7)] = Cell(isMine: true, state: .hidden)
+        // Correctly-flagged mine, surfaced on loss (#876 combo).
+        cells[index(row: 6, col: 7)] = Cell(isMine: true, state: .flagged)
         return cells
     }
 

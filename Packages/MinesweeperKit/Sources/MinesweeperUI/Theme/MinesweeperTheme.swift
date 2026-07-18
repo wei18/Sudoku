@@ -35,6 +35,8 @@ public struct MinesweeperTheme: Theme {
         flagged: ThemeColor(light: 0xFBEBD8, dark: 0x3A2E1C),
         mine: ThemeColor(light: 0xFBE3E1, dark: 0x4A2724),
         mineHit: ThemeColor(light: 0xC8362B, dark: 0xE66258),
+        // #876 / #874 F-1: see MinesweeperCellTokens.lostMineFlagInk doc.
+        lostMineFlagInk: ThemeColor(light: 0x9C5C1C, dark: 0xE8A560),
         // 1..8 neighbor-count glyphs. The prototype defines these as
         // single-value CSS vars (no light/dark companion); used identically
         // in both schemes, so each pair repeats the one hex.

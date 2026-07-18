@@ -94,6 +94,10 @@ Restrained-saturation warm trio used **only for difficulty signaling** — Daily
 
 > **`text.tertiary` on glass surfaces**: contrast is not guaranteed against `.glassEffect` (translucent material; rear content varies). Treat `text.tertiary` over glass as **decorative-only** and mark with `.accessibilityHidden(true)`. Any non-decorative use over glass must fall back to `text.secondary`.
 
+**Minesweeper board-cell token adjustments** (this doc is Sudoku-scoped; MS ships its own `MinesweeperTheme`/`MinesweeperCellTokens` with a distinct "blueprint paper" palette — see those files for the full token set. Contrast-driven adjustments to MS-only tokens are noted here rather than duplicating a whole second design system):
+
+- `MinesweeperCellTokens.lostMineFlagInk` (new, #876 / #874 F-1): the flag glyph on a correctly-flagged mine surfaced at loss (`showsLostMine && cell.state == .flagged`) previously reused `status.warning` (`#D9822B`/`#E8A560`), which contrast-fails WCAG 1.4.11's 3:1 non-text floor against the `mine` fill in light mode (2.39:1; dark was fine at 6.22:1). New dedicated token: light `#9C5C1C` (same hue/saturation as `status.warning`, HSL lightness 0.51→0.36) → 4.34:1 against `mine`; dark reuses `status.warning`'s dark hex verbatim (unchanged, still 6.22:1). Guarded by `MinesweeperLostMineFlagInkContrastTests`. The normal in-play flag-on-`covered` combo (`status.warning`, 2.15:1 light — a separate, not-yet-tracked gap) is untouched by this fix.
+
 ---
 
 ## Typography scale
