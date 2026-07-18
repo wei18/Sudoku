@@ -87,7 +87,12 @@ public struct AudioSettingsSection: View {
         .accessibilityIdentifier("audio.settings.sfxVolume")
     }
 
-    /// Background-music on/off toggle.
+    /// Background-music on/off toggle. Disabled while master-muted: `LiveSoundPlayer.
+    /// playMusic` gates on `isMusicEnabled && !isMuted` (#330 P2), so flipping this
+    /// toggle has zero audible effect until Sound is unmuted — same rule as
+    /// `musicVolumeRow`'s `.disabled(isMuted...)` a few lines up. Without this, F-10
+    /// (#879) reported the toggle looking "live" right next to a dimmed slider that
+    /// says the opposite.
     private var musicEnabledRow: some View {
         Toggle(isOn: $model.musicEnabled) {
             Label {
@@ -98,10 +103,14 @@ public struct AudioSettingsSection: View {
             }
         }
         .tint(tintColor)
+        .disabled(model.isMuted)
         .accessibilityIdentifier("audio.settings.musicEnabled")
     }
 
-    /// Haptic-feedback on/off toggle.
+    /// Haptic-feedback on/off toggle. Deliberately stays enabled under master mute:
+    /// `LiveSoundPlayer.play` gates haptics on `hapticsEnabled` ONLY, independent of
+    /// `isMuted` (#330 P2) — muting audio does not silence haptic feedback, so this
+    /// toggle keeps having a real, immediate effect while Sound is off.
     private var hapticsRow: some View {
         Toggle(isOn: $model.hapticsEnabled) {
             Label {
