@@ -196,8 +196,15 @@ struct MinesweeperCellButton: View {
     private var content: some View {
         // #298 #7: a still-hidden mine surfaced on loss draws the mine glyph
         // (a flagged mine keeps its flag below — it was correctly flagged).
+        // #876 / #874 F-1: the flagged-mine-at-loss case gets its own ink
+        // (`tokens.lostMineFlagInk`) instead of falling into the general
+        // `.flagged` branch below — `status.warning` on the `mine` fill
+        // contrast-fails in light mode (2.39:1); the in-play flag-on-`covered`
+        // combo is untouched.
         if showsLostMine, cell.state == .hidden {
             mineGlyph(detonated: false)
+        } else if showsLostMine, cell.state == .flagged {
+            flaggedMineGlyph
         } else {
             switch cell.state {
             case .hidden:
@@ -244,6 +251,18 @@ struct MinesweeperCellButton: View {
         Image(systemName: "xmark.octagon.fill")
             .font(.system(size: glyphSize))
             .foregroundStyle(detonated ? theme.surface.primary.resolved : theme.status.error.resolved)
+            .transition(.scale(scale: 0.9))
+    }
+
+    // #876 / #874 F-1: a correctly-flagged mine, surfaced at loss. Same glyph
+    // as the normal `.flagged` branch, but the ink comes from the dedicated
+    // `tokens.lostMineFlagInk` (see MinesweeperCellTokens doc) rather than
+    // `theme.status.warning`, which fails WCAG 1.4.11 (2.39:1) against the
+    // `mine` fill this cell sits on.
+    private var flaggedMineGlyph: some View {
+        Image(systemName: "flag.fill")
+            .font(.system(size: glyphSize))
+            .foregroundStyle(tokens.lostMineFlagInk.resolved)
             .transition(.scale(scale: 0.9))
     }
 
