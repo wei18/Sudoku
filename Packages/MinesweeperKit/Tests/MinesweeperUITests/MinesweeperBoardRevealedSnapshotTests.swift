@@ -85,7 +85,7 @@ struct MinesweeperBoardRevealedSnapshotTests {
     /// one still-hidden mine (surfaced as soft `mine` fill because
     /// `revealMines` is on for `.lost`), and one correctly-flagged mine
     /// (also surfaced on `mine` fill, but drawing the flag glyph in
-    /// `tokens.lostMineFlagInk` rather than the mine glyph — #876 / #874 F-1),
+    /// `tokens.flagInk` rather than the mine glyph — #876 / #874 F-1),
     /// surrounded by revealed numbers.
     private func mineHitCells() -> [Cell] {
         var cells = midRevealCells()

@@ -32,16 +32,22 @@ public struct MinesweeperCellTokens: Sendable, Equatable, Hashable {
     public let mine: ThemeColor
     /// Detonated-mine background (the cell the player hit). Bold red.
     public let mineHit: ThemeColor
-    /// #876 / #874 F-1: ink for the flag glyph on a correctly-flagged mine
-    /// surfaced at loss (`showsLostMine && cell.state == .flagged`) — the
-    /// general `status.warning` flag ink contrast-fails against `mine` in
-    /// light mode (2.39:1, below the WCAG 1.4.11 3:1 non-text floor) even
-    /// though it's fine against the normal in-play `covered` fill. Same hue/
-    /// saturation as `status.warning`, darkened (HSL L 0.51→0.36) for this
-    /// one combination; dark reuses `status.warning`'s dark value verbatim
-    /// (already 6.22:1, no regression). See design-system.md
-    /// "Minesweeper board-cell token adjustments".
-    public let lostMineFlagInk: ThemeColor
+    /// Ink for the flag glyph, covering BOTH the normal in-play flag
+    /// (`.flagged` on the `covered` fill) and a correctly-flagged mine
+    /// surfaced at loss (`showsLostMine && cell.state == .flagged`, on the
+    /// `mine` fill) — the general `status.warning` flag ink contrast-fails
+    /// WCAG 1.4.11's 3:1 non-text floor against both fills in light mode
+    /// (2.15:1 on `covered` #874/#888, 2.39:1 on `mine` #874 F-1/#876). Same
+    /// hue/saturation as `status.warning`, darkened (HSL L 0.51→0.36); dark
+    /// reuses `status.warning`'s dark value verbatim (already ≥3:1 on both
+    /// fills, no regression). One token, not two: the two cell states are
+    /// already visually distinguished by their DIFFERENT fills (`covered`
+    /// blue-gray vs `mine` pink) and by game status, not by ink hue, so
+    /// reusing one value avoids a near-duplicate token. Originally added as
+    /// `lostMineFlagInk` (#876 / #874 F-1, mine-fill only), renamed +
+    /// widened to cover the covered-fill combo in #888. See
+    /// design-system.md "Minesweeper board-cell token adjustments".
+    public let flagInk: ThemeColor
 
     /// Neighbor-count glyph palette, 1–8. Out-of-range counts fall back to the
     /// `8` color (the dimmest), matching the prototype's clamp.
@@ -53,7 +59,7 @@ public struct MinesweeperCellTokens: Sendable, Equatable, Hashable {
         flagged: ThemeColor,
         mine: ThemeColor,
         mineHit: ThemeColor,
-        lostMineFlagInk: ThemeColor,
+        flagInk: ThemeColor,
         numbers: [ThemeColor]
     ) {
         self.covered = covered
@@ -61,7 +67,7 @@ public struct MinesweeperCellTokens: Sendable, Equatable, Hashable {
         self.flagged = flagged
         self.mine = mine
         self.mineHit = mineHit
-        self.lostMineFlagInk = lostMineFlagInk
+        self.flagInk = flagInk
         self.numbers = numbers
     }
 
