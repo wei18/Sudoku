@@ -1166,49 +1166,50 @@
         }
       }
     },
-    "Draw new puzzle" : {
-      "extractionState" : "stale",
+    "New Game" : {
+      "comment" : "#885 Practice hub primary CTA (2026-07-18 owner adjudication: wording unified across both apps, was \"Draw new puzzle\" here / \"Start\" on Minesweeper). Translations copied from Minesweeper's existing \"New Game\" key.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Draw new puzzle"
+            "value" : "New Game"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sacar nuevo puzle"
+            "value" : "Nueva partida"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいパズルを引く"
+            "value" : "新しいゲーム"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 퍼즐 뽑기"
+            "value" : "새 게임"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "สุ่มปริศนาใหม่"
+            "value" : "เกมใหม่"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "抽取新题目"
+            "value" : "新游戏"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "抽一題新的"
+            "value" : "新遊戲"
           }
         }
       }

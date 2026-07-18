@@ -1,10 +1,13 @@
 // MinesweeperPracticeHubView — Standard-tier Practice hub stub (PR U12).
 //
 // Wraps `GameShellUI.PracticeHubShellView` with a Difficulty Picker (filter
-// slot) and a Start button (cta slot). Mirrors Sudoku's Practice hub shape
-// per `feedback/minesweeper-mirrors-sudoku.md` but drops the shimmer state
-// machine — MS has no async generator today, so the CTA pushes the route
-// synchronously.
+// slot) and a "New Game" button (cta slot). Mirrors Sudoku's Practice hub
+// shape per `feedback/minesweeper-mirrors-sudoku.md` but drops the shimmer
+// state machine — MS has no async generator today, so the CTA pushes the
+// route synchronously. #885 owner adjudication (2026-07-18): CTA label
+// unified to "New Game" across both apps — was "Start" here, unlocalized
+// (no catalog key existed); Sudoku's side was "Draw new puzzle", wording
+// specific to puzzle generation that would misdescribe MS's board setup.
 
 public import SwiftUI
 internal import GameShellUI
@@ -117,7 +120,10 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
                 //   Intermediate — light 5.13 (navy, was 3.19 FAIL) / dark 6.90 (navy, unchanged)
                 //   Expert       — light 5.85 (white, unchanged) / dark 4.92 (navy, unchanged)
                 // Guarded by `MinesweeperThemeContrastTests.DifficultyTintOnTintInkContrastTests`.
-                Label("Start", systemImage: "play.fill")
+                // #885 owner adjudication (2026-07-18): CTA wording unified
+                // with Sudoku's Practice CTA — both apps now read "New Game"
+                // (was "Start" here, "Draw new puzzle" on Sudoku).
+                Label("New Game", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(theme.surface.onTintInk(for: difficultyTint(for: difficulty)))
             }

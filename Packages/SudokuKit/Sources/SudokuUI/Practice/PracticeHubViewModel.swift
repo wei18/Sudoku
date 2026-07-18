@@ -102,7 +102,8 @@ public final class PracticeHubViewModel {
     }
 
     /// User switched difficulty segment — clear any drawn puzzle so the
-    /// "Draw new puzzle" CTA reads as primary again.
+    /// "New Game" CTA reads as primary again. (#885: CTA wording unified
+    /// from "Draw new puzzle" to "New Game" across both apps.)
     public func selectDifficulty(_ next: Difficulty) {
         difficulty = next
         loadingState = .idle
