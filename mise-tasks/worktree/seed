@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#MISE description="Copy every gitignored file matched by .worktreeinclude from the repo root into a hand-created worktree (#863). The harness's automatic .worktreeinclude copy only runs for HARNESS-created worktrees (--worktree / EnterWorktree / subagent isolation:\"worktree\") — an agent that hand-creates one via 'git worktree add' (a recurring recovery path after an auto-clean) gets no copy, and a build from it silently bakes unresolved $(VAR) xcconfig substitutions into the app. Run this from the MAIN checkout, pointed at the worktree."
+#USAGE arg "<path>" help="Target worktree path (must already exist via 'git worktree add')"
+#
+# Pattern-driven, not hardcoded: reads .worktreeinclude (.gitignore syntax) at
+# run time, so a pattern added there later is picked up with zero code
+# changes here. Today's 2 patterns:
+#   Tuist/*.xcconfig   (glob)
+#   secrets/           (trailing "/" — whole directory tree)
+#
+# Each pattern is resolved via `git ls-files --others --ignored
+# --exclude-standard -- <pattern>`, NOT a shell glob/rsync, so only files
+# that are BOTH matched AND actually gitignored get copied — matching
+# .worktreeinclude's own stated contract. A naive glob on `Tuist/*.xcconfig`
+# or `rsync -a` on `secrets/` would also sweep up the TRACKED files living
+# alongside the secrets (Tuist/Config-Debug.xcconfig, Tuist/Config-
+# Release.xcconfig, secrets/.env.example, secrets/README.md) and silently
+# clobber a target worktree's own edits to those tracked files with the main
+# checkout's version — git already knows which files are ignored, so ask it.
+#
+# Idempotent: re-running overwrites with the current source content (cp -p),
+# never errors on already-seeded files. Refuses a target that isn't a
+# registered git worktree (checked via `git worktree list`), so it can't
+# accidentally seed an arbitrary directory or overwrite the main checkout.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TARGET="${1:-}"
+
+usage() {
+  echo "usage: mise run worktree:seed <path>" >&2
+  echo "  <path>  an existing git worktree (see: git worktree list)" >&2
+  exit "${1:-1}"
+}
+[[ -n "$TARGET" ]] || usage 1
+[[ "$TARGET" != "-h" && "$TARGET" != "--help" ]] || usage 0
+
+[[ -d "$TARGET" ]] || { echo "error: '$TARGET' is not a directory." >&2; exit 1; }
+TARGET="$(cd "$TARGET" && pwd)"
+
+if [[ "$TARGET" == "$REPO_ROOT" ]]; then
+  echo "error: target path is the main checkout ($REPO_ROOT) — refusing to seed onto itself." >&2
+  exit 1
+fi
+
+# ── Refuse anything that isn't a registered worktree ───────────────────────
+# `git worktree list --porcelain` emits one absolute "worktree <path>" line
+# per worktree (main checkout included). Match $TARGET against it exactly so
+# an arbitrary directory can never be seeded.
+if ! git -C "$REPO_ROOT" worktree list --porcelain | grep -qx "worktree $TARGET"; then
+  echo "error: '$TARGET' is not a registered git worktree." >&2
+  echo "       Run 'git worktree list' to see registered worktrees, or create" >&2
+  echo "       one first: git worktree add <path> <branch>" >&2
+  exit 1
+fi
+
+WORKTREEINCLUDE="$REPO_ROOT/.worktreeinclude"
+[[ -f "$WORKTREEINCLUDE" ]] || { echo "error: $WORKTREEINCLUDE not found." >&2; exit 1; }
+
+echo "==> seeding $TARGET from $REPO_ROOT (.worktreeinclude patterns)"
+
+copied=0
+while IFS= read -r raw; do
+  # .gitignore-syntax line: strip a trailing comment, then surrounding whitespace.
+  pattern="${raw%%#*}"
+  pattern="${pattern#"${pattern%%[![:space:]]*}"}"   # trim leading whitespace
+  pattern="${pattern%"${pattern##*[![:space:]]}"}"   # trim trailing whitespace
+  [[ -z "$pattern" ]] && continue
+
+  # `git ls-files --others --ignored --exclude-standard -- <pathspec>` lists
+  # exactly the untracked-and-gitignored files under a pathspec — it handles
+  # both a glob ("Tuist/*.xcconfig") and a directory prefix ("secrets/")
+  # uniformly, so one code path covers both pattern shapes in .worktreeinclude.
+  # `mapfile`/`readarray` are bash-4+ builtins — macOS ships bash 3.2 at
+  # /bin/bash (and on PATH first, so `env bash` resolves to it too), so this
+  # stays a plain `while read` loop like the .worktreeinclude parse above.
+  matched=0
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    dest="$TARGET/$rel"
+    mkdir -p "$(dirname "$dest")"
+    cp -p "$REPO_ROOT/$rel" "$dest"
+    echo "==> copied $rel"
+    matched=$((matched + 1))
+  done < <(git -C "$REPO_ROOT" ls-files --others --ignored --exclude-standard -- "$pattern")
+  if [[ "$matched" -eq 0 ]]; then
+    echo "==> skip '$pattern' — no gitignored files matched at $REPO_ROOT"
+  fi
+  copied=$((copied + matched))
+done < "$WORKTREEINCLUDE"
+
+if [[ "$copied" -eq 0 ]]; then
+  echo "warning: nothing matched any .worktreeinclude pattern — is $REPO_ROOT missing the source files too?" >&2
+  exit 1
+fi
+
+echo "==> done. Seeded $copied file(s) into $TARGET"

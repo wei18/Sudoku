@@ -28,6 +28,62 @@ OUT_ROOT="build/tour"
 scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
 bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
+# ── Post-build unresolved-xcconfig gate (#863) ────────────────────────────
+# A hand-created worktree missing gitignored Tuist/*.xcconfig (see
+# .worktreeinclude — the automatic copy only runs for HARNESS-created
+# worktrees) still builds fine: `#include?` treats a missing xcconfig as
+# empty, not an error. What that does to the Info.plist substitution
+# $(ADMOB_BANNER_UNIT_ID) depends on WHICH xcconfig is missing (empirically
+# verified #863):
+#   - Tuist/Signing.xcconfig present but Tuist/AdMob.xcconfig absent:
+#     Signing.xcconfig `#include`s AdMob.xcconfig NON-optionally, so this
+#     combination hard-FAILS the xcodebuild step itself — safe already.
+#   - Both files absent (the actual hand-worktree scenario — neither ever
+#     got copied): the build SUCCEEDS and xcodebuild resolves the undefined
+#     macro to an EMPTY STRING, not the literal "$(...)" text.
+# So the runtime guard this mirrors (MakeGameApp.swift ~138-149, which covers
+# GADBannerUnitID only — GADApplicationIdentifier is validated by the AdMob
+# SDK itself at launch, no app-code precondition) checks BOTH `.isEmpty` and
+# `.hasPrefix("$(")` — this gate checks both KEYS defensively since either
+# empty value crashes at launch. The literal-"$("
+# scan stays generic (any string value, not just the two known keys, per
+# #863's ask — catches a FUTURE substituted key left unresolved by some
+# other xcconfig combination); the emptiness check is scoped to the two
+# keys we know are build-injected, since "empty" alone is not inherently
+# wrong for arbitrary Info.plist strings.
+check_plist_resolved() {
+  local app_path="$1" plist="$1/Info.plist"
+  if [[ ! -f "$plist" ]]; then
+    echo "error: no Info.plist found at $plist — cannot verify xcconfig substitution." >&2
+    return 1
+  fi
+  local unresolved problems=()
+  unresolved="$(plutil -p "$plist" | grep -oE '\$\([A-Za-z0-9_]+\)' | sort -u || true)"
+  if [[ -n "$unresolved" ]]; then
+    while IFS= read -r var; do problems+=("unresolved literal: $var"); done <<<"$unresolved"
+  fi
+  for key in GADApplicationIdentifier GADBannerUnitID; do
+    local val
+    val="$(/usr/libexec/PlistBuddy -c "Print :$key" "$plist" 2>/dev/null || true)"
+    [[ -z "$val" ]] && problems+=("empty (missing xcconfig substitution): $key")
+  done
+  if [[ ${#problems[@]} -gt 0 ]]; then
+    echo "────────────────────────────────────────────────────────────────" >&2
+    echo " UNRESOLVED/MISSING BUILD-TIME VALUE(S) in $plist:" >&2
+    printf '   %s\n' "${problems[@]}" >&2
+    echo "" >&2
+    echo " A gitignored Tuist/*.xcconfig is missing from this checkout ($app_path) —" >&2
+    echo " likely a hand-created worktree (git worktree add) that never got" >&2
+    echo " .worktreeinclude's automatic copy. Remedy: from the MAIN checkout run" >&2
+    echo "   mise run worktree:seed $REPO_ROOT" >&2
+    echo " (that's THIS worktree's path — worktree:seed copies Tuist/*.xcconfig" >&2
+    echo " + secrets/ into it) — or build from the main checkout instead." >&2
+    echo " Refusing to install a launch-crashing app onto the shared simulator." >&2
+    echo "────────────────────────────────────────────────────────────────" >&2
+    return 1
+  fi
+}
+
 # (screen-key, launch-arg) pairs — empty arg = default launch (home).
 SCREENS=(
   "01-home:"
@@ -75,6 +131,7 @@ for app in "${APPS[@]}"; do
       -sdk iphonesimulator -configuration Debug \
       -destination "platform=iOS Simulator,id=$UDID" \
       -derivedDataPath "$DERIVED" build >/dev/null
+    check_plist_resolved "$PRODUCTS/$scheme.app"
     xcrun simctl install "$UDID" "$PRODUCTS/$scheme.app"
   fi
 
