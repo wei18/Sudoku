@@ -1,8 +1,11 @@
 // PracticeHubView — difficulty picker + draw card + shimmer threshold.
 //
-// Per docs/designs/04-practice-hub.md. The "Draw new puzzle" CTA disables
-// itself during draws; sub-100 ms draws skip indicators (no flash), >100 ms
-// draws redact the puzzle-id hint (.redacted(reason: .placeholder)).
+// Per docs/designs/04-practice-hub.md. The "New Game" CTA disables itself
+// during draws; sub-100 ms draws skip indicators (no flash), >100 ms draws
+// redact the puzzle-id hint (.redacted(reason: .placeholder)). #885 owner
+// adjudication (2026-07-18): CTA label unified to "New Game" across both
+// apps — was "Draw new puzzle" here, Sudoku-specific wording that would
+// misdescribe Minesweeper's board generation.
 //
 // PR U12: outer VStack(24) + padding(16) + frame + chrome triple + inline
 // "Difficulty" section header extracted into `GameShellUI.PracticeHubShellView`.
@@ -122,11 +125,14 @@ public struct PracticeHubView<Banner: View>: View {
                 // `.foregroundStyle` would override the system's disabled
                 // dimming (caught by the committed shimmer baseline, which
                 // must stay byte-identical).
+                // #885 owner adjudication (2026-07-18): CTA wording unified
+                // with Minesweeper's Practice CTA — both apps now read
+                // "New Game" (was "Draw new puzzle" here, "Start" on MS).
                 if isDrawing {
-                    Label("Draw new puzzle", systemImage: "play.fill")
+                    Label("New Game", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
                 } else {
-                    Label("Draw new puzzle", systemImage: "play.fill")
+                    Label("New Game", systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
                         .foregroundStyle(theme.surface.onTintInk(for: difficultyTint(for: viewModel.difficulty)))
                 }

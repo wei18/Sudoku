@@ -2364,7 +2364,7 @@
       }
     },
     "New Game" : {
-      "comment" : "#421 Minesweeper Completion screen — action button: start a fresh game (back to difficulty picker).",
+      "comment" : "#885 Practice hub primary CTA (2026-07-18 owner adjudication: wording unified across both apps, was \"Start\" here / \"Draw new puzzle\" on Sudoku). Formerly the Completion screen \"start a fresh game\" action (#421), removed there per #468/#480 (close-only CTA redesign, commit 08cceed) — key reused, not orphaned.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
