@@ -46,6 +46,15 @@ struct MinesweeperCompletionSnapshotTests {
             onClose: {}
         )
         .environment(\.completionHeroSkipsReveal, true)
+        // #883: this isolated fixture renders `MinesweeperCompletionView`'s
+        // OWN Close button (`onClose` non-nil above) — a code path production
+        // never takes (the live overlay always passes `onClose: nil` and gets
+        // its Close from `CompletionOverlayScaffold`, which tints it
+        // `theme.accent.primary.resolved`). Without a matching `.tint` here
+        // the button falls back to system blue RGB(10,96,254) instead of the
+        // real muted accent RGB(48,87,121) — #875 D2. Match production's tint
+        // so this fixture can't silently drift from the real on-screen color.
+        .tint(MinesweeperTheme().accent.primary.resolved)
     }
 
     // MARK: - Re-opened solved daily (#386): hero OMITS the time row
@@ -68,6 +77,9 @@ struct MinesweeperCompletionSnapshotTests {
             showsElapsedTime: false
         )
         .environment(\.completionHeroSkipsReveal, true)
+        // #883: match production's Close tint — see `completionView(...)`'s
+        // doc comment above for why this isolated fixture needs it.
+        .tint(MinesweeperTheme().accent.primary.resolved)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-noElapsed", record: SnapshotMode.recordMode)
     }
@@ -107,6 +119,9 @@ struct MinesweeperCompletionSnapshotTests {
             onClose: {}
         )
         .environment(\.completionHeroSkipsReveal, true)
+        // #883: match production's Close tint — see `completionView(...)`'s
+        // doc comment above for why this isolated fixture needs it.
+        .tint(MinesweeperTheme().accent.primary.resolved)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light)
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-reminder", record: SnapshotMode.recordMode)
     }
