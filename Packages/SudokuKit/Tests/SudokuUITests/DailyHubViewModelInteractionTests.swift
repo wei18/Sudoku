@@ -59,11 +59,21 @@ struct DailyHubViewModelInteractionTests {
         let providerOps = await provider.operations
         let persistenceOps = await persistence.operations
         #expect(providerOps == [.fetchDailyTrio(date: Self.fixedDate)])
-        // #774: 7 calls (the week-strip window), not 1 — today's slot
-        // (offset 0, the last date below) is reused for the trio-card
-        // overlay instead of issuing a duplicate 8th call.
+        // #774: 7 calls (the week-strip window) — today's slot is reused for
+        // the trio-card overlay, no duplicate 8th call. #886: runs
+        // concurrently with 3 `fetchPersonalRecord` calls (`async let`), so
+        // relative order ACROSS the two kinds isn't guaranteed — assert each
+        // kind's own sub-sequence + total count instead of one flat array.
         let expectedDates = Self.weekWindowDates(endingAt: Self.fixedDate)
-        #expect(persistenceOps == expectedDates.map { .fetchCompletedDailyIds(date: $0) })
+        let completedIdsOps = persistenceOps.filter { if case .fetchCompletedDailyIds = $0 { true } else { false } }
+        let personalRecordOps = persistenceOps.filter { if case .fetchPersonalRecord = $0 { true } else { false } }
+        #expect(completedIdsOps == expectedDates.map { .fetchCompletedDailyIds(date: $0) })
+        #expect(Set(personalRecordOps) == Set([
+            FakePersistence.Operation.fetchPersonalRecord(mode: .daily, difficulty: .easy),
+            .fetchPersonalRecord(mode: .daily, difficulty: .medium),
+            .fetchPersonalRecord(mode: .daily, difficulty: .hard)
+        ]))
+        #expect(persistenceOps.count == completedIdsOps.count + personalRecordOps.count)
     }
 
     @Test func bootstrapIsIdempotent() async {

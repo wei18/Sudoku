@@ -126,7 +126,11 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     }
 }
 
-private struct MinesweeperDailyCardView: View {
+// #886: widened from `private` to internal (module-default access) so
+// `MinesweeperDailyCardView.accessibilityDescription(...)` is directly
+// unit-testable via `@testable import MinesweeperUI` — mirrors Sudoku's
+// `DailyPuzzleCard`, which was already internal for the same reason.
+struct MinesweeperDailyCardView: View {
     let card: MinesweeperDailyCard
     @Environment(\.theme) private var theme
     // #762 PR3: content tier (two-tier contract, design-system.md §Spacing
@@ -153,7 +157,6 @@ private struct MinesweeperDailyCardView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(theme.status.success.resolved)
                         .font(.callout)
-                        .accessibilityLabel("Completed")
                 } else if card.isFailed {
                     // Epic 8 (SDD-003): third state — mine hit on this daily.
                     // "Replay" affordance is communicated by the tap action.
@@ -164,22 +167,26 @@ private struct MinesweeperDailyCardView: View {
                     }
                     .font(.callout)
                     .foregroundStyle(theme.status.warning.resolved)
-                    .accessibilityLabel("Failed")
                 } else {
                     // #516: a "tap to play" chevron reads clearer than the bare
                     // em-dash, which looked like a placeholder rather than an
-                    // unplayed state. Decorative — the card's combined a11y
-                    // element already conveys the difficulty + button trait.
+                    // unplayed state. Decorative — the card's explicit a11y
+                    // label already conveys the difficulty + button trait.
                     Image(systemName: "chevron.right")
                         .font(.callout)
                         .foregroundStyle(theme.text.tertiary.resolved)
-                        .accessibilityHidden(true)
                 }
             }
-            boardSummary(card.difficulty)
+            // #886 (2026-07-19 owner adjudication, citing #875 D3): this
+            // second line and Sudoku's decorative `MiniBoardStrip` used to
+            // diverge (MS: real "16 × 16 · 40 mines" board-spec text;
+            // Sudoku: zero-data-binding decoration) — now unified to the
+            // same real per-difficulty stat on both cards. Owner-accepted
+            // tradeoff: board dimensions no longer surface on the hub card
+            // (still visible in the difficulty picker / board itself).
+            Text("Best \(MinesweeperStatsTileView.timeLabel(card.bestTimeSeconds))")
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
-                .accessibilityHidden(true)
         }
         .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,7 +195,14 @@ private struct MinesweeperDailyCardView: View {
         // Sudoku's DailyPuzzleCard / HomeView card ordering (issue #15 / #197).
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
+        // #886: switched from `.combine` to an explicit composed label
+        // (mirrors `MinesweeperStatsTileView`'s identical "dot + difficulty
+        // name + stat" shape) — `.combine`'s implicit child concatenation is
+        // why the board-spec/best-time line was never announced before; the
+        // checkmark/Failed icons' own `.accessibilityLabel` moved into
+        // `accessibilityDescription` below instead of being combine-concatenated.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
         .accessibilityAddTraits(.isButton)
     }
 
@@ -202,7 +216,10 @@ private struct MinesweeperDailyCardView: View {
         }
     }
 
-    private func displayName(_ level: Difficulty) -> LocalizedStringKey {
+    /// The localized difficulty name's catalog key — shared between
+    /// `displayName` (SwiftUI `LocalizedStringKey`, visual) and
+    /// `accessibilityDescription` (plain `String` lookup via `Bundle.main`).
+    private static func nameKey(_ level: Difficulty) -> String {
         switch level {
         case .beginner: return "Beginner"
         case .intermediate: return "Intermediate"
@@ -210,11 +227,50 @@ private struct MinesweeperDailyCardView: View {
         }
     }
 
-    // #595: one localized key `"%lld × %lld · %lld mines"` so "mines" is translated
-    // (dimensions + `× / ·` carry through). MS mine counts are always ≥ 10, so a
-    // non-plural key is grammatically correct in every locale.
-    private func boardSummary(_ level: Difficulty) -> Text {
-        Text("\(level.rows) × \(level.columns) · \(level.mineCount) mines")
+    private func displayName(_ level: Difficulty) -> LocalizedStringKey {
+        LocalizedStringKey(Self.nameKey(level))
+    }
+
+    private var accessibilityDescription: String {
+        Self.accessibilityDescription(
+            difficulty: card.difficulty,
+            isCompleted: card.isCompleted,
+            isFailed: card.isFailed,
+            bestTimeSeconds: card.bestTimeSeconds
+        )
+    }
+
+    /// #886: combined VoiceOver label — mirror of Sudoku's
+    /// `DailyPuzzleCard.accessibilityDescription`, extended with MS's third
+    /// `isFailed` state (not in the #886 spec's Sudoku-only examples, since
+    /// Sudoku has no equivalent — reuses the existing "Failed" key already
+    /// used at this call site pre-#886, so VoiceOver keeps hearing it after
+    /// the `.combine` → explicit-label switch instead of silently losing it).
+    /// No new a11y keys: "Completed" / "Failed" / "best time %@" / "no best
+    /// time yet" all pre-exist in the MS catalog. A `static func` (not a
+    /// `private var`), mirroring `MinesweeperStatsTileView.timeLabel`/
+    /// `spokenTime`, so tests can pin the composed string directly without
+    /// standing up a `View`'s `@Environment` context.
+    static func accessibilityDescription(
+        difficulty: Difficulty,
+        isCompleted: Bool,
+        isFailed: Bool,
+        bestTimeSeconds: Int?
+    ) -> String {
+        let key = nameKey(difficulty)
+        let name = Bundle.main.localizedString(forKey: key, value: key, table: nil)
+        var parts = [name]
+        if isCompleted {
+            parts.append(String(localized: "Completed", bundle: .main))
+        } else if isFailed {
+            parts.append(String(localized: "Failed", bundle: .main))
+        }
+        if let best = bestTimeSeconds {
+            parts.append(String(localized: "best time \(MinesweeperStatsTileView.spokenTime(best))", bundle: .main))
+        } else {
+            parts.append(String(localized: "no best time yet", bundle: .main))
+        }
+        return parts.joined(separator: ", ")
     }
 }
 

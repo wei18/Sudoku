@@ -50,6 +50,23 @@ public actor FakePersistence: PersistenceProtocol {
         lastUpdatedAt: Date(timeIntervalSince1970: 0),
         completedPuzzleIds: []
     )
+    /// #886: per-(mode, difficulty) `fetchPersonalRecord` overrides — the
+    /// week-strip-style single global `personalRecord` above can't script a
+    /// realistic per-difficulty mix (e.g. Easy succeeds with a real best
+    /// time, Hard throws) needed to pin `DailyHubViewModel.fetchBestTimes`'s
+    /// per-difficulty INDEPENDENT degrade (as opposed to the week window's
+    /// all-or-nothing degrade). Any `(mode, difficulty)` absent here falls
+    /// back to `personalRecord`, so existing single-record tests are
+    /// unaffected.
+    public struct PersonalRecordKey: Sendable, Hashable {
+        public let mode: Mode
+        public let difficulty: Difficulty
+        public init(mode: Mode, difficulty: Difficulty) {
+            self.mode = mode
+            self.difficulty = difficulty
+        }
+    }
+    public var personalRecordResults: [PersonalRecordKey: Result<PersonalRecord, PersistenceError>] = [:]
     public var loadOrCreateError: PersistenceError?
     public var latestInProgressError: PersistenceError?
     public var deleteAbandonedError: PersistenceError?
@@ -100,6 +117,17 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func setLoadOrCreateError(_ error: PersistenceError?) {
         self.loadOrCreateError = error
+    }
+
+    /// #886: scripts one `(mode, difficulty)` pair's `fetchPersonalRecord`
+    /// result independent of the global `personalRecord` default — mirrors
+    /// `setCompletedDailyIds(_:for:)`'s per-key override pattern above.
+    public func setPersonalRecordResult(
+        _ result: Result<PersonalRecord, PersistenceError>,
+        mode: Mode,
+        difficulty: Difficulty
+    ) {
+        personalRecordResults[PersonalRecordKey(mode: mode, difficulty: difficulty)] = result
     }
 
     // MARK: - PersistenceProtocol
@@ -195,6 +223,9 @@ public actor FakePersistence: PersistenceProtocol {
         difficulty: Difficulty
     ) async throws -> PersonalRecord {
         operations.append(.fetchPersonalRecord(mode: mode, difficulty: difficulty))
+        if let scripted = personalRecordResults[PersonalRecordKey(mode: mode, difficulty: difficulty)] {
+            return try scripted.get()
+        }
         return personalRecord
     }
 

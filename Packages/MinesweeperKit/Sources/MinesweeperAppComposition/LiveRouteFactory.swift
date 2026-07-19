@@ -193,7 +193,8 @@ public struct LiveRouteFactory: RouteFactory {
                         path: path ?? .constant([]),
                         provider: LiveMinesweeperDailyProvider(),
                         persistence: persistence,
-                        savedGameStore: savedGameStore
+                        savedGameStore: savedGameStore,
+                        personalRecordStore: personalRecordStore
                     ),
                     banner: { bannerSlot() }
                 )
