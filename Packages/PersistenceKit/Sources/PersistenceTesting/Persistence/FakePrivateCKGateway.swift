@@ -42,6 +42,13 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
     /// `loadOrCreate` offline resilience tests. Mutated only via
     /// `setFetchError(_:)` (Swift 6 actor isolation).
     private var fetchError: (any Error & Sendable)?
+    /// #886: per-recordName fetch errors — models a failure scoped to ONE
+    /// record (e.g. one difficulty's `PersonalRecord`) while sibling records
+    /// still fetch successfully, for tests pinning per-record-independent
+    /// degrade (as opposed to `fetchError`'s blanket "every fetch fails").
+    /// Checked before the global `fetchError`. Mutated only via
+    /// `setFetchError(_:forRecordName:)`.
+    private var fetchErrorsByRecordName: [String: any Error & Sendable] = [:]
 
     public init() {}
 
@@ -51,6 +58,12 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public func setFetchError(_ error: (any Error & Sendable)?) {
         self.fetchError = error
+    }
+
+    /// #886: scope a fetch failure to one `recordName` — see
+    /// `fetchErrorsByRecordName`'s doc.
+    public func setFetchError(_ error: (any Error & Sendable)?, forRecordName recordName: String) {
+        fetchErrorsByRecordName[recordName] = error
     }
 
     // MARK: - Optimistic concurrency model (#552)
@@ -79,6 +92,7 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
 
     public func fetch(recordName: String) async throws -> RecordPayload? {
         operations.append(.fetch(recordName: recordName))
+        if let error = fetchErrorsByRecordName[recordName] { throw error }
         if let error = fetchError { throw error }
         return records[recordName]
     }

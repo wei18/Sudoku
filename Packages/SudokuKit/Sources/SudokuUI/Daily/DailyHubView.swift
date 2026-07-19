@@ -186,7 +186,7 @@ struct DailyPuzzleCard: View {
     let card: DailyCard
     @Environment(\.theme) private var theme
     // Card content rhythm (#762 PR2 two-tier spacing contract) — content
-    // tier, wraps the difficulty/checkmark row + mini board strip, scales
+    // tier, wraps the difficulty/checkmark row + best-time caption, scales
     // with Dynamic Type.
     @ScaledSpacing(.small) private var cardContentGap
     // Card internal padding (#762 PR2 two-tier spacing contract) — content
@@ -208,25 +208,30 @@ struct DailyPuzzleCard: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(theme.status.success.resolved)
                         .font(.callout)
-                        .accessibilityLabel("Completed")
                 } else {
                     // #516: a "tap to play" chevron reads clearer than the bare
                     // em-dash, which looked like a placeholder rather than an
-                    // unplayed state. Decorative — the card's combined a11y
-                    // element already conveys the difficulty + button trait.
+                    // unplayed state. Decorative — the card's explicit a11y
+                    // label already conveys the difficulty + button trait.
                     Image(systemName: "chevron.right")
                         .font(.callout)
                         .foregroundStyle(theme.text.tertiary.resolved)
-                        .accessibilityHidden(true)
                 }
             }
-            MiniBoardStrip()
-                .accessibilityHidden(true)
+            // #886 (2026-07-19 owner adjudication, citing #875 D3): this
+            // second line and MS's board-spec caption used to diverge
+            // (Sudoku: decorative `MiniBoardStrip`, zero data binding; MS:
+            // real "16 × 16 · 40 mines" text) — now unified to the same
+            // real per-difficulty stat on both cards, replacing MS's board
+            // spec too (see `MinesweeperDailyHubView.swift`'s matching note).
+            Text("Best \(StatsTileView.timeLabel(card.bestTimeSeconds))")
+                .font(.caption)
+                .foregroundStyle(theme.text.secondary.resolved)
         }
         .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         // `.buttonStyle(.plain)` on macOS shrinks the hit area to the
-        // opaque rendered content (Text + Circle + MiniBoardStrip), so
+        // opaque rendered content (Text + Circle + Best-time caption), so
         // taps on the padding / glass-effect surround silently miss.
         // `.contentShape(Rectangle())` makes the entire card frame
         // tap-hittable. Must come BEFORE `.glassEffect(...)` so the glass
@@ -235,7 +240,14 @@ struct DailyPuzzleCard: View {
         // left Home in SDD-003 Epic 7).
         .contentShape(Rectangle())
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
+        // #886: switched from `.combine` to an explicit composed label
+        // (mirrors `StatsTileView`'s identical "dot + difficulty name +
+        // stat" shape) — `.combine`'s implicit child concatenation is why
+        // the best-time line was never announced before; the checkmark's own
+        // `.accessibilityLabel("Completed")` moved into `accessibilityDescription`
+        // below instead of being combine-concatenated.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
         .accessibilityAddTraits(.isButton)
     }
 
@@ -249,22 +261,37 @@ struct DailyPuzzleCard: View {
         case .hard: return theme.difficulty.hard.resolved
         }
     }
-}
 
-struct MiniBoardStrip: View {
-    @Environment(\.theme) private var theme
+    private var accessibilityDescription: String {
+        Self.accessibilityDescription(
+            difficulty: card.difficulty,
+            isCompleted: card.isCompleted,
+            bestTimeSeconds: card.bestTimeSeconds
+        )
+    }
 
-    var body: some View {
-        // spacing-exempt: 3pt decorative mini-grid gap — a cosmetic
-        // strip of 9 tiles, not adjacent to real text/icon content and not
-        // part of the 5-tier `SpacingTokens` scale. Flagged for owner
-        // review rather than silently snapped (#762 PR2).
-        HStack(spacing: 3) {
-            ForEach(0..<9, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(theme.text.tertiary.resolved.opacity(index.isMultiple(of: 2) ? 0.18 : 0.08))
-                    .frame(height: 8)
-            }
+    /// #886: combined VoiceOver label — "Easy, Completed, best time 3
+    /// minutes 12 seconds" / "Hard, best time 5 minutes 3 seconds" / "Medium,
+    /// no best time yet". Mirrors `StatsTileView.accessibilityDescription`
+    /// exactly, including reusing its existing "best time %@" / "no best
+    /// time yet" keys — no new a11y keys. The completed clause is OMITTED
+    /// (not a new "not completed" key) when `isCompleted` is false, matching
+    /// today's actual behavior (the chevron contributed nothing to VoiceOver
+    /// either). A `static func` (not a `private var`), mirroring
+    /// `StatsTileView.timeLabel`/`spokenTime`, so tests can pin the composed
+    /// string directly without standing up a `View`'s `@Environment` context.
+    static func accessibilityDescription(difficulty: Difficulty, isCompleted: Bool, bestTimeSeconds: Int?) -> String {
+        let key = difficulty.rawValue.capitalized
+        let name = Bundle.main.localizedString(forKey: key, value: key, table: nil)
+        var parts = [name]
+        if isCompleted {
+            parts.append(String(localized: "Completed", bundle: .main))
         }
+        if let best = bestTimeSeconds {
+            parts.append(String(localized: "best time \(StatsTileView.spokenTime(best))", bundle: .main))
+        } else {
+            parts.append(String(localized: "no best time yet", bundle: .main))
+        }
+        return parts.joined(separator: ", ")
     }
 }

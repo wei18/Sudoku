@@ -15,9 +15,20 @@ public import Telemetry
 public struct DailyCard: Sendable, Equatable, Hashable, Identifiable {
     public let envelope: PuzzleEnvelope
     public let isCompleted: Bool
+    /// #886: this difficulty's best DAILY time (`Mode.daily`, ALL-time across
+    /// every day, not just today's puzzle) — `nil` while unfetched, unknown,
+    /// or genuinely never completed; all three degrade to the same "—" in
+    /// `DailyPuzzleCard`. Defaulted so existing call sites compile unchanged.
+    public let bestTimeSeconds: Int?
 
     public var id: String { envelope.identity.puzzleId }
     public var difficulty: Difficulty { envelope.identity.difficulty }
+
+    public init(envelope: PuzzleEnvelope, isCompleted: Bool, bestTimeSeconds: Int? = nil) {
+        self.envelope = envelope
+        self.isCompleted = isCompleted
+        self.bestTimeSeconds = bestTimeSeconds
+    }
 }
 
 public enum DailyHubState: Sendable, Equatable {
@@ -70,8 +81,12 @@ public final class DailyHubViewModel {
     }
 
     private let provider: any PuzzleProviderProtocol
-    private let persistence: any PersistenceProtocol
-    private let errorReporter: any ErrorReporter
+    // #886: `internal` (not `private`) so `DailyHubViewModel+BestTime.swift`
+    // (split out purely to keep this file under the 400-line `file_length`
+    // ceiling — same rationale as `MinesweeperGameViewModel+SubmitOnWin.swift`)
+    // can read them.
+    let persistence: any PersistenceProtocol
+    let errorReporter: any ErrorReporter
     private let dateProvider: @Sendable () -> Date
     /// Idempotency latch for `.task` — once `bootstrap()` has resolved we
     /// don't re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
@@ -191,21 +206,42 @@ public final class DailyHubViewModel {
         // transition landing mid-fetch must not resurrect a stale `.loaded`
         // write over whatever state replaced it.
         guard case .loaded = state else { return }
-        guard let window = await fetchWeekWindow(referenceDate: date) else {
+        // #886: the per-difficulty best-time read rides this same phase-2
+        // window, in parallel with the week-window fetch (`async let` — two
+        // independent CK read lanes, no ordering dependency). Production
+        // `PrivateCKGateway` conformers are plain actors — concurrent calls
+        // just serialize at the mailbox, never deadlock; a round-1 attempt
+        // sequentialized this needlessly after misreading a single-
+        // continuation TEST FAKE limitation (`GatedQueryGateway`, since fixed
+        // to queue multiple pending continuations) as a production hazard.
+        // Best-time failures are scoped per difficulty (`fetchBestTimes`'s
+        // own try/catch), unlike the week window's all-or-nothing degrade —
+        // never blocks or degrades the window/strip below.
+        async let windowTask = fetchWeekWindow(referenceDate: date)
+        async let bestTimesTask = fetchBestTimes(trio: trio)
+        let window = await windowTask
+        let bestTimes = await bestTimesTask
+        guard case .loaded(let latestCards) = state else { return }
+        // Best times always merge in, even on a week-window degrade (no
+        // false-claim risk — see above). `isCompleted` falls back to the
+        // card's current value on a window-fetch failure, matching the
+        // pre-#886 degrade behavior below.
+        let todayCompleted = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds
+        state = .loaded(latestCards.map { card in
+            DailyCard(
+                envelope: card.envelope,
+                isCompleted: todayCompleted?.contains(card.envelope.identity.puzzleId) ?? card.isCompleted,
+                bestTimeSeconds: bestTimes[card.difficulty]
+            )
+        })
+        guard let window else {
             // #774: any single day's fetch failing degrades the WHOLE window
             // rather than risk showing a wrong "missed" dot for a day whose
             // fetch actually failed — see `fetchWeekWindow`.
             weekStrip = .unknown
-            return // degrade: cards + strip both remain un-completed/unknown
+            return // degrade: strip unknown; cards keep prior completion + fresh best times (above)
         }
-        guard case .loaded = state else { return }
-        let todayCompleted = window.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
-        if !todayCompleted.isEmpty {
-            let cards = trio.map { envelope in
-                DailyCard(envelope: envelope, isCompleted: todayCompleted.contains(envelope.identity.puzzleId))
-            }
-            state = .loaded(cards)
-        }
+        // No re-check of `.loaded` here — no `await` separates the write above from this point.
         let days = window.map { slot in
             DailyStripDay(
                 offsetFromToday: slot.offsetFromToday,
@@ -216,42 +252,6 @@ public final class DailyHubViewModel {
         }
         let rawStreak = DailyStripLogic.computeStreak(days: days)
         weekStrip = DailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
-    }
-
-    private struct WeekWindowSlot {
-        let offsetFromToday: Int
-        let date: Date
-        let completedPuzzleIds: Set<String>
-    }
-
-    /// #774: the rolling window size — also the streak display's cap (see
-    /// the "7+" caption branch in `DailyStripView`). 7 matches the strip's own 7
-    /// dots; changing this changes both simultaneously by construction.
-    private static let weekStripWindowSize = 7
-
-    /// Fetches `fetchCompletedDailyIds(for:)` once per day in the rolling
-    /// window, oldest (`offsetFromToday: 6`) to newest (`offsetFromToday: 0`
-    /// == today). Returns `nil` on the first failure — an all-or-nothing
-    /// degrade, not a partial window, so a transient fetch failure on one day
-    /// can never render as a false "missed" dot next to 6 real ones.
-    private func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
-        var slots: [WeekWindowSlot] = []
-        slots.reserveCapacity(Self.weekStripWindowSize)
-        for offset in stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1) {
-            let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
-            do {
-                let completed = try await persistence.fetchCompletedDailyIds(for: dayDate)
-                slots.append(WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed))
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "DailyHubViewModel.fetchWeekWindow"
-                )
-                return nil
-            }
-        }
-        return slots
     }
 
     /// Synchronous tap entry point (the DailyHubView shell closure is sync).

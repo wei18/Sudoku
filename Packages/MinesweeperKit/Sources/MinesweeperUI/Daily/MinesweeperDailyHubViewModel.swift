@@ -34,15 +34,23 @@ public struct MinesweeperDailyCard: Hashable, Sendable, Identifiable {
     /// daily can be replayed freely but the replay is unscored and does not
     /// change this record.
     public let isFailed: Bool
+    /// #886: this difficulty's best DAILY time (`modeRaw: "daily"`, ALL-time
+    /// across every day, not just today's board) — `nil` while unfetched,
+    /// unknown, or genuinely never completed; all three degrade to the same
+    /// "—" in `MinesweeperDailyCardView`. Defaulted so existing call sites
+    /// (phase-1 render, tests, previews) compile unchanged. Mirrors Sudoku's
+    /// `DailyCard.bestTimeSeconds`.
+    public let bestTimeSeconds: Int?
 
     public var id: String { entry.puzzleId }
     public var difficulty: Difficulty { entry.difficulty }
     public var seed: UInt64 { entry.seed }
 
-    public init(entry: MinesweeperDailyEntry, isCompleted: Bool, isFailed: Bool = false) {
+    public init(entry: MinesweeperDailyEntry, isCompleted: Bool, isFailed: Bool = false, bestTimeSeconds: Int? = nil) {
         self.entry = entry
         self.isCompleted = isCompleted
         self.isFailed = isFailed
+        self.bestTimeSeconds = bestTimeSeconds
     }
 }
 
@@ -89,8 +97,19 @@ public final class MinesweeperDailyHubViewModel {
     /// since #816, the completed-daily ids fetch. Optional so preview / test
     /// callsites that don't thread a store keep compiling — when nil, no
     /// cards are ever marked completed or failed (graceful-degrade).
-    private let savedGameStore: MinesweeperSavedGameStore?
-    private let errorReporter: any ErrorReporter
+    /// `internal` (not `private`) so `MinesweeperDailyHubViewModel+Overlay.swift`
+    /// (split out purely to keep this file under the 400-line `file_length`
+    /// ceiling — same rationale as `MinesweeperGameViewModel+SubmitOnWin.swift`)
+    /// can read it.
+    let savedGameStore: MinesweeperSavedGameStore?
+    /// #886: per-difficulty best-DAILY-time reads
+    /// (`fetch(modeRaw: "daily", difficulty:)`) — the same store
+    /// `MinesweeperStatsViewModel` already reads for the Stats screen's Daily
+    /// section, zero new Persistence surface. Optional so preview / test
+    /// callsites that don't thread a store keep compiling — when nil, every
+    /// card's `bestTimeSeconds` stays `nil` (renders "—", never blocks).
+    let personalRecordStore: MinesweeperPersonalRecordStore?
+    let errorReporter: any ErrorReporter
     private let dateProvider: @Sendable () -> Date
     /// Idempotency latch for `.task` — once `bootstrap()` resolves we don't
     /// re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
@@ -101,6 +120,7 @@ public final class MinesweeperDailyHubViewModel {
         provider: any MinesweeperDailyProviding = LiveMinesweeperDailyProvider(),
         persistence: (any PersistenceProtocol)? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,
+        personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         dateProvider: @escaping @Sendable () -> Date = { Date() }
     ) {
@@ -108,6 +128,7 @@ public final class MinesweeperDailyHubViewModel {
         self.provider = provider
         self.persistence = persistence
         self.savedGameStore = savedGameStore
+        self.personalRecordStore = personalRecordStore
         self.errorReporter = errorReporter
         self.dateProvider = dateProvider
     }
@@ -204,23 +225,25 @@ public final class MinesweeperDailyHubViewModel {
         defer { isPhase2Pending = false }
         guard case .loaded = state else { return }
 
+        // #886: the per-difficulty best-time read rides this same phase-2
+        // window, in parallel (`async let`) with the EXISTING window+failed
+        // sequence — `bestTimes` has no ordering dependency on either, so it
+        // races ahead while `fetchWeekWindow` → `fetchFailedIds` keep their
+        // pre-#886 sequential shape unchanged (out of scope for this fix).
+        // Production `PrivateCKGateway` conformers are plain actors with
+        // per-call state, so concurrent calls just serialize at the actor's
+        // mailbox — never deadlock; a round-1 attempt at this misread a
+        // single-continuation TEST FAKE's limitation (`GatedQueryGateway`,
+        // since fixed to queue multiple pending continuations) as a
+        // production concurrency hazard and sequentialized needlessly,
+        // adding 3 serial CK round-trips per hub load.
+        async let bestTimesTask = fetchBestTimes(trio: trio)
         let window = await fetchWeekWindow(referenceDate: date)
+        let failed = await fetchFailedIds(date: date)
+        let bestTimes = await bestTimesTask
         let completed: Set<String> = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
 
-        var failed: Set<String> = []
-        if let savedGameStore {
-            do {
-                failed = try await savedGameStore.fetchFailedDailyIds(for: date)
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperDailyHubViewModel.fetchFailedDailyIds"
-                )
-            }
-        }
-
-        guard case .loaded = state else { return }
+        guard case .loaded(let latestCards) = state else { return }
         if let window {
             let days = window.map { slot in
                 MinesweeperDailyStripDay(
@@ -238,44 +261,26 @@ public final class MinesweeperDailyHubViewModel {
             // window rather than risk a false "missed" dot.
             weekStrip = .unknown
         }
-        if !completed.isEmpty || !failed.isEmpty {
-            state = .loaded(Self.mergeCards(trio: trio, completed: completed, failed: failed))
-        }
-    }
-
-    private struct WeekWindowSlot {
-        let offsetFromToday: Int
-        let date: Date
-        let completedPuzzleIds: Set<String>
-    }
-
-    /// #774: the rolling window size — also the streak display's cap (see
-    /// the "7+" caption branch in `MinesweeperDailyStripView`).
-    private static let weekStripWindowSize = 7
-
-    /// Fetches `savedGameStore.fetchCompletedDailyIds(for:)` once per day in
-    /// the rolling window, oldest (`offsetFromToday: 6`) to newest
-    /// (`offsetFromToday: 0` == today). Returns `nil` when `savedGameStore`
-    /// is absent, or on the first fetch failure — an all-or-nothing degrade.
-    private func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
-        guard let savedGameStore else { return nil }
-        var slots: [WeekWindowSlot] = []
-        slots.reserveCapacity(Self.weekStripWindowSize)
-        for offset in stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1) {
-            let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
-            do {
-                let completed = try await savedGameStore.fetchCompletedDailyIds(for: dayDate)
-                slots.append(WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed))
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperDailyHubViewModel.fetchWeekWindow"
-                )
-                return nil
-            }
-        }
-        return slots
+        // #886: best times always merge in, independent of whether this
+        // round's completed/failed sets carried any new information — an
+        // independent read with no false-claim risk (a missing best time on
+        // one difficulty while the others show real numbers isn't
+        // misleading, just incomplete). `isCompleted`/`isFailed` are ONLY
+        // recomputed when this round actually found something (preserving
+        // the pre-#886 gate's exact semantics: no spurious "un-marks" a
+        // prior success/failure just because this round's fetch came back
+        // empty).
+        let shouldRemergeCompletionState = !completed.isEmpty || !failed.isEmpty
+        state = .loaded(latestCards.map { card in
+            let isCompleted = shouldRemergeCompletionState ? completed.contains(card.id) : card.isCompleted
+            let isFailed = shouldRemergeCompletionState ? (!isCompleted && failed.contains(card.id)) : card.isFailed
+            return MinesweeperDailyCard(
+                entry: card.entry,
+                isCompleted: isCompleted,
+                isFailed: isFailed,
+                bestTimeSeconds: bestTimes[card.difficulty]
+            )
+        })
     }
 
     /// Route for a tapped daily card:
