@@ -204,7 +204,10 @@ public struct BannerSlotView: View {
                 EmptyView()
             }
         case .failed:
-            Text("Ad unavailable")
+            // #901: was a bare LocalizedStringKey with no catalog entry — it
+            // rendered English on all 7 locales. Explicit `bundle: .main`
+            // matches #895's convention (catalogs live in the app target).
+            Text("Ad unavailable", bundle: .main)
                 .font(.caption)
                 .foregroundStyle(captionColor)
         case .suppressed:
