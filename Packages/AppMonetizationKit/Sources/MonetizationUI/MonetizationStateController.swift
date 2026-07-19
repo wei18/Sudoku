@@ -213,13 +213,18 @@ public final class MonetizationStateController {
             guard eventProductId == productId else { return }
             await markPurchased()
             latestMessage = .adsRemoved
-            toastController?.show(Toast(style: .success, message: "Ads removed"))
+            // #901: raw literal was the toast's VISIBLE text (ToastView renders
+            // `toast.message` directly) — route through the catalog. Reuses the
+            // sentence-case "Ads removed" key #895 added for AdsRemovedRow's a11y label.
+            toastController?.show(Toast(style: .success, message: String(localized: "Ads removed", bundle: .main)))
             clearStalePurchaseFailure()
         case .revoked(let eventProductId):
             guard eventProductId == productId else { return }
             hasPurchasedRemoveAds = false
-            latestMessage = .failure(reason: "Purchase revoked")
-            toastController?.show(Toast(style: .failure, message: "Purchase revoked"))
+            // #901: localize the visible toast + a11y `latestMessage` reason.
+            let reason = String(localized: "Purchase revoked", bundle: .main)
+            latestMessage = .failure(reason: reason)
+            toastController?.show(Toast(style: .failure, message: reason))
             // #894: an out-of-band revoke is unrelated to any earlier
             // purchase-attempt failure — clear it so RemoveAdsRow re-mounts
             // fresh instead of blaming a stale "Last attempt failed".
@@ -253,13 +258,14 @@ public final class MonetizationStateController {
             case .success:
                 await markPurchased()
                 latestMessage = .adsRemoved
-                toastController?.show(Toast(style: .success, message: "Ads removed"))
+                // #901: localize the visible toast (reuses #895's "Ads removed" key).
+                toastController?.show(Toast(style: .success, message: String(localized: "Ads removed", bundle: .main)))
                 flowState = .idle
             case .userCancelled:
                 latestMessage = nil
                 flowState = .idle
             case .pending:
-                let reason = "Purchase pending approval"
+                let reason = String(localized: "Purchase pending approval", bundle: .main)
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
                 flowState = .purchaseFailed(reason: reason)
@@ -275,7 +281,7 @@ public final class MonetizationStateController {
                 latestMessage = nil
                 flowState = .idle
             } else {
-                let reason = "Purchase failed"
+                let reason = String(localized: "Purchase failed", bundle: .main)
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
                 flowState = .purchaseFailed(reason: reason)
@@ -298,7 +304,8 @@ public final class MonetizationStateController {
             }
             availableProducts = restored
             latestMessage = .restored
-            toastController?.show(Toast(style: .success, message: "Purchases restored"))
+            // #901: localize the visible toast.
+            toastController?.show(Toast(style: .success, message: String(localized: "Purchases restored", bundle: .main)))
             // Restore succeeding resolves the flow — it also clears a stale
             // `.purchaseFailed` from an earlier purchase attempt, since the
             // entitlement question is now settled.
@@ -309,7 +316,7 @@ public final class MonetizationStateController {
             if case .userCancelled = error as? StoreKitError {
                 latestMessage = nil
             } else {
-                let reason = "Restore failed"
+                let reason = String(localized: "Restore failed", bundle: .main)
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
             }
