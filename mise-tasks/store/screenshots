@@ -57,6 +57,32 @@ OUT_ROOT="$REPO_ROOT/docs/app-store/screenshots"
 # storyline is wired from the canonical light/default renders for now).
 # Only light-mode renders are wired (ASC v1 storyline is light-mode per
 # screenshot-strategy.md §Capture conventions item 2).
+#
+# ── In-context vs isolated-component preference (#874/#875 guard rule 2, #884 adopted) ──
+# When more than one committed baseline exists for the same visual surface,
+# prefer an in-context COMPOSITED baseline (production ancestor chain intact
+# — e.g. rendered inside CompletionOverlayScaffold / over a live BoardView)
+# over an ISOLATED-COMPONENT baseline: isolated baselines aren't guaranteed to
+# carry full production styling context (#875 D2 — an isolated
+# MinesweeperCompletionView fixture missed the ancestor .tint before #887).
+#
+# Both apps' `04-completion` rows below were checked against this rule and
+# left AS-IS (not swapped):
+#   - Minesweeper: the only in-context composite is
+#     MinesweeperBoardTerminalOverlaySnapshotTests (board + overlay), but it
+#     only exists for the LOSS state (`snapshotTerminalOverlay_iPhone_*`, no
+#     iPad variant); this store-preview slot wants a WIN screenshot, so there
+#     is no matching composite to swap to. The isolated
+#     MinesweeperCompletionSnapshotTests fixture referenced below is already
+#     tint-fixed (#887), closing the drift this rule exists to prevent.
+#   - Sudoku: CompletionViewTests renders the real CompletionView content
+#     (minus the CTA row, which #875 D2 confirmed carries no tint exposure
+#     since it never renders); CompletionOverlayScaffoldTests is a
+#     layout-contract test with placeholder card content ("Solved! 4:11"),
+#     not a more-production-real alternative, so it is not a preferable swap
+#     target either.
+# Re-check this note whenever a new completion-state composited baseline
+# (e.g. a WIN-state MinesweeperBoardTerminalOverlaySnapshotTests case) lands.
 MAP=(
   # ── Sudoku · iPhone ─────────────────────────────────────────────────────────
   "sudoku|iphone-6.9|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/HomeViewTests/snapshotIPhoneLight.HomeView-iPhone-light.png"
