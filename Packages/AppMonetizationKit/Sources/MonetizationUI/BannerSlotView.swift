@@ -178,7 +178,9 @@ public struct BannerSlotView: View {
                 .padding(6)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Advertisement")
+        // #895: was a raw Swift string — VoiceOver announced English on all
+        // 7 locales.
+        .accessibilityLabel(String(localized: "Advertisement", bundle: .main))
     }
 
     @ViewBuilder
@@ -226,7 +228,9 @@ public struct BannerSlotView: View {
                 .foregroundStyle(dismissTint)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Dismiss ad")
+        // #895: was a raw Swift string — VoiceOver announced English on all
+        // 7 locales.
+        .accessibilityLabel(String(localized: "Dismiss ad", bundle: .main))
     }
 
     // MARK: - Lifecycle

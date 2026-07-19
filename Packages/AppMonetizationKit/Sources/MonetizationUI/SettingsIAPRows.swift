@@ -82,11 +82,19 @@ public struct RemoveAdsRow: View {
         }
         .buttonStyle(.plain)
         .disabled(controller.purchaseInFlight)
-        .accessibilityLabel(
-            purchaseFailed
-                ? "Remove Ads \(controller.removeAdsDisplayPrice). Last attempt failed."
-                : "Remove Ads \(controller.removeAdsDisplayPrice)"
-        )
+        .accessibilityLabel(accessibilityLabelText)
+    }
+
+    /// #895: VoiceOver was announcing this raw Swift string in English on all
+    /// 7 locales. Composed from `String(localized:)` fragments — the
+    /// price-interpolated base needs its own key; the failure caption reuses
+    /// the existing "Last attempt failed" key (#881) rather than minting a
+    /// duplicate combined string.
+    private var accessibilityLabelText: String {
+        let base = String(localized: "Remove Ads \(controller.removeAdsDisplayPrice)", bundle: .main)
+        guard purchaseFailed else { return base }
+        let failedCaption = String(localized: "Last attempt failed", bundle: .main)
+        return "\(base). \(failedCaption)"
     }
 }
 
@@ -110,7 +118,17 @@ public struct AdsRemovedRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ads removed. Active.")
+        .accessibilityLabel(accessibilityLabelText)
+    }
+
+    /// #895: composed from `String(localized:)` fragments — "Ads removed"
+    /// (sentence case) is a new key since it differs in case from the
+    /// visible "Ads Removed" title-case label; "Active" reuses the existing
+    /// key already shown by the trailing `Text("Active")` above.
+    private var accessibilityLabelText: String {
+        let adsRemoved = String(localized: "Ads removed", bundle: .main)
+        let active = String(localized: "Active", bundle: .main)
+        return "\(adsRemoved). \(active)."
     }
 }
 
