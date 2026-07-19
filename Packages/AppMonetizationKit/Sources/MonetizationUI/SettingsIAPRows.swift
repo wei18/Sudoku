@@ -31,37 +31,62 @@ public struct RemoveAdsRow: View {
         self.tintColor = tintColor
     }
 
+    /// #881 (closing #874 F-7): true when the most recent purchase attempt
+    /// failed. Drives a distinct icon/tint + a short-lived secondary caption
+    /// so this row no longer renders identically to "never attempted" once
+    /// the transient success/failure toast has dismissed.
+    private var purchaseFailed: Bool {
+        if case .purchaseFailed = controller.flowState { return true }
+        return false
+    }
+
     public var body: some View {
         Button {
             Task { await controller.purchaseRemoveAds() }
         } label: {
-            HStack {
-                // #845/#848: `Label { } icon: { }` (not a raw `Image + Text`
-                // HStack) — matches the standard row shape so the icon
-                // column gets the same system-standard leading width as
-                // every other settings row.
-                Label {
-                    Text("Remove Ads")
-                } icon: {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(tintColor)
-                }
-                Spacer()
-                Group {
-                    if controller.purchaseInFlight {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text(controller.removeAdsDisplayPrice)
-                            .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    // #845/#848: `Label { } icon: { }` (not a raw `Image + Text`
+                    // HStack) — matches the standard row shape so the icon
+                    // column gets the same system-standard leading width as
+                    // every other settings row.
+                    Label {
+                        Text("Remove Ads")
+                    } icon: {
+                        Image(systemName: purchaseFailed ? "exclamationmark.triangle.fill" : "sparkles")
+                            .foregroundStyle(purchaseFailed ? .red : tintColor)
                     }
+                    Spacer()
+                    Group {
+                        if controller.purchaseInFlight {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text(controller.removeAdsDisplayPrice)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(minWidth: 60, alignment: .trailing)
                 }
-                .frame(minWidth: 60, alignment: .trailing)
+                if purchaseFailed {
+                    // #881: distinct persistent caption (#874 F-7) — the
+                    // transient toast already told the user once; this stays
+                    // until the next purchase/restore attempt clears
+                    // `flowState`.
+                    Text("Last attempt failed")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(.leading, 28)
+                }
             }
         }
         .buttonStyle(.plain)
         .disabled(controller.purchaseInFlight)
-        .accessibilityLabel("Remove Ads \(controller.removeAdsDisplayPrice)")
+        .accessibilityLabel(
+            purchaseFailed
+                ? "Remove Ads \(controller.removeAdsDisplayPrice). Last attempt failed."
+                : "Remove Ads \(controller.removeAdsDisplayPrice)"
+        )
     }
 }
 

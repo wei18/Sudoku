@@ -6,6 +6,10 @@
 //     on `bootstrap()`; flipped to `true` after a successful purchase or restore.
 //   - `purchaseInFlight: Bool` / `restoreInFlight: Bool` — drive the spinner
 //     swap in Settings + HomeView's Remove Ads card while the async call runs.
+//     Both are computed projections of the private `flowState:
+//     PurchaseFlowState` enum (#881) — a single source of truth so
+//     "purchasing and restoring at once" and "failed looks like never
+//     attempted" (#874 F-6/F-7/F-8) are unrepresentable by construction.
 //   - `availableProducts: [IAPProduct]` — cached on bootstrap so the Settings
 //     CTA can show the locale-formatted price (`"$2.99"` / `"NT$89"` etc.) the
 //     App Store returns; falls back to `"$2.99"` if the lookup fails.
@@ -60,11 +64,56 @@ public final class MonetizationStateController {
         case failure(reason: String)
     }
 
+    /// Closed representation of the purchase/restore flow's UI state (#881,
+    /// closing #874 F-6/F-7/F-8). `purchaseInFlight` and `restoreInFlight`
+    /// used to be two independent stored `Bool`s with independent guards, so
+    /// nothing stopped both being `true` at once (F-6) and a failed purchase
+    /// left no state distinguishable from "never attempted" (F-7). Both
+    /// flags below are now computed projections of this single stored enum,
+    /// so "purchasing and restoring at once" is unrepresentable by
+    /// construction rather than merely guarded against.
+    ///
+    /// Kept module-`internal`, not `public` — the public `purchaseInFlight` /
+    /// `restoreInFlight` / `latestMessage` surface is unchanged, so existing
+    /// call sites (every test that reads those bools) don't need to change.
+    /// `flowState` itself is read directly only by `RemoveAdsRow` (same
+    /// module) for the failed-purchase treatment, and by this module's own
+    /// tests.
+    enum PurchaseFlowState: Sendable, Equatable {
+        case idle
+        case purchasing
+        case restoring
+        /// The most recent purchase attempt failed (or is pending external
+        /// approval). Distinct from `.idle` so `RemoveAdsRow` can render a
+        /// "last attempt failed" treatment instead of looking identical to
+        /// never-attempted (#874 F-7). Cleared by the next purchase attempt
+        /// (success or failure both replace it) or by a restore completing.
+        case purchaseFailed(reason: String)
+
+        var isInFlight: Bool {
+            switch self {
+            case .purchasing, .restoring: true
+            case .idle, .purchaseFailed: false
+            }
+        }
+    }
+
     public private(set) var hasPurchasedRemoveAds: Bool
     public private(set) var availableProducts: [IAPProduct] = []
-    public private(set) var purchaseInFlight: Bool = false
-    public private(set) var restoreInFlight: Bool = false
+    private(set) var flowState: PurchaseFlowState = .idle
     public private(set) var latestMessage: Message?
+
+    /// Computed projection of `flowState` — unchanged public shape (#881).
+    public var purchaseInFlight: Bool {
+        if case .purchasing = flowState { return true }
+        return false
+    }
+
+    /// Computed projection of `flowState` — unchanged public shape (#881).
+    public var restoreInFlight: Bool {
+        if case .restoring = flowState { return true }
+        return false
+    }
 
     @ObservationIgnored
     private let iapClient: any IAPClient
@@ -179,9 +228,8 @@ public final class MonetizationStateController {
 
     /// Tap handler for "Remove Ads" buttons (Settings row + HomeView 5th card).
     public func purchaseRemoveAds() async {
-        guard !purchaseInFlight else { return }
-        purchaseInFlight = true
-        defer { purchaseInFlight = false }
+        guard !flowState.isInFlight else { return }
+        flowState = .purchasing
         do {
             let result = try await iapClient.purchase(productId)
             switch result {
@@ -189,34 +237,39 @@ public final class MonetizationStateController {
                 await markPurchased()
                 latestMessage = .adsRemoved
                 toastController?.show(Toast(style: .success, message: "Ads removed"))
+                flowState = .idle
             case .userCancelled:
                 latestMessage = nil
+                flowState = .idle
             case .pending:
                 let reason = "Purchase pending approval"
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
+                flowState = .purchaseFailed(reason: reason)
             case .failed(let reason):
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
+                flowState = .purchaseFailed(reason: reason)
             }
         } catch {
             // StoreKit user-cancellation (e.g. App Store password sheet dismissed)
             // is silent — mirrors the in-band `.userCancelled` case above.
             if case .userCancelled = error as? StoreKitError {
                 latestMessage = nil
+                flowState = .idle
             } else {
                 let reason = "Purchase failed"
                 latestMessage = .failure(reason: reason)
                 toastController?.show(Toast(style: .failure, message: reason))
+                flowState = .purchaseFailed(reason: reason)
             }
         }
     }
 
     /// Tap handler for the "Restore Purchases" button.
     public func restorePurchases() async {
-        guard !restoreInFlight else { return }
-        restoreInFlight = true
-        defer { restoreInFlight = false }
+        guard !flowState.isInFlight else { return }
+        flowState = .restoring
         do {
             let restored = try await iapClient.restorePurchases()
             if restored.contains(where: { $0.id == productId && $0.isPurchased }) {
@@ -236,6 +289,10 @@ public final class MonetizationStateController {
                 toastController?.show(Toast(style: .failure, message: reason))
             }
         }
+        // Restore completing (success or failure) always resolves the flow —
+        // it also clears a stale `.purchaseFailed` from an earlier purchase
+        // attempt, since the entitlement question is settled either way.
+        flowState = .idle
     }
 
     private func markPurchased() async {

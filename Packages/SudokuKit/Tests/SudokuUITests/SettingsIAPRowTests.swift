@@ -217,5 +217,32 @@ struct SettingsIAPRowTests {
             assertSnapshot(of: host, as: .image, named: "IAPRows-iPhone-light-purchased")
         }
     }
+
+    // #881 (closing #874 F-7): a failed purchase must render distinctly from
+    // "never attempted" — this baseline is the visual proof that
+    // `snapshotRowsIPhoneLightUnpurchased` above and this one differ, beyond
+    // the transient toast which has already dismissed by the time a player
+    // reopens Settings.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotRowsIPhoneLightPurchaseFailed() async {
+        let (controller, iap, _) = await makeController(
+            products: [IAPProduct(
+                id: removeAdsProductId,
+                displayName: "Remove Ads",
+                displayPrice: "$2.99",
+                isPurchased: false
+            )]
+        )
+        await controller.bootstrap()
+        await iap.setPurchaseResult(for: removeAdsProductId, result: .failed(reason: "card declined"))
+        await controller.purchaseRemoveAds()
+        let host = hostingView(
+            purchasesSection(controller: controller),
+            size: CGSize(width: 393, height: 220),
+            colorScheme: .light
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "IAPRows-iPhone-light-purchaseFailed")
+        }
+    }
     #endif
 }
