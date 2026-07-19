@@ -220,6 +220,37 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak2", record: SnapshotMode.recordMode)
     }
 
+    /// #882 (audit #875 coverage caveat): the EMPTY state — a fresh account
+    /// with no completion history anywhere in the window. Distinct from
+    /// `snapshotStripDegradedIPhoneLight` below: degraded means the fetch
+    /// itself FAILED (`weekStrip == .unknown`, card omitted); empty means the
+    /// fetch SUCCEEDED and every day genuinely has zero completions
+    /// (`weekStrip.days.count == 7`, card renders with 7 not-completed dots —
+    /// today dashed, the other 6 missed — and no streak header, since a
+    /// genuine 0-day streak is captioned identically to unknown, per
+    /// `DailyStripSnapshot.streak`'s doc). `makeViewModel()`'s default empty
+    /// `completedDailyIds` already produces this via the real bootstrap path
+    /// (unlike the MS suite's seeded fixtures) — this test makes that
+    /// coverage explicit and asserted instead of leaving it an unlabeled
+    /// side effect of `snapshotUnfinishedIPhoneLight`.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripEmptyIPhoneLight() async {
+        let viewModel = await makeViewModel()
+        await viewModel.bootstrap()
+        #expect(viewModel.weekStrip.days.count == 7)
+        #expect(viewModel.weekStrip.days.allSatisfy { !$0.isCompleted })
+        #expect(viewModel.weekStrip.streak == nil)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-stripEmpty")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-stripEmpty", record: SnapshotMode.recordMode)
+    }
+
     /// Degraded strip: the completed-ids fetch fails (offline / signed-out) →
     /// all-subdued skeleton dots, NO streak caption (never a false "0"), trio
     /// still rendered un-completed.

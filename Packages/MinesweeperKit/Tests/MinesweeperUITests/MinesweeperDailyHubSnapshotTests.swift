@@ -215,6 +215,56 @@ struct MinesweeperDailyHubSnapshotTests {
         assertViewStructure(of: host, named: "Daily-iPhone-light-streak2", record: SnapshotMode.recordMode)
     }
 
+    /// #882 (audit #875 coverage caveat): the EMPTY state — a fresh account
+    /// where the week-window fetch SUCCEEDED but every day has zero
+    /// completions. Distinct from the base fixtures above (`weekStrip` left
+    /// at its default `.unknown` — fetch never ran / failed, card omitted
+    /// entirely): here `days` is fully populated (7 slots) and every dot
+    /// renders not-completed (today dashed, the other 6 missed with the
+    /// #882 F-3 xmark), with no streak header (0-day streak captions
+    /// identically to unknown — see `MinesweeperDailyStripSnapshot.streak`'s
+    /// doc). MS has no incidental equivalent of Sudoku's real-bootstrap path
+    /// producing this for free (every MS snapshot fixture seeds state via
+    /// `setStateForTesting`), so this is scripted explicitly via
+    /// `setWeekStripForTesting`.
+    private static func emptyStrip() -> MinesweeperDailyStripSnapshot {
+        let days = (0...6).reversed().map { offset in
+            MinesweeperDailyStripDay(
+                offsetFromToday: offset,
+                date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
+                isCompleted: false,
+                completedPuzzleIds: []
+            )
+        }
+        return MinesweeperDailyStripSnapshot(days: days, streak: nil)
+    }
+
+    private func dailyHubViewWithEmptyStrip() -> some View {
+        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
+        viewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        viewModel.setWeekStripForTesting(Self.emptyStrip())
+        return NavigationStack {
+            MinesweeperDailyHubView(viewModel: viewModel)
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDaily_iPhone_light_stripEmpty() {
+        let host = hostingView(
+            dailyHubViewWithEmptyStrip(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(
+            of: host,
+            as: .image,
+            named: "Daily-iPhone-light-stripEmpty",
+            record: SnapshotMode.recordMode
+        )
+        assertViewStructure(of: host, named: "Daily-iPhone-light-stripEmpty", record: SnapshotMode.recordMode)
+    }
+
     /// AX3 Dynamic Type layout pin — dots are structural (fixed 16pt, never
     /// wrap); caption + card text scale. Env-injected Dynamic Type snapshots
     /// are a layout pin only (memory: dynamic-type-sim-verify-and-cap); sim

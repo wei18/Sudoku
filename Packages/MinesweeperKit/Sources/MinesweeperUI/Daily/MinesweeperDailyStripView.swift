@@ -11,6 +11,11 @@
 // missed/empty day stay inert. Mirrors `SudokuUI.DailyStripView` — see that
 // file's header comment for the 44pt-tap-target-via-contentShape rationale
 // (not repeated here).
+//
+// #882 F-3: the missed dot's solid outline now carries an additional xmark
+// overlay (full-strength `text.tertiary` ink, WCAG 1.4.11 ≥3.36:1 against
+// `surface.elevated` in both schemes) — see `SudokuUI.DailyStripView`'s
+// "Dot states" comment for the full rationale, not repeated here.
 
 import SwiftUI
 internal import GameShellUI
@@ -145,8 +150,15 @@ struct MinesweeperDailyStripView: View {
                 Circle()
                     .strokeBorder(theme.accent.primary.resolved, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
             } else {
+                // #882 F-3: mirrors `SudokuUI.DailyStripView` — see that
+                // file's "Dot states" comment for the contrast math.
                 Circle()
                     .strokeBorder(theme.text.tertiary.resolved.opacity(0.4), lineWidth: 1)
+                    .overlay {
+                        Image(systemName: "xmark")
+                            .font(.system(size: dotDiameter * 0.32, weight: .semibold))
+                            .foregroundStyle(theme.text.tertiary.resolved)
+                    }
             }
         }
         .frame(width: dotDiameter, height: dotDiameter)
