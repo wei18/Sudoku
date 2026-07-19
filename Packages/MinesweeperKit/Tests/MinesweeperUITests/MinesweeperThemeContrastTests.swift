@@ -115,17 +115,24 @@ struct MinesweeperDifficultyTintOnTintInkContrastTests {
     }
 }
 
-// MARK: - Lost-mine flag ink non-text contrast (#876 / #874 F-1)
+// MARK: - Flag-glyph ink non-text contrast (#876 / #874 F-1, widened #888)
 
-/// Guards `MinesweeperCellTokens.lostMineFlagInk` against the `mine` fill it
-/// renders on (`MinesweeperCellButton.flaggedMineGlyph` —
-/// `showsLostMine && cell.state == .flagged`). This is a graphical-object
-/// (icon), not text, so the WCAG floor is 1.4.11's 3:1, not the 4.5:1 AA text
-/// threshold the other suites in this file check. Before this fix, the
-/// general `status.warning` flag ink measured 2.39:1 light / 6.22:1 dark
-/// against `mine` — light failed the 3:1 floor.
-@Suite("MinesweeperTheme — lost-mine flag ink contrast (#876)")
-struct MinesweeperLostMineFlagInkContrastTests {
+/// Guards `MinesweeperCellTokens.flagInk` against BOTH fills the flag glyph
+/// renders on:
+///   - `covered` — the normal in-play flag (`MinesweeperCellButton.content`
+///     `.flagged` case). #888.
+///   - `mine` — a correctly-flagged mine surfaced at loss (`showsLostMine &&
+///     cell.state == .flagged`). #876 / #874 F-1.
+/// This is a graphical object (icon), not text, so the WCAG floor is
+/// 1.4.11's 3:1, not the 4.5:1 AA text threshold the other suites in this
+/// file check. Before #876, the general `status.warning` flag ink measured
+/// 2.39:1 light / 6.22:1 dark against `mine` (light failed). Before #888,
+/// the same `status.warning` ink measured 2.15:1 light / 6.07:1 dark against
+/// `covered` (light failed too) — `flagInk` was widened from its original
+/// mine-fill-only scope (`lostMineFlagInk`) to cover this combo as well,
+/// reusing the same hex values since they already clear 3:1 on both fills.
+@Suite("MinesweeperTheme — flag ink contrast (#876 / #888)")
+struct MinesweeperFlagInkContrastTests {
 
     private func linearize(_ channel: Double) -> Double {
         channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
@@ -144,22 +151,38 @@ struct MinesweeperLostMineFlagInkContrastTests {
         return (max(lumA, lumB) + 0.05) / (min(lumA, lumB) + 0.05)
     }
 
-    @Test func lostMineFlagInkClearsNonTextFloorInBothModes() {
+    @Test func flagInkClearsNonTextFloorOnCoveredFillInBothModes() {
+        // #888: the normal in-play flag (`.flagged` on `covered`).
         let tokens = MinesweeperTheme().cell
-        let light = contrastRatio(tokens.lostMineFlagInk.lightHex, tokens.mine.lightHex)
-        let dark = contrastRatio(tokens.lostMineFlagInk.darkHex, tokens.mine.darkHex)
-        // Current values: light 0x9C5C1C on 0xFBE3E1 = 4.34:1;
-        // dark 0xE8A560 on 0x4A2724 = 6.22:1 (dark ink is `status.warning`'s
-        // dark value, reused verbatim — unchanged by this fix).
-        #expect(light >= 3.0, "light-mode lost-mine flag ink fell below WCAG 1.4.11: \(light)")
-        #expect(dark >= 3.0, "dark-mode lost-mine flag ink fell below WCAG 1.4.11: \(dark)")
+        let light = contrastRatio(tokens.flagInk.lightHex, tokens.covered.lightHex)
+        let dark = contrastRatio(tokens.flagInk.darkHex, tokens.covered.darkHex)
+        // Current values: light 0x9C5C1C on 0xD6DEE6 = 3.90:1;
+        // dark 0xE8A560 on 0x2B333D = 6.07:1.
+        #expect(light >= 3.0, "light-mode flag ink on covered fell below WCAG 1.4.11: \(light)")
+        #expect(dark >= 3.0, "dark-mode flag ink on covered fell below WCAG 1.4.11: \(dark)")
     }
 
-    @Test func darkModeRatioUnchangedFromStatusWarning() {
-        // #876 reuses `status.warning`'s dark hex verbatim for the dark ink,
-        // so this proves the dark-mode ratio is byte-identical pre/post-fix.
+    @Test func flagInkClearsNonTextFloorOnMineFillInBothModes() {
+        // #876 / #874 F-1: a correctly-flagged mine, surfaced at loss
+        // (`showsLostMine && cell.state == .flagged`, on `mine`).
+        let tokens = MinesweeperTheme().cell
+        let light = contrastRatio(tokens.flagInk.lightHex, tokens.mine.lightHex)
+        let dark = contrastRatio(tokens.flagInk.darkHex, tokens.mine.darkHex)
+        // Current values: light 0x9C5C1C on 0xFBE3E1 = 4.34:1;
+        // dark 0xE8A560 on 0x4A2724 = 6.22:1 (dark ink is `status.warning`'s
+        // dark value, reused verbatim — unchanged since #876).
+        #expect(light >= 3.0, "light-mode flag ink on mine fell below WCAG 1.4.11: \(light)")
+        #expect(dark >= 3.0, "dark-mode flag ink on mine fell below WCAG 1.4.11: \(dark)")
+    }
+
+    @Test func darkModeRatiosUnchangedFromStatusWarning() {
+        // `flagInk`'s dark hex reuses `status.warning`'s dark value verbatim
+        // (unchanged since #876), so both dark-mode ratios stay byte-identical
+        // to what `status.warning` measured against these fills pre-fix.
         let theme = MinesweeperTheme()
-        let dark = contrastRatio(theme.cell.lostMineFlagInk.darkHex, theme.cell.mine.darkHex)
-        #expect(abs(dark - 6.22) < 0.01, "dark ratio drifted: got \(dark), expected ~6.22")
+        let onCovered = contrastRatio(theme.cell.flagInk.darkHex, theme.cell.covered.darkHex)
+        let onMine = contrastRatio(theme.cell.flagInk.darkHex, theme.cell.mine.darkHex)
+        #expect(abs(onCovered - 6.07) < 0.01, "dark ratio on covered drifted: got \(onCovered), expected ~6.07")
+        #expect(abs(onMine - 6.22) < 0.01, "dark ratio on mine drifted: got \(onMine), expected ~6.22")
     }
 }
