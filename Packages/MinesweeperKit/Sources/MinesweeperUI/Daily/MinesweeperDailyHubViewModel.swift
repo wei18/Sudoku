@@ -151,6 +151,18 @@ public final class MinesweeperDailyHubViewModel {
         self.weekStrip = snapshot
     }
 
+    /// #878 (#874 F-4, re-opening #842's no-affordance tradeoff): seeds
+    /// `isPhase2Pending` directly for previews / snapshot tests, mirroring
+    /// `SudokuUI.DailyHubViewModel.setPhase2PendingForTesting`. Needed
+    /// because `setStateForTesting` above bypasses `bootstrap()` entirely
+    /// and leaves `isPhase2Pending` at its default `true` — every existing
+    /// snapshot/ASC-screenshot fixture built via `setStateForTesting` now
+    /// calls this with `false` to keep representing the SETTLED loaded
+    /// state, not a mid-fetch one. Production never calls this.
+    public func setPhase2PendingForTesting(_ isPending: Bool) {
+        self.isPhase2Pending = isPending
+    }
+
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true

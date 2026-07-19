@@ -62,10 +62,10 @@ public final class DailyHubViewModel {
     /// has only phase-1-stale `card.isCompleted` data to show, so gating avoids
     /// a wasted/flickering navigation rather than fixing correctness (that is
     /// `BoardLoaderView`'s job — see its `#842` precheck, the airtight half of
-    /// this defense-in-depth pair). Deliberately not visual (no snapshot
-    /// churn): the issue's UX ask allows either a disabled affordance or a
-    /// tap no-op, and a no-op is the smallest mirror-consistent mechanism.
-    public private(set) var isPhase2Pending = true
+    /// this defense-in-depth pair). #878 re-opened #842's "deliberately not
+    /// visual" call: `DailyPuzzleCard` now dims + drops `.isButton` while
+    /// `true` (#874 F-4). `internal(set)` so `+Testing.swift` can seed it.
+    public internal(set) var isPhase2Pending = true
 
     /// Navigation path store (issue #240): routes through an injected
     /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`

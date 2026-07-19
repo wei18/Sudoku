@@ -90,7 +90,7 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
             title: "Daily",
             backgroundColor: theme.surface.background.resolved,
             state: liftedState,
-            card: { card in MinesweeperDailyCardView(card: card) },
+            card: { card in MinesweeperDailyCardView(card: card, isPending: viewModel.isPhase2Pending) },
             failure: { reason in
                 // spacing-exempt: 12pt (icon/text stack gap) predates the
                 // 5-tier `SpacingTokens` scale — no matching tier without
@@ -132,6 +132,14 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
 // `DailyPuzzleCard`, which was already internal for the same reason.
 struct MinesweeperDailyCardView: View {
     let card: MinesweeperDailyCard
+    /// #878 (#874 F-4): mirrors Sudoku's `DailyPuzzleCard.isPending` exactly
+    /// — `true` while the hub's phase-2 completion-overlay fetch is in
+    /// flight (`MinesweeperDailyHubViewModel.isPhase2Pending`, which already
+    /// no-ops `cardTapped` during this window, #842). Re-opens #842's
+    /// adjudicated "no visual affordance" tradeoff with the #874 audit's
+    /// evidence. Smallest mirror-consistent fix — dim the card content and
+    /// drop the `.isButton` trait, no spinner (#843 no-skeleton stance).
+    var isPending: Bool = false
     @Environment(\.theme) private var theme
     // #762 PR3: content tier (two-tier contract, design-system.md §Spacing
     // scale). Both wrap the card's own header row / caption stack — 8
@@ -188,6 +196,10 @@ struct MinesweeperDailyCardView: View {
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         }
+        // #878: subtle pending dim — content only, the glass card shape/
+        // background stays at full opacity so the row doesn't look broken.
+        // Mirrors Sudoku's `DailyPuzzleCard`.
+        .opacity(isPending ? Self.pendingOpacity : 1)
         .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         // `.contentShape(Rectangle())` BEFORE `.glassEffect(...)` so the whole
@@ -203,8 +215,17 @@ struct MinesweeperDailyCardView: View {
         // `accessibilityDescription` below instead of being combine-concatenated.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityAddTraits(.isButton)
+        // #878: mirrors Sudoku's `DailyPuzzleCard` — while pending the tap
+        // gate makes this row genuinely inert (`cardTapped` no-ops), so drop
+        // `.isButton` instead of promising an action VoiceOver's double-tap
+        // won't honor yet. Same #826 `isTappable` precedent; label text
+        // unchanged.
+        .accessibilityAddTraits(isPending ? [] : .isButton)
     }
+
+    /// #878: subtle-dim opacity for the pending treatment above — mirrors
+    /// Sudoku's `DailyPuzzleCard.pendingOpacity` exactly.
+    private static let pendingOpacity: Double = 0.5
 
     /// Map `Difficulty` to a `difficulty.*` theme token. Exhaustive — adding a
     /// case forces this to update (mirrors Sudoku's `difficultyTint`).
