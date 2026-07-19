@@ -22,6 +22,13 @@ import MonetizationTesting
 
 @testable import MonetizationUI
 
+/// Thrown by `PurchaseFlowStateTests.RestoreFailingIAPClient` (#894). File
+/// scope, not nested inside the actor — `swiftlint --strict`'s nesting rule
+/// caps types at 1 level deep inside the test `struct`.
+private enum RestoreFailingIAPClientError: Error {
+    case restoreFailed
+}
+
 @MainActor
 @Suite("MonetizationStateController — PurchaseFlowState")
 struct PurchaseFlowStateTests {
@@ -182,9 +189,97 @@ struct PurchaseFlowStateTests {
 
         await controller.restorePurchases()
 
-        // A completed restore always resolves the flow, clearing a stale
-        // failed-purchase state — the entitlement question is settled
-        // either way.
+        // A SUCCESSFULLY completed restore resolves the flow, clearing a
+        // stale failed-purchase state — the entitlement question is settled.
+        #expect(controller.flowState == .idle)
+    }
+
+    // MARK: - #894: restore-failure / revoked-event lifecycle nits
+
+    /// `restorePurchases()` that always throws, to distinguish "restore
+    /// completed" (clears `.purchaseFailed`) from "restore attempted and
+    /// itself failed" (must NOT clear a prior `.purchaseFailed` — #894).
+    private actor RestoreFailingIAPClient: IAPClient {
+        private var scriptedPurchaseResult: IAPPurchaseResult = .userCancelled
+        private(set) var restoreCallCount = 0
+
+        func setPurchaseResult(_ result: IAPPurchaseResult) {
+            scriptedPurchaseResult = result
+        }
+
+        func availableProducts() async throws -> [IAPProduct] { [] }
+
+        func purchase(_ productId: String) async throws -> IAPPurchaseResult {
+            scriptedPurchaseResult
+        }
+
+        func restorePurchases() async throws -> [IAPProduct] {
+            restoreCallCount += 1
+            throw RestoreFailingIAPClientError.restoreFailed
+        }
+
+        nonisolated func purchaseUpdates() -> AsyncStream<IAPPurchaseEvent> {
+            AsyncStream { _ in }
+        }
+    }
+
+    @Test func purchaseFailedState_persistsThroughFailedRestore() async {
+        let store = makeStore()
+        let gate = AdGate(store: store)
+        let iap = RestoreFailingIAPClient()
+        await iap.setPurchaseResult(.failed(reason: "card declined"))
+        let controller = MonetizationStateController(iapClient: iap, stateStore: store, adGate: gate)
+
+        await controller.purchaseRemoveAds()
+        #expect(controller.flowState == .purchaseFailed(reason: "card declined"))
+
+        await controller.restorePurchases()
+
+        // #894: a restore that itself fails doesn't resolve the entitlement
+        // question, so the earlier failed-purchase indicator must survive —
+        // not be silently dropped to `.idle`.
+        #expect(controller.flowState == .purchaseFailed(reason: "card declined"))
+        let restoreCalls = await iap.restoreCallCount
+        #expect(restoreCalls == 1)
+    }
+
+    /// Wait up to `timeout` for `predicate` to become true. Yields the main
+    /// loop between checks so the controller's update-subscriber Task can
+    /// process the emitted event (mirrors
+    /// `MonetizationStateControllerUpdatesTests.waitFor` in SudokuUITests,
+    /// duplicated here because `flowState` is only visible via
+    /// `@testable import MonetizationUI`, which that target doesn't use).
+    private func waitFor(
+        timeout: Duration = .milliseconds(500),
+        _ predicate: @MainActor () -> Bool
+    ) async {
+        let start = ContinuousClock.now
+        while ContinuousClock.now - start < timeout {
+            if predicate() { return }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    @Test func revokedEvent_clearsStalePurchaseFailedState() async {
+        let store = makeStore(purchased: true)
+        let gate = AdGate(store: store)
+        let iap = FakeIAPClient()
+        await iap.setPurchaseResult(for: removeAdsProductId, result: .failed(reason: "card declined"))
+        let controller = MonetizationStateController(iapClient: iap, stateStore: store, adGate: gate)
+
+        // Leave a stale failure behind from an unrelated earlier attempt.
+        await controller.purchaseRemoveAds()
+        #expect(controller.flowState == .purchaseFailed(reason: "card declined"))
+
+        controller.startListeningForLifetimeOfApp()
+        defer { Task { await iap.finishUpdates() } }
+
+        await iap.emit(.revoked(productId: removeAdsProductId))
+
+        // #894: a `.revoked` event settles the entitlement question
+        // out-of-band — RemoveAdsRow should read fresh, not blame the old
+        // failure.
+        await waitFor { controller.flowState == .idle }
         #expect(controller.flowState == .idle)
     }
 }
