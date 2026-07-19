@@ -48,9 +48,18 @@
 //     contract).
 //   - today, not completed: dashed `accent.primary` stroke, no fill —
 //     visually distinct from both completed (filled) and missed (thin solid
-//     outline).
+//     outline + xmark, see below).
 //   - past, not completed (missed): `text.tertiary`-toned solid outline, no
-//     fill.
+//     fill, PLUS a small `xmark` glyph (#882 F-3 — the #874 audit judged
+//     "dashed vs. solid stroke" too thin a distinction, especially for low
+//     vision users). The xmark reuses the completed dot's icon-overlay
+//     pattern (an SF Symbol centered over the Circle) rather than inventing
+//     a new fill/shape language, staying within the #843 Option-A idiom.
+//     Ink is FULL-STRENGTH `theme.text.tertiary` (not the stroke's 0.4
+//     opacity) — WCAG 1.4.11 non-text contrast against `surface.elevated`
+//     computed at ≥3.35:1 in every theme×scheme combination (Sudoku
+//     light 3.51:1 / dark 3.44:1, Minesweeper light 3.36:1 / dark 3.47:1);
+//     the 0.4-opacity stroke color alone would fall well under 3:1.
 // "Future day" never occurs — the strip is a ROLLING 7-day window ending at
 // today (owner adjudication item 3), not a calendar week, so there is no
 // future slot to render in the first place.
@@ -225,8 +234,16 @@ struct DailyStripView: View {
                 Circle()
                     .strokeBorder(theme.accent.primary.resolved, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
             } else {
+                // #882 F-3: missed gets an xmark on top of the existing solid
+                // outline — see the file header comment's "Dot states" note
+                // for the contrast math and rationale.
                 Circle()
                     .strokeBorder(theme.text.tertiary.resolved.opacity(0.4), lineWidth: 1)
+                    .overlay {
+                        Image(systemName: "xmark")
+                            .font(.system(size: dotDiameter * 0.32, weight: .semibold))
+                            .foregroundStyle(theme.text.tertiary.resolved)
+                    }
             }
         }
         .frame(width: dotDiameter, height: dotDiameter)

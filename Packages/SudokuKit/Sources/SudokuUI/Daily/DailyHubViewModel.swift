@@ -287,6 +287,13 @@ public final class DailyHubViewModel {
     /// Completion directly (reusing `openCompleted`'s async fetch path, same
     /// as `cardTapped`'s completed branch); more than one presents
     /// `reviewPickerChoices`, a confirmationDialog hosted by `DailyHubView`.
+    /// #882 F-5 (audit #874): NOT gated on `isPhase2Pending`, unlike
+    /// `cardTapped` (trusts a phase-1 placeholder, routes to `.board`
+    /// unchecked — the race #842 closes). No equivalent risk: `weekStrip`
+    /// stays `.unknown` until phase 2 first lands; `refresh()` keeps the
+    /// last IMMUTABLE snapshot (completion is monotonic, staleness only
+    /// under-reports); every completed open re-fetches fresh via
+    /// `openCompleted`'s `loadIfExists` anyway. Documented, not gated.
     public func dayTapped(_ day: DailyStripDay) {
         guard !day.isToday else { return }
         let choices = DailyStripLogic.reviewChoices(from: day.completedPuzzleIds)

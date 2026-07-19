@@ -313,6 +313,18 @@ public final class MinesweeperDailyHubViewModel {
     /// its Completion directly; more than one presents `reviewPickerChoices`.
     /// Unlike Sudoku, MS's `.completion` push needs no async fetch (no
     /// stored elapsed, #284) — fully synchronous, no in-flight latch needed.
+    /// #882 F-5 (audit #874): deliberately NOT gated on `isPhase2Pending`,
+    /// unlike `cardTapped`. Mirrors `SudokuUI.DailyHubViewModel.dayTapped`'s
+    /// reasoning (not repeated in full here) — `weekStrip` stays `.unknown`
+    /// (card hidden entirely) until phase 2 first resolves, and on a later
+    /// `refresh()` re-entry it keeps showing the last successful, immutable
+    /// snapshot (completion is monotonic, so staleness can only under-report,
+    /// never mis-route). MS's `openReview` is even more immune than Sudoku's:
+    /// it does no fetch at all — `.completion(difficulty:mode:day:)` is built
+    /// purely from `choice.puzzleId`/`choice.difficulty`, both already frozen
+    /// identifiers baked into the tapped `MinesweeperDailyStripDay` at render
+    /// time, so there is no live-data re-read for a race to land in.
+    /// Documented rather than gated per the #882 dispatch.
     public func dayTapped(_ day: MinesweeperDailyStripDay) {
         guard !day.isToday else { return }
         let choices = MinesweeperDailyStripLogic.reviewChoices(from: day.completedPuzzleIds)
