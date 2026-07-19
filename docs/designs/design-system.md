@@ -381,6 +381,53 @@ Consolidated reference. Cross-link: `docs/v1/design.md` §How.5.7.
 
 ---
 
+## Snapshot-fixture conventions
+
+Guard rules adopted from the #874/#875 cross-screen audits (umbrella #884).
+
+### Fixture production-parity (guard rule 1, #875 D2 + the #887 dead-path note on #884)
+
+A snapshot-test fixture that renders a production View in isolation from its
+normal ancestor chain MUST composite the same environment (tint / theme /
+config) the production composition supplies — or carry an explicit comment
+justifying the divergence. Full static enforcement (a lint/scanner comparing
+fixture environment to production composition) is impractical; this is a
+documented convention, not a CI gate.
+
+Two failure shapes to watch for:
+
+- **Tint/theme drift** (#875 D2, pixel-verified): `MinesweeperCompletionSnapshotTests`
+  rendered `MinesweeperCompletionView` without the ancestor `.tint(...)`
+  production supplies via `CompletionOverlayScaffold`, so 7 goldens carried
+  system-blue RGB(10,96,254) instead of the muted app accent RGB(48,87,121).
+  Fixed in #887 by adding the matching
+  `.tint(MinesweeperTheme().accent.primary.resolved)` to the fixture.
+- **Fixture-exercises-dead-path** (noted on #884 during the #887 fix, 2026-07-18): production
+  always passes `onClose: nil` into `MinesweeperCompletionView`, so the
+  view's INTERNAL close button never renders on-device — the snapshot
+  fixture is its only exerciser. A fixture that drives a code path
+  production never reaches needs a one-line comment saying so (#887's PR
+  description is the model: "production always passes `onClose: nil` …
+  the fixture is its only exerciser").
+
+When adding or reviewing a snapshot fixture that mounts a View outside its
+production ancestor chain: either (a) apply the same environment modifiers
+production supplies, (b) assert against the production-composited golden
+instead of maintaining a parallel isolated one, or (c) add a one-line comment
+at the fixture site stating the divergence (tint or dead-path) is intentional
+and why.
+
+### Empty-state coverage for stateful widgets (guard rule 4, #875 proposed rule 4)
+
+Stateful widgets whose "no data yet" appearance differs meaningfully from
+their populated appearance (e.g. the Daily week-strip on a fresh-history
+account, #875 coverage caveat) should carry a committed snapshot for the
+empty/collapsed state alongside the populated one — not just the happy path.
+Concrete baseline work for the Daily week-strip is tracked under #882
+(implemented in parallel with this doc-only entry; do not duplicate there).
+
+---
+
 ## Decision log (resolved)
 
 - **Cell digit design** — `.rounded`. Reads as friendly without sacrificing legibility; pairs with the warm Japanese-puzzle-paper aesthetic.
