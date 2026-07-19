@@ -306,5 +306,29 @@ struct DailyHubViewTests {
         }
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
     }
+
+    // MARK: - #878 phase-2-pending card treatment
+
+    /// #878 (#874 F-4, re-opening #842's no-affordance tradeoff): pins the
+    /// dimmed, non-button card treatment while `isPhase2Pending` is `true` —
+    /// scripted via `setPhase2PendingForTesting` after a real (fast, fake-
+    /// backed) `bootstrap()` lands, no gated-fetch fixture needed. Mirrors
+    /// MinesweeperKit's `Daily-iPhone-light-phase2Pending` counterpart.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPhase2PendingIPhoneLight() async {
+        let viewModel = await makeViewModel()
+        await viewModel.bootstrap()
+        #expect(viewModel.isPhase2Pending == false)
+        viewModel.setPhase2PendingForTesting(true)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-phase2Pending")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-phase2Pending", record: SnapshotMode.recordMode)
+    }
     #endif
 }

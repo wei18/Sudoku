@@ -62,9 +62,17 @@ struct MinesweeperDailyHubSnapshotTests {
 
     /// The Daily hub seeded to its loaded trio, wrapped in a NavigationStack so
     /// the shell's `.navigationTitle` chrome renders.
-    private func dailyHubView() -> some View {
+    ///
+    /// #878: `setStateForTesting` bypasses `bootstrap()` entirely, which
+    /// leaves `isPhase2Pending` at its default `true` — every baseline below
+    /// explicitly pins `isPhase2Pending: false` so it keeps representing the
+    /// SETTLED loaded state (full-opacity, tappable cards), not a mid-fetch
+    /// one. `snapshotDaily_iPhone_light_phase2Pending` below is the one
+    /// baseline that opts back into the default `true`.
+    private func dailyHubView(isPhase2Pending: Bool = false) -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         viewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        viewModel.setPhase2PendingForTesting(isPhase2Pending)
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)
         }
@@ -192,6 +200,9 @@ struct MinesweeperDailyHubSnapshotTests {
     private func dailyHubViewWithStreak() -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         viewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
+        // doc above for why this is needed alongside `setStateForTesting`.
+        viewModel.setPhase2PendingForTesting(false)
         viewModel.setWeekStripForTesting(Self.partialStreakStrip())
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)
@@ -242,6 +253,9 @@ struct MinesweeperDailyHubSnapshotTests {
     private func dailyHubViewWithEmptyStrip() -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         viewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
+        // doc above for why this is needed alongside `setStateForTesting`.
+        viewModel.setPhase2PendingForTesting(false)
         viewModel.setWeekStripForTesting(Self.emptyStrip())
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)
@@ -284,6 +298,30 @@ struct MinesweeperDailyHubSnapshotTests {
             record: SnapshotMode.recordMode
         )
         assertViewStructure(of: host, named: "Daily-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - #878 phase-2-pending card treatment
+
+    /// #878 (#874 F-4, re-opening #842's no-affordance tradeoff): pins the
+    /// dimmed, non-button card treatment while `isPhase2Pending` is `true` —
+    /// scripted via `setPhase2PendingForTesting` (the gate is pure VM state,
+    /// no gated-fetch fixture needed). Mirrors `DailyHub-iPhone-light-*`'s
+    /// SudokuUI counterpart.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDaily_iPhone_light_phase2Pending() {
+        let host = hostingView(
+            dailyHubView(isPhase2Pending: true),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(
+            of: host,
+            as: .image,
+            named: "Daily-iPhone-light-phase2Pending",
+            record: SnapshotMode.recordMode
+        )
+        assertViewStructure(of: host, named: "Daily-iPhone-light-phase2Pending", record: SnapshotMode.recordMode)
     }
 }
 #endif
