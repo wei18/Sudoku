@@ -612,6 +612,14 @@ archive_export_platform() {
     write_export_options "$opts" "$plat"
     rm -rf "$export_dir"
     echo "==> export (App Store Connect) → $export_dir"
+    # -allowProvisioningUpdates authenticates via the Xcode GUI Apple ID
+    # session (Settings → Accounts). When that session expires, export fails
+    # with "No signing certificate 'iOS Distribution' found" — the fix is to
+    # re-log-in in Xcode, NOT to pass -authenticationKey* here: cloud signing
+    # through an ASC API key requires an Admin-role key, and the repo's key is
+    # App Manager ("Cloud signing permission error", verified 2026-07-20). If
+    # an Admin key ever lands in secrets/.env, add the -authenticationKey*
+    # trio and this becomes fully headless.
     xcodebuild -exportArchive \
         -archivePath "$archive_path" \
         -exportPath "$export_dir" \
