@@ -79,11 +79,15 @@ public struct LiveRouteFactory: RouteFactory {
     // SudokuAppComposition; the factory only decides WHEN (Daily, not Practice). `nil`
     // in previews / tests → no primer, byte-identical Completion screens.
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
-    // #287: builds the Settings Reminders entry (shared `ReminderSettingsModel` +
-    // Sudoku copy) per Settings mount. Injected as a closure (not the raw
-    // Reminders seams) so ALL reminder wiring stays in SudokuAppComposition. `nil` in
-    // previews / tests → no reminder section, byte-identical Settings screen.
-    private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
+    // #287/#909: the Settings Reminders entry (shared `ReminderSettingsModel` +
+    // Sudoku copy), built ONCE at composition time and reused for every
+    // `.settings` render — `view(for:)` is re-invoked by SwiftUI's
+    // `.navigationDestination` builder on every ancestor re-render, not just
+    // once per Settings mount, so a factory closure here used to hand back a
+    // fresh model (and dismiss the primer sheet the instant a concurrent
+    // bootstrap `.task` re-rendered an ancestor). `nil` in previews / tests →
+    // no reminder section, byte-identical Settings screen.
+    private let reminderSettings: ReminderSettingsEntry?
     // #331: app-injected Notices section config (acknowledgements deep-link,
     // copyright, optional privacy/support URLs). `nil` in previews / tests →
     // no Notices section, byte-identical Settings screen.
@@ -126,7 +130,7 @@ public struct LiveRouteFactory: RouteFactory {
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
-        makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
+        reminderSettings: ReminderSettingsEntry? = nil,
         settingsNotices: SettingsNoticesConfig? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         audioSettings: AudioSettingsModel? = nil,
@@ -145,7 +149,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
-        self.makeReminderSettings = makeReminderSettings
+        self.reminderSettings = reminderSettings
         self.settingsNotices = settingsNotices
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
@@ -302,7 +306,7 @@ public struct LiveRouteFactory: RouteFactory {
                         toastController: toastController
                     ),
                     monetizationController: monetizationController,
-                    reminderSettings: makeReminderSettings?(),
+                    reminderSettings: reminderSettings,
                     notices: settingsNotices,
                     audioSettings: audioSettings,
                     presentGameCenter: presentGameCenter,

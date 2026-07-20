@@ -252,8 +252,14 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     }
 
     let settingsCopy = config.reminders.settingsCopy
-    let makeReminderSettings: @MainActor () -> ReminderSettingsEntry = {
-        let model = ReminderSettingsModel(
+    // #909: built ONCE (not a per-render factory closure) so every
+    // `.settings` destination render — including the ones SwiftUI triggers by
+    // re-invoking the `.navigationDestination` builder on an unrelated
+    // ancestor re-render, not just the initial Settings mount — reuses the
+    // SAME `ReminderSettingsModel` instance. See `GameConfig.reminderSettings`
+    // doc for the dismiss-on-first-tap bug this fixes.
+    let reminderSettings = ReminderSettingsEntry(
+        model: ReminderSettingsModel(
             permissionModel: ReminderPermissionModel(authorizer: reminderAuthorizer),
             scheduler: reminderScheduler,
             kind: .dailyReady,
@@ -263,14 +269,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
             getIsScheduled: getIsScheduled,
             setIsScheduled: setIsScheduled,
             emit: reminderEmit
-        )
-        return ReminderSettingsEntry(
-            model: model,
-            copy: settingsCopy,
-            primerCopy: primerCopy,
-            deniedCopy: deniedCopy
-        )
-    }
+        ),
+        copy: settingsCopy,
+        primerCopy: primerCopy,
+        deniedCopy: deniedCopy
+    )
 
     let deps = GameDeps(
         telemetry: telemetry,
@@ -287,7 +290,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         audioSettings: audioSettings,
         attPrimer: attPrimer,
         makeDailyReminderPrimer: makeDailyReminderPrimer,
-        makeReminderSettings: makeReminderSettings
+        reminderSettings: reminderSettings
     )
 
     // 10. RootVM + route factory + root view.

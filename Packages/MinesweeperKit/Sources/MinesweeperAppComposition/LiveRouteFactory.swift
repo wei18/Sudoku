@@ -89,12 +89,17 @@ public struct LiveRouteFactory: RouteFactory {
     // preview / test callsites that pass no controller keep compiling — when
     // nil, clear-cache still runs (and still reports errors) but shows no toast.
     private let toastController: ToastController?
-    // #572: builds the Settings Reminders entry per Settings mount. Injected as
-    // a closure so ALL reminder wiring stays in composition. `nil` in previews /
-    // tests → no reminder section, byte-identical Settings screen. Mirrors Sudoku's
-    // `makeReminderSettings`. Type changed from `MinesweeperReminderSettingsEntry`
-    // to the shared `ReminderSettingsEntry` (SettingsUI) as part of #572 cleanup.
-    private let makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)?
+    // #572/#909: the Settings Reminders entry, built ONCE at composition time
+    // and reused for every `.settings` render — `view(for:)` is re-invoked by
+    // SwiftUI's `.navigationDestination` builder on every ancestor re-render,
+    // not just once per Settings mount, so a factory closure here used to
+    // hand back a fresh `ReminderSettingsModel` (and dismiss the primer sheet
+    // the instant a concurrent bootstrap `.task` re-rendered an ancestor).
+    // `nil` in previews / tests → no reminder section, byte-identical
+    // Settings screen. Mirrors Sudoku's `reminderSettings`. Type changed from
+    // `MinesweeperReminderSettingsEntry` to the shared `ReminderSettingsEntry`
+    // (SettingsUI) as part of #572 cleanup.
+    private let reminderSettings: ReminderSettingsEntry?
     // #814 (mirrors Sudoku's `makeDailyReminderPrimer`, #287 Phase 2): builds a
     // fresh daily-ready primer coordinator per Daily-WIN completion mount.
     // Injected as a closure (not the raw Reminders seams) so ALL reminder
@@ -145,7 +150,7 @@ public struct LiveRouteFactory: RouteFactory {
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         toastController: ToastController? = nil,
-        makeReminderSettings: (@MainActor () -> ReminderSettingsEntry)? = nil,
+        reminderSettings: ReminderSettingsEntry? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
@@ -163,7 +168,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.toastController = toastController
-        self.makeReminderSettings = makeReminderSettings
+        self.reminderSettings = reminderSettings
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
@@ -341,7 +346,7 @@ public struct LiveRouteFactory: RouteFactory {
                         toastController: toastController
                     ),
                     monetizationController: monetizationController,
-                    reminderSettings: makeReminderSettings?(),
+                    reminderSettings: reminderSettings,
                     notices: Self.makeSettingsNotices(),
                     // #330 P2: the shared Sound section (nil in preview/test → no
                     // section, byte-identical screen).

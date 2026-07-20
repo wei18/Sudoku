@@ -11,7 +11,14 @@
 /// The model is game-agnostic (enable/prime permission/fire-time); the copy
 /// is game-localized (section title, CTA labels, notification text).
 /// `@MainActor` because the model is an `@Observable` class and both model +
-/// copy are built + consumed on `@MainActor`.
+/// copy are built + consumed on `@MainActor`. #909: the doc comment always
+/// claimed this isolation but the attribute itself was missing — harmless
+/// while this entry only ever flowed through a `@MainActor` factory closure,
+/// but load-bearing now that `GameDeps`/`LiveRouteFactory` hold it as a plain
+/// stored value: without it, the struct fails `Sendable` synthesis (it wraps
+/// the `@MainActor`-isolated, non-`Sendable` `ReminderSettingsModel`) and
+/// `LiveRouteFactory: RouteFactory` (which requires `Sendable`) won't compile.
+@MainActor
 public struct ReminderSettingsEntry {
     public let model: ReminderSettingsModel
     public let copy: ReminderSettingsCopy
