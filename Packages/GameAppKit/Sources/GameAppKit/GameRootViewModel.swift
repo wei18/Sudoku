@@ -203,19 +203,19 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     }
 
     /// Signals that a game session just ended. Called by `dismissGame()` (iOS
-    /// fullScreenCover) and by `GameRoot`'s `path`-shrink branch (on macOS a
-    /// board's Leave / completion Close pops `path` directly instead of going
-    /// through `dismissGame()` — see `GameRoot.shellContent`). Bumps
-    /// `sessionTeardownCount` so environment-observing views (e.g. the Daily
-    /// hubs, #761) can react without depending on `.onAppear` re-firing.
+    /// fullScreenCover close) and by `handlePathShrink()` (the `path`-shrink
+    /// path — on macOS a board's Leave / completion Close pops `path` directly
+    /// instead of going through `dismissGame()`; see `GameRoot.shellContent`).
+    /// Bumps `sessionTeardownCount` so environment-observing views (e.g. the
+    /// Daily hubs, #761) can react without depending on `.onAppear` re-firing.
     ///
-    /// Caveat (sim-verified, #761 round-2 CR): the `path`-shrink branch is not
-    /// gated by route type, so on iOS this ALSO fires once at board OPEN when
-    /// `GameBoardRedirect` pops its synthetic path entry — i.e. the counter
-    /// over-approximates "a session ended" the same way that branch's
-    /// `refreshResumeCandidate()` call has since #675. Consumers must treat a
-    /// bump as "a session MAY have just ended" and stay idempotent/cheap, like
-    /// the hubs' guarded `refresh()`.
+    /// #912: the iOS board-OPEN false-positive that used to reach this method —
+    /// `GameBoardRedirect` popping its synthetic path entry at open shrinks
+    /// `path` exactly like a genuine close — is now filtered out one level up in
+    /// `handlePathShrink` (its `!isGamePresented` guard), so this method is only
+    /// invoked on genuine session ends. Consumers should still stay
+    /// idempotent/cheap (like the hubs' guarded `refresh()`), but no longer see
+    /// a spurious bump at board open.
     ///
     /// - Parameter persistJoin: #823 — when supplied, the bump is deferred
     ///   into an unstructured `Task` that first awaits
@@ -233,6 +233,31 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
             await persistJoin.awaitPending()
             sessionTeardownCount += 1
         }
+    }
+
+    /// #912: called from `GameRoot`'s `path`-shrink branch instead of that
+    /// branch unconditionally firing `refreshResumeCandidate()` +
+    /// `gameSessionDidTearDown()` on every shrink. Filters out the specific
+    /// false-positive `gameSessionDidTearDown()`'s own doc already names: on
+    /// iOS, `GameBoardRedirect` pops its synthetic push entry once at board
+    /// OPEN (immediately before presenting the fullScreenCover) — that pop
+    /// shrinks `path` exactly like a genuine close does, over-approximating
+    /// "a session ended" into also meaning "a session just started".
+    ///
+    /// Distinguishing signal: `GameBoardRedirect` now calls `onPresent`
+    /// (→ `presentGame(route:)`, which flips `isGamePresented` to `true`)
+    /// BEFORE popping its path entry, so by the time this method runs for
+    /// that synthetic pop, `isGamePresented` is already `true` — a state no
+    /// genuine close can be in (a real close only pops `path` on macOS,
+    /// which never presents a fullScreenCover at all; on iOS a real close
+    /// goes through `dismissGame()`, a completely separate call path from
+    /// this one). So `isGamePresented == true` here means "this shrink is
+    /// the board-OPEN redirect pop", not "a session ended", and the refresh
+    /// + teardown bump are skipped.
+    public func handlePathShrink(persistJoin: TerminalPersistJoin? = nil) {
+        guard !isGamePresented else { return }
+        Task { await refreshResumeCandidate() }
+        gameSessionDidTearDown(persistJoin: persistJoin)
     }
 
     // MARK: - Game Center signed-out guard (#685)
