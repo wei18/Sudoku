@@ -63,11 +63,14 @@ public enum MinesweeperDailyHubState: Sendable, Equatable {
 @MainActor
 @Observable
 public final class MinesweeperDailyHubViewModel {
-    public private(set) var state: MinesweeperDailyHubState = .idle
+    /// #905: `internal(set)` (was `private(set)`) so `+Testing.swift` — split
+    /// out to mirror `SudokuUI.DailyHubViewModel+Testing`'s shape — can seed it.
+    public internal(set) var state: MinesweeperDailyHubState = .idle
     /// #774: the rolling 7-day week strip + streak. `.unknown` (empty days,
     /// nil streak) until the first successful `fetchWeekWindow` — see
     /// `fillCompletionAndFailureOverlay`, which is this state's sole writer.
-    public private(set) var weekStrip: MinesweeperDailyStripSnapshot = .unknown
+    /// #905: `internal(set)` (was `private(set)`) so `+Testing.swift` can seed it.
+    public internal(set) var weekStrip: MinesweeperDailyStripSnapshot = .unknown
     /// #826: non-nil while the confirmationDialog picker is showing. Mirrors
     /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`.
     public private(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
@@ -81,7 +84,9 @@ public final class MinesweeperDailyHubViewModel {
     /// failed daily) is `MinesweeperDailyOpenGuardView`'s job even when this
     /// gate is bypassed or races closed anyway — this is the UX-responsiveness
     /// half of the #842 defense-in-depth pair, not the airtight half.
-    public private(set) var isPhase2Pending = true
+    /// #905: `internal` (not `public`) — only `MinesweeperDailyHubView` (this
+    /// module) and `@testable`-importing test targets read/write it.
+    var isPhase2Pending = true
 
     private var path: Binding<[AppRoute]>
 
@@ -113,7 +118,11 @@ public final class MinesweeperDailyHubViewModel {
     private let dateProvider: @Sendable () -> Date
     /// Idempotency latch for `.task` — once `bootstrap()` resolves we don't
     /// re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
-    private var hasBootstrapped = false
+    /// #905: `internal` (was `private`) — Swift access control requires a
+    /// stored property's getter to be at least as visible as its setter, and
+    /// `+Testing.swift`'s `setStateForTesting` needs to write it from another
+    /// file in this module.
+    var hasBootstrapped = false
 
     public init(
         path: Binding<[AppRoute]>,
@@ -133,35 +142,10 @@ public final class MinesweeperDailyHubViewModel {
         self.dateProvider = dateProvider
     }
 
-    /// Seed state for previews / snapshot tests that bypass the async fetch.
-    /// Latches `hasBootstrapped` so the view's `.task { bootstrap() }` becomes a
-    /// no-op and the seeded state survives `NSHostingView` capture — mirrors
-    /// `MinesweeperCompletionViewModel.setStateForTesting`. Production never
-    /// calls this; the live `bootstrap()` path is untouched.
-    public func setStateForTesting(_ state: MinesweeperDailyHubState) {
-        self.state = state
-        self.hasBootstrapped = true
-    }
-
-    /// #774: seed the week strip for previews / snapshot tests, mirroring
-    /// `setStateForTesting` (which latches `hasBootstrapped`, so the view's
-    /// `.task { bootstrap() }` can't overwrite this either). Production never
-    /// calls this; the live `fillCompletionAndFailureOverlay` path is untouched.
-    public func setWeekStripForTesting(_ snapshot: MinesweeperDailyStripSnapshot) {
-        self.weekStrip = snapshot
-    }
-
-    /// #878 (#874 F-4, re-opening #842's no-affordance tradeoff): seeds
-    /// `isPhase2Pending` directly for previews / snapshot tests, mirroring
-    /// `SudokuUI.DailyHubViewModel.setPhase2PendingForTesting`. Needed
-    /// because `setStateForTesting` above bypasses `bootstrap()` entirely
-    /// and leaves `isPhase2Pending` at its default `true` — every existing
-    /// snapshot/ASC-screenshot fixture built via `setStateForTesting` now
-    /// calls this with `false` to keep representing the SETTLED loaded
-    /// state, not a mid-fetch one. Production never calls this.
-    public func setPhase2PendingForTesting(_ isPending: Bool) {
-        self.isPhase2Pending = isPending
-    }
+    // #905: the `setStateForTesting` / `setWeekStripForTesting` /
+    // `setPhase2PendingForTesting` test-only seams that used to live here
+    // moved to `MinesweeperDailyHubViewModel+Testing.swift`, mirroring
+    // `SudokuUI.DailyHubViewModel`'s `+Testing.swift` split.
 
     public func bootstrap() async {
         guard !hasBootstrapped else { return }

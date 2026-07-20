@@ -64,8 +64,8 @@ public final class DailyHubViewModel {
     /// `BoardLoaderView`'s job — see its `#842` precheck, the airtight half of
     /// this defense-in-depth pair). #878 re-opened #842's "deliberately not
     /// visual" call: `DailyPuzzleCard` now dims + drops `.isButton` while
-    /// `true` (#874 F-4). `internal(set)` so `+Testing.swift` can seed it.
-    public internal(set) var isPhase2Pending = true
+    /// `true` (#874 F-4). #905: `internal`, not `public` — `+Testing.swift` seeds it.
+    var isPhase2Pending = true
 
     /// Navigation path store (issue #240): routes through an injected
     /// `Binding<[AppRoute]>` when `RouteFactory` hoists `RootViewModel.path`
