@@ -81,8 +81,18 @@ extension LiveRouteFactory {
                     )
                 )
             }
+            // #910: was a direct `MinesweeperBoardView(difficulty:seed:mode:…)`
+            // construction. That view builds its `MinesweeperGameViewModel`
+            // once via `@State`'s `initialValue`, which SwiftUI only honors on
+            // first creation — Play Again's same-tick dismiss+represent could
+            // land this exact view back at the same tree position, silently
+            // discarding the fresh seed and leaving the just-exploded board on
+            // screen. `MinesweeperFreshBoardLoaderView` rebuilds the view model
+            // from a `.task(id:)` keyed on (difficulty, seed), which re-fires
+            // on a seed change independent of structural identity — see that
+            // view's header doc for the full mechanism.
             return AnyView(
-                MinesweeperBoardView(
+                MinesweeperFreshBoardLoaderView(
                     difficulty: difficulty,
                     seed: seed,
                     mode: mode,

@@ -118,7 +118,16 @@ import GameShellUI
         let view = factory.view(for: .board(difficulty: .beginner, seed: 42, mode: .practice), path: nil)
         let dump = String(describing: view)
         // Modal context (path: nil) must render the real board, not the redirect.
-        #expect(dump.contains("MinesweeperBoardView"), "Expected MinesweeperBoardView but got: \(dump)")
+        // #910: the direct `MinesweeperBoardView(difficulty:seed:mode:)`
+        // construction was replaced by `MinesweeperFreshBoardLoaderView`, which
+        // rebuilds the view model from a `.task(id:)` keyed on (difficulty,
+        // seed) instead of `@State`'s initialValue-only capture — this is what
+        // lets a same-tick Play Again dismiss+represent still pick up the new
+        // seed. It renders the same `MinesweeperBoardView` once loaded.
+        #expect(
+            dump.contains("MinesweeperFreshBoardLoaderView"),
+            "Expected MinesweeperFreshBoardLoaderView but got: \(dump)"
+        )
         // onPresentBoard must NOT have been invoked from this factory call.
         #expect(presented == nil)
     }
