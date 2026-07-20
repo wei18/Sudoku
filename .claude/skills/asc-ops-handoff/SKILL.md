@@ -29,7 +29,7 @@ Cannot be subagent-driven. Document in `v2.5-readiness.md` as `- [ ]` items; tra
 | Apple Developer Program enrolment / annual renewal | developer.apple.com | One-time + yearly |
 | Generate ASC API Key (.p8 + Key ID + Issuer ID) | App Store Connect → Users and Access → Keys | Required for ASCRegister + Xcode Cloud signing |
 | App Privacy questionnaire | ASC web UI → My Apps → Sudoku → App Privacy | No REST API exists (verified 2026-05-23) — must align manually with PrivacyInfo.xcprivacy |
-| IAP pricing tier + review screenshot + `Ready to Submit` | ASC → My Apps → … → In-App Purchases | Product creation + per-locale localization are now automated (`ASCRegister iap apply`, see Leader-orderable table); what remains web-UI is the price/availability, the IAP review screenshot, and flipping status to `Ready to Submit` |
+| IAP pricing tier + `Ready to Submit` | ASC → My Apps → … → In-App Purchases | Product creation, per-locale localization, AND the review screenshot are now automated (`ASCRegister iap apply` / `iap screenshots`, see Leader-orderable table); what remains web-UI is the price/availability and flipping status to `Ready to Submit` |
 | Sandbox tester account | ASC → Users and Access → Sandbox | One per region you want to test |
 | AdMob console linkage | apps.admob.com | Link to ASC App ID; create banner ad unit |
 | Create the ASC app record | Developer Portal (App ID) + ASC web UI (My Apps → +) | ASCRegister consumes `--app-id` — it cannot create the app; do this first, then feed the app-id to the tools |
@@ -47,6 +47,7 @@ Subagent-driveable. Document as "automated by ASCRegister X mode".
 | Register Game Center leaderboards (3) | `tools/ASCRegister` | ✅ shipped (v1) |
 | Register Game Center achievements (8) | `tools/ASCRegister` | ✅ shipped (v1) |
 | Register IAP product | `ASCRegister iap plan\|apply` | ✅ **SHIPPED** — `iap` subcommand creates/updates the IAP from metadata xcstrings (the 2026-05-26 cancellation was later reversed; confirm via `ASCRegister --help`). Requires the ASC app record to already exist (`--app-id`). |
+| Upload IAP review screenshot | `ASCRegister iap screenshots --iap-id <id> --screenshot <png> --i-am-sure` | ✅ **SHIPPED** — reserve→PUT→commit to `/v1/inAppPurchaseAppStoreReviewScreenshots`, idempotent (GET→skip-if-matching / evict-and-replace-on-drift); WRITE gated behind `--i-am-sure`. Verified live on both apps 2026-07-20. Screenshot source: any accepted portrait dimension (e.g. 1290×2796) showing the Remove Ads purchase point — `mise run ui:tour` emits a Settings frame. |
 | Upload App Metadata (description / keywords / screenshots / what's new) | `ASCRegister metadata plan\|apply\|set-version\|screenshots` | ✅ **SHIPPED** — `metadata` subcommand uploads listings + screenshots per locale (the 2026-05-26 backlog item was implemented; `screenshots` gated behind `--i-am-sure`). |
 
 ### 🤝 Hybrid (Leader prepares; user pushes the button)
@@ -72,7 +73,7 @@ Cross-reference the taxonomy above. If user-owned → respond "this is user step
 
 ## Anti-patterns
 
-- **"IAP is fully automated, no user step"** — NO. `ASCRegister iap apply` creates the product + localizations via the API, but pricing/availability, the IAP review screenshot, and the final `Ready to Submit` flip remain web-UI (user-owned). Automate the creation; hand the rest to the user.
+- **"IAP is fully automated, no user step"** — NO. `ASCRegister iap apply` creates the product + localizations and `iap screenshots` uploads the review screenshot, but **pricing/availability and the final `Ready to Submit` flip remain web-UI (user-owned)** — there is no ASC REST API for IAP price schedules in this tool. Automate creation + localization + review screenshot; hand price + submit to the user.
 - **"We'll fill App Privacy questionnaire later via API"** — NO. There is no API. Verified 2026-05-23.
 - **Shipping with test AdMob IDs in production**: paired flip exists for a reason. Per RCA #149 Fix N1, Release build with test app ID + production ad unit ID will silently no-fill at best.
 - **Conflating "ASCRegister handles Game Center" with "ASCRegister handles everything"**: explicit mode-by-mode tracking required. Game Center / IAP / metadata modes are all SHIPPED (`ASCRegister --help` is the source of truth). The one thing ASCRegister does NOT do is create the app record — it consumes `--app-id`, so the ASC app must be created in the web UI first (user-owned).

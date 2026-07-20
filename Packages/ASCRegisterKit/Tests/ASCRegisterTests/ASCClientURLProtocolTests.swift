@@ -1114,6 +1114,247 @@ internal struct ASCClientURLProtocolTests {
         #expect(methods == ["GET", "GET", "GET"])
     }
 
+    // MARK: - IAP review screenshot upload (reserve → PUT → commit, #911)
+
+    /// A single-part `inAppPurchaseAppStoreReviewScreenshots` reservation
+    /// response — same shape as `reservationBody` but the IAP resource type.
+    private static func iapReservationBody(id: String, putURL: String, byteLen: Int) -> String {
+        #"""
+        {"data":{"id":"\#(id)","type":"inAppPurchaseAppStoreReviewScreenshots",
+          "attributes":{"fileName":"review.png","fileSize":\#(byteLen),
+            "assetDeliveryState":{"state":"AWAITING_UPLOAD"},
+            "uploadOperations":[
+              {"method":"PUT","url":"\#(putURL)","offset":0,"length":\#(byteLen),
+               "requestHeaders":[{"name":"Content-Type","value":"image/png"}]}
+            ]}}}
+        """#
+    }
+
+    /// `reserveIAPScreenshot` POSTs the exact JSON:API relationship shape
+    /// (`inAppPurchaseV2` → `{type: "inAppPurchases", id}`) and parses the
+    /// returned `uploadOperations[]` via the same `UploadOperation.parse` the
+    /// appScreenshots path uses.
+    @Test("reserveIAPScreenshot posts the inAppPurchaseV2 relationship and parses uploadOperations")
+    internal func reserveIAPScreenshotPostsRelationshipShape() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 201, body: Self.iapReservationBody(
+                id: "iap-shot-1", putURL: "https://assets.apple.example/upload/iap1", byteLen: 9
+            )),
+        ])
+        let client = Self.makeClient()
+        let (id, ops) = try await client.reserveIAPScreenshot(
+            iapId: "iap-123", fileName: "review.png", fileSize: 9
+        )
+        #expect(id == "iap-shot-1")
+        #expect(ops.count == 1)
+        #expect(ops[0].url == "https://assets.apple.example/upload/iap1")
+        #expect(ops[0].offset == 0)
+        #expect(ops[0].length == 9)
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.count == 1)
+        #expect(reqs[0].method == "POST")
+        #expect(reqs[0].url.hasSuffix("/v1/inAppPurchaseAppStoreReviewScreenshots"))
+        let bodyJSON = try #require(
+            try JSONSerialization.jsonObject(with: reqs[0].body) as? [String: Any]
+        )
+        let data = try #require(bodyJSON["data"] as? [String: Any])
+        #expect(data["type"] as? String == "inAppPurchaseAppStoreReviewScreenshots")
+        let attrs = try #require(data["attributes"] as? [String: Any])
+        #expect(attrs["fileName"] as? String == "review.png")
+        #expect((attrs["fileSize"] as? NSNumber)?.intValue == 9)
+        let rels = try #require(data["relationships"] as? [String: Any])
+        let iapRel = try #require(rels["inAppPurchaseV2"] as? [String: Any])
+        let iapData = try #require(iapRel["data"] as? [String: Any])
+        #expect(iapData["type"] as? String == "inAppPurchases")
+        #expect(iapData["id"] as? String == "iap-123")
+    }
+
+    /// `commitIAPScreenshot` PATCHes /v1/inAppPurchaseAppStoreReviewScreenshots/{id}
+    /// with `uploaded:true` + the MD5 checksum.
+    @Test("commitIAPScreenshot patches uploaded:true + sourceFileChecksum")
+    internal func commitIAPScreenshotSendsChecksum() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-1","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        let checksum = AssetChecksum.md5Hex(Data("REVIEWPNG".utf8))
+        _ = try await client.commitIAPScreenshot(screenshotId: "iap-shot-1", checksum: checksum)
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.count == 1)
+        #expect(reqs[0].method == "PATCH")
+        #expect(reqs[0].url.hasSuffix("/v1/inAppPurchaseAppStoreReviewScreenshots/iap-shot-1"))
+        let bodyJSON = try #require(
+            try JSONSerialization.jsonObject(with: reqs[0].body) as? [String: Any]
+        )
+        let data = try #require(bodyJSON["data"] as? [String: Any])
+        #expect(data["type"] as? String == "inAppPurchaseAppStoreReviewScreenshots")
+        #expect(data["id"] as? String == "iap-shot-1")
+        let attrs = try #require(data["attributes"] as? [String: Any])
+        #expect(attrs["uploaded"] as? Bool == true)
+        #expect(attrs["sourceFileChecksum"] as? String == checksum)
+    }
+
+    /// `getIAPReviewScreenshot` returns `nil` (not a throw) when ASC responds
+    /// 404 for the singular relationship GET — the "no screenshot yet" case.
+    @Test("getIAPReviewScreenshot returns nil on a 404 (no screenshot yet)")
+    internal func getIAPReviewScreenshotNilOn404() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 404, body: #"{"errors":[{"status":"404"}]}"#),
+        ])
+        let client = Self.makeClient()
+        let result = try await client.getIAPReviewScreenshot(iapId: "iap-123")
+        #expect(result == nil)
+        #expect(StubState.recordedRequests()[0].url.hasSuffix("/v2/inAppPurchases/iap-123/appStoreReviewScreenshot"))
+    }
+
+    /// `getIAPReviewScreenshot` also returns `nil` (not a decode error) for
+    /// the alternate `200 {"data": null}` shape a to-one relationship "related"
+    /// endpoint may use — see ASCClient+IAPScreenshots.swift's UNCONFIRMED note.
+    @Test("getIAPReviewScreenshot returns nil on 200 with null data")
+    internal func getIAPReviewScreenshotNilOnNullData() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"{"data":null,"links":{}}"#),
+        ])
+        let client = Self.makeClient()
+        let result = try await client.getIAPReviewScreenshot(iapId: "iap-123")
+        #expect(result == nil)
+    }
+
+    /// `getIAPReviewScreenshot` decodes a present screenshot resource,
+    /// flattening its nested `assetDeliveryState` the same way the
+    /// appScreenshots path does.
+    @Test("getIAPReviewScreenshot decodes a present COMPLETE screenshot")
+    internal func getIAPReviewScreenshotDecodesPresent() async throws {
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-9","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"fileName":"review.png","sourceFileChecksum":"abc123",
+            "assetDeliveryState":{"state":"COMPLETE"}}},"links":{}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        let result = try await client.getIAPReviewScreenshot(iapId: "iap-123")
+        #expect(result?.id == "iap-shot-9")
+        #expect(result?.attributes["assetDeliveryState"] == "COMPLETE")
+        #expect(result?.attributes["sourceFileChecksum"] == "abc123")
+    }
+
+    /// End-to-end APPLY: no existing screenshot (404) → reserve → PUT → commit.
+    @Test("uploadIAPScreenshot apply: no existing screenshot → reserve→PUT→commit")
+    internal func uploadIAPScreenshotAppliesFreshUpload() async throws {
+        let bytes = Data("REVIEWPNGBYTES".utf8)
+        let expectedMD5 = AssetChecksum.md5Hex(bytes)
+        StubState.reset(with: [
+            StubResponse(status: 404, body: #"{"errors":[{"status":"404"}]}"#),  // no existing screenshot
+            StubResponse(status: 201, body: Self.iapReservationBody(
+                id: "iap-shot-new", putURL: "https://assets.apple.example/u/iap-new", byteLen: bytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-new","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        try await ASCRegisterCLI.uploadIAPScreenshot(
+            client: client, iapId: "iap-123", fileName: "review.png", bytes: bytes,
+            localChecksum: expectedMD5, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET", "POST", "PUT", "PATCH"])
+        let put = try #require(reqs.first { $0.method == "PUT" })
+        #expect(put.body == bytes)
+        #expect(put.url == "https://assets.apple.example/u/iap-new")
+        let commit = try #require(reqs.first { $0.method == "PATCH" })
+        let commitBody = try #require(
+            try JSONSerialization.jsonObject(with: commit.body) as? [String: Any]
+        )
+        let commitAttrs = try #require((commitBody["data"] as? [String: Any])?["attributes"] as? [String: Any])
+        #expect(commitAttrs["sourceFileChecksum"] as? String == expectedMD5)
+    }
+
+    /// Idempotency: an existing COMPLETE screenshot whose checksum matches the
+    /// local file is SKIPPED — no DELETE, no reserve, no PUT, no commit.
+    @Test("uploadIAPScreenshot apply: skips an existing COMPLETE matching screenshot")
+    internal func uploadIAPScreenshotSkipsMatchingComplete() async throws {
+        let bytes = Data("REVIEWPNGBYTES".utf8)
+        let checksum = AssetChecksum.md5Hex(bytes)
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-existing","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"fileName":"review.png","sourceFileChecksum":"\#(checksum)",
+            "assetDeliveryState":{"state":"COMPLETE"}}},"links":{}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        try await ASCRegisterCLI.uploadIAPScreenshot(
+            client: client, iapId: "iap-123", fileName: "review.png", bytes: bytes,
+            localChecksum: checksum, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET"])
+    }
+
+    /// Replace path: an existing COMPLETE screenshot whose checksum DIFFERS
+    /// (content drift) is evicted (DELETE) then re-uploaded.
+    @Test("uploadIAPScreenshot apply: deletes + re-uploads on checksum drift")
+    internal func uploadIAPScreenshotReplacesOnDrift() async throws {
+        let bytes = Data("NEWBYTES-12345".utf8)
+        let expectedMD5 = AssetChecksum.md5Hex(bytes)
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-old","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"fileName":"review.png","sourceFileChecksum":"stale-checksum",
+            "assetDeliveryState":{"state":"COMPLETE"}}},"links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // DELETE the stale screenshot
+            StubResponse(status: 201, body: Self.iapReservationBody(
+                id: "iap-shot-replacement", putURL: "https://assets.apple.example/u/iap-repl", byteLen: bytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"iap-shot-replacement","type":"inAppPurchaseAppStoreReviewScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+        ])
+        let client = Self.makeClient()
+        try await ASCRegisterCLI.uploadIAPScreenshot(
+            client: client, iapId: "iap-123", fileName: "review.png", bytes: bytes,
+            localChecksum: expectedMD5, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET", "DELETE", "POST", "PUT", "PATCH"])
+        let del = try #require(reqs.first { $0.method == "DELETE" })
+        #expect(del.url.hasSuffix("/v1/inAppPurchaseAppStoreReviewScreenshots/iap-shot-old"))
+    }
+
+    /// Dry-run (apply:false): only the idempotency GET runs — no mutating
+    /// request (no DELETE / reserve / PUT / commit), matching the CLI
+    /// contract's "no POST/PUT/PATCH/DELETE without --i-am-sure".
+    @Test("uploadIAPScreenshot dry-run issues no mutating request")
+    internal func uploadIAPScreenshotDryRunNoMutation() async throws {
+        let bytes = Data("REVIEWPNGBYTES".utf8)
+        StubState.reset(with: [
+            StubResponse(status: 404, body: #"{"errors":[{"status":"404"}]}"#),
+        ])
+        let client = Self.makeClient(mode: .plan)
+        try await ASCRegisterCLI.uploadIAPScreenshot(
+            client: client, iapId: "iap-123", fileName: "review.png", bytes: bytes,
+            localChecksum: AssetChecksum.md5Hex(bytes), apply: false
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET"])
+    }
+
     /// Build a throwaway `screenshots/<app>/<device>/<locale>/<file>` tree under
     /// a temp dir for the discovery + file-read paths. Returns the root to pass
     /// as `--screenshots-dir`.
