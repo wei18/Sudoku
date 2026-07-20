@@ -303,6 +303,10 @@ let testTargets: [Target] = [
             .product(name: "AdsAdMob", package: "AppMonetizationKit"),
             "SudokuKitTesting",
             .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            // #909: ReminderSettingsIdentityTests builds a real entry over the
+            // Reminders Noop conformers to prove same-instance across renders.
+            remindersDep,
+            settingsUIDep,
         ] + monetizationTestDeps,
         resources: [
             // Renamed to `.json` extension so xcodebuild's `.xcstrings`

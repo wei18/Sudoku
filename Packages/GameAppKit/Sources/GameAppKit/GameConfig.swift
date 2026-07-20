@@ -59,8 +59,17 @@ public struct GameDeps {
     /// Daily-completion mount; each invocation produces a fresh coordinator
     /// with the same wired authorizer/scheduler/store underneath.
     public let makeDailyReminderPrimer: @MainActor () -> ReminderPrimerCoordinator
-    /// Builder for the Settings reminders entry. Called once per Settings mount.
-    public let makeReminderSettings: @MainActor () -> ReminderSettingsEntry
+    /// The Settings reminders entry, built ONCE at composition time (#909).
+    /// A factory closure here previously minted a fresh `ReminderSettingsModel`
+    /// (with `isPrimerPresented` reset to `false`) on every invocation — but
+    /// the `.settings` case lives inside a `.navigationDestination` builder
+    /// closure, which SwiftUI re-invokes on every ancestor re-render, not just
+    /// once per Settings mount. A concurrent bootstrap `.task` re-rendering an
+    /// ancestor right after the user tapped "Daily reminder" replaced the
+    /// just-flipped model with a fresh one, so the primer sheet's binding read
+    /// `false` and dismissed itself immediately. A stable, eagerly-built value
+    /// guarantees every `.settings` render reuses the same model instance.
+    public let reminderSettings: ReminderSettingsEntry
 
     public init(
         telemetry: Telemetry,
@@ -77,7 +86,7 @@ public struct GameDeps {
         audioSettings: AudioSettingsModel,
         attPrimer: ATTPrimerCoordinator,
         makeDailyReminderPrimer: @escaping @MainActor () -> ReminderPrimerCoordinator,
-        makeReminderSettings: @escaping @MainActor () -> ReminderSettingsEntry
+        reminderSettings: ReminderSettingsEntry
     ) {
         self.telemetry = telemetry
         self.errorReporter = errorReporter
@@ -93,7 +102,7 @@ public struct GameDeps {
         self.audioSettings = audioSettings
         self.attPrimer = attPrimer
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
-        self.makeReminderSettings = makeReminderSettings
+        self.reminderSettings = reminderSettings
     }
 }
 

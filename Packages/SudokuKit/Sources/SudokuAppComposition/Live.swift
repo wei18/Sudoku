@@ -242,7 +242,7 @@ extension SudokuAppComposition {
             monetizationController: deps.monetizationController,
             toastController: deps.toastController,
             makeDailyReminderPrimer: deps.makeDailyReminderPrimer,
-            makeReminderSettings: deps.makeReminderSettings,
+            reminderSettings: deps.reminderSettings,
             settingsNotices: makeSettingsNotices(),
             soundPlayer: deps.soundPlayer,
             audioSettings: deps.audioSettings,
