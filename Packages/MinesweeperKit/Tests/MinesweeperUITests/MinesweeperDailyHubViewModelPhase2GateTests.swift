@@ -91,15 +91,14 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
         #expect(secondResult.isEmpty)
     }
 
-    /// #912: `fetchWeekWindow`'s 7 per-day queries must be issued
-    /// CONCURRENTLY, not one at a time. A sequential `for` loop can only
-    /// ever have 1 `query()` call in flight — blocked on that single
-    /// `await` — before the gate resolves, so `callCount` would freeze at 1.
-    /// A concurrent task-group fan-out dispatches all 7 before any of them
-    /// can resolve, so `callCount` reaches 7 while every call is still
-    /// gated. Mirrors `SudokuUI`'s
-    /// `weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve`.
-    @Test func weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve() async {
+    /// #915: `fetchWeekWindow` now backs its whole 7-day window from ONE
+    /// `fetchCompletedDailyIdsByDay()` call instead of #912's 7-way
+    /// concurrent-but-redundant fan-out (7 byte-identical `query()` calls,
+    /// each thrown away except its own day's slice). `fetchFailedIds` (an
+    /// independent `async let` lane) still issues its own single `query()`
+    /// call through the same gate, so `callCount` settles at 2 — not the
+    /// pre-fix 8 — while both are still gated.
+    @Test func weekWindowFetchIssuesExactlyOneQueryPlusOneFailedIdsQuery() async {
         let gated = GatedQueryGateway()
         let store = MinesweeperSavedGameStore(gateway: gated, clock: { Self.fixedDate })
         var path: [AppRoute] = []
@@ -115,26 +114,20 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
             await Task.yield()
         }
 
-        // `fetchFailedIds` (an independent `async let` lane, #912) also
-        // issues one `query()` call through the same gate — the week
-        // window's 7 concurrent calls plus that 1 is 8 while everything is
-        // still gated.
-        #expect(await gated.callCount == 8)
+        #expect(await gated.callCount == 2)
 
         await gated.resolve(.success([]))
         await bootstrapTask.value
 
-        // Ordering survives the concurrent fan-out: oldest (offset 6) first,
-        // today (offset 0) last — `MinesweeperDailyStripView` depends on
-        // this order.
+        // Ordering is preserved: oldest (offset 6) first, today (offset 0)
+        // last — `MinesweeperDailyStripView` depends on this order.
         #expect(viewModel.weekStrip.days.map(\.offsetFromToday) == [6, 5, 4, 3, 2, 1, 0])
     }
 }
 
 /// Gateway fake whose `query` hangs on a manually resolved continuation UNTIL
 /// `resolve(_:)` is called, after which the gate stays permanently open (every
-/// later `query` call — `fetchWeekWindow`'s 7 sequential days included —
-/// returns immediately). One-shot-unlock, unlike
+/// later `query` call returns immediately). One-shot-unlock, unlike
 /// `MinesweeperDailyOpenGuardViewResolveTests.GatedQueryGateway`, which only
 /// needs to gate a SINGLE call (`resolve`'s correctness check short-circuits
 /// after the first query); this suite's `fillCompletionAndFailureOverlay`
@@ -155,10 +148,8 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
 private actor GatedQueryGateway: PrivateCKGateway {
     private var pendingContinuations: [CheckedContinuation<[RecordPayload], Error>] = []
     private var unlockedResult: Result<[RecordPayload], Error>?
-    /// #912: counts every `query()` invocation (gated or not) — proves the
-    /// week-window fan-out issues all 7 per-day calls concurrently rather
-    /// than one at a time. See
-    /// `weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve`.
+    /// #912/#915: counts every `query()` invocation (gated or not). See
+    /// `weekWindowFetchIssuesExactlyOneQueryPlusOneFailedIdsQuery`.
     private(set) var callCount = 0
 
     func resolve(_ result: Result<[RecordPayload], Error>) {

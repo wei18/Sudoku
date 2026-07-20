@@ -151,6 +151,22 @@ struct MinesweeperDailyHubViewModelWeekStripTests {
         #expect(cards.count == 3)
     }
 
+    /// #915: the week-strip window used to issue 7 byte-identical CK
+    /// `query()` calls (one per day, each filtered client-side to a single
+    /// day) — `fetchWeekWindow` now backs all 7 slots from ONE
+    /// `fetchCompletedDailyIdsByDay()` call. `bootstrap()` also fires
+    /// `fetchFailedIds` (its own independent `query()` lane), so the total
+    /// after bootstrap is 2 — not the pre-fix 8.
+    @Test func bootstrapIssuesExactlyTwoQueriesNotOnePerWindowDay() async {
+        let gateway = FakePrivateCKGateway()
+        let viewModel = makeViewModel(gateway: gateway)
+
+        await viewModel.bootstrap()
+
+        let queryCount = await gateway.operations.filter { $0 == .query }.count
+        #expect(queryCount == 2)
+    }
+
     /// `refresh()` re-runs the window fetch and picks up a newly-completed
     /// today without a full hub remount (#761 contract, extended to the strip).
     @Test func refreshUpdatesWeekStripWhenTodayBecomesCompleted() async {

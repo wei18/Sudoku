@@ -332,6 +332,33 @@ public actor MinesweeperSavedGameStore {
         )
     }
 
+    /// Single-query, day-bucketed sibling of `fetchCompletedDailyIds(for:)`
+    /// (#915). That method's CK query is date-agnostic — `status ==
+    /// "completed"` is the only queryable predicate the schema offers (see its
+    /// doc) — so a caller needing several days back-to-back was issuing one
+    /// BYTE-IDENTICAL CK query per day and throwing away every result except
+    /// the one matching that day. `MinesweeperDailyHubViewModel.fetchWeekWindow`
+    /// (the 7-day rolling week-strip window) is exactly that caller: this
+    /// collapses its 7 redundant reads into 1 by running the query once and
+    /// bucketing every daily-completed record by its UTC day
+    /// (`dailyDay(fromRecordName:)`), keyed the same way
+    /// `UTCDay.string(from:)` formats a date. `fetchCompletedDailyIds(for:)`
+    /// itself is UNCHANGED — its other caller (`MinesweeperDailyOpenGuardView`'s
+    /// today-only re-check) genuinely needs just one day, so a single query
+    /// already covers it.
+    public func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
+        let payloads = try await gateway.query(
+            .statusEquals(recordType: PrivateCKConstants.savedGameRecordType, status: "completed")
+        )
+        var byDay: [String: Set<String>] = [:]
+        for summary in payloads.compactMap(Self.summary(from:)) {
+            guard summary.modeRaw == GameModeRaw.daily else { continue }
+            guard let day = Self.dailyDay(fromRecordName: summary.recordName) else { continue }
+            byDay[day, default: []].insert(summary.recordName)
+        }
+        return byDay
+    }
+
     static func summary(from payload: RecordPayload) -> MinesweeperSavedGameSummary? {
         guard
             case .string(let difficultyRaw) = payload.fields[Field.difficulty],
