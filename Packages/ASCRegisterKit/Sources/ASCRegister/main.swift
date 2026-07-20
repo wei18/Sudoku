@@ -49,6 +49,7 @@ internal enum ASCRegisterCLI {
                 switch subSub {
                 case "plan":  try await runIAPRemote(args: rest2, mode: .plan)
                 case "apply": try await runIAPRemote(args: rest2, mode: .apply)
+                case "screenshots": try await runIAPScreenshots(args: rest2)
                 default:
                     FileHandle.standardError.write(Data("Unknown iap subcommand: \(subSub)\n".utf8))
                     printUsage()
@@ -371,6 +372,7 @@ internal enum ASCRegisterCLI {
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
+          ASCRegister iap screenshots --key <p8> --key-id <id> --issuer <id> --iap-id <id> --screenshot <path> [--i-am-sure]
           ASCRegister metadata plan  --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
           ASCRegister metadata apply --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--version <s>] [--platform ios|macos|all] [--metadata-dir <dir>]
           ASCRegister metadata set-version --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> --version <string> [--platform ios|macos|all] [--app-id <id>]
@@ -1256,6 +1258,112 @@ internal enum ASCRegisterCLI {
             }
             print("Applied.")
         }
+    }
+
+    // MARK: - iap screenshots (App Store Review Screenshot upload)
+
+    /// Upload a single "App Store Review Screenshot" to a given IAP via
+    /// Apple's multi-part reservation flow (reserve → PUT → commit) — the
+    /// last web-UI-only IAP step (`.claude/skills/asc-ops-handoff/SKILL.md`
+    /// "IAP review screenshot"). An IAP has at most ONE review screenshot
+    /// (unlike the many-per-set appScreenshots), so idempotency is a single
+    /// GET rather than a set index.
+    ///
+    /// SAFETY: mutates ASC and is gated behind `--i-am-sure` (mirrors
+    /// `metadata screenshots`). Without it this is a dry-run: resolves the
+    /// local file, checks the remote state, and prints exactly what WOULD
+    /// happen (upload / skip / replace) — no POST/PUT/PATCH/DELETE.
+    private static func runIAPScreenshots(args: [String]) async throws {
+        let opts = Options.parse(args)
+        let keyPath = try opts.required("key")
+        let keyId = try opts.required("key-id")
+        let issuer = try opts.required("issuer")
+        let iapId = try opts.required("iap-id")
+        let screenshotPath = try opts.required("screenshot")
+        let isSure = opts.has("i-am-sure")
+
+        guard let bytes = FileManager.default.contents(atPath: screenshotPath) else {
+            throw CLIError.cannotReadFile(screenshotPath)
+        }
+        let fileName = URL(fileURLWithPath: screenshotPath).lastPathComponent
+        let localChecksum = AssetChecksum.md5Hex(bytes)
+
+        let keyURL = URL(fileURLWithPath: keyPath)
+        guard let pem = try? String(contentsOf: keyURL, encoding: .utf8) else {
+            throw CLIError.cannotReadFile(keyPath)
+        }
+        // Read-only in dry-run; only an `.apply` client (which actually sends
+        // the reserve POST / commit PATCH / delete) is built under `--i-am-sure`.
+        let client = ASCClient(
+            auth: ASCClient.Auth(keyId: keyId, issuerId: issuer, keyPEM: pem),
+            mode: isSure ? .apply : .plan
+        )
+
+        print("iap screenshots: iap-id \(iapId) file=\(fileName) size=\(bytes.count) md5=\(localChecksum) "
+            + "— \(isSure ? "UPLOADING (--i-am-sure)." : "DRY-RUN (pass --i-am-sure to upload).")")
+
+        try await uploadIAPScreenshot(
+            client: client, iapId: iapId, fileName: fileName, bytes: bytes,
+            localChecksum: localChecksum, apply: isSure
+        )
+    }
+
+    /// GET the IAP's existing review screenshot (if any) and decide:
+    /// skip (COMPLETE + checksum matches), or evict-and-reserve-and-PUT-and-
+    /// commit (absent, non-COMPLETE, or checksum drift). `internal` so the
+    /// URLProtocol-stub harness can drive the full sequence offline, same as
+    /// `uploadScreenshots`.
+    internal static func uploadIAPScreenshot(
+        client: ASCClient,
+        iapId: String,
+        fileName: String,
+        bytes: Data,
+        localChecksum: String,
+        apply: Bool
+    ) async throws {
+        let existing = try await client.getIAPReviewScreenshot(iapId: iapId)
+        let existingComplete = existing?.attributes["assetDeliveryState"] == "COMPLETE"
+        let existingChecksum = existing?.attributes["sourceFileChecksum"]
+        // No reported checksum is treated as matching (same convention as
+        // the app-screenshot idempotency check) — only an explicit mismatch
+        // counts as drift.
+        let contentMatches = existingChecksum.map { $0 == localChecksum } ?? true
+
+        if let existing, existingComplete, contentMatches {
+            print("  SKIP   iap-screenshot \(fileName) (already COMPLETE, checksum matches, id=\(existing.id))")
+            return
+        }
+
+        let reason: String? = existing.map {
+            existingComplete ? "content drift" : "incomplete (\($0.attributes["assetDeliveryState"] ?? "no state"))"
+        }
+
+        if !apply {
+            let evictNote = reason.map { "re-upload (\($0)): delete + " } ?? ""
+            print("  UPLOAD iap-screenshot \(fileName) (\(evictNote)reserve→PUT→commit)")
+            return
+        }
+
+        if let existing, let reason {
+            print("  EVICT  iap-screenshot \(fileName) → delete id=\(existing.id) (\(reason))")
+            try await client.deleteIAPScreenshot(screenshotId: existing.id)
+        }
+
+        let (id, operations) = try await client.reserveIAPScreenshot(
+            iapId: iapId, fileName: fileName, fileSize: bytes.count
+        )
+        guard !operations.isEmpty else {
+            throw CLIError.invalidValue(
+                flag: "uploadOperations", value: "empty",
+                allowed: ["reservation must return ≥1 uploadOperation for \(fileName)"]
+            )
+        }
+        for operation in operations {
+            try await client.uploadPart(operation, of: bytes)
+        }
+        let committed = try await client.commitIAPScreenshot(screenshotId: id, checksum: localChecksum)
+        print("  UPLOAD iap-screenshot \(fileName) → id=\(id) (\(operations.count) part(s), md5=\(localChecksum), "
+            + "assetDeliveryState=\(committed.attributes["assetDeliveryState"] ?? "?"))")
     }
 
     // MARK: - inspect
