@@ -47,8 +47,9 @@ surface (packages, App shell, CloudKit DB, Project.swift wiring, L10n shells, te
 dirs) is mechanical and identical every time — it should be generated, not retyped.
 
 **Non-goal:** generating gameplay. The scaffold produces a trivial **placeholder
-game** (e.g. tap-to-win) so the platform wiring compiles and ships; the developer
-then replaces the three gameplay pieces.
+game** (planned as e.g. tap-to-win; as-built it reuses the copied-and-renamed
+Minesweeper gameplay — see §4's as-built note) so the platform wiring compiles and
+ships; the developer then replaces the three gameplay pieces.
 
 ---
 
@@ -108,7 +109,9 @@ around.
 
 **Generated (mechanical, identical every time):**
 1. `Packages/<Game>CoreKit` + `Packages/<Game>Kit` — Package.swift + target dirs +
-   placeholder gameplay (a minimal engine/session/board that compiles & wins).
+   placeholder gameplay (planned as a minimal engine/session/board that compiles &
+   wins; as-built it is the copied-and-renamed Minesweeper gameplay — see §4's
+   as-built note).
 2. `App/<Game>/` — Info.plist (with `$(…)` AdMob substitution wiring, no real IDs),
    entitlements (per-game iCloud container id), PrivacyInfo, `<Game>App.swift`,
    `license_plist.yml`, `Localizable.xcstrings` + `InfoPlist.xcstrings` (7-locale
@@ -135,6 +138,19 @@ around.
 ---
 
 ## 4. Placeholder-gameplay strategy (the load-bearing idea)
+
+> **Corrected (as-built) — the shipped scaffold does NOT stamp a tap-to-win stub.**
+> PR1 (#678, `mise-tasks/new_game/scaffold`) keeps the **full copied Minesweeper
+> gameplay** (engine/session/board UI), renamed via the token map, AS the
+> placeholder — it does not hand-author a minimal 1-cell "tap to win" engine. The
+> scaffold header comment records the rationale: MinesweeperUI alone is ~25 source
+> files threaded through the shared protocols, so copying-and-renaming the working
+> game is cheaper and less error-prone than authoring a new tiny stub. The
+> "trivial but real game / 1-cell tap-to-win" description in this section (and the
+> §1 non-goal + §3 item 1 wording) is the pre-ship plan, retained as the historical
+> design intent; the load-bearing property it argues for — *the generated app
+> builds, launches, plays to completion, saves/resumes, and passes its E2E smoke on
+> day one* — still holds, just via copied-and-renamed gameplay rather than a stub.
 
 A scaffold that leaves `<Game>CoreKit` empty produces a non-compiling tree — useless.
 Instead it stamps a **trivial but real game**: a 1-cell "tap to win" board over a real

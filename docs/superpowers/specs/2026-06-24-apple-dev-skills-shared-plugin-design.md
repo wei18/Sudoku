@@ -111,7 +111,7 @@ apple-dev-skills/                  ← NEW repo (source of truth, a CC plugin)
 ├── skills/
 │   ├── swift6-concurrency/SKILL.md
 │   ├── telemetry-facade-pattern/SKILL.md
-│   └── … (26 skills)
+│   └── … (26 skills)          ← historical plan; as-built = 32 skills across 2 plugins, see AS-BUILT NOTE
 ├── README.md
 └── README.zh-Hant.md
 
@@ -119,13 +119,13 @@ Sudoku-spec/ (this repo)
 └── .claude/skills/
     ├── apple-dev-skills/          ← git submodule → apple-dev-skills@skills-dir
     │   (skills surface as apple-dev-skills:<skill>)
-    └── <8 project-bound skills>/  ← stay flat, un-namespaced
+    └── <9 project-bound skills>/  ← stay flat, un-namespaced (plan said 8; as-built = 9, see AS-BUILT NOTE)
 ```
 
 This repo continues to have access to all skills; the 26 moved ones simply carry
 the `apple-dev-skills:` prefix.
 
-## 5. Classification (34 → move 26 / stay 8)
+## 5. Classification (historical plan: 34 → move 26 / stay 8; as-built: 32 move across 2 plugins / stay 9 — see AS-BUILT NOTE)
 
 > **UPDATE (2026-07-13):** Stay count corrected to **9** — `screen-contract-spec`
 > (added to this repo after this spec was written) is also project-bound and
