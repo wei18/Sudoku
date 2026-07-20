@@ -68,7 +68,7 @@ extension MinesweeperDailyHubViewModel {
         return bestTimes
     }
 
-    struct WeekWindowSlot {
+    struct WeekWindowSlot: Sendable {
         let offsetFromToday: Int
         let date: Date
         let completedPuzzleIds: Set<String>
@@ -78,28 +78,55 @@ extension MinesweeperDailyHubViewModel {
     /// the "7+" caption branch in `MinesweeperDailyStripView`).
     static let weekStripWindowSize = 7
 
-    /// Fetches `savedGameStore.fetchCompletedDailyIds(for:)` once per day in
-    /// the rolling window, oldest (`offsetFromToday: 6`) to newest
-    /// (`offsetFromToday: 0` == today). Returns `nil` when `savedGameStore`
-    /// is absent, or on the first fetch failure — an all-or-nothing degrade.
+    /// #912: fetches `savedGameStore.fetchCompletedDailyIds(for:)` for all 7
+    /// days in the rolling window CONCURRENTLY (a task-group fan-out) rather
+    /// than one sequential CK round-trip at a time — mirrors
+    /// `SudokuUI.DailyHubViewModel.fetchWeekWindow`'s identical fix. MS's
+    /// pre-fix shape was worse than Sudoku's: this loop ran sequentially
+    /// AND `fillCompletionAndFailureOverlay` then awaited `fetchFailedIds`
+    /// sequentially too (see that method) — 8 total serial round-trips.
+    /// `savedGameStore` is captured into a local `let` before the fan-out so
+    /// the child closures don't need to cross the MainActor-isolated class
+    /// boundary — `MinesweeperSavedGameStore` is an `actor` (implicitly
+    /// `Sendable`), so concurrent calls into the SAME instance just
+    /// serialize at the actor's mailbox (never deadlock).
+    ///
+    /// Returns `nil` when `savedGameStore` is absent, or on the first fetch
+    /// failure — an all-or-nothing degrade, not a partial window.
+    /// `withThrowingTaskGroup` cancels every still-running child task before
+    /// rethrowing, so a failing day never leaves orphaned work behind.
+    ///
+    /// Task-group completion order is NOT submission order, so the result is
+    /// explicitly re-sorted oldest (`offsetFromToday: 6`) to newest
+    /// (`offsetFromToday: 0` == today) before returning — callers (the week
+    /// strip, `MinesweeperDailyStripView`) depend on that ordering.
     func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
         guard let savedGameStore else { return nil }
-        var slots: [WeekWindowSlot] = []
-        slots.reserveCapacity(Self.weekStripWindowSize)
-        for offset in stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1) {
-            let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
-            do {
-                let completed = try await savedGameStore.fetchCompletedDailyIds(for: dayDate)
-                slots.append(WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed))
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperDailyHubViewModel.fetchWeekWindow"
-                )
-                return nil
+        let offsets = stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1)
+        do {
+            let slots = try await withThrowingTaskGroup(of: WeekWindowSlot.self) { group in
+                for offset in offsets {
+                    let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
+                    group.addTask {
+                        let completed = try await savedGameStore.fetchCompletedDailyIds(for: dayDate)
+                        return WeekWindowSlot(offsetFromToday: offset, date: dayDate, completedPuzzleIds: completed)
+                    }
+                }
+                var collected: [WeekWindowSlot] = []
+                collected.reserveCapacity(Self.weekStripWindowSize)
+                for try await slot in group {
+                    collected.append(slot)
+                }
+                return collected
             }
+            return slots.sorted { $0.offsetFromToday > $1.offsetFromToday }
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "MinesweeperDailyHubViewModel.fetchWeekWindow"
+            )
+            return nil
         }
-        return slots
     }
 }

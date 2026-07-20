@@ -150,4 +150,52 @@ struct GameRootViewModelLeaveTests {
 
         #expect(sut.sessionTeardownCount == 3)
     }
+
+    // MARK: - #912: path-shrink open-vs-close gating
+
+    /// `GameRoot`'s `path`-shrink branch used to call `refreshResumeCandidate()`
+    /// + `gameSessionDidTearDown()` unconditionally on ANY shrink — including
+    /// `GameBoardRedirect`'s synthetic self-pop at board OPEN (see that
+    /// type's doc). `GameBoardRedirect` now calls `presentGame(route:)`
+    /// BEFORE popping, so `isGamePresented` is already `true` by the time
+    /// `handlePathShrink()` runs for that pop — this is the exact case that
+    /// must be filtered out.
+    @Test func handlePathShrinkSkipsRefreshAndTeardownWhileGamePresented() {
+        let sut = makeVM()
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        #expect(sut.isGamePresented == true)
+
+        sut.handlePathShrink()
+
+        #expect(sut.sessionTeardownCount == 0)
+    }
+
+    /// A genuine close (macOS `path` pop with no active game modal — the
+    /// only way `path` ever shrinks on macOS, since `onPresentBoard` is
+    /// iOS-only wired) must still bump the counter exactly as before —
+    /// `handlePathShrink` narrows the false-positive, it must not turn into
+    /// a "never refreshes" regression.
+    @Test func handlePathShrinkBumpsTeardownWhenGameNotPresented() {
+        let sut = makeVM()
+        #expect(sut.isGamePresented == false)
+
+        sut.handlePathShrink()
+
+        #expect(sut.sessionTeardownCount == 1)
+    }
+
+    /// End-to-end sequence mirroring the real bug: a board opens (redirect
+    /// pop while presented — must NOT bump), then later the session
+    /// genuinely ends via `dismissGame()` (must bump). Proves open and close
+    /// are now told apart, not just each in isolation.
+    @Test func boardOpenPathShrinkIsSilentButLaterDismissStillCounts() {
+        let sut = makeVM()
+
+        sut.presentGame(route: .board(puzzleId: "2026-06-12-easy"))
+        sut.handlePathShrink() // simulates GameBoardRedirect's open-time pop
+        #expect(sut.sessionTeardownCount == 0)
+
+        sut.dismissGame() // genuine close
+        #expect(sut.sessionTeardownCount == 1)
+    }
 }

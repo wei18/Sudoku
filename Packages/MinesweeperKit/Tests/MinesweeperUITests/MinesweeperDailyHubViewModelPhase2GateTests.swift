@@ -90,6 +90,45 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
         #expect(firstResult.isEmpty)
         #expect(secondResult.isEmpty)
     }
+
+    /// #912: `fetchWeekWindow`'s 7 per-day queries must be issued
+    /// CONCURRENTLY, not one at a time. A sequential `for` loop can only
+    /// ever have 1 `query()` call in flight — blocked on that single
+    /// `await` — before the gate resolves, so `callCount` would freeze at 1.
+    /// A concurrent task-group fan-out dispatches all 7 before any of them
+    /// can resolve, so `callCount` reaches 7 while every call is still
+    /// gated. Mirrors `SudokuUI`'s
+    /// `weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve`.
+    @Test func weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve() async {
+        let gated = GatedQueryGateway()
+        let store = MinesweeperSavedGameStore(gateway: gated, clock: { Self.fixedDate })
+        var path: [AppRoute] = []
+        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
+        let viewModel = MinesweeperDailyHubViewModel(
+            path: binding,
+            savedGameStore: store,
+            dateProvider: { Self.fixedDate }
+        )
+
+        let bootstrapTask = Task { await viewModel.bootstrap() }
+        for _ in 0..<200 {
+            await Task.yield()
+        }
+
+        // `fetchFailedIds` (an independent `async let` lane, #912) also
+        // issues one `query()` call through the same gate — the week
+        // window's 7 concurrent calls plus that 1 is 8 while everything is
+        // still gated.
+        #expect(await gated.callCount == 8)
+
+        await gated.resolve(.success([]))
+        await bootstrapTask.value
+
+        // Ordering survives the concurrent fan-out: oldest (offset 6) first,
+        // today (offset 0) last — `MinesweeperDailyStripView` depends on
+        // this order.
+        #expect(viewModel.weekStrip.days.map(\.offsetFromToday) == [6, 5, 4, 3, 2, 1, 0])
+    }
 }
 
 /// Gateway fake whose `query` hangs on a manually resolved continuation UNTIL
@@ -116,6 +155,11 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
 private actor GatedQueryGateway: PrivateCKGateway {
     private var pendingContinuations: [CheckedContinuation<[RecordPayload], Error>] = []
     private var unlockedResult: Result<[RecordPayload], Error>?
+    /// #912: counts every `query()` invocation (gated or not) — proves the
+    /// week-window fan-out issues all 7 per-day calls concurrently rather
+    /// than one at a time. See
+    /// `weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve`.
+    private(set) var callCount = 0
 
     func resolve(_ result: Result<[RecordPayload], Error>) {
         unlockedResult = result
@@ -133,6 +177,7 @@ private actor GatedQueryGateway: PrivateCKGateway {
     func delete(recordName: String) async throws {}
 
     func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {
+        callCount += 1
         if let unlockedResult { return try unlockedResult.get() }
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingContinuations.append(continuation)

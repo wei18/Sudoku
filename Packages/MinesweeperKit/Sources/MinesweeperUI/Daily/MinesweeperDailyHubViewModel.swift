@@ -221,21 +221,25 @@ public final class MinesweeperDailyHubViewModel {
         defer { isPhase2Pending = false }
         guard case .loaded = state else { return }
 
-        // #886: the per-difficulty best-time read rides this same phase-2
-        // window, in parallel (`async let`) with the EXISTING window+failed
-        // sequence — `bestTimes` has no ordering dependency on either, so it
-        // races ahead while `fetchWeekWindow` → `fetchFailedIds` keep their
-        // pre-#886 sequential shape unchanged (out of scope for this fix).
-        // Production `PrivateCKGateway` conformers are plain actors with
-        // per-call state, so concurrent calls just serialize at the actor's
-        // mailbox — never deadlock; a round-1 attempt at this misread a
-        // single-continuation TEST FAKE's limitation (`GatedQueryGateway`,
-        // since fixed to queue multiple pending continuations) as a
-        // production concurrency hazard and sequentialized needlessly,
-        // adding 3 serial CK round-trips per hub load.
+        // #886/#912: the per-difficulty best-time read, the week-window
+        // fetch, AND the failed-ids fetch all race concurrently
+        // (`async let` — three independent CK read lanes, no ordering
+        // dependency between any of them). #912 removed the prior
+        // sequential `window` → `failed` shape (each `await`ed in turn,
+        // stacking on top of `fetchWeekWindow`'s own now-concurrent 7-day
+        // fan-out) — that leftover sequencing was the last serial hop in
+        // MS's phase-2 lane. Production `PrivateCKGateway` conformers are
+        // plain actors with per-call state, so concurrent calls just
+        // serialize at the actor's mailbox — never deadlock; a round-1
+        // attempt at the best-time fetch misread a single-continuation TEST
+        // FAKE's limitation (`GatedQueryGateway`, since fixed to queue
+        // multiple pending continuations) as a production concurrency
+        // hazard and sequentialized needlessly.
         async let bestTimesTask = fetchBestTimes(trio: trio)
-        let window = await fetchWeekWindow(referenceDate: date)
-        let failed = await fetchFailedIds(date: date)
+        async let windowTask = fetchWeekWindow(referenceDate: date)
+        async let failedTask = fetchFailedIds(date: date)
+        let window = await windowTask
+        let failed = await failedTask
         let bestTimes = await bestTimesTask
         let completed: Set<String> = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
 

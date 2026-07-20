@@ -102,6 +102,37 @@ struct DailyHubViewModelPhase2GateTests {
         await refreshTask.value
         #expect(viewModel.isPhase2Pending == false)
     }
+
+    /// #912: `fetchWeekWindow`'s 7 per-day queries must be issued
+    /// CONCURRENTLY, not one at a time. A sequential `for` loop can only
+    /// ever have 1 call in flight — blocked on that single `await` — before
+    /// the gate unlocks, so `callCount` would freeze at 1. A concurrent
+    /// task-group fan-out dispatches all 7 before any of them can resolve,
+    /// so `callCount` reaches 7 while every call is still gated.
+    @Test func weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve() async {
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
+        let gated = GatedWeekWindowPersistence()
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: gated,
+            dateProvider: { Self.fixedDate }
+        )
+
+        let bootstrapTask = Task { await viewModel.bootstrap() }
+        for _ in 0..<200 {
+            await Task.yield()
+        }
+
+        #expect(await gated.callCount == 7)
+
+        await gated.unlock()
+        await bootstrapTask.value
+
+        // Ordering survives the concurrent fan-out: oldest (offset 6) first,
+        // today (offset 0) last — `DailyStripView` depends on this order.
+        #expect(viewModel.weekStrip.days.map(\.offsetFromToday) == [6, 5, 4, 3, 2, 1, 0])
+    }
 }
 
 // MARK: - GatedWeekWindowPersistence
@@ -110,14 +141,31 @@ struct DailyHubViewModelPhase2GateTests {
 /// a manually resolved continuation until `unlock()` is called — simulates
 /// the hub's phase-2 (week-strip) fetch never having answered yet. `relock()`
 /// re-arms the gate for a second (e.g. `refresh()`) run.
+///
+/// #912 CR-round-1-avoidance: `continuation` used to be a SINGLE stored
+/// `CheckedContinuation` — fine while `fetchWeekWindow` issued its 7 per-day
+/// calls sequentially (only ever 1 in flight), but #912 turned that loop into
+/// a concurrent task-group fan-out, so up to 7 calls can now land on this
+/// fake before `unlock()`. A single slot would silently overwrite/orphan
+/// every call but the last (the exact "SWIFT TASK CONTINUATION MISUSE: leaked
+/// its continuation without resuming it" bug `MinesweeperKit`'s
+/// `GatedQueryGateway` already hit and fixed at the `PrivateCKGateway` layer
+/// — see its doc). Mirrors that fix: a queue, drained and resumed in full by
+/// `unlock()`. `callCount` additionally proves the fan-out is genuinely
+/// concurrent (see `weekWindowFetchIssuesAllSevenDaysConcurrentlyBeforeAnyResolve`
+/// below) — a sequential loop could only ever reach 1 before blocking.
 private actor GatedWeekWindowPersistence: PersistenceProtocol {
-    private var continuation: CheckedContinuation<Set<String>, Never>?
+    private var pendingContinuations: [CheckedContinuation<Set<String>, Never>] = []
     private var unlocked = false
+    private(set) var callCount = 0
 
     func unlock() {
         unlocked = true
-        continuation?.resume(returning: [])
-        continuation = nil
+        let waiting = pendingContinuations
+        pendingContinuations = []
+        for continuation in waiting {
+            continuation.resume(returning: [])
+        }
     }
 
     func relock() {
@@ -125,9 +173,10 @@ private actor GatedWeekWindowPersistence: PersistenceProtocol {
     }
 
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
+        callCount += 1
         if unlocked { return [] }
         return await withCheckedContinuation { continuation in
-            self.continuation = continuation
+            self.pendingContinuations.append(continuation)
         }
     }
 

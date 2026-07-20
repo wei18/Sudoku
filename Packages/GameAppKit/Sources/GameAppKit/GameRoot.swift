@@ -176,12 +176,16 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
                     // for non-board pops too. #761: also bumps the teardown
                     // counter so environment-observing views (e.g. the Daily
                     // hubs) refresh, mirroring `dismissGame()`'s iOS wiring.
+                    // #912: delegated to `handlePathShrink` — on iOS this
+                    // branch ALSO fires once at board OPEN (`GameBoardRedirect`
+                    // popping its synthetic push entry), which used to trigger
+                    // a spurious refresh/teardown at open time, not just at a
+                    // genuine close; `handlePathShrink` filters that case out
+                    // via `isGamePresented`. #823: same join as the iOS
+                    // fullScreenCover branch above — macOS boards pop `path`
+                    // instead of dismissing a cover, but the race is identical.
                     if newPath.count < viewModel.path.count {
-                        Task { await viewModel.refreshResumeCandidate() }
-                        // #823: same join as the iOS fullScreenCover branch
-                        // above — macOS boards pop `path` instead of
-                        // dismissing a cover, but the race is identical.
-                        viewModel.gameSessionDidTearDown(persistJoin: persistJoin)
+                        viewModel.handlePathShrink(persistJoin: persistJoin)
                     }
                     viewModel.path = newPath
                 }

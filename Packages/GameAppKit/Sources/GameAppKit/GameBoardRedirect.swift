@@ -69,14 +69,26 @@ public struct GameBoardRedirect<Route: Hashable & Sendable>: View {
     public var body: some View {
         Color.clear
             .onAppear {
-                // Pop this redirect entry from the navigation stack, then
-                // present the game as a fullScreenCover. Both happen on
-                // MainActor without a Task to avoid a frame gap.
+                // Present the game as a fullScreenCover, THEN pop this
+                // redirect entry from the navigation stack. Both happen on
+                // MainActor without a Task to avoid a frame gap — SwiftUI
+                // coalesces both state mutations into the same re-render
+                // regardless of order, so this ordering has no visual cost.
+                //
+                // #912: the order matters for correctness, not just visuals.
+                // `GameRoot`'s `path`-shrink branch (`handlePathShrink`)
+                // reads `GameRootViewModel.isGamePresented` to distinguish
+                // this synthetic board-OPEN pop from a genuine session-end
+                // close. `onPresent` (→ `presentGame(route:)`) must flip
+                // `isGamePresented` to `true` BEFORE the pop below fires the
+                // path-shrink branch, or that branch would see
+                // `isGamePresented == false` and wrongly treat this open-time
+                // pop as a close.
+                onPresent(route)
                 if var current = path?.wrappedValue, !current.isEmpty {
                     current.removeLast()
                     path?.wrappedValue = current
                 }
-                onPresent(route)
             }
     }
 }
