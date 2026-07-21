@@ -40,6 +40,7 @@ public enum AppRoute: Hashable, Sendable, Codable {
     case board(puzzleId: String)
     case completion(puzzleId: String, elapsedSeconds: Int, mistakeCount: Int)
     case settings
+    case stats   // #773: Statistics screen, pushed from HOME's secondary entry (see STATS in screen-contracts.md)
 }
 ```
 
@@ -51,11 +52,12 @@ one for resume:
 public enum AppRoute: Hashable, Sendable {
     case board(difficulty: Difficulty, seed: UInt64, mode: GameMode)
     case replayDailyBoard(difficulty: Difficulty, seed: UInt64)   // unscored free replay of a failed daily
-    case completion(difficulty: Difficulty, mode: GameMode)        // re-view a solved daily (#386)
+    case completion(difficulty: Difficulty, mode: GameMode, day: String? = nil)  // re-view a solved daily (#386); `day` widened by #826 (week-strip past-day review), nil = today
     case resumeBoard(recordName: String, mode: GameMode)           // #455 resume from CloudKit save
     case daily
     case practice
     case settings
+    case stats   // #773: Statistics screen, pushed from HOME's secondary entry (see STATS in screen-contracts.md)
 }
 ```
 
@@ -109,6 +111,20 @@ deliberately no-ops on `.idle` — there is no running clock to freeze).
 Sudoku never had this gap: `BoardLoaderView.startOrResume()` drives the
 session to `.playing` at mount (`SudokuUI/Board/BoardLoaderView.swift:189`),
 so `SUD-BOARD` is never rendered in `.idle`.
+
+**#849/#868 (2026-07-19) — Sudoku adopted the same state-aware toolbar
+mapping, via a narrower trigger:** Sudoku's pause toggle now branches on the
+same shared `BoardLeaveOrPauseState` enum MS already used
+(`GameShellUI/BoardLeaveOrPauseControl.swift:26-34`). While a session is
+`.playing` with `elapsedSeconds == 0` AND `!canUndo` (freshly opened,
+nothing accrued to freeze — narrower than MS's `.idle` status check, since
+Sudoku always starts a session `.playing`), tapping the toggle sets a
+view-local `showReadyLeaveOverlay` flag and opens the same `PAUSE-OVERLAY`
+directly, WITHOUT calling `viewModel.pause()` — Sudoku's analogue of MS's
+`.idle`-pre-first-tap gap above, just gated on time+undo instead of session
+status (`SudokuUI/Board/BoardView+AccessibilityHeader.swift:132-137`,
+`SudokuUI/Board/BoardView.swift:106-119`). See `SUD-BOARD` in
+`screen-contracts.md` for the full per-interaction branch.
 
 **The in-board `CompletionOverlayScaffold` is the ONE terminal completion
 surface** (#669) on every platform. Prior to #667 the macOS push path pushed
@@ -261,7 +277,7 @@ Every exit / cancel / error / degraded path, both apps unless noted.
 | N11 | Completion Close — MS (in-board overlay) | Always `dismiss()`, no `path` branch at all (MS's board never receives a `path` parameter — the board is either modally presented or pushed inline, and `dismiss()` covers both) | `MinesweeperUI/MinesweeperBoardView.swift:657-661` |
 | N12 | Completion Close — re-view route, Sudoku | One `path` pop → back to `SUD-DAILY-HUB` | `SudokuAppComposition/LiveRouteFactory.swift:226` |
 | N13 | Completion Close — re-view route, MS | One `path` pop (`closePath?.wrappedValue.removeLast()`) → back to `MS-DAILY-HUB` — fixed by #697, now symmetric with N12 | `MinesweeperAppComposition/LiveRouteFactory.swift:282` |
-| N14 | GC signed-out alert | `.alert` OK → dismiss, HOME unchanged | `GameAppKit/MakeGameApp+Modifiers.swift:30-40` |
+| N14 | GC signed-out alert | `.alert` OK → dismiss, origin screen unchanged (reachable from HOME leaderboard card OR `SETTINGS` GC row, #685/#714 — see `GC-SIGNED-OUT-ALERT` in `screen-contracts.md`) | `GameAppKit/GameRoot.swift:113-123` (moved from `MakeGameApp+Modifiers.swift` by #685 — see that contract's dated note) |
 | N15 | ATT primer decline | "Not now" → dismiss sheet, latched for the session (no re-offer), no system prompt fired; Home unaffected throughout | `AppMonetizationKit/ATTPrimerCoordinator.swift:79-81` |
 | N16 | UMP/ATT boot sequence | Runs concurrently with first-frame render (`.onAppear { Task {…} }`), **never gates Home interaction**; a failing step does not skip later steps (every step attempted, outcome logged) | `GameAppKit/MakeGameApp+Helpers.swift:16-42`, `MonetizationBootCoordinator` header comment |
 | N17 | AdMob banner unresolved / degraded | Banner slot degrades to a `.failed` placeholder rather than blocking its host screen (Home / Daily / Practice / Board all keep working) | referenced by `MonetizationBootCoordinator` contract note; `BannerSlotView` |
