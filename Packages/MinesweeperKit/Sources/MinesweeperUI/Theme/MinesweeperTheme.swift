@@ -64,9 +64,16 @@ public struct MinesweeperTheme: Theme {
         errorDigit: ThemeColor(light: 0xC8362B, dark: 0xE66258)
     )
 
+    // celebratory (D1, #767 root-cause fix): must NOT reuse Sudoku's
+    // 0xE0662E verbatim — MS's own `status.warning` is already orange
+    // (0xD9822B), so that value would read as orange-on-orange and
+    // reintroduce the confusion this fix removes. A redder, darker variant
+    // separates by hue AND lightness. Dark value lifted with the same
+    // dL/dS this theme's own warning ramp uses (0xD9822B -> 0xE8A560).
     public let accent = AccentTokens(
         primary: ThemeColor(light: 0x3E6B8C, dark: 0x7FAFCF),
-        muted: ThemeColor(light: 0xD5E2EC, dark: 0x2C4356)
+        muted: ThemeColor(light: 0xD5E2EC, dark: 0x2C4356),
+        celebratory: ThemeColor(light: 0xD4501F, dark: 0xEB774C)
     )
 
     public let status = StatusTokens(

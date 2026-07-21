@@ -196,7 +196,7 @@ Per docs/v1/design.md §How.5.1. iOS 26 / macOS 26 minimum (foundations §1 / §
 | DailyHubView | **Yes** | Puzzle cards (3 cards for the day) | Same browse pattern; cards feel "pickable" |
 | PracticeHubView | **Yes** | Difficulty Picker (segmented, wrapped) + draw button card | Chrome above content; wrapping the Picker too keeps the two surfaces visually cohesive |
 | BoardView | **No** | — | §How.5.1 explicit: strong contrast + error highlight legibility. Glass would muddy `cell.error` |
-| CompletionView | **Yes** | Hero stats panel (time, rank delta) | Modal hero; glass earns its place over the dismissed BoardView beneath |
+| CompletionView | No | Hero stats panel (time, mistakes) | Plain filled card (`surface.elevated` + stroke border); rank/leaderboard content removed in #698 |
 | LeaderboardView | Partial | Scope segmented control (top); rows are flat | Avoid 50 stacked glass rows = perf + legibility cost |
 | SettingsView | No | — | Standard Form / List; native chrome already correct |
 

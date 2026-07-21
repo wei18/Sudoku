@@ -49,9 +49,16 @@ public struct DefaultTheme: Theme {
         errorDigit: ThemeColor(light: 0xA52A20, dark: 0xFF8077)
     )
 
+    // celebratory (D1, #767 root-cause fix): "charcoal orange" — separates by
+    // both hue and lightness from `status.warning` (0xA86A0E light /
+    // 0xE0A95C dark) and from `accent.primary`'s sage entirely. Dark value
+    // lightens in the same family as the other ramps (see e.g.
+    // difficulty.hard 0xE6A857 -> 0xEFC07F), keeping roughly the same ~17°
+    // hue gap from warning that the approved light value has.
     public let accent = AccentTokens(
         primary: ThemeColor(light: 0x5C7A4F, dark: 0x9BB87E),
-        muted: ThemeColor(light: 0xDCE6D0, dark: 0x3A4A30)
+        muted: ThemeColor(light: 0xDCE6D0, dark: 0x3A4A30),
+        celebratory: ThemeColor(light: 0xE0662E, dark: 0xEB8F65)
     )
 
     public let status = StatusTokens(

@@ -77,7 +77,7 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
                 viewModel.selectStats()
             } label: {
                 HomeModeCard(
-                    symbolName: "chart.bar.fill",
+                    symbolName: "chart.bar",
                     titleKey: "Statistics",
                     subtitleKey: viewModel.statsCardSubtitleKey
                 )

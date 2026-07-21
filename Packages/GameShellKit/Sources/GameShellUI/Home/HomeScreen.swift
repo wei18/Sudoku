@@ -60,8 +60,20 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
         switch self {
         case .daily: "calendar"
         case .practice: "dice"
-        case .leaderboard: "trophy.fill"
+        case .leaderboard: "trophy"
         case .settings: "gear"
+        }
+    }
+
+    /// The card's trailing glyph. Every mode uses the push-navigation chevron
+    /// EXCEPT Leaderboard, which presents the system Game Center modal (not a
+    /// stack push, see `GameHomeViewModel.swift:118-126`) — H1: an outward-jump
+    /// glyph tells the user before they tap that this row won't drill down
+    /// in-app like the other four.
+    public var trailingSymbolName: String {
+        switch self {
+        case .leaderboard: "arrow.up.forward"
+        case .daily, .practice, .settings: "chevron.right"
         }
     }
 }
@@ -183,7 +195,8 @@ public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Ban
                         HomeModeCard(
                             symbolName: item.mode.symbolName,
                             titleKey: item.mode.titleKey,
-                            subtitleKey: item.subtitleKey
+                            subtitleKey: item.subtitleKey,
+                            trailingSymbolName: item.mode.trailingSymbolName
                         )
                     }
                     .buttonStyle(.plain)
@@ -222,16 +235,28 @@ public struct HomeModeCard: View {
     let symbolName: String
     let titleKey: LocalizedStringKey
     let subtitleKey: LocalizedStringKey
+    /// The trailing glyph — "chevron.right" for push-navigation rows,
+    /// "arrow.up.forward" for Leaderboard's outward jump to the system Game
+    /// Center modal (H1). Defaults to the chevron so the #844 Statistics
+    /// call site (which doesn't push either, but IS an in-app destination)
+    /// renders byte-identically without opting in.
+    let trailingSymbolName: String
     @Environment(\.theme) private var theme
     // Card internal padding (#762 PR1 two-tier spacing contract) — content
     // tier, wraps the icon/title/subtitle/chevron row, scales with Dynamic
     // Type.
     @ScaledSpacing(.medium) private var cardPadding
 
-    public init(symbolName: String, titleKey: LocalizedStringKey, subtitleKey: LocalizedStringKey) {
+    public init(
+        symbolName: String,
+        titleKey: LocalizedStringKey,
+        subtitleKey: LocalizedStringKey,
+        trailingSymbolName: String = "chevron.right"
+    ) {
         self.symbolName = symbolName
         self.titleKey = titleKey
         self.subtitleKey = subtitleKey
+        self.trailingSymbolName = trailingSymbolName
     }
 
     public var body: some View {
@@ -254,7 +279,7 @@ public struct HomeModeCard: View {
                     .foregroundStyle(theme.text.secondary.resolved)
             }
             Spacer()
-            Image(systemName: "chevron.right")
+            Image(systemName: trailingSymbolName)
                 .foregroundStyle(theme.text.tertiary.resolved)
         }
         .padding(cardPadding)

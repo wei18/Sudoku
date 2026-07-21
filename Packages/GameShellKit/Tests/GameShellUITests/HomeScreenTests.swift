@@ -36,7 +36,7 @@ struct HomeScreenTests {
     @Test func canonicalSymbolsMatchBothApps() {
         #expect(HomeMode.daily.symbolName == "calendar")
         #expect(HomeMode.practice.symbolName == "dice")
-        #expect(HomeMode.leaderboard.symbolName == "trophy.fill")
+        #expect(HomeMode.leaderboard.symbolName == "trophy")
         #expect(HomeMode.settings.symbolName == "gear")
     }
 
@@ -67,6 +67,6 @@ struct HomeScreenTests {
             HomeModeItem.sidebarItems(from: items)
 
         #expect(sidebar.map(\.id) == ["daily", "practice", "leaderboard", "settings"])
-        #expect(sidebar.map(\.systemImage) == ["calendar", "dice", "trophy.fill", "gear"])
+        #expect(sidebar.map(\.systemImage) == ["calendar", "dice", "trophy", "gear"])
     }
 }

@@ -188,9 +188,18 @@ public struct CompletionScreen: View {
         // is the load-bearing a11y cue (survives Reduce Transparency /
         // Increase Contrast); shadow roughly doubled for a real lifted-card
         // read. Zero new color tokens — reuses `theme.text.tertiary`.
+        //
+        // C1: the 0.14 opacity above measured ~1.15-1.22:1 against both the
+        // card fill and the page background — far below the 3:1 WCAG 1.4.11
+        // floor for non-text UI boundaries. Full opacity clears 3:1 against
+        // BOTH surfaces, in BOTH modes, in BOTH apps (worst case: MS light
+        // vs page background at 3.10:1; best case: MS dark vs page
+        // background at 4.32:1). Accepted tradeoff: the border now reads
+        // more visible / margins read tighter; token-level root fix tracked
+        // in #846.
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(theme.text.tertiary.resolved.opacity(0.14), lineWidth: 1)
+                .strokeBorder(theme.text.tertiary.resolved, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
         .accessibilityElement(children: .combine)
