@@ -155,17 +155,6 @@ internal struct AchievementConfig: Sendable, Equatable {
     internal var titleKey: String { "\(locKeyPrefix).\(shortId).title" }
     internal var descriptionKey: String { "\(locKeyPrefix).\(shortId).description" }
     internal var unearnedDescriptionKey: String { "\(locKeyPrefix).\(shortId).unearnedDescription" }
-
-    /// Progress percent step (1 = report whole percents; 100 = boolean).
-    /// Per §How.3.2: quantitative ones report percent; streak/sweep are boolean.
-    internal var stepCount: Int {
-        switch shortId {
-        case "practice.complete_10", "practice.complete_100", "hard.master":
-            return 100
-        default:
-            return 1 // boolean: 0 or 100
-        }
-    }
 }
 
 // MARK: - IAPProduct
