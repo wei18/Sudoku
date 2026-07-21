@@ -114,8 +114,12 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // 5. Monetization stack.
     let monetizationStateStore = persistence.monetizationStateStore()
+
+    // #931: uitest-arg-gated fake swap, see MakeGameApp+UITestOverrides.swift.
+    let adGateStore = resolveAdGateStore(fallback: monetizationStateStore)
+
     let adGate = AdGate(
-        store: monetizationStateStore,
+        store: adGateStore,
         onPersistenceError: { [telemetry] error in
             Task {
                 await telemetry.observe(
@@ -129,28 +133,29 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         }
     )
 
-    // AdMob SDK ships iOS-only binaries. On macOS wire the NoopAdProvider.
-    // Game-specific banner ad unit ID comes from Info.plist `GADBannerUnitID`,
-    // substituted at build time from xcconfig (per build-time-secret-injection
-    // skill pattern). The guard here is the same runtime check as each game's
-    // prior per-game Live.swift.
-    #if os(iOS)
-    guard
-        let bannerAdUnitID = Bundle.main
-            .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
-        !bannerAdUnitID.isEmpty,
-        !bannerAdUnitID.hasPrefix("$(")
-    else {
-        preconditionFailure(
-            "GADBannerUnitID missing or unresolved — check"
-                + " Tuist/AdMob.xcconfig exists locally or that XCC env"
-                + " vars are set for Release builds."
-        )
+    // AdMob SDK ships iOS-only binaries; macOS wires the NoopAdProvider.
+    // Banner ad unit ID comes from Info.plist `GADBannerUnitID`, substituted
+    // at build time from xcconfig (build-time-secret-injection skill).
+    // `resolveAdProvider` (#931) only invokes this when the fake arg is absent.
+    let adProvider: any AdProvider = resolveAdProvider {
+        #if os(iOS)
+        guard
+            let bannerAdUnitID = Bundle.main
+                .object(forInfoDictionaryKey: "GADBannerUnitID") as? String,
+            !bannerAdUnitID.isEmpty,
+            !bannerAdUnitID.hasPrefix("$(")
+        else {
+            preconditionFailure(
+                "GADBannerUnitID missing or unresolved — check"
+                    + " Tuist/AdMob.xcconfig exists locally or that XCC env"
+                    + " vars are set for Release builds."
+            )
+        }
+        return LiveAdMobAdProvider(bannerAdUnitID: bannerAdUnitID)
+        #else
+        return NoopAdProvider()
+        #endif
     }
-    let adProvider: any AdProvider = LiveAdMobAdProvider(bannerAdUnitID: bannerAdUnitID)
-    #else
-    let adProvider: any AdProvider = NoopAdProvider()
-    #endif
 
     let iapClient: any IAPClient = LiveStoreKit2IAPClient(
         knownProductIds: [config.removeAdsProductId],
@@ -209,7 +214,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in
         Task { await telemetry.observe(event) }
     }
-    let reminderAuthorizer = LiveNotificationAuthorizer(subsystem: config.subsystem)
+    // #931: uitest-arg-gated fake swap, see MakeGameApp+UITestOverrides.swift.
+    // `reminderScheduler` is never faked.
+    let reminderAuthorizer = resolveReminderAuthorizer(
+        fallback: LiveNotificationAuthorizer(subsystem: config.subsystem)
+    )
     let reminderScheduler = LiveReminderScheduler(subsystem: config.subsystem)
 
     // Persisted daily-ready fire time + isScheduled flag. See
