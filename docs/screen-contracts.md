@@ -234,13 +234,16 @@ Anchors: CTA copy — `SudokuUI/Practice/PracticeHubView.swift:130-138` (both
 | Element | Copy | a11y id |
 |---|---|---|
 | Difficulty segmented picker | Beginner / Intermediate / Expert | none |
-| "Start" button | `Label("Start", systemImage: "play.fill")` + board-summary caption `"{rows} × {cols} · {mines} mines"` | `minesweeper.practiceHub.start` |
+| "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Start") | `Label("New Game", systemImage: "play.fill")` + board-summary caption `"{rows} × {cols} · {mines} mines"` | `minesweeper.practiceHub.start` |
 
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| "Start" tap | synchronous — no draw/shimmer step at all (CODE CONTRADICTED vs. a Sudoku-mirrored assumption): mints a random seed and appends `.board(difficulty:seed:mode:.practice)` directly | modal-full (iOS) / push (macOS) | Close/Leave → `MS-PRACTICE-HUB` |
+| "New Game" tap | synchronous — no draw/shimmer step at all (CODE CONTRADICTED vs. a Sudoku-mirrored assumption): mints a random seed and appends `.board(difficulty:seed:mode:.practice)` directly, wrapped by `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4) | `.loading` (brief) → modal-full (iOS) / push (macOS) | Close/Leave → `MS-PRACTICE-HUB` |
+
+Anchors: CTA copy — `MinesweeperUI/Practice/MinesweeperPracticeHubView.swift:122-129`
+(renders `Label("New Game", …)`).
 
 **Covering behavior:** none. **State variants:** single state (no
 loading/shimmer machinery exists — MS generation is synchronous).
@@ -575,17 +578,32 @@ with the rendering machinery, so there is nothing left to vary.
 |---|---|---|
 | Hero (win) | "You won" + elapsed | `game.completion.hero` |
 | Hero (loss) | "Boom" (no elapsed shown in the loss hero per `CompletionOutcome`) | `game.completion.hero` |
-| Play Again (practice only, iOS only) | "Play Again" | none |
+| Reminder affordance (Daily win only, pre-authorization — #814, mirrors Sudoku) | `"Remind me when tomorrow's boards are ready"` + subcopy | none |
+| Play Again (practice only, iOS only — `onPlayAgain` wired) | "Play Again" | none |
 | Close | "Close" | none |
 
 Same "no leaderboard zone" note as Sudoku — #698 deleted the dead fetch state
 machine on this VM too.
 
+**AS-BUILT NOTE (2026-07-21, #814):** the reminder affordance row above was
+entirely undocumented until now — added to give MS's completion overlay the
+same daily-win reminder priming Sudoku's `SUD-COMPLETION-OVERLAY` has had
+since #287, closing a previously-real Sudoku-only asymmetry.
+`MinesweeperCompletionView.swift:22-93` wires `ReminderPrimerCoordinator`/
+`ReminderPrimerSheet` into the view's public init, gates the footer row on
+`reminderPrimer.status == .notDetermined` (`:90-91`), and presents the same
+`ReminderPrimerSheet` `SUD-COMPLETION-OVERLAY` uses with the identical
+`[.medium, .large]` detent (`:76`, byte-parity confirmed against Sudoku's
+`CompletionView.swift:62-68`). Wired daily-only:
+`MinesweeperAppComposition/LiveRouteFactory.swift:308` (`mode == .daily ?
+makeDailyReminderPrimer?() : nil`).
+
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Play Again tap | clears overlay VM, `dismiss()`, then `playAgain(difficulty)` with a fresh random seed | modal-full (new board instance) | new `MS-BOARD` instance |
+| Reminder affordance tap | `presentPrimer()` | `sheet(detent: [.medium, .large])` → `REMINDER-PRIMER` | dismiss → same overlay |
+| Play Again tap | clears overlay VM, `dismiss()`, then `playAgain(difficulty)` with a fresh random seed, mounted via `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4; still `modal-full`, just with a brief `.loading` frame first, not the direct construction the row previously implied) | modal-full (new board instance) | new `MS-BOARD` instance |
 | Close tap | clears overlay VM, `dismiss()` | iOS: cover collapses · macOS: pops the push (same `dismiss()` call both contexts — MS never branches on `path`) | HOME/hub that pushed the board |
 
 **Covering behavior:** identical ZStack background/content split as Sudoku
@@ -711,11 +729,21 @@ button.
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
+| GC status row tap (`settings.gameCenter`) | `resolvedOnGameCenter()` → `presentGameCenter` closure → `GameRootViewModel.presentGameCenterOrAlert` (same guard the Home leaderboard card uses) | authenticated: external → `GC-DASHBOARD`. Signed out: `.alert` → `GC-SIGNED-OUT-ALERT` | authenticated: dismiss → `SETTINGS` (side-effect). Signed out: OK → `SETTINGS` |
 | Reminders "Enable"/"Turn On" row tap | `model.enable()` | `sheet(detent: .medium)` → `REMINDER-PRIMER` | dismiss → `SETTINGS` |
 | Reminders denied-status row tap | `model.showDeniedExplainer()` | `sheet(detent: .medium)` → `REMINDER-DENIED` | dismiss → `SETTINGS` |
 | Reminders "Turn off reminders" tap | `model.disable()` | side-effect | `SETTINGS` (status row switches back to enable row) |
 | "Clear cache" tap | `showClearCacheConfirmation = true` | `.confirmationDialog` → `CLEAR-CACHE-DIALOG` | see that contract |
 | Acknowledgements deep-link tap (iOS only) | `UIApplication.shared.open(UIApplication.openSettingsURLString)` | external (system Settings.app) | user manually returns via app-switcher — no in-app back |
+
+**AS-BUILT NOTE (2026-07-21):** the GC status row was listed in this
+contract's element inventory but had NO interaction row at all until now —
+it is a second, equally real entry point into `GC-DASHBOARD` /
+`GC-SIGNED-OUT-ALERT` alongside the Home leaderboard card (#685/#714;
+guard-parity #832). Anchors: `GameAppKit/Sources/GameAppKit/SettingsView.swift:65-99`
+(`presentGameCenter` injection + `resolvedOnGameCenter()`'s debug assert),
+`GameAppKit/Sources/GameAppKit/GameRootViewModel.swift:271-278`
+(`presentGameCenterOrAlert`, the shared guard).
 
 **Covering behavior:** since #516, `SettingsShellView` paints the app's
 warm-paper theme background behind the native `Form`
@@ -732,8 +760,10 @@ the reminders sub-section, which branches on
 ## REMINDER-PRIMER
 
 **Entry points:** `SETTINGS` enable row; `SUD-COMPLETION-OVERLAY` reminder
-affordance (Daily solve only — MS's completion overlay has no reminder
-affordance, only Settings-initiated).
+affordance (Daily solve only); `MS-COMPLETION-OVERLAY` reminder affordance
+(Daily solve only, #814 — now mirrors Sudoku, see that contract's dated
+note. Prior text here read "MS's completion overlay has no reminder
+affordance, only Settings-initiated" — that asymmetry is closed as of #814).
 
 **Code:** `SettingsKit/Sources/SettingsUI/Reminders/ReminderPrimerSheet.swift`
 (shared component, both apps inject their own `ReminderPrimerCopy`).
@@ -811,7 +841,11 @@ visible but non-interactive until dismissed.
 
 ## GC-DASHBOARD
 
-**Entry points:** HOME leaderboard card (authenticated only).
+**Entry points:** HOME leaderboard card (authenticated only); `SETTINGS` GC
+status row (authenticated only, #685/#714 — same
+`presentGameCenterOrAlert` guard as the Home card, see `SETTINGS`'s
+interaction table). No behavioral drift between the two entry points, only
+a prior documentation gap (this contract undercounted its own entry points).
 
 **Code:** `GameCenterKit/Sources/GameCenterClient/GameCenterDashboard.swift`.
 
@@ -832,12 +866,24 @@ drill-through) — out of this repo's contract.
 
 ## GC-SIGNED-OUT-ALERT
 
-**Entry points:** HOME leaderboard card tap while `authState != .authenticated`.
+**Entry points:** HOME leaderboard card tap, OR `SETTINGS` GC status row tap
+(#685/#714, same guard — see `SETTINGS`'s interaction table), while
+`authState != .authenticated`.
 
-**Code:** `GameAppKit/MakeGameApp+Modifiers.swift`
-`universalRootModifiers` — bound to the stable `GameRootViewModel`, not a
-transient per-render VM (deliberate fix for the "alert never fires"
-computed-property footgun).
+**Code:** `GameAppKit/GameRoot.swift:113-123` — bound via a hand-rolled
+`Binding(get:set:)` off the stable `GameRootViewModel.showGameCenterSignedOutAlert`
+flag, not a transient per-render VM (deliberate fix for the "alert never
+fires" computed-property footgun).
+
+**AS-BUILT NOTE (2026-07-21, #685):** this contract previously cited
+`GameAppKit/MakeGameApp+Modifiers.swift` `universalRootModifiers` as the
+alert's home. That file's own header comment documents why the alert moved:
+`universalRootModifiers` is called exactly once from the plain `makeGameApp`
+function, never from inside a SwiftUI View's own `body`, so the Observable
+flag flip was never picked back up by the render graph (confirmed via
+instrumented sim repro). The alert now lives directly in `GameRoot.body`,
+alongside the `fullScreenCover` binding that already worked via the same
+`@Observable`-flag pattern.
 
 **Element inventory:** title "Sign in to Game Center", message "Sign in to
 Game Center to compare with others.", "OK" (cancel role).
