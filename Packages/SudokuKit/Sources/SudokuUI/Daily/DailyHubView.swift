@@ -140,6 +140,7 @@ public struct DailyHubView<Banner: View>: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(theme.accent.primary.resolved)
                         .controlSize(.large)
                         // Pops back to Home rather than leaving the user on
                         // the `.exhausted` hub's blank backdrop with no
