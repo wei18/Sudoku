@@ -60,7 +60,7 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
         switch self {
         case .daily: "calendar"
         case .practice: "dice"
-        case .leaderboard: "trophy.fill"
+        case .leaderboard: "trophy"
         case .settings: "gear"
         }
     }
