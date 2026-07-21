@@ -43,12 +43,14 @@ struct AdProviderInitTests {
         #expect(status == .notInitialized)
     }
 
-    @Test func bannerStatusAfterInitializeReflectsBridgeCache() async throws {
+    @Test func bannerStatusAfterInitializeIsLoading() async throws {
         let bridge = FakeAdMobBridge()
         let provider = LiveAdMobAdProvider(bridge: bridge)
 
         try await provider.initialize()
-        // The fake's `start()` sets cached status to `.loading`.
+        // `LiveAdMobAdProvider.initialize()` sets its own `lastKnownStatus` to
+        // `.loading` after `bridge.start()` succeeds — the provider tracks
+        // status itself, it does not read anything back from the bridge.
         let status = await provider.bannerStatus
         #expect(status == .loading)
     }

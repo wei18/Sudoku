@@ -15,7 +15,6 @@ internal struct FakeAdMobBridgeState: Sendable {
     var startError: (any Error)?
     var loadError: (any Error)?
     var nextHandle: AdBannerHandle = .init()
-    var cachedStatus: AdBannerStatus = .notInitialized
     var startCallCount: Int = 0
     var loadCallCount: Int = 0
     var disposedHandles: [AdBannerHandle] = []
@@ -40,10 +39,6 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
         state.withLock { $0.nextHandle = handle }
     }
 
-    internal func setCachedStatus(_ status: AdBannerStatus) {
-        state.withLock { $0.cachedStatus = status }
-    }
-
     internal var startCallCount: Int {
         state.withLock { $0.startCallCount }
     }
@@ -65,7 +60,6 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
             return s.startError
         }
         if let err { throw err }
-        setCachedStatus(.loading)
     }
 
     internal func loadBanner() async throws -> AdBannerHandle {
@@ -74,7 +68,6 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
             return (s.loadError, s.nextHandle)
         }
         if let err { throw err }
-        setCachedStatus(.loaded(handle))
         return handle
     }
     // swiftlint:enable identifier_name
