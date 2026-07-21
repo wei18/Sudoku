@@ -36,12 +36,11 @@ internal final class LiveAdMobBridge: AdMobBridge {
     /// assert the Debug-test / Release-prod split without booting the SDK.
     internal var effectiveBannerAdUnitID: String { bannerAdUnitID }
 
+    #if canImport(GoogleMobileAds)
     // `OSAllocatedUnfairLock` is the Swift 6 strict-concurrency-safe equivalent
     // of `NSLock` — its `withLock` overloads are `nonisolated` and callable
     // from async contexts, unlike `NSLock.lock()` which is restricted.
-    private let state = OSAllocatedUnfairLock<AdBannerStatus>(initialState: .notInitialized)
-
-    #if canImport(GoogleMobileAds)
+    //
     // Live `BannerView` instances are retained here keyed by `AdBannerHandle.id`
     // so they survive past the delegate callback that resolves `loadBanner()`.
     // A later phase (out of v2.5.2 scope) plumbs the view into a SwiftUI
@@ -87,7 +86,6 @@ internal final class LiveAdMobBridge: AdMobBridge {
                 continuation.resume()
             }
         }
-        setCachedStatus(.loading)
         #else
         throw AdMobBridgeError.unsupportedPlatform
         #endif
@@ -155,13 +153,11 @@ internal final class LiveAdMobBridge: AdMobBridge {
                 delegate?.cancel()
                 _ = self.liveBanners.withLock { $0.removeValue(forKey: handle.id) }
             }
-            setCachedStatus(.loaded(handle))
             return handle
         } catch {
             // Release the view we never got a successful load for.
             _ = liveBanners.withLock { $0.removeValue(forKey: handle.id) }
             let reason = String(describing: error)
-            setCachedStatus(.failed(reason: reason))
             throw AdMobBridgeError.loadFailed(reason: reason)
         }
         #else
@@ -199,10 +195,6 @@ internal final class LiveAdMobBridge: AdMobBridge {
     }
 
     // MARK: - Internal helpers
-
-    private func setCachedStatus(_ status: AdBannerStatus) {
-        state.withLock { $0 = status }
-    }
 
     #if canImport(GoogleMobileAds) && canImport(UIKit)
     /// Resolve the foreground-active `UIWindowScene`'s key window's root view
