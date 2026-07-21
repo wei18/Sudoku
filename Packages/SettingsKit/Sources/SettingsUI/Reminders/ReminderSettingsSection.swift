@@ -89,7 +89,9 @@ public struct ReminderSettingsSection: View {
     // Settings.app WITHOUT this view ever leaving the hierarchy, so `.task`
     // below never re-fires on return (swiftui-interaction-footguns: `.task`
     // only re-fires on identity change, not on foreground). Mirrors the
-    // `scenePhase` re-poll already used by `BoardView` / `BannerSlotView`.
+    // `guard newPhase == .active` re-poll in `BannerSlotView` (#341). Note the
+    // board views' `scenePhase` handlers are NOT this pattern — they switch on
+    // `.background`/`.inactive` to pause and flush, i.e. the opposite edge.
     @Environment(\.scenePhase) private var scenePhase
 
     public init(
