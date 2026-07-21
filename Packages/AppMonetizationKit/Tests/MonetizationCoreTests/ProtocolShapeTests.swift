@@ -126,15 +126,6 @@ struct ProtocolShapeTests {
         assertSendable(a)
     }
 
-    // MARK: AdPresentationAnchor
-
-    @Test func adPresentationAnchorIsSendableAndCarriesID() {
-        let uuid = UUID()
-        let anchor = AdPresentationAnchor(id: uuid)
-        #expect(anchor.id == uuid)
-        assertSendable(anchor)
-    }
-
     // MARK: Value-type Sendable compile-time coverage (N6)
     //
     // `assertSendable<T: Sendable>` is a compile-time-only checker — if any of
@@ -160,9 +151,6 @@ struct ProtocolShapeTests {
 
         let bannerStatus: AdBannerStatus = .loaded(AdBannerHandle())
         assertSendable(bannerStatus)
-
-        let anchor = AdPresentationAnchor()
-        assertSendable(anchor)
     }
 }
 // swiftlint:enable identifier_name

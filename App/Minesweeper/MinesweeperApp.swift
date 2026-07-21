@@ -9,7 +9,7 @@ import MinesweeperAppComposition
 
 @main
 struct MinesweeperApp: App {
-    private let composition = MinesweeperAppComposition.live()
+    private let composition: MinesweeperAppComposition = MinesweeperAppComposition.live()
 
     var body: some Scene {
         WindowGroup {
