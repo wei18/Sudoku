@@ -41,8 +41,7 @@ enum ScenePhaseRepollE2ESupport {
             file: file, line: line
         )
 
-        XCUIDevice.shared.press(.home)
-        app.activate()
+        cycleThroughBackground(app, file: file, line: line)
 
         let enable = app.descendants(matching: .any)[reminderEnableID]
         let disable = app.descendants(matching: .any)[reminderDisableID]
@@ -77,8 +76,7 @@ enum ScenePhaseRepollE2ESupport {
             file: file, line: line
         )
 
-        XCUIDevice.shared.press(.home)
-        app.activate()
+        cycleThroughBackground(app, file: file, line: line)
 
         XCTAssertTrue(
             slot.waitForExistence(timeout: 15),
@@ -86,5 +84,27 @@ enum ScenePhaseRepollE2ESupport {
                 + " (scenePhase re-poll) — dropping .onChange(of: scenePhase) leaves it hidden forever",
             file: file, line: line
         )
+    }
+
+    /// Drives a real background→foreground cycle. iOS-only: macOS has no
+    /// Home-button semantics even though the E2E targets declare a `.mac`
+    /// destination; the supported drive path (`mise run test:ui`) runs the
+    /// iOS Simulator exclusively.
+    @MainActor
+    private static func cycleThroughBackground(
+        _ app: XCUIApplication,
+        file: StaticString,
+        line: UInt
+    ) {
+        #if os(iOS)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        #else
+        XCTFail(
+            "scenePhase re-poll E2E requires the iOS Home-button background cycle;"
+                + " run via mise run test:ui (iOS Simulator)",
+            file: file, line: line
+        )
+        #endif
     }
 }
