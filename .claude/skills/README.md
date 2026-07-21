@@ -4,7 +4,7 @@
 
 This directory holds the skills available in this project. It has two parts:
 
-1. **Project-bound skills (9)** — flat `SKILL.md` directories below. These name this
+1. **Project-bound skills (8)** — flat `SKILL.md` directories below. These name this
    repo's specific apps (Sudoku / Minesweeper), `mise run` tasks, and
    pipelines, so they are *not* portable and live here un-namespaced.
 2. **The `apple-dev-skills` marketplace (2 plugins, 32 skills)** — the portable
@@ -16,11 +16,10 @@ This directory holds the skills available in this project. It has two parts:
 
 ---
 
-## Project-bound skills (9)
+## Project-bound skills (8)
 
 | Skill | One-liner |
 |---|---|
-| [`screen-contract-spec`](screen-contract-spec/SKILL.md) | Spec-first navigation planning as SCREEN CONTRACTS — per-screen element inventory + per-interaction presentation semantics + back/close landing + covering/z-order + state variants + forward/negative flow chains, code-anchored; worked example in `docs/screen-contracts.md` + `docs/navigation-flows.md` |
 | [`game-factory-composition`](game-factory-composition/SKILL.md) | The shared composition template — `GameConfig<Route>` + `makeGameApp` in GameAppKit, `<Game><Concern>` naming, shared Home / DailyHub-skeleton / board-redirect / GC-dashboard; only the Game module is per-game (SDD-005) |
 | [`mise-task-operations`](mise-task-operations/SKILL.md) | Index / entry point for every repo ops task — before grepping "how is X done", check here; maps each `mise run` task → invocation + safety gate + owning skill |
 | [`local-testflight-upload`](local-testflight-upload/SKILL.md) | Local archive→export→TestFlight via `mise run tf:upload`; temporary Xcode-Cloud-Main-CI substitute; upload gated behind `--i-am-sure` |
@@ -29,6 +28,11 @@ This directory holds the skills available in this project. It has two parts:
 | [`acknowledgements-generation`](acknowledgements-generation/SKILL.md) | Regenerate Settings.bundle Acknowledgements from the SwiftPM dep graph via `mise run gen:acknowledgements` (LicensePlist); output gitignored |
 | [`asc-ops-handoff`](asc-ops-handoff/SKILL.md) | Which App Store Connect / TestFlight steps are user-owned vs Leader-orderable via the ASC API + ASCRegister |
 | [`interactive-sim-ux-audit`](interactive-sim-ux-audit/SKILL.md) | Drive the running game apps in the iOS Simulator with idb (tap / describe / screenshot) to find UX + layout bugs snapshot tests cannot |
+
+**Moved:** `screen-contract-spec` is no longer project-bound — its methodology master copy now
+lives in the design-app playbook (`~/GitHub/Wei18/design-app/skills/`), installed to user-level
+via `bash skills/install.sh`. This repo's `docs/screen-contracts.md` + `docs/navigation-flows.md`
+remain the worked example.
 
 ---
 
