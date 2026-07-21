@@ -220,6 +220,30 @@ internal actor SavedGameStore: Sendable {
         return ids
     }
 
+    /// Single-query, day-bucketed sibling of `fetchCompletedDailyIds(for:)`
+    /// (#921; mirrors MinesweeperSavedGameStore.fetchCompletedDailyIdsByDay,
+    /// #915). Unlike MS, Sudoku's per-day query already carries a real
+    /// `puzzleId BEGINSWITH` predicate — so 7 per-day calls (one per
+    /// week-strip window day) are 7 GENUINELY DISTINCT CloudKit reads, not
+    /// byte-identical ones. Still wasteful: `.dailyCompletedAll` drops just
+    /// the `puzzleId` prefix clause, fetching every completed daily
+    /// (`mode == "daily" AND status == "completed"`) in ONE query, then
+    /// buckets each `puzzleId` by its own `YYYY-MM-DD` prefix
+    /// (`extractDailyDay`) client-side — collapsing the week window's 7
+    /// round-trips into 1. `fetchCompletedDailyIds(for:)` itself is
+    /// UNCHANGED — its other caller (`AchievementEvaluator`) genuinely needs
+    /// just one day.
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
+        let payloads = try await gateway.query(.dailyCompletedAll)
+        var byDay: [String: Set<String>] = [:]
+        for payload in payloads {
+            guard case .string(let puzzleId) = payload.fields[Field.puzzleId] else { continue }
+            guard let day = Self.extractDailyDay(from: puzzleId) else { continue }
+            byDay[day, default: []].insert(puzzleId)
+        }
+        return byDay
+    }
+
     // MARK: - Internal save
 
     private func save(

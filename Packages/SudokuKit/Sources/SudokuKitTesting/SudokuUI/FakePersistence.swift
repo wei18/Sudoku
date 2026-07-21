@@ -20,6 +20,7 @@ public actor FakePersistence: PersistenceProtocol {
         case markCompleted(recordName: String)
         case deleteAbandoned(recordName: String)
         case fetchCompletedDailyIds(date: Date)
+        case fetchCompletedDailyIdsByDay
         case fetchPersonalRecord(mode: Mode, difficulty: Difficulty)
         case upsertPersonalRecord(recordName: String)
     }
@@ -33,9 +34,19 @@ public actor FakePersistence: PersistenceProtocol {
     /// `completedDailyIds` can't script a realistic (mixed completed/missed)
     /// week. Any `Date` not present here falls back to `completedDailyIds`,
     /// so single-day tests (today-only) are unaffected.
+    ///
+    /// #921: also the SOLE source for `fetchCompletedDailyIdsByDay()` — that
+    /// method buckets these entries by `UTCDay.string(from:)` and does NOT
+    /// fall back to the global `completedDailyIds` default (unlike
+    /// `fetchCompletedDailyIds(for:)` above), since a real day-bucketed CK
+    /// read has no notion of "every day not otherwise specified" — a given
+    /// puzzleId belongs to exactly one day. Callers that need a day's
+    /// completion scripted for the week window must use
+    /// `setCompletedDailyIds(_:for:)`, not the global setter.
     public var completedDailyIdsByDate: [Date: Set<String>] = [:]
-    /// When set, every `fetchCompletedDailyIds` call throws this error — used
-    /// to test the week-strip's all-or-nothing degrade (#774).
+    /// When set, every `fetchCompletedDailyIds` / `fetchCompletedDailyIdsByDay`
+    /// call throws this error — used to test the week-strip's all-or-nothing
+    /// degrade (#774).
     public var fetchCompletedDailyIdsError: PersistenceError?
     public var personalRecord: PersonalRecord = PersonalRecord(
         recordName: "",
@@ -216,6 +227,21 @@ public actor FakePersistence: PersistenceProtocol {
             throw error
         }
         return completedDailyIdsByDate[date] ?? completedDailyIds
+    }
+
+    /// #921: single-query, day-bucketed sibling — see `completedDailyIdsByDate`'s
+    /// doc for why this does NOT fall back to the global `completedDailyIds`
+    /// default the way `fetchCompletedDailyIds(for:)` does.
+    public func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
+        operations.append(.fetchCompletedDailyIdsByDay)
+        if let error = fetchCompletedDailyIdsError {
+            throw error
+        }
+        var byDay: [String: Set<String>] = [:]
+        for (date, ids) in completedDailyIdsByDate {
+            byDay[UTCDay.string(from: date), default: []].formUnion(ids)
+        }
+        return byDay
     }
 
     public func fetchPersonalRecord(

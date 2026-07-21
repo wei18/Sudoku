@@ -25,16 +25,6 @@ struct DailyHubViewModelInteractionTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    /// #774: the week-strip window fetches `fetchCompletedDailyIds` once per
-    /// day, oldest (`offset: 6`) → newest (`offset: 0` == today) — mirrors
-    /// `DailyHubViewModel.fetchWeekWindow`'s own arithmetic exactly so tests
-    /// assert the real call shape instead of just a count.
-    private static func weekWindowDates(endingAt referenceDate: Date) -> [Date] {
-        stride(from: 6, through: 0, by: -1).map { offset in
-            referenceDate.addingTimeInterval(-Double(offset) * 86_400)
-        }
-    }
-
     private func makeViewModel(
         provider: FakePuzzleProvider,
         persistence: FakePersistence,
@@ -59,15 +49,15 @@ struct DailyHubViewModelInteractionTests {
         let providerOps = await provider.operations
         let persistenceOps = await persistence.operations
         #expect(providerOps == [.fetchDailyTrio(date: Self.fixedDate)])
-        // #774: 7 calls (the week-strip window) — today's slot is reused for
-        // the trio-card overlay, no duplicate 8th call. #886: runs
-        // concurrently with 3 `fetchPersonalRecord` calls (`async let`), so
-        // relative order ACROSS the two kinds isn't guaranteed — assert each
-        // kind's own sub-sequence + total count instead of one flat array.
-        let expectedDates = Self.weekWindowDates(endingAt: Self.fixedDate)
-        let completedIdsOps = persistenceOps.filter { if case .fetchCompletedDailyIds = $0 { true } else { false } }
+        // #921: 1 call (`fetchCompletedDailyIdsByDay`, the whole 7-day
+        // week-strip window in a single query) — not 7 per-day calls (#774).
+        // #886: runs concurrently with 3 `fetchPersonalRecord` calls
+        // (`async let`), so relative order ACROSS the two kinds isn't
+        // guaranteed — assert each kind's own sub-sequence + total count
+        // instead of one flat array.
+        let completedIdsOps = persistenceOps.filter { if case .fetchCompletedDailyIdsByDay = $0 { true } else { false } }
         let personalRecordOps = persistenceOps.filter { if case .fetchPersonalRecord = $0 { true } else { false } }
-        #expect(completedIdsOps == expectedDates.map { .fetchCompletedDailyIds(date: $0) })
+        #expect(completedIdsOps == [.fetchCompletedDailyIdsByDay])
         #expect(Set(personalRecordOps) == Set([
             FakePersistence.Operation.fetchPersonalRecord(mode: .daily, difficulty: .easy),
             .fetchPersonalRecord(mode: .daily, difficulty: .medium),

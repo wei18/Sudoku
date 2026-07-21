@@ -65,6 +65,7 @@ struct ProtocolShapeTests {
 private func assertProtocolShape<T: PersistenceProtocol>(_ persistence: T) async throws {
     _ = try await persistence.latestInProgress()
     _ = try await persistence.fetchCompletedDailyIds(for: Date(timeIntervalSince1970: 0))
+    _ = try await persistence.fetchCompletedDailyIdsByDay()
     _ = try await persistence.fetchPersonalRecord(mode: .daily, difficulty: .easy)
 }
 
@@ -89,6 +90,7 @@ private struct DummyPersistence: PersistenceProtocol {
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { [:] }
     func fetchPersonalRecord(
         mode: Mode,
         difficulty: Difficulty

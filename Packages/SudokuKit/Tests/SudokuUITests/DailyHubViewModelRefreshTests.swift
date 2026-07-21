@@ -86,7 +86,12 @@ struct DailyHubViewModelRefreshTests {
 
         // Simulate the puzzle being completed between bootstrap and the hub
         // reappearing (e.g. the board/Completion flow persisting the win).
-        await persistence.setCompletedDailyIds([justSolved.envelope.identity.puzzleId])
+        // #921: `fetchCompletedDailyIdsByDay()` day-buckets from
+        // `completedDailyIdsByDate` only (no global-default fallback — see
+        // its doc), so this must script the CONCRETE date (today, since
+        // `refresh()`'s `dateProvider` is `Self.fixedDate` and this test only
+        // asserts on today's card).
+        await persistence.setCompletedDailyIds([justSolved.envelope.identity.puzzleId], for: Self.fixedDate)
 
         await viewModel.refresh()
 
@@ -102,10 +107,10 @@ struct DailyHubViewModelRefreshTests {
         // phase-2 (completed ids) re-runs.
         let providerOps = await provider.operations
         #expect(providerOps.count == 1)
-        // #774: each run fetches the 7-day week-strip window (not a single
-        // "today" call) — bootstrap + refresh = 7 + 7 = 14.
+        // #921: each run issues ONE `fetchCompletedDailyIdsByDay()` call for
+        // the whole 7-day window (not one per day) — bootstrap + refresh = 2.
         let persistenceOps = await persistence.operations
-        #expect(persistenceOps.filter { if case .fetchCompletedDailyIds = $0 { true } else { false } }.count == 14)
+        #expect(persistenceOps.filter { if case .fetchCompletedDailyIdsByDay = $0 { true } else { false } }.count == 2)
     }
 
     /// A `refresh()` with no completion changes must be a harmless re-fetch:

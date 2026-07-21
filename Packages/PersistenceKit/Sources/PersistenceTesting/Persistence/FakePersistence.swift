@@ -50,6 +50,8 @@ public actor FakePersistence: PersistenceProtocol {
 
     public func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
 
+    public func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { [:] }
+
     public func fetchPersonalRecord(
         mode: Mode,
         difficulty: Difficulty

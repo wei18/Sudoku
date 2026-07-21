@@ -166,11 +166,21 @@ public actor FakePrivateCKGateway: PrivateCKGateway {
             }
             return false
         case .dailyCompletedOn(let dayPrefix):
-            guard payload.recordType == PrivateCKConstants.savedGameRecordType else { return false }
-            guard case .string("daily") = payload.fields["mode"] else { return false }
-            guard case .string("completed") = payload.fields["status"] else { return false }
+            guard isDailyCompleted(payload) else { return false }
             guard case .string(let puzzleId) = payload.fields["puzzleId"] else { return false }
             return puzzleId.hasPrefix(dayPrefix)
+        case .dailyCompletedAll:
+            return isDailyCompleted(payload)
         }
+    }
+
+    /// Shared `mode == "daily" AND status == "completed"` check for both
+    /// daily predicates — factored out of `matches` to keep its cyclomatic
+    /// complexity under SwiftLint's ceiling (#921).
+    private static func isDailyCompleted(_ payload: RecordPayload) -> Bool {
+        guard payload.recordType == PrivateCKConstants.savedGameRecordType else { return false }
+        guard case .string("daily") = payload.fields["mode"] else { return false }
+        guard case .string("completed") = payload.fields["status"] else { return false }
+        return true
     }
 }

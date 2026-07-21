@@ -229,6 +229,16 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
                 Mode.daily.rawValue, "completed", dayPrefix
             )
             return (PrivateCKConstants.savedGameRecordType, predicate)
+        case .dailyCompletedAll:
+            // #921: same predicate as `.dailyCompletedOn` minus the
+            // `puzzleId BEGINSWITH` clause — fetches every completed daily in
+            // one query so `fetchCompletedDailyIdsByDay()` can bucket by day
+            // client-side instead of issuing one query per window day.
+            let predicate = NSPredicate(
+                format: "mode == %@ AND status == %@",
+                Mode.daily.rawValue, "completed"
+            )
+            return (PrivateCKConstants.savedGameRecordType, predicate)
         }
     }
 }

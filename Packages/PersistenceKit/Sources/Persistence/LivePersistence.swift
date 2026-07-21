@@ -134,6 +134,10 @@ public actor LivePersistence: PersistenceProtocol {
         try await savedGameStore().fetchCompletedDailyIds(for: date)
     }
 
+    public func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
+        try await savedGameStore().fetchCompletedDailyIdsByDay()
+    }
+
     public func fetchPersonalRecord(
         mode: Mode,
         difficulty: Difficulty
