@@ -56,7 +56,7 @@ the current shared path (CODE CONTRADICTED vs. that comment).
 a non-nil `statsRoute`). Both apps wire it in production:
 `SudokuAppComposition/Live.swift:120` / `MinesweeperAppComposition/Live.swift:132`
 (`statsRoute: .stats`). Because it is deliberately not a `HomeMode`,
-`HomeModeItem.sidebarItems(from:)` (`GameShellUI/Home/HomeScreen.swift:103-116`)
+`HomeModeItem.sidebarItems(from:)` (`GameShellUI/Home/HomeScreen.swift:115-127`)
 does not include it — the Statistics card is absent from the macOS/iPad-regular
 sidebar list, even though the Home grid (where the card itself renders) still
 shows in the `NavigationSplitView` detail pane alongside that sidebar. An
@@ -391,7 +391,7 @@ card — tier 2). `.replayDailyBoard` (`MS-DAILY-HUB` failed card, or a
 outcome also mounts through tier 4's sibling construction path, see below).
 
 **Code:** `MinesweeperUI/MinesweeperBoardLoaderView.swift` (tier 1),
-`MinesweeperUI/MinesweeperDailyOpenGuardView.swift` (tier 2, 267 lines, #842),
+`MinesweeperUI/MinesweeperDailyOpenGuardView.swift` (tier 2, 266 lines, #842),
 `MinesweeperUI/MinesweeperDailyReplayLoaderView.swift` (tier 3, #841),
 `MinesweeperUI/MinesweeperFreshBoardLoaderView.swift` (tier 4, #910).
 
@@ -436,9 +436,10 @@ or double-submit a Game Center score on an already-completed daily.
 | `.playable` (or a fetch failure — degrades non-blocking per #526) | mounts `MinesweeperBoardView` | modal-full (iOS) / push (macOS) | Close/Leave → `MS-DAILY-HUB` |
 
 Anchors: `MinesweeperUI/MinesweeperDailyOpenGuardView.swift:64-78`
-(`GuardState`/`DailyOpenOutcome`), `:141-192` (`content` switch), `:198-205`
-(`exitToHub`), `:207-231` (`resolve` — the #526 adjudication that a fetch
-failure degrades to `.playable`, never blocks daily play). **Known accepted
+(`GuardState`/`DailyOpenOutcome`), `:145-205` (`content` switch), `:207-214`
+(`exitToHub`), `:216-225` (`check()`), `:244-265` (`resolve` — the #526
+adjudication that a fetch failure degrades to `.playable`, never blocks daily
+play). **Known accepted
 cosmetic trade-off** (code comment, not measured): a `.failed` outcome shows
 this tier's OWN `.checking` spinner, then Tier 3's `.loading` spinner — a
 brief double-spinner rather than one continuous one.
@@ -594,9 +595,14 @@ since #287, closing a previously-real Sudoku-only asymmetry.
 `reminderPrimer.status == .notDetermined` (`:90-91`), and presents the same
 `ReminderPrimerSheet` `SUD-COMPLETION-OVERLAY` uses with the identical
 `[.medium, .large]` detent (`:76`, byte-parity confirmed against Sudoku's
-`CompletionView.swift:62-68`). Wired daily-only:
-`MinesweeperAppComposition/LiveRouteFactory.swift:308` (`mode == .daily ?
-makeDailyReminderPrimer?() : nil`).
+`CompletionView.swift:62-68`). Wired daily-only for THIS live overlay by
+`MinesweeperUI/MinesweeperBoardView.swift:1110-1121`
+(`shouldOfferReminderPrimer(mode:didWin:)` + `makeReminderPrimer()`, which
+gates on BOTH the daily mode and an actual win). Do not confuse this with
+`MinesweeperAppComposition/LiveRouteFactory.swift:308` — that near-identical
+`mode == .daily ? makeDailyReminderPrimer?() : nil` line belongs to the pushed
+`.completion` re-view route (`MS-COMPLETION-REVIEW`), where the mode gate alone
+is the win gate because a solved-daily re-view is `didWin: true` by definition.
 
 **Per-interaction outcome:**
 
