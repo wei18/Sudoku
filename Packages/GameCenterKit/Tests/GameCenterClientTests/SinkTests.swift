@@ -144,6 +144,8 @@ private actor StubPersistence: PersistenceProtocol {
         return dailyIds[key] ?? []
     }
 
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { dailyIds }
+
     func fetchPersonalRecord(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
         PersonalRecord(
             recordName: "\(mode.rawValue)-\(difficulty.rawValue)",

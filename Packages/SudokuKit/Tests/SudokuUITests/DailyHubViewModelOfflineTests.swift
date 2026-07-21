@@ -22,7 +22,7 @@ struct DailyHubViewModelOfflineTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    /// Verifies the fix for #526: when `fetchCompletedDailyIds` hangs
+    /// Verifies the fix for #526: when `fetchCompletedDailyIdsByDay` hangs
     /// (e.g. iCloud signed out — CK never throws, never returns), the
     /// hub must still reach `.loaded([3 cards])` promptly rather than
     /// staying in `.loading` forever.
@@ -92,21 +92,28 @@ struct DailyHubViewModelOfflineTests {
     }
 }
 
-/// Persistence fake whose `fetchCompletedDailyIds` suspends indefinitely —
-/// simulates a signed-out iCloud session where CloudKit never throws and
-/// never returns (the documented #526 root cause). Uses `Task.sleep` for a
-/// very long duration: the enclosing `Task` cancellation in the test unblocks
-/// it via structured concurrency (CancellationError propagates), which lets
-/// the test drain cleanly. Avoids the Swift 6 `@Sendable`-capture issue that
-/// arises when storing a `CheckedContinuation` directly on an actor.
+/// Persistence fake whose `fetchCompletedDailyIdsByDay` suspends
+/// indefinitely — simulates a signed-out iCloud session where CloudKit never
+/// throws and never returns (the documented #526 root cause). Uses
+/// `Task.sleep` for a very long duration: the enclosing `Task` cancellation in
+/// the test unblocks it via structured concurrency (CancellationError
+/// propagates), which lets the test drain cleanly. Avoids the Swift 6
+/// `@Sendable`-capture issue that arises when storing a `CheckedContinuation`
+/// directly on an actor.
+///
+/// #921: the hang moved from `fetchCompletedDailyIds(for:)` to
+/// `fetchCompletedDailyIdsByDay()` — `fetchWeekWindow` now calls the latter
+/// exclusively.
 private actor HangingPersistence: PersistenceProtocol {
 
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
         // Suspend for an hour — the test cancels the bootstrap Task long
         // before this expires, so CancellationError unblocks the test.
         try await Task.sleep(for: .seconds(3_600))
-        return []
+        return [:]
     }
+
+    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
 
     // MARK: - Minimal PersistenceProtocol forwarding
 
@@ -128,8 +135,10 @@ private actor HangingPersistence: PersistenceProtocol {
     func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
 }
 
-/// Persistence fake whose `fetchCompletedDailyIds` throws immediately with a
-/// given error — covers the fast-fail degrade path (e.g. `iCloudNotSignedIn`).
+/// Persistence fake whose `fetchCompletedDailyIdsByDay` throws immediately
+/// with a given error — covers the fast-fail degrade path (e.g.
+/// `iCloudNotSignedIn`). #921: moved from `fetchCompletedDailyIds(for:)`,
+/// mirroring `HangingPersistence` above.
 private actor ThrowingCompletionPersistence: PersistenceProtocol {
 
     private let error: any Error
@@ -138,9 +147,11 @@ private actor ThrowingCompletionPersistence: PersistenceProtocol {
         self.error = error
     }
 
-    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> {
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] {
         throw error
     }
+
+    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
 
     func bootstrap() async throws {}
     func latestInProgress() async throws -> SavedGameSummary? { nil }

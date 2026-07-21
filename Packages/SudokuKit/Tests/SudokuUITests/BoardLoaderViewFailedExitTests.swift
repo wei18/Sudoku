@@ -93,6 +93,7 @@ private actor UnreachablePersistence: PersistenceProtocol {
     func markCompleted(_ summary: SavedGameSummary) async throws {}
     func deleteAbandoned(recordName: String) async throws {}
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { [:] }
     func fetchPersonalRecord(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
         PersonalRecord(
             recordName: "",

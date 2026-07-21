@@ -23,7 +23,22 @@ struct DailyHubViewTests {
         let provider = FakePuzzleProvider()
         let result = providerResult ?? .success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate))
         await provider.setDailyTrioResult(result)
-        let persistence = FakePersistence(completedDailyIds: completedDailyIds)
+        let persistence = FakePersistence()
+        // #921: `fetchCompletedDailyIdsByDay()` day-buckets from per-date
+        // scripting only (no global-default fallback — see
+        // `completedDailyIdsByDate`'s doc). The OLD global default answered
+        // the SAME `completedDailyIds` value for every one of the 7 window
+        // days (each day's independent `fetchCompletedDailyIds(for:)` call
+        // fell back to it identically) — reproduce that exact fixture by
+        // scripting all 7 window dates to the same value explicitly, so the
+        // committed `easyDone`/`allDone` baselines (full 7-day streak +
+        // today's specific-difficulty check) render byte-identical.
+        if !completedDailyIds.isEmpty {
+            for offset in 0...6 {
+                let date = Self.fixedDate.addingTimeInterval(-Double(offset) * 86_400)
+                await persistence.setCompletedDailyIds(completedDailyIds, for: date)
+            }
+        }
         return DailyHubViewModel(
             provider: provider,
             persistence: persistence,
@@ -190,9 +205,10 @@ struct DailyHubViewTests {
     // MARK: - #774 week-strip states
 
     /// Partial streak: today + yesterday completed via per-date scripting →
-    /// last two dots filled, "2 day streak" caption. (The global-set fixtures
-    /// above light ALL 7 dots — every window date falls back to the same
-    /// non-empty set — so this is the only baseline pinning a MIXED strip.)
+    /// last two dots filled, "2 day streak" caption. (The `makeViewModel`
+    /// helper's `completedDailyIds:` fixtures above explicitly script ALL 7
+    /// window dates to the same non-empty set — #921 — reproducing a FULL
+    /// 7-day streak, so this is the only baseline pinning a MIXED strip.)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripPartialStreakIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId

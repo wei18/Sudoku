@@ -75,6 +75,16 @@ public protocol PersistenceProtocol: Sendable {
     /// for the given UTC date. Seeds GameCenterSink's local dedup cache.
     func fetchCompletedDailyIds(for date: Date) async throws -> Set<String>
 
+    /// #921: single-query, day-bucketed sibling of `fetchCompletedDailyIds(for:)`
+    /// — every `mode == "daily" && status == "completed"` puzzleId, grouped by
+    /// its own UTC day (`YYYY-MM-DD`, the same key format `SavedGameStore`'s
+    /// `extractDailyDay` produces). Feeds `DailyHubViewModel.fetchWeekWindow`'s
+    /// rolling 7-day window with ONE read instead of 7 per-day calls (mirrors
+    /// `MinesweeperSavedGameStore.fetchCompletedDailyIdsByDay`, #915). A day
+    /// with no completions is simply absent from the returned dictionary —
+    /// callers treat a missing key as an empty set, not an error.
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>]
+
     /// Fetch the PersonalRecord for `(mode, difficulty)`; returns an empty
     /// record if none exists yet (never throws on first read).
     func fetchPersonalRecord(

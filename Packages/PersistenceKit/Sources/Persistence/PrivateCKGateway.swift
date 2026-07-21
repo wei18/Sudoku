@@ -68,6 +68,11 @@ public enum RecordPredicate: Sendable, Equatable, Hashable {
     case all(recordType: String)
     case statusEquals(recordType: String, status: String)
     case dailyCompletedOn(dayPrefix: String)   // puzzleId hasPrefix dayPrefix
+    /// #921: `mode == "daily" AND status == "completed"`, no `puzzleId`
+    /// prefix filter — the single-query sibling of `dailyCompletedOn`, used
+    /// by `SavedGameStore.fetchCompletedDailyIdsByDay()` to fetch every
+    /// completed daily in one round-trip instead of one query per window day.
+    case dailyCompletedAll
 }
 
 /// #552: per-call save policy. PersonalRecord uses `.ifUnchanged` for
