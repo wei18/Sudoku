@@ -359,10 +359,29 @@ Anchors: `SudokuUI/Board/BoardLoaderView.swift:210-247` (`failedBlock`, Close
 overlay) — this is the state machine's `.failed` branch, not a covering
 surface.
 
-**State variants:** `.loading` (`ProgressView`) → `.loaded` (mounts
-`SUD-BOARD`) or `.failed(UserFacingError)` (this block). Same shape for
+**State variants:** `LoadState` has **four** cases (`BoardLoaderView.swift:66-81`):
+`.loading` (`ProgressView`) → `.loaded` (mounts `SUD-BOARD`),
+`.completedRedirect(CompletionViewModel, ReminderPrimerCoordinator?)`, or
+`.failed(UserFacingError)` (this block).
+
+**AS-BUILT NOTE (2026-07-21, #842):** `.completedRedirect` was undocumented
+until now. It is a race guard: when the daily open-time precheck in `load()`
+finds the store's `SavedGame` already `.completed` (stale phase-1 view-model
+data, e.g. a fast tap on a card that was just finished elsewhere), the loader
+renders the Completion surface **inline** via `CompletionOverlayScaffold`
+(`:178-196`, set at `:285`) instead of ever building a playable
+`GameViewModel`. Rendering is byte-identical to the `.completion` route's, so
+it introduces no new visual state to snapshot. Close on this surface uses the
+same `exitToHub()` shape (`:201`) as the live completion overlay — correct
+behavior that simply never reached the contract. MS reaches the equivalent
+outcome through a separate tier instead (`MinesweeperDailyOpenGuardView`'s
+`.completed` state — see `MS-BOARD-LOAD-FAILED` Tier 2), so the two apps are
+behaviorally mirrored via different structures, which is itself worth knowing
+before "unifying" them.
+
 `MS-BOARD-LOAD-FAILED` (`MinesweeperBoardLoaderView.swift`, copy: `"Couldn't
-load saved game."` — only reachable via `.resumeBoard`, not fresh `.board`).
+load saved game."`) is the Tier 1 counterpart — only reachable via
+`.resumeBoard`, not fresh `.board`.
 
 ---
 
@@ -810,12 +829,26 @@ text (no deep-link, P12 gap) — dismiss row.
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| "Open Settings" (iOS) | opens `UIApplication.openNotificationSettingsURLString`-style system URL | external | user returns manually |
+| "Open Settings" (iOS) | opens `UIApplication.openNotificationSettingsURLString`-style system URL | external | user returns manually; on return the status row re-polls — see AS-BUILT NOTE below |
 | Dismiss | `model.dismissDeniedExplainer()` | dismiss sheet | `SETTINGS` |
+
+**AS-BUILT NOTE (2026-07-21, #929):** returning from that system deep-link
+**backgrounds** the app rather than dismissing anything, so this screen — and
+the `SETTINGS` row behind it — never leave the view hierarchy and `.task`
+never re-fires. Until #929 there was no foreground hook at all, so a user who
+granted permission in Settings.app came back to a row still reading `denied`
+until they left `SETTINGS` and re-entered. `ReminderSettingsSection` now
+carries a `scenePhase` re-poll (`SettingsUI/Reminders/ReminderSettingsSection.swift:95,145`)
+that re-runs `model.onAppear()` on `.active`, so the status is re-read on
+every foreground return. Repeat calls are safe: the #817 one-shot migration
+inside `onAppear()` is guarded by `getIsScheduled() == nil` plus a post-await
+TOCTOU re-check.
 
 **Covering behavior:** `.sheet(detent: .medium)`, drag indicator hidden.
 **State variants:** platform-conditional body (iOS button vs. macOS text),
-otherwise single state.
+otherwise single state. macOS has no `openNotificationSettingsURLString`, so
+the deep-link/return cycle above is iOS-only; the `scenePhase` hook is
+harmless there.
 
 ---
 
