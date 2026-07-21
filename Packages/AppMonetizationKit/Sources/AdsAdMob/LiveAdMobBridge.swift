@@ -169,10 +169,6 @@ internal final class LiveAdMobBridge: AdMobBridge {
         #endif
     }
 
-    internal func currentBannerStatus() async -> AdBannerStatus {
-        state.withLock { $0 }
-    }
-
     internal func dispose(handle: AdBannerHandle) async {
         #if canImport(GoogleMobileAds)
         // Drop the strong retain held in `liveBanners`. `removeValue` returns
@@ -301,9 +297,8 @@ internal struct BannerViewRepresentable: UIViewRepresentable {
 #endif
 
 // `final class` + `NSLock`-guarded state + `nonisolated(unsafe)` is the same
-// `@unchecked Sendable` pattern used by `FakeStoreKitBridge` (v2.1) and
-// `AdPresentationAnchor` (v2.0). Documented exception to strict concurrency:
-// the live SDK fires callbacks on arbitrary queues, so an `actor` shape would
-// require trampolining every delegate event — the lock is simpler and
-// equivalent.
+// `@unchecked Sendable` pattern used by `FakeStoreKitBridge` (v2.1).
+// Documented exception to strict concurrency: the live SDK fires callbacks on
+// arbitrary queues, so an `actor` shape would require trampolining every
+// delegate event — the lock is simpler and equivalent.
 extension LiveAdMobBridge: @unchecked Sendable {}

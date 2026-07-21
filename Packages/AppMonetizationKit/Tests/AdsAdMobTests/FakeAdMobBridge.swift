@@ -79,10 +79,6 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
     }
     // swiftlint:enable identifier_name
 
-    internal func currentBannerStatus() async -> AdBannerStatus {
-        state.withLock { $0.cachedStatus }
-    }
-
     internal func dispose(handle: AdBannerHandle) async {
         state.withLock { $0.disposedHandles.append(handle) }
     }
