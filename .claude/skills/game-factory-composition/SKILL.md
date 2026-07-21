@@ -16,9 +16,10 @@ description: The shared composition template that lets multiple games (Sudoku / 
 - User asks "how do I add a third/fourth game", "what does makeGameApp wire",
   "what stays per-game".
 
-This is the **shipped** shape of SDD-005 platform convergence (all 3 games
-migrated, 2026-06-19). The SDD's *future* DI-config refinements are not yet here;
-this skill describes only what is live in `GameAppKit` today.
+This is the **shipped** shape of SDD-005 platform convergence (2026-06-19). The
+third game (Tiles2048 / SDD-004) was prototyped then **removed 2026-06-29** — only
+Sudoku + Minesweeper remain. The SDD's *future* DI-config refinements are not yet
+here; this skill describes only what is live in `GameAppKit` today.
 
 ## The prime shape
 

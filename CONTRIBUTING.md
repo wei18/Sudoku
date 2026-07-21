@@ -134,7 +134,7 @@ Keep one logical change per PR.
 These community-health files (this file, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
 issue/PR templates) are **English-only**, per GitHub convention. App-facing
 strings are different: they follow the project's 7-locale flow
-(`zh-TW`, `en`, `ja`, `zh-CN`, `es`, `th`, `ko`) in `Localizable.xcstrings`,
+(`zh-Hant`, `en`, `ja`, `zh-Hans`, `es`, `th`, `ko`) in `Localizable.xcstrings`,
 translated via the `ai-translated-localization` agent flow. The L10n CI gate
 above enforces completeness.
 

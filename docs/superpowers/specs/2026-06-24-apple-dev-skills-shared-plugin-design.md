@@ -21,7 +21,8 @@ as a **git submodule** under `.claude/skills/apple-dev-skills/`. Project-specifi
 skills stay flat in this repo. The payoff: the portable skill set becomes
 reusable across any future Apple-platform project (the "game factory" north star
 extends to a "project factory") and evolves with its own PR trail, while this repo
-keeps only what is genuinely Sudoku/Minesweeper/Tiles2048-bound.
+keeps only what is genuinely Sudoku/Minesweeper-bound. (Tiles2048/SDD-004 was
+removed 2026-06-29 — historical references below predate that.)
 
 ## 2. Decisions (user-confirmed)
 
@@ -132,7 +133,7 @@ the `apple-dev-skills:` prefix.
 > stays flat; item 9 below is appended accordingly. See the AS-BUILT NOTE above.
 
 ### Stay (project-bound — names this repo's mise tasks / specific apps / pipelines)
-1. `game-factory-composition` — Sudoku/MS/2048 + GameAppKit `makeGameApp`
+1. `game-factory-composition` — Sudoku/MS + GameAppKit `makeGameApp`
 2. `mise-task-operations` — index of THIS repo's `mise run` tasks
 3. `cloudkit-schema-ops` — `ck:schema` task, `.ckdb`, the apps' containers
 4. `local-testflight-upload` — `tf:upload` task
