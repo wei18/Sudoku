@@ -389,26 +389,6 @@ internal struct APIResource: Sendable, Equatable {
         }
         return try arr.map { try fromDict($0, path: path, status: status, data: data) }
     }
-
-    private static func fromDict(
-        _ dict: [String: Any],
-        path: String,
-        status: Int,
-        data: Data
-    ) throws -> APIResource {
-        guard let id = dict["id"] as? String,
-              let type = dict["type"] as? String
-        else {
-            throw ASCClient.ClientError.decodeFailed(
-                reason: "missing id/type",
-                path: path,
-                status: status,
-                bodyExcerpt: truncateBody(data)
-            )
-        }
-        let attrs = APIResource.flattenAttributes(dict["attributes"] as? [String: Any])
-        return APIResource(id: id, type: type, attributes: attrs)
-    }
 }
 
 /// A JSON:API GET response carrying both the primary `data[]` collection
@@ -438,11 +418,11 @@ internal struct APICollectionWithIncluded: Sendable, Equatable {
             )
         }
         let primary = try arr.map {
-            try APIResource.fromDictPublic($0, path: path, status: status, data: data)
+            try APIResource.fromDict($0, path: path, status: status, data: data)
         }
         let includedArr = (json["included"] as? [[String: Any]]) ?? []
         let included = try includedArr.map {
-            try APIResource.fromDictPublic($0, path: path, status: status, data: data)
+            try APIResource.fromDict($0, path: path, status: status, data: data)
         }
         var rels: [String: [String: [String]]] = [:]
         for (raw, parsed) in zip(arr, primary) {
@@ -466,9 +446,9 @@ internal struct APICollectionWithIncluded: Sendable, Equatable {
 }
 
 extension APIResource {
-    /// Same parser as the private `fromDict`, exposed for the
-    /// `APICollectionWithIncluded` decoder. Kept internal-only.
-    internal static func fromDictPublic(
+    /// Shared JSON:API resource parser, used by `decodeSingle` / `decodeCollection`
+    /// and the `APICollectionWithIncluded` decoder. Kept internal-only.
+    internal static func fromDict(
         _ dict: [String: Any],
         path: String,
         status: Int,

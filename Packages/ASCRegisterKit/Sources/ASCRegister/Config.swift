@@ -1,10 +1,10 @@
 // Config — single-source-of-truth for ASCRegister content.
 //
-// Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (13 achievements,
+// Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (11 achievements,
 // 680 total points (v1 500 + v2.6 batch 180); ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
 //   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
 //   - GameCenterClient/GameCenterSink.swift  (achievement prefix)
-//   - GameCenterClient/AchievementEvaluator.swift (13 short IDs emitted, v2.6)
+//   - GameCenterClient/AchievementEvaluator.swift (11 short IDs emitted, v2.6)
 //
 // ConfigConsistencyTests enforces that equality. If you change an ID here
 // you MUST change it in the production target — and bump the leaderboard
@@ -125,7 +125,7 @@ internal enum Config {
         AchievementConfig(shortId: "practice.complete_100", points: 100, isHidden: false),
         AchievementConfig(shortId: "hard.master", points: 100, isHidden: false),
         AchievementConfig(shortId: "daily.sweep", points: 90, isHidden: false),
-        // v2.6 batch (5)
+        // v2.6 batch (3)
         AchievementConfig(shortId: "perfect_run", points: 50, isHidden: false),
         AchievementConfig(shortId: "daily.streak_30", points: 100, isHidden: false),
         AchievementConfig(shortId: "expert_solver", points: 30, isHidden: false),
@@ -164,10 +164,6 @@ internal enum Config {
 
     internal static var allAchievementShortIds: [String] {
         achievements.map(\.shortId)
-    }
-
-    internal static var allAchievementFullIds: [String] {
-        achievements.map { achievementPrefix + $0.shortId }
     }
 
     internal static var totalAchievementPoints: Int {

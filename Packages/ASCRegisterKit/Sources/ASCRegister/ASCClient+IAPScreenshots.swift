@@ -140,6 +140,6 @@ extension ASCClient {
         // A missing key AND an explicit `null` both fail this cast — either
         // shape of "no screenshot yet" resolves to nil here.
         guard let inner = json["data"] as? [String: Any] else { return nil }
-        return try APIResource.fromDictPublic(inner, path: path, status: status, data: data)
+        return try APIResource.fromDict(inner, path: path, status: status, data: data)
     }
 }
