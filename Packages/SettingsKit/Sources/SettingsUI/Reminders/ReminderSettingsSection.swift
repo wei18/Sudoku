@@ -85,6 +85,14 @@ public struct ReminderSettingsSection: View {
     private let copy: ReminderSettingsCopy
     private let primerCopy: ReminderPrimerCopy
     private let deniedCopy: ReminderDeniedCopy
+    // Foreground re-poll seam: `openSystemSettings()` backgrounds the app into
+    // Settings.app WITHOUT this view ever leaving the hierarchy, so `.task`
+    // below never re-fires on return (swiftui-interaction-footguns: `.task`
+    // only re-fires on identity change, not on foreground). Mirrors the
+    // `guard newPhase == .active` re-poll in `BannerSlotView` (#341). Note the
+    // board views' `scenePhase` handlers are NOT this pattern — they switch on
+    // `.background`/`.inactive` to pause and flush, i.e. the opposite edge.
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(
         model: ReminderSettingsModel,
@@ -128,6 +136,16 @@ public struct ReminderSettingsSection: View {
         // Settings.app). `.task` re-fires per the swiftui-interaction-footguns
         // note only on identity change — fine here (one Settings mount).
         .task { await model.onAppear() }
+        // Refresh status when the app returns to the foreground — the primary
+        // path back from `openSystemSettings()`'s Settings.app deep-link, which
+        // backgrounds rather than dismisses this screen so `.task` above never
+        // re-fires. Reuses `onAppear()` (not a duplicated `refreshStatus()`
+        // call): its #817 one-shot migration is TOCTOU-guarded (re-checks
+        // `getIsScheduled() == nil` after the await) so repeat calls are safe.
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task { await model.onAppear() }
+        }
         .sheet(isPresented: $model.isPrimerPresented) {
             ReminderPrimerSheet(
                 copy: primerCopy,
