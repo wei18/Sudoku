@@ -184,10 +184,16 @@ public struct TextTokens: Sendable, Equatable, Hashable {
 public struct AccentTokens: Sendable, Equatable, Hashable {
     public let primary: ThemeColor
     public let muted: ThemeColor
+    /// A celebratory indicator color (e.g. the Daily streak flame) — kept
+    /// separate from `status.warning` so a "you're on a streak" signal never
+    /// shares ink with a failure/caution semantic on the same screen (#767
+    /// mode-toggle misuse pattern; D1 root-cause fix).
+    public let celebratory: ThemeColor
 
-    public init(primary: ThemeColor, muted: ThemeColor) {
+    public init(primary: ThemeColor, muted: ThemeColor, celebratory: ThemeColor) {
         self.primary = primary
         self.muted = muted
+        self.celebratory = celebratory
     }
 }
 
@@ -321,9 +327,15 @@ public struct NeutralTheme: Theme {
         errorDigit: ThemeColor(light: 0xD0021B, dark: 0xFF453A)
     )
 
+    // celebratory deliberately reuses `primary`'s neutral gray rather than
+    // minting a new hue: this fallback theme is grayscale/system-derived on
+    // purpose (never an app's brand palette, see the type doc above), and no
+    // un-injected subtree renders real celebratory UI — a distinct hue here
+    // would falsely suggest a "neutral celebratory brand color" exists.
     public let accent = AccentTokens(
         primary: ThemeColor(light: 0x636366, dark: 0xAEAEB2),
-        muted: ThemeColor(light: 0xD1D1D6, dark: 0x48484A)
+        muted: ThemeColor(light: 0xD1D1D6, dark: 0x48484A),
+        celebratory: ThemeColor(light: 0x636366, dark: 0xAEAEB2)
     )
 
     public let status = StatusTokens(

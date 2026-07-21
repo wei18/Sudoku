@@ -143,7 +143,7 @@ struct DailyStripView: View {
     private func header(streak: Int) -> some View {
         HStack(spacing: headerIconGap) {
             Image(systemName: "flame.fill")
-                .foregroundStyle(theme.status.warning.resolved)
+                .foregroundStyle(theme.accent.celebratory.resolved)
                 .accessibilityHidden(true)
             streakCaption(streak: streak)
                 .font(.subheadline.weight(.bold))
