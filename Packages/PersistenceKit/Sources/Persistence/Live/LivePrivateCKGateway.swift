@@ -94,7 +94,17 @@ internal actor LivePrivateCKGateway: PrivateCKGateway {
 
     func delete(recordName: String) async throws {
         let id = CKRecord.ID(recordName: recordName, zoneID: zoneID)
-        _ = try await database.deleteRecord(withID: id)
+        do {
+            _ = try await database.deleteRecord(withID: id)
+        } catch let ckError as CKError where ckError.code == .unknownItem {
+            // Deleting an already-absent record is a no-op, not a failure —
+            // mirrors `fetch(recordName:)`'s `.unknownItem → nil` tolerance
+            // a few lines above. Plausible during a cross-device race where
+            // another device already discarded the same record.
+            return
+        } catch {
+            throw Self.translate(error, recordName: recordName)
+        }
     }
 
     func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] {

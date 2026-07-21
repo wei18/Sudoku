@@ -16,6 +16,7 @@ import CloudKit
 import Foundation
 import Testing
 @testable import Persistence
+import PersistenceTesting
 
 @Suite("LivePrivateCKGateway — error translation (issue #64)")
 struct LivePrivateCKGatewayTests {
@@ -48,6 +49,47 @@ struct LivePrivateCKGatewayTests {
         struct Sentinel: Error, Equatable {}
         let translated = LivePrivateCKGateway.translate(Sentinel(), recordName: "x")
         #expect(translated is Sentinel)
+    }
+
+    // MARK: - delete idempotency (#757 wave-6)
+    //
+    // `LivePrivateCKGateway.delete`'s new `.unknownItem → return` branch is
+    // inline CloudKit-call handling — like `fetch`/`query` above it can't be
+    // exercised without a live, authenticated `CKDatabase`, so there is no
+    // seam to invoke the actual `delete(recordName:)` here (same limitation
+    // this suite's header documents for `fetch`/`query`). What IS reachable:
+    // (1) `FakePrivateCKGateway.delete` — the fake every `PersistenceKit`
+    // test actually exercises — which proves the `PrivateCKGateway` protocol
+    // contract itself tolerates deleting an absent record; and (2) the
+    // `translate(_:recordName:)` mapping delete's catch-all now routes
+    // through for any OTHER error, already covered by
+    // `nonConflictCKErrorPassesThrough` / `serverRecordChangedMapsToSyncConflict`
+    // above — those same assertions ARE the "non-unknownItem error still
+    // surfaces, translated" proof for delete's catch-all branch.
+    @Test func deletingAbsentRecordViaFakeGatewayDoesNotThrow() async throws {
+        let gateway = FakePrivateCKGateway()
+
+        // No prior save — "record-a" was never inserted.
+        try await gateway.delete(recordName: "record-a")
+
+        let operations = await gateway.operations
+        #expect(operations == [.delete(recordName: "record-a")])
+    }
+
+    @Test func deletingExistingRecordViaFakeGatewayStillRemovesIt() async throws {
+        let gateway = FakePrivateCKGateway()
+        let payload = RecordPayload(
+            recordType: PrivateCKConstants.savedGameRecordType,
+            recordName: "record-b",
+            fields: [:],
+            encodedSystemFields: nil
+        )
+        await gateway.seed(payload)
+        #expect(await gateway.recordCount() == 1)
+
+        try await gateway.delete(recordName: "record-b")
+
+        #expect(await gateway.recordCount() == 0)
     }
 }
 #endif
