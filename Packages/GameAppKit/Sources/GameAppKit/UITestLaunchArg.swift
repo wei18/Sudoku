@@ -62,6 +62,27 @@ public enum UITestLaunchArg {
               index + 1 < arguments.count else { return nil }
         return arguments[index + 1]
     }
+
+    /// #931: swaps in `UITestFlipOnBackgroundNotificationAuthorizing` for the
+    /// live `NotificationAuthorizing` in `makeGameApp`. Reports `.denied`
+    /// until the process is observed entering the background, then
+    /// `.authorized` — deterministically pinning
+    /// `ReminderSettingsSection`'s `.onChange(of: scenePhase)` re-poll hook
+    /// as an E2E regression: a poll before any real background→foreground
+    /// cycle always sees `.denied`. Absent from Release builds via the
+    /// `#if DEBUG` guard.
+    public static let fakeReminderRepoll = "-uitest-fake-reminder-repoll"
+
+    /// #931: swaps in `UITestFlipOnBackgroundAdGateStateStore` +
+    /// `UITestNoopAdProvider` for the live ad-gate store / provider in
+    /// `makeGameApp`. The fake store throws until the process is observed
+    /// entering the background (so `AdGate` never caches an "open" decision
+    /// early), then resolves to an always-open gate — deterministically
+    /// pinning `BannerSlotView`'s `.onChange(of: scenePhase)` repoll hook
+    /// (`repollGate()`) as an E2E regression: the banner slot cannot appear
+    /// before a real background→foreground cycle. Absent from Release builds
+    /// via the `#if DEBUG` guard.
+    public static let fakeAdGateRepoll = "-uitest-fake-ad-gate-repoll"
 }
 
 #endif

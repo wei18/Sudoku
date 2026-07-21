@@ -181,6 +181,11 @@ public struct BannerSlotView: View {
         // #895: was a raw Swift string — VoiceOver announced English on all
         // 7 locales.
         .accessibilityLabel(String(localized: "Advertisement", bundle: .main))
+        // #931: stable, locale-independent anchor so E2E can query the slot's
+        // shown/hidden state without depending on the localized "Advertisement"
+        // label. Only present on this `banner` branch — `EmptyView()` (gate
+        // closed / dismissed) has no element at all, which IS the discriminator.
+        .accessibilityIdentifier("monetization.banner.slot")
     }
 
     @ViewBuilder

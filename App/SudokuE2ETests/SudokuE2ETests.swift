@@ -74,4 +74,28 @@ final class SudokuE2ETests: XCTestCase {
 
         GameE2ESupport.assertCompletionAppears(in: app)
     }
+
+    /// #931: pins `ReminderSettingsSection`'s `.onChange(of: scenePhase)`
+    /// re-poll hook (#929) — the denied → authorized row swap only happens
+    /// after a real background→foreground cycle (see
+    /// ScenePhaseRepollE2ESupport for the discriminating-fake design).
+    func test_reminderSettingsRepollsOnForeground() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.fakeReminderRepoll,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        ScenePhaseRepollE2ESupport.assertReminderScenePhaseRepoll(in: app)
+    }
+
+    /// #931: pins `BannerSlotView`'s `.onChange(of: scenePhase)` repoll hook
+    /// (`repollGate()`, #341) — the hidden → visible slot swap only happens
+    /// after a real background→foreground cycle.
+    func test_bannerSlotRepollsOnForeground() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.fakeAdGateRepoll]
+        app.launch()
+        ScenePhaseRepollE2ESupport.assertBannerScenePhaseRepoll(in: app)
+    }
 }
