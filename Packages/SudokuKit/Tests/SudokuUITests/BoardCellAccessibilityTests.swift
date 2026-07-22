@@ -56,10 +56,12 @@ struct BoardCellAccessibilityTests {
 @Suite("BoardCellView — armed-digit accessibility hint (#790 fix 2 / #939)")
 struct BoardCellArmedAccessibilityTests {
 
-    private func cell(digit: Int?, armedDigit: Int?, isGiven: Bool = false, pencilMode: Bool = false) -> BoardCellView {
+    private func cell(
+        digit: Int?, armedDigit: Int?, isGiven: Bool = false, isError: Bool = false, pencilMode: Bool = false
+    ) -> BoardCellView {
         BoardCellView(
             row: 0, column: 0, digit: digit, isGiven: isGiven, isSelected: false,
-            isError: false, isHighlighted: false, isSameDigit: false,
+            isError: isError, isHighlighted: false, isSameDigit: false,
             isPencilNotes: true, noteMask: 0, side: 40, armedDigit: armedDigit, pencilMode: pencilMode
         )
     }
@@ -106,5 +108,26 @@ struct BoardCellArmedAccessibilityTests {
         // regression — the pre-#939 label was equally silent about notes).
         let filled = cell(digit: 5, armedDigit: 5, pencilMode: true)
         #expect(filled.accessibilityLabel == "Row 1, Column 1, value 5")
+    }
+
+    // MARK: - round-2 review: the isError branch needs the same hint
+
+    @Test func errorCell_sameDigitArmed_gainsClearHint() {
+        // #939 round-2: `tapCell` doesn't special-case `isError` — a
+        // conflicting user-filled cell holding the armed digit is cleared
+        // exactly like a non-conflicting one, so the label must announce
+        // BOTH the conflict and the pending clear (reuses the same "will
+        // clear %lld" catalog key as the non-error branch — no new string).
+        let errorFilled = cell(digit: 5, armedDigit: 5, isError: true)
+        #expect(errorFilled.accessibilityLabel == "Row 1, Column 1, conflict 5, will clear 5",
+            "A same-digit armed tap on a conflicting cell must still announce it will clear")
+    }
+
+    @Test func errorCell_sameDigitArmed_pencilMode_labelUnchanged() {
+        // #939 round-2: pencil mode toggles a note on this same tap (not a
+        // clear) even on a conflicting cell, so the hint must stay off here
+        // too — mirrors `filledCell_sameDigitArmed_pencilMode_labelUnchanged`.
+        let errorFilled = cell(digit: 5, armedDigit: 5, isError: true, pencilMode: true)
+        #expect(errorFilled.accessibilityLabel == "Row 1, Column 1, conflict 5")
     }
 }

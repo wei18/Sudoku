@@ -176,7 +176,15 @@ struct BoardCellView: View {
         // bare interpolation bypassing l10n).
         let location = String(localized: "Row \(row + 1), Column \(column + 1)", bundle: .main)
         if isError, let digit {
-            return "\(location), \(String(localized: "conflict \(digit)", bundle: .main))"
+            let conflictLabel = "\(location), \(String(localized: "conflict \(digit)", bundle: .main))"
+            // #939 (round-2 review): `tapCell` doesn't special-case `isError`
+            // — a conflicting user-filled cell holding the armed digit is
+            // cleared exactly like a non-conflicting one, so the "will clear"
+            // hint must fire here too (reusing the same catalog key; no new
+            // string). Pencil mode is excluded for the same reason as the
+            // non-error branch below: that tap toggles a note, not a clear.
+            guard !isGiven, !pencilMode, digit == armedDigit else { return conflictLabel }
+            return "\(conflictLabel), \(String(localized: "will clear \(digit)", bundle: .main))"
         }
         if let digit {
             if isGiven {
