@@ -42,7 +42,8 @@ board; Settings back; reminder-tap when already elsewhere resets to `.daily`
 | Leaderboard card | title "Leaderboard", subtitle Sudoku `"Global / friends"` / MS `"Best times"` | none¹ |
 | Settings card | title "Settings", subtitle Sudoku `"Account / language"` / MS `"Purchases / about"` | none¹ |
 | Statistics card (conditional, `GameConfig.statsRoute != nil` — both apps wire it) | title "Statistics", subtitle `"Wins / times / averages"` (same copy both apps) | none² |
-| Banner slot | ad or placeholder | — |
+| Banner slot | ad or placeholder | `monetization.banner.slot` (#933) |
+| (root container) | — | `game.home.root` (#936 — E2E landing anchor) |
 
 ¹ `HomeScreen.cardAccessibilityIdentifier` defaults to `{ _ in nil }` and
 neither app's `GameHomeView` callsite overrides it post-#557 — MS's older
@@ -202,7 +203,7 @@ Sudoku's `weekStrip` degrade).
 | Element | Copy | a11y id |
 |---|---|---|
 | Difficulty segmented picker | Easy / Medium / Hard | none |
-| "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Draw new puzzle") | `Label("New Game", systemImage: "play.fill")` | none |
+| "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Draw new puzzle") | `Label("New Game", systemImage: "play.fill")` | `sudoku.practiceHub.start` (#936, mirrors MS) |
 | Hint row (state-dependent) | `"{difficulty} · ready"` / redacted shimmer / `"{difficulty} · {puzzleId}"` / failure `reason` | none |
 
 **Per-interaction outcome:**
@@ -342,8 +343,9 @@ architecture makes `.idle` a real, reachable UI state.
 **Code:** `SudokuUI/Board/BoardLoaderView.swift`.
 
 **Element inventory:** warning icon, `"Couldn't load puzzle."`, classified
-error caption, `Label("Close", systemImage: "xmark")` button (`.bordered`) +
-`Label("Retry", systemImage: "arrow.clockwise")` button (`.bordered`).
+error caption, `Label("Close", systemImage: "xmark")` button (`.bordered`,
+`sudoku.boardLoader.close`, #936) + `Label("Retry", systemImage:
+"arrow.clockwise")` button (`.bordered`, `sudoku.boardLoader.retry`, #936).
 
 **Per-interaction outcome:**
 
@@ -418,7 +420,9 @@ outcome also mounts through tier 4's sibling construction path, see below).
 
 **Element inventory:** warning icon, `"Couldn't load saved game."`,
 classified error caption, `Label("Close", systemImage: "xmark")`
-(`.bordered`) + `Label("Retry", systemImage: "arrow.clockwise")` (`.bordered`).
+(`.bordered`, `minesweeper.boardLoader.close`, #936) + `Label("Retry",
+systemImage: "arrow.clockwise")` (`.bordered`, `minesweeper.boardLoader.retry`,
+#936).
 
 **Per-interaction outcome:**
 
@@ -525,7 +529,7 @@ both boards).
 | Title | `"leave.game.title"` (localized key, default text "Leave Game?"-style copy per app catalog) | — |
 | Message | `"leave.game.message"` | — |
 | Resume button | "Resume" | `game.pause.resume` |
-| Leave button (destructive) | `"leave.game.leave"` | none |
+| Leave button (destructive) | `"leave.game.leave"` | `game.pause.leave` (#936) |
 
 **Per-interaction outcome:**
 
@@ -560,7 +564,7 @@ wires it (both boards always wire it — no host omits it in production).
 | Hero | "Solved!" + elapsed `m:ss` + mistake count | `game.completion.hero` |
 | Reminder affordance (Daily only, pre-#287-grant) | `"Remind me when tomorrow's puzzle is ready"` + subcopy | none |
 | Play Again (practice only, iOS only — `onPresentBoard` wired) | "Play Again" `.borderedProminent` | none |
-| Close | "Close" — `.borderedProminent` if alone, `.bordered` if Play Again present | none |
+| Close | "Close" — `.borderedProminent` if alone, `.bordered` if Play Again present | `game.completion.close` (#936) |
 
 There is no leaderboard slice UI — #698 deleted the dead leaderboard-fetch
 state machine (both apps hardcoded `state: .hidden` since v2.6 and it never
@@ -600,7 +604,7 @@ with the rendering machinery, so there is nothing left to vary.
 | Hero (loss) | "Boom" (no elapsed shown in the loss hero per `CompletionOutcome`) | `game.completion.hero` |
 | Reminder affordance (Daily win only, pre-authorization — #814, mirrors Sudoku) | `"Remind me when tomorrow's boards are ready"` + subcopy | none |
 | Play Again (practice only, iOS only — `onPlayAgain` wired) | "Play Again" | none |
-| Close | "Close" | none |
+| Close | "Close" | `game.completion.close` (#936) |
 
 Same "no leaderboard zone" note as Sudoku — #698 deleted the dead fetch state
 machine on this VM too.
