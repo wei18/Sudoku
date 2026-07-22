@@ -187,6 +187,17 @@ public struct DailyHubView<Banner: View>: View {
                 DailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
                     .padding(.horizontal, theme.spacing.medium)
                     .padding(.top, theme.spacing.medium)
+                    // #935 batch 3: stable, loaded-hub root anchor (host-driven
+                    // XCUITest E2E, N12) — a ZERO-SIZE marker composed via
+                    // `.background` (a SIBLING layer, not an ancestor of
+                    // `DailyStripView`'s own day-dot elements) so it cannot
+                    // cascade an id onto them (#937's "container id clobbers
+                    // descendant ids" lesson — see the `empty:` builder below).
+                    .background(alignment: .topLeading) {
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .accessibilityIdentifier("sudoku.dailyHub.root")
+                    }
             },
             banner: { banner }
         )
@@ -273,6 +284,14 @@ struct DailyPuzzleCard: View {
         // below instead of being combine-concatenated.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
+        // #935 batch 3: stable, non-localized anchor for a COMPLETED card
+        // (host-driven XCUITest E2E, N12 re-view route) — applied on the same
+        // element as the combined label above, not a wrapping container, so
+        // it can't cascade onto anything (this element has no accessibility
+        // descendants of its own — `.accessibilityElement(children: .ignore)`).
+        // Un-completed cards get no identifier (unneeded, keeps the id
+        // meaningful).
+        .accessibilityIdentifier(card.isCompleted ? "sudoku.dailyHub.card.completed" : "")
         // #941 (reverses #878): the card is optimistically tappable the
         // whole time now — `.isButton` no longer conditions on phase-2
         // pending state.

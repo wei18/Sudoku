@@ -111,6 +111,16 @@ public enum UITestLaunchArg {
               index + 1 < arguments.count else { return nil }
         return arguments[index + 1]
     }
+
+    /// #935 batch 3: Sudoku + MS, signals a DEBUG-only fake to report today's
+    /// daily trio as already completed, so the N12/N13 re-view completion
+    /// route (`SUD-COMPLETION-REVIEW` / `MS-COMPLETION-REVIEW`,
+    /// docs/navigation-flows.md) can be exercised deterministically —
+    /// completed-daily state lives in CloudKit Private DB and cannot be
+    /// produced by real play on a signed-out/offline CI simulator (the
+    /// near-win boards use no-op persistence and write nothing). Absent from
+    /// Release builds via the `#if DEBUG` guard.
+    public static let seedCompletedDaily = "-uitest-seed-completed-daily"
 }
 
 #endif

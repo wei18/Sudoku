@@ -47,6 +47,11 @@ extension MinesweeperAppComposition {
             gateway: PrivateCKGatewayFactory.live(config: .minesweeper),
             telemetry: nil  // telemetry threaded lazily; store funnels errors
         )
+        // #935 batch 3: DEBUG-only fault injection for the daily re-view
+        // completion route (N13) — see `resolveDailyOverlayReading`. A no-op
+        // pass-through outside DEBUG / without the matching launch arg, so
+        // this is `savedGameStore` itself in every production launch.
+        let dailyOverlayReading = resolveDailyOverlayReading(live: savedGameStore)
 
         // #699: MS-specific personal-best store, over the same lazy gateway
         // factory. Owner decision (2026-07-05): MS gets its own store rather
@@ -157,6 +162,7 @@ extension MinesweeperAppComposition {
                     deps: deps,
                     rootViewModel: rootViewModel,
                     savedGameStore: savedGameStore,
+                    dailyOverlayReading: dailyOverlayReading,
                     personalRecordStore: personalRecordStore
                 )
             },
@@ -205,6 +211,7 @@ extension MinesweeperAppComposition {
         deps: GameDeps,
         rootViewModel: GameRootViewModel<AppRoute>,
         savedGameStore: MinesweeperSavedGameStore,
+        dailyOverlayReading: (any MinesweeperDailyOverlayReading)?,
         personalRecordStore: MinesweeperPersonalRecordStore
     ) -> any RouteFactory<AppRoute> {
         LiveRouteFactory(
@@ -222,6 +229,7 @@ extension MinesweeperAppComposition {
             soundPlayer: deps.soundPlayer,
             audioSettings: deps.audioSettings,
             savedGameStore: savedGameStore,
+            dailyOverlayReading: dailyOverlayReading,
             personalRecordStore: personalRecordStore,
             onPresentBoard: {
                 #if os(iOS)

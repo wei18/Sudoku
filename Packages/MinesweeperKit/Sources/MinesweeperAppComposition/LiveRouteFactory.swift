@@ -120,6 +120,15 @@ public struct LiveRouteFactory: RouteFactory {
     // persist (pause / background / terminal) and into the `.resumeBoard`
     // loader. Optional so preview / test callsites stay persistence-free.
     private let savedGameStore: MinesweeperSavedGameStore?
+    // #935 batch 3: threaded SEPARATELY from `savedGameStore` above (kept
+    // concrete for the board/resume/replay cases, which genuinely need the
+    // full `MinesweeperSavedGameStore` API) — this is the narrower
+    // `MinesweeperDailyOverlayReading` seam the `.daily` case's VM actually
+    // reads, letting a DEBUG-only fake seed the N13 re-view completion route
+    // without widening every other consumer. `nil` default: the `.daily`
+    // case falls back to `savedGameStore` itself (which already conforms),
+    // so every existing preview/test callsite compiles and behaves unchanged.
+    private let dailyOverlayReading: (any MinesweeperDailyOverlayReading)?
     // #699: personal-best store, threaded into every board (+ the
     // `.resumeBoard` loader) so a daily win records the personal best right
     // beside the GC submit. Optional so preview / test callsites stay
@@ -155,6 +164,7 @@ public struct LiveRouteFactory: RouteFactory {
         soundPlayer: (any SoundPlaying)? = nil,
         audioSettings: AudioSettingsModel? = nil,
         savedGameStore: MinesweeperSavedGameStore? = nil,
+        dailyOverlayReading: (any MinesweeperDailyOverlayReading)? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
         presentGameCenter: (@MainActor () -> Void)? = nil,
@@ -173,6 +183,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.soundPlayer = soundPlayer
         self.audioSettings = audioSettings
         self.savedGameStore = savedGameStore
+        self.dailyOverlayReading = dailyOverlayReading
         self.personalRecordStore = personalRecordStore
         self.onPresentBoard = onPresentBoard
         self.presentGameCenter = presentGameCenter
@@ -198,7 +209,11 @@ public struct LiveRouteFactory: RouteFactory {
                         path: path ?? .constant([]),
                         provider: LiveMinesweeperDailyProvider(),
                         persistence: persistence,
-                        savedGameStore: savedGameStore,
+                        // #935 batch 3: `dailyOverlayReading` (when the composition
+                        // root wired one — the E2E fake-or-live resolution) takes
+                        // priority; otherwise fall back to the concrete
+                        // `savedGameStore`, which already conforms.
+                        savedGameStore: dailyOverlayReading ?? savedGameStore,
                         personalRecordStore: personalRecordStore
                     ),
                     banner: { bannerSlot() }

@@ -134,6 +134,46 @@ final class MinesweeperE2ETests: XCTestCase {
         )
     }
 
+    /// #935 batch 3 N13: Completion Close on the daily RE-VIEW route
+    /// (`MS-COMPLETION-REVIEW`, pushed from a completed daily card — NOT the
+    /// in-board overlay N11 already covers) pops exactly one path entry back
+    /// to the Daily hub (#697 fix, symmetric with Sudoku's N12).
+    /// Completed-daily state lives in CloudKit Private DB and can't be
+    /// produced by real play on the CI simulator, so
+    /// `-uitest-seed-completed-daily` (DEBUG-only fake
+    /// `MinesweeperDailyOverlayReading`) seeds today's trio as already
+    /// completed. Unlike Sudoku, MS's completed-card tap is fully
+    /// synchronous (no snapshot fetch) — no async hop to wait out.
+    func test_completionReviewCloseLandsOnDailyHub_N13() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.seedCompletedDaily,
+            UITestLaunchArg.route, "daily",
+        ]
+        app.launch()
+
+        // All three seeded daily cards render completed, so this identifier
+        // is not unique on the hub — `.firstMatch` (any of the three works;
+        // the assertion only cares that Close pops back to the hub).
+        let completedCard = app.descendants(matching: .any)
+            .matching(identifier: "minesweeper.dailyHub.card.completed")
+            .firstMatch
+        XCTAssertTrue(
+            completedCard.waitForExistence(timeout: 15),
+            "N13: a completed daily card should appear under the -uitest-seed-completed-daily seam"
+        )
+        completedCard.tap()
+
+        GameE2ESupport.assertCompletionAppears(in: app)
+
+        app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHub(
+            in: app,
+            hubAnchorID: "minesweeper.dailyHub.root",
+            departedBoardAnchorID: GameE2ESupport.completionHeroID
+        )
+    }
+
     /// Shared near-win drive (#935: reused by both the happy-path smoke test
     /// and the N9/N8/N11 negative-flow tests). Unlike Sudoku — a wrong digit
     /// there is harmless and can be brute-forced — a wrong tap here hits a

@@ -107,7 +107,14 @@ completion/streak strip, injected into `DailyHubShellView`'s `header` slot
 and rendered in **every** load state (idle/loading/loaded/empty/failed —
 `DailyHubView.swift:56,162-165`) — PLUS the documented 3 `DailyPuzzleCard`s
 (Easy/Medium/Hard), each combined a11y element `"{difficulty}"` + completed
-checkmark or chevron.
+checkmark or chevron. #935 batch 3: a stable, non-localized root anchor
+`sudoku.dailyHub.root` (host-driven XCUITest E2E) sits on a zero-size marker
+composed via `.background` alongside the header — a SIBLING layer, not an
+ancestor of `DailyStripView`'s own day-dot elements, so it cannot cascade an
+id onto them (the same "container id clobbers descendant ids" lesson as the
+`.exhausted` block below). A COMPLETED card additionally carries a11y id
+`sudoku.dailyHub.card.completed` (all three cards share it when all are
+completed — E2E queries `.firstMatch`); un-completed cards carry none.
 
 **Per-interaction outcome:**
 
@@ -175,7 +182,12 @@ rolling completion/streak strip, rendered in the hub's `header` slot in
 `SUD-DAILY-HUB`'s own element inventory for the shared #826 design note) —
 PLUS the 3 `MinesweeperDailyCardView`s, each combined a11y element; trailing
 indicator is checkmark (completed) / `"Failed"` badge (mine hit) / chevron
-(unplayed).
+(unplayed). #935 batch 3: mirrors Sudoku's root anchor exactly — a stable
+`minesweeper.dailyHub.root` id on a zero-size `.background` marker sibling to
+`MinesweeperDailyStripView` (host-driven XCUITest E2E). A COMPLETED card
+additionally carries a11y id `minesweeper.dailyHub.card.completed` (E2E
+queries `.firstMatch` when more than one card is completed); unplayed/failed
+cards carry none.
 
 **Per-interaction outcome:**
 
@@ -689,6 +701,17 @@ without `onPlayAgain`) and the reminder primer is re-derived fresh
 in-board overlay. **State variants:** none; frozen snapshot values passed at
 construction (no live VM).
 
+**E2E coverage (#935 batch 3):** N12 (`docs/navigation-flows.md`) anchors
+`App/SudokuE2ETests/SudokuE2ETests.swift`'s
+`test_completionReviewCloseLandsOnDailyHub_N12` — Close pops exactly one path
+entry back to `SUD-DAILY-HUB`. Completed-daily state lives in CloudKit
+Private DB and can't be produced by real play on the CI simulator, so the
+test launches with the DEBUG-only `-uitest-seed-completed-daily` flag
+(`UITestSeededCompletedDailyPersistence`, `SudokuAppComposition`), which
+wraps the live persistence and reports today's daily trio as already
+completed (`fetchCompletedDailyIdsByDay`) with a frozen `loadIfExists`
+snapshot for the async `openCompleted` hop.
+
 ---
 
 ## MS-COMPLETION-REVIEW
@@ -708,6 +731,22 @@ leaderboard zone to show a real ranked time in (#698).
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
 | Close tap | `path?.wrappedValue.removeLast()` | pop one entry | `MS-DAILY-HUB` — fixed by #697, now mirrors Sudoku |
+
+**E2E coverage (#935 batch 3):** N13 (`docs/navigation-flows.md`) anchors
+`App/MinesweeperE2ETests/MinesweeperE2ETests.swift`'s
+`test_completionReviewCloseLandsOnDailyHub_N13` — Close pops exactly one path
+entry back to `MS-DAILY-HUB`. Same CK-can't-seed rationale as Sudoku's N12,
+but the seam differs structurally: `MinesweeperDailyHubViewModel.cardTapped`
+pushes `.completion` synchronously off `card.isCompleted` alone (no snapshot
+fetch, #284), so the DEBUG-only `-uitest-seed-completed-daily` flag only
+needs to fake the completed-ids read. `MinesweeperSavedGameStore` had no
+protocol seam prior to this batch — `MinesweeperDailyOverlayReading`
+(`MinesweeperPersistence`) now narrows exactly the two methods
+`MinesweeperDailyHubViewModel`'s phase-2 overlay actually calls
+(`fetchFailedDailyIds(for:)` / `fetchCompletedDailyIdsByDay()`), letting
+`UITestSeededCompletedDailyOverlayReading` (`MinesweeperAppComposition`)
+stand in without widening the concrete store's other consumers (board
+save/resume/replay, `MinesweeperDailyOpenGuardView`'s today-only re-check).
 
 **Covering behavior / state variants:** same scaffold shape as
 `SUD-COMPLETION-REVIEW`; no Play Again; no mistake row.
