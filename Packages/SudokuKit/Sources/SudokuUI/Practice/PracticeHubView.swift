@@ -143,6 +143,11 @@ public struct PracticeHubView<Banner: View>: View {
             .tint(tint(for: viewModel.difficulty))
             .controlSize(.large)
             .disabled(isDrawing)
+            // #935 N1: was missing (MS's mirror CTA already carries
+            // "minesweeper.practiceHub.start") — a host-driven XCUITest E2E
+            // flow needs a stable, non-localized anchor to drive into
+            // BoardLoaderView (the -uitest-loader-fail entry point).
+            .accessibilityIdentifier("sudoku.practiceHub.start")
         }
         .padding(drawCardPadding)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))

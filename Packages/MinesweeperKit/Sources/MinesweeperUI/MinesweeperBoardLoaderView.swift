@@ -164,12 +164,16 @@ public struct MinesweeperBoardLoaderView: View {
                     Label("Close", systemImage: "xmark")
                 }
                 .buttonStyle(.bordered)
+                // #935 N2: stable, non-localized anchor for the host-driven
+                // XCUITest E2E flow.
+                .accessibilityIdentifier("minesweeper.boardLoader.close")
                 Button {
                     Task { await load() }
                 } label: {
                     Label("Retry", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("minesweeper.boardLoader.retry")
             }
         }
         // spacing-exempt: 20pt (error card padding) predates the 5-tier

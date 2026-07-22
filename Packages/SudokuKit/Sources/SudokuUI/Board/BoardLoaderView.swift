@@ -240,12 +240,16 @@ public struct BoardLoaderView: View {
                     Label("Close", systemImage: "xmark")
                 }
                 .buttonStyle(.bordered)
+                // #935 N1: stable, non-localized anchor for the host-driven
+                // XCUITest E2E flow.
+                .accessibilityIdentifier("sudoku.boardLoader.close")
                 Button {
                     Task { await load() }
                 } label: {
                     Label("Retry", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("sudoku.boardLoader.retry")
             }
         }
         // spacing-exempt: 20pt (card padding) predates the 5-tier
