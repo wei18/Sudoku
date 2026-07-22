@@ -33,4 +33,32 @@ struct UITestLaunchArgTests {
     }
 }
 
+@Suite("UITestLaunchArg.puzzleFaultValue (#935)")
+struct UITestLaunchArgPuzzleFaultTests {
+
+    @Test func parsesTheValueAfterTheFlag() {
+        #expect(
+            UITestLaunchArg.puzzleFaultValue(
+                in: ["App", "-uitest-puzzle-fault", "dailyExhausted"]
+            ) == "dailyExhausted"
+        )
+    }
+
+    @Test func nilWhenFlagAbsent() {
+        #expect(UITestLaunchArg.puzzleFaultValue(in: ["App", "-uitest-near-win"]) == nil)
+    }
+
+    @Test func nilWhenFlagHasNoTrailingValue() {
+        #expect(UITestLaunchArg.puzzleFaultValue(in: ["App", "-uitest-puzzle-fault"]) == nil)
+    }
+
+    @Test func picksTheFirstFlagOccurrence() {
+        #expect(
+            UITestLaunchArg.puzzleFaultValue(
+                in: ["-uitest-puzzle-fault", "practiceFail", "-uitest-puzzle-fault", "dailyFail"]
+            ) == "practiceFail"
+        )
+    }
+}
+
 #endif

@@ -34,6 +34,11 @@ extension SudokuAppComposition {
         // PuzzleStore (default generator, v1 version). Kept here because the
         // puzzle loader closure + the route factory both reference it.
         let puzzleStore = PuzzleStore()
+        // #935 batch 2: DEBUG-only fault injection for the Daily/Practice hub
+        // negative flows (N3/N4/N5) — see `resolvePuzzleProvider`. A no-op
+        // pass-through outside DEBUG / without the matching launch arg, so
+        // `puzzleProvider` is `puzzleStore` itself in every production launch.
+        let puzzleProvider = resolvePuzzleProvider(live: puzzleStore)
 
         // Sudoku-specific identifiers (banner ad unit + ASC product IDs) are
         // declared here, NOT inside AppMonetizationKit, so the package can be
@@ -142,7 +147,7 @@ extension SudokuAppComposition {
                 SudokuAppComposition.makeRouteFactory(
                     deps: deps,
                     rootViewModel: rootViewModel,
-                    puzzleStore: puzzleStore
+                    puzzleProvider: puzzleProvider
                 )
             },
             // makeHome is superseded by the universal GameHomeView built from
@@ -204,7 +209,7 @@ extension SudokuAppComposition {
         return SudokuAppComposition(
             rootViewModel: wired.rootViewModel,
             routeFactory: wired.routeFactory,
-            puzzleProvider: puzzleStore,
+            puzzleProvider: puzzleProvider,
             persistence: deps.persistence,
             gameCenter: deps.gameCenter,
             telemetry: deps.telemetry,
@@ -228,10 +233,10 @@ extension SudokuAppComposition {
     private static func makeRouteFactory(
         deps: GameDeps,
         rootViewModel: GameRootViewModel<AppRoute>,
-        puzzleStore: PuzzleStore
+        puzzleProvider: any PuzzleProviderProtocol
     ) -> any RouteFactory<AppRoute> {
         LiveRouteFactory(
-            puzzleProvider: puzzleStore,
+            puzzleProvider: puzzleProvider,
             persistence: deps.persistence,
             gameCenter: deps.gameCenter,
             telemetry: deps.telemetry,

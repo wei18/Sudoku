@@ -83,6 +83,34 @@ public enum UITestLaunchArg {
     /// before a real background→foreground cycle. Absent from Release builds
     /// via the `#if DEBUG` guard.
     public static let fakeAdGateRepoll = "-uitest-fake-ad-gate-repoll"
+
+    /// #935 batch 2: signals Sudoku to fault a specific `PuzzleProviderProtocol`
+    /// call so the N3/N4/N5 negative Daily/Practice hub flows
+    /// (docs/navigation-flows.md §4) can be exercised deterministically —
+    /// Sudoku's `PuzzleStore` is a live generator, so there is no reliable way
+    /// to force `.failed`/`.exhausted` from a real fetch on demand. Takes the
+    /// NEXT argument as the fault-mode key, one of `practiceFail` /
+    /// `dailyExhausted` / `dailyFail` (see `SudokuAppComposition`'s
+    /// `UITestFaultingPuzzleProvider` for the per-mode throw behavior).
+    /// Sudoku-only: MS's daily/practice fetches are synchronous and
+    /// non-throwing (N6 — structurally unreachable there). Absent from
+    /// Release builds via the `#if DEBUG` guard.
+    public static let puzzleFault = "-uitest-puzzle-fault"
+
+    /// The fault-mode key value following `-uitest-puzzle-fault` in this
+    /// process's launch arguments, or nil when the flag is absent / has no
+    /// value.
+    public static func puzzleFaultValue() -> String? {
+        puzzleFaultValue(in: ProcessInfo.processInfo.arguments)
+    }
+
+    /// Testable core: the fault-mode key following `-uitest-puzzle-fault` in
+    /// `arguments`.
+    public static func puzzleFaultValue(in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: puzzleFault),
+              index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }
 }
 
 #endif
