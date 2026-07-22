@@ -38,7 +38,10 @@ extension BoardView {
             isPencilNotes: digit == nil,
             noteMask: noteMask,
             side: side,
-            armedDigit: viewModel.armedDigit
+            armedDigit: viewModel.armedDigit,
+            // #939: gates the "will clear" a11y hint (pencil mode toggles a
+            // note on this same tap, not a clear — see BoardCellView).
+            pencilMode: viewModel.pencilMode
         )
         if cellView.isInteractive {
             Button {

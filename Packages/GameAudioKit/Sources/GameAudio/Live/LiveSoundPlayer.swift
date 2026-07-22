@@ -90,6 +90,14 @@ public final class LiveSoundPlayer: SoundPlaying, @unchecked Sendable {
             if fireHaptic { haptics.play(haptic) }
         }
 
+        // Haptic-only event contract (see `AudioEvent.soundKey` doc): an empty
+        // key deliberately names no asset — bail BEFORE the resolve path so a
+        // caller firing this on every tap of a fast interaction (#939) never
+        // rescans the bundle or logs a "missing asset" notice per call.
+        // `resolveSFXPlayerLocked` never caches misses, so without this guard
+        // every call would repeat the full `audioURL(for:)` extension sweep.
+        guard !event.soundKey.isEmpty else { return }
+
         #if canImport(AVFoundation)
         lock.lock()
         defer { lock.unlock() }

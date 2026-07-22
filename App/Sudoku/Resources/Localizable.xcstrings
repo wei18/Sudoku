@@ -5963,6 +5963,54 @@
         }
       }
     },
+    "will clear %lld" : {
+      "comment" : "#939 board cell — VoiceOver hint appended to a user-filled cell's label while the SAME digit is armed for digit-first placement (tapping the cell clears it instead of selecting it). Non-pencil-mode only — pencil-mode's note-toggle semantics keep the bare \"value N\" label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "will clear %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "borrará %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "消去予定 %lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제 예정 %lld"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จะลบ %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将清除 %lld"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將清除 %lld"
+          }
+        }
+      }
+    },
     "will place %lld" : {
       "comment" : "#790 board cell — VoiceOver hint appended to an empty cell's label while a digit is armed for digit-first placement (tapping the cell places this digit instead of selecting it).",
       "extractionState" : "manual",
