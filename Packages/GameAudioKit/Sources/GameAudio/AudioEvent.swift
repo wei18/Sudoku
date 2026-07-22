@@ -14,6 +14,13 @@ public struct AudioEvent: Sendable, Hashable {
     /// Asset lookup key — maps to a sound filename in the player's bundle (P3).
     /// Until assets land (P1/P2), the Live player tolerates a missing file and
     /// no-ops, so an unknown key never traps.
+    ///
+    /// An EMPTY string is a deliberate, distinct contract: "haptic-only, no
+    /// sound ever" (used by Sudoku's `sudokuArmedMismatch`, #939). Unlike a
+    /// merely-unshipped key, `LiveSoundPlayer.play(_:)` short-circuits before
+    /// the bundle-resolve path for `""` — no rescan, no per-call log notice —
+    /// which matters for a caller that fires the event once per user
+    /// interaction in a fast, repeated tap sequence.
     public let soundKey: String
 
     /// Optional haptic to fire alongside this sfx cue (nil = sound only).

@@ -54,9 +54,16 @@ public final class GameViewModel {
     /// with no cell selected arms it here instead of placing; a subsequent
     /// empty-cell tap places it (see `tapCell(row:column:)`) and the digit
     /// stays armed for consecutive placements. `nil` = today's cell-first
-    /// flow. Invariant: `armedDigit != nil ⟺ selection == nil` — `select()`
-    /// is the one place that disarms, `armDigit(_:)` the one place that arms
-    /// (and clears `selection`).
+    /// flow.
+    ///
+    /// #939 (sticky armed): once armed, a board-cell tap NEVER disarms —
+    /// `tapCell` places / clears / no-ops depending on the tapped cell but
+    /// always leaves `armedDigit` alone. The ONLY way to disarm is re-tapping
+    /// the same armed digit on the keypad (`armDigit(_:)`'s toggle) or a
+    /// cell-first selection path (`select()` / `moveSelection(_:)`).
+    /// Invariant: `armedDigit != nil ⟺ selection == nil` — `select()` is the
+    /// one place that disarms, `armDigit(_:)` the one place that arms (and
+    /// clears `selection`).
     public private(set) var armedDigit: Int?
 
     /// Whether digit input writes pencil notes (`true`) or values (`false`).
@@ -458,8 +465,12 @@ public final class GameViewModel {
         // #722: any cell-first selection disarms digit-first mode. This is
         // the single enforcement point for the invariant `armedDigit != nil
         // ⟺ selection == nil` on the "selecting" side — unconditional (even
-        // when the guards below no-op the actual selection change) so a tap
-        // on a given/out-of-bounds cell while armed still exits armed mode.
+        // when the guards below no-op the actual selection change).
+        // #939: `tapCell` is sticky-armed and no longer routes through this
+        // function while a digit is armed (a mismatched/given cell tap stays
+        // armed as a no-op instead) — this disarm path now only fires for a
+        // direct cell-first `select()` call (e.g. a future non-tap selection
+        // entry point) or a test exercising the invariant directly.
         armedDigit = nil
         guard (0..<Board.dimension).contains(row),
               (0..<Board.dimension).contains(column) else { return }
@@ -504,6 +515,16 @@ public final class GameViewModel {
     /// Stop the looping gameplay BGM (board dismissed). No-op under Noop.
     public func stopMusic() {
         soundPlayer.stopMusic()
+    }
+
+    /// #939: fired by `tapCell` when a sticky-armed tap lands on a non-empty
+    /// cell that doesn't match the armed digit (different digit, or a
+    /// given) — a no-op tap. `internal`, not `private`: called from
+    /// `GameViewModel+DigitFirst.swift`, which (per that file's header) may
+    /// only reach non-`private` members. `soundPlayer` is `private` (file-
+    /// scoped) so this thin forwarder is the seam.
+    func fireArmedMismatchFeedback() {
+        soundPlayer.play(.sudokuArmedMismatch)
     }
 
     /// Decide which gameplay cue to fire after a digit placement, in priority

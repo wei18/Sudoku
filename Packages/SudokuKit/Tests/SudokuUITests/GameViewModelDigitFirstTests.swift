@@ -2,8 +2,12 @@
 // with no cell selected, then placing it via consecutive board-cell taps.
 //
 // Spec: issue #722 (owner UX proposal, implicit dual-mode, no settings toggle).
+// #939 extended the spec to "sticky armed": a board-cell tap never disarms —
+// see the tests below tagged #939.
 
 import Foundation
+import GameAudio
+import GameAudioTesting
 import SudokuGameState
 import Persistence
 import PersistenceTesting
@@ -40,6 +44,25 @@ struct GameViewModelDigitFirstTests {
             saveDebounceNanos: 0
         )
         return (viewModel, session)
+    }
+
+    /// #939: same fixture as `makeLiveViewModel`, but wired to a
+    /// `FakeSoundPlaying` so a test can assert the sticky-armed mismatch
+    /// haptic fired.
+    private func makeLiveViewModelWithSound() throws -> (GameViewModel, FakeSoundPlaying) {
+        let puzzle = PuzzleFixtures.latinSquarePuzzle()
+        let session = GameSession(puzzle: puzzle)
+        let sound = FakeSoundPlaying()
+        let viewModel = GameViewModel(
+            identity: Self.identity,
+            session: session,
+            initialBoard: puzzle.clues,
+            initialStatus: .idle,
+            persistence: FakePersistence(),
+            soundPlayer: sound,
+            saveDebounceNanos: 0
+        )
+        return (viewModel, sound)
     }
 
     // MARK: - arm / disarm toggle
@@ -90,9 +113,9 @@ struct GameViewModelDigitFirstTests {
             "An armed placement must not select the cell")
     }
 
-    // MARK: - arm → tap non-empty / given cell selects + disarms
+    // MARK: - #939 sticky armed: non-matching non-empty cell is a no-op
 
-    @Test func tapCell_armedOnUserFilledCell_selectsAndDisarms() async throws {
+    @Test func tapCell_armedOnDifferentDigitCell_noOpStaysArmed() async throws {
         let (viewModel, _) = try makeLiveViewModel()
         await viewModel.startOrResume()
         // Fill the one editable cell first, so it is "non-empty" (user-filled)
@@ -105,13 +128,15 @@ struct GameViewModelDigitFirstTests {
 
         await viewModel.tapCell(row: Self.emptyRow, column: Self.emptyCol)
 
-        #expect(viewModel.selection == GridCoordinate(row: Self.emptyRow, column: Self.emptyCol),
-            "Tapping a non-empty cell while armed must fall back to cell-first selection")
-        #expect(viewModel.armedDigit == nil,
-            "Falling back to cell-first selection must disarm")
+        #expect(viewModel.board.digit(atRow: Self.emptyRow, column: Self.emptyCol) == Self.emptyDigit,
+            "A mismatched tap must not alter the cell's existing digit")
+        #expect(viewModel.selection == nil,
+            "#939: a mismatched tap never falls back to cell-first selection")
+        #expect(viewModel.armedDigit == 9,
+            "#939: sticky armed — a mismatched tap (different digit) must stay armed")
     }
 
-    @Test func tapCell_armedOnGivenCell_disarmsWithoutSelecting() async throws {
+    @Test func tapCell_armedOnGivenCell_noOpStaysArmed() async throws {
         let (viewModel, _) = try makeLiveViewModel()
         await viewModel.startOrResume()
         await viewModel.keypadDigit(9)
@@ -121,8 +146,110 @@ struct GameViewModelDigitFirstTests {
 
         #expect(viewModel.selection == nil,
             "Given cells stay non-selectable (Epic 9 / #473) even while armed")
-        #expect(viewModel.armedDigit == nil,
-            "Tapping a given cell while armed must still disarm")
+        #expect(viewModel.armedDigit == 9,
+            "#939: sticky armed — tapping a given cell while armed must still stay armed")
+    }
+
+    @Test func tapCell_armedOnMismatchCell_firesLightHaptic() async throws {
+        let (viewModel, sound) = try makeLiveViewModelWithSound()
+        await viewModel.keypadDigit(9)
+
+        await viewModel.tapCell(row: Self.givenRow, column: Self.givenCol)
+
+        #expect(sound.playedEvents == [.sudokuArmedMismatch],
+            "#939: a sticky-armed mismatch tap must fire the light haptic-only cue")
+    }
+
+    // MARK: - #939 sticky armed: user-filled cell holding the armed digit clears
+
+    // Both tests below use `makeLiveViewModelThreeEmptyCells()` (not the
+    // single-empty-cell `makeLiveViewModel()`): filling the ONLY empty cell in
+    // that fixture completes the whole puzzle, and GameSession's sticky
+    // completion then makes `clearDigit`/`toggleNote` no-ops (same reasoning
+    // as `undo_afterArmedPlacement_restoresEmptyCell`'s two-empty fixture
+    // below) — which would make these tests about completion, not clearing.
+
+    @Test func tapCell_armedOnSameDigitFilledCell_clearsAndStaysArmed() async throws {
+        let (viewModel, _) = try makeLiveViewModelThreeEmptyCells()
+        await viewModel.startOrResume()
+        await viewModel.keypadDigit(Self.emptyDigit)
+        await viewModel.tapCell(row: Self.emptyRow, column: Self.emptyCol)
+        #expect(viewModel.board.digit(atRow: Self.emptyRow, column: Self.emptyCol) == Self.emptyDigit)
+        #expect(viewModel.armedDigit == Self.emptyDigit)
+
+        // Re-tap the SAME cell, still armed with the SAME digit it now holds.
+        await viewModel.tapCell(row: Self.emptyRow, column: Self.emptyCol)
+
+        #expect(viewModel.board.digit(atRow: Self.emptyRow, column: Self.emptyCol) == nil,
+            "#939: tapping a user-filled cell holding the armed digit must clear it")
+        #expect(viewModel.armedDigit == Self.emptyDigit,
+            "#939: clearing via a sticky-armed tap must not disarm")
+    }
+
+    @Test func tapCell_armedOnSameDigitFilledCell_pencilMode_togglesNoteInsteadOfClearing() async throws {
+        let (viewModel, _) = try makeLiveViewModelThreeEmptyCells()
+        await viewModel.startOrResume()
+        await viewModel.keypadDigit(Self.emptyDigit)
+        await viewModel.tapCell(row: Self.emptyRow, column: Self.emptyCol)
+        #expect(viewModel.board.digit(atRow: Self.emptyRow, column: Self.emptyCol) == Self.emptyDigit)
+        viewModel.togglePencil()
+
+        await viewModel.tapCell(row: Self.emptyRow, column: Self.emptyCol)
+
+        #expect(viewModel.board.digit(atRow: Self.emptyRow, column: Self.emptyCol) == Self.emptyDigit,
+            "#939: pencil mode keeps existing note-toggle semantics — it must not clear the digit")
+        let index = Board.index(row: Self.emptyRow, column: Self.emptyCol)
+        #expect(viewModel.notes.masks[index] & (1 << Self.emptyDigit) != 0,
+            "#939: pencil mode toggles the note even on a cell already holding the armed digit")
+        #expect(viewModel.armedDigit == Self.emptyDigit)
+    }
+
+    // MARK: - #939 sticky armed: survives a multi-cell sweep
+
+    /// Three missing cells so a single armed digit can be placed into all
+    /// three consecutively without the sweep running out of empty cells (and,
+    /// per the two tests just above, without tripping the puzzle's sticky
+    /// completion after the first placement).
+    private func makeLiveViewModelThreeEmptyCells() throws -> (GameViewModel, GameSession) {
+        var solution = Board()
+        var cluesString = ""
+        for index in 0..<Board.cellCount {
+            let row = index / 9
+            let col = index % 9
+            let digit = (index % 9) + 1
+            try solution.setDigit(digit, atIndex: index)
+            cluesString.append((row == 0 && (col == 0 || col == 2 || col == 4)) ? "." : String(digit))
+        }
+        let clues = try Board(clues: cluesString)
+        let puzzle = Puzzle(clues: clues, solution: solution, difficulty: .easy, generatorVersion: .v1, seed: 0)
+        let session = GameSession(puzzle: puzzle)
+        let viewModel = GameViewModel(
+            identity: Self.identity,
+            session: session,
+            initialBoard: puzzle.clues,
+            initialStatus: .idle,
+            persistence: FakePersistence(),
+            saveDebounceNanos: 0
+        )
+        return (viewModel, session)
+    }
+
+    @Test func tapCell_armedSurvivesConsecutivePlacements() async throws {
+        let (viewModel, _) = try makeLiveViewModelThreeEmptyCells()
+        await viewModel.startOrResume()
+        await viewModel.keypadDigit(9)
+        #expect(viewModel.armedDigit == 9)
+
+        await viewModel.tapCell(row: 0, column: 0)
+        await viewModel.tapCell(row: 0, column: 2)
+        await viewModel.tapCell(row: 0, column: 4)
+
+        #expect(viewModel.board.digit(atRow: 0, column: 0) == 9)
+        #expect(viewModel.board.digit(atRow: 0, column: 2) == 9)
+        #expect(viewModel.board.digit(atRow: 0, column: 4) == 9)
+        #expect(viewModel.armedDigit == 9,
+            "#939: the digit must stay armed across ≥3 consecutive placements")
+        #expect(viewModel.selection == nil)
     }
 
     // MARK: - select-then-keypad unchanged (today's cell-first flow)

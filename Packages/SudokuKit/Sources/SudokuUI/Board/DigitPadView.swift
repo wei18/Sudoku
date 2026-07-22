@@ -24,7 +24,10 @@ struct DigitPadView: View {
     let remainingCounts: [Int]
     /// #722 digit-first input: the digit currently armed (no cell selected,
     /// keypad-tapped), or `nil`. Drives the keypad's own highlight — same
-    /// visual affordance as the Notes-mode toggle's active state.
+    /// visual affordance as the Notes-mode toggle's active state. #939:
+    /// sticky armed — a board-cell tap (even a mis-tap on a filled cell)
+    /// never clears this; re-tapping the SAME digit here (`onDigit`, wired to
+    /// `GameViewModel.keypadDigit`'s `armDigit` toggle) is the only disarm.
     let armedDigit: Int?
     /// #722: whether a board cell is currently selected. When `true`, tapping
     /// a digit places/toggles-note directly (today's flow) so the existing

@@ -23,10 +23,19 @@ struct BoardCellView: View {
     let noteMask: UInt16
     let side: CGFloat
     /// #790 fix 2: the digit currently armed for digit-first placement
-    /// (`GameViewModel.armedDigit`), or `nil`. Only meaningful for empty
-    /// cells — while armed, tapping ANY empty cell places it (`tapCell`),
-    /// so this is not tied to a specific row/column.
+    /// (`GameViewModel.armedDigit`), or `nil`. Meaningful for empty cells
+    /// (tapping ANY empty cell places it, `tapCell`) AND, per #939's sticky-
+    /// armed decision, for a user-filled cell already holding this same
+    /// digit (tapping it clears the cell instead of selecting it) — neither
+    /// case is tied to a specific row/column.
     let armedDigit: Int?
+    /// #939: whether digit input currently writes pencil notes. Needed ONLY
+    /// to gate the "will clear" a11y hint below — in pencil mode, a tap on a
+    /// user-filled cell holding the armed digit toggles a note (non-
+    /// destructive), not a clear, so the hint must not claim otherwise.
+    /// Defaults to `false` so every pre-#939 call site (none of which cared
+    /// about pencil mode) keeps compiling unchanged.
+    let pencilMode: Bool
 
     @Environment(\.theme) private var theme
     @Environment(\.sudokuCell) private var cell
@@ -49,7 +58,8 @@ struct BoardCellView: View {
         isPencilNotes: Bool,
         noteMask: UInt16,
         side: CGFloat,
-        armedDigit: Int? = nil
+        armedDigit: Int? = nil,
+        pencilMode: Bool = false
     ) {
         self.row = row
         self.column = column
@@ -63,6 +73,7 @@ struct BoardCellView: View {
         self.noteMask = noteMask
         self.side = side
         self.armedDigit = armedDigit
+        self.pencilMode = pencilMode
     }
 
     /// design-system.md §Motion "Error highlight pulse" (200 ms × 2,
@@ -165,13 +176,32 @@ struct BoardCellView: View {
         // bare interpolation bypassing l10n).
         let location = String(localized: "Row \(row + 1), Column \(column + 1)", bundle: .main)
         if isError, let digit {
-            return "\(location), \(String(localized: "conflict \(digit)", bundle: .main))"
+            let conflictLabel = "\(location), \(String(localized: "conflict \(digit)", bundle: .main))"
+            // #939 (round-2 review): `tapCell` doesn't special-case `isError`
+            // — a conflicting user-filled cell holding the armed digit is
+            // cleared exactly like a non-conflicting one, so the "will clear"
+            // hint must fire here too (reusing the same catalog key; no new
+            // string). Pencil mode is excluded for the same reason as the
+            // non-error branch below: that tap toggles a note, not a clear.
+            guard !isGiven, !pencilMode, digit == armedDigit else { return conflictLabel }
+            return "\(conflictLabel), \(String(localized: "will clear \(digit)", bundle: .main))"
         }
         if let digit {
             if isGiven {
                 return "\(location), \(String(localized: "given \(digit)", bundle: .main))"
             }
-            return "\(location), \(String(localized: "value \(digit)", bundle: .main))"
+            let valueLabel = "\(location), \(String(localized: "value \(digit)", bundle: .main))"
+            // #939: sticky-armed — tapping a user-filled cell that already
+            // holds the ARMED digit clears it (destructive) instead of the
+            // select() fallback this comment used to describe (that fallback
+            // no longer exists post-#939: a mismatched/given tap while armed
+            // is a silent no-op and keeps this bare `valueLabel`, which is
+            // acceptable since nothing changes). Pencil mode is excluded:
+            // there the same tap toggles a note (non-destructive), so
+            // claiming "will clear" would be wrong — `pencilMode` is the only
+            // reason this view needs that flag at all.
+            guard !pencilMode, digit == armedDigit else { return valueLabel }
+            return "\(valueLabel), \(String(localized: "will clear \(digit)", bundle: .main))"
         }
         let emptyLabel = "\(location), \(String(localized: "Empty", bundle: .main))"
         // #790 fix 2: while a digit is armed, this empty cell's tap semantics

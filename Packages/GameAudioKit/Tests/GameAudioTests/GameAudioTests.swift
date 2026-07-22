@@ -66,6 +66,31 @@ struct LiveSoundPlayerTests {
         #expect(haptics.playedHaptics.isEmpty)
     }
 
+    // #939: `AudioEvent(soundKey: "")` is the deliberate "haptic-only, no
+    // sound ever" contract (see `AudioEvent.soundKey` doc) — `play(_:)`
+    // short-circuits BEFORE the bundle-resolve path for it, so a caller
+    // firing this once per tap in a fast, repeated interaction never rescans
+    // the bundle or logs a per-call "missing asset" notice the way an
+    // ordinary unshipped `soundKey` would.
+    //
+    // The skip itself has no unit-testable public signal: `sfxPlayers` /
+    // `resolveSFXPlayerLocked` are `private` (unreachable even via
+    // `@testable import`, which only lifts `internal`), and `Bundle`'s
+    // `url(forResource:withExtension:)` isn't interceptable without adding a
+    // bundle-access seam — disproportionate for this one perf guard. What IS
+    // testable, and regresses if the guard were ever hoisted ABOVE the haptic
+    // dispatch instead of after it, is that the haptic still fires — this
+    // locks that ordering.
+    @Test("an empty-soundKey (haptic-only) event still fires its haptic")
+    func emptySoundKeyEventStillFiresHaptic() {
+        let haptics = FakeHapticPlaying()
+        let player = makePlayer(haptics: haptics)
+
+        player.play(AudioEvent(soundKey: "", haptic: .light))
+
+        #expect(haptics.playedHaptics == [.light])
+    }
+
     @Test("music does not start when other audio is playing (auto-yield)")
     func musicAutoYields() {
         let session = FakeAudioSession(isOtherAudioPlaying: true)
