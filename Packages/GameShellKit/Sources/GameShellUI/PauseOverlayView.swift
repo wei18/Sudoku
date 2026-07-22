@@ -98,6 +98,10 @@ public struct PauseOverlayView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(theme.status.error.resolved)
+                    // #935 N9: stable, non-localized anchor so the host-driven
+                    // XCUITest E2E flow can tap Leave in any locale — mirrors
+                    // "game.pause.resume" above.
+                    .accessibilityIdentifier("game.pause.leave")
                 }
             }
             .padding(cardPadding)

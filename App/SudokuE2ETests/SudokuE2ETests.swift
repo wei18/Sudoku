@@ -41,10 +41,123 @@ final class SudokuE2ETests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [UITestLaunchArg.nearWinModal]
         app.launch()
+        Self.driveToWin(app)
+    }
 
-        // The fixed-seed near-win board has exactly ONE empty cell, whose a11y
-        // label ends in "Empty". Query across element types — SwiftUI cells
-        // carrying the `.isButton` trait are not always classified as buttons.
+    /// #935 N10: Completion Close (`BoardView+Completion.exitToHub`) must land
+    /// the player back on Home — never stranded on the solved board (the #667
+    /// regression class). Reaches completion via the same near-win-modal path
+    /// as `test_winToCompletion`, then asserts Close's destination.
+    func test_completionCloseLandsOnHome_N10() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWinModal]
+        app.launch()
+        Self.driveToWin(app)
+
+        app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "sudoku.board.pauseToggle"
+        )
+    }
+
+    /// #935 N9: Pause → Leave (`BoardView`'s `PauseOverlayView(onLeave:
+    /// { dismiss() })`) must land the player back on Home.
+    func test_pauseLeaveLandsOnHome_N9() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWinModal]
+        app.launch()
+
+        let pauseToggle = app.buttons["sudoku.board.pauseToggle"]
+        XCTAssertTrue(
+            pauseToggle.waitForExistence(timeout: 20),
+            "near-win board should present after launch"
+        )
+        pauseToggle.tap()
+
+        let leave = app.buttons[NegativeNavigationE2ESupport.pauseLeaveID]
+        XCTAssertTrue(leave.waitForExistence(timeout: 10), "N9: pause overlay should present Leave")
+        leave.tap()
+
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "sudoku.board.pauseToggle"
+        )
+    }
+
+    /// #935 N8: tapping the pause mask OUTSIDE the card resumes IN PLACE —
+    /// same as tapping Resume, no navigation (`PauseOverlayView`'s
+    /// `.onTapGesture { onResume() }` on the full-screen blur).
+    func test_pauseMaskTapResumesInPlace_N8() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWinModal]
+        app.launch()
+
+        let pauseToggle = app.buttons["sudoku.board.pauseToggle"]
+        XCTAssertTrue(
+            pauseToggle.waitForExistence(timeout: 20),
+            "near-win board should present after launch"
+        )
+        pauseToggle.tap()
+
+        let resume = app.buttons[GameE2ESupport.resumeButtonID]
+        XCTAssertTrue(resume.waitForExistence(timeout: 10), "N8: pause overlay should present Resume")
+
+        NegativeNavigationE2ESupport.tapPauseMaskOutsideCard(in: app)
+
+        XCTAssertTrue(
+            resume.waitForNonExistence(timeout: 5),
+            "N8: mask tap should resume (Resume overlay gone)"
+        )
+        XCTAssertTrue(
+            pauseToggle.exists,
+            "N8: board should remain present — resumed in place, no navigation"
+        )
+    }
+
+    /// #935 N1: fresh `.board` load failure (`BoardLoaderView` → `.failed`)
+    /// via the practice hub's "New Game" CTA. Retry re-runs `load()` in place
+    /// (stays failed under the `-uitest-loader-fail` seam, no crash/blank);
+    /// Close lands back on Practice Hub, never stranded on the loader.
+    func test_boardLoadFailureRetryThenCloseLandsOnHub_N1() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.loaderFail,
+            UITestLaunchArg.route, "practice",
+        ]
+        app.launch()
+
+        let start = app.buttons["sudoku.practiceHub.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15), "practice hub CTA should be present")
+        start.tap()
+
+        let retry = app.buttons["sudoku.boardLoader.retry"]
+        XCTAssertTrue(
+            retry.waitForExistence(timeout: 15),
+            "N1: board-load-failure block should appear under the -uitest-loader-fail seam"
+        )
+
+        retry.tap()
+        XCTAssertTrue(
+            retry.waitForExistence(timeout: 10),
+            "N1: Retry re-runs load() in place and stays failed under the seam — no crash/blank"
+        )
+
+        app.buttons["sudoku.boardLoader.close"].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHub(
+            in: app,
+            hubAnchorID: "sudoku.practiceHub.start",
+            departedBoardAnchorID: "sudoku.boardLoader.retry"
+        )
+    }
+
+    /// Shared winning-move drive for the near-win-modal board (#935: reused
+    /// by both the happy-path smoke test and the N10 negative-flow test).
+    /// The fixed-seed near-win board has exactly ONE empty cell, whose a11y
+    /// label ends in "Empty". Query across element types — SwiftUI cells
+    /// carrying the `.isButton` trait are not always classified as buttons.
+    @MainActor
+    private static func driveToWin(_ app: XCUIApplication) {
         let emptyCell = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label ENDSWITH %@", "Empty"))
             .firstMatch

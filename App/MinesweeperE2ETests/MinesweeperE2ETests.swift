@@ -38,7 +38,112 @@ final class MinesweeperE2ETests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [UITestLaunchArg.nearWin]
         app.launch()
+        Self.driveToWin(app)
+    }
 
+    /// #935 N11: Completion Close (`MinesweeperBoardView`'s in-board overlay,
+    /// always `dismiss()`) must land the player back on Home — never
+    /// stranded on the solved board.
+    func test_completionCloseLandsOnHome_N11() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWin]
+        app.launch()
+        Self.driveToWin(app)
+
+        app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "minesweeper.board.pauseToggle"
+        )
+    }
+
+    /// #935 N9: Pause → Leave (`MinesweeperBoardView`'s `PauseOverlayView
+    /// (onLeave: { dismiss() })`) must land the player back on Home. The
+    /// near-win board mounts already paused, so Leave is available immediately.
+    func test_pauseLeaveLandsOnHome_N9() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWin]
+        app.launch()
+
+        let leave = app.buttons[NegativeNavigationE2ESupport.pauseLeaveID]
+        XCTAssertTrue(
+            leave.waitForExistence(timeout: 20),
+            "N9: near-win board should mount paused with Leave available"
+        )
+        leave.tap()
+
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "minesweeper.board.pauseToggle"
+        )
+    }
+
+    /// #935 N8: tapping the pause mask OUTSIDE the card resumes IN PLACE —
+    /// same as tapping Resume, no navigation. The near-win board mounts
+    /// already paused.
+    func test_pauseMaskTapResumesInPlace_N8() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.nearWin]
+        app.launch()
+
+        let resume = app.buttons[GameE2ESupport.resumeButtonID]
+        XCTAssertTrue(
+            resume.waitForExistence(timeout: 20),
+            "near-win board should mount under the paused cover"
+        )
+
+        NegativeNavigationE2ESupport.tapPauseMaskOutsideCard(in: app)
+
+        XCTAssertTrue(
+            resume.waitForNonExistence(timeout: 5),
+            "N8: mask tap should resume (Resume overlay gone)"
+        )
+        let pauseToggle = app.buttons["minesweeper.board.pauseToggle"]
+        XCTAssertTrue(
+            pauseToggle.waitForExistence(timeout: 10),
+            "N8: board should remain present — resumed in place, no navigation"
+        )
+    }
+
+    /// #935 N2: `.resumeBoard` load failure (`MinesweeperBoardLoaderView` →
+    /// `.failed`) — MS's ONLY reachable path to that loader. A missing
+    /// resume record honestly fails, never a silent fresh board. Retry
+    /// re-runs `load()` in place (stays failed — the record is still
+    /// missing); Close lands back on Home.
+    func test_resumeLoadFailureRetryThenCloseLandsOnHome_N2() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.route, "resumeFail"]
+        app.launch()
+
+        let retry = app.buttons["minesweeper.boardLoader.retry"]
+        XCTAssertTrue(
+            retry.waitForExistence(timeout: 15),
+            "N2: missing resume record should honestly fail, never a silent fresh board"
+        )
+
+        retry.tap()
+        XCTAssertTrue(
+            retry.waitForExistence(timeout: 10),
+            "N2: Retry re-runs load() in place and stays failed (record still missing) — no crash/blank"
+        )
+
+        app.buttons["minesweeper.boardLoader.close"].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "minesweeper.boardLoader.retry"
+        )
+    }
+
+    /// Shared near-win drive (#935: reused by both the happy-path smoke test
+    /// and the N9/N8/N11 negative-flow tests). Unlike Sudoku — a wrong digit
+    /// there is harmless and can be brute-forced — a wrong tap here hits a
+    /// hidden mine (a loss), so the test must tap the EXACT remaining safe
+    /// cell. Its runtime (row, col) is surfaced by the DEBUG winning-cell
+    /// beacon (`game.uitest.winningCell.r<R>.c<C>`,
+    /// MinesweeperNearWinModifier); this parses it and taps that cell by its
+    /// unique, non-localized a11y label.
+    @MainActor
+    private static func driveToWin(_ app: XCUIApplication) {
         // Read the winning cell's (row, col) from the DEBUG beacon.
         let beacon = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "game.uitest.winningCell."))

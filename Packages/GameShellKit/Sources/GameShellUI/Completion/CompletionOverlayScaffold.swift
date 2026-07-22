@@ -126,6 +126,10 @@ public struct CompletionOverlayScaffold<Card: View>: View {
                 .buttonStyle(.bordered)
                 .tint(theme.accent.primary.resolved)
                 .controlSize(.large)
+                // #935 N10/N11: stable, non-localized anchor so the
+                // host-driven XCUITest E2E flow can dismiss the completion
+                // overlay in any locale — mirrors "game.completion.hero".
+                .accessibilityIdentifier("game.completion.close")
             } else {
                 Button(action: onClose) {
                     // #797: same on-accent-ink fix + placement requirement as
@@ -137,6 +141,8 @@ public struct CompletionOverlayScaffold<Card: View>: View {
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent.primary.resolved)
                 .controlSize(.large)
+                // #935 N10/N11: see identical rationale above.
+                .accessibilityIdentifier("game.completion.close")
             }
         }
         .padding(.horizontal, theme.spacing.small)

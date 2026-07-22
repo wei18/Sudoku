@@ -212,6 +212,13 @@ public struct HomeScreen<Header: View, RemoveAds: View, SecondaryLink: View, Ban
             banner
         }
         .background(theme.surface.background.resolved)
+        // #935: stable, non-localized HOME anchor so a host-driven XCUITest
+        // E2E flow can assert "landed back on Home" (not stranded on a
+        // dismissed board/pause/completion surface) in any locale. Both apps
+        // render this shared scaffold at the Home root, so one identifier
+        // serves both (mirror principle) — mirrors "game.completion.hero" /
+        // "game.pause.resume".
+        .accessibilityIdentifier("game.home.root")
     }
 
     private var columns: [GridItem] {
