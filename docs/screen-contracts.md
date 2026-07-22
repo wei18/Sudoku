@@ -126,22 +126,31 @@ alongside the Daily hub's own completed-card tap (see that contract's
 updated Entry points line).
 
 **Covering behavior:** none — plain hub content. The `.empty` (exhausted)
-state renders `Color.clear` under a floating `.alert`.
+state renders an inline icon+message+action block (#768 replaced the prior
+floating `.alert` — see the corrected State variants entry below).
 
 **State variants:** `idle`/`loading` → `ProgressView`; `loaded` → 3-card grid
-(1-col iPhone / 3-col regular); `.exhausted` → empty backdrop + `.alert`
+(1-col iPhone / 3-col regular); `.exhausted` → inline empty-state block (#768;
+NOT a system `.alert` — this entry previously said `.alert` and was stale)
 `"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come
-back tomorrow."`, buttons **"Practice"** (`tryPracticeInstead()` swaps the
-last path entry `.daily` → `.practice`, landing on `SUD-PRACTICE-HUB` which
-actually has the difficulty picker the old label promised — #686) and
-**"Cancel"** (`role: .cancel`, `dismissExhausted()` pops back to HOME rather
-than leaving a blank backdrop with no recovery); `.failed(reason)` → inline
-warning icon + `reason` text (no alert). CK-degraded: phase-2
-completion-overlay fetch fails silently → all 3 cards render un-completed
-(never blocks phase-1 render); the SAME degrade drops the week-strip header
-to `.unknown` (`weekStrip = .unknown`, `DailyHubViewModel.swift:237-243`) —
-the whole header card is omitted from layout rather than showing a subdued
-skeleton (#843's all-or-nothing rule).
+back tomorrow."` (a11y id `sudoku.dailyHub.exhausted`, #935 batch 2, on the
+message text — an id on the enclosing container instead cascades down and
+clobbers the two buttons' own ids, see those ids' anchors below), buttons
+**"Practice"** (`tryPracticeInstead()` swaps the last path entry `.daily` →
+`.practice`, landing on `SUD-PRACTICE-HUB` which actually has the difficulty
+picker the old label promised — #686; a11y id
+`sudoku.dailyHub.exhausted.practice`, #935 batch 2) and **"Cancel"**
+(`role: .cancel`, `dismissExhausted()` pops back to HOME rather than leaving a
+blank backdrop with no recovery; a11y id `sudoku.dailyHub.exhausted.cancel`,
+#935 batch 2); `.failed(reason)` → inline warning icon + `reason` text (no
+alert; a11y id `sudoku.dailyHub.failure` on the block, #935 batch 2). Both
+N3–N5 negative-flow ids anchor `App/SudokuE2ETests/SudokuE2ETests.swift`'s
+host-driven E2E coverage — `DailyHubView.swift`'s `empty:`/`failure:`
+builders. CK-degraded: phase-2 completion-overlay fetch fails silently → all
+3 cards render un-completed (never blocks phase-1 render); the SAME degrade
+drops the week-strip header to `.unknown` (`weekStrip = .unknown`,
+`DailyHubViewModel.swift:237-243`) — the whole header card is omitted from
+layout rather than showing a subdued skeleton (#843's all-or-nothing rule).
 
 ---
 
@@ -204,7 +213,7 @@ Sudoku's `weekStrip` degrade).
 |---|---|---|
 | Difficulty segmented picker | Easy / Medium / Hard | none |
 | "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Draw new puzzle") | `Label("New Game", systemImage: "play.fill")` | `sudoku.practiceHub.start` (#936, mirrors MS) |
-| Hint row (state-dependent) | `"{difficulty} · ready"` / redacted shimmer / `"{difficulty} · {puzzleId}"` / failure `reason` | none |
+| Hint row (state-dependent) | `"{difficulty} · ready"` / redacted shimmer / `"{difficulty} · {puzzleId}"` / failure `reason` | none (idle/drawn/shimmer); `sudoku.practiceHub.failure` on `.failed` (#935 batch 2) |
 
 **Per-interaction outcome:**
 
@@ -217,7 +226,9 @@ Sudoku's `weekStrip` degrade).
 
 **State variants:** `idle` (picker only) / `drawingQuiet` (<100ms, no
 indicator) / `drawingShimmer` (>100ms, `.redacted` placeholder) / `drawn` /
-`failed(reason)` (inline caption, button re-enabled, no navigation).
+`failed(reason)` (inline caption, button re-enabled, no navigation — a11y id
+`sudoku.practiceHub.failure`, #935 batch 2 N3; anchors
+`App/SudokuE2ETests/SudokuE2ETests.swift`'s host-driven E2E coverage).
 
 Anchors: CTA copy — `SudokuUI/Practice/PracticeHubView.swift:130-138` (both
 `idle`/`drawn` branches render `Label("New Game", …)`).

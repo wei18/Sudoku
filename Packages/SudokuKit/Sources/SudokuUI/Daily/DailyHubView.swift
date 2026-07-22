@@ -105,6 +105,10 @@ public struct DailyHubView<Banner: View>: View {
                         .font(.caption)
                         .foregroundStyle(theme.text.secondary.resolved)
                 }
+                // #935 N5: stable, non-localized anchor for the inline
+                // fetch-failure surface (host-driven XCUITest E2E — see
+                // `DailyHubViewModel.bootstrap()`'s non-exhausted catch branch).
+                .accessibilityIdentifier("sudoku.dailyHub.failure")
             },
             // #768: `.exhausted` renders inline instead of a system `.alert`
             // over a blank backdrop — same icon+message language as
@@ -121,6 +125,18 @@ public struct DailyHubView<Banner: View>: View {
                         .accessibilityHidden(true)
                     Text("Couldn't generate today's puzzle")
                         .foregroundStyle(theme.text.primary.resolved)
+                        // #935 N4: stable, non-localized anchor for the
+                        // exhausted-block message (host-driven XCUITest E2E —
+                        // see `DailyHubViewModel.bootstrap()`'s
+                        // `.generatorFailed` branch). Deliberately placed on
+                        // this leaf `Text`, not the enclosing `VStack` — an
+                        // identifier set on a container cascades down and
+                        // clobbers its accessibility-element descendants'
+                        // OWN identifiers (verified: the Practice/Cancel
+                        // buttons below both reported the container's id
+                        // instead of their own until this was moved off the
+                        // VStack).
+                        .accessibilityIdentifier("sudoku.dailyHub.exhausted")
                     Text("Try a different difficulty, or come back tomorrow.")
                         .font(.caption)
                         .foregroundStyle(theme.text.secondary.resolved)
@@ -142,6 +158,10 @@ public struct DailyHubView<Banner: View>: View {
                         .buttonStyle(.borderedProminent)
                         .tint(theme.accent.primary.resolved)
                         .controlSize(.large)
+                        // #935 N4: stable, non-localized anchor for the
+                        // exhausted block's "Practice" CTA (host-driven
+                        // XCUITest E2E).
+                        .accessibilityIdentifier("sudoku.dailyHub.exhausted.practice")
                         // Pops back to Home rather than leaving the user on
                         // the `.exhausted` hub's blank backdrop with no
                         // recovery — same navigation #686 wired into the
@@ -154,6 +174,10 @@ public struct DailyHubView<Banner: View>: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.large)
+                        // #935 N4: stable, non-localized anchor for the
+                        // exhausted block's "Cancel" CTA (host-driven
+                        // XCUITest E2E).
+                        .accessibilityIdentifier("sudoku.dailyHub.exhausted.cancel")
                     }
                 }
                 .padding(exhaustedCardPadding)

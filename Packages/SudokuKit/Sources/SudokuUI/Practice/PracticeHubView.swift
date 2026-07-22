@@ -180,6 +180,10 @@ public struct PracticeHubView<Banner: View>: View {
             Text(reason)
                 .font(.caption)
                 .foregroundStyle(theme.status.error.resolved)
+                // #935 N3: stable, non-localized anchor for the draw-failure
+                // caption (host-driven XCUITest E2E — see PracticeHubViewModel
+                // `drawPuzzle()`'s catch branch).
+                .accessibilityIdentifier("sudoku.practiceHub.failure")
         }
     }
 

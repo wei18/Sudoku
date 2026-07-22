@@ -151,6 +151,106 @@ final class SudokuE2ETests: XCTestCase {
         )
     }
 
+    /// #935 batch 2 N3: Sudoku Practice draw failure
+    /// (`PracticeHubViewModel.drawPuzzle()`'s catch branch, seeded via
+    /// `-uitest-puzzle-fault practiceFail`) shows an inline failure caption on
+    /// the hub — no navigation, and the "New Game" CTA stays re-enabled for a
+    /// retry.
+    func test_practiceDrawFailureShowsCaptionNoNavigation_N3() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.puzzleFault, "practiceFail",
+            UITestLaunchArg.route, "practice",
+        ]
+        app.launch()
+
+        let start = app.buttons["sudoku.practiceHub.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15), "practice hub CTA should be present")
+        start.tap()
+
+        let failure = app.descendants(matching: .any)["sudoku.practiceHub.failure"]
+        XCTAssertTrue(
+            failure.waitForExistence(timeout: 10),
+            "N3: draw failure should show an inline caption under the -uitest-puzzle-fault seam"
+        )
+        XCTAssertTrue(start.exists, "N3: CTA should stay on the hub — no navigation on a failed draw")
+        XCTAssertTrue(start.isEnabled, "N3: CTA should be re-enabled after a failed draw")
+    }
+
+    /// #935 batch 2 N4: Sudoku Daily `.exhausted` (generator defect, seeded
+    /// via `-uitest-puzzle-fault dailyExhausted`) — "Practice" swaps the last
+    /// path entry `.daily` → `.practice`, landing on the Practice hub.
+    func test_dailyExhaustedPracticeLandsOnPracticeHub_N4() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.puzzleFault, "dailyExhausted",
+            UITestLaunchArg.route, "daily",
+        ]
+        app.launch()
+
+        let exhausted = app.descendants(matching: .any)["sudoku.dailyHub.exhausted"]
+        XCTAssertTrue(
+            exhausted.waitForExistence(timeout: 15),
+            "N4: exhausted block should appear under the -uitest-puzzle-fault seam"
+        )
+
+        app.buttons["sudoku.dailyHub.exhausted.practice"].tap()
+
+        NegativeNavigationE2ESupport.assertLandedOnHub(
+            in: app,
+            hubAnchorID: "sudoku.practiceHub.start",
+            departedBoardAnchorID: "sudoku.dailyHub.exhausted"
+        )
+    }
+
+    /// #935 batch 2 N4: Sudoku Daily `.exhausted` — "Cancel" pops back to
+    /// HOME rather than leaving the player on the exhausted hub's blank
+    /// backdrop (#686).
+    func test_dailyExhaustedCancelLandsOnHome_N4() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.puzzleFault, "dailyExhausted",
+            UITestLaunchArg.route, "daily",
+        ]
+        app.launch()
+
+        let exhausted = app.descendants(matching: .any)["sudoku.dailyHub.exhausted"]
+        XCTAssertTrue(
+            exhausted.waitForExistence(timeout: 15),
+            "N4: exhausted block should appear under the -uitest-puzzle-fault seam"
+        )
+
+        app.buttons["sudoku.dailyHub.exhausted.cancel"].tap()
+
+        NegativeNavigationE2ESupport.assertLandedOnHome(
+            in: app,
+            departedBoardAnchorID: "sudoku.dailyHub.exhausted"
+        )
+    }
+
+    /// #935 batch 2 N5: Sudoku Daily `.failed` (fetch error, not exhaustion,
+    /// seeded via `-uitest-puzzle-fault dailyFail`) — inline warning + reason
+    /// text, NO system alert, no navigation off the hub.
+    func test_dailyLoadFailureShowsInlineWarning_N5() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.puzzleFault, "dailyFail",
+            UITestLaunchArg.route, "daily",
+        ]
+        app.launch()
+
+        let failure = app.descendants(matching: .any)["sudoku.dailyHub.failure"]
+        XCTAssertTrue(
+            failure.waitForExistence(timeout: 15),
+            "N5: inline failure surface should appear under the -uitest-puzzle-fault seam"
+        )
+        XCTAssertFalse(
+            app.alerts.firstMatch.exists,
+            "N5: a daily fetch failure must never surface a system alert"
+        )
+        XCTAssertTrue(failure.exists, "N5: should remain on the daily hub's inline failure surface, no navigation")
+    }
+
     /// Shared winning-move drive for the near-win-modal board (#935: reused
     /// by both the happy-path smoke test and the N10 negative-flow test).
     /// The fixed-seed near-win board has exactly ONE empty cell, whose a11y
