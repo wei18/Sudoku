@@ -1,13 +1,15 @@
-// DailyHubViewModelPhase2GateTests — #842 tap-gate (the UX-responsiveness
-// half of the defense-in-depth pair; `BoardLoaderViewDailyPrecheckTests`
-// covers the correctness half).
+// DailyHubViewModelPhase2GateTests — #941 optimistic tap-enable, reversing
+// #842's tap gate (`BoardLoaderViewDailyPrecheckTests` covers the correctness
+// half this reversal still relies on).
 //
-// `cardTapped` used to route purely off the tapped `DailyCard`'s
-// (phase-1-stale) `isCompleted` flag with no notion of "phase 2 hasn't landed
-// yet". While `isPhase2Pending`, a tap now no-ops instead of pushing a route
-// off data that might be wrong — avoids a wasted/flickering navigation even
-// though `BoardLoaderView`'s own precheck (#842) would still land on the
-// correct surface regardless.
+// `cardTapped` used to no-op while `isPhase2Pending` — the tapped `DailyCard`'s
+// (phase-1-stale) `isCompleted` flag was considered too unreliable to route
+// off. #941 (owner-requested) removed that gate: a tap now routes immediately
+// off whatever `card.isCompleted` currently says, appending the board route
+// even mid-fetch. This is safe because `BoardLoaderView`'s own precheck (#842)
+// unconditionally re-checks persistence on every daily open and redirects to
+// Completion if already done — the gate was only ever the UX-responsiveness
+// half of a defense-in-depth pair, never the correctness guarantee.
 
 import Foundation
 import Testing
@@ -25,7 +27,7 @@ struct DailyHubViewModelPhase2GateTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    @Test func cardTapNoOpsWhilePhase2FetchIsGatedThenWorksOnceItLands() async {
+    @Test func cardTapAppendsBoardRouteWhilePhase2PendingThenStillWorksOnceLanded() async {
         let provider = FakePuzzleProvider()
         await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
         let gated = GatedWeekWindowPersistence()
@@ -52,8 +54,11 @@ struct DailyHubViewModelPhase2GateTests {
         }
         #expect(viewModel.isPhase2Pending == true)
 
+        // #941: a tap while phase-2 is still in flight appends the board
+        // route immediately instead of no-opping — the phase-1 placeholder
+        // card is un-completed, so this is the fresh-board path.
         viewModel.cardTapped(cards[0])
-        #expect(box.routes.isEmpty)
+        #expect(box.routes == [.board(puzzleId: cards[0].envelope.identity.puzzleId)])
 
         await gated.unlock()
         await bootstrapTask.value
@@ -61,13 +66,16 @@ struct DailyHubViewModelPhase2GateTests {
         #expect(viewModel.isPhase2Pending == false)
 
         viewModel.cardTapped(cards[0])
-        #expect(box.routes == [.board(puzzleId: cards[0].envelope.identity.puzzleId)])
+        #expect(box.routes == [
+            .board(puzzleId: cards[0].envelope.identity.puzzleId),
+            .board(puzzleId: cards[0].envelope.identity.puzzleId)
+        ])
     }
 
-    /// `refresh()` re-arms the SAME gate (not just `bootstrap()`'s first run)
-    /// — a tap landing during a post-solve `refresh()` re-fetch must also
-    /// no-op, not just the very first hub load.
-    @Test func cardTapNoOpsDuringARefreshReentryToo() async {
+    /// `refresh()` re-arms the SAME `isPhase2Pending` window (not just
+    /// `bootstrap()`'s first run) — a tap landing during a post-solve
+    /// `refresh()` re-fetch also appends the board route, not a no-op.
+    @Test func cardTapAppendsBoardRouteDuringARefreshReentryToo() async {
         let provider = FakePuzzleProvider()
         await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
         let gated = GatedWeekWindowPersistence()
@@ -96,7 +104,7 @@ struct DailyHubViewModelPhase2GateTests {
             return
         }
         viewModel.cardTapped(cards[1])
-        #expect(box.routes.isEmpty)
+        #expect(box.routes == [.board(puzzleId: cards[1].envelope.identity.puzzleId)])
 
         await gated.unlock()
         await refreshTask.value

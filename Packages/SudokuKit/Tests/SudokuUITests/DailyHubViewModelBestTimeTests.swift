@@ -6,12 +6,17 @@
 // seam `StatsViewModel.fetchTiles` already uses — and degrades PER
 // DIFFICULTY independently (unlike the week-strip's all-or-nothing degrade):
 // one difficulty's fetch failing must not blank out the other two.
+//
+// #941: also pins the concurrency fix itself — the 3 per-difficulty fetches
+// now run in a `TaskGroup` instead of a serial `for` loop (see
+// `bestTimeFetchesRunConcurrentlyAndAssembleOrderIndependently` below).
 
 import Foundation
 import Testing
 @testable import SudokuUI
 
 import Persistence
+import SudokuGameState
 import SudokuPersistence
 import SudokuEngine
 import SudokuKitTesting
@@ -154,4 +159,102 @@ struct DailyHubViewModelBestTimeTests {
         }
         #expect(refreshedCards.first { $0.difficulty == .easy }?.bestTimeSeconds == 77)
     }
+
+    /// #941: proves `fetchBestTimes`'s 3 per-difficulty fetches are actually
+    /// concurrent (not merely non-blocking) AND that the final merge is
+    /// order-independent — releasing them in a different order than they
+    /// arrived must not cross-assign a value to the wrong difficulty.
+    @Test func bestTimeFetchesRunConcurrentlyAndAssembleOrderIndependently() async {
+        let gated = GatedBestTimePersistence()
+        await gated.setResult(record(difficulty: .easy, best: 42), for: .easy)
+        await gated.setResult(record(difficulty: .medium, best: 900), for: .medium)
+        await gated.setResult(record(difficulty: .hard, best: 500), for: .hard)
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: gated,
+            dateProvider: { Self.fixedDate }
+        )
+
+        let bootstrapTask = Task { await viewModel.bootstrap() }
+
+        // Wait until all THREE per-difficulty fetches have reached the gate —
+        // a serial loop would only ever have ONE in flight at a time, so this
+        // would hang forever under the pre-#941 implementation.
+        while await gated.arrivedDifficulties.count < 3 {
+            await Task.yield()
+        }
+        #expect(Set(await gated.arrivedDifficulties) == [.easy, .medium, .hard])
+
+        // Release in a DIFFERENT order than they arrived — proves the final
+        // merge keys off `Difficulty`, not completion order.
+        await gated.release(.hard)
+        await gated.release(.easy)
+        await gated.release(.medium)
+
+        await bootstrapTask.value
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        #expect(cards.first { $0.difficulty == .easy }?.bestTimeSeconds == 42)
+        #expect(cards.first { $0.difficulty == .medium }?.bestTimeSeconds == 900)
+        #expect(cards.first { $0.difficulty == .hard }?.bestTimeSeconds == 500)
+    }
+}
+
+// MARK: - GatedBestTimePersistence
+
+/// A `PersistenceProtocol` conformer whose `fetchPersonalRecord` hangs per
+/// `Difficulty` until individually `release`d — simulates 3 independent CK
+/// round-trips in flight at once so a test can prove they were fired
+/// concurrently (all 3 arrive at the gate before any is released) and that
+/// releasing them out of arrival order still assembles the correct
+/// per-difficulty result (`[Difficulty: Int]`, not positional).
+private actor GatedBestTimePersistence: PersistenceProtocol {
+    private var continuations: [Difficulty: [CheckedContinuation<Void, Never>]] = [:]
+    private(set) var arrivedDifficulties: [Difficulty] = []
+    private var results: [Difficulty: PersonalRecord] = [:]
+
+    func setResult(_ record: PersonalRecord, for difficulty: Difficulty) {
+        results[difficulty] = record
+    }
+
+    func release(_ difficulty: Difficulty) {
+        let waiting = continuations.removeValue(forKey: difficulty) ?? []
+        for continuation in waiting {
+            continuation.resume()
+        }
+    }
+
+    func fetchPersonalRecord(mode: Mode, difficulty: Difficulty) async throws -> PersonalRecord {
+        arrivedDifficulties.append(difficulty)
+        await withCheckedContinuation { continuation in
+            continuations[difficulty, default: []].append(continuation)
+        }
+        return results[difficulty] ?? PersonalRecord(
+            recordName: "",
+            mode: .daily,
+            difficulty: difficulty,
+            bestTimeSeconds: nil,
+            totalTimeSeconds: 0,
+            completedCount: 0,
+            lastUpdatedAt: Date(timeIntervalSince1970: 0),
+            completedPuzzleIds: []
+        )
+    }
+
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { [:] }
+    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
+    func bootstrap() async throws {}
+    func latestInProgress() async throws -> SavedGameSummary? { nil }
+    func loadOrCreate(puzzleId: String, mode: Mode, difficulty: Difficulty) async throws -> GameSessionSnapshot {
+        fatalError("not exercised by this test")
+    }
+    func save(_ snapshot: GameSessionSnapshot, puzzleId: String, mode: Mode, difficulty: Difficulty) async throws {}
+    func markCompleted(_ summary: SavedGameSummary) async throws {}
+    func deleteAbandoned(recordName: String) async throws {}
+    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
 }

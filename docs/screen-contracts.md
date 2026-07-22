@@ -151,6 +151,11 @@ builders. CK-degraded: phase-2 completion-overlay fetch fails silently → all
 drops the week-strip header to `.unknown` (`weekStrip = .unknown`,
 `DailyHubViewModel.swift:237-243`) — the whole header card is omitted from
 layout rather than showing a subdued skeleton (#843's all-or-nothing rule).
+**AS-BUILT NOTE (2026-07-22, #941, reverses #842/#878):** cards are tappable
+at full opacity from the first `.loaded` render, not just once phase-2 lands —
+`isPhase2Pending` no longer gates `cardTapped` or dims `DailyPuzzleCard`;
+correctness (never showing a stale board for an already-completed daily)
+stays `BoardLoaderView`'s precheck job regardless of phase-2 timing.
 
 ---
 
@@ -197,7 +202,11 @@ generator, which can exhaust).
 exists on `MinesweeperDailyHubState`. CK-degraded: phase-2 completed/failed-id
 fetch errors silently → cards render unplayed; the same degrade drops the
 week-strip header to `.unknown` (card omitted from layout entirely, mirrors
-Sudoku's `weekStrip` degrade).
+Sudoku's `weekStrip` degrade). **AS-BUILT NOTE (2026-07-22, #941, reverses
+#842/#878):** cards are tappable at full opacity from the first `.loaded`
+render, not just once phase-2 lands — `isPhase2Pending` no longer gates
+`cardTapped` or dims `MinesweeperDailyCardView`; correctness stays
+`MinesweeperDailyOpenGuardView`'s job regardless of phase-2 timing.
 
 ---
 

@@ -1,13 +1,15 @@
-// MinesweeperDailyHubViewModelPhase2GateTests — #842 tap-gate (the
-// UX-responsiveness half of the defense-in-depth pair;
-// `MinesweeperDailyOpenGuardViewResolveTests` covers the correctness half).
+// MinesweeperDailyHubViewModelPhase2GateTests — #941 optimistic tap-enable,
+// reversing #842's tap gate (`MinesweeperDailyOpenGuardViewResolveTests`
+// covers the correctness half this reversal still relies on).
 //
-// `cardTapped` used to route purely off the tapped card's (phase-1-stale)
-// `isCompleted`/`isFailed` flags with no notion of "phase 2 hasn't landed
-// yet". While `isPhase2Pending`, a tap now no-ops instead of pushing a route
-// off data that might be wrong — avoids a wasted navigation even though
-// `MinesweeperDailyOpenGuardView`'s own re-check (#842) would still land on
-// the correct surface regardless.
+// `cardTapped` used to no-op while `isPhase2Pending` — the tapped card's
+// (phase-1-stale) `isCompleted`/`isFailed` flags were considered too
+// unreliable to route off. #941 (owner-requested) removed that gate: a tap
+// now routes immediately off whatever the card currently says, even
+// mid-fetch. Safe because `MinesweeperDailyOpenGuardView`'s own re-check
+// (#842) unconditionally re-checks persistence on every daily open — the gate
+// was only ever the UX-responsiveness half of a defense-in-depth pair, never
+// the correctness guarantee.
 
 import Foundation
 import SwiftUI
@@ -24,7 +26,7 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    @Test func cardTapNoOpsWhilePhase2FetchIsGatedThenWorksOnceItLands() async {
+    @Test func cardTapAppendsBoardRouteWhilePhase2PendingThenStillWorksOnceLanded() async {
         let gated = GatedQueryGateway()
         let store = MinesweeperSavedGameStore(gateway: gated, clock: { Self.fixedDate })
         var path: [AppRoute] = []
@@ -50,8 +52,11 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
         }
         #expect(viewModel.isPhase2Pending == true)
 
+        // #941: a tap while phase-2 is still in flight appends the board
+        // route immediately instead of no-opping — the phase-1 placeholder
+        // card is un-completed, so this is the fresh-board path.
         viewModel.cardTapped(cards[0])
-        #expect(path.isEmpty)
+        #expect(path == [.board(difficulty: cards[0].difficulty, seed: cards[0].seed, mode: .daily)])
 
         await gated.resolve(.success([]))
         await bootstrapTask.value
@@ -59,7 +64,10 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
         #expect(viewModel.isPhase2Pending == false)
 
         viewModel.cardTapped(cards[0])
-        #expect(path == [.board(difficulty: cards[0].difficulty, seed: cards[0].seed, mode: .daily)])
+        #expect(path == [
+            .board(difficulty: cards[0].difficulty, seed: cards[0].seed, mode: .daily),
+            .board(difficulty: cards[0].difficulty, seed: cards[0].seed, mode: .daily)
+        ])
     }
 
     /// #886 CR round 2 regression guard: TWO concurrent `query()` calls

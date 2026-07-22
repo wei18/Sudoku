@@ -48,25 +48,45 @@ extension MinesweeperDailyHubViewModel {
     /// still show real numbers. Absence of a key (as opposed to an explicit
     /// `nil`) covers both "fetch failed" and "record has no best time yet" —
     /// same collapse `MinesweeperStatsTile.empty` already applies.
+    ///
+    /// #941: the 3 per-difficulty fetches used to run in a serial `for` loop —
+    /// the last remaining serial CK round-trip in the phase-2 lane (this whole
+    /// method already races the week-window and failed-ids fetches via
+    /// `fillCompletionAndFailureOverlay`'s `async let`). Fanned out into a
+    /// `TaskGroup` here so all `trio.count` reads are in flight simultaneously;
+    /// `personalRecordStore` / `errorReporter` are captured as local `let`s
+    /// (both `Sendable`) rather than `self` so the child tasks don't need to
+    /// hop through the `@MainActor`-isolated view model. Assembly is
+    /// order-independent — results are collected into a `[Difficulty: Int]`
+    /// keyed off each task's own difficulty, never off completion order.
     func fetchBestTimes(trio: [MinesweeperDailyEntry]) async -> [Difficulty: Int] {
         guard let personalRecordStore else { return [:] }
-        var bestTimes: [Difficulty: Int] = [:]
-        for entry in trio {
-            let difficulty = entry.difficulty
-            do {
-                let record = try await personalRecordStore.fetch(modeRaw: GameMode.daily.rawValue, difficulty: difficulty)
-                if let best = record.bestTimeSeconds {
+        let errorReporter = self.errorReporter
+        return await withTaskGroup(of: (Difficulty, Int?).self) { group in
+            for entry in trio {
+                let difficulty = entry.difficulty
+                group.addTask {
+                    do {
+                        let record = try await personalRecordStore.fetch(modeRaw: GameMode.daily.rawValue, difficulty: difficulty)
+                        return (difficulty, record.bestTimeSeconds)
+                    } catch {
+                        await errorReporter.report(
+                            UserFacingError.classify(error),
+                            underlying: error,
+                            source: "MinesweeperDailyHubViewModel.fetchBestTimes"
+                        )
+                        return (difficulty, nil)
+                    }
+                }
+            }
+            var bestTimes: [Difficulty: Int] = [:]
+            for await (difficulty, best) in group {
+                if let best {
                     bestTimes[difficulty] = best
                 }
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperDailyHubViewModel.fetchBestTimes"
-                )
             }
+            return bestTimes
         }
-        return bestTimes
     }
 
     struct WeekWindowSlot: Sendable {

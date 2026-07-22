@@ -63,12 +63,11 @@ struct MinesweeperDailyHubSnapshotTests {
     /// The Daily hub seeded to its loaded trio, wrapped in a NavigationStack so
     /// the shell's `.navigationTitle` chrome renders.
     ///
-    /// #878: `setStateForTesting` bypasses `bootstrap()` entirely, which
+    /// #878/#941: `setStateForTesting` bypasses `bootstrap()` entirely, which
     /// leaves `isPhase2Pending` at its default `true` — every baseline below
-    /// explicitly pins `isPhase2Pending: false` so it keeps representing the
-    /// SETTLED loaded state (full-opacity, tappable cards), not a mid-fetch
-    /// one. `snapshotDaily_iPhone_light_phase2Pending` below is the one
-    /// baseline that opts back into the default `true`.
+    /// explicitly pins `isPhase2Pending: false` for hygiene, though #941
+    /// removed the last visual/behavioral difference `isPhase2Pending` ever
+    /// made (cards render full-opacity + tappable regardless now).
     private func dailyHubView(isPhase2Pending: Bool = false) -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         viewModel.setStateForTesting(.loaded(Self.loadedTrio))
@@ -298,30 +297,6 @@ struct MinesweeperDailyHubSnapshotTests {
             record: SnapshotMode.recordMode
         )
         assertViewStructure(of: host, named: "Daily-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - #878 phase-2-pending card treatment
-
-    /// #878 (#874 F-4, re-opening #842's no-affordance tradeoff): pins the
-    /// dimmed, non-button card treatment while `isPhase2Pending` is `true` —
-    /// scripted via `setPhase2PendingForTesting` (the gate is pure VM state,
-    /// no gated-fetch fixture needed). Mirrors `DailyHub-iPhone-light-*`'s
-    /// SudokuUI counterpart.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_light_phase2Pending() {
-        let host = hostingView(
-            dailyHubView(isPhase2Pending: true),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-phase2Pending",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPhone-light-phase2Pending", record: SnapshotMode.recordMode)
     }
 }
 #endif
