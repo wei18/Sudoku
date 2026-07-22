@@ -26,6 +26,14 @@ extension AudioEvent {
 
     /// The puzzle was solved. Success haptic for the full win.
     static let sudokuWin = AudioEvent(soundKey: "win", haptic: .success, channel: .sfx)
+
+    /// #939: sticky digit-first — an armed tap landed on a non-empty cell that
+    /// doesn't match the armed digit (different digit, or a given). No
+    /// placement happens and the digit stays armed; this is haptic-only (no
+    /// `soundKey` asset — `LiveSoundPlayer.play` fires the haptic before the
+    /// asset lookup, so the empty key's expected "missing asset" no-op never
+    /// blocks the light tap-absorbed feedback).
+    static let sudokuArmedMismatch = AudioEvent(soundKey: "", haptic: .light, channel: .sfx)
 }
 
 /// The background-music track key for the gameplay screen. Matches the P3

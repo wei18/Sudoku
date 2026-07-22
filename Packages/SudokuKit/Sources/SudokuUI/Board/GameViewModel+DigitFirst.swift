@@ -1,11 +1,12 @@
 // GameViewModel+DigitFirst — board-cell tap dispatch for digit-first input
-// (#722). Split out of GameViewModel.swift, which already sits well past the
-// 400-line SwiftLint file_length ceiling (a lint exemption is documented at
-// the top of that file): `tapCell` only calls existing PUBLIC mutators
-// (`select`, `placeDigit(at:)`, `toggleNote(at:)`) and touches no `private`
-// collaborator, unlike `armDigit`/`select`, which must stay in the main file
-// because they write the `private(set) var armedDigit` (Swift's `private`
-// access is file-scoped).
+// (#722; sticky-armed per #939). Split out of GameViewModel.swift, which
+// already sits well past the 400-line SwiftLint file_length ceiling (a lint
+// exemption is documented at the top of that file): `tapCell` only calls
+// existing PUBLIC mutators (`select`, `placeDigit(at:)`, `toggleNote(at:)`)
+// plus one internal forwarder (`fireArmedMismatchFeedback()`) and touches no
+// `private` collaborator, unlike `armDigit`/`select`, which must stay in the
+// main file because they write the `private(set) var armedDigit` (Swift's
+// `private` access is file-scoped).
 
 import SudokuEngine
 
@@ -28,7 +29,7 @@ extension GameViewModel {
         }
     }
 
-    /// Board-cell tap dispatch (#722 digit-first input).
+    /// Board-cell tap dispatch (#722 digit-first input; sticky-armed per #939).
     ///
     /// - Not armed → today's cell-first flow, unchanged: `select(row:column:)`.
     /// - Armed + empty interactive cell → place (or, in pencil mode, toggle
@@ -36,28 +37,43 @@ extension GameViewModel {
     ///   mistake / error / undo / completion / persistence rules all still
     ///   apply. The cell does NOT become selected — the digit stays armed
     ///   for consecutive placements.
-    /// - Armed + non-empty cell → fall back to cell-first: `select(...)`,
-    ///   which also disarms — the single enforcement point for the
-    ///   `armedDigit != nil ⟺ selection == nil` invariant on the "selecting"
-    ///   side. Note: GIVEN cells never reach here from the UI — they carry no
-    ///   Button wrapper (#473 non-interactive), so tapping a given while
-    ///   armed is a no-op and the digit stays armed, matching cell-first
-    ///   (givens are inert there too). The non-empty branch is reachable from
-    ///   the UI only via user-filled cells.
+    /// - Armed + user-filled cell already holding the armed digit → clear it
+    ///   (toggle off) in normal mode; in pencil mode, toggle the note instead
+    ///   (notes are independent of the cell's digit value, so this matches
+    ///   the empty-cell note-toggle semantics above rather than clearing).
+    /// - Armed + any OTHER non-empty cell (a different digit, or a given) →
+    ///   sticky no-op: the tap is absorbed, `armedDigit` is untouched, and a
+    ///   light haptic (iOS only, via the existing `GameAudio` haptic seam —
+    ///   see `fireArmedMismatchFeedback()`) signals the tap registered. This
+    ///   is #939's whole point: a fast digit-first sweep no longer dies the
+    ///   moment it mis-taps a filled cell.
+    ///
+    /// None of the armed branches call `select(...)`, so — unlike pre-#939 —
+    /// this function never disarms; the invariant `armedDigit != nil ⟺
+    /// selection == nil` holds because `selection` was already `nil` on
+    /// entry (armed) and stays untouched throughout.
     public func tapCell(row: Int, column: Int) async {
         guard (0..<Board.dimension).contains(row),
               (0..<Board.dimension).contains(column) else { return }
-        let index = Board.index(row: row, column: column)
-        let isEmpty = board.digit(atIndex: index) == nil
-        if let armed = armedDigit, isEmpty {
-            let coord = GridCoordinate(row: row, column: column)
-            if pencilMode {
-                await toggleNote(armed, at: coord)
-            } else {
-                await placeDigit(armed, at: coord)
-            }
-        } else {
+        guard let armed = armedDigit else {
             select(row: row, column: column)
+            return
+        }
+        let index = Board.index(row: row, column: column)
+        let cellDigit = board.digit(atIndex: index)
+        let isEmpty = cellDigit == nil
+        let isArmedMatch = !isEmpty && !board.givenMask[index] && cellDigit == armed
+        guard isEmpty || isArmedMatch else {
+            fireArmedMismatchFeedback()
+            return
+        }
+        let coord = GridCoordinate(row: row, column: column)
+        if pencilMode {
+            await toggleNote(armed, at: coord)
+        } else if isEmpty {
+            await placeDigit(armed, at: coord)
+        } else {
+            await placeDigit(nil, at: coord)
         }
     }
 }
