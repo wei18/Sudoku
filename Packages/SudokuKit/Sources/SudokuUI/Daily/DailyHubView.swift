@@ -93,7 +93,7 @@ public struct DailyHubView<Banner: View>: View {
             title: "Daily",
             backgroundColor: theme.surface.background.resolved,
             state: liftedState,
-            card: { card in DailyPuzzleCard(card: card, isPending: viewModel.isPhase2Pending) },
+            card: { card in DailyPuzzleCard(card: card) },
             failure: { reason in
                 // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
                 // scale — no matching tier without snapping and changing
@@ -209,15 +209,6 @@ public struct DailyHubView<Banner: View>: View {
 
 struct DailyPuzzleCard: View {
     let card: DailyCard
-    /// #878 (#874 F-4): `true` while the hub's phase-2 completion-overlay
-    /// fetch is in flight — mirrors `DailyHubViewModel.isPhase2Pending`,
-    /// which already no-ops `cardTapped` during this window (#842). This
-    /// re-opens #842's adjudicated "no visual affordance" tradeoff with the
-    /// #874 audit's evidence: the chevron used to keep reading as fully
-    /// tappable while the tap silently did nothing. Smallest
-    /// mirror-consistent fix — dim the card content and drop the `.isButton`
-    /// trait, no spinner (#843 no-skeleton stance).
-    var isPending: Bool = false
     @Environment(\.theme) private var theme
     // Card content rhythm (#762 PR2 two-tier spacing contract) — content
     // tier, wraps the difficulty/checkmark row + best-time caption, scales
@@ -262,9 +253,6 @@ struct DailyPuzzleCard: View {
                 .font(.caption)
                 .foregroundStyle(theme.text.secondary.resolved)
         }
-        // #878: subtle pending dim — content only, the glass card shape/
-        // background stays at full opacity so the row doesn't look broken.
-        .opacity(isPending ? Self.pendingOpacity : 1)
         .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         // `.buttonStyle(.plain)` on macOS shrinks the hit area to the
@@ -285,19 +273,11 @@ struct DailyPuzzleCard: View {
         // below instead of being combine-concatenated.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        // #878: while pending, the tap gate makes this row genuinely inert
-        // (`DailyHubViewModel.cardTapped` no-ops) — dropping `.isButton`
-        // stops VoiceOver from promising an action the tap doesn't honor
-        // yet. Mirrors #826's `DailyStripView.isTappable` precedent (a
-        // non-tappable dot never grows the `.isButton` trait either); the
-        // label text itself is unchanged, same as that precedent.
-        .accessibilityAddTraits(isPending ? [] : .isButton)
+        // #941 (reverses #878): the card is optimistically tappable the
+        // whole time now — `.isButton` no longer conditions on phase-2
+        // pending state.
+        .accessibilityAddTraits(.isButton)
     }
-
-    /// #878: subtle-dim opacity for the pending treatment above — matches
-    /// the existing "row content, not the glass card" dim used by disabled
-    /// controls elsewhere in the app.
-    private static let pendingOpacity: Double = 0.5
 
     /// Map the typed `Difficulty` enum to the matching `difficulty.*`
     /// theme token. M5 (issue #65): switch is exhaustive — adding a new

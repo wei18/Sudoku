@@ -12,6 +12,10 @@
 // `FakePrivateCKGateway` (the store's established test seam — see
 // `MinesweeperStatsTests.swift`), with the #886 per-recordName error
 // injection added to the gateway for the degrade test.
+//
+// #941: also pins the concurrency fix itself — the 3 per-difficulty fetches
+// now run in a `TaskGroup` instead of a serial `for` loop (see
+// `bestTimeFetchesRunConcurrentlyAndAssembleOrderIndependently` below).
 
 import Foundation
 import Testing
@@ -139,5 +143,96 @@ struct MinesweeperDailyHubViewModelBestTimeTests {
         }
         #expect(cards.first { $0.difficulty == .beginner }?.bestTimeSeconds == 33)
         #expect(cards.allSatisfy { !$0.isCompleted && !$0.isFailed })
+    }
+
+    /// #941: proves `fetchBestTimes`'s 3 per-difficulty fetches are actually
+    /// concurrent (not merely non-blocking) AND that the final merge is
+    /// order-independent — releasing them in a different order than they
+    /// arrived must not cross-assign a value to the wrong difficulty. Seeds
+    /// real records via `recordCompletion` on a plain gateway first (the
+    /// store's own test seam), then wraps that same gateway's `fetch` in a
+    /// per-recordName gate so the VM's actual fetch calls are the ones
+    /// delayed/released — not the seeding calls.
+    @Test func bestTimeFetchesRunConcurrentlyAndAssembleOrderIndependently() async throws {
+        let underlying = FakePrivateCKGateway()
+        let seedStore = MinesweeperPersonalRecordStore(gateway: underlying, clock: { Self.fixedDate })
+        try await seedStore.recordCompletion(puzzleId: "d-b-1", modeRaw: "daily", difficulty: .beginner, elapsedSeconds: 42)
+        try await seedStore.recordCompletion(puzzleId: "d-i-1", modeRaw: "daily", difficulty: .intermediate, elapsedSeconds: 900)
+        try await seedStore.recordCompletion(puzzleId: "d-e-1", modeRaw: "daily", difficulty: .expert, elapsedSeconds: 500)
+
+        let gated = GatedFetchGateway(delegate: underlying)
+        let store = MinesweeperPersonalRecordStore(gateway: gated, clock: { Self.fixedDate })
+        let viewModel = MinesweeperDailyHubViewModel(
+            path: .constant([]),
+            personalRecordStore: store,
+            dateProvider: { Self.fixedDate }
+        )
+
+        let bootstrapTask = Task { await viewModel.bootstrap() }
+
+        // Wait until all THREE per-difficulty fetches have reached the gate —
+        // a serial loop would only ever have ONE in flight at a time, so this
+        // would hang forever under the pre-#941 implementation.
+        while await gated.arrivedRecordNames.count < 3 {
+            await Task.yield()
+        }
+        #expect(Set(await gated.arrivedRecordNames) == ["daily-beginner", "daily-intermediate", "daily-expert"])
+
+        // Release in a DIFFERENT order than they arrived — proves the final
+        // merge keys off `Difficulty`, not completion order.
+        await gated.release("daily-expert")
+        await gated.release("daily-beginner")
+        await gated.release("daily-intermediate")
+
+        await bootstrapTask.value
+
+        guard case .loaded(let cards) = viewModel.state else {
+            Issue.record("expected loaded state, got \(viewModel.state)")
+            return
+        }
+        #expect(cards.first { $0.difficulty == .beginner }?.bestTimeSeconds == 42)
+        #expect(cards.first { $0.difficulty == .intermediate }?.bestTimeSeconds == 900)
+        #expect(cards.first { $0.difficulty == .expert }?.bestTimeSeconds == 500)
+    }
+}
+
+// MARK: - GatedFetchGateway
+
+/// A `PrivateCKGateway` decorator whose `fetch(recordName:)` hangs per
+/// `recordName` until individually `release`d — every other operation
+/// delegates straight through to `delegate` (a real, pre-seeded
+/// `FakePrivateCKGateway`) unchanged. Lets a test seed data via the store's
+/// normal `recordCompletion` write path first, then gate ONLY the read calls
+/// the view model itself issues.
+private actor GatedFetchGateway: PrivateCKGateway {
+    private let delegate: FakePrivateCKGateway
+    private var continuations: [String: [CheckedContinuation<Void, Never>]] = [:]
+    private(set) var arrivedRecordNames: [String] = []
+
+    init(delegate: FakePrivateCKGateway) {
+        self.delegate = delegate
+    }
+
+    func release(_ recordName: String) {
+        let waiting = continuations.removeValue(forKey: recordName) ?? []
+        for continuation in waiting {
+            continuation.resume()
+        }
+    }
+
+    func provisionZone() async throws { try await delegate.provisionZone() }
+    func installSubscriptionIfNeeded() async throws { try await delegate.installSubscriptionIfNeeded() }
+    func save(_ payload: RecordPayload, policy: RecordSavePolicy) async throws {
+        try await delegate.save(payload, policy: policy)
+    }
+    func delete(recordName: String) async throws { try await delegate.delete(recordName: recordName) }
+    func query(_ predicate: RecordPredicate) async throws -> [RecordPayload] { try await delegate.query(predicate) }
+
+    func fetch(recordName: String) async throws -> RecordPayload? {
+        arrivedRecordNames.append(recordName)
+        await withCheckedContinuation { continuation in
+            continuations[recordName, default: []].append(continuation)
+        }
+        return try await delegate.fetch(recordName: recordName)
     }
 }

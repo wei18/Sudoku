@@ -133,10 +133,10 @@ struct ASCScreenshotEmitTests {
     private func dailyHubView() -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         viewModel.setStateForTesting(.loaded(Self.loadedTrio))
-        // #878: `setStateForTesting` bypasses `bootstrap()` and leaves
-        // `isPhase2Pending` at its default `true` — the marketing screenshot
-        // must show the SETTLED, fully-tappable card treatment, not the
-        // phase-2-pending dim.
+        // `setStateForTesting` bypasses `bootstrap()` and leaves
+        // `isPhase2Pending` at its default `true`. Since #941 the pending flag
+        // no longer dims cards, so this only pins the settled in-flight state
+        // for determinism.
         viewModel.setPhase2PendingForTesting(false)
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)

@@ -58,13 +58,12 @@ public final class DailyHubViewModel {
     /// #842: `true` from `.loaded`'s first render until `fillCompletionOverlay`
     /// (phase 2 — the completion overlay fetch) resolves at least once, for
     /// EITHER `bootstrap()`'s initial run or a later `refresh()` re-entry.
-    /// `cardTapped` no-ops while this is `true` — a tap landing in that window
-    /// has only phase-1-stale `card.isCompleted` data to show, so gating avoids
-    /// a wasted/flickering navigation rather than fixing correctness (that is
-    /// `BoardLoaderView`'s job — see its `#842` precheck, the airtight half of
-    /// this defense-in-depth pair). #878 re-opened #842's "deliberately not
-    /// visual" call: `DailyPuzzleCard` now dims + drops `.isButton` while
-    /// `true` (#874 F-4). #905: `internal`, not `public` — `+Testing.swift` seeds it.
+    /// #941 (owner-requested, reverses #842/#878): neither `cardTapped` nor
+    /// `DailyPuzzleCard` reads this anymore — a tap routes off `card`'s
+    /// current data even while `true`, and the card stays full-opacity +
+    /// `.isButton`. Safe because correctness was always `BoardLoaderView`'s
+    /// precheck, not this flag. Kept `internal` purely so tests can still
+    /// observe the in-flight window. #905: `+Testing.swift` seeds it.
     var isPhase2Pending = true
 
     /// Navigation path store (issue #240): routes through an injected
@@ -261,10 +260,10 @@ public final class DailyHubViewModel {
     /// and routes to `.completion`. The helper is `await`-able directly so
     /// tests don't depend on fire-and-forget `Task` timing.
     public func cardTapped(_ card: DailyCard) {
-        // #842: UX-responsiveness half of the defense-in-depth pair — see
-        // `isPhase2Pending`'s doc. Correctness is `BoardLoaderView`'s job even
-        // when this gate is bypassed or races closed anyway.
-        guard !isPhase2Pending else { return }
+        // #941: the #842 `isPhase2Pending` tap gate is gone — a tap routes
+        // optimistically off whatever `card.isCompleted` currently says, even
+        // mid-fetch. Correctness is `BoardLoaderView`'s job — see
+        // `isPhase2Pending`'s doc.
         guard card.isCompleted else {
             path.append(.board(puzzleId: card.envelope.identity.puzzleId))
             return

@@ -78,14 +78,18 @@ public final class MinesweeperDailyHubViewModel {
     /// #842: `true` from `.loaded`'s first render until
     /// `fillCompletionAndFailureOverlay` (phase 2) resolves at least once, for
     /// EITHER `bootstrap()`'s initial run or a later `refresh()` re-entry.
-    /// `cardTapped` no-ops while this is `true` — mirrors
-    /// `SudokuUI.DailyHubViewModel.isPhase2Pending` exactly. Correctness
-    /// (never mounting a scored/playable board for an actually completed or
-    /// failed daily) is `MinesweeperDailyOpenGuardView`'s job even when this
-    /// gate is bypassed or races closed anyway — this is the UX-responsiveness
-    /// half of the #842 defense-in-depth pair, not the airtight half.
-    /// #905: `internal` (not `public`) — only `MinesweeperDailyHubView` (this
-    /// module) and `@testable`-importing test targets read/write it.
+    /// #941 (owner-requested optimistic enable, reversing #842/#878, mirrors
+    /// `SudokuUI.DailyHubViewModel.isPhase2Pending`): neither `cardTapped` nor
+    /// `MinesweeperDailyCardView` reads this anymore — a tap while `true` now
+    /// routes straight off the (possibly stale) card state instead of
+    /// no-opping, and the card renders full-opacity + `.isButton` the whole
+    /// time. Safe because correctness (never mounting a scored/playable board
+    /// for an actually completed or failed daily) was always
+    /// `MinesweeperDailyOpenGuardView`'s job, not this gate's. Kept as
+    /// `internal` state purely so the phase-2 in-flight window stays
+    /// observable to tests. #905: `internal` (not `public`) — only
+    /// `MinesweeperDailyHubView` (this module) and `@testable`-importing test
+    /// targets read/write it.
     var isPhase2Pending = true
 
     private var path: Binding<[AppRoute]>
@@ -292,11 +296,11 @@ public final class MinesweeperDailyHubViewModel {
     ///   board knows not to persist or submit GC on this attempt.
     /// - Not-yet-played: pushes the `.board` normally (daily-mode, scored).
     public func cardTapped(_ card: MinesweeperDailyCard) {
-        // #842: UX-responsiveness half of the defense-in-depth pair — see
-        // `isPhase2Pending`'s doc. Correctness is
-        // `MinesweeperDailyOpenGuardView`'s job even when this gate is
-        // bypassed or races closed anyway.
-        guard !isPhase2Pending else { return }
+        // #941: the #842 `isPhase2Pending` tap gate is gone — a tap during a
+        // pending phase-2 fetch now routes optimistically off whatever the
+        // card's current state says. Correctness was always
+        // `MinesweeperDailyOpenGuardView`'s job, not this gate's — see
+        // `isPhase2Pending`'s doc.
         if card.isCompleted {
             path.wrappedValue.append(.completion(difficulty: card.difficulty, mode: .daily))
         } else if card.isFailed {
