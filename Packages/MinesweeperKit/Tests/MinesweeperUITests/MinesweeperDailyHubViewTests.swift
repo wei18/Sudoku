@@ -83,9 +83,10 @@ import MinesweeperEngine
         var path: [AppRoute] = []
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let viewModel = MinesweeperDailyHubViewModel(path: binding)
-        // #842: `cardTapped` no-ops while `isPhase2Pending` — bootstrap first
-        // so the gate has cleared (no `savedGameStore` wired here, so phase-2
-        // resolves with no CK traffic).
+        // Bootstrap so the card carries settled completion state (#941 removed
+        // the #842 tap gate; taps work during phase-2 too, but this test wants
+        // the solved overlay resolved — no `savedGameStore` wired, so phase-2
+        // completes with no CK traffic).
         await viewModel.bootstrap()
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
