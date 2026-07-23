@@ -84,10 +84,22 @@ public struct GameBoardRedirect<Route: Hashable & Sendable>: View {
                 // path-shrink branch, or that branch would see
                 // `isGamePresented == false` and wrongly treat this open-time
                 // pop as a close.
+                //
+                // #938: the pop below is synthetic (it undoes the hub's push
+                // the instant it lands) and must be invisible — its default
+                // push/pop animation was racing the fullScreenCover's own
+                // present animation, producing "background visible + double
+                // motion". Suppressing animations on just this path write
+                // leaves the cover's present/dismiss as the only visible
+                // transition.
                 onPresent(route)
                 if var current = path?.wrappedValue, !current.isEmpty {
                     current.removeLast()
-                    path?.wrappedValue = current
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        path?.wrappedValue = current
+                    }
                 }
             }
     }
