@@ -30,4 +30,43 @@ enum GameE2ESupport {
             line: line
         )
     }
+
+    /// #940 regression guard: `ReminderPrimerSheet` used to self-dismiss ~1s
+    /// after presenting — a `.sheet` hosted inside the Settings List's
+    /// `Section` got its host duplicated when the tap-time async permission
+    /// status write swapped that Section's row content mid-presentation.
+    /// Requires launch with `-uitest-route settings` and the REAL (unfaked)
+    /// reminder authorizer: the fresh-install `.notDetermined` default plus
+    /// the actual `getNotificationSettings` async latency is what reproduced
+    /// the race, so this deliberately does NOT use `fakeReminderRepoll`.
+    @MainActor
+    static func assertReminderPrimerPersistsPastStatusRepoll(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let enableRow = app.descendants(matching: .any)["reminders.settings.enable"]
+        XCTAssertTrue(
+            enableRow.waitForExistence(timeout: 15),
+            "reminders.settings.enable should render at launch (fresh install is notDetermined)",
+            file: file, line: line
+        )
+        enableRow.tap()
+
+        let primer = app.descendants(matching: .any)["reminders.primer.sheet"]
+        XCTAssertTrue(
+            primer.waitForExistence(timeout: 3),
+            "reminders.primer.sheet should present after tapping the enable row",
+            file: file, line: line
+        )
+
+        // The pre-fix teardown landed ~1–1.5s after presenting; wait past it.
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(
+            primer.exists,
+            "reminders.primer.sheet should still be presented 3s later — a List row-diffing"
+                + " duplicate presentation used to tear it down here",
+            file: file, line: line
+        )
+    }
 }

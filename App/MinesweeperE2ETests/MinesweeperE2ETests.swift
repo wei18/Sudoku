@@ -269,6 +269,16 @@ final class MinesweeperE2ETests: XCTestCase {
         ScenePhaseRepollE2ESupport.assertBannerScenePhaseRepoll(in: app)
     }
 
+    /// #940: the primer sheet must survive the async permission-status write
+    /// that used to race it down ~1s after presenting. Shared `SettingsUI`
+    /// component/model — mirrors `SudokuE2ETests.test_reminderPrimerPersistsPastStatusRepoll`.
+    func test_reminderPrimerPersistsPastStatusRepoll() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.route, "settings"]
+        app.launch()
+        GameE2ESupport.assertReminderPrimerPersistsPastStatusRepoll(in: app)
+    }
+
     /// Parse `game.uitest.winningCell.r<R>.c<C>` → (row, col).
     private static func parseWinningCell(_ identifier: String) -> (row: Int, col: Int)? {
         let parts = identifier.components(separatedBy: ".")

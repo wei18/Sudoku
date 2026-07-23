@@ -210,6 +210,55 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
             // 5. Storage — shared section. Wires the host-supplied clearCache.
             SettingsStorageSection(clearCache: clearCache)
         }, banner: banner)
+        // #940: the primer + denied-explainer sheets used to be attached on
+        // `ReminderSettingsSection`'s `Section` INSIDE the Form above — a
+        // presentation host nested in a List row-group whose content is
+        // dynamic (`switch model.status`). List's own row diffing could
+        // duplicate that host, causing a second presentation attempt UIKit
+        // rejects, self-dismissing the sheet ~1s after it looked settled
+        // (reproduced 4/4; distinct from #909's already-fixed model-caching
+        // bug). Both sheets now live HERE — on this screen's root, a stable
+        // host outside any List row — still driven by the same
+        // `ReminderSettingsModel` instance injected via
+        // `SettingsScreenReminderConfig`. Manual `Binding(get:set:)` (not
+        // `@Bindable`) because `reminderSettings` is optional; mirrors
+        // `AudioSettingsSection`'s existing pattern for wrapping an
+        // `@Observable` class property behind an optional.
+        .sheet(isPresented: Binding(
+            get: { reminderSettings?.model.isPrimerPresented ?? false },
+            set: { reminderSettings?.model.isPrimerPresented = $0 }
+        )) {
+            if let reminderSettings {
+                ReminderPrimerSheet(
+                    copy: reminderSettings.primerCopy,
+                    isRequesting: reminderSettings.model.isRequesting,
+                    onAccept: { Task { await reminderSettings.model.acceptPrimer() } },
+                    onDecline: { reminderSettings.model.declinePrimer() }
+                )
+                // R6.3 (SDD-003): single fixed detent prevents drag-up layout
+                // breakage; hidden indicator removes the affordance to drag
+                // at all. The sheet is dismissed explicitly via "Not now" or
+                // accept only.
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.hidden)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { reminderSettings?.model.isDeniedExplainerPresented ?? false },
+            set: { reminderSettings?.model.isDeniedExplainerPresented = $0 }
+        )) {
+            if let reminderSettings {
+                ReminderDeniedExplainer(
+                    copy: reminderSettings.deniedCopy,
+                    onOpenSettings: { reminderSettings.model.openSystemSettings() },
+                    onDismiss: { reminderSettings.model.dismissDeniedExplainer() }
+                )
+                // R6.3 (SDD-003) + #673: same single-detent + hidden-indicator
+                // treatment as the primer sheet above, for parity.
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.hidden)
+            }
+        }
     }
 }
 

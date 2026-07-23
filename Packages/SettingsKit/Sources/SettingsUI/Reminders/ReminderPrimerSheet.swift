@@ -193,6 +193,12 @@ public struct ReminderPrimerSheet: View {
             .frame(maxWidth: .infinity)
         }
         .background(theme.surface.elevated.resolved)
+        // #940 regression anchor: a locale-independent identifier on the
+        // sheet's own root, so an E2E test can assert the primer is STILL
+        // presented after the async permission-status write that used to
+        // race it down (the root cause this issue fixed) without depending
+        // on any localized copy.
+        .accessibilityIdentifier("reminders.primer.sheet")
     }
 
     // R6.4: `iconSize` from `@ScaledMetric` shrinks proportionally at AX3+.

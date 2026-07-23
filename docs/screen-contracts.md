@@ -856,8 +856,10 @@ affordance, only Settings-initiated" — that asymmetry is closed as of #814).
 **Code:** `SettingsKit/Sources/SettingsUI/Reminders/ReminderPrimerSheet.swift`
 (shared component, both apps inject their own `ReminderPrimerCopy`).
 
-**Element inventory:** icon tile, title, lede, 3-bullet promise block, accept
-CTA (primary), decline CTA "Not now" (repeatable), fineprint.
+**Element inventory:** icon tile (`reminders.primer.sheet` on the sheet's own
+root, added #940 as a locale-independent regression anchor), title, lede,
+3-bullet promise block, accept CTA (primary), decline CTA "Not now"
+(repeatable), fineprint.
 
 **Per-interaction outcome:**
 
@@ -874,6 +876,23 @@ sites. Origin screen stays mounted underneath but not interactive.
 
 **State variants:** `isRequesting` shows a spinner on the accept button while
 the system prompt is in flight.
+
+**AS-BUILT NOTE (2026-07-23, #940):** for the `SETTINGS`-initiated case, both
+this sheet and `REMINDER-DENIED` used to be attached as `.sheet` modifiers on
+`ReminderSettingsSection`'s own `Section` — a presentation host nested inside
+the Settings `Form`'s List row-group, whose content (`switch model.status`)
+is dynamic. The tap-time async `getNotificationSettings` status write swapped
+that Section's row content mid-presentation; List's row diffing duplicated
+the presentation host, UIKit rejected the second `present`, and the primer
+self-dismissed ~1–1.5s after looking fully settled (reproduced 4/4 — a
+recurrence of #909's symptom via a different mechanism than #909's
+already-fixed model-caching bug). Both sheets now live on `SettingsScreen`'s
+root (`SettingsKit/Sources/SettingsUI/Settings/SettingsScreen.swift:227-261`)
+— a stable host outside any List row — via `Binding(get:set:)` reading the
+same injected `ReminderSettingsModel`. `ReminderSettingsSection` itself no
+longer owns either `.sheet`. The Completion-initiated case
+(`SUD-COMPLETION-OVERLAY`/`MS-COMPLETION-OVERLAY`) was never affected — its
+host is a plain overlay view, not a List row.
 
 ---
 
