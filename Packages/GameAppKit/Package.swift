@@ -55,10 +55,6 @@ let productionTargets: [Target] = [
             .product(name: "GameAudio", package: "GameAudioKit"),
             .product(name: "SettingsUI", package: "SettingsKit"),
             .product(name: "Reminders", package: "RemindersKit"),
-            // #935 batch 4: SudokuEngine for the `Difficulty` type needed by
-            // `UITestSignedOutGameCenterClient`'s `GameCenterClient`
-            // conformance (`submitScore(puzzleId:...difficulty:...)`).
-            .product(name: "SudokuEngine", package: "SudokuCoreKit"),
         ],
         swiftSettings: swiftSettings
     ),
