@@ -174,6 +174,22 @@ final class MinesweeperE2ETests: XCTestCase {
         )
     }
 
+    /// #935 batch 4 N14: GC signed-out alert (`GC-SIGNED-OUT-ALERT`) — the
+    /// Settings GC row, while Game Center is signed out, must show the
+    /// system alert and OK must dismiss it WITHOUT any route change (the
+    /// stranding check). `-uitest-gc-signed-out` forces `authState` to
+    /// `.unauthenticated` (`UITestSignedOutGameCenterClient`) — CI sim GC is
+    /// signed out in practice, but the live handshake is nondeterministic.
+    func test_gcSignedOutAlertDismissesInPlace_N14() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.gcSignedOut,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertGCSignedOutAlertDismissesInPlace(in: app)
+    }
+
     /// Shared near-win drive (#935: reused by both the happy-path smoke test
     /// and the N9/N8/N11 negative-flow tests). Unlike Sudoku — a wrong digit
     /// there is harmless and can be brute-forced — a wrong tap here hits a

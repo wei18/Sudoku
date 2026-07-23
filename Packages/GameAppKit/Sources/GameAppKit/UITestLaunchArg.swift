@@ -121,6 +121,16 @@ public enum UITestLaunchArg {
     /// near-win boards use no-op persistence and write nothing). Absent from
     /// Release builds via the `#if DEBUG` guard.
     public static let seedCompletedDaily = "-uitest-seed-completed-daily"
+
+    /// #935 batch 4: forces `GameRootViewModel.bootstrap()`'s
+    /// `gameCenter.authenticate()` call to a genuinely `.unauthenticated`
+    /// result (`UITestSignedOutGameCenterClient`), so the GC-SIGNED-OUT-ALERT
+    /// negative flow (N14, docs/navigation-flows.md) can be exercised
+    /// deterministically — CI sim Game Center is signed out in practice, but
+    /// the live GameKit handshake is nondeterministic (network timeouts /
+    /// system prompts), so relying on real sim state would be flaky. Absent
+    /// from Release builds via the `#if DEBUG` guard.
+    public static let gcSignedOut = "-uitest-gc-signed-out"
 }
 
 #endif

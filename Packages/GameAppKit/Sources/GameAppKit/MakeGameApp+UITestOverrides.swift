@@ -9,6 +9,7 @@
 internal import Foundation
 internal import MonetizationCore
 internal import Reminders
+internal import GameCenterClient
 
 /// #931: resolves the `AdGateStateStore` `AdGate` reads from. Under
 /// `-uitest-fake-ad-gate-repoll` (DEBUG only), swaps in
@@ -67,4 +68,22 @@ func resolveReminderAuthorizer(fallback: any NotificationAuthorizing) -> any Not
     #else
     return fallback
     #endif
+}
+
+/// #935 batch 4: resolves the `GameCenterClient` `GameRootViewModel.bootstrap()`
+/// authenticates against. Under `-uitest-gc-signed-out` (DEBUG only), swaps in
+/// `UITestSignedOutGameCenterClient` so `authState` deterministically lands on
+/// `.unauthenticated`, letting the N14 GC-SIGNED-OUT-ALERT E2E flow run
+/// without depending on the live GameKit handshake's (nondeterministic) sim
+/// behavior. `makeLive` is `@autoclosure` (rather than `resolveAdProvider`'s
+/// explicit trailing closure) so the call site stays a single expression —
+/// it is still only evaluated when the fake path is NOT taken.
+@MainActor
+func resolveGameCenterClient(makeLive: @autoclosure () -> any GameCenterClient) -> any GameCenterClient {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.gcSignedOut) {
+        return UITestSignedOutGameCenterClient()
+    }
+    #endif
+    return makeLive()
 }

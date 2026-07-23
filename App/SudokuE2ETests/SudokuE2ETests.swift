@@ -292,6 +292,22 @@ final class SudokuE2ETests: XCTestCase {
         )
     }
 
+    /// #935 batch 4 N14: GC signed-out alert (`GC-SIGNED-OUT-ALERT`) — the
+    /// Settings GC row, while Game Center is signed out, must show the
+    /// system alert and OK must dismiss it WITHOUT any route change (the
+    /// stranding check). `-uitest-gc-signed-out` forces `authState` to
+    /// `.unauthenticated` (`UITestSignedOutGameCenterClient`) — CI sim GC is
+    /// signed out in practice, but the live handshake is nondeterministic.
+    func test_gcSignedOutAlertDismissesInPlace_N14() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.gcSignedOut,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertGCSignedOutAlertDismissesInPlace(in: app)
+    }
+
     /// Shared winning-move drive for the near-win-modal board (#935: reused
     /// by both the happy-path smoke test and the N10 negative-flow test).
     /// The fixed-seed near-win board has exactly ONE empty cell, whose a11y

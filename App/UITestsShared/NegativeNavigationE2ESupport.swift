@@ -1,7 +1,7 @@
 import XCTest
 
 // #935 — shared host-driven E2E support for the negative navigation flows in
-// docs/navigation-flows.md §4 (N1/N2/N8/N9/N10/N11): every exit affordance
+// docs/navigation-flows.md §4 (N1/N2/N8/N9/N10/N11/N12/N13/N14): every exit affordance
 // (Leave, Close, mask-tap-resume, Retry/Close on a load failure) must land
 // the player on the DOCUMENTED screen, never stranded on a dismissed
 // board/pause/completion surface (the #667 regression class a unit or
@@ -103,5 +103,50 @@ enum NegativeNavigationE2ESupport {
     @MainActor
     static func tapPauseMaskOutsideCard(in app: XCUIApplication) {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+    }
+
+    /// Settings Game Center row (`SettingsScreen`, shared SettingsUI — same
+    /// id both apps render). N14's tap target AND, after the alert dismisses,
+    /// its own "origin unchanged" anchor.
+    static let settingsGameCenterRowID = "settings.gameCenter"
+
+    /// N14 (#935 batch 4): tapping the Settings GC row while signed out must
+    /// show the system `GC-SIGNED-OUT-ALERT` and OK must dismiss it WITHOUT
+    /// any route change — the stranding check. Caller must already be routed
+    /// to Settings with `-uitest-gc-signed-out` set
+    /// (`UITestSignedOutGameCenterClient`), so `authState` is deterministically
+    /// `.unauthenticated`.
+    @MainActor
+    static func assertGCSignedOutAlertDismissesInPlace(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let gcRow = app.buttons[settingsGameCenterRowID]
+        XCTAssertTrue(
+            gcRow.waitForExistence(timeout: 15),
+            "N14: Settings GC row (\(settingsGameCenterRowID)) should be present",
+            file: file, line: line
+        )
+        gcRow.tap()
+
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(
+            alert.waitForExistence(timeout: 10),
+            "N14: GC signed-out alert should appear under the -uitest-gc-signed-out seam",
+            file: file, line: line
+        )
+        alert.buttons.firstMatch.tap()
+
+        XCTAssertTrue(
+            alert.waitForNonExistence(timeout: 5),
+            "N14: OK should dismiss the alert",
+            file: file, line: line
+        )
+        XCTAssertTrue(
+            gcRow.waitForExistence(timeout: 5),
+            "N14: origin (Settings GC row) should remain present — no route change",
+            file: file, line: line
+        )
     }
 }
