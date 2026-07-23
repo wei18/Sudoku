@@ -221,9 +221,9 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         // host outside any List row — still driven by the same
         // `ReminderSettingsModel` instance injected via
         // `SettingsScreenReminderConfig`. Manual `Binding(get:set:)` (not
-        // `@Bindable`) because `reminderSettings` is optional; mirrors
-        // `AudioSettingsSection`'s existing pattern for wrapping an
-        // `@Observable` class property behind an optional.
+        // `@Bindable`) because `reminderSettings` is optional (nil in
+        // previews/tests): `get` falls back to false so the sheet never
+        // presents, and the set-through is an inert no-op when nil.
         .sheet(isPresented: Binding(
             get: { reminderSettings?.model.isPrimerPresented ?? false },
             set: { reminderSettings?.model.isPrimerPresented = $0 }

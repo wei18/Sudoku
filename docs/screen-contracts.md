@@ -856,10 +856,10 @@ affordance, only Settings-initiated" — that asymmetry is closed as of #814).
 **Code:** `SettingsKit/Sources/SettingsUI/Reminders/ReminderPrimerSheet.swift`
 (shared component, both apps inject their own `ReminderPrimerCopy`).
 
-**Element inventory:** icon tile (`reminders.primer.sheet` on the sheet's own
-root, added #940 as a locale-independent regression anchor), title, lede,
-3-bullet promise block, accept CTA (primary), decline CTA "Not now"
-(repeatable), fineprint.
+**Element inventory:** icon tile, title, lede, 3-bullet promise block, accept
+CTA (primary), decline CTA "Not now" (repeatable), fineprint. The sheet's own
+root carries `reminders.primer.sheet` (added #940 as a locale-independent
+regression anchor).
 
 **Per-interaction outcome:**
 
