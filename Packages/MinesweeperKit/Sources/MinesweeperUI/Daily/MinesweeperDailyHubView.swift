@@ -109,6 +109,17 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
                 MinesweeperDailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
                     .padding(.horizontal, theme.spacing.medium)
                     .padding(.top, theme.spacing.medium)
+                    // #935 batch 3: stable, loaded-hub root anchor (host-driven
+                    // XCUITest E2E, N13) — mirrors Sudoku's `DailyHubView`. A
+                    // zero-size marker composed via `.background` (a SIBLING
+                    // layer, not an ancestor of `MinesweeperDailyStripView`'s
+                    // own day-dot elements) so it cannot cascade an id onto
+                    // them (#937's "container id clobbers descendant ids" lesson).
+                    .background(alignment: .topLeading) {
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .accessibilityIdentifier("minesweeper.dailyHub.root")
+                    }
             },
             banner: { banner }
         )
@@ -203,6 +214,13 @@ struct MinesweeperDailyCardView: View {
         // `accessibilityDescription` below instead of being combine-concatenated.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
+        // #935 batch 3: stable, non-localized anchor for a COMPLETED card
+        // (host-driven XCUITest E2E, N13 re-view route) — mirrors Sudoku's
+        // `DailyPuzzleCard`. Applied on the same element as the combined
+        // label above (this element has no accessibility descendants of its
+        // own — `.accessibilityElement(children: .ignore)`), not a wrapping
+        // container. Unplayed/failed cards get no identifier.
+        .accessibilityIdentifier(card.isCompleted ? "minesweeper.dailyHub.card.completed" : "")
         // #941 (reverses #878): the card is optimistically tappable the
         // whole time now — `.isButton` no longer conditions on phase-2
         // pending state. Mirrors Sudoku's `DailyPuzzleCard`.

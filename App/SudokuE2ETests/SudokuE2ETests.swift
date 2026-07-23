@@ -251,6 +251,47 @@ final class SudokuE2ETests: XCTestCase {
         XCTAssertTrue(failure.exists, "N5: should remain on the daily hub's inline failure surface, no navigation")
     }
 
+    /// #935 batch 3 N12: Completion Close on the daily RE-VIEW route
+    /// (`SUD-COMPLETION-REVIEW`, pushed from a completed daily card — NOT the
+    /// in-board overlay N10 already covers) pops exactly one path entry back
+    /// to the Daily hub. Completed-daily state lives in CloudKit Private DB
+    /// and can't be produced by real play on the CI simulator, so
+    /// `-uitest-seed-completed-daily` (DEBUG-only fake persistence) seeds
+    /// today's trio as already completed.
+    func test_completionReviewCloseLandsOnDailyHub_N12() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.seedCompletedDaily,
+            UITestLaunchArg.route, "daily",
+        ]
+        app.launch()
+
+        // All three seeded daily cards render completed, so this identifier
+        // is not unique on the hub — `.firstMatch` (any of the three works;
+        // the assertion only cares that Close pops back to the hub).
+        let completedCard = app.descendants(matching: .any)
+            .matching(identifier: "sudoku.dailyHub.card.completed")
+            .firstMatch
+        XCTAssertTrue(
+            completedCard.waitForExistence(timeout: 15),
+            "N12: a completed daily card should appear under the -uitest-seed-completed-daily seam"
+        )
+        completedCard.tap()
+
+        // The completed-card tap fans out through DailyHubViewModel's async
+        // `openCompleted` (a `loadIfExists` round trip) before pushing
+        // `.completion` — allow a longer wait than the synchronous MS
+        // counterpart needs.
+        GameE2ESupport.assertCompletionAppears(in: app)
+
+        app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
+        NegativeNavigationE2ESupport.assertLandedOnHub(
+            in: app,
+            hubAnchorID: "sudoku.dailyHub.root",
+            departedBoardAnchorID: GameE2ESupport.completionHeroID
+        )
+    }
+
     /// Shared winning-move drive for the near-win-modal board (#935: reused
     /// by both the happy-path smoke test and the N10 negative-flow test).
     /// The fixed-seed near-win board has exactly ONE empty cell, whose a11y

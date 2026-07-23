@@ -235,9 +235,14 @@ extension SudokuAppComposition {
         rootViewModel: GameRootViewModel<AppRoute>,
         puzzleProvider: any PuzzleProviderProtocol
     ) -> any RouteFactory<AppRoute> {
-        LiveRouteFactory(
+        // #935 batch 3: DEBUG-only fault injection for the daily re-view
+        // completion route (N12) — see `resolvePersistence`. A no-op
+        // pass-through outside DEBUG / without the matching launch arg, so
+        // this is `deps.persistence` itself in every production launch.
+        let persistence = resolvePersistence(live: deps.persistence, puzzleProvider: puzzleProvider)
+        return LiveRouteFactory(
             puzzleProvider: puzzleProvider,
-            persistence: deps.persistence,
+            persistence: persistence,
             gameCenter: deps.gameCenter,
             telemetry: deps.telemetry,
             errorReporter: deps.errorReporter,

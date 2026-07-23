@@ -109,8 +109,15 @@ public final class MinesweeperDailyHubViewModel {
     /// `internal` (not `private`) so `MinesweeperDailyHubViewModel+Overlay.swift`
     /// (split out purely to keep this file under the 400-line `file_length`
     /// ceiling — same rationale as `MinesweeperGameViewModel+SubmitOnWin.swift`)
-    /// can read it.
-    let savedGameStore: MinesweeperSavedGameStore?
+    /// can read it. #935 batch 3: narrowed from the concrete
+    /// `MinesweeperSavedGameStore?` to the `MinesweeperDailyOverlayReading`
+    /// protocol — the only two methods this VM actually calls
+    /// (`fetchFailedDailyIds(for:)` / `fetchCompletedDailyIdsByDay()`) — so a
+    /// DEBUG-only fake can stand in for the live store (N13 re-view
+    /// completion route). Every existing production/test call site passes a
+    /// concrete `MinesweeperSavedGameStore`, which satisfies the protocol
+    /// unchanged.
+    let savedGameStore: (any MinesweeperDailyOverlayReading)?
     /// #886: per-difficulty best-DAILY-time reads
     /// (`fetch(modeRaw: "daily", difficulty:)`) — the same store
     /// `MinesweeperStatsViewModel` already reads for the Stats screen's Daily
@@ -132,7 +139,7 @@ public final class MinesweeperDailyHubViewModel {
         path: Binding<[AppRoute]>,
         provider: any MinesweeperDailyProviding = LiveMinesweeperDailyProvider(),
         persistence: (any PersistenceProtocol)? = nil,
-        savedGameStore: MinesweeperSavedGameStore? = nil,
+        savedGameStore: (any MinesweeperDailyOverlayReading)? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         dateProvider: @escaping @Sendable () -> Date = { Date() }
