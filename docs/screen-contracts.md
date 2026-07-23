@@ -995,6 +995,19 @@ Game Center to compare with others.", "OK" (cancel role).
 **Covering behavior:** system `.alert` — floats, HOME stays visible but
 non-interactive until dismissed.
 
+**E2E coverage (N14, #935 batch 4):** `-uitest-gc-signed-out` (DEBUG-only,
+`UITestLaunchArg.gcSignedOut`) swaps in `UITestSignedOutGameCenterClient`
+(`GameAppKit/Sources/GameAppKit/UITestFakeSeams.swift`, resolved via
+`resolveGameCenterClient` in `MakeGameApp+UITestOverrides.swift`) so
+`GameRootViewModel.bootstrap()` lands on `authState = .unauthenticated`
+deterministically — CI sim Game Center is signed out in practice, but the
+live GameKit handshake is nondeterministic (timeouts / system prompts), so a
+forced seam replaces relying on real sim state. Exercised via the `SETTINGS`
+GC row entry point: `App/SudokuE2ETests/SudokuE2ETests.swift`
+`test_gcSignedOutAlertDismissesInPlace_N14`,
+`App/MinesweeperE2ETests/MinesweeperE2ETests.swift`
+`test_gcSignedOutAlertDismissesInPlace_N14`.
+
 ---
 
 ## ATT-PRIMER

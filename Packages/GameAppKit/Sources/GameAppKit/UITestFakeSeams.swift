@@ -22,6 +22,8 @@
 internal import Foundation
 internal import Reminders
 internal import MonetizationCore
+internal import GameCenterClient
+internal import SudokuEngine
 #if os(iOS)
 internal import UIKit
 #endif
@@ -98,6 +100,61 @@ actor UITestNoopAdProvider: AdProvider {
     func refreshBanner() async throws {}
 
     func dispose(handle: AdBannerHandle) async {}
+}
+
+// MARK: - Game Center signed-out fake (GC-SIGNED-OUT-ALERT N14, #935 batch 4)
+
+/// Forces a genuinely `.unauthenticated` result from `authenticate()` so
+/// `GameRootViewModel.bootstrap()`'s `self.authState = try await
+/// gameCenter.authenticate()` lands on `.unauthenticated` without a throw —
+/// see that call site for why a returned degraded state (rather than an
+/// error) is the more honest shape here. Every other protocol member is an
+/// inert no-op / benign default: `presentGameCenterOrAlert`'s signed-out
+/// guard means the Home leaderboard card and the Settings GC row never reach
+/// GameKit while this fake is installed, so nothing beyond `authenticate()`
+/// is exercised by the N14 E2E flow.
+struct UITestSignedOutGameCenterClient: GameCenterClient {
+    func authenticate() async throws -> GameCenterAuthState {
+        .unauthenticated
+    }
+
+    func authStateUpdates() async -> AsyncStream<GameCenterAuthState> {
+        AsyncStream { continuation in continuation.finish() }
+    }
+
+    func submitScore(
+        puzzleId: String,
+        elapsedSeconds: Int,
+        difficulty: Difficulty,
+        leaderboardKind: LeaderboardKind
+    ) async throws {}
+
+    func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}
+
+    func reportAchievement(_ achievement: AchievementProgress) async throws {}
+
+    func fetchLeaderboardSlice(
+        leaderboardId: String,
+        scope: LeaderboardScope,
+        aroundLocalPlayer: Bool,
+        limit: Int
+    ) async throws -> LeaderboardSlice {
+        LeaderboardSlice(
+            leaderboardId: leaderboardId,
+            scope: scope,
+            entries: [],
+            totalPlayerCount: 0,
+            fetchedAt: .distantPast
+        )
+    }
+
+    func friendsAuthorizationStatus() async -> FriendsAuthStatus {
+        .notDetermined
+    }
+
+    func requestFriendsAuthorization() async throws -> FriendsAuthStatus {
+        .notDetermined
+    }
 }
 
 // MARK: - Background observation

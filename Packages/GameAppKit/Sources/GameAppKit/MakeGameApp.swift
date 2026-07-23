@@ -97,12 +97,12 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     //    `try?`-swallowed errors now route through this reporter.
     let errorReporter: any ErrorReporter = LiveErrorReporter(telemetry: telemetry)
 
-    // 3. Game Center client. #580: live GameKit seams (else submit/report no-op).
-    let gameCenter: any GameCenterClient = LiveGameCenterClient(
+    // 3. Game Center client. #580 live seams; #935 batch 4 uitest fake gate.
+    let gameCenter: any GameCenterClient = resolveGameCenterClient(makeLive: LiveGameCenterClient(
         authDriver: GKAuthDriver(errorReporter: errorReporter),
         submitScoreHook: GKScoreSubmitter.live,
         reportAchievementHook: GKAchievementReporter.live
-    )
+    ))
 
     // 4. Persistence. The puzzle loader closure routes through the game's own
     //    PuzzleStore (or throws a sentinel for games with no puzzle concept).
