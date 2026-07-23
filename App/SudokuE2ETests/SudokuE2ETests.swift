@@ -368,4 +368,13 @@ final class SudokuE2ETests: XCTestCase {
         app.launch()
         ScenePhaseRepollE2ESupport.assertBannerScenePhaseRepoll(in: app)
     }
+
+    /// #940: the primer sheet must survive the async permission-status write
+    /// that used to race it down ~1s after presenting.
+    func test_reminderPrimerPersistsPastStatusRepoll() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.route, "settings"]
+        app.launch()
+        GameE2ESupport.assertReminderPrimerPersistsPastStatusRepoll(in: app)
+    }
 }

@@ -146,30 +146,18 @@ public struct ReminderSettingsSection: View {
             guard newPhase == .active else { return }
             Task { await model.onAppear() }
         }
-        .sheet(isPresented: $model.isPrimerPresented) {
-            ReminderPrimerSheet(
-                copy: primerCopy,
-                isRequesting: model.isRequesting,
-                onAccept: { Task { await model.acceptPrimer() } },
-                onDecline: { model.declinePrimer() }
-            )
-            // R6.3 (SDD-003): single fixed detent prevents drag-up layout
-            // breakage; hidden indicator removes the affordance to drag at all.
-            // The sheet is dismissed explicitly via "Not now" or accept only.
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.hidden)
-        }
-        .sheet(isPresented: $model.isDeniedExplainerPresented) {
-            ReminderDeniedExplainer(
-                copy: deniedCopy,
-                onOpenSettings: { model.openSystemSettings() },
-                onDismiss: { model.dismissDeniedExplainer() }
-            )
-            // R6.3 (SDD-003) + #673: same single-detent + hidden-indicator
-            // treatment as the primer sheet above, for parity.
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.hidden)
-        }
+        // #940: the primer + denied-explainer `.sheet`s used to be attached
+        // HERE, on this `Section`. That is a known SwiftUI trap — a
+        // presentation modifier hosted on a List/Form row-group whose content
+        // is dynamic (the `switch model.status` above) can get its host
+        // duplicated by List's own row diffing, producing a SECOND
+        // presentation attempt on an already-presenting host; UIKit rejects
+        // it and tears the sheet down ~1s after it looked fully settled
+        // (#909's symptom recurring via a different mechanism than #909's
+        // model-caching bug, which is unrelated and still fixed). Both sheets
+        // now live on `SettingsScreen`'s root instead (stable host outside any
+        // List row), still driven by this same `model` instance injected via
+        // `SettingsScreenReminderConfig`.
     }
 
     // MARK: - Rows
