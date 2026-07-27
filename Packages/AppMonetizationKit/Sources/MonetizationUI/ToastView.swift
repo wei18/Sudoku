@@ -106,6 +106,18 @@ public struct ToastView: View {
         .background(background, in: .capsule)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(toast.message)
+        // #935 batch 5: stable, style-discriminating, non-localized anchor
+        // (distinct success/failure ids rather than one shared id) so a
+        // host-driven XCUITest E2E flow can tell the two toast outcomes
+        // apart without depending on localized message text.
+        .accessibilityIdentifier(toastIdentifier)
+    }
+
+    private var toastIdentifier: String {
+        switch toast.style {
+        case .success: "monetization.toast.success"
+        case .failure: "monetization.toast.failure"
+        }
     }
 
     private var iconName: String {

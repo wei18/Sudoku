@@ -99,6 +99,10 @@ public struct ATTPrimerSheet: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .tint(accentColor)
+                // #935 batch 5: stable, non-localized anchor so the
+                // host-driven XCUITest E2E flow can tap Continue in any
+                // locale — mirrors PauseOverlayView's leaf-placement pattern.
+                .accessibilityIdentifier("att.primer.continue")
 
                 Button {
                     coordinator.declinePrimer()
@@ -110,6 +114,9 @@ public struct ATTPrimerSheet: View {
                 .buttonStyle(.plain)
                 .controlSize(.large)
                 .foregroundStyle(secondaryTextColor)
+                // #935 batch 5 N15: stable, non-localized anchor for the
+                // primer-decline E2E flow.
+                .accessibilityIdentifier("att.primer.notNow")
             }
         }
         .padding(24)

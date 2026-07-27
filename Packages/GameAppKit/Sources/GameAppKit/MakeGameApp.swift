@@ -31,7 +31,6 @@ public import GameShellUI
 internal import MonetizationCore
 internal import MonetizationUI
 internal import AdsAdMob
-internal import IAPStoreKit2
 internal import GameAudio
 internal import SettingsUI
 internal import Reminders
@@ -106,14 +105,16 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // 4. Persistence. The puzzle loader closure routes through the game's own
     //    PuzzleStore (or throws a sentinel for games with no puzzle concept).
-    let persistence = LivePersistence(
+    let livePersistence = LivePersistence(
         telemetry: telemetry,
         ckConfig: config.ckConfig,
         puzzleLoader: config.puzzleLoader
     )
+    // #935 batch 5: uitest-arg-gated fake swap (clear-cache failure, N19).
+    let persistence: any PersistenceProtocol = resolvePersistence(fallback: livePersistence)
 
     // 5. Monetization stack.
-    let monetizationStateStore = persistence.monetizationStateStore()
+    let monetizationStateStore = livePersistence.monetizationStateStore()
 
     // #931: uitest-arg-gated fake swap, see MakeGameApp+UITestOverrides.swift.
     let adGateStore = resolveAdGateStore(fallback: monetizationStateStore)
@@ -157,19 +158,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         #endif
     }
 
-    let iapClient: any IAPClient = LiveStoreKit2IAPClient(
-        knownProductIds: [config.removeAdsProductId],
-        onCatalogDesync: { [telemetry] productId in
-            Task {
-                await telemetry.observe(
-                    .errorOccurred(
-                        source: "LiveStoreKit2IAPClient",
-                        code: "catalog_desync_post_purchase",
-                        message: "post-purchase refetch returned empty for productId=\(productId)"
-                    )
-                )
-            }
-        }
+    // #935 batch 5: uitest-arg-gated fake swap, see MakeGameApp+Helpers.swift
+    // / MakeGameApp+UITestOverrides.swift.
+    let iapClient: any IAPClient = makeIAPClient(
+        removeAdsProductId: config.removeAdsProductId,
+        telemetry: telemetry
     )
 
     let toastController = ToastController()
@@ -203,12 +196,9 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     soundPlayer.setMusicEnabled(audioSettings.musicEnabled)
     soundPlayer.setHapticsEnabled(audioSettings.hapticsEnabled)
 
-    // 7. ATT pre-prompt coordinator. The two ATT touch points are injected as
-    //    closures; `ATTPresenter` (AdsAdMob layer) resolves the actual status.
-    let attPrimer = ATTPrimerCoordinator(
-        isNotDetermined: { await ATTPresenter.currentStatus() == .notDetermined },
-        requestSystemPrompt: { _ = await ATTPresenter.requestIfNeeded() }
-    )
+    // 7. ATT pre-prompt coordinator (#935 batch 5: uitest-arg-gated fake
+    //    swap, see MakeGameApp+Helpers.swift / +UITestOverrides.swift).
+    let attPrimer = makeATTPrimerCoordinator()
 
     // 8. Reminder wiring.
     let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in

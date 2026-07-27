@@ -75,6 +75,9 @@ let testTargets: [Target] = [
             // `GameSessionSnapshot` in the inline `PersistenceProtocol` stub.
             .product(name: "SudokuEngine", package: "SudokuCoreKit"),
             .product(name: "SudokuGameState", package: "SudokuCoreKit"),
+            // #935 batch 5: MonetizationCore for `IAPPurchaseResult` pattern
+            // matching in `UITestScriptedIAPClientTests`.
+            .product(name: "MonetizationCore", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),

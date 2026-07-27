@@ -806,12 +806,18 @@ monetization surface (explicit scope exclusion, `docs/v2/stats-screen-proposal.m
 `MinesweeperUI/SettingsView.swift`, `SettingsKit/Sources/SettingsUI/Settings/*`.
 
 **Element inventory (row order):** Purchases section (host-injected IAP
-rows), GC status row (`settings.gameCenter`), reminders section (see
-`REMINDER-*` ids under it), Sound section (mute/music-volume/sfx-volume/
-music-enabled/haptics toggles, ids `audio.settings.*`), About section
-(Version row +, Sudoku-only, Generator row), Notices section
-(acknowledgements deep-link, copyright), Storage section "Clear cache"
-button.
+rows — "Remove Ads" `settings.iap.removeAds` / `AdsRemovedRow` when already
+purchased, "Restore Purchases", #935 batch 5), GC status row
+(`settings.gameCenter`), reminders section (see `REMINDER-*` ids under it),
+Sound section (mute/music-volume/sfx-volume/music-enabled/haptics toggles,
+ids `audio.settings.*`), About section (Version row +, Sudoku-only,
+Generator row), Notices section (acknowledgements deep-link, copyright),
+Storage section "Clear cache" button (id `settings.storage.clearCache`,
+#935 batch 5 — see `CLEAR-CACHE-DIALOG`). A bottom-center toast overlay
+(`ToastController`/`ToastView`, ids `monetization.toast.success` /
+`monetization.toast.failure`, #935 batch 5) floats above the whole screen
+for purchase/restore/clear-cache outcomes — not a Form row, mounted once at
+`GameRoot`.
 
 **Per-interaction outcome:**
 
@@ -821,6 +827,7 @@ button.
 | Reminders "Enable"/"Turn On" row tap | `model.enable()` | `sheet(detent: .medium)` → `REMINDER-PRIMER` | dismiss → `SETTINGS` |
 | Reminders denied-status row tap | `model.showDeniedExplainer()` | `sheet(detent: .medium)` → `REMINDER-DENIED` | dismiss → `SETTINGS` |
 | Reminders "Turn off reminders" tap | `model.disable()` | side-effect | `SETTINGS` (status row switches back to enable row) |
+| "Remove Ads" tap (`settings.iap.removeAds`) | `controller.purchaseRemoveAds()` → StoreKit 2 payment sheet | cancel: silent no-op. fail/pending: failure-style toast (`monetization.toast.failure`). success: entitlement flips, row swaps to `AdsRemovedRow` | stays on `SETTINGS` throughout — no navigation, ever (#935 batch 5 N22) |
 | "Clear cache" tap | `showClearCacheConfirmation = true` | `.confirmationDialog` → `CLEAR-CACHE-DIALOG` | see that contract |
 | Acknowledgements deep-link tap (iOS only) | `UIApplication.shared.open(UIApplication.openSettingsURLString)` | external (system Settings.app) | user manually returns via app-switcher — no in-app back |
 
@@ -842,6 +849,21 @@ in `docs/designs/08-settings.md` §f (structure/rows remain native).
 **State variants:** single state (all reads are synchronous/memoized) except
 the reminders sub-section, which branches on
 `.notDetermined`/`.authorized`/`.provisional`/`.denied`.
+
+**E2E coverage (N22, #935 batch 5):** `-uitest-iap-script` (DEBUG-only,
+`UITestLaunchArg.iapScript`) swaps in `UITestScriptedIAPClient`
+(`GameAppKit/Sources/GameAppKit/UITestFakeSeams.swift`, resolved via
+`resolveIAPClient` in `MakeGameApp+UITestOverrides.swift`) — a fake that
+returns `.userCancelled`, then `.failed(reason:)`, then `.pending` on
+successive `purchase()` calls, so ONE test walks all three
+`purchaseRemoveAds()` branches from the "Remove Ads" row without the real
+StoreKit 2 payment sheet. `App/SudokuE2ETests/SudokuE2ETests+MonetizationFlows.swift`
+/ `App/MinesweeperE2ETests/MinesweeperE2ETests.swift`
+`test_iapPurchaseCancelFailPendingStayInPlace_N22`. Along the way, fixed a
+pre-existing tap-target-shrink bug (`RemoveAdsRow`/`RestorePurchasesRow`
+lacked `.contentShape(Rectangle())` — `.buttonStyle(.plain)` + an internal
+`Spacer()` left the row's middle untappable; the swiftui-interaction-footguns
+"tap target shrink" pattern).
 
 ---
 
@@ -936,27 +958,49 @@ harmless there.
 
 ## CLEAR-CACHE-DIALOG
 
-**Entry points:** `SETTINGS` "Clear cache" button.
+**Entry points:** `SETTINGS` "Clear cache" button (a11y id
+`settings.storage.clearCache`, #935 batch 5 — the row sits in the LAST
+section of `SETTINGS`'s long `Form`, off-screen/unmaterialized until
+scrolled into view).
 
 **Code:** `SettingsKit/Sources/SettingsUI/Settings/SettingsAboutStorage.swift`
 `SettingsStorageSection`.
 
 **Element inventory:** title `"Reset session cache"` (`titleVisibility:
 .visible`), message `"Generated puzzles will be re-derived next play. Saved
-games are not affected."`, "Clear cache" (destructive), "Cancel".
+games are not affected."`, "Clear cache" (destructive, a11y id
+`settings.storage.clearCache.confirm`, #935 batch 5), "Cancel" (`role:
+.cancel`, a11y id `settings.storage.clearCache.cancel` — present in the
+SwiftUI source but, on this environment's presentation below, the system
+renders no separate accessibility element for it; Cancel is reachable only
+via the backdrop-dismiss tap, see Covering behavior).
 
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| "Clear cache" confirm | `clearCache()` async → success toast `"Cache cleared"` or failure toast `"Couldn't clear cache"` + error-funnel report | dismiss dialog; toast overlay (`ToastController`, floats above `SETTINGS`) | `SETTINGS` |
-| "Cancel" | no-op | dismiss dialog | `SETTINGS` |
+| "Clear cache" confirm | `clearCache()` async → success toast `"Cache cleared"` (id `monetization.toast.success`) or failure toast `"Couldn't clear cache"` (id `monetization.toast.failure`) + error-funnel report | dismiss dialog; toast overlay (`ToastController`, floats above `SETTINGS`) | `SETTINGS` |
+| "Cancel" / backdrop tap | no-op | dismiss dialog | `SETTINGS` |
 
-**Covering behavior:** system `.confirmationDialog` (action sheet on iPhone,
-popover-anchored on macOS/iPad) — floats above `SETTINGS`, which stays
-visible but non-interactive until dismissed.
+**Covering behavior:** system `.confirmationDialog` — on iPhone-class devices
+this is verified (idb `ui_describe_all`, #935 batch 5) to present as a
+CENTERED POPOVER with a full-screen `PopoverDismissRegion` backdrop, NOT a
+bottom action sheet — a tap anywhere outside the dialog's centered box
+dismisses it (equivalent to Cancel); the `role: .cancel` button itself
+renders no discrete accessibility element in this presentation. Floats above
+`SETTINGS`, which stays visible but non-interactive until dismissed.
 
 **State variants:** none.
+
+**E2E coverage (N19, #935 batch 5):** `-uitest-clear-cache-fail`
+(DEBUG-only, `UITestLaunchArg.clearCacheFail`) swaps in
+`UITestClearCacheFailPersistence` (`GameAppKit/Sources/GameAppKit/UITestFakeSeams.swift`,
+resolved via `resolvePersistence` in `MakeGameApp+UITestOverrides.swift`) —
+reports a synthetic in-progress saved game (so the row/dialog are reachable)
+and throws from `deleteAbandoned`, so the failure-toast branch fires
+deterministically. `App/SudokuE2ETests/SudokuE2ETests+MonetizationFlows.swift`
+/ `App/MinesweeperE2ETests/MinesweeperE2ETests.swift`
+`test_clearCacheCancelAndFailureToast_N19`.
 
 ---
 
@@ -1056,6 +1100,20 @@ indicator visible — HOME stays mounted but non-interactive underneath.
 
 **State variants:** only presented while ATT status is `.notDetermined`;
 already-determined statuses skip the sheet entirely (silent).
+
+**E2E coverage (N15, #935 batch 5):** `-uitest-fake-ad-gate-repoll` (opens
+the banner ad-gate — this sheet's only trigger — after a real
+background→foreground cycle, #931) combined with `-uitest-att-primer`
+(DEBUG-only, `UITestLaunchArg.attPrimer`) forces `isNotDetermined` → `true`
+/ `requestSystemPrompt` → no-op (`resolveATTIsNotDetermined` /
+`resolveATTRequestSystemPrompt` in `MakeGameApp+UITestOverrides.swift`, fed
+into `makeATTPrimerCoordinator()` in `MakeGameApp+Helpers.swift`), so the
+sheet presents deterministically without depending on the simulator's real
+(once-per-install) ATT status. `App/SudokuE2ETests/SudokuE2ETests+MonetizationFlows.swift`
+/ `App/MinesweeperE2ETests/MinesweeperE2ETests.swift`
+`test_attPrimerDeclineDismissesAndLatches_N15` — declines via `att.primer.notNow`,
+asserts dismissal + Home unaffected, then a SECOND background→foreground
+cycle to confirm the `hasOffered` latch holds (no re-offer).
 
 ---
 

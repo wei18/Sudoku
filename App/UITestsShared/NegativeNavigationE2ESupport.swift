@@ -149,4 +149,245 @@ enum NegativeNavigationE2ESupport {
             file: file, line: line
         )
     }
+
+    /// "Not now" on the ATT primer sheet (`ATTPrimerSheet`, #935 batch 5 N15).
+    static let attPrimerNotNowID = "att.primer.notNow"
+
+    /// N15 (#935 batch 5): caller already launched with
+    /// `-uitest-fake-ad-gate-repoll` + `-uitest-att-primer` and lands on
+    /// HOME. The banner slot's ad-gate (faked open only after a real
+    /// background→foreground cycle — same mechanism
+    /// `ScenePhaseRepollE2ESupport` pins) fires `onAdContext` on its first
+    /// load, which is the ATT primer's ONLY trigger
+    /// (`ATTPrimerCoordinator.maybePresentOnAdContext()`), so the sheet
+    /// presents only after that first cycle. Asserts "Not now" dismisses it,
+    /// Home stays present, and a SECOND background→foreground cycle does
+    /// NOT re-present it (the `hasOffered` latch).
+    @MainActor
+    static func assertATTPrimerDeclineDismissesAndLatches(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let home = app.descendants(matching: .any)[homeRootID]
+        XCTAssertTrue(
+            home.waitForExistence(timeout: 15),
+            "N15: should land on Home before the ad-gate repoll",
+            file: file, line: line
+        )
+
+        let notNow = app.buttons[attPrimerNotNowID]
+        XCTAssertFalse(
+            notNow.waitForExistence(timeout: 3),
+            "N15: the ATT primer should NOT present before a real background→foreground cycle",
+            file: file, line: line
+        )
+
+        ScenePhaseRepollE2ESupport.cycleThroughBackground(app, file: file, line: line)
+
+        XCTAssertTrue(
+            notNow.waitForExistence(timeout: 15),
+            "N15: ATT primer sheet should present after the ad-gate repoll opens under -uitest-att-primer",
+            file: file, line: line
+        )
+        notNow.tap()
+
+        XCTAssertTrue(
+            notNow.waitForNonExistence(timeout: 5),
+            "N15: 'Not now' should dismiss the primer sheet",
+            file: file, line: line
+        )
+        XCTAssertTrue(
+            home.exists,
+            "N15: Home should remain present — no navigation on decline",
+            file: file, line: line
+        )
+
+        // Latch check: a second background→foreground cycle must NOT re-offer.
+        ScenePhaseRepollE2ESupport.cycleThroughBackground(app, file: file, line: line)
+        XCTAssertFalse(
+            notNow.waitForExistence(timeout: 5),
+            "N15: the primer should stay latched (hasOffered) and not re-present after a second cycle",
+            file: file, line: line
+        )
+    }
+
+    /// Settings Storage "Clear cache" row + confirmation-dialog buttons
+    /// (`SettingsStorageSection`, #935 batch 5 N19).
+    static let clearCacheRowID = "settings.storage.clearCache"
+    static let clearCacheConfirmID = "settings.storage.clearCache.confirm"
+    static let clearCacheCancelID = "settings.storage.clearCache.cancel"
+    static let monetizationToastFailureID = "monetization.toast.failure"
+    static let monetizationToastSuccessID = "monetization.toast.success"
+
+    /// N19 (#935 batch 5): caller already routed to Settings with
+    /// `-uitest-clear-cache-fail` set (`UITestClearCacheFailPersistence` — a
+    /// synthetic in-progress saved game so the row/dialog are reachable,
+    /// `deleteAbandoned` throws). Cancel half: dialog dismisses, no toast,
+    /// stays on Settings. Failure half: confirming raises the failure toast,
+    /// stays on Settings, no navigation.
+    ///
+    /// The "Storage" section is the LAST section on `SETTINGS`'s long Form
+    /// (Purchases/GC/Reminders/Sound/About/Notices all precede it) — it does
+    /// NOT exist in the accessibility tree until scrolled into view (SwiftUI
+    /// `Form`/`List` lazily materializes rows), so this scrolls first
+    /// (verified empirically via idb `ui_describe_all` — the row only
+    /// appears after two swipe-ups on an iPhone 17 Pro–class screen).
+    ///
+    /// Also verified empirically: on this environment, `.confirmationDialog`
+    /// presents as a CENTERED POPOVER (`PopoverDismissRegion` backdrop), not
+    /// a bottom action sheet — the `role: .cancel` "Cancel" button renders no
+    /// separate accessibility element at all (idb's `ui_describe_all` shows
+    /// only the destructive confirm button). Cancel is instead a tap on the
+    /// backdrop outside the dialog's centered box — mirrors
+    /// `tapPauseMaskOutsideCard`'s "tap near the top, well outside centered
+    /// content" pattern.
+    @MainActor
+    static func assertClearCacheCancelAndFailureToast(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let row = app.buttons[clearCacheRowID]
+        scrollUntilVisible(row, in: app)
+        XCTAssertTrue(
+            row.waitForExistence(timeout: 10),
+            "N19: Settings Storage clear-cache row should be present",
+            file: file, line: line
+        )
+        row.tap()
+
+        // #935 batch 5: `.matching(identifier:).firstMatch` (not the plain
+        // `app.buttons[id]` subscript) — a transient duplicate can briefly
+        // coexist with the popover's own dismiss animation between the
+        // Cancel tap below and this dialog's reopen, and `app.buttons[id]`
+        // hard-fails ("Multiple matching elements found") rather than just
+        // picking one; both duplicates are the same button either way.
+        let confirm = app.buttons.matching(identifier: clearCacheConfirmID).firstMatch
+        XCTAssertTrue(
+            confirm.waitForExistence(timeout: 10),
+            "N19: clear-cache confirmation dialog should present the destructive confirm action",
+            file: file, line: line
+        )
+
+        // Cancel: tap the popover backdrop, well outside the dialog's
+        // centered box.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        XCTAssertTrue(
+            confirm.waitForNonExistence(timeout: 5),
+            "N19: tapping the dialog backdrop should dismiss it (Cancel)",
+            file: file, line: line
+        )
+        XCTAssertFalse(
+            app.descendants(matching: .any)[monetizationToastFailureID].exists,
+            "N19: Cancel must never raise a toast",
+            file: file, line: line
+        )
+        XCTAssertTrue(
+            row.exists,
+            "N19: should remain on Settings after Cancel — no navigation",
+            file: file, line: line
+        )
+
+        row.tap()
+        XCTAssertTrue(
+            confirm.waitForExistence(timeout: 10),
+            "N19: clear-cache confirmation dialog should present the destructive confirm action (reopen)",
+            file: file, line: line
+        )
+        confirm.tap()
+
+        let failureToast = app.descendants(matching: .any)[monetizationToastFailureID]
+        XCTAssertTrue(
+            failureToast.waitForExistence(timeout: 10),
+            "N19: a throwing deleteAbandoned should raise the failure toast under -uitest-clear-cache-fail",
+            file: file, line: line
+        )
+        XCTAssertTrue(
+            row.exists,
+            "N19: should remain on Settings after the failure toast — no navigation",
+            file: file, line: line
+        )
+    }
+
+    /// Swipes up on `app` until `element` appears in the accessibility tree
+    /// (bounded) — `SETTINGS`'s long `Form` lazily materializes off-screen
+    /// rows (#935 batch 5 N19: the "Storage" section sits below
+    /// Purchases/GC/Reminders/Sound/About/Notices).
+    @MainActor
+    private static func scrollUntilVisible(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maxSwipes: Int = 6
+    ) {
+        var attempts = 0
+        while !element.exists, attempts < maxSwipes {
+            app.swipeUp()
+            attempts += 1
+        }
+    }
+
+    /// Settings "Remove Ads" row (`RemoveAdsRow`, #935 batch 5 N22).
+    static let removeAdsRowID = "settings.iap.removeAds"
+
+    /// N22 (#935 batch 5): caller already routed to Settings with
+    /// `-uitest-iap-script` set (`UITestScriptedIAPClient` — cancel → fail →
+    /// pending, in that order). Walks all three `purchaseRemoveAds()`
+    /// branches from one Remove Ads row: cancel is silent (no toast), fail
+    /// raises the failure toast, pending raises its own failure-style toast
+    /// — throughout, no navigation, no system sheet/alert, and the row stays
+    /// present (no entitlement granted).
+    @MainActor
+    static func assertIAPPurchaseCancelFailPendingStayInPlace(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let removeAds = app.buttons[removeAdsRowID]
+        XCTAssertTrue(
+            removeAds.waitForExistence(timeout: 15),
+            "N22: Settings Remove Ads row should be present",
+            file: file, line: line
+        )
+        let successToast = app.descendants(matching: .any)[monetizationToastSuccessID]
+        let failureToast = app.descendants(matching: .any)[monetizationToastFailureID]
+
+        // 1) userCancelled — silent, no toast.
+        removeAds.tap()
+        XCTAssertFalse(
+            successToast.waitForExistence(timeout: 3) || failureToast.waitForExistence(timeout: 1),
+            "N22: a cancelled purchase must never raise a toast",
+            file: file, line: line
+        )
+        XCTAssertTrue(removeAds.exists, "N22: should remain on Settings after cancel", file: file, line: line)
+
+        // 2) failed(reason:) — failure toast.
+        removeAds.tap()
+        XCTAssertTrue(
+            failureToast.waitForExistence(timeout: 10),
+            "N22: a failed purchase should raise the failure toast under -uitest-iap-script",
+            file: file, line: line
+        )
+        XCTAssertTrue(removeAds.exists, "N22: should remain on Settings after a failed purchase", file: file, line: line)
+
+        // Wait out the auto-dismiss (Toast.duration default 3s) so the
+        // pending toast below isn't confused with a still-visible one.
+        XCTAssertTrue(
+            failureToast.waitForNonExistence(timeout: 6),
+            "N22: the failure toast should auto-dismiss",
+            file: file, line: line
+        )
+
+        // 3) pending — its own failure-style toast (MonetizationStateController
+        // routes `.pending` through the same `.failure` toast style).
+        removeAds.tap()
+        XCTAssertTrue(
+            failureToast.waitForExistence(timeout: 10),
+            "N22: a pending purchase should raise its own (failure-style) toast",
+            file: file, line: line
+        )
+        XCTAssertTrue(removeAds.exists, "N22: should remain on Settings after a pending purchase", file: file, line: line)
+        XCTAssertFalse(app.sheets.firstMatch.exists, "N22: no system payment sheet should ever appear", file: file, line: line)
+        XCTAssertFalse(app.alerts.firstMatch.exists, "N22: no system alert should ever appear", file: file, line: line)
+    }
 }
