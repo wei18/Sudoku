@@ -377,4 +377,8 @@ final class SudokuE2ETests: XCTestCase {
         app.launch()
         GameE2ESupport.assertReminderPrimerPersistsPastStatusRepoll(in: app)
     }
+
+    // #935 batch 5 N15/N19/N22 tests live in
+    // SudokuE2ETests+MonetizationFlows.swift (kept this file under the
+    // 400-line SwiftLint ceiling).
 }

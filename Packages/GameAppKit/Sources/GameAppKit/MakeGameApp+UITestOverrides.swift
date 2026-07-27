@@ -10,6 +10,7 @@ internal import Foundation
 internal import MonetizationCore
 internal import Reminders
 internal import GameCenterClient
+internal import Persistence
 
 /// #931: resolves the `AdGateStateStore` `AdGate` reads from. Under
 /// `-uitest-fake-ad-gate-repoll` (DEBUG only), swaps in
@@ -83,6 +84,80 @@ func resolveGameCenterClient(makeLive: @autoclosure () -> any GameCenterClient) 
     #if DEBUG
     if ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.gcSignedOut) {
         return UITestSignedOutGameCenterClient()
+    }
+    #endif
+    return makeLive()
+}
+
+/// #935 batch 5: resolves `ATTPrimerCoordinator`'s `isNotDetermined` touch
+/// point. Under `-uitest-att-primer` (DEBUG only), forces `true` so the
+/// ATT-PRIMER-DECLINE E2E flow (N15) can present the sheet deterministically
+/// regardless of the simulator's real (once-per-install) ATT status.
+@MainActor
+func resolveATTIsNotDetermined(
+    fallback: @escaping @Sendable () async -> Bool
+) -> @Sendable () async -> Bool {
+    #if DEBUG
+    guard ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.attPrimer) else {
+        return fallback
+    }
+    return { true }
+    #else
+    return fallback
+    #endif
+}
+
+/// #935 batch 5: resolves `ATTPrimerCoordinator`'s `requestSystemPrompt`
+/// touch point. Under `-uitest-att-primer` (DEBUG only), swaps in a no-op so
+/// "Continue" never fires the real system ATT dialog during E2E — N15 only
+/// exercises "Not now", but keeping this seam paired with the one above
+/// avoids leaving the coordinator half-faked.
+@MainActor
+func resolveATTRequestSystemPrompt(
+    fallback: @escaping @Sendable () async -> Void
+) -> @Sendable () async -> Void {
+    #if DEBUG
+    guard ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.attPrimer) else {
+        return fallback
+    }
+    return {}
+    #else
+    return fallback
+    #endif
+}
+
+/// #935 batch 5: resolves the `PersistenceProtocol` conformer wired into
+/// `GameDeps`/`GameRootViewModel`. Under `-uitest-clear-cache-fail` (DEBUG
+/// only), swaps in `UITestClearCacheFailPersistence` so the CLEAR-CACHE-DIALOG
+/// failure-toast E2E flow (N19) can be exercised deterministically — a real
+/// CloudKit delete failure can't be forced on demand from a
+/// signed-in-but-offline simulator.
+@MainActor
+func resolvePersistence(fallback: any PersistenceProtocol) -> any PersistenceProtocol {
+    #if DEBUG
+    guard ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.clearCacheFail) else {
+        return fallback
+    }
+    return UITestClearCacheFailPersistence()
+    #else
+    return fallback
+    #endif
+}
+
+/// #935 batch 5: resolves the `IAPClient` `MonetizationStateController`
+/// drives. Under `-uitest-iap-script` (DEBUG only), swaps in
+/// `UITestScriptedIAPClient` so the IAP-PURCHASE cancel/fail/pending negative
+/// flow (N22) can walk all three `purchaseRemoveAds()` branches
+/// deterministically — the real `LiveStoreKit2IAPClient` requires the
+/// StoreKit 2 payment sheet, which this repo's E2E suite never drives.
+/// `makeLive` is `@autoclosure` (mirrors `resolveGameCenterClient`) so the
+/// call site stays a single expression; only evaluated when the fake path is
+/// NOT taken.
+@MainActor
+func resolveIAPClient(makeLive: @autoclosure () -> any IAPClient) -> any IAPClient {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.iapScript) {
+        return UITestScriptedIAPClient()
     }
     #endif
     return makeLive()

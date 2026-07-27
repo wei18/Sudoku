@@ -132,6 +132,9 @@ public struct SettingsStorageSection: View {
                     Spacer()
                 }
             }
+            // #935 batch 5: stable, non-localized anchor for the N19
+            // clear-cache negative-flow E2E test.
+            .accessibilityIdentifier("settings.storage.clearCache")
         }
         .confirmationDialog(
             "Reset session cache",
@@ -141,7 +144,12 @@ public struct SettingsStorageSection: View {
             Button("Clear cache", role: .destructive) {
                 Task { await clearCache() }
             }
+            // #935 batch 5: stable ids on the system-rendered confirmation
+            // dialog's own buttons so the N19 E2E test can discriminate
+            // confirm vs Cancel without depending on localized titles.
+            .accessibilityIdentifier("settings.storage.clearCache.confirm")
             Button("Cancel", role: .cancel) {}
+                .accessibilityIdentifier("settings.storage.clearCache.cancel")
         } message: {
             Text("Generated puzzles will be re-derived next play. Saved games are not affected.")
         }

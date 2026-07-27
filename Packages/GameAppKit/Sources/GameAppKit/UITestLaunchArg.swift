@@ -131,6 +131,35 @@ public enum UITestLaunchArg {
     /// system prompts), so relying on real sim state would be flaky. Absent
     /// from Release builds via the `#if DEBUG` guard.
     public static let gcSignedOut = "-uitest-gc-signed-out"
+
+    /// #935 batch 5: forces `ATTPrimerCoordinator`'s two ATT touch points —
+    /// `isNotDetermined` → always `true`, `requestSystemPrompt` → no-op — so
+    /// the ATT-PRIMER-DECLINE negative flow (N15, docs/navigation-flows.md)
+    /// can present the app-owned priming sheet deterministically without
+    /// depending on the simulator's real (once-per-install, unreliable to
+    /// reset) ATT authorization status. Absent from Release builds via the
+    /// `#if DEBUG` guard.
+    public static let attPrimer = "-uitest-att-primer"
+
+    /// #935 batch 5: forces the `PersistenceProtocol` conformer wired into
+    /// `GameDeps`/`GameRootViewModel` to `UITestClearCacheFailPersistence` —
+    /// a fake reporting a synthetic in-progress saved game (so the Storage
+    /// row's clear-cache dialog is reachable) that THROWS from
+    /// `deleteAbandoned`, so the CLEAR-CACHE-DIALOG failure-toast negative
+    /// flow (N19, docs/navigation-flows.md) can be exercised deterministically
+    /// — a real CloudKit delete failure can't be forced on demand from a
+    /// signed-in-but-offline simulator. Absent from Release builds via the
+    /// `#if DEBUG` guard.
+    public static let clearCacheFail = "-uitest-clear-cache-fail"
+
+    /// #935 batch 5: swaps in `UITestScriptedIAPClient` — a fake that returns
+    /// `.userCancelled`, then `.failed(reason:)`, then `.pending` on
+    /// successive `purchase()` calls — so the IAP-PURCHASE cancel/fail/pending
+    /// negative flow (N22, docs/navigation-flows.md) can be exercised
+    /// deterministically without the real StoreKit 2 payment sheet (never
+    /// driven by this repo's E2E suite). Absent from Release builds via the
+    /// `#if DEBUG` guard.
+    public static let iapScript = "-uitest-iap-script"
 }
 
 #endif

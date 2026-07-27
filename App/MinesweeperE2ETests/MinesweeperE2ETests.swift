@@ -279,6 +279,47 @@ final class MinesweeperE2ETests: XCTestCase {
         GameE2ESupport.assertReminderPrimerPersistsPastStatusRepoll(in: app)
     }
 
+    /// #935 batch 5 N15: ATT primer decline (`ATT-PRIMER`) — mirrors
+    /// `SudokuE2ETests.test_attPrimerDeclineDismissesAndLatches_N15`. Shared
+    /// `MonetizationUI` component — the same launch args and assertion apply
+    /// on both apps.
+    func test_attPrimerDeclineDismissesAndLatches_N15() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.fakeAdGateRepoll,
+            UITestLaunchArg.attPrimer,
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertATTPrimerDeclineDismissesAndLatches(in: app)
+    }
+
+    /// #935 batch 5 N19: Settings Storage "Clear cache" — mirrors
+    /// `SudokuE2ETests.test_clearCacheCancelAndFailureToast_N19`. #832
+    /// unified the VM both apps share, so the flow and ids are identical.
+    func test_clearCacheCancelAndFailureToast_N19() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.clearCacheFail,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertClearCacheCancelAndFailureToast(in: app)
+    }
+
+    /// #935 batch 5 N22: Settings "Remove Ads" — mirrors
+    /// `SudokuE2ETests.test_iapPurchaseCancelFailPendingStayInPlace_N22`.
+    /// Shared `MonetizationUI` component — the same launch args and
+    /// assertion apply on both apps.
+    func test_iapPurchaseCancelFailPendingStayInPlace_N22() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.iapScript,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertIAPPurchaseCancelFailPendingStayInPlace(in: app)
+    }
+
     /// Parse `game.uitest.winningCell.r<R>.c<C>` → (row, col).
     private static func parseWinningCell(_ identifier: String) -> (row: Int, col: Int)? {
         let parts = identifier.components(separatedBy: ".")

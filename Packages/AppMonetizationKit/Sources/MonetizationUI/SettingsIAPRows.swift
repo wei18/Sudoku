@@ -79,10 +79,23 @@ public struct RemoveAdsRow: View {
                         .padding(.leading, 28)
                 }
             }
+            // #935 batch 5: `.buttonStyle(.plain)` + an internal `Spacer()`
+            // shrinks the tap target to drawn content only (the label text
+            // and the trailing price/spinner), leaving the Spacer-expanded
+            // middle of the row an untappable dead zone — the
+            // swiftui-interaction-footguns "tap target shrink" pattern.
+            // Found via the N22 host-driven E2E test: a tap at the row's
+            // geometric center (squarely in the Spacer gap) silently never
+            // fired the Button action. `.contentShape(Rectangle())` makes
+            // the whole row hittable, matching the visual affordance.
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(controller.purchaseInFlight)
         .accessibilityLabel(accessibilityLabelText)
+        // #935 batch 5: stable, non-localized anchor for the N22
+        // IAP cancel/fail/pending negative-flow E2E test.
+        .accessibilityIdentifier("settings.iap.removeAds")
     }
 
     /// #895: VoiceOver was announcing this raw Swift string in English on all
@@ -174,6 +187,10 @@ public struct RestorePurchasesRow: View {
                 }
                 .frame(minWidth: 60, alignment: .trailing)
             }
+            // #935 batch 5: same tap-target-shrink fix as `RemoveAdsRow`
+            // above (`.buttonStyle(.plain)` + Spacer without
+            // `.contentShape` leaves the row's middle untappable).
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(controller.restoreInFlight)

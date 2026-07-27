@@ -89,9 +89,11 @@ enum ScenePhaseRepollE2ESupport {
     /// Drives a real background→foreground cycle. iOS-only: macOS has no
     /// Home-button semantics even though the E2E targets declare a `.mac`
     /// destination; the supported drive path (`mise run test:ui`) runs the
-    /// iOS Simulator exclusively.
+    /// iOS Simulator exclusively. Internal (not `private`) — #935 batch 5:
+    /// `NegativeNavigationE2ESupport`'s N15 ATT-primer flow reuses this same
+    /// drive instead of duplicating it.
     @MainActor
-    private static func cycleThroughBackground(
+    static func cycleThroughBackground(
         _ app: XCUIApplication,
         file: StaticString,
         line: UInt

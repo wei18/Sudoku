@@ -5,7 +5,9 @@
 internal import Foundation
 internal import Telemetry
 internal import MonetizationCore
+internal import MonetizationUI
 internal import AdsAdMob
+internal import IAPStoreKit2
 internal import GameAudio
 internal import SettingsUI
 
@@ -79,6 +81,51 @@ func makeAudioSettings(player: any SoundPlaying, keyPrefix: String) -> AudioSett
         getMusicEnabled: { flag(musicEnabledKey, default: true) },
         setMusicEnabled: { defaults.set($0, forKey: musicEnabledKey) }
     )
+}
+
+// MARK: - ATT primer helper
+
+/// Builds the `ATTPrimerCoordinator` used by `makeGameApp`. #935 batch 5:
+/// routes both touch points through `resolveATTIsNotDetermined` /
+/// `resolveATTRequestSystemPrompt` (MakeGameApp+UITestOverrides.swift) so
+/// `-uitest-att-primer` can force a deterministic `.notDetermined` primer
+/// presentation for the N15 negative-flow E2E test — every other launch
+/// gets the real `ATTPresenter` touch points unchanged.
+@MainActor
+func makeATTPrimerCoordinator() -> ATTPrimerCoordinator {
+    ATTPrimerCoordinator(
+        isNotDetermined: resolveATTIsNotDetermined(fallback: {
+            await ATTPresenter.currentStatus() == .notDetermined
+        }),
+        requestSystemPrompt: resolveATTRequestSystemPrompt(fallback: {
+            _ = await ATTPresenter.requestIfNeeded()
+        })
+    )
+}
+
+// MARK: - IAP client helper
+
+/// Builds the `IAPClient` used by `makeGameApp`. #935 batch 5: routes
+/// through `resolveIAPClient` (MakeGameApp+UITestOverrides.swift) so
+/// `-uitest-iap-script` can swap in a scripted fake for the N22
+/// cancel/fail/pending negative flow — every other launch gets the real
+/// `LiveStoreKit2IAPClient` unchanged.
+@MainActor
+func makeIAPClient(removeAdsProductId: String, telemetry: Telemetry) -> any IAPClient {
+    resolveIAPClient(makeLive: LiveStoreKit2IAPClient(
+        knownProductIds: [removeAdsProductId],
+        onCatalogDesync: { [telemetry] productId in
+            Task {
+                await telemetry.observe(
+                    .errorOccurred(
+                        source: "LiveStoreKit2IAPClient",
+                        code: "catalog_desync_post_purchase",
+                        message: "post-purchase refetch returned empty for productId=\(productId)"
+                    )
+                )
+            }
+        }
+    ))
 }
 
 // MARK: - Reminder persistence helper

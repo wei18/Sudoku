@@ -24,6 +24,8 @@ internal import Reminders
 internal import MonetizationCore
 internal import GameCenterClient
 internal import SudokuEngine
+internal import SudokuGameState
+internal import Persistence
 #if os(iOS)
 internal import UIKit
 #endif
@@ -154,6 +156,124 @@ struct UITestSignedOutGameCenterClient: GameCenterClient {
 
     func requestFriendsAuthorization() async throws -> FriendsAuthStatus {
         .notDetermined
+    }
+}
+
+// MARK: - Clear-cache failure fake (SettingsViewModel, CLEAR-CACHE-DIALOG N19, #935 batch 5)
+
+/// Error thrown by `UITestClearCacheFailPersistence.deleteAbandoned` — the
+/// N19 discriminating signal that flips `SettingsViewModel.clearCache()`
+/// into its failure-toast branch.
+enum UITestClearCacheFakeError: Error {
+    case deleteFailed
+}
+
+/// Minimal zero-IO `PersistenceProtocol` conformer reporting ONE synthetic
+/// in-progress saved game (so `SettingsViewModel.clearCache()`'s Storage row
+/// + confirmation dialog are reachable and `resumeCandidate` is non-nil) and
+/// THROWING from `deleteAbandoned` so the CLEAR-CACHE-DIALOG failure-toast
+/// path fires deterministically. Every other member returns a safe empty
+/// default — mirrors `PersistenceTesting.FakePersistence`'s minimal shape;
+/// GameAppKit's production code can't depend on that Testing-only target, so
+/// this DEBUG-only fake is its own conformer instead of reusing it.
+struct UITestClearCacheFailPersistence: PersistenceProtocol {
+    private static let syntheticSummary = SavedGameSummary(
+        recordName: "uitest-clear-cache-fail",
+        puzzleId: "uitest-clear-cache-fail",
+        mode: .practice,
+        difficulty: .easy,
+        lastModifiedAt: .distantPast,
+        elapsedSeconds: 0,
+        status: "inProgress",
+        generatorVersion: 1
+    )
+
+    func bootstrap() async throws {}
+
+    func latestInProgress() async throws -> SavedGameSummary? { Self.syntheticSummary }
+
+    func loadOrCreate(
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> GameSessionSnapshot {
+        throw PersistenceError.zoneNotProvisioned
+    }
+
+    func save(
+        _ snapshot: GameSessionSnapshot,
+        puzzleId: String,
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws {}
+
+    func markCompleted(_ summary: SavedGameSummary) async throws {}
+
+    /// The N19 discriminating throw — `SettingsViewModel.clearCache()`'s
+    /// catch branch fires the "Couldn't clear cache" failure toast instead
+    /// of the success path.
+    func deleteAbandoned(recordName: String) async throws {
+        throw UITestClearCacheFakeError.deleteFailed
+    }
+
+    func fetchCompletedDailyIds(for date: Date) async throws -> Set<String> { [] }
+
+    func fetchCompletedDailyIdsByDay() async throws -> [String: Set<String>] { [:] }
+
+    func fetchPersonalRecord(
+        mode: Mode,
+        difficulty: Difficulty
+    ) async throws -> PersonalRecord {
+        PersonalRecord(
+            recordName: "",
+            mode: .daily,
+            difficulty: .easy,
+            bestTimeSeconds: nil,
+            totalTimeSeconds: 0,
+            completedCount: 0,
+            lastUpdatedAt: Date(timeIntervalSince1970: 0),
+            completedPuzzleIds: []
+        )
+    }
+
+    func upsertPersonalRecord(_ record: PersonalRecord) async throws {}
+}
+
+// MARK: - Scripted IAP fake (RemoveAdsRow, IAP-PURCHASE cancel/fail/pending N22, #935 batch 5)
+
+/// Consumes a fixed script of `IAPPurchaseResult`s, one per `purchase()`
+/// call, so ONE E2E test can walk all three `purchaseRemoveAds()` branches
+/// (cancel → fail → pending) without the real StoreKit 2 payment sheet
+/// (never driven by this repo's E2E suite — see
+/// `MonetizationStateController.purchaseRemoveAds()`). Once the script is
+/// exhausted, further calls keep repeating the LAST scripted result rather
+/// than crashing, so a stray extra tap stays harmless.
+actor UITestScriptedIAPClient: IAPClient {
+    private var remaining: [IAPPurchaseResult]
+
+    init(
+        script: [IAPPurchaseResult] = [
+            .userCancelled,
+            .failed(reason: "uitest scripted failure"),
+            .pending,
+        ]
+    ) {
+        self.remaining = script
+    }
+
+    func availableProducts() async throws -> [IAPProduct] { [] }
+
+    func purchase(_ productId: String) async throws -> IAPPurchaseResult {
+        guard remaining.count > 1 else {
+            return remaining.first ?? .failed(reason: "uitest: script exhausted with no results")
+        }
+        return remaining.removeFirst()
+    }
+
+    func restorePurchases() async throws -> [IAPProduct] { [] }
+
+    nonisolated func purchaseUpdates() -> AsyncStream<IAPPurchaseEvent> {
+        AsyncStream { continuation in continuation.finish() }
     }
 }
 
