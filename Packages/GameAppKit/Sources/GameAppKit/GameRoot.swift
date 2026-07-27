@@ -52,6 +52,7 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
     private let toastController: ToastController?
     private let successTint: Color
     private let failureTint: Color
+    private let infoTint: Color
     private let rootContent: () -> RootContent
 
     // SDD-003 OQ-001: single chrome state instance, owned here so it outlives
@@ -78,6 +79,7 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
         toastController: ToastController?,
         successTint: Color,
         failureTint: Color,
+        infoTint: Color,
         @ViewBuilder rootContent: @escaping () -> RootContent
     ) {
         self.viewModel = viewModel
@@ -87,6 +89,7 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
         self.toastController = toastController
         self.successTint = successTint
         self.failureTint = failureTint
+        self.infoTint = infoTint
         self.rootContent = rootContent
     }
 
@@ -124,7 +127,8 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
             .toastOverlay(
                 toastController,
                 successTint: successTint,
-                failureTint: failureTint
+                failureTint: failureTint,
+                infoTint: infoTint
             )
             // SDD-003 Epic 1: fullScreenCover replaces push navigation for board
             // routes on iOS. On macOS `fullScreenCover` is unavailable; the Mac

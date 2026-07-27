@@ -157,8 +157,10 @@ public enum UITestLaunchArg {
     /// successive `purchase()` calls — so the IAP-PURCHASE cancel/fail/pending
     /// negative flow (N22, docs/navigation-flows.md) can be exercised
     /// deterministically without the real StoreKit 2 payment sheet (never
-    /// driven by this repo's E2E suite). Absent from Release builds via the
-    /// `#if DEBUG` guard.
+    /// driven by this repo's E2E suite). #950: the same fake's
+    /// `restorePurchases()` always returns `[]` (nothing entitled), so this
+    /// flag also backs the restore-with-nothing-to-restore negative flow
+    /// (N23 follow-up). Absent from Release builds via the `#if DEBUG` guard.
     public static let iapScript = "-uitest-iap-script"
 }
 

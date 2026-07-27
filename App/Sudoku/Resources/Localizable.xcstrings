@@ -7777,6 +7777,54 @@
         }
       }
     },
+    "No purchases to restore" : {
+      "comment" : "#950 MonetizationStateController — informational toast after Restore Purchases completes with nothing entitled (distinct from the 'Purchases restored' success toast).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No purchases to restore"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有可回復的購買項目"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可恢复的购买"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "復元できる購入はありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복원할 구매 내역 없음"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay compras que restaurar"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีรายการซื้อให้กู้คืน"
+          }
+        }
+      }
+    },
     "Purchase pending approval" : {
       "comment" : "#901 MonetizationStateController — toast when a purchase awaits external (Ask to Buy) approval.",
       "extractionState" : "manual",

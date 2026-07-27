@@ -194,5 +194,9 @@ public struct RestorePurchasesRow: View {
         }
         .buttonStyle(.plain)
         .disabled(controller.restoreInFlight)
+        // #950: stable, non-localized anchor for the restore-with-nothing-
+        // to-restore negative-flow E2E test (mirrors `RemoveAdsRow`'s
+        // `settings.iap.removeAds` id from #935 batch 5).
+        .accessibilityIdentifier("settings.iap.restore")
     }
 }

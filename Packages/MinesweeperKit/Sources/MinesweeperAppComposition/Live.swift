@@ -114,6 +114,9 @@ extension MinesweeperAppComposition {
             sidebarItems: [],
             successTint: MinesweeperTheme().status.success.resolved,
             failureTint: MinesweeperTheme().status.error.resolved,
+            // #950: reuses the same "attention, not error" tint already used
+            // by loading/hub indicators (MinesweeperBoardLoaderView, MinesweeperDailyHubView).
+            infoTint: MinesweeperTheme().status.warning.resolved,
             audio: AudioConfig(keyPrefix: "com.wei18.minesweeper.audio"),
             reminders: ReminderContentConfig(
                 dailyReadyContent: dailyReadyContent,

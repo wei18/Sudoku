@@ -61,6 +61,10 @@ public final class MonetizationStateController {
     public enum Message: Sendable, Equatable {
         case adsRemoved
         case restored
+        /// #950: a restore completed but nothing was entitled — distinct
+        /// from `.restored` so the false "Purchases restored" claim can't
+        /// surface when there is nothing to restore.
+        case nothingToRestore
         case failure(reason: String)
     }
 
@@ -299,13 +303,25 @@ public final class MonetizationStateController {
         flowState = .restoring
         do {
             let restored = try await iapClient.restorePurchases()
-            if restored.contains(where: { $0.id == productId && $0.isPurchased }) {
+            let didRestoreEntitlement = restored.contains(where: { $0.id == productId && $0.isPurchased })
+            if didRestoreEntitlement {
                 await markPurchased()
             }
             availableProducts = restored
-            latestMessage = .restored
-            // #901: localize the visible toast.
-            toastController?.show(Toast(style: .success, message: String(localized: "Purchases restored", bundle: .main)))
+            // #950: the entitlement check above only gated `markPurchased()`
+            // — the "Purchases restored" success toast used to fire even
+            // when `restored` was empty (`LiveStoreKit2IAPClient` returns []
+            // when nothing is entitled), telling a never-purchased player
+            // their purchases were restored. Branch the message/toast on the
+            // same check instead of claiming success unconditionally.
+            if didRestoreEntitlement {
+                latestMessage = .restored
+                // #901: localize the visible toast.
+                toastController?.show(Toast(style: .success, message: String(localized: "Purchases restored", bundle: .main)))
+            } else {
+                latestMessage = .nothingToRestore
+                toastController?.show(Toast(style: .info, message: String(localized: "No purchases to restore", bundle: .main)))
+            }
             // Restore succeeding resolves the flow — it also clears a stale
             // `.purchaseFailed` from an earlier purchase attempt, since the
             // entitlement question is now settled.

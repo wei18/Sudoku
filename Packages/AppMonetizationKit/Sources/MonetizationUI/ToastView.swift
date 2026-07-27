@@ -21,6 +21,11 @@ public struct Toast: Equatable, Sendable {
     public enum Style: Sendable, Equatable {
         case success
         case failure
+        /// #950: neither a success claim nor an error — e.g. "Restore
+        /// Purchases" completing with nothing entitled. Distinct from
+        /// `.failure` so a benign "nothing happened" outcome doesn't read as
+        /// an error to the player.
+        case info
     }
 
     public let style: Style
@@ -81,15 +86,18 @@ public struct ToastView: View {
     private let toast: Toast
     private let successTint: Color
     private let failureTint: Color
+    private let infoTint: Color
 
     public init(
         toast: Toast,
         successTint: Color,
-        failureTint: Color
+        failureTint: Color,
+        infoTint: Color
     ) {
         self.toast = toast
         self.successTint = successTint
         self.failureTint = failureTint
+        self.infoTint = infoTint
     }
 
     public var body: some View {
@@ -117,6 +125,7 @@ public struct ToastView: View {
         switch toast.style {
         case .success: "monetization.toast.success"
         case .failure: "monetization.toast.failure"
+        case .info: "monetization.toast.info"
         }
     }
 
@@ -124,6 +133,7 @@ public struct ToastView: View {
         switch toast.style {
         case .success: "checkmark.circle.fill"
         case .failure: "exclamationmark.triangle.fill"
+        case .info: "info.circle.fill"
         }
     }
 
@@ -131,6 +141,7 @@ public struct ToastView: View {
         switch toast.style {
         case .success: successTint
         case .failure: failureTint
+        case .info: infoTint
         }
     }
 }
@@ -142,18 +153,22 @@ public extension View {
     /// Use once at the root of a scene (e.g. `RootView`). `successTint` and
     /// `failureTint` are DI'd by the host (Sudoku reads `theme.status.success`
     /// / `theme.status.error`; Minesweeper passes its own palette in Phase 3).
+    /// `infoTint` (#950) reuses each host's `theme.status.warning` — the same
+    /// "attention, not error" tint already used by loading/hub indicators.
     @MainActor
     func toastOverlay(
         _ controller: ToastController?,
         successTint: Color,
-        failureTint: Color
+        failureTint: Color,
+        infoTint: Color
     ) -> some View {
         overlay(alignment: .bottom) {
             if let controller, let toast = controller.current {
                 ToastView(
                     toast: toast,
                     successTint: successTint,
-                    failureTint: failureTint
+                    failureTint: failureTint,
+                    infoTint: infoTint
                 )
                 .padding(.bottom, 24)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

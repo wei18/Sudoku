@@ -359,6 +359,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         toastController: toastController,
         successTint: config.successTint,
         failureTint: config.failureTint,
+        infoTint: config.infoTint,
         rootContent: rootContent
     )
     .environment(\.theme, config.theme)
