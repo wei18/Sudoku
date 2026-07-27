@@ -127,7 +127,6 @@ struct UITestSignedOutGameCenterClient: GameCenterClient {
     func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws {}
 

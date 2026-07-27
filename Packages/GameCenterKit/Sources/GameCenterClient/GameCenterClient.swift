@@ -15,13 +15,19 @@
 //   surface real GameKit auth errors to callers that need them; the
 //   non-throwing degraded states (`.unauthenticated`, `.restricted`,
 //   `.unavailableInRegion`) are still expressed via the returned enum.
-// - `submitScore` takes `puzzleId` + `difficulty` + `LeaderboardKind` rather
-//   than a pre-computed leaderboard ID — this keeps the `.v1` suffix logic
-//   inside `LeaderboardIDs` (Step 7.3) instead of leaking to call sites.
-//   The Phase 8 ViewModels never construct leaderboard IDs directly.
+// - `submitScore` takes `puzzleId` + `LeaderboardKind` rather than a
+//   pre-computed leaderboard ID — this keeps the `.v1` suffix logic inside
+//   `LeaderboardIDs` (Step 7.3) instead of leaking to call sites. The Phase 8
+//   ViewModels never construct leaderboard IDs directly. `difficulty` used to
+//   be a parameter here too, but every conformer discarded it (the caller
+//   already resolves `Difficulty → LeaderboardKind` before crossing this
+//   boundary — see `GameCenterSink.leaderboardKind(forDifficulty:)`); dropping
+//   it removes the `SudokuEngine.Difficulty` leak from this game-agnostic
+//   protocol (#947). `AchievementEvaluator` in this same package still
+//   re-exports SudokuEngine at module level — that is a packaging problem
+//   tracked separately (#955), not a conformer constraint.
 
 public import Foundation
-public import SudokuEngine
 
 public protocol GameCenterClient: Sendable {
     /// Run the GameKit authentication handshake exactly once per session.
@@ -33,12 +39,11 @@ public protocol GameCenterClient: Sendable {
     func authStateUpdates() async -> AsyncStream<GameCenterAuthState>
 
     /// Submit a score for a daily puzzle. Implementations map
-    /// `puzzleId` + `difficulty` + `leaderboardKind` to the canonical
-    /// `.v1`-suffixed leaderboard ID via `LeaderboardIDs`.
+    /// `puzzleId` + `leaderboardKind` to the canonical `.v1`-suffixed
+    /// leaderboard ID via `LeaderboardIDs`.
     func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws
 

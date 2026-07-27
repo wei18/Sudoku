@@ -129,7 +129,6 @@ private actor NearWinModalNoopGameCenterClient: GameCenterClient {
     func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws {}
     func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}

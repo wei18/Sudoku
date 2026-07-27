@@ -89,7 +89,6 @@ public actor GameCenterSink: TelemetrySink {
             try await client.submitScore(
                 puzzleId: puzzleId,
                 elapsedSeconds: elapsedSeconds,
-                difficulty: difficulty,
                 leaderboardKind: kind
             )
             await guards.markSubmitted(puzzleId: puzzleId)

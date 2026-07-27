@@ -51,7 +51,7 @@ private actor MinimalPersistence: PersistenceProtocol {
 private struct MinimalGameCenter: GameCenterClient {
     func authenticate() async throws -> GameCenterAuthState { .unauthenticated }
     func authStateUpdates() async -> AsyncStream<GameCenterAuthState> { AsyncStream { $0.finish() } }
-    func submitScore(puzzleId: String, elapsedSeconds: Int, difficulty: Difficulty, leaderboardKind: LeaderboardKind) async throws {}
+    func submitScore(puzzleId: String, elapsedSeconds: Int, leaderboardKind: LeaderboardKind) async throws {}
     func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}
     func reportAchievement(_ achievement: AchievementProgress) async throws {}
     func fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, aroundLocalPlayer: Bool, limit: Int) async throws -> LeaderboardSlice {
