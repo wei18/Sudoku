@@ -20,7 +20,6 @@
 // delegates to `LeaderboardSliceService` (+ `GKLeaderboardLoader`).
 
 internal import Foundation
-public import SudokuEngine
 
 public actor LiveGameCenterClient: GameCenterClient {
 
@@ -162,10 +161,9 @@ public actor LiveGameCenterClient: GameCenterClient {
     public func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws {
-        _ = (puzzleId, difficulty)
+        _ = puzzleId
         // Map the Sudoku-typed kind → canonical `.v1` leaderboard id, then
         // delegate to the raw game-agnostic path so the centisecond
         // conversion + hook call site stays single-sourced (#291).

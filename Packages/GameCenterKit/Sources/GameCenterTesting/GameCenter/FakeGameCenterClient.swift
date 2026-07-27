@@ -8,7 +8,6 @@
 
 import Foundation
 public import GameCenterClient
-public import SudokuEngine
 
 public enum FakeGameCenterOperation: Sendable, Equatable, Hashable {
     case authenticate
@@ -110,7 +109,6 @@ public actor FakeGameCenterClient: GameCenterClient {
     public func submitScore(
         puzzleId: String,
         elapsedSeconds: Int,
-        difficulty: Difficulty,
         leaderboardKind: LeaderboardKind
     ) async throws {
         operations.append(.submitScore(
