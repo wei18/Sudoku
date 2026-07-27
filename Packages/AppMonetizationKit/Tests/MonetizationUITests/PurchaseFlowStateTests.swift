@@ -260,6 +260,60 @@ struct PurchaseFlowStateTests {
         }
     }
 
+    // MARK: - #950: restore with nothing entitled must not claim success
+
+    /// `LiveStoreKit2IAPClient.restorePurchases()` returns an empty array
+    /// when nothing is entitled — the entitlement check used to gate only
+    /// `markPurchased()`, so the "Purchases restored" success toast fired
+    /// unconditionally. This pins the fixed branch: an empty restore result
+    /// surfaces `.nothingToRestore` (and the info-style toast), never
+    /// `.restored`.
+    @Test func restoreWithNothingRestorable_showsInfoMessage_notRestored() async {
+        let store = makeStore()
+        let gate = AdGate(store: store)
+        let iap = FakeIAPClient()
+        await iap.setProducts([]) // nothing entitled — restorePurchases() returns []
+        let toastController = ToastController()
+        let controller = MonetizationStateController(
+            iapClient: iap,
+            stateStore: store,
+            adGate: gate,
+            toastController: toastController
+        )
+
+        await controller.restorePurchases()
+
+        #expect(controller.latestMessage == .nothingToRestore)
+        #expect(controller.latestMessage != .restored)
+        #expect(controller.hasPurchasedRemoveAds == false)
+        #expect(toastController.current?.style == .info)
+    }
+
+    /// Companion positive-path pin: an entitled restore still surfaces
+    /// `.restored` + the success toast — the branch added for #950 must not
+    /// regress the existing "something was actually restored" outcome.
+    @Test func restoreWithEntitlement_showsRestoredMessage_success() async {
+        let store = makeStore()
+        let gate = AdGate(store: store)
+        let iap = FakeIAPClient()
+        await iap.setProducts([
+            IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false),
+        ])
+        let toastController = ToastController()
+        let controller = MonetizationStateController(
+            iapClient: iap,
+            stateStore: store,
+            adGate: gate,
+            toastController: toastController
+        )
+
+        await controller.restorePurchases()
+
+        #expect(controller.latestMessage == .restored)
+        #expect(controller.hasPurchasedRemoveAds == true)
+        #expect(toastController.current?.style == .success)
+    }
+
     @Test func revokedEvent_clearsStalePurchaseFailedState() async {
         let store = makeStore(purchased: true)
         let gate = AdGate(store: store)

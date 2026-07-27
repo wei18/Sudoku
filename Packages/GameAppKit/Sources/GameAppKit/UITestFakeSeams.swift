@@ -269,6 +269,11 @@ actor UITestScriptedIAPClient: IAPClient {
         return remaining.removeFirst()
     }
 
+    // #950 (N23 follow-up): always empty — models "nothing entitled" so the
+    // restore-with-nothing-to-restore E2E test can assert the info toast
+    // (`monetization.toast.info`) fires instead of the false "Purchases
+    // restored" success claim. No separate script needed: an empty restore
+    // result is the ONLY outcome this fake ever needs to produce.
     func restorePurchases() async throws -> [IAPProduct] { [] }
 
     nonisolated func purchaseUpdates() -> AsyncStream<IAPPurchaseEvent> {

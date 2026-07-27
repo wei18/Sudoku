@@ -102,6 +102,9 @@ extension SudokuAppComposition {
             sidebarItems: [],
             successTint: DefaultTheme().status.success.resolved,
             failureTint: DefaultTheme().status.error.resolved,
+            // #950: reuses the same "attention, not error" tint already used
+            // by loading/hub indicators (BoardLoaderView, DailyHubView).
+            infoTint: DefaultTheme().status.warning.resolved,
             audio: AudioConfig(keyPrefix: "com.wei18.sudoku.audio"),
             reminders: ReminderContentConfig(
                 dailyReadyContent: dailyReadyContent,

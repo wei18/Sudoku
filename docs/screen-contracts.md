@@ -807,17 +807,18 @@ monetization surface (explicit scope exclusion, `docs/v2/stats-screen-proposal.m
 
 **Element inventory (row order):** Purchases section (host-injected IAP
 rows — "Remove Ads" `settings.iap.removeAds` / `AdsRemovedRow` when already
-purchased, "Restore Purchases", #935 batch 5), GC status row
-(`settings.gameCenter`), reminders section (see `REMINDER-*` ids under it),
-Sound section (mute/music-volume/sfx-volume/music-enabled/haptics toggles,
-ids `audio.settings.*`), About section (Version row +, Sudoku-only,
+purchased, "Restore Purchases" `settings.iap.restore` — id added #950), GC
+status row (`settings.gameCenter`), reminders section (see `REMINDER-*` ids
+under it), Sound section (mute/music-volume/sfx-volume/music-enabled/haptics
+toggles, ids `audio.settings.*`), About section (Version row +, Sudoku-only,
 Generator row), Notices section (acknowledgements deep-link, copyright),
 Storage section "Clear cache" button (id `settings.storage.clearCache`,
 #935 batch 5 — see `CLEAR-CACHE-DIALOG`). A bottom-center toast overlay
 (`ToastController`/`ToastView`, ids `monetization.toast.success` /
-`monetization.toast.failure`, #935 batch 5) floats above the whole screen
-for purchase/restore/clear-cache outcomes — not a Form row, mounted once at
-`GameRoot`.
+`monetization.toast.failure` / `monetization.toast.info` — the `.info` id
+added #950 for the "nothing to restore" outcome) floats above the whole
+screen for purchase/restore/clear-cache outcomes — not a Form row, mounted
+once at `GameRoot`.
 
 **Per-interaction outcome:**
 
@@ -828,6 +829,7 @@ for purchase/restore/clear-cache outcomes — not a Form row, mounted once at
 | Reminders denied-status row tap | `model.showDeniedExplainer()` | `sheet(detent: .medium)` → `REMINDER-DENIED` | dismiss → `SETTINGS` |
 | Reminders "Turn off reminders" tap | `model.disable()` | side-effect | `SETTINGS` (status row switches back to enable row) |
 | "Remove Ads" tap (`settings.iap.removeAds`) | `controller.purchaseRemoveAds()` → StoreKit 2 payment sheet | cancel: silent no-op. fail/pending: failure-style toast (`monetization.toast.failure`). success: entitlement flips, row swaps to `AdsRemovedRow` | stays on `SETTINGS` throughout — no navigation, ever (#935 batch 5 N22) |
+| "Restore Purchases" tap (`settings.iap.restore`) | `controller.restorePurchases()` → StoreKit 2 receipt sync | entitlement actually restored: success toast (`monetization.toast.success`, "Purchases restored"), entitlement flips. Nothing entitled: info-style toast (`monetization.toast.info`, "No purchases to restore") — **#950 fix**, previously showed the false success claim unconditionally (N23). userCancelled: silent, no toast. Other failure: failure toast (`monetization.toast.failure`) | stays on `SETTINGS` throughout — no navigation, ever |
 | "Clear cache" tap | `showClearCacheConfirmation = true` | `.confirmationDialog` → `CLEAR-CACHE-DIALOG` | see that contract |
 | Acknowledgements deep-link tap (iOS only) | `UIApplication.shared.open(UIApplication.openSettingsURLString)` | external (system Settings.app) | user manually returns via app-switcher — no in-app back |
 

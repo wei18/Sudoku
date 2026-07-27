@@ -208,6 +208,10 @@ public struct GameConfig<Route: Hashable & Sendable> {
     public let successTint: Color
     /// Failure tint forwarded to `GameRoot`'s `.toastOverlay`.
     public let failureTint: Color
+    /// #950: informational (neither success nor failure) tint forwarded to
+    /// `GameRoot`'s `.toastOverlay` — e.g. "Restore Purchases" completing
+    /// with nothing entitled.
+    public let infoTint: Color
     /// Audio configuration: UserDefaults key prefix for this game.
     public let audio: AudioConfig
     /// Reminder content: subsystem + notification copy for this game.
@@ -270,6 +274,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         sidebarItems: [SidebarItem<Route>],
         successTint: Color,
         failureTint: Color,
+        infoTint: Color,
         audio: AudioConfig,
         reminders: ReminderContentConfig,
         homeModes: [HomeMode: HomeModeContent<Route>] = [:],
@@ -291,6 +296,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.sidebarItems = sidebarItems
         self.successTint = successTint
         self.failureTint = failureTint
+        self.infoTint = infoTint
         self.audio = audio
         self.reminders = reminders
         self.homeModes = homeModes

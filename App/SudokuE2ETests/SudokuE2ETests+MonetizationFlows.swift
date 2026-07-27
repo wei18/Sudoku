@@ -51,4 +51,19 @@ extension SudokuE2ETests {
         app.launch()
         NegativeNavigationE2ESupport.assertIAPPurchaseCancelFailPendingStayInPlace(in: app)
     }
+
+    /// #950 (N23 follow-up): Settings "Restore Purchases" with nothing
+    /// entitled — `UITestScriptedIAPClient.restorePurchases()` always
+    /// returns `[]`, so tapping Restore under `-uitest-iap-script` must
+    /// raise the informational "No purchases to restore" toast, never the
+    /// false "Purchases restored" success claim.
+    func test_restoreWithNothingToRestoreShowsInfoNotSuccess() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.iapScript,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertRestoreWithNothingToRestoreShowsInfoToast(in: app)
+    }
 }

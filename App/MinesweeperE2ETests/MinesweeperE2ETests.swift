@@ -320,6 +320,20 @@ final class MinesweeperE2ETests: XCTestCase {
         NegativeNavigationE2ESupport.assertIAPPurchaseCancelFailPendingStayInPlace(in: app)
     }
 
+    /// #950 (N23 follow-up): Settings "Restore Purchases" with nothing
+    /// entitled — mirrors `SudokuE2ETests.test_restoreWithNothingToRestoreShowsInfoNotSuccess`.
+    /// Shared `MonetizationUI` component — the same launch args and
+    /// assertion apply on both apps.
+    func test_restoreWithNothingToRestoreShowsInfoNotSuccess() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArg.iapScript,
+            UITestLaunchArg.route, "settings",
+        ]
+        app.launch()
+        NegativeNavigationE2ESupport.assertRestoreWithNothingToRestoreShowsInfoToast(in: app)
+    }
+
     /// Parse `game.uitest.winningCell.r<R>.c<C>` → (row, col).
     private static func parseWinningCell(_ identifier: String) -> (row: Int, col: Int)? {
         let parts = identifier.components(separatedBy: ".")
