@@ -219,6 +219,70 @@ struct AchievementEvaluatorTests {
         )
         #expect(first == second)
     }
+
+    // MARK: - #955 pin: exact emitted-set property (dead-code gap closer)
+    //
+    // `AchievementID.allShortIds` (SudokuEngine/GameCenterIdentifiers.swift)
+    // has no production consumer today — nothing fails if the evaluator
+    // silently drops an id from the emitted set on a future edit. This test
+    // drives a single maximal-input completion (every one of the 11 rules'
+    // threshold satisfied simultaneously) and asserts the emitted id set is
+    // EXACTLY the 11 ids — both against a hand-listed expected set (so a
+    // future evaluator regression that drops an id fails here) and against
+    // `AchievementID.allShortIds` itself (so a future SSOT edit that adds/
+    // removes an id without updating the evaluator also fails here).
+    @Test func exactAchievementSetOnMaximalCompletion() async throws {
+        let persistence = StubPersistence()
+        let anchor = utcDate("2026-05-19T12:00:00Z")
+
+        // 30 consecutive UTC days with at least one daily completion each,
+        // satisfying daily.streak_3 / daily.streak_7 / daily.streak_30.
+        var calendar = Calendar(identifier: .gregorian)
+        // swiftlint:disable:next force_unwrapping
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        for dayOffset in 0..<30 {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: anchor) else { continue }
+            let key = UTCDay.string(from: day)
+            await persistence.setDailyIds(forDay: key, ids: ["\(key)-easy"])
+        }
+        // Today carries all 3 difficulties, satisfying daily.sweep too.
+        let todayKey = UTCDay.string(from: anchor)
+        await persistence.setDailyIds(
+            forDay: todayKey,
+            ids: ["\(todayKey)-easy", "\(todayKey)-medium", "\(todayKey)-hard"]
+        )
+        // practice.complete_10 / practice.complete_100: 40 + 40 + 20 == 100.
+        await persistence.setPracticeCompletedCount(easy: 40, medium: 40, hard: 20)
+        // hard.master: daily hard 15 + practice hard max(20, 15) == 35 >= 25.
+        await persistence.setHardCount(daily: 15, practice: 15)
+
+        let evaluator = AchievementEvaluator(persistence: persistence)
+        let result = try await evaluator.evaluateForCompletion(
+            puzzleId: "\(todayKey)-hard", mode: .daily, difficulty: .hard, mistakeCount: 0, today: anchor
+        )
+
+        // Hand-listed expected set — deliberately NOT derived from
+        // `AchievementID.allShortIds` so this assertion alone catches an
+        // evaluator regression that silently drops an id.
+        let expected: Set<String> = [
+            AchievementID.firstPuzzle,
+            AchievementID.dailyCompleteOne,
+            AchievementID.dailyStreak3,
+            AchievementID.dailyStreak7,
+            AchievementID.practiceComplete10,
+            AchievementID.practiceComplete100,
+            AchievementID.hardMaster,
+            AchievementID.dailySweep,
+            AchievementID.perfectRun,
+            AchievementID.dailyStreak30,
+            AchievementID.expertSolver,
+        ]
+        #expect(expected.count == 11)
+        #expect(Set(result.map(\.achievementId)) == expected, "emitted set drifted from the maximal expectation")
+        // Closes the dead-code gap: allShortIds must be the same 11 ids.
+        #expect(Set(AchievementID.allShortIds) == expected, "AchievementID.allShortIds drifted from what the evaluator can emit")
+        #expect(result.allSatisfy { $0.percentComplete == 100 }, "every achievement should be 100% in the maximal case")
+    }
 }
 
 // MARK: - Test seam
