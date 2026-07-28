@@ -163,6 +163,11 @@ struct MinesweeperHomeSnapshotTests {
     // real icon art here — this test target has no app-bundle asset
     // catalog; `MinesweeperAppComposition.live()` wires the real
     // `HomeAvatar` imageset (see Live.swift).
+    // HONESTY NOTE (#962 CR): the headless harness never renders
+    // NavigationStack toolbar/title chrome, so this baseline is
+    // byte-identical to the avatar-less one — it pins ONLY that the
+    // avatar branch renders without crashing or shifting the card layout.
+    // The chip's visual proof lives in `mise run ui:tour` screenshots.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_iPhone_light_withAvatar() {
         let host = hostingView(

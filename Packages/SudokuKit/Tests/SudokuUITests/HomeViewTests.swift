@@ -293,6 +293,11 @@ struct HomeViewTests {
     // A system symbol stands in for the app's real icon art here — this
     // test target has no app-bundle asset catalog; `SudokuAppComposition
     // .live()` wires the real `HomeAvatar` imageset (see Live.swift).
+    // HONESTY NOTE (#962 CR): the headless harness never renders
+    // NavigationStack toolbar/title chrome, so this baseline is
+    // byte-identical to `snapshotIPhoneLight` — it pins ONLY that the
+    // avatar branch renders without crashing or shifting the card layout.
+    // The chip's visual proof lives in `mise run ui:tour` screenshots.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightWithAvatar() {
         let (rootVM, homeVM) = makeSudokuHomeViewModel()
         let host = hostingView(
