@@ -18,6 +18,11 @@
 //    today's puzzle after UTC rollover the score would mis-rank into
 //    tomorrow's leaderboard. The actor parses the leading `YYYY-MM-DD`
 //    from the daily puzzleId and compares to the current UTC day.
+//
+// Moved here from GameCenterKit/Sources/GameCenterClient/ by #955, together
+// with GameCenterSink and AchievementEvaluator (GameCenterSink holds this
+// as a concrete stored property, so the three moved as one unit). Behaviour
+// is unchanged; only the package it lives in moved.
 
 public import Foundation
 internal import SudokuEngine

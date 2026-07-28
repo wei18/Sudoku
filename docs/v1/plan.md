@@ -521,7 +521,7 @@ Depends on: 7.2, Phase 5 (for `completedDailyPuzzleIds` seed).
 
 Tests:
 - `AchievementTests.swift`: `firstPuzzleUnlocks`; `dailyStreak3DerivedFromPersistence`; `practiceComplete100PercentProgress`; `dailySweepRequiresAllThreeDifficulties`; `idempotentDoubleReport`.
-Implementation: `Sources/GameCenterClient/AchievementEvaluator.swift`: reads `PersistenceProtocol` counts; computes 8 achievements per §How.3.2.
+Implementation: `Sources/GameCenterClient/AchievementEvaluator.swift`: reads `PersistenceProtocol` counts; computes 8 achievements per §How.3.2. (Moved to `SudokuAppComposition/GameCenter/AchievementEvaluator.swift` by #955 — Sudoku-specific, not part of the game-agnostic GameCenterClient seam.)
 Acceptance: 5 green.
 Depends on: 7.3, Phase 5.
 

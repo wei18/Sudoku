@@ -2,9 +2,11 @@
 //
 // Mirrors docs/v1/design.md §How.3.1 (3 leaderboards) and §How.3.2 (11 achievements,
 // 680 total points (v1 500 + v2.6 batch 180); ASC caps each entry at 0-100, issue #40). IDs MUST stay byte-equal to:
-//   - GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
-//   - GameCenterClient/GameCenterSink.swift  (achievement prefix)
-//   - GameCenterClient/AchievementEvaluator.swift (11 short IDs emitted, v2.6)
+//   - GameCenterKit's GameCenterClient/LeaderboardIDs.swift  (leaderboard IDs)
+//   - SudokuAppComposition/GameCenter/GameCenterSink.swift  (achievement prefix; moved
+//     from GameCenterKit by #955)
+//   - SudokuAppComposition/GameCenter/AchievementEvaluator.swift (11 short IDs
+//     emitted, v2.6; moved from GameCenterKit by #955)
 //
 // ConfigConsistencyTests enforces that equality. If you change an ID here
 // you MUST change it in the production target — and bump the leaderboard

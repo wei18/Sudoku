@@ -27,10 +27,18 @@
 // here — the evaluator emits the short ids from `AchievementID` (#466:
 // previously raw literals; the SSOT enum is now actually consumed).
 // Prefix is added at submit time by `GameCenterSink` (§How.3.2 末段).
+//
+// Moved here from GameCenterKit/Sources/GameCenterClient/ by #955: this
+// type is Sudoku-specific (concrete `SudokuEngine.Difficulty` in its public
+// API, `PersistenceProtocol.fetchPersonalRecord(mode:difficulty:)` reads),
+// not a game-agnostic seam — Minesweeper has always had its own parallel
+// `MinesweeperAchievementEvaluator`. Behaviour is unchanged; only the
+// package it lives in moved.
 
 public import Foundation
 public import Persistence
 public import SudokuEngine
+public import GameCenterClient
 
 public actor AchievementEvaluator: Sendable {
 

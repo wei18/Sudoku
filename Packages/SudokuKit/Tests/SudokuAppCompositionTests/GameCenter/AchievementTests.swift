@@ -1,6 +1,7 @@
 import Foundation
 import Testing
-@testable import GameCenterClient
+@testable import SudokuAppComposition
+import GameCenterClient
 import Persistence
 import SudokuGameState
 import SudokuEngine

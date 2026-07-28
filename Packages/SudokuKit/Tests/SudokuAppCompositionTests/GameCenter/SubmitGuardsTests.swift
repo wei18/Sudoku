@@ -1,9 +1,15 @@
 import Foundation
 import Testing
-@testable import GameCenterClient
+@testable import SudokuAppComposition
 
-@Suite("GameCenterClient — submit score guards")
-struct SubmitScoreTests {
+// #955: moved from GameCenterKit/Tests/GameCenterClientTests/SubmitScoreTests.swift
+// (SubmitGuards moved to SudokuAppComposition alongside GameCenterSink /
+// AchievementEvaluator). Assertions are unchanged — only the import moved
+// from `@testable import GameCenterClient` to `@testable import SudokuAppComposition`.
+// The lone LeaderboardIDs test from that file stays in GameCenterKit as
+// `LeaderboardIDsTests.swift` (LeaderboardIDs did not move).
+@Suite("SudokuAppComposition — submit guards")
+struct SubmitGuardsTests {
 
     private func utcDate(_ string: String) -> Date {
         let formatter = ISO8601DateFormatter()
@@ -51,15 +57,6 @@ struct SubmitScoreTests {
         )
         let allow = await guards.shouldSubmit(puzzleId: "2026-05-19-medium")
         #expect(allow == false)
-    }
-
-    @Test func leaderboardIDSuffixedV1() {
-        #expect(LeaderboardIDs.id(for: .dailyEasy)
-                == "com.wei18.sudoku.leaderboard.easy.daily.v1")
-        #expect(LeaderboardIDs.id(for: .dailyMedium)
-                == "com.wei18.sudoku.leaderboard.medium.daily.v1")
-        #expect(LeaderboardIDs.id(for: .dailyHard)
-                == "com.wei18.sudoku.leaderboard.hard.daily.v1")
     }
 
     @Test func malformedPuzzleIdNotSubmitted() async {
