@@ -54,6 +54,8 @@ review_information:
     (com.wei18.minesweeper.iap.remove_ads, non-consumable, removes banner ads)
     — sandbox test steps in the source doc. UMP + ATT consent on first launch;
     declining is fully supported. CloudKit Private Database only, no app-owned
-    backend. Only third-party SDK is Google Mobile Ads (banner). NOTE: Game
-    Center and scored Daily are NOT wired in v1 — do not claim them. Paste the
-    full Notes block from the source doc verbatim at submission.
+    backend. Only third-party SDK is Google Mobile Ads (banner). Game Center
+    IS live: three daily leaderboards (scored Daily submits on win) plus 11
+    achievements (reported on any win); sign-in optional, gameplay fully
+    works signed-out. Paste the full Notes block from the source doc verbatim
+    at submission.

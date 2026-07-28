@@ -51,9 +51,10 @@ Completing a daily board submits a time to the matching Game Center leaderboard
 
 GAME CENTER
 Three daily leaderboards (Beginner / Intermediate / Expert, recurring, reset
-00:00 UTC, one scoring attempt per puzzle). Game Center sign-in is optional;
-gameplay works fully signed-out. All score traffic is mediated by Apple's
-GameKit. Note: achievements are NOT implemented in this release (2.6.0).
+00:00 UTC, one scoring attempt per puzzle). Eleven achievements report
+progress on wins (e.g. first sweep, difficulty milestones, daily streaks).
+Game Center sign-in is optional; gameplay works fully signed-out. All score
+and achievement traffic is mediated by Apple's GameKit.
 
 REMOVE ADS — IN-APP PURCHASE (sandbox test)
 Product: com.wei18.minesweeper.iap.remove_ads  (Non-Consumable, Family Sharing on)
