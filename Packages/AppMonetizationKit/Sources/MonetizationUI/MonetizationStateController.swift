@@ -11,8 +11,8 @@
 //     "purchasing and restoring at once" and "failed looks like never
 //     attempted" (#874 F-6/F-7/F-8) are unrepresentable by construction.
 //   - `availableProducts: [IAPProduct]` — cached on bootstrap so the Settings
-//     CTA can show the locale-formatted price (`"$2.99"` / `"NT$89"` etc.) the
-//     App Store returns; falls back to `"$2.99"` if the lookup fails.
+//     CTA can show the locale-formatted price (`"$0.99"` / `"NT$89"` etc.) the
+//     App Store returns; falls back to `"$0.99"` if the lookup fails.
 //   - `latestMessage: Message?` — a11y / VoiceOver source of truth for the
 //     Settings inline `Label` row. The visual surface is the `ToastController`
 //     (v2.4.5); `latestMessage` stays because VoiceOver does not reliably
@@ -183,7 +183,7 @@ public final class MonetizationStateController {
         // try?: same rationale — IAP catalog desync is reported by
         // `LiveStoreKit2IAPClient(onCatalogDesync:)` in Live.swift; an
         // empty `availableProducts` here is a benign UI state (Settings
-        // shows the fallback `"$2.99"` placeholder per the M3 polish doc).
+        // shows the fallback `"$0.99"` placeholder per the M3 polish doc).
         if let products = try? await iapClient.availableProducts() {
             availableProducts = products
             // Stay in sync with the App Store side too — a restored entitlement
@@ -246,10 +246,10 @@ public final class MonetizationStateController {
         }
     }
 
-    /// Resolved Remove Ads display price. Falls back to `"$2.99"` (the
+    /// Resolved Remove Ads display price. Falls back to `"$0.99"` (the
     /// spec'd default) when the App Store lookup has not yet completed.
     public var removeAdsDisplayPrice: String {
-        availableProducts.first(where: { $0.id == productId })?.displayPrice ?? "$2.99"
+        availableProducts.first(where: { $0.id == productId })?.displayPrice ?? "$0.99"
     }
 
     /// Tap handler for "Remove Ads" buttons (Settings row + HomeView 5th card).

@@ -3,7 +3,7 @@
 # Product ID: com.wei18.minesweeper.iap.remove_ads
 # Apple ID:   TBD (assigned when the MS app record is created in ASC)
 # Type:       Non-Consumable (one-time purchase)
-# Price:      USD 2.99 tier (mirrors Sudoku)
+# Price:      USD 0.99 tier (mirrors Sudoku)
 # Family Sharing: enabled
 #
 # Mirrors docs/app-store/metadata/sudoku/iap/remove-ads.yaml (the Sudoku IAP).
@@ -70,7 +70,7 @@ review_notes: |
 
 # ── Pricing schedule ─────────────────────────────────────────────────────
 pricing:
-  tier: "USD 2.99"
+  tier: "USD 0.99"
   family_sharing: true
   cleared_for_sale: true
   all_countries: true

@@ -5,7 +5,7 @@ Applies to: Sudoku for iPhone and Mac, version 1.0 and later.
 
 > **v2 update (2026-05-21, revised 2026-06-02)**: starting with v2.0, Sudoku App displays Google AdMob banner ads on Home / Board view (shown from first launch, capped at one displayed ad per day with dismissed-that-day skip), and offers a one-time "Remove Ads" In-App Purchase. The short version and §Data we collect sections below describe the v1 baseline; the new behaviour is documented in §廣告與 IAP (v2+) at the bottom of this document. Until v2 ships, the v1 baseline applies.
 
-This is the public privacy policy for the Sudoku App developed by Wei (`@wei18` on GitHub). It mirrors the declarations in [`Sudoku/Resources/PrivacyInfo.xcprivacy`](../Sudoku/Resources/PrivacyInfo.xcprivacy). If the two ever disagree, the manifest is the source of truth and this document will be updated to match.
+This is the public privacy policy for the Sudoku App developed by Wei (`@wei18` on GitHub). It mirrors the declarations in [`App/Sudoku/Resources/PrivacyInfo.xcprivacy`](../App/Sudoku/Resources/PrivacyInfo.xcprivacy). If the two ever disagree, the manifest is the source of truth and this document will be updated to match.
 
 ## Short version
 
@@ -91,9 +91,9 @@ See Google's privacy policy at <https://policies.google.com/privacy> for AdMob d
 
 ### 內購 / In-App Purchase
 
-「Remove Ads」一次性非消耗型內購（建議售價 $2.99 USD，依各地區 App Store 匯率自動換算）由 Apple StoreKit 處理。付款與帳單資料完全不經過 Sudoku App 後端 — Sudoku App 透過 StoreKit 2 API 只收到「是否已購買」的布林狀態，以及 StoreKit 簽章驗證結果。
+「Remove Ads」一次性非消耗型內購（建議售價 $0.99 USD，依各地區 App Store 匯率自動換算）由 Apple StoreKit 處理。付款與帳單資料完全不經過 Sudoku App 後端 — Sudoku App 透過 StoreKit 2 API 只收到「是否已購買」的布林狀態，以及 StoreKit 簽章驗證結果。
 
-The "Remove Ads" one-time non-consumable IAP (suggested $2.99 USD, automatically converted by each region's App Store) is processed by Apple StoreKit. Payment and billing data never reach the Sudoku App backend — the App only receives a boolean entitlement and StoreKit's cryptographic verification result via the StoreKit 2 API.
+The "Remove Ads" one-time non-consumable IAP (suggested $0.99 USD, automatically converted by each region's App Store) is processed by Apple StoreKit. Payment and billing data never reach the Sudoku App backend — the App only receives a boolean entitlement and StoreKit's cryptographic verification result via the StoreKit 2 API.
 
 購買紀錄由 Apple 在你的 Apple ID 下保管；同一 Apple ID 的其他裝置可透過 *Settings → [Your Name] → Media & Purchases → Restore Purchases* 還原購買。
 
