@@ -235,6 +235,14 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// `HomeModeCard` (same format as the four modes), so it needs a
     /// subtitle like theirs. Ignored when `statsRoute` is `nil`.
     public let statsSubtitleKey: LocalizedStringKey
+    /// Home avatar chip image (approved design variant A: trailing nav-bar
+    /// chip showing the game's own app icon, App Store / Apple Music
+    /// pattern). `nil` (default) → `GameHomeView` renders no chip, so
+    /// fixtures/previews that don't set this are unaffected. Each app
+    /// supplies its own icon art via `Image(_:bundle:)` against its own
+    /// bundle's asset catalog (mirrors how `theme` is a per-game concrete
+    /// value injected here rather than shared).
+    public let homeAvatarImage: Image?
 
     // MARK: Builder closures
 
@@ -281,6 +289,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         presentLeaderboard: (@MainActor () -> Void)? = nil,
         statsRoute: Route? = nil,
         statsSubtitleKey: LocalizedStringKey = "",
+        homeAvatarImage: Image? = nil,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
         makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
@@ -303,6 +312,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.presentLeaderboard = presentLeaderboard
         self.statsRoute = statsRoute
         self.statsSubtitleKey = statsSubtitleKey
+        self.homeAvatarImage = homeAvatarImage
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory
         self.makeHome = makeHome

@@ -342,7 +342,8 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
                     title: config.title,
                     adProvider: adProvider,
                     adGate: adGate,
-                    attPrimer: attPrimer
+                    attPrimer: attPrimer,
+                    homeAvatarImage: config.homeAvatarImage
                 )
             )
         }
