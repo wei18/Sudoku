@@ -92,12 +92,11 @@ pricing:
 
 # ── Screenshot ───────────────────────────────────────────────────────────
 # App Review requires one Review Screenshot per IAP showing where the
-# product is offered in-app. User-owned: run the app, capture the Home
-# screen with the "Remove Ads" row visible (iPhone 6.5" — 1284 × 2778 or
-# 1242 × 2688 per current ASC spec). Save to:
+# product is offered in-app. Captured from a Debug sim build (iPhone 17 Pro
+# Max, local StoreKit config → not-yet-purchased state) showing the Settings
+# screen with the "Remove Ads $0.99" row. Path:
 #   docs/app-store/metadata/sudoku/iap/remove-ads/review-screenshot.png
-# (path is git-tracked once the file lands)
 screenshot:
   required_size: '1290 × 2796 (iPhone 6.9") or 1242 × 2688 (iPhone 6.5")'
   expected_path: docs/app-store/metadata/sudoku/iap/remove-ads/review-screenshot.png
-  status: pending-user-capture
+  status: captured (1320×2868 RGB — iPhone 6.9" alt dimension per docs/app-store/screenshot-strategy.md; no iPhone sim ships the exact 1290×2796 pixel size)
