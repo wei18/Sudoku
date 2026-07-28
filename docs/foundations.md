@@ -257,7 +257,7 @@ Telemetry (facade, in `Telemetry` target)
 `Telemetry` target 內仍**保留** `TrackingSink` protocol，預設提供 **NoOp 實作**：
 
 ```swift
-public struct NoOpTrackingSink: TelemetrySink {
+public struct NoopTrackingSink: TelemetrySink {
     public init() {}
     public func receive(_ event: TelemetryEvent) { /* intentionally empty */ }
 }
