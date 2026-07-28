@@ -85,3 +85,9 @@ screenshot:
   required_size: "1290 × 2796 (iPhone 6.9\") or 1242 × 2688 (iPhone 6.5\")"
   expected_path: docs/app-store/metadata/minesweeper/iap/remove-ads/review-screenshot.png
   status: captured (1320×2868 RGB — iPhone 6.9" alt dimension per docs/app-store/screenshot-strategy.md; no iPhone sim ships the exact 1290×2796 pixel size)
+  # 2026-07-29: ASC-side asset is still the OLD one — API replace is blocked by
+  # MEDIA_ASSET_DELETE_NOT_ALLOWED (see asc-entity-error-recipes.md). Confirmed
+  # stale (shows "$2.99", missing Background Music/Haptics rows added since) vs.
+  # this committed file ("$0.99", current rows) — replacement is warranted but
+  # needs the ASC web UI (My Apps → Minesweeper → In-App Purchases → Remove Ads
+  # → Review Information) until the IAP leaves READY_TO_SUBMIT. User-owned.
