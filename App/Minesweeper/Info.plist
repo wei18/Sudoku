@@ -54,6 +54,12 @@
     -->
     <key>AppStoreID</key>
     <string>$(APP_STORE_ID)</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.puzzle-games</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSGameKitFriendListUsageDescription</key>
+    <string>Minesweeper uses your friend list to show your friends’ best times on the daily leaderboard.</string>
     <!--
       Required by App Tracking Transparency. The AdMob / UMP consent flow at
       app launch calls `ATTrackingManager.requestTrackingAuthorization` (see
@@ -65,12 +71,6 @@
     -->
     <key>NSUserTrackingUsageDescription</key>
     <string>Minesweeper uses your device's advertising identifier to keep ads relevant — not to build a profile of you. Decline and ads still show, just less tailored; or remove ads entirely.</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.puzzle-games</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>NSGameKitFriendListUsageDescription</key>
-    <string>Minesweeper uses your friend list to show your friends’ best times on the daily leaderboard.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

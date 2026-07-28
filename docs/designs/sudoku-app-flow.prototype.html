@@ -684,7 +684,7 @@
   <section class="flow" id="flow-end">
     <h2 class="flow-title">Completion &amp; Leaderboard</h2>
     <p class="flow-sub">
-      On solve, <code>BoardView</code> pushes <code>CompletionView</code>: a "Solved!" hero (elapsed time) plus a leaderboard slice (or sign-in / retry / loading variants). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally — there is no <code>.leaderboard</code> AppRoute (removed in issue #49); it's a side-effect, not a stack push.
+      On solve, <code>CompletionView</code> mounts as an <b>overlay on the live board</b> (#667 — not a stack push): a "Solved!" hero (elapsed time, mistakes, Close) — the leaderboard slice and its sign-in/loading variants were deleted by #698; leaderboard browsing lives on the GC dashboard only. Re-viewing an already-solved daily puzzle uses the standalone <code>.completion</code> route instead (#669). "View full leaderboard" and the Home <b>Leaderboard</b> card both present Apple's native <b>Game Center</b> dashboard modally — there is no <code>.leaderboard</code> AppRoute (removed in issue #49); it's a side-effect, not a stack push.
     </p>
     <div class="flow-frames">
 
@@ -708,8 +708,8 @@
           </div>
           <div class="home-indicator"></div>
         </div>
-        <div class="phone-label">S09 — Completion (hero + slice)</div>
-        <div class="phone-source">CompletionView · .loaded(slice)</div>
+        <div class="phone-label">S09 — Completion (hero card) — SHIPPED (overlay, not push; #667/#669; slice removed #698)</div>
+        <div class="phone-source">CompletionView (hero card; slice machinery deleted #698)</div>
       </div>
 
       <!-- S10 Game Center modal -->
@@ -1321,7 +1321,7 @@
     edge('S07','S08',{label:'tap Pause — overlay'});
     edge('S08','S07',{route:'up', kind:'back', label:'Tap to resume'});
     // Board -> Completion
-    edge('S07','S09',{route:'down', label:'solve — push .completion'});
+    edge('S07','S09',{route:'down', label:'solve — overlay, not push (#667)'});
     // Completion -> Game Center
     edge('S09','S10',{label:'View full — GC modal', kind:'modal'});
 
