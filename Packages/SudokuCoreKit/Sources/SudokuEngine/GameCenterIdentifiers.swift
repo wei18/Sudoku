@@ -7,8 +7,11 @@
 // reach — per the pattern set by `UTCDay` in PR #127 (issue #66 / M6).
 // Honest scope of the centralization (#466):
 //   - GameCenterClient consumes this structurally (`LeaderboardIDs.swift`
-//     re-exports `LeaderboardID`; `AchievementEvaluator` emits the
-//     `AchievementID` short ids) — structural-by-construction there.
+//     re-exports `LeaderboardID`) — structural-by-construction there.
+//     `AchievementEvaluator` (which emits the `AchievementID` short ids)
+//     moved out of GameCenterClient into SudokuAppComposition by #955; it
+//     still consumes `AchievementID` structurally, just from a different
+//     package.
 //   - ASCRegister is a STANDALONE CLI package that does not depend on
 //     SudokuCoreKit; `ASCRegister/Config.swift` keeps its own copy of these
 //     strings, reconciled at runtime by `ConfigConsistencyTests` ("fix them
@@ -75,7 +78,7 @@ public enum AchievementID {
     /// Expert Solver — complete any puzzle at Hard difficulty.
     public static let expertSolver = "expert_solver"
 
-    /// All 13 short IDs in table order (v1 first, v2.6 appended).
+    /// All 11 short IDs in table order (8 v1 first, 3 v2.6 appended).
     public static let allShortIds: [String] = [
         firstPuzzle,
         dailyCompleteOne,

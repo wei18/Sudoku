@@ -20,10 +20,17 @@
 // in v1 (CloudKit `PersonalRecord` + `SavedGame` are the durable record
 // of truth; GC is the "炫耀面" leaderboard layer only). The errors are
 // observable via the GameCenterClient's own OSLog in production.
+//
+// Moved here from GameCenterKit/Sources/GameCenterClient/ by #955, together
+// with AchievementEvaluator and SubmitGuards: this sink hard-codes the
+// Sudoku achievement prefix and the Sudoku Difficulty→LeaderboardKind
+// mapping below, so it was never game-agnostic. Behaviour is unchanged;
+// only the package it lives in moved.
 
 public import Foundation
 internal import SudokuEngine
 public import Telemetry
+public import GameCenterClient
 
 public actor GameCenterSink: TelemetrySink {
 

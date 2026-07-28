@@ -16,15 +16,22 @@ let swiftSettings: [SwiftSetting] = [
 // (Stage 3 of the staged module split — see docs/foundations.md §2 演進).
 //
 // Hosts the Game Center seam (LiveGameCenterClient, GKAuthDriver,
-// GKLeaderboardLoader, AchievementEvaluator, GameCenterSink). GameKit is
-// guarded inside `Sources/.../Live/*.swift` via `#if canImport(GameKit)`,
-// so the target compiles cross-platform (iOS + macOS); the SPM target
-// itself stays unconditional.
+// GKLeaderboardLoader). GameKit is guarded inside `Sources/.../Live/*.swift`
+// via `#if canImport(GameKit)`, so the target compiles cross-platform
+// (iOS + macOS); the SPM target itself stays unconditional.
+//
+// #955: AchievementEvaluator, GameCenterSink, and SubmitGuards moved to
+// SudokuKit/Sources/SudokuAppComposition/GameCenter/ — they were Sudoku-
+// specific (concrete SudokuEngine.Difficulty in their public API, a
+// PersistenceKit dependency only they used), not part of the game-agnostic
+// seam. GameCenterKit keeps its SudokuCoreKit dependency: LeaderboardIDs.swift
+// still needs SudokuEngine.Difficulty for the leaderboard-id mapping (a
+// requirement of the GameCenterClient protocol itself), so this is a
+// narrowing, not a full decoupling.
 //
 // Dep direction:
 //   SudokuCoreKit (SudokuEngine)
 //     ← TelemetryKit (Telemetry)
-//     ← PersistenceKit (Persistence — for PersonalRecord / leaderboard plumbing)
 //     ← GameCenterKit (GameCenterClient)
 
 let package = Package(
@@ -40,7 +47,6 @@ let package = Package(
     dependencies: [
         .package(name: "SudokuCoreKit", path: "../SudokuCoreKit"),
         .package(name: "TelemetryKit", path: "../TelemetryKit"),
-        .package(name: "PersistenceKit", path: "../PersistenceKit"),
     ],
     targets: [
         .target(
@@ -48,7 +54,6 @@ let package = Package(
             dependencies: [
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
                 .product(name: "Telemetry", package: "TelemetryKit"),
-                .product(name: "Persistence", package: "PersistenceKit"),
             ],
             swiftSettings: swiftSettings
         ),
@@ -69,9 +74,7 @@ let package = Package(
                 "GameCenterClient",
                 "GameCenterTesting",
                 .product(name: "SudokuEngine", package: "SudokuCoreKit"),
-                .product(name: "SudokuGameState", package: "SudokuCoreKit"),
                 .product(name: "Telemetry", package: "TelemetryKit"),
-                .product(name: "Persistence", package: "PersistenceKit"),
             ],
             swiftSettings: swiftSettings
         ),

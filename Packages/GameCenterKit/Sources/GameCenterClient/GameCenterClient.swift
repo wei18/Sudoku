@@ -23,9 +23,11 @@
 //   already resolves `Difficulty → LeaderboardKind` before crossing this
 //   boundary — see `GameCenterSink.leaderboardKind(forDifficulty:)`); dropping
 //   it removes the `SudokuEngine.Difficulty` leak from this game-agnostic
-//   protocol (#947). `AchievementEvaluator` in this same package still
-//   re-exports SudokuEngine at module level — that is a packaging problem
-//   tracked separately (#955), not a conformer constraint.
+//   protocol (#947). `AchievementEvaluator` (which re-exported SudokuEngine
+//   at module level — the packaging problem tracked as #955) has since
+//   moved out of this package into SudokuAppComposition, along with
+//   GameCenterSink and SubmitGuards; they were Sudoku-specific, not part
+//   of this game-agnostic seam.
 
 public import Foundation
 
