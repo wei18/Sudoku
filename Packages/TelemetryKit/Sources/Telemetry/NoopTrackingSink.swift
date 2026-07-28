@@ -1,4 +1,4 @@
-// NoOpTrackingSink — placeholder for the future tracking branch
+// NoopTrackingSink — placeholder for the future tracking branch
 // (foundations.md §6).
 //
 // v1 ships with no third-party tracking SDK (Apple three-piece only:
@@ -7,7 +7,7 @@
 // real tracking sink (TelemetryDeck / first-party CloudKit pipeline),
 // only the sink implementation swaps — every caller is unchanged.
 
-public struct NoOpTrackingSink: TelemetrySink {
+public struct NoopTrackingSink: TelemetrySink {
     public init() {}
 
     public func receive(_ event: TelemetryEvent) async {

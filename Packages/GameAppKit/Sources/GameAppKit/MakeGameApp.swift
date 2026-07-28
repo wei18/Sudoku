@@ -87,7 +87,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let completionSink = DeferredSink()
     let telemetry = Telemetry(sinks: [
         OSLogSink(subsystem: config.subsystem, category: "Telemetry"),
-        NoOpTrackingSink(),
+        NoopTrackingSink(),
         completionSink
     ])
     LiveMetricKitRetainer.install(downstream: telemetry)

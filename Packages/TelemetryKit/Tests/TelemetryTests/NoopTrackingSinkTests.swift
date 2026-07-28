@@ -2,15 +2,15 @@ import SudokuEngine
 import Testing
 @testable import Telemetry
 
-@Suite("NoOpTrackingSink")
-struct NoOpTrackingSinkTests {
+@Suite("NoopTrackingSink")
+struct NoopTrackingSinkTests {
 
     @Test func instantiable() {
-        _ = NoOpTrackingSink()
+        _ = NoopTrackingSink()
     }
 
     @Test func receiveIsNoOp() async {
-        let sink = NoOpTrackingSink()
+        let sink = NoopTrackingSink()
         await sink.receive(.moveUndone)
         await sink.receive(.puzzleCompleted(
             puzzleId: "p", mode: .daily, difficulty: .easy, elapsedSeconds: 1, mistakeCount: 0

@@ -4,13 +4,16 @@ Status: SHIPPED (see AS-BUILT NOTE below) — the body is retained as a historic
 Author: Leader (AI Collaboration Mode)
 Origin: user goal "planning 一個新 repo，像 iOS agent developer skills，把這 repo 可移植的 skills 全部挪過去，用 submodule 概念連結回來"
 
-> **AS-BUILT NOTE (verified 2026-07-10) — SHIPPED, diverges from the plan below.**
+> **AS-BUILT NOTE (verified 2026-07-10; count re-verified 2026-07-28) — SHIPPED,
+> diverges from the plan below.**
 > Landed as a marketplace with **2 plugins** — `apple-dev-skills` and
 > `collaboration-skills` — totaling **32** portable skills across both, namespaces
-> `apple-dev-skills:` and `collaboration-skills:`; **9** project-bound skills stay
-> flat in this repo (see `CLAUDE.md` §Where truth lives). This diverges from §2's
-> single-plugin / 26-skill / one-namespace plan — treat this note, not the
-> historical counts below, as current truth.
+> `apple-dev-skills:` and `collaboration-skills:`; **8** project-bound skills stay
+> flat in this repo (see `CLAUDE.md` §Where truth lives) — `screen-contract-spec`'s
+> master copy moved out to the `design-app` playbook 2026-07-21, reverting §5's
+> 2026-07-13 count of 9 back to 8. This diverges from §2's single-plugin /
+> 26-skill / one-namespace plan — treat this note, not the historical counts
+> below, as current truth.
 
 ## 1. Goal
 
@@ -120,17 +123,23 @@ Sudoku-spec/ (this repo)
 └── .claude/skills/
     ├── apple-dev-skills/          ← git submodule → apple-dev-skills@skills-dir
     │   (skills surface as apple-dev-skills:<skill>)
-    └── <9 project-bound skills>/  ← stay flat, un-namespaced (plan said 8; as-built = 9, see AS-BUILT NOTE)
+    └── <8 project-bound skills>/  ← stay flat, un-namespaced (plan said 8; as-built = 8 as of 2026-07-28, see AS-BUILT NOTE)
 ```
 
 This repo continues to have access to all skills; the 26 moved ones simply carry
 the `apple-dev-skills:` prefix.
 
-## 5. Classification (historical plan: 34 → move 26 / stay 8; as-built: 32 move across 2 plugins / stay 9 — see AS-BUILT NOTE)
+## 5. Classification (historical plan: 34 → move 26 / stay 8; as-built: 32 move across 2 plugins / stay 8 as of 2026-07-28 — see AS-BUILT NOTE)
 
 > **UPDATE (2026-07-13):** Stay count corrected to **9** — `screen-contract-spec`
 > (added to this repo after this spec was written) is also project-bound and
 > stays flat; item 9 below is appended accordingly. See the AS-BUILT NOTE above.
+>
+> **UPDATE (2026-07-28):** Stay count reverted to **8** — `screen-contract-spec`'s
+> master copy moved out to the `design-app` playbook 2026-07-21 (commit
+> `6e5b1a2`, "move screen-contract-spec master copy to design-app playbook"); it
+> is no longer a project-bound skill in this repo. Item 9 below is retained for
+> history but no longer counts. See the AS-BUILT NOTE above.
 
 ### Stay (project-bound — names this repo's mise tasks / specific apps / pipelines)
 1. `game-factory-composition` — Sudoku/MS + GameAppKit `makeGameApp`
@@ -142,6 +151,8 @@ the `apple-dev-skills:` prefix.
 7. `asc-ops-handoff` — the repo apps, ASCRegister CLI, app-ids
 8. `interactive-sim-ux-audit` — drives the three specific apps
 9. `screen-contract-spec` — nav/flow spec-first methodology for this repo's screens
+   *(moved out 2026-07-21 to the `design-app` playbook — see the 2026-07-28
+   UPDATE above; no longer counted)*
    *(added 2026-07-13 per the UPDATE above; not part of the original 2026-06-24 plan)*
 
 ### Move (portable — 26)

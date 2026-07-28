@@ -1299,7 +1299,7 @@
     edge('M11','M12',{kind:'state', label:'hit mine → lost'});
     edge('M12','M13',{kind:'state', label:'macOS layout'});
     // Board -> Completion (win)
-    edge('M09','M14',{route:'down', label:'cleared — push .completion'});
+    edge('M09','M14',{route:'down', kind:'state', label:'cleared — overlay, not push (#388)'});
     // Completion -> Game Center
     edge('M14','M15',{label:'View full — GC modal', kind:'modal'});
     // Settings internal
