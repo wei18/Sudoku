@@ -79,17 +79,17 @@ import Telemetry
 
     @Test func monetizationControllerUsesMSProductId() {
         // Sanity: the parameterised `productId` flows through. Fallback
-        // display price = "$2.99" because availableProducts is empty before
+        // display price = "$0.99" because availableProducts is empty before
         // `bootstrap()` runs.
         let bag = MinesweeperAppComposition.preview()
-        #expect(bag.monetizationController.removeAdsDisplayPrice == "$2.99")
+        #expect(bag.monetizationController.removeAdsDisplayPrice == "$0.99")
         #expect(minesweeperRemoveAdsProductId == "com.wei18.minesweeper.iap.remove_ads")
     }
 
     @Test func monetizationControllerReadsMSProductDisplayPrice() async throws {
         // Proves the controller is wired to `minesweeperRemoveAdsProductId`:
         // seed a product under that id with a price that differs from the
-        // "$2.99" empty-catalog fallback, bootstrap, and assert the real price
+        // "$0.99" empty-catalog fallback, bootstrap, and assert the real price
         // surfaces. If the controller were constructed with Sudoku's productId,
         // the lookup would miss and fall back — failing this test.
         let bag = MinesweeperAppComposition.preview()

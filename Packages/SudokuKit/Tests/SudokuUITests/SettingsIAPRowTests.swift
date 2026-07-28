@@ -66,10 +66,10 @@ struct SettingsIAPRowTests {
         #expect(controller.removeAdsDisplayPrice == "$2.99")
     }
 
-    @Test func unpurchased_displayPrice_fallsBackTo2_99WhenLookupEmpty() async {
+    @Test func unpurchased_displayPrice_fallsBackTo0_99WhenLookupEmpty() async {
         let (controller, _, _) = await makeController(products: [])
         await controller.bootstrap()
-        #expect(controller.removeAdsDisplayPrice == "$2.99")
+        #expect(controller.removeAdsDisplayPrice == "$0.99")
     }
 
     // MARK: - Purchased: Remove Ads CTA hidden

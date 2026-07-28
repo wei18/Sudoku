@@ -3,7 +3,7 @@
 # Product ID: com.wei18.sudoku.iap.remove_ads
 # Apple ID:   6772925351
 # Type:       Non-Consumable (one-time purchase)
-# Price:      USD 2.99 tier
+# Price:      USD 0.99 tier
 # Family Sharing: enabled
 #
 # Per-locale IAP localization. ASC field limits:
@@ -85,7 +85,7 @@ review_notes: |
 # ASC requires explicit price tier selection. Tier may shift with Apple
 # price tier reforms; canonical value is what's saved in ASC.
 pricing:
-  tier: "USD 2.99"
+  tier: "USD 0.99"
   family_sharing: true
   cleared_for_sale: true
   all_countries: true

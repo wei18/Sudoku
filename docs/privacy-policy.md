@@ -91,9 +91,9 @@ See Google's privacy policy at <https://policies.google.com/privacy> for AdMob d
 
 ### 內購 / In-App Purchase
 
-「Remove Ads」一次性非消耗型內購（建議售價 $2.99 USD，依各地區 App Store 匯率自動換算）由 Apple StoreKit 處理。付款與帳單資料完全不經過 Sudoku App 後端 — Sudoku App 透過 StoreKit 2 API 只收到「是否已購買」的布林狀態，以及 StoreKit 簽章驗證結果。
+「Remove Ads」一次性非消耗型內購（建議售價 $0.99 USD，依各地區 App Store 匯率自動換算）由 Apple StoreKit 處理。付款與帳單資料完全不經過 Sudoku App 後端 — Sudoku App 透過 StoreKit 2 API 只收到「是否已購買」的布林狀態，以及 StoreKit 簽章驗證結果。
 
-The "Remove Ads" one-time non-consumable IAP (suggested $2.99 USD, automatically converted by each region's App Store) is processed by Apple StoreKit. Payment and billing data never reach the Sudoku App backend — the App only receives a boolean entitlement and StoreKit's cryptographic verification result via the StoreKit 2 API.
+The "Remove Ads" one-time non-consumable IAP (suggested $0.99 USD, automatically converted by each region's App Store) is processed by Apple StoreKit. Payment and billing data never reach the Sudoku App backend — the App only receives a boolean entitlement and StoreKit's cryptographic verification result via the StoreKit 2 API.
 
 購買紀錄由 Apple 在你的 Apple ID 下保管；同一 Apple ID 的其他裝置可透過 *Settings → [Your Name] → Media & Purchases → Restore Purchases* 還原購買。
 
