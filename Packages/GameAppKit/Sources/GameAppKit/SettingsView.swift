@@ -133,6 +133,7 @@ public struct SettingsView<Banner: View>: View {
             version: viewModel.appVersion,
             tint: theme.accent.primary.resolved,
             clearCache: { await viewModel.clearCache() },
+            isCacheStateReady: viewModel.isCacheStateReady,
             reminderSettings: reminderSettings.map {
                 // #287: shared Reminders section — same building block both apps
                 // mount; map the entry into the shell's config.
