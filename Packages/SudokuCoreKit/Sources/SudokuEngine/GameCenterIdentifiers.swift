@@ -78,7 +78,7 @@ public enum AchievementID {
     /// Expert Solver — complete any puzzle at Hard difficulty.
     public static let expertSolver = "expert_solver"
 
-    /// All 13 short IDs in table order (v1 first, v2.6 appended).
+    /// All 11 short IDs in table order (8 v1 first, 3 v2.6 appended).
     public static let allShortIds: [String] = [
         firstPuzzle,
         dailyCompleteOne,
