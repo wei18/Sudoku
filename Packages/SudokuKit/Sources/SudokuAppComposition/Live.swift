@@ -130,6 +130,12 @@ extension SudokuAppComposition {
             // override of #773's flat-row format), so it needs a subtitle
             // like the four modes above.
             statsSubtitleKey: "Wins / times / averages",
+            // Home avatar chip (approved design variant A): the app's own
+            // icon art, added as a dedicated `HomeAvatar` imageset (copy of
+            // the AppIcon light/dark art) in this app's own asset catalog —
+            // `Bundle.main` at runtime resolves to the running App target's
+            // bundle, which is where Assets.xcassets is copied.
+            homeAvatarImage: Image("HomeAvatar", bundle: .main),
             // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
             // `ResumeCandidate` (the only layer that knows the Sudoku type).
             // Strings match the former `ResumePill` rendering exactly so snapshot

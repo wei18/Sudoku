@@ -64,7 +64,7 @@ struct MinesweeperHomeSnapshotTests {
     /// The Home surface as the live root mounts it: just the view model, no ad
     /// provider / monetization controller, wrapped in a NavigationStack so the
     /// `.navigationTitle` chrome renders.
-    private func homeView() -> some View {
+    private func homeView(homeAvatarImage: Image? = nil) -> some View {
         let (rootVM, homeVM) = makeMSHomeViewModels()
         return NavigationStack {
             GameHomeView(
@@ -81,7 +81,8 @@ struct MinesweeperHomeSnapshotTests {
                 attPrimer: ATTPrimerCoordinator(
                     isNotDetermined: { false },
                     requestSystemPrompt: {}
-                )
+                ),
+                homeAvatarImage: homeAvatarImage
             )
         }
         .environment(\.theme, MinesweeperTheme())
@@ -151,6 +152,27 @@ struct MinesweeperHomeSnapshotTests {
         )
         assertUISnapshot(of: host, as: .image, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-mac-dark-regular", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - Home avatar chip (approved design variant A)
+
+    // NEW baseline with `homeAvatarImage` set, recorded once and eyeballed
+    // (chip visible, trailing the nav title). Every snapshot above passes no
+    // `homeAvatarImage` (default `nil` in `homeView(homeAvatarImage:)`), so
+    // their baselines are untouched. A system symbol stands in for the app's
+    // real icon art here — this test target has no app-bundle asset
+    // catalog; `MinesweeperAppComposition.live()` wires the real
+    // `HomeAvatar` imageset (see Live.swift).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotHome_iPhone_light_withAvatar() {
+        let host = hostingView(
+            homeView(homeAvatarImage: Image(systemName: "app.fill")),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Home-iPhone-light-compact-avatar", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Home-iPhone-light-compact-avatar", record: SnapshotMode.recordMode)
     }
 }
 #endif

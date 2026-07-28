@@ -285,5 +285,42 @@ struct HomeViewTests {
         }
         assertViewStructure(of: host, named: "HomeView-Mac-light", record: SnapshotMode.recordMode)
     }
+
+    // Home avatar chip (approved design variant A): a NEW baseline with
+    // `homeAvatarImage` set, recorded once and eyeballed (chip visible,
+    // trailing the nav title). Every other snapshot above passes no
+    // `homeAvatarImage` (default `nil`), so their baselines are untouched.
+    // A system symbol stands in for the app's real icon art here — this
+    // test target has no app-bundle asset catalog; `SudokuAppComposition
+    // .live()` wires the real `HomeAvatar` imageset (see Live.swift).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightWithAvatar() {
+        let (rootVM, homeVM) = makeSudokuHomeViewModel()
+        let host = hostingView(
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Sudoku",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                ),
+                homeAvatarImage: Image(systemName: "app.fill")
+            ),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light-avatar")
+        }
+        assertViewStructure(of: host, named: "HomeView-iPhone-light-avatar", record: SnapshotMode.recordMode)
+    }
     #endif
 }

@@ -33,6 +33,7 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
     private let adProvider: any AdProvider
     private let adGate: AdGate
     private let attPrimer: ATTPrimerCoordinator
+    private let homeAvatarImage: Image?
 
     @Environment(\.theme) private var theme
 
@@ -42,7 +43,8 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
         title: LocalizedStringKey,
         adProvider: any AdProvider,
         adGate: AdGate,
-        attPrimer: ATTPrimerCoordinator
+        attPrimer: ATTPrimerCoordinator,
+        homeAvatarImage: Image? = nil
     ) {
         self.viewModel = viewModel
         self.rootViewModel = rootViewModel
@@ -50,6 +52,7 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
         self.adProvider = adProvider
         self.adGate = adGate
         self.attPrimer = attPrimer
+        self.homeAvatarImage = homeAvatarImage
     }
 
     public var body: some View {
@@ -61,6 +64,35 @@ public struct GameHomeView<Route: Hashable & Sendable>: View {
         )
         .navigationTitle(title)
         .background(theme.surface.background.resolved)
+        .toolbar {
+            if let homeAvatarImage {
+                ToolbarItem(placement: .primaryAction) {
+                    avatarChip(homeAvatarImage)
+                }
+            }
+        }
+    }
+
+    // MARK: - Home avatar chip (approved design variant A)
+
+    /// Trailing nav-bar chip showing the game's own app icon (App Store /
+    /// Apple Music pattern). Only added to the toolbar when `homeAvatarImage`
+    /// is non-nil — the default for every existing call site / fixture, so
+    /// they render no chip and gain no extra toolbar item. Fixed 34×34pt —
+    /// does NOT scale with Dynamic Type. Decorative: the nav title already
+    /// announces the app name, so this is `.accessibilityHidden`.
+    private func avatarChip(_ image: Image) -> some View {
+        image
+            .resizable()
+            .scaledToFill()
+            .frame(width: 34, height: 34)
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.18), radius: 2, x: 0, y: 1)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Statistics entry (#773 / #844)
