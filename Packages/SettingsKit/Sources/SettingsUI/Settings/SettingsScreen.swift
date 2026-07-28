@@ -7,7 +7,7 @@
 //   2. Reminders    — `ReminderSettingsSection` (when `reminderSettings != nil`)
 //   3. About        — `SettingsAboutVersionRow` + injected `aboutExtraRows` slot
 //   4. Notices      — `SettingsNoticesSection` (when `notices != nil`)
-//   5. Storage      — `SettingsStorageSection(clearCache:)`
+//   5. Storage      — `SettingsStorageSection(isCacheStateReady:clearCache:)`
 //
 // This is the shared *assembly*; each app keeps its OWN `SettingsView` wrapper
 // that builds the config + slots and supplies the host-specific `.task`
@@ -43,6 +43,10 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
     private let aboutExtraRows: () -> AboutExtraRows
     private let notices: SettingsNoticesConfig?
     private let clearCache: @MainActor () async -> Void
+    // #956: forwarded to `SettingsStorageSection` — see its doc comment /
+    // `SettingsViewModel.isCacheStateReady`. Defaults `true` so previews /
+    // tests without an async bootstrap stay unchanged.
+    private let isCacheStateReady: Bool
     private let tint: Color
     private let banner: () -> Banner
     // Game Center entry point: when non-nil the shared `Section("Game Center")`
@@ -76,6 +80,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         version: String,
         tint: Color,
         clearCache: @escaping @MainActor () async -> Void,
+        isCacheStateReady: Bool = true,
         reminderSettings: SettingsScreenReminderConfig? = nil,
         audioSettings: AudioSettingsModel? = nil,
         notices: SettingsNoticesConfig? = nil,
@@ -90,6 +95,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         self.version = version
         self.tint = tint
         self.clearCache = clearCache
+        self.isCacheStateReady = isCacheStateReady
         self.reminderSettings = reminderSettings
         self.audioSettings = audioSettings
         self.notices = notices
@@ -208,7 +214,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
             }
 
             // 5. Storage — shared section. Wires the host-supplied clearCache.
-            SettingsStorageSection(clearCache: clearCache)
+            SettingsStorageSection(isCacheStateReady: isCacheStateReady, clearCache: clearCache)
         }, banner: banner)
         // #940: the primer + denied-explainer sheets used to be attached on
         // `ReminderSettingsSection`'s `Section` INSIDE the Form above — a

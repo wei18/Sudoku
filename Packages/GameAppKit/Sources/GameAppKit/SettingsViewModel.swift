@@ -45,6 +45,17 @@ public final class SettingsViewModel {
     /// moved to `ToastController` in v2.4.6.
     public private(set) var clearCacheConfirmation: String?
 
+    /// #956: flips to `true` once `bootstrap()` has resolved `resumeCandidate`
+    /// — whether or not one actually exists — i.e. once `clearCache()`'s
+    /// `if let candidate = resumeCandidate` precondition has settled. Before
+    /// that, `clearCache()` silently takes the "nothing to clear" success
+    /// branch even when a candidate is about to load, a race that surfaced
+    /// as an intermittent host-driven E2E flake under CPU contention
+    /// (`test_clearCacheCancelAndFailureToast_N19`). `SettingsStorageSection`
+    /// renders a stable accessibility anchor only while this is `true`, so a
+    /// test can wait for the precondition instead of racing the async load.
+    public private(set) var isCacheStateReady = false
+
     @ObservationIgnored
     private let persistence: any PersistenceProtocol
     @ObservationIgnored
@@ -80,6 +91,9 @@ public final class SettingsViewModel {
                 source: "SettingsViewModel.bootstrap"
             )
         }
+        // #956: settled either way (candidate present, absent, or the fetch
+        // itself failed) — `clearCache()`'s precondition check is now safe.
+        self.isCacheStateReady = true
     }
 
     /// Confirm + execute "Clear cache": deletes the active in-progress

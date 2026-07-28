@@ -813,7 +813,12 @@ under it), Sound section (mute/music-volume/sfx-volume/music-enabled/haptics
 toggles, ids `audio.settings.*`), About section (Version row +, Sudoku-only,
 Generator row), Notices section (acknowledgements deep-link, copyright),
 Storage section "Clear cache" button (id `settings.storage.clearCache`,
-#935 batch 5 — see `CLEAR-CACHE-DIALOG`). A bottom-center toast overlay
+#935 batch 5 — see `CLEAR-CACHE-DIALOG`). #956: a stable, non-localized,
+zero-size E2E precondition anchor `settings.storage.cacheReady` sits on a
+`.background` marker sibling to that button — present only once
+`SettingsViewModel.isCacheStateReady` is `true` (its async `resumeCandidate`
+load has settled) — same "sibling marker, not a container id" pattern as
+`sudoku.dailyHub.root`. A bottom-center toast overlay
 (`ToastController`/`ToastView`, ids `monetization.toast.success` /
 `monetization.toast.failure` / `monetization.toast.info` — the `.info` id
 added #950 for the "nothing to restore" outcome) floats above the whole
@@ -975,7 +980,10 @@ games are not affected."`, "Clear cache" (destructive, a11y id
 .cancel`, a11y id `settings.storage.clearCache.cancel` — present in the
 SwiftUI source but, on this environment's presentation below, the system
 renders no separate accessibility element for it; Cancel is reachable only
-via the backdrop-dismiss tap, see Covering behavior).
+via the backdrop-dismiss tap, see Covering behavior). #956: the entry-point
+row (not the dialog itself) additionally carries a zero-size E2E
+precondition anchor `settings.storage.cacheReady` — see `SETTINGS`'s
+element inventory above.
 
 **Per-interaction outcome:**
 
@@ -989,8 +997,13 @@ this is verified (idb `ui_describe_all`, #935 batch 5) to present as a
 CENTERED POPOVER with a full-screen `PopoverDismissRegion` backdrop, NOT a
 bottom action sheet — a tap anywhere outside the dialog's centered box
 dismisses it (equivalent to Cancel); the `role: .cancel` button itself
-renders no discrete accessibility element in this presentation. Floats above
-`SETTINGS`, which stays visible but non-interactive until dismissed.
+renders no discrete accessibility element in this presentation, but the
+backdrop DOES: it is its own discrete accessibility element (role Group,
+AXLabel "dismiss popup", `AXUniqueId "PopoverDismissRegion"`) — the E2E test
+taps that element directly (#956) rather than a fixed normalized-offset
+coordinate, so the tap resolves against the CURRENT layout on every run.
+Floats above `SETTINGS`, which stays visible but non-interactive until
+dismissed.
 
 **State variants:** none.
 
@@ -1003,6 +1016,35 @@ and throws from `deleteAbandoned`, so the failure-toast branch fires
 deterministically. `App/SudokuE2ETests/SudokuE2ETests+MonetizationFlows.swift`
 / `App/MinesweeperE2ETests/MinesweeperE2ETests.swift`
 `test_clearCacheCancelAndFailureToast_N19`.
+
+**#956 flake note:** intermittently failed (twice during #954's acceptance
+pass). The issue's original suspected cause — the Cancel half's fixed
+backdrop-tap coordinate — turned out to be WRONG: repeat-running under
+contention reproduced the flake at a consistent ~15–50% rate (worse under
+heavier host load, but present even in a clean single-suite run with no
+deliberate contention), always at the SAME assertion, with the
+Cancel/backdrop-dismiss half always succeeding. Root cause: a genuine
+precondition race in `SettingsViewModel.clearCache()`
+(`Packages/GameAppKit/Sources/GameAppKit/SettingsViewModel.swift`) —
+`deleteAbandoned` only runs `if let candidate = resumeCandidate`, and
+`resumeCandidate` is populated by `bootstrap()`'s async
+`persistence.latestInProgress()` fetch; if that fetch hadn't resolved by
+the time the test tapped Confirm, `clearCache()` silently fell through to
+the unconditional SUCCESS toast branch instead of the failure one, so the
+awaited failure toast never appeared. Closed by adding
+`SettingsViewModel.isCacheStateReady` (flips `true` once `bootstrap()`
+settles either way) and the `settings.storage.cacheReady` anchor above —
+the test now waits for that anchor before ever tapping the row, so it can't
+race the async load.
+Also hardened, per issue direction (a) — genuine improvements to the
+Cancel/backdrop half, confirmed correct by repeat-running (every pre-fix
+failure was at the toast assertion, never at these waits): wait for the
+confirm button to be `isHittable` (not merely `exists`) before every tap,
+and re-query a fresh handle after reopening rather than reusing the
+pre-Cancel one, which a still-tearing-down duplicate from the first
+presentation could satisfy without being the live, on-screen button; and
+Cancel now taps the popover's own `PopoverDismissRegion` backdrop element
+instead of a fixed normalized-offset coordinate.
 
 ---
 

@@ -113,9 +113,18 @@ public struct SettingsAboutExtraRow: View {
 /// active in-progress saved game).
 public struct SettingsStorageSection: View {
     private let clearCache: @MainActor () async -> Void
+    // #956: `true` once the host's `clearCache()` precondition (its
+    // `resumeCandidate` load) has settled — see `SettingsViewModel.isCacheStateReady`.
+    // Defaults `true` so previews / tests (which never wire an async
+    // bootstrap) keep the marker present unchanged.
+    private let isCacheStateReady: Bool
     @State private var showClearCacheConfirmation = false
 
-    public init(clearCache: @escaping @MainActor () async -> Void) {
+    public init(
+        isCacheStateReady: Bool = true,
+        clearCache: @escaping @MainActor () async -> Void
+    ) {
+        self.isCacheStateReady = isCacheStateReady
         self.clearCache = clearCache
     }
 
@@ -135,6 +144,20 @@ public struct SettingsStorageSection: View {
             // #935 batch 5: stable, non-localized anchor for the N19
             // clear-cache negative-flow E2E test.
             .accessibilityIdentifier("settings.storage.clearCache")
+            // #956: zero-size, non-localized anchor that exists ONLY once
+            // `clearCache()`'s precondition has settled — lets a host-driven
+            // E2E test wait for it before tapping Confirm instead of racing
+            // the async load (the N19 flake's actual root cause). Composed
+            // as a SIBLING `.background` layer, not a container id, per the
+            // #937 "container id clobbers descendant ids" lesson — mirrors
+            // `DailyHubView`'s `sudoku.dailyHub.root` marker (#935 batch 3).
+            .background(alignment: .topLeading) {
+                if isCacheStateReady {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .accessibilityIdentifier("settings.storage.cacheReady")
+                }
+            }
         }
         .confirmationDialog(
             "Reset session cache",
