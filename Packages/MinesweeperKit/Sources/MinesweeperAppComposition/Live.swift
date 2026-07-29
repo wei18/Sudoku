@@ -223,8 +223,23 @@ extension MinesweeperAppComposition {
         dailyOverlayReading: (any MinesweeperDailyOverlayReading)?,
         personalRecordStore: MinesweeperPersonalRecordStore
     ) -> any RouteFactory<AppRoute> {
-        LiveRouteFactory(
-            monetizationController: deps.monetizationController,
+        // #968: macOS has zero ads to remove (Google ships no macOS AdMob/UMP
+        // xcframework slice — D-v2-03), so Settings must not offer "Remove
+        // Ads" / "Restore Purchases" there (Guideline 2.1 / 3.1.1 — the IAP
+        // would visibly do nothing). `SettingsView` already renders the whole
+        // Purchases section only when its `monetizationController` param is
+        // non-nil, so passing `nil` into `LiveRouteFactory` on macOS is the
+        // entire fix; `deps.monetizationController` itself stays wired
+        // unconditionally (unchanged plumbing).
+        let settingsMonetizationController: MonetizationStateController? = {
+            #if os(iOS)
+            deps.monetizationController
+            #else
+            nil
+            #endif
+        }()
+        return LiveRouteFactory(
+            monetizationController: settingsMonetizationController,
             adProvider: deps.adProvider,
             adGate: deps.adGate,
             persistence: deps.persistence,

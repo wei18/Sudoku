@@ -365,7 +365,7 @@ create_and_push_tf_tag() {
 # JWT construction (mirrors Packages/ASCRegisterKit/Sources/ASCRegister/JWT.swift)
 # and the builds/betaBuildLocalizations API calls.
 #
-# $1=app $2=build $3=changelog_file $4=mode ("warn" | "strict") $5=dry_run (0/1)
+# $1=app $2=build $3=changelog_file $4=mode ("warn" | "strict") $5=dry_run (0/1) $6=platform (ios|macos)
 #
 # mode="warn" (the automatic post-upload call site): the upload already
 # succeeded, so this function ALWAYS returns 0 — any ASC-side problem
@@ -374,8 +374,14 @@ create_and_push_tf_tag() {
 # backfill entry point): the same problems print as "error:" and the function
 # returns 1, letting the caller aggregate failures and exit non-zero — there
 # is no "upload already succeeded" to protect in that mode.
+#
+# $6/platform (#968): `tf:upload <app> all` gives iOS and macOS the SAME
+# build number (UTC minute) — asc_whats_new.py's /builds lookup used to
+# filter by app+version only, so a 2-platform run could match either
+# platform's build and sync What-to-Test onto the wrong one. Forwarded
+# straight through as `--platform`, which the script now requires.
 run_whats_new() {
-    local app="$1" build="$2" changelog="$3" mode="$4" dry="$5"
+    local app="$1" build="$2" changelog="$3" mode="$4" dry="$5" platform="$6"
     local app_id_var="ASC_APP_ID_$(printf '%s' "$app" | tr '[:lower:]' '[:upper:]')"
     local app_id="${!app_id_var:-}"
     local log_prefix="error:"; [[ "$mode" == "warn" ]] && log_prefix="warning:"
@@ -402,7 +408,7 @@ run_whats_new() {
     local code=0
     python3 "$REPO_ROOT/mise-tasks/tf/asc_whats_new.py" \
         --key-path "$ASC_KEY_RESOLVED" --key-id "$ASC_KEY_ID" --issuer-id "$ASC_ISSUER" \
-        --app-id "$app_id" --build "$build" --changelog "$changelog" \
+        --app-id "$app_id" --build "$build" --changelog "$changelog" --platform "$platform" \
         --timeout "$WHATS_NEW_TIMEOUT" $dry_flag \
         || code=$?
 
@@ -778,7 +784,7 @@ if [[ "$WHATS_NEW_ONLY" -eq 1 ]]; then
     for target_app in "${TARGET_APPS[@]}"; do
         for target_plat in $( [[ "$PLAT" == "all" ]] && echo "ios macos" || echo "$PLAT" ); do
             changelog_file="$BUILD_DIR/${target_app}-${target_plat}-${BUILD_NUMBER}-changelog.md"
-            run_whats_new "$target_app" "$BUILD_NUMBER" "$changelog_file" strict "$DRY_RUN" \
+            run_whats_new "$target_app" "$BUILD_NUMBER" "$changelog_file" strict "$DRY_RUN" "$target_plat" \
                 || WHATS_NEW_FAILED+=("${target_app}/${target_plat}")
         done
     done
@@ -937,7 +943,7 @@ for record in "${EXPORT_RECORDS[@]}"; do
         # above: the upload already succeeded, so a slow/failed ASC sync is
         # never allowed to fail this task. run_whats_new prints its own
         # warning + retry hint on any non-zero outcome.
-        run_whats_new "$r_app" "$BUILD_NUMBER" "$BUILD_DIR/${r_app}-${r_plat}-${BUILD_NUMBER}-changelog.md" warn 0 || true
+        run_whats_new "$r_app" "$BUILD_NUMBER" "$BUILD_DIR/${r_app}-${r_plat}-${BUILD_NUMBER}-changelog.md" warn 0 "$r_plat" || true
     else
         echo "error: TestFlight upload FAILED for $r_app $r_plat (altool exit $code) — see the [${r_app}-${r_plat}] tagged output above." >&2
         FAILED_APPS+=("${r_app}/${r_plat}")
