@@ -145,12 +145,12 @@ COPY = {
         },
         "02-daily": {
             "en":      ("Three boards. Every day.", "Beginner, intermediate, expert — world-shared."),
-            "zh-Hant": ("每天三局。世界同局。", "初級、中級、專家，全球同一題。"),
-            "zh-Hans": ("每天三局。世界同局。", "初级、中级、专家，全球同一题。"),
+            "zh-Hant": ("每天三局。世界同局。", "初級、中級、高級，全球同一題。"),
+            "zh-Hans": ("每天三局。世界同局。", "初级、中级、高级，全球同一题。"),
             "ja":      ("毎日3面。世界中で同じ盤面。", "初級・中級・上級、世界共通の盤面。"),
-            "ko":      ("매일 세 개의 보드. 전 세계 동일.", "초급, 중급, 전문가 — 전 세계 공통."),
-            "es":      ("Tres tableros. Cada día.", "Principiante, intermedio, experto — el mismo para todos."),
-            "th":      ("สามกระดาน ทุกวัน", "เริ่มต้น กลาง ผู้เชี่ยวชาญ — เหมือนกันทั่วโลก"),
+            "ko":      ("매일 세 개의 보드. 전 세계 동일.", "초급, 중급, 고급 — 전 세계 공통."),
+            "es":      ("Tres tableros. Cada día.", "Principiante, intermedio, avanzado — el mismo para todos."),
+            "th":      ("สามกระดาน ทุกวัน", "มือใหม่ ระดับกลาง ขั้นสูง — เหมือนกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Flag, reveal, solve.", "Logical deduction. No guessing required."),
