@@ -44,7 +44,9 @@ internal struct ReviewSubmissionSummary: Sendable, Equatable {
 internal struct AppLevelSnapshot: Sendable, Equatable {
     internal let contentRightsDeclarationSet: Bool
     internal let priceScheduleExists: Bool
-    internal let ageRatingAnsweredCount: Int
+    /// Expected `ageRatingDeclaration` fields (`Preflight.expectedAgeRatingFields`)
+    /// with NO value in the fetched declaration — empty means fully answered.
+    internal let ageRatingMissingFields: [String]
     internal let reviewSubmissions: [ReviewSubmissionSummary]
     internal let iapProductId: String?
     internal let iapState: String?
@@ -81,6 +83,27 @@ internal enum Preflight {
     /// state).
     internal static let terminalReviewStates: Set<String> = ["COMPLETE"]
 
+    /// The exact `ageRatingDeclaration` field set both apps successfully
+    /// PATCHed on 2026-07-28 — 13 enum descriptors + 11 booleans. Pinned
+    /// explicitly (CR finding, PR #970) rather than "any field answered":
+    /// `attributes.count > 0` reads a PARTIAL fill (someone answers 3 of ~25
+    /// and stops) as a clean PASS, which is a false pass a submission gate
+    /// must not produce. BLOCK names every field still absent; an unknown key
+    /// in the payload (schema drift) is ignored, never causes a false BLOCK —
+    /// only the ABSENCE of an expected key blocks.
+    internal static let expectedAgeRatingFields: Set<String> = [
+        // Enum descriptors (NONE / INFREQUENT_OR_MILD / FREQUENT_OR_INTENSE, …).
+        "alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated",
+        "gunsOrOtherWeapons", "medicalOrTreatmentInformation", "profanityOrCrudeHumor",
+        "sexualContentGraphicAndNudity", "sexualContentOrNudity", "horrorOrFearThemes",
+        "matureOrSuggestiveThemes", "violenceCartoonOrFantasy",
+        "violenceRealisticProlongedGraphicOrSadistic", "violenceRealistic",
+        // Booleans.
+        "gambling", "healthOrWellnessTopics", "lootBox", "messagingAndChat",
+        "parentalControls", "ageAssurance", "socialMedia", "socialMediaAgeRestricted",
+        "unrestrictedWebAccess", "userGeneratedContent", "advertising",
+    ]
+
     /// App-level rows: contentRightsDeclaration, price schedule, age rating,
     /// stray reviewSubmissions, IAP review screenshot, App Privacy
     /// (always MANUAL-VERIFY — Apple exposes no API for it).
@@ -105,19 +128,25 @@ internal enum Preflight {
 
         rows.append(PreflightRow(
             item: "ageRatingDeclaration",
-            status: snap.ageRatingAnsweredCount > 0 ? .pass : .block,
-            detail: snap.ageRatingAnsweredCount > 0
-                ? "\(snap.ageRatingAnsweredCount) field(s) answered"
-                : "questionnaire never answered (0 fields set)"
+            status: snap.ageRatingMissingFields.isEmpty ? .pass : .block,
+            detail: snap.ageRatingMissingFields.isEmpty
+                ? "all \(Preflight.expectedAgeRatingFields.count) expected field(s) answered"
+                : "missing \(snap.ageRatingMissingFields.count)/\(Preflight.expectedAgeRatingFields.count): "
+                    + snap.ageRatingMissingFields.joined(separator: ", ")
         ))
 
+        // App-wide, not scoped to the `--platform` filter this run was given —
+        // a stray on one platform still blocks creating a NEW submission on
+        // any platform, so the row (and its detail) says so explicitly.
         let strays = snap.reviewSubmissions.filter { !Preflight.terminalReviewStates.contains($0.state) }
         rows.append(PreflightRow(
-            item: "reviewSubmissions clean",
+            item: "reviewSubmissions clean (app-wide, not platform-scoped)",
             status: strays.isEmpty ? .pass : .block,
             detail: strays.isEmpty
-                ? "no in-flight/stray submission"
-                : strays.map { "\($0.platform):\($0.state) (id=\($0.id))" }.joined(separator: "; ")
+                ? "no in-flight/stray submission on any platform"
+                : "stray submission(s) block creating ANY new reviewSubmission for this app, "
+                    + "regardless of --platform: "
+                    + strays.map { "\($0.platform):\($0.state) (id=\($0.id))" }.joined(separator: "; ")
         ))
 
         if let productId = snap.iapProductId {

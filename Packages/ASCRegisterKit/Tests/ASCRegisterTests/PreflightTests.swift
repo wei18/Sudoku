@@ -15,7 +15,7 @@ internal struct PreflightTests {
     private static func appLevel(
         contentRights: Bool = true,
         priceSchedule: Bool = true,
-        ageRatingAnswered: Int = 12,
+        ageRatingMissing: [String] = [],
         submissions: [ReviewSubmissionSummary] = [],
         iapProductId: String? = nil,
         iapState: String? = nil,
@@ -24,7 +24,7 @@ internal struct PreflightTests {
         AppLevelSnapshot(
             contentRightsDeclarationSet: contentRights,
             priceScheduleExists: priceSchedule,
-            ageRatingAnsweredCount: ageRatingAnswered,
+            ageRatingMissingFields: ageRatingMissing,
             reviewSubmissions: submissions,
             iapProductId: iapProductId,
             iapState: iapState,
@@ -54,20 +54,55 @@ internal struct PreflightTests {
         #expect(rows.first { $0.item == "contentRightsDeclaration" }?.status == .block)
     }
 
-    @Test("ageRatingDeclaration with zero answered fields → BLOCK")
+    @Test("ageRatingDeclaration with every expected field missing → BLOCK, names them all")
     internal func emptyAgeRatingBlocks() {
-        let rows = Preflight.evaluateAppLevel(Self.appLevel(ageRatingAnswered: 0))
-        #expect(rows.first { $0.item == "ageRatingDeclaration" }?.status == .block)
+        let rows = Preflight.evaluateAppLevel(
+            Self.appLevel(ageRatingMissing: Preflight.expectedAgeRatingFields.sorted())
+        )
+        let row = rows.first { $0.item == "ageRatingDeclaration" }
+        #expect(row?.status == .block)
+        #expect(row?.detail.contains("missing \(Preflight.expectedAgeRatingFields.count)") == true)
     }
 
-    @Test("a non-COMPLETE reviewSubmission is a stray → BLOCK")
+    /// The CR finding this whole change exists for: someone answers 3 of ~24
+    /// fields and stops. The OLD `attributes.count > 0` logic read this as a
+    /// clean PASS — a false pass a submission gate must never produce.
+    @Test("ageRatingDeclaration PARTIALLY answered → still BLOCK, names only the still-missing fields")
+    internal func partiallyAnsweredAgeRatingStillBlocks() {
+        // Picked so none is a substring of another expected field name
+        // (e.g. "gambling" ⊂ "gamblingSimulated" would false-positive the
+        // `contains` check below) — a pure test-fixture concern, not a
+        // production code issue.
+        let answered: [String] = ["advertising", "contests", "parentalControls"]
+        let stillMissing = Preflight.expectedAgeRatingFields.subtracting(answered)
+        let rows = Preflight.evaluateAppLevel(Self.appLevel(ageRatingMissing: stillMissing.sorted()))
+        let row = rows.first { $0.item == "ageRatingDeclaration" }
+        #expect(row?.status == .block)
+        // Every still-missing field is named; none of the 3 answered fields are.
+        for field in stillMissing { #expect(row?.detail.contains(field) == true) }
+        for field in answered { #expect(row?.detail.contains(field) == false) }
+    }
+
+    @Test("ageRatingDeclaration with an UNKNOWN extra key present → still PASS (schema drift tolerated)")
+    internal func unknownAgeRatingKeyDoesNotBlock() {
+        // `ageRatingMissing: []` — every EXPECTED field is answered; an extra
+        // key ASC might add later is invisible to this snapshot shape by
+        // construction (only ABSENCE of an expected key is tracked), which is
+        // exactly the "don't fail on keys you don't know about" requirement.
+        let rows = Preflight.evaluateAppLevel(Self.appLevel(ageRatingMissing: []))
+        #expect(rows.first { $0.item == "ageRatingDeclaration" }?.status == .pass)
+    }
+
+    @Test("a non-COMPLETE reviewSubmission is a stray → BLOCK, annotated as app-wide")
     internal func strayReviewSubmissionBlocks() {
         let rows = Preflight.evaluateAppLevel(Self.appLevel(submissions: [
             ReviewSubmissionSummary(id: "rs-1", platform: "IOS", state: "READY_FOR_REVIEW"),
         ]))
-        let row = rows.first { $0.item == "reviewSubmissions clean" }
+        let row = rows.first { $0.item.hasPrefix("reviewSubmissions clean") }
         #expect(row?.status == .block)
+        #expect(row?.item.contains("app-wide") == true)
         #expect(row?.detail.contains("READY_FOR_REVIEW") == true)
+        #expect(row?.detail.contains("IOS") == true)
     }
 
     @Test("a COMPLETE reviewSubmission is not a stray → PASS")
@@ -75,7 +110,7 @@ internal struct PreflightTests {
         let rows = Preflight.evaluateAppLevel(Self.appLevel(submissions: [
             ReviewSubmissionSummary(id: "rs-1", platform: "IOS", state: "COMPLETE"),
         ]))
-        #expect(rows.first { $0.item == "reviewSubmissions clean" }?.status == .pass)
+        #expect(rows.first { $0.item.hasPrefix("reviewSubmissions clean") }?.status == .pass)
     }
 
     @Test("IAP registered but review screenshot missing → BLOCK; row absent when no IAP configured")

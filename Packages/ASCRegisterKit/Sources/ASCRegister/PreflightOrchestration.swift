@@ -29,10 +29,18 @@ extension ASCRegisterCLI {
         let platform = try parsePlatform(opts)
         let config = try MetadataConfig.load(app: app, metadataDir: metadataDir)
 
+        // A missing app id is a BLOCK, not a clean exit — an app with no
+        // `apple_id` in app-meta.yaml and no `--app-id` cannot be checked at
+        // all, and silently returning 0 here would be a false PASS for a
+        // future game or a config that lost its id (CR finding, PR #970).
         guard let appId = opts["app-id"] ?? config.appMeta.appleId else {
-            print("preflight: app '\(app.rawValue)' has no apple_id in app-meta.yaml and no --app-id given "
-                + "— no ASC app to check. Create the app in ASC first (user-owned), then re-run with --app-id.")
-            return
+            printReport([PreflightRow(
+                item: "ASC app id resolvable",
+                status: .block,
+                detail: "app '\(app.rawValue)' has no apple_id in app-meta.yaml and no --app-id given "
+                    + "— no ASC app to check. Create the app in ASC first (user-owned), then re-run with --app-id."
+            )])
+            throw CLIError.validationFailed
         }
 
         let keyURL = URL(fileURLWithPath: keyPath)
@@ -108,12 +116,11 @@ extension ASCRegisterCLI {
         let priceSchedule = try await client.getAppPriceSchedule(appId: appId)
 
         let appInfos = try await client.listAppInfos(appId: appId)
-        var ageRatingAnswered = 0
+        var ageRatingDeclaration: APIResource?
         if let editableInfo = editableAppInfo(from: appInfos) {
-            if let declaration = try await client.getAgeRatingDeclaration(appInfoId: editableInfo.id) {
-                ageRatingAnswered = declaration.attributes.count
-            }
+            ageRatingDeclaration = try await client.getAgeRatingDeclaration(appInfoId: editableInfo.id)
         }
+        let ageRatingMissing = missingAgeRatingFields(ageRatingDeclaration)
 
         let reviewSubmissions = try await client.listReviewSubmissions(appId: appId)
             .map { ReviewSubmissionSummary(
@@ -142,7 +149,7 @@ extension ASCRegisterCLI {
         return AppLevelSnapshot(
             contentRightsDeclarationSet: contentRightsSet,
             priceScheduleExists: priceSchedule != nil,
-            ageRatingAnsweredCount: ageRatingAnswered,
+            ageRatingMissingFields: ageRatingMissing,
             reviewSubmissions: reviewSubmissions,
             iapProductId: iapProductId,
             iapState: iapState,
@@ -161,6 +168,18 @@ extension ASCRegisterCLI {
             let state = info.attributes["state"] ?? info.attributes["appStoreState"] ?? ""
             return editableStates.contains(state)
         } ?? appInfos.data.first
+    }
+
+    /// Which of `Preflight.expectedAgeRatingFields` are ABSENT from the fetched
+    /// declaration's flattened attributes — `nil` (declaration never created)
+    /// means every expected field is missing. A key present in the payload
+    /// that ISN'T in the expected set (schema drift) is ignored, never causes
+    /// a false BLOCK — only absence of an EXPECTED key blocks (CR finding,
+    /// PR #970).
+    private static func missingAgeRatingFields(_ declaration: APIResource?) -> [String] {
+        guard let declaration else { return Preflight.expectedAgeRatingFields.sorted() }
+        let present = Set(declaration.attributes.keys)
+        return Preflight.expectedAgeRatingFields.subtracting(present).sorted()
     }
 
     // MARK: - Per-platform version fetch
