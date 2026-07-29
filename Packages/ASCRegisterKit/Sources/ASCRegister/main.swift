@@ -41,6 +41,10 @@ internal enum ASCRegisterCLI {
                 try await runRemote(args: rest, mode: .apply)
             case "inspect":
                 try await runInspect(args: rest)
+            case "preflight":
+                // Read-only submission-readiness gate (issue: ops preflight
+                // gate). Implementation lives in PreflightOrchestration.swift.
+                try await runPreflight(args: rest)
             case "iap":
                 // `iap` is a nested subcommand (mirrors `leaderboard` /
                 // `achievement` naming; issue #200 Phase 1.a).
@@ -370,6 +374,7 @@ internal enum ASCRegisterCLI {
           ASCRegister plan      --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
           ASCRegister apply     --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path> [--app <sudoku|minesweeper>]
           ASCRegister inspect   --key <p8> --key-id <id> --issuer <id> --app-id <id> --leaderboard <vendor-id>
+          ASCRegister preflight --key <p8> --key-id <id> --issuer <id> --app <sudoku|minesweeper> [--app-id <id>] [--platform ios|macos|all] [--metadata-dir <dir>] [--fix]
           ASCRegister iap plan  --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap apply --key <p8> --key-id <id> --issuer <id> --app-id <id> --xcstrings <path>
           ASCRegister iap screenshots --key <p8> --key-id <id> --issuer <id> --iap-id <id> --screenshot <path> [--i-am-sure]
@@ -824,7 +829,7 @@ internal enum ASCRegisterCLI {
     }
 
     /// Parse the optional `--platform ios|macos|all` flag (default `all`).
-    private static func parsePlatform(_ opts: Options) throws -> MetadataPlatform {
+    internal static func parsePlatform(_ opts: Options) throws -> MetadataPlatform {
         let raw = opts["platform"] ?? MetadataPlatform.all.rawValue
         guard let platform = MetadataPlatform(rawValue: raw) else {
             throw CLIError.invalidValue(

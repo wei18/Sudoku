@@ -5,9 +5,45 @@ All source files live under `docs/app-store/`.
 
 ---
 
+## Step 0 — run the preflight gate FIRST (Leader-orderable, read-only)
+
+A real 2026-07-28 submission attempt hit nine ASC-side prerequisites one at a
+time, each discovered only when a mutating call was already rejected — because
+nothing in this repo tracked them. `mise run preflight:submission <app> <platform>`
+checks all nine (plus version/editable-state, screenshot coverage, and IAP) in
+one read-only pass and exits non-zero if anything blocks. Run it before
+starting this checklist, and again right before clicking Submit:
+
+```
+mise run preflight:submission all all
+mise run preflight:submission all all --fix   # safe auto-fill only (see table below)
+```
+
+| # | Prerequisite | Owner | Auto-fixable via `--fix`? |
+|---|---|---|---|
+| 1 | `appStoreVersions.releaseType` = `MANUAL` (not `AFTER_APPROVAL`, which auto-releases the instant Apple approves) | Leader-orderable | ✅ yes |
+| 2 | A processed build attached to the version | Leader-orderable | ✅ yes (newest `VALID` build for the platform) |
+| 3 | `copyright` set on the version (value lives in `app-meta.yaml`) | Leader-orderable | ✅ yes |
+| 4 | App price schedule set (empty → `STATE_ERROR.APP_PRICING_REQUIRED`, submission refused) | 🙋 user (web UI — Pricing and Availability; a decision, not automatable) | ❌ no |
+| 5 | `ageRatingDeclaration` fully answered | 🙋 user (web UI — App Information → Age Rating; a decision) | ❌ no |
+| 6 | `contentRightsDeclaration` answered | 🙋 user (web UI — App Information; a decision) | ❌ no |
+| 7 | `appStoreReviewDetail` record exists with contact name/email/phone | 🙋 user (PII — see review-information.md contact table below) | ❌ no |
+| 8 | Screenshots present for every locale that carries listing text × every required device class | Leader-orderable (`ASCRegister metadata screenshots --i-am-sure`) | ❌ no (preflight only detects the gap; upload is a separate step) |
+| 9 | No stray/in-flight `reviewSubmissions` record blocking a new one (cannot be DELETEd; can only be cancelled while `IN_REVIEW`/`UNRESOLVED_ISSUES` — see `asc-entity-error-recipes.md`) | 🙋 user (ASC web UI — cancelling an in-flight review is a judgment call) | ❌ no |
+
+App Privacy has no ASC REST API at all (verified) — the preflight prints it as
+a MANUAL-VERIFY line, never a silent PASS. It stays 🙋 user, always.
+
+---
+
 ## Before you start (one-time per session)
 
-- [ ] Have `secrets/.env` open (ASC_REVIEW_EMAIL, ASC_REVIEW_PHONE).
+- [ ] Run `mise run preflight:submission all all` — fix everything it reports
+      as Leader-orderable before continuing below.
+- [ ] Have `docs/app-store/review/<app>-v2.6-review-information.md` open — the
+      contact name/phone/email are supplied by the user directly at
+      submission time; they are **not** stored anywhere in this repo (correcting
+      a prior false claim that they lived in `secrets/.env`).
 - [ ] Have `memory/project/asc-api-credentials.md` open (Apple ID numbers).
 - [ ] Log in to [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
 
@@ -73,8 +109,8 @@ Source: `docs/app-store/review/sudoku-v2.6-review-information.md`
 |---|---|
 | First Name | Contact table in review-information.md |
 | Last Name | Contact table in review-information.md |
-| Phone Number | Contact table (from secrets/.env ASC_REVIEW_PHONE) |
-| Email | Contact table (from secrets/.env ASC_REVIEW_EMAIL) |
+| Phone Number | Contact table — supplied by the user directly at submission time (not stored in this repo) |
+| Email | Contact table — supplied by the user directly at submission time (not stored in this repo) |
 | Demo Account Username | (leave blank — no login required) |
 | Demo Account Password | (leave blank — no login required) |
 | Notes | Paste the fenced code block verbatim from review-information.md |
@@ -171,11 +207,11 @@ Required device classes per Apple (at least one of each required set):
 
 ## Final gates before clicking "Submit for Review"
 
+- [ ] `mise run preflight:submission all all` reports zero BLOCK rows (re-run —
+      Step 0 was before the rest of this checklist, state may have drifted).
 - [ ] CloudKit Production schema deployed for both apps (user-owned — Console only).
 - [ ] Production AdMob IDs swapped in (secrets/.env — rebuild + upload required).
-- [ ] App Privacy questionnaire completed for each app in ASC.
-- [ ] All IAPs attached and **Ready to Submit**.
+- [ ] App Privacy questionnaire completed for each app in ASC (MANUAL-VERIFY —
+      no API; the preflight cannot check this one).
 - [ ] Build uploaded via TestFlight (`mise run tf:upload <app> <platform> --i-am-sure`).
-- [ ] Build selected in the Version Information → Build section.
-- [ ] Pricing set (Free with IAP).
 - [ ] Diff ASC live page against YAML files after save — ASC silently trims whitespace.

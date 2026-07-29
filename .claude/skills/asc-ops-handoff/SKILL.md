@@ -18,6 +18,28 @@ description: Use when planning, scoping, or executing user-owned App Store Conne
 
 `docs/v2/v2.5-readiness.md` is the authoritative ops checklist as of v2.5 (a v2.6 readiness doc should supersede it at submission time). This skill explains WHO does WHAT and HOW; the readiness doc is WHAT'S DONE / OUTSTANDING.
 
+## Pre-submission preflight (run this FIRST, every time)
+
+A real v2.6 submission attempt (2026-07-28) hit nine ASC-side prerequisites
+one at a time — each discovered only when a mutating call was already
+rejected, because nothing in this repo tracked them: `releaseType` left at
+the auto-release default, no build attached, empty copyright, no app price
+schedule (`STATE_ERROR.APP_PRICING_REQUIRED`), an unanswered age rating
+questionnaire, no content rights declaration, a missing App Review contact
+record, screenshots for only 2 of 7 locales, and a stray non-cancellable
+`reviewSubmissions` record.
+
+`mise run preflight:submission <app|all> <ios|macos|all>` (read-only) checks
+all nine plus version/editable-state, screenshot-coverage-per-locale, and IAP
+review-screenshot presence, printing a PASS/BLOCK/MANUAL-VERIFY table and
+exiting non-zero on any BLOCK. `--fix` auto-fills ONLY `copyright` (from
+`app-meta.yaml`), `releaseType=MANUAL`, and attaching the newest processed
+build — never pricing/availability, age rating, content rights, or
+review-contact details (those are decisions or PII, and stay user-owned).
+See `docs/app-store/SUBMISSION-CHECKLIST.md` Step 0 and
+`asc-entity-error-recipes.md` for the per-item recipes. Run it before
+starting the manual checklist AND again immediately before clicking Submit.
+
 ## Operation taxonomy
 
 ### 🙋 User-owned (require human + Apple ID + 2FA)
@@ -73,6 +95,13 @@ Cross-reference the taxonomy above. If user-owned → respond "this is user step
 
 ## Anti-patterns
 
+- **"The App Review contact email/phone live in `secrets/.env`"** — NO (corrected
+  2026-07-29). `docs/app-store/metadata/<app>/app-meta.yaml` and the
+  `review/<app>-v2.6-review-information.md` contact tables previously claimed
+  `ASC_REVIEW_EMAIL`/`ASC_REVIEW_PHONE` keys existed in `secrets/.env`; they do
+  not, and never did — the 2026-07-28 submission got the contact name/email/
+  phone from the user directly, typed into the ASC web UI at submission time.
+  Don't invent or expect those env keys; don't try to script the contact fields.
 - **"IAP is fully automated, no user step"** — NO. `ASCRegister iap apply` creates the product + localizations and `iap screenshots` uploads the review screenshot, but **pricing/availability and the final `Ready to Submit` flip remain web-UI (user-owned)** — there is no ASC REST API for IAP price schedules in this tool. Automate creation + localization + review screenshot; hand price + submit to the user.
 - **"We'll fill App Privacy questionnaire later via API"** — NO. There is no API. Verified 2026-05-23.
 - **Shipping with test AdMob IDs in production**: paired flip exists for a reason. Per RCA #149 Fix N1, Release build with test app ID + production ad unit ID will silently no-fill at best.
