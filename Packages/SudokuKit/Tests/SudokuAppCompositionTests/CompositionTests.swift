@@ -59,7 +59,7 @@ struct CompositionTests {
     }
 
     @Test
-    func liveCompositionGatesSettingsMonetizationControllerByPlatform() async {
+    func liveCompositionGatesSettingsMonetizationControllerByPlatform() {
         // #971 (Guideline 2.1): macOS has zero ads to remove — Live.swift's
         // `makeRouteFactory` must pass `nil` for the Settings route's
         // `monetizationController` on macOS so "Remove Ads" / "Restore
