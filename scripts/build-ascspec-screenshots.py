@@ -4,7 +4,8 @@ build-ascspec-screenshots.py — Marketing-frame pass for ASC screenshots.
 
 Consumes committed snapshot-test baselines (RGBA, rendered at each device's
 exact ASC pixel size) and emits ASC-submission-spec PNGs (RGB, no alpha) for
-both apps in en + zh-Hant locales, for each device family:
+both apps in all 7 repo locales (en, zh-Hant, zh-Hans, ja, ko, es, th), for
+each device family:
   - iphone-6.9 : 1290×2796
   - ipad-13    : 2064×2752 (#506)
 
@@ -86,22 +87,47 @@ COPY = {
         "01-home": {
             "en":      ("Calm logic, every day.", "Two modes, one focused place to think."),
             "zh-Hant": ("每天，一場安靜的推理。", "兩種模式，一個專注思考的地方。"),
+            "zh-Hans": ("每天，一场安静的推理。", "两种模式，一个专注思考的地方。"),
+            "ja":      ("毎日、静かな論理を。", "ふたつのモード、ひとつの集中する場所。"),
+            "ko":      ("매일, 조용한 논리.", "두 가지 모드, 집중할 수 있는 한 곳."),
+            "es":      ("Lógica tranquila, cada día.", "Dos modos, un solo lugar para pensar."),
+            "th":      ("ตรรกะเงียบๆ ทุกวัน", "สองโหมด หนึ่งพื้นที่สำหรับคิด"),
         },
         "02-daily": {
             "en":      ("Three puzzles. Every day.", "Easy, medium, hard — the same world over."),
             "zh-Hant": ("每天三題。世界同題。", "簡單、中等、困難，看你比別人快多少。"),
+            "zh-Hans": ("每天三题。世界同题。", "简单、中等、困难，看你比别人快多少。"),
+            "ja":      ("毎日3問。世界中で同じ問題。", "簡単・中級・上級、タイムで世界と並ぶ。"),
+            "ko":      ("매일 세 문제. 전 세계 동일.", "쉬움, 보통, 어려움 — 시간이 곧 순위."),
+            "es":      ("Tres puzles. Cada día.", "Fácil, medio, difícil — los mismos para todos."),
+            "th":      ("สามปริศนา ทุกวัน", "ง่าย กลาง ยาก ชุดเดียวกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
             "zh-Hant": ("筆記，跟你紙上寫法一樣。", "即時錯誤提示，20 步 undo。"),
+            "zh-Hans": ("笔记，跟你纸上写法一样。", "实时错误提示，20 步 undo。"),
+            "ja":      ("メモは紙のときと同じ作法で。", "誤入力はその場で表示、20手まで戻せる。"),
+            "ko":      ("종이에 적던 그대로 메모.", "실시간 오류 표시, 스무 단계 되돌리기."),
+            "es":      ("Notas como en el papel.", "Detección de errores al instante. Veinte pasos de deshacer."),
+            "th":      ("โน้ตเหมือนเขียนบนกระดาษ", "เห็นผิดทันที ย้อนได้ยี่สิบขั้น"),
         },
         "04-completion": {
             "en":      ("Solved.", "One scoring attempt per puzzle. Your time, ranked."),
             "zh-Hant": ("完成。", "同題一次計分機會。你的時間，全球排名。"),
+            "zh-Hans": ("完成。", "同题一次计分机会。你的时间，全球排名。"),
+            "ja":      ("解けた。", "1問1スコア。あなたのタイムが世界に並ぶ。"),
+            "ko":      ("완료.", "한 퍼즐당 한 번의 기록. 당신의 시간, 세계 순위에."),
+            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo, en el ranking."),
+            "th":      ("สำเร็จ", "คิดคะแนนครั้งเดียวต่อปริศนา เวลาคุณบนกระดานอันดับ"),
         },
         "05-settings": {
             "en":      ("Seven languages. Zero tracking.", "Game Center built in. No third-party SDKs."),
             "zh-Hant": ("七種語言。零追蹤。", "內建 Game Center。沒有第三方 SDK。"),
+            "zh-Hans": ("七种语言。零追踪。", "内置 Game Center。没有第三方 SDK。"),
+            "ja":      ("7言語対応、追跡ゼロ。", "Game Center対応。サードパーティSDKなし。"),
+            "ko":      ("일곱 가지 언어. 추적은 0.", "Game Center 내장. 서드파티 SDK 없음."),
+            "es":      ("Siete idiomas. Cero seguimiento.", "Game Center integrado. Sin SDK de terceros."),
+            "th":      ("เจ็ดภาษา ไม่มีการติดตาม", "รองรับ Game Center ไม่มี SDK ของบุคคลที่สาม"),
         },
     },
     "minesweeper": {
@@ -111,18 +137,38 @@ COPY = {
         "01-home": {
             "en":      ("Calm logic, every day.", "One board, every day. The same for everyone."),
             "zh-Hant": ("每天，一場安靜的推理。", "每天一局，全球同題。"),
+            "zh-Hans": ("每天，一场安静的推理。", "每天一局，全球同题。"),
+            "ja":      ("毎日、静かな論理を。", "毎日ひとつの盤面。誰にとっても同じ問題。"),
+            "ko":      ("매일, 조용한 논리.", "매일 하나의 보드. 모두에게 동일합니다."),
+            "es":      ("Lógica tranquila, cada día.", "Un tablero cada día. El mismo para todos."),
+            "th":      ("ตรรกะเงียบๆ ทุกวัน", "กระดานเดียวทุกวัน เหมือนกันสำหรับทุกคน"),
         },
         "02-daily": {
             "en":      ("Three boards. Every day.", "Beginner, intermediate, expert — world-shared."),
-            "zh-Hant": ("每天三局。世界同局。", "初級、中級、專家，全球同一題。"),
+            "zh-Hant": ("每天三局。世界同局。", "初級、中級、高級，全球同一題。"),
+            "zh-Hans": ("每天三局。世界同局。", "初级、中级、高级，全球同一题。"),
+            "ja":      ("毎日3面。世界中で同じ盤面。", "初級・中級・上級、世界共通の盤面。"),
+            "ko":      ("매일 세 개의 보드. 전 세계 동일.", "초급, 중급, 고급 — 전 세계 공통."),
+            "es":      ("Tres tableros. Cada día.", "Principiante, intermedio, avanzado — el mismo para todos."),
+            "th":      ("สามกระดาน ทุกวัน", "มือใหม่ ระดับกลาง ขั้นสูง — เหมือนกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Flag, reveal, solve.", "Logical deduction. No guessing required."),
             "zh-Hant": ("標記、揭開、解題。", "純邏輯推理，無需猜測。"),
+            "zh-Hans": ("标记、揭开、解题。", "纯逻辑推理，无需猜测。"),
+            "ja":      ("旗を立て、開き、解く。", "純粋な論理推理。推測は不要。"),
+            "ko":      ("깃발, 열기, 풀이.", "논리적 추론. 추측은 필요 없습니다."),
+            "es":      ("Marca, revela, resuelve.", "Deducción lógica. Sin necesidad de adivinar."),
+            "th":      ("ปักธง เปิดช่อง ไขปริศนา", "ใช้เหตุผลเชิงตรรกะล้วนๆ ไม่ต้องเดา"),
         },
         "04-completion": {
             "en":      ("Cleared.", "One attempt per board. Your time, ranked globally."),
             "zh-Hant": ("完成。", "每局一次計時。你的成績，全球排名。"),
+            "zh-Hans": ("完成。", "每局一次计时。你的成绩，全球排名。"),
+            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムが世界に並ぶ。"),
+            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 시간, 세계 랭킹에."),
+            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, en el ranking global."),
+            "th":      ("สำเร็จ", "หนึ่งครั้งต่อกระดาน เวลาคุณบนอันดับโลก"),
         },
     },
 }
@@ -183,7 +229,7 @@ SLOTS = {
     },
 }
 
-LOCALES = ["en", "zh-Hant"]
+LOCALES = ["en", "zh-Hant", "zh-Hans", "ja", "ko", "es", "th"]
 
 # ── Font resolution ────────────────────────────────────────────────────────────
 #
@@ -196,16 +242,44 @@ LOCALES = ["en", "zh-Hant"]
 # TC/SC + Latin, so mixed strings like "20 步 undo" render correctly);
 # Latin-script locales keep SFNS.
 
-# CJK locales need a font with Han glyph coverage.
-CJK_LOCALES = {"zh-Hant", "zh-Hans", "ja", "ko"}
+# Han-script locales (Traditional/Simplified Chinese + Japanese) share Hiragino
+# Sans GB's glyph coverage (Han + kana). Korean and Thai each need a DIFFERENT
+# system font — Hiragino Sans GB has NO Hangul glyphs and SFNS has NO Thai
+# glyphs, so routing ko/th through either produces silent .notdef "tofu"
+# (verified via fontTools cmap inspection before this locale expansion: ko
+# 가/U+AC00 and th ก/U+0E01 are both MISSING from those fonts' cmaps).
+HAN_LOCALES = {"zh-Hant", "zh-Hans", "ja"}
+KO_LOCALES = {"ko"}
+TH_LOCALES = {"th"}
 
 # Hiragino Sans GB .ttc faces: index 0 = W3 (regular), index 2 = W6 (semibold).
 _HIRAGINO = "/System/Library/Fonts/Hiragino Sans GB.ttc"
 _PINGFANG = "/System/Library/Fonts/PingFang.ttc"  # preferred if present (not on all macOS)
 
+# Apple SD Gothic Neo .ttc faces: index 0 = Regular, index 6 = Bold. Full
+# Hangul coverage (verified via fontTools cmap); this machine has no PingFang
+# Korean face, so Apple SD Gothic Neo is the only Hangul-complete system font.
+_APPLE_SD_GOTHIC_NEO = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
 
-def _cjk_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
-    """A CJK-capable font (PingFang if available, else Hiragino Sans GB)."""
+# Ayuthaya.ttf is the PRIMARY Thai font, not Thonburi: this Pillow build has
+# no `raqm` (verified via PIL.features.check("raqm") == False, and a fresh
+# `pip install Pillow` wheel in a scratch venv still reports no raqm — the
+# macOS PyPI wheel does not bundle it, and `libraqm` itself would need
+# Homebrew, which this repo's operating rules forbid). Without raqm, Pillow
+# can't do OpenType mark-to-base GPOS positioning, so Thonburi's combining
+# vowel/tone marks render as orphaned dotted-circle placeholders (visually
+# confirmed — real tofu-equivalent breakage). Ayuthaya predates OpenType
+# complex-script shaping and bakes mark vertical offsets into the glyph
+# outlines themselves, so it renders correctly under Pillow's non-shaped
+# layout. Thonburi is kept only as a secondary fallback if Ayuthaya is ever
+# absent (worse than nothing being unlikely, since Ayuthaya ships on every
+# stock macOS). Ayuthaya has one weight only — `bold` synthesizes via stroke.
+_AYUTHAYA = "/System/Library/Fonts/Supplemental/Ayuthaya.ttf"
+_THONBURI = "/System/Library/Fonts/Supplemental/Thonburi.ttc"
+
+
+def _han_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
+    """A Han/kana-capable font (PingFang if available, else Hiragino Sans GB)."""
     if os.path.exists(_PINGFANG):
         # PingFang.ttc faces: 0=Regular .. weights vary; use a mid weight.
         index = 4 if bold else 2
@@ -220,6 +294,28 @@ def _cjk_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
     return _latin_font(size)
 
 
+def _ko_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
+    """A Hangul-capable font (Apple SD Gothic Neo)."""
+    if os.path.exists(_APPLE_SD_GOTHIC_NEO):
+        return ImageFont.truetype(_APPLE_SD_GOTHIC_NEO, size, index=(6 if bold else 0))
+    # Last resort — Latin-only; Hangul will tofu but the run won't crash.
+    return _latin_font(size)
+
+
+def _th_font(size: int, bold: bool) -> ImageFont.FreeTypeFont:
+    """A Thai-capable font that renders correctly WITHOUT raqm shaping
+    (Ayuthaya; Thonburi is a fallback but needs raqm to avoid dotted-circle
+    mark breakage — see the module comment above _AYUTHAYA). Ayuthaya has one
+    weight, so `bold` is a no-op (still legible: headline is already set apart
+    by size 72 vs subhead 44 and the accent color)."""
+    if os.path.exists(_AYUTHAYA):
+        return ImageFont.truetype(_AYUTHAYA, size)
+    if os.path.exists(_THONBURI):
+        return ImageFont.truetype(_THONBURI, size, index=(1 if bold else 0))
+    # Last resort — Latin-only; Thai will tofu but the run won't crash.
+    return _latin_font(size)
+
+
 def _latin_font(size: int) -> ImageFont.FreeTypeFont:
     """SFNS (SF system font on macOS); falls back to Helvetica."""
     for path in ("/System/Library/Fonts/SFNS.ttf",
@@ -231,9 +327,13 @@ def _latin_font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def font_for(locale: str, size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """Return a glyph-complete font for *locale* (CJK-aware)."""
-    if locale in CJK_LOCALES:
-        return _cjk_font(size, bold)
+    """Return a glyph-complete font for *locale* (script-aware)."""
+    if locale in HAN_LOCALES:
+        return _han_font(size, bold)
+    if locale in KO_LOCALES:
+        return _ko_font(size, bold)
+    if locale in TH_LOCALES:
+        return _th_font(size, bold)
     return _latin_font(size)
 
 
