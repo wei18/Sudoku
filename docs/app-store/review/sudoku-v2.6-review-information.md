@@ -14,7 +14,7 @@
 | First Name | `[YOUR FIRST NAME]` |
 | Last Name | `[YOUR LAST NAME]` |
 | Phone Number | `[E.164 format, e.g. +886912345678]` |
-| Email Address | `[ASC account email — from secrets/.env ASC_REVIEW_EMAIL]` |
+| Email Address | `[ASC account email — supplied by the user directly at submission time; not stored in this repo]` |
 
 **Demo Account:** None required — the app needs no login.
 
@@ -94,6 +94,6 @@ runtime ad calls.
 - [ ] Production AdMob App ID + banner unit ID swapped in (paired flip, see memory `admob-production-ids`).
 - [ ] App Privacy questionnaire in ASC matches `Sudoku/Resources/PrivacyInfo.xcprivacy`.
 - [ ] Remove Ads IAP (`com.wei18.sudoku.iap.remove_ads`) status = **Ready to Submit** and attached to this version.
-- [ ] Contact fields above filled in from `secrets/.env` — **not committed**.
+- [ ] Contact fields above filled in **by the user directly** — **not committed, not in secrets/.env**.
 - [ ] Screenshots uploaded for all required device classes (see `screenshot-strategy.md`).
 - [ ] IAP review screenshot attached to the Remove Ads product in ASC.

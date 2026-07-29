@@ -8,6 +8,22 @@ Migrated from the retired `.claude/workflows/asc-apply-round.js` (2026-06-12); t
 loop itself is now manual: `swift run ASCRegister plan|apply` → decode
 `ENTITY_ERROR.<CODE>` below → patch Config.swift → re-run.
 
+## Submission-preflight recipes (`mise run preflight:submission`, 2026-07-28/29)
+
+Found live during the v2.6 submission attempt that the new preflight gate now
+catches READ-ONLY, before any of these get hit as a mutation-time surprise.
+`STATE_ERROR` is a distinct error family from `ENTITY_ERROR` (it fires on the
+submission-creating call itself, not on a resource PATCH/POST), kept in this
+same table since the diagnose-and-fix workflow is identical.
+
+| Code | Cause | Likely fix | Rounds |
+|---|---|---|---|
+| `STATE_ERROR.APP_PRICING_REQUIRED` | The app has never had a price schedule set — ASC refuses `reviewSubmissions` create (and app-store-version submit) outright | User-owned, web UI: My Apps → app → Pricing and Availability → set a base territory + price tier. **No API-only fix** — `preflight` can only detect this (GET `/v1/apps/{id}/appPriceSchedule`, BLOCK if it 404s / has no data), never fill in a price decision. If you DO script the POST: `POST /v1/appPriceSchedules` takes no attributes, only three relationships (`app`, `territory` base territory, `manualPrices`) — and per Apple's own forum guidance the request is a JSON:API *compound document*: the new `appPriceVersions`/manual-price resource is created in the SAME POST's `included[]` array with a **client-generated local id** of the literal form `"id": "${some-local-id}"`, then referenced by that same string from the `manualPrices` relationship — Apple's error response for a malformed request literally names the missing `${…}` local-id shape, i.e. the error dictates the fix. (Sourced from Apple Developer Forums thread 722733 + WWDC23-10014 "What's new in App Store pricing" — the formal API reference page for this specific POST returned 404 when checked 2026-07-29; treat the exact local-id syntax as UNCONFIRMED against the primary reference until a live POST round confirms it.) |  first sighting, v2.6 preflight, 2026-07-28 |
+| `ENTITY_ERROR.ATTRIBUTE.REQUIRED` (copyright) | `appStoreVersions.copyright` was never set — empty string blocks submission | The value already lives in `docs/app-store/metadata/<app>/app-meta.yaml` (`copyright: "2026 Wei18"`) but nothing was pushing it to ASC. Fixed by `mise run preflight:submission <app> <platform> --fix`, which `PATCH /v1/appStoreVersions/{id}` with `attributes.copyright` from that YAML — Leader-orderable, not a decision (the value is already committed repo truth). | first sighting, v2.6 preflight, 2026-07-28 |
+| (no code — `reviewSubmissions` stuck) | A stray `reviewSubmissions` record in a non-`COMPLETE` state (e.g. `READY_FOR_REVIEW`) blocks `POST /v1/reviewSubmissions` for a new submission on that platform | **No DELETE operation exists** for `reviewSubmissions` (confirmed against Apple's official API reference, 2026-07-29 — only GET/POST/PATCH are documented). The only mutation is `PATCH .../reviewSubmissions/{id}` with `attributes.state` set to `CANCELING`, and that PATCH is itself only accepted while the submission is actively `IN_REVIEW` / `UNRESOLVED_ISSUES` (live 2026-07-28 finding: attempting to cancel a submission in `READY_FOR_REVIEW` was rejected — it hadn't entered review yet, so there was nothing to cancel). Practical fix: wait for the submission to either enter review (then cancel) or reach a terminal state on its own; `preflight` flags any submission whose state isn't `COMPLETE` so this is caught before a NEW submission attempt collides with it, not after. | first sighting, MS v2.6 submission, 2026-07-28 |
+
+## Game Center registration recipes (issues #17 #19 #22 #24 #26 #31 #37 #40)
+
 | ENTITY_ERROR code | Cause | Likely fix | Rounds |
 |---|---|---|---|
 | `LOCALE_INVALID` | Apple rejects the leaderboard/achievement locale code | `Config.ascLocaleCode`: script-only `zh-Hant`/`zh-Hans` (not `zh-Hant-TW`), and **bare `th`/`ko` for Game Center too** — GC rejects region-suffixed `th-TH`/`ko-KR` (live leaderboard-loc apply 2026-06-15), same as IAP/metadata. Region forms `en-US`/`es-ES` ARE accepted by GC. | #31 #37 + th/ko 2026-06-15 |

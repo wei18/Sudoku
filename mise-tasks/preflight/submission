@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+#MISE description="READ-ONLY submission readiness gate — checks the ASC-side prerequisites (release type, build attach, copyright, pricing, age rating, content rights, review contact, screenshots, IAP, stray reviewSubmissions) that App Review rejects a submission for, before anyone tries to submit. Exits non-zero if anything blocks. --fix auto-fills only copyright/releaseType/build-attach."
+#USAGE arg "<app>" help="App to check (\"all\" = sudoku + minesweeper)" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
+#USAGE arg "<platform>" help="Target platform" {
+#USAGE   choices "ios" "macos" "all"
+#USAGE }
+#USAGE flag "--fix" help="Auto-fill copyright (from app-meta.yaml), releaseType=MANUAL, and attach the newest VALID build — nothing else. Without this flag, nothing is changed."
+#
+# Born from a real v2.6 submission attempt (2026-07-28) that hit NINE ASC-side
+# prerequisites one at a time — each discovered only when a mutating call was
+# already rejected, because nothing in this repo tracked them:
+#   1. appStoreVersions.releaseType left at AFTER_APPROVAL (would have
+#      auto-released the instant Apple approved).
+#   2. No build attached to the version.
+#   3. copyright empty (the value existed in app-meta.yaml but nothing pushed it).
+#   4. No app price schedule → STATE_ERROR.APP_PRICING_REQUIRED, submission refused.
+#   5. ageRatingDeclaration — every field null, never answered.
+#   6. contentRightsDeclaration — never answered.
+#   7. appStoreReviewDetail — the record did not exist at all.
+#   8. Screenshots present for only 2 of the 7 locales that carry listing text.
+#   9. A stray non-terminal reviewSubmission blocked creating a new one (and
+#      could be neither DELETEd — no such operation — nor cancelled outside an
+#      in-review state).
+# See the tracking issue for the full writeup and
+# `.claude/skills/asc-ops-handoff/SKILL.md` §pre-submission preflight.
+#
+# READ-ONLY by default: every check is a GET. `--fix` additionally PATCHes
+# ONLY copyright / releaseType / build-attach — the three items that are pure
+# repo-truth or an unambiguous safe default, never pricing/availability, age
+# rating, content rights, or review-contact PII (those are decisions or PII
+# and stay user-owned / web-UI).
+#
+# App Privacy has NO ASC REST API (verified, see asc-ops-handoff SKILL.md) —
+# printed as a MANUAL-VERIFY line, never silently passed.
+#
+# Usage:
+#   mise run preflight:submission sudoku ios
+#   mise run preflight:submission all all
+#   mise run preflight:submission minesweeper all --fix
+#
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+APP="${1:-}"; PLATFORM="${2:-}"; shift 2 || true
+FIX=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --fix) FIX="--fix"; shift ;;
+        -h|--help) sed -n '2,45p' "$0" | sed 's/^#MISE[^=]*=//; s/^# \{0,1\}//'; exit 0 ;;
+        *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
+    esac
+done
+case "$APP" in sudoku|minesweeper|all) ;; *) echo "error: <app> must be sudoku|minesweeper|all" >&2; exit 1 ;; esac
+case "$PLATFORM" in ios|macos|all) ;; *) echo "error: <platform> must be ios|macos|all" >&2; exit 1 ;; esac
+
+# ── Auth loader: ASC API creds from secrets/.env (never echoed) ───────────────
+# Same three keys ASCRegister / tf:upload already read — no new key names.
+load_asc_creds() {
+    local env_file="$REPO_ROOT/secrets/.env"
+    if [[ ! -f "$env_file" ]]; then
+        echo "error: $env_file not found. Copy secrets/.env.example → secrets/.env and fill the ASC_* keys." >&2
+        exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "$env_file"
+    ASC_KEY_PATH="${ASC_API_KEY_PATH:-}"
+    ASC_KEY_ID="${ASC_API_KEY_ID:-}"
+    ASC_ISSUER="${ASC_API_ISSUER_ID:-}"
+    local missing=()
+    [[ -n "$ASC_KEY_ID" && "$ASC_KEY_ID" != REPLACE_KEY_ID ]]                   || missing+=("ASC_API_KEY_ID")
+    [[ -n "$ASC_ISSUER" && "$ASC_ISSUER" != 00000000-0000-0000-0000-000000000000 ]] || missing+=("ASC_API_ISSUER_ID")
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "error: secrets/.env is missing real values for: ${missing[*]}" >&2
+        exit 1
+    fi
+    local resolved="$ASC_KEY_PATH"
+    [[ "$resolved" = /* ]] || resolved="$REPO_ROOT/$resolved"
+    if [[ ! -f "$resolved" ]]; then
+        echo "error: ASC API key not found at '$resolved' (ASC_API_KEY_PATH in secrets/.env)." >&2
+        exit 1
+    fi
+    ASC_KEY_RESOLVED="$resolved"
+}
+
+load_asc_creds
+
+TARGET_APPS=()
+case "$APP" in
+    all) TARGET_APPS=(sudoku minesweeper) ;;
+    *)   TARGET_APPS=("$APP") ;;
+esac
+
+# Build once (debug is fine — this is an occasional read-mostly ops check, not
+# a shipped artifact); `swift run` would rebuild+run per invocation anyway, so
+# building once up front avoids doing that N times across TARGET_APPS.
+echo "==> building ASCRegister..."
+swift build --package-path "$REPO_ROOT/Packages/ASCRegisterKit" >/dev/null
+BIN="$(swift build --package-path "$REPO_ROOT/Packages/ASCRegisterKit" --show-bin-path)/ASCRegister"
+
+overall_status=0
+for target_app in "${TARGET_APPS[@]}"; do
+    echo
+    set +e
+    "$BIN" preflight \
+        --key "$ASC_KEY_RESOLVED" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER" \
+        --app "$target_app" --platform "$PLATFORM" $FIX
+    app_status=$?
+    set -e
+    if [[ $app_status -ne 0 ]]; then
+        overall_status=1
+    fi
+done
+
+if [[ $overall_status -ne 0 ]]; then
+    echo
+    echo "==> preflight: BLOCKED — see BLOCK rows above. Do not attempt submission until they clear." >&2
+else
+    echo
+    echo "==> preflight: all checks PASS (MANUAL-VERIFY items still need a human look)."
+fi
+exit $overall_status

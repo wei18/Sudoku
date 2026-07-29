@@ -56,8 +56,8 @@ copyright: "2026 Wei18"
 review_information:
   first_name: "Wei18"       # git user.name (single handle)
   last_name: "Wei18"        # ASC needs both fields; single handle => same value
-  email_address: null  # secret — Apple emails this contact; held in secrets/.env (ASC_REVIEW_EMAIL), injected at apply time (never committed)
-  phone_number: null  # secret — ASC review contact held in secrets/.env (ASC_REVIEW_PHONE), injected at apply time (never committed)
+  email_address: null  # PII — supplied by the user directly into the ASC web UI at submission time; NOT stored in secrets/.env or anywhere in this repo
+  phone_number: null  # PII — supplied by the user directly into the ASC web UI at submission time; NOT stored in secrets/.env or anywhere in this repo
   demo_user: null            # N/A — no login required
   demo_password: null        # N/A — no login required
   # Notes pasted into ASC "Review Information → Notes". The canonical, full

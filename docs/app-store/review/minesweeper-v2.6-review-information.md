@@ -19,7 +19,7 @@
 | First Name | `[YOUR FIRST NAME]` |
 | Last Name | `[YOUR LAST NAME]` |
 | Phone Number | `[E.164 format, e.g. +886912345678]` |
-| Email Address | `[ASC account email — from secrets/.env ASC_REVIEW_EMAIL]` |
+| Email Address | `[ASC account email — supplied by the user directly at submission time; not stored in this repo]` |
 
 **Demo Account:** None required — the app needs no login.
 
@@ -104,6 +104,6 @@ runtime ad calls.
 - [ ] App Privacy questionnaire in ASC matches the MS PrivacyInfo.
 - [ ] Remove Ads IAP (`com.wei18.minesweeper.iap.remove_ads`) created in ASC + status **Ready to Submit**.
 - [ ] `ITSAppUsesNonExemptEncryption=false` present in Info.plist (confirmed, skips export prompt).
-- [ ] Contact fields above filled in from `secrets/.env` — **not committed**.
+- [ ] Contact fields above filled in **by the user directly** — **not committed, not in secrets/.env**.
 - [ ] Screenshots uploaded for all required device classes.
 - [ ] IAP review screenshot attached to the Remove Ads product in ASC.

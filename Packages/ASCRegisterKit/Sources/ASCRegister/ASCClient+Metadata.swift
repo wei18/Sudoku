@@ -106,8 +106,13 @@ extension ASCClient {
     /// rather than only one (multi-platform defect: iOS stuck at 1.0 while
     /// macOS advanced to 2.3.5).
     internal func listAppStoreVersions(appId: String) async throws -> APICollectionWithIncluded {
+        // `copyright` + `releaseType` are additive fields (issue: ops preflight
+        // gate, items 1 + 3) — existing callers that don't read them are
+        // unaffected; the preflight command reads both off the same snapshot
+        // instead of issuing a second GET per version.
         let path = "/v1/apps/\(appId)/appStoreVersions"
-            + "?fields[appStoreVersions]=versionString,appStoreState,appVersionState,platform"
+            + "?fields[appStoreVersions]=versionString,appStoreState,appVersionState,platform,"
+            + "copyright,releaseType"
         return try await getCollectionWithIncluded(path: path)
     }
 
