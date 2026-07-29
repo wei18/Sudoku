@@ -77,6 +77,32 @@ import Telemetry
         #endif
     }
 
+    @Test func liveCompositionGatesSettingsMonetizationControllerByPlatform() {
+        // #971 (Guideline 2.1): macOS has zero ads to remove — Live.swift's
+        // `makeRouteFactory` must pass `nil` for the Settings route's
+        // `monetizationController` on macOS so "Remove Ads" / "Restore
+        // Purchases" never render there, while `bag.monetizationController`
+        // itself (this composition's own stored property, exercised below)
+        // stays wired unconditionally on every platform. Reaching through
+        // `.live()` → the real `routeFactory.view(for:)` exercises the
+        // actual `#if os(iOS)` gate in `Live.swift` — NOT a copy of it — so
+        // deleting that gate flips this assertion on whichever platform
+        // built the test (`swift test` always builds macOS host regardless
+        // of the package's iOS support, so the `#else` branch below is what
+        // a local `swift test` run actually pins). Mirrors
+        // `SudokuAppCompositionTests`'s analogous test.
+        let bag = MinesweeperAppComposition.live()
+        // Composition-level DI handle stays non-nil on every platform — only
+        // the LOCAL passed into the Settings route factory is gated.
+        _ = bag.monetizationController
+        let dump = String(reflecting: bag.routeFactory.view(for: .settings))
+        #if os(iOS)
+        #expect(!dump.contains("monetizationController: nil"))
+        #else
+        #expect(dump.contains("monetizationController: nil"))
+        #endif
+    }
+
     @Test func monetizationControllerUsesMSProductId() {
         // Sanity: the parameterised `productId` flows through. Fallback
         // display price = "$0.99" because availableProducts is empty before
