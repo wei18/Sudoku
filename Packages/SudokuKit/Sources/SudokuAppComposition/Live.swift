@@ -249,6 +249,21 @@ extension SudokuAppComposition {
         // pass-through outside DEBUG / without the matching launch arg, so
         // this is `deps.persistence` itself in every production launch.
         let persistence = resolvePersistence(live: deps.persistence, puzzleProvider: puzzleProvider)
+        // #968: macOS has zero ads to remove (Google ships no macOS AdMob/UMP
+        // xcframework slice — D-v2-03), so Settings must not offer "Remove
+        // Ads" / "Restore Purchases" there (Guideline 2.1 / 3.1.1 — the IAP
+        // would visibly do nothing). `SettingsView` already renders the whole
+        // Purchases section only when its `monetizationController` param is
+        // non-nil, so passing `nil` into `LiveRouteFactory` on macOS is the
+        // entire fix; `deps.monetizationController` itself stays wired
+        // unconditionally (unchanged plumbing).
+        let settingsMonetizationController: MonetizationStateController? = {
+            #if os(iOS)
+            deps.monetizationController
+            #else
+            nil
+            #endif
+        }()
         return LiveRouteFactory(
             puzzleProvider: puzzleProvider,
             persistence: persistence,
@@ -258,7 +273,7 @@ extension SudokuAppComposition {
             adProvider: deps.adProvider,
             iapClient: deps.iapClient,
             adGate: deps.adGate,
-            monetizationController: deps.monetizationController,
+            monetizationController: settingsMonetizationController,
             toastController: deps.toastController,
             makeDailyReminderPrimer: deps.makeDailyReminderPrimer,
             reminderSettings: deps.reminderSettings,

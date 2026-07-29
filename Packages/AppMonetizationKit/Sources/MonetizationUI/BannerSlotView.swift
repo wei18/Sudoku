@@ -122,7 +122,19 @@ public struct BannerSlotView: View {
 
     public var body: some View {
         Group {
-            if dismissed || shouldShow == false {
+            // #968: `status == .suppressed` while `shouldShow == true` means
+            // the gate said "show a banner" but the provider disagrees — the
+            // only production path there is `NoopAdProvider` (macOS: Google
+            // ships no AdMob/UMP xcframework slice for that SDK, D-v2-03).
+            // Without this check the ZStack below still mounted its dismiss
+            // (✕) button and "Advertisement" accessibility element over an
+            // empty rect on every macOS Home/board screen — a phantom control
+            // for an ad that can never load. Collapsing here matches the
+            // `.suppressed` case already documented in `statusContent` (the
+            // provider disagreeing with the gate is a second line of
+            // defense) and doesn't affect the `.notInitialized`/`.loading`
+            // reserved-space contract (#723) since neither is `.suppressed`.
+            if dismissed || shouldShow == false || status == .suppressed {
                 EmptyView()
             } else if shouldShow == true {
                 banner
@@ -248,9 +260,21 @@ public struct BannerSlotView: View {
         let allowed = await adGate.shouldShowBanner(now: now)
         shouldShow = allowed
         guard allowed else { return }
+        // #968: a provider that can never serve an ad (macOS `NoopAdProvider`
+        // — Google ships no AdMob/UMP xcframework slice for that SDK) always
+        // reports `.suppressed` here, even before any load is attempted
+        // (`LiveAdMobAdProvider` never does — it starts `.notInitialized` and
+        // only ever reaches `.loading`/`.loaded`/`.failed`/`.disposed`). Bail
+        // out before `onAdContext?()` in that case: ATT exists to gate
+        // tracking that actually happens, and firing the priming sheet (then
+        // the real system dialog) for a platform with no ad/tracking
+        // behavior behind it is exactly the misuse ATT is meant to prevent.
+        guard await adProvider.bannerStatus != .suppressed else {
+            status = .suppressed
+            return
+        }
         // Gate open == a personalized ad is about to load == the first moment
-        // ATT actually matters (#371 / #195). Sudoku injects its ATT primer
-        // here; Minesweeper passes nil. Idempotent — the closure latches.
+        // ATT actually matters (#371 / #195). Idempotent — the closure latches.
         await onAdContext?()
         // Kick the provider via the reload seam. A failed load surfaces as the
         // visible "Ad unavailable" caption (its `.failed` status) rather than

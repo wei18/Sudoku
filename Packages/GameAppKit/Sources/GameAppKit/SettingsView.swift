@@ -160,6 +160,24 @@ public struct SettingsView<Banner: View>: View {
             telemetryEmit: telemetryEmit,
             // Purchases slot — the app's MonetizationUI rows. GameShellUI never
             // imports MonetizationUI; the whole conditional Section lives here.
+            //
+            // #968: whether this section renders at all is entirely driven by
+            // `monetizationController` being non-nil — NOT by an `#if os(iOS)`
+            // here. The production macOS composition root (`Live.swift`, both
+            // apps) passes `nil` instead of `deps.monetizationController` so
+            // Mac Settings never offers "Remove Ads" (Google ships no macOS
+            // AdMob/UMP slice — D-v2-03 — so there are zero ads to remove;
+            // Guideline 2.1 / 3.1.1 exposure otherwise). Gating THIS render
+            // site directly with `#if os(iOS)` was tried and reverted: this
+            // same view is also used by `ASCScreenshotEmitTests.emit_iPhone_
+            // settings` to render Sudoku's iOS App Store marketing screenshot
+            // — that test always runs on a macOS host (`#if canImport(AppKit)`
+            // gated), so a compile-time check here can't tell "really building
+            // for macOS" apart from "rendering iOS marketing content on a
+            // macOS test host" and would wrongly strip the section from the
+            // iOS screenshot too. Gating the VALUE at the one real production
+            // call site keeps every direct-construction test/screenshot
+            // caller in control of its own `monetizationController` arg.
             purchases: {
                 if let controller = monetizationController {
                     Section("Purchases") {

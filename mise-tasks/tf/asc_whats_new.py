@@ -115,29 +115,44 @@ def asc_request(method: str, path_or_url: str, jwt: str, body: dict | None = Non
         raise RuntimeError(f"ASC API {method} {url} -> HTTP {e.code}: {detail}") from e
 
 
-def find_build(jwt: str, app_id: str, build_number: str) -> dict | None:
+# ASC's own platform tokens for the `preReleaseVersion.platform` relationship
+# filter (Build → preReleaseVersion → platform) — matches the "IOS"/"MAC_OS"
+# constants ASCRegisterKit already uses for appStoreVersions.platform
+# (Packages/ASCRegisterKit/Sources/ASCRegister/PlatformVersionResolver.swift).
+ASC_PLATFORM = {"ios": "IOS", "macos": "MAC_OS"}
+
+
+def find_build(jwt: str, app_id: str, build_number: str, platform: str | None) -> dict | None:
     path = (f"/builds?filter[app]={app_id}&filter[version]={build_number}"
             f"&fields[builds]=processingState,version,uploadedDate&limit=10")
+    if platform:
+        path += f"&filter[preReleaseVersion.platform]={ASC_PLATFORM[platform]}"
     body = asc_request("GET", path, jwt)
     items = body.get("data", [])
     if not items:
         return None
     if len(items) > 1:
+        # #968: with `--platform` set this should no longer be reachable in
+        # practice (the filter above narrows to one platform's build), but the
+        # tiebreak stays as defense-in-depth — e.g. a caller that omits
+        # --platform, or a future ASC response shape that doesn't honor the
+        # filter as expected.
         print(f"warning: {len(items)} builds matched app={app_id} version={build_number} "
-              "(multi-platform app record?) — using the most recently uploaded.", file=sys.stderr)
+              f"platform={platform or 'ANY'} — using the most recently uploaded.", file=sys.stderr)
         items.sort(key=lambda b: b.get("attributes", {}).get("uploadedDate", ""), reverse=True)
     return items[0]
 
 
 def poll_until_processed(key_path: str, key_id: str, issuer_id: str, app_id: str,
-                          build_number: str, timeout_s: int, poll_interval_s: int) -> dict:
+                          build_number: str, timeout_s: int, poll_interval_s: int,
+                          platform: str | None) -> dict:
     deadline = time.monotonic() + timeout_s
     attempt = 0
     while True:
         attempt += 1
         jwt = make_jwt(key_path, key_id, issuer_id)  # fresh token per attempt — simple, always valid
         try:
-            build = find_build(jwt, app_id, build_number)
+            build = find_build(jwt, app_id, build_number, platform)
         except RuntimeError as e:
             print(f"warning: poll attempt {attempt} failed: {e}", file=sys.stderr)
             build = None
@@ -176,6 +191,11 @@ def main() -> int:
     ap.add_argument("--app-id", required=True, help="ASC numeric app id (ASC_APP_ID_<APP> in secrets/.env)")
     ap.add_argument("--build", required=True, help="CFBundleVersion / build number to match")
     ap.add_argument("--changelog", required=True, help="path to the What-to-Test changelog file")
+    ap.add_argument("--platform", required=True, choices=sorted(ASC_PLATFORM),
+                     help="#968: narrows the /builds lookup to this platform's build "
+                          "(filter[preReleaseVersion.platform]) — `tf:upload <app> all` gives iOS "
+                          "and macOS the SAME build number (UTC minute), so without this a 2-platform "
+                          "run can sync What-to-Test onto the wrong platform's build.")
     ap.add_argument("--locale", default="en-US")
     ap.add_argument("--timeout", type=int, default=900, help="seconds to poll before giving up (default 900 = 15min)")
     ap.add_argument("--poll-interval", type=int, default=20, help="seconds between polls (default 20)")
@@ -199,7 +219,7 @@ def main() -> int:
     try:
         build = poll_until_processed(
             args.key_path, args.key_id, args.issuer_id, args.app_id, args.build,
-            args.timeout, args.poll_interval,
+            args.timeout, args.poll_interval, args.platform,
         )
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
