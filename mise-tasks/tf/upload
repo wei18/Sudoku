@@ -600,8 +600,11 @@ archive_export_platform() {
     # override would not take effect. We patch the archive's embedded Info.plist
     # post-archive / pre-export — the canonical place agvtool-less projects bump.
     # Runs regardless of archive reuse (idempotent in-place overwrite).
+    # iOS keeps Info.plist at the .app root; macOS keeps it under .app/Contents.
+    # Search both shapes rather than assuming the iOS layout (#974).
     local app_plist
-    app_plist="$(/usr/bin/find "$archive_path/Products/Applications" -maxdepth 2 -name Info.plist -path '*.app/Info.plist' | head -1)"
+    app_plist="$(/usr/bin/find "$archive_path/Products/Applications" -maxdepth 3 -name Info.plist \
+        \( -path '*.app/Info.plist' -o -path '*.app/Contents/Info.plist' \) | head -1)"
     if [[ -z "$app_plist" ]]; then
         echo "error: could not locate the archived app's Info.plist under $archive_path" >&2
         exit 1
