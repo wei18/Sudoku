@@ -210,7 +210,22 @@ COPY = {
 # eyeballing both baselines, not guessed.
 CALLOUTS = {
     ("sudoku", "03-board"): [{
+        # Anchor dot = the red error cell (row0,col2) — the actual thing
+        # "catches mistakes instantly" refers to. The OLD default (chip
+        # dropped straight below the dot) landed on row2's live "9"/"8"
+        # cells — #979. A first `chip_at` attempt tried the empty block at
+        # columns 6-8 — that's real empty grid space, but the chip's own
+        # width (measured: ~42% of canvas width for the longest label) means
+        # centering it there pushes past the right margin, and the margin
+        # clamp in draw_callout_chip then drags it back LEFT onto the very
+        # cells being avoided. Fixed target instead: the empty gap in the
+        # HEADER ROW above the grid, between "Easy" and the timer/pause
+        # controls — measured directly (column-scan for non-background
+        # pixels in that row) at 56%/76% of the baseline's own width on
+        # iPhone/iPad respectively, comfortably wider than the chip in every
+        # locale, so no clamp ever engages.
         "anchor": {"iphone-6.9": (0.295, 0.180), "ipad-13": (0.207, 0.315)},
+        "chip_at": {"iphone-6.9": (0.403, 0.112), "ipad-13": (0.360, 0.210)},
         "en": "Catches mistakes instantly", "zh-Hant": "即時抓出錯誤", "zh-Hans": "实时揪出错误",
         "ja": "ミスをその場で検出", "ko": "실수를 즉시 잡아냄",
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
@@ -227,7 +242,18 @@ CALLOUTS = {
         "es": "Cada partida, cronometrada y clasificada", "th": "ทุกครั้งที่ไข จับเวลาและจัดอันดับ",
     }],
     ("minesweeper", "03-board"): [{
+        # iPad: the default below-anchor drop landed the chip on the covered
+        # grid tiles — #979. `chip_at` moves the chip into the right-hand
+        # control column, well below the Reveal button (both measured off
+        # the baseline: grid's own right edge, and the button's bottom
+        # edge). fx is deliberately far enough right that draw_callout_chip's
+        # own margin clamp is what places it (any fx past ~0.83 clamps to
+        # the same spot) — the clamped position clears the grid's right edge
+        # with room to spare. iPhone's anchor already has clear space
+        # directly below it (verified — the stacked-controls layout puts the
+        # grid much lower on that device), so it keeps the default drop.
         "anchor": {"iphone-6.9": (0.092, 0.045), "ipad-13": (0.700, 0.016)},
+        "chip_at": {"ipad-13": (0.850, 0.200)},
         "en": "Flag suspected mines", "zh-Hant": "標記可疑地雷", "zh-Hans": "标记可疑地雷",
         "ja": "疑わしいマスに旗を立てる", "ko": "의심되는 칸에 깃발 표시",
         "es": "Marca las minas sospechosas", "th": "ปักธงจุดที่สงสัยว่ามีระเบิด",
@@ -458,6 +484,26 @@ def rounded_top_mask(size: tuple[int, int], radius: int) -> Image.Image:
     return mask
 
 
+def detect_content_bottom(img: Image.Image, bg_color: tuple[int, int, int], tolerance: int = 12) -> int:
+    """Return the y-coordinate (source pixel space) of the last row carrying
+    real content, scanning bottom-up. A pixel counts as content if it's not
+    (near-)transparent AND its color differs from the app's own background
+    by more than `tolerance` — one test that handles both baseline shapes in
+    this pipeline: a full opaque device screenshot (content ends where the
+    List/Form's own cream background starts) and a floating hero-reveal card
+    on a transparent canvas (content ends where alpha drops to ~0). #979."""
+    rgba = img if img.mode == "RGBA" else img.convert("RGBA")
+    w, h = rgba.size
+    px = rgba.load()
+    br, bg_g, bb = bg_color
+    for y in range(h - 1, -1, -1):
+        for x in range(0, w, 2):
+            r, g, b, a = px[x, y]
+            if a > 40 and (abs(r - br) + abs(g - bg_g) + abs(b - bb)) > tolerance:
+                return y
+    return 0
+
+
 def paste_icon_badge(canvas: Image.Image, app: str, asc_w: int, margin: int, size: int) -> None:
     """Composite the app's own AppIcon (real shipped asset) as a small
     rounded-square badge in the top-left corner, for shelf recognition."""
@@ -484,13 +530,19 @@ def draw_callout_chip(
     locale: str,
     accent_color: tuple[int, int, int],
     asc_w: int,
+    chip_xy: Optional[tuple[int, int]] = None,
 ) -> None:
-    """One Direction-B feature callout: a small dot at the anchor, a leader
-    line, and a rounded pill chip carrying the (per-locale) label. Always
-    drops BELOW the anchor — every CALLOUTS anchor above was chosen (or, for
-    the completion card, measured off the baseline's own bounding box) to
-    have clear space beneath it, so a fixed below-offset never lands the chip
-    on top of other screen content."""
+    """One Direction-B feature callout: a small dot at the anchor (the actual
+    UI feature being called out), a leader line, and a rounded pill chip
+    carrying the (per-locale) label.
+
+    `chip_xy`, when given, is the chip's own target position (verified empty
+    canvas — grid geometry measured directly off the baseline, not guessed;
+    #979) and the leader line is drawn straight from the anchor dot to the
+    chip instead of assuming "chip sits directly below the dot". When
+    omitted, falls back to the original below-anchor default (chip centered
+    under the dot, dropped by a fixed offset) for callouts that already have
+    clear space directly beneath their anchor."""
     draw = ImageDraw.Draw(canvas, "RGBA")
     ax, ay = anchor_xy
 
@@ -507,11 +559,16 @@ def draw_callout_chip(
     chip_w = text_w + pad_x * 2
     chip_h = text_h + pad_y * 2
 
-    offset = int(asc_w * 0.12)
-    chip_x = min(max(ax - chip_w // 2, int(asc_w * 0.04)), asc_w - chip_w - int(asc_w * 0.04))
-    chip_y = ay + offset
+    if chip_xy is not None:
+        cx, cy = chip_xy
+        chip_x = min(max(cx - chip_w // 2, int(asc_w * 0.04)), asc_w - chip_w - int(asc_w * 0.04))
+        chip_y = cy
+    else:
+        offset = int(asc_w * 0.12)
+        chip_x = min(max(ax - chip_w // 2, int(asc_w * 0.04)), asc_w - chip_w - int(asc_w * 0.04))
+        chip_y = ay + offset
 
-    draw.line((ax, ay, ax, chip_y), fill=(255, 255, 255, 220), width=3)
+    draw.line((ax, ay, chip_x + chip_w // 2, chip_y), fill=(255, 255, 255, 220), width=3)
 
     draw.rounded_rectangle(
         (chip_x, chip_y, chip_x + chip_w, chip_y + chip_h),
@@ -544,9 +601,13 @@ def build_asc_image(baseline_path: Path,
       - Headline (bold, set directly into the gradient) + subhead
       - Device screenshot, full canvas width minus side margins, rounded top
         corners, bottom edge bleeding past the canvas edge (PIL clips
-        automatically — no bezel/frame drawn around it)
+        automatically — no bezel/frame drawn around it). Cropped to its
+        content-bearing region first (#979) so the bleed cuts into content,
+        never a large flat area of the screenshot's own dead space.
       - Direction B: callout chips + leader lines anchored to specific UI,
         positioned in normalized screen-fraction coordinates (CALLOUTS above)
+        — `chip_at` optionally repositions the CHIP itself away from the
+        anchor when the default below-anchor drop would land on content.
     """
     bg_color, accent_color, accent_deep, accent_muted = make_frame(app)
 
@@ -623,17 +684,46 @@ def build_asc_image(baseline_path: Path,
         ty += (bbox[3] - bbox[1]) + LINE_GAP_S
 
     # ── Device screenshot: full width minus margins, rounded top corners,
-    #    bottom bleeds past the canvas edge ────────────────────────────────
+    #    bottom bleeds past the canvas edge when content reaches that far ──
+    #
+    # #979: bleeding the FULL baseline (device-height) screenshot let the
+    # panel's dead-space tail (a scrolled list's own empty background below
+    # its last row) become the thing that bleeds, not the content — some
+    # slots (Home: 49% content, Daily: 39%, Settings: 52%) showed a large
+    # flat cream area inside the panel instead of the "no empty canvas is
+    # possible" guarantee Direction C was built for. Fix: crop the baseline
+    # to its content-bearing region (detect_content_bottom + a little
+    # padding) before compositing, at the SAME width-fill scale as before
+    # (unchanged) — so the panel is exactly as tall as its real content.
+    #
+    # An earlier version of this fix also zoomed PAST the width-fill scale
+    # to force every slot to bleed all the way to the canvas edge. That
+    # regressed worse than the bug it fixed: a slot whose content is short
+    # relative to its width (MS iPad's covered board — grid + control panel
+    # together only reach 44% down) needed enough zoom to also outgrow
+    # screen_w, and center-cropping the overflow back down clipped the right
+    # control panel's own "Reveal" button off the edge — hiding real product
+    # UI, the exact failure mode Direction B's chip-overlap fix (below) also
+    # exists to avoid. A shorter panel with the brand gradient showing below
+    # it (not cream, not clipped controls) satisfies the actual acceptance
+    # bar — no flat area with nothing in it — without that risk. Slots whose
+    # content already reaches deep enough (Board's digit pad, ~92%) still
+    # bleed past the edge exactly as before; nothing tries to force it.
     SCREEN_MARGIN = int(asc_w * 0.045)
     SCREEN_TOP = ty + int(asc_h * 0.055)
     screen_w = asc_w - SCREEN_MARGIN * 2
 
-    src = Image.open(baseline_path).convert("RGBA")
-    src_w, src_h = src.size
-    scale = screen_w / src_w
-    fit_w, fit_h = screen_w, int(src_h * scale)
+    CONTENT_PAD_FRAC = 0.03  # breathing room below the last content row
 
-    src_resized = src.resize((fit_w, fit_h), Image.LANCZOS)
+    src_full = Image.open(baseline_path).convert("RGBA")
+    src_w, src_h_full = src_full.size
+    scale = screen_w / src_w
+
+    content_bottom_px = detect_content_bottom(src_full, bg_color)
+    crop_h = min(src_h_full, content_bottom_px + int(src_h_full * CONTENT_PAD_FRAC))
+
+    fit_w, fit_h = screen_w, int(crop_h * scale)
+    src_resized = src_full.crop((0, 0, src_w, crop_h)).resize((fit_w, fit_h), Image.LANCZOS)
     bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
     bg_patch.paste(src_resized, (0, 0), src_resized)
 
@@ -642,12 +732,22 @@ def build_asc_image(baseline_path: Path,
     canvas.paste(bg_patch, (SCREEN_MARGIN, SCREEN_TOP), mask)
 
     # ── Direction B: feature-callout chips (Board / Completion only) ──────
+    #
+    # fx/fy are fractions of the ORIGINAL (uncropped) baseline — that's the
+    # stable reference frame regardless of how much the block above zoomed
+    # in, and X is unaffected by the (vertical-only) crop, so this maps
+    # correctly whether or not this slot needed any zoom.
     if callouts:
         for callout in callouts:
             fx, fy = callout["anchor"][device]
-            anchor_xy = (SCREEN_MARGIN + int(fx * fit_w), SCREEN_TOP + int(fy * fit_h))
+            anchor_xy = (SCREEN_MARGIN + int(fx * screen_w), SCREEN_TOP + int(fy * src_h_full * scale))
             label = callout.get(locale) or callout["en"]
-            draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w)
+            chip_target = callout.get("chip_at", {}).get(device)
+            chip_xy = None
+            if chip_target:
+                cfx, cfy = chip_target
+                chip_xy = (SCREEN_MARGIN + int(cfx * screen_w), SCREEN_TOP + int(cfy * src_h_full * scale))
+            draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w, chip_xy=chip_xy)
 
     # ── Final sanity: canvas must be RGB (no alpha) ───────────────────────────
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
