@@ -25,7 +25,16 @@
 ```
 No account or login is required. The app runs fully on first launch.
 
-REMOVE ADS — IN-APP PURCHASE (sandbox test)
+PLATFORM DIFFERENCES (READ FIRST IF REVIEWING THE MAC BUILD)
+The macOS build ships NO advertising: Google's AdMob and UMP SDKs have no
+macOS slice, so no banner ever appears, the "Remove Ads" in-app purchase is
+not offered in Settings, and the ATT / UMP consent prompts never run. The
+three sections below marked "iOS only" therefore do not apply to the Mac
+build and cannot be exercised there. Everything else in this document —
+Daily / UTC rollover, Game Center, resume, CloudKit, privacy posture — is
+identical on both platforms.
+
+REMOVE ADS — IN-APP PURCHASE (sandbox test) — iOS only
 Product: com.wei18.sudoku.iap.remove_ads  (Non-Consumable, Family Sharing on)
 This is the only IAP. It permanently removes banner ads app-wide.
 To test:
@@ -62,7 +71,7 @@ The app auto-saves progress. The home screen shows a one-tap "Resume" pill
 when a game is in progress. Saves sync via the user's iCloud Private Database
 (container iCloud.com.wei18.sudoku) — no app-owned backend.
 
-ATT / UMP CONSENT
+ATT / UMP CONSENT — iOS only
 On first launch the Google UMP consent flow runs, followed (where applicable)
 by Apple's App Tracking Transparency prompt
 (NSUserTrackingUsageDescription is declared). Declining tracking is fully
@@ -80,7 +89,9 @@ No first-party analytics, CRM, or backend. The only third-party SDK is Google
 Mobile Ads (AdMob) for the banner, declared in PrivacyInfo.xcprivacy
 (NSPrivacyTracking = true, AdMob ad-serving tracking domains, OtherUsageData
 used for third-party advertising). The Remove Ads IAP eliminates the ad SDK's
-runtime ad calls.
+runtime ad calls. On macOS the AdMob SDK is not linked at all, so none of that
+ad-serving or tracking activity occurs on that platform; the manifest is shared
+across both builds and describes the iOS worst case.
 ```
 
 ---

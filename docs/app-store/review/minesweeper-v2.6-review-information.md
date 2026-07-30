@@ -56,7 +56,17 @@ progress on wins (e.g. first sweep, difficulty milestones, daily streaks).
 Game Center sign-in is optional; gameplay works fully signed-out. All score
 and achievement traffic is mediated by Apple's GameKit.
 
-REMOVE ADS — IN-APP PURCHASE (sandbox test)
+PLATFORM DIFFERENCES (READ FIRST IF REVIEWING THE MAC BUILD)
+The macOS build ships NO advertising: Google's AdMob and UMP SDKs have no
+macOS slice, so no banner ever appears, the "Remove Ads" in-app purchase is
+not offered in Settings, and the ATT / UMP consent prompts never run. The
+three sections below marked "iOS only" therefore do not apply to the Mac
+build and cannot be exercised there. Everything else in this document —
+Daily / UTC rollover, Game Center, resume, CloudKit, privacy posture — is
+identical on both platforms. Mac-specific input: flagging is secondary-click
+(right-click / control-click) rather than long-press.
+
+REMOVE ADS — IN-APP PURCHASE (sandbox test) — iOS only
 Product: com.wei18.minesweeper.iap.remove_ads  (Non-Consumable, Family Sharing on)
 This is the only IAP. It permanently removes banner ads app-wide.
 To test:
@@ -69,7 +79,7 @@ To test:
      row remains in Settings for new-device restore.
 No server is involved in the purchase — Apple StoreKit 2 only.
 
-ATT / UMP CONSENT
+ATT / UMP CONSENT — iOS only
 On first launch the Google UMP consent flow runs, followed (where applicable)
 by Apple's App Tracking Transparency prompt
 (NSUserTrackingUsageDescription is declared). Declining tracking is fully
@@ -87,7 +97,9 @@ No first-party analytics, CRM, or backend. The only third-party SDK is Google
 Mobile Ads (AdMob) for the banner, declared in PrivacyInfo.xcprivacy
 (NSPrivacyTracking = true, AdMob ad-serving tracking domains, OtherUsageData
 used for third-party advertising). The Remove Ads IAP eliminates the ad SDK's
-runtime ad calls.
+runtime ad calls. On macOS the AdMob SDK is not linked at all, so none of that
+ad-serving or tracking activity occurs on that platform; the manifest is shared
+across both builds and describes the iOS worst case.
 ```
 
 ---
