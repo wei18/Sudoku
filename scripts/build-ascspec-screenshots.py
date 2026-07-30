@@ -213,7 +213,7 @@ CALLOUTS = {
         # Anchor dot = the red error cell (row0,col2) — the actual thing
         # "catches mistakes instantly" refers to. The OLD default (chip
         # dropped straight below the dot) landed on row2's live "9"/"8"
-        # cells — #979. A first `chip_at` attempt tried the empty block at
+        # cells. A first `chip_at` attempt tried the empty block at
         # columns 6-8 — that's real empty grid space, but the chip's own
         # width (measured: ~42% of canvas width for the longest label) means
         # centering it there pushes past the right margin, and the margin
@@ -243,7 +243,7 @@ CALLOUTS = {
     }],
     ("minesweeper", "03-board"): [{
         # iPad: the default below-anchor drop landed the chip on the covered
-        # grid tiles — #979. `chip_at` moves the chip into the right-hand
+        # grid tiles. `chip_at` moves the chip into the right-hand
         # control column, well below the Reveal button (both measured off
         # the baseline: grid's own right edge, and the button's bottom
         # edge). fx is deliberately far enough right that draw_callout_chip's
@@ -260,6 +260,12 @@ CALLOUTS = {
         # ~772px of actual blank column space measured off the baseline —
         # long enough to spill left onto the grid's rightmost cells. Capping
         # at 30% of canvas width forces those into a second line instead.
+        # LESSON: this is what happens when a `chip_at` callout is verified
+        # against one locale's chip width instead of measured space — any
+        # CALLOUTS entry that sets `chip_at` (squeezing the chip next to a
+        # fixed-position UI element rather than dropping it into open canvas)
+        # needs a `chip_max_w` sanity check as a matter of course, not just
+        # the slot someone happens to be touching that round.
         "anchor": {"iphone-6.9": (0.092, 0.045), "ipad-13": (0.700, 0.016)},
         "chip_at": {"ipad-13": (0.850, 0.200)},
         "chip_max_w": {"ipad-13": 0.30},
@@ -332,8 +338,8 @@ SLOTS = {
         "minesweeper": [
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
-            Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPhone-light-beginner-covered",
-                 "snapshotBeginnerCovered_iPhone_light"),
+            Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
+                 "snapshotFlagged_iPhone_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
                  "snapshotWinDailyReminder_iPhone_light"),
         ],
@@ -509,7 +515,7 @@ def detect_content_bottom(img: Image.Image, bg_color: tuple[int, int, int], tole
     by more than `tolerance` — one test that handles both baseline shapes in
     this pipeline: a full opaque device screenshot (content ends where the
     List/Form's own cream background starts) and a floating hero-reveal card
-    on a transparent canvas (content ends where alpha drops to ~0). #979."""
+    on a transparent canvas (content ends where alpha drops to ~0)."""
     rgba = img if img.mode == "RGBA" else img.convert("RGBA")
     w, h = rgba.size
     px = rgba.load()
@@ -676,7 +682,7 @@ def build_asc_image(baseline_path: Path,
       - Device screenshot, full canvas width minus side margins, rounded top
         corners, bottom edge bleeding past the canvas edge (PIL clips
         automatically — no bezel/frame drawn around it). Cropped to its
-        content-bearing region first (#979) so the bleed cuts into content,
+        content-bearing region first so the bleed cuts into content,
         never a large flat area of the screenshot's own dead space.
       - Direction B: callout chips + leader lines anchored to specific UI,
         positioned in normalized screen-fraction coordinates (CALLOUTS above)
@@ -760,7 +766,7 @@ def build_asc_image(baseline_path: Path,
     # ── Device screenshot: full width minus margins, rounded top corners,
     #    bottom bleeds past the canvas edge when content reaches that far ──
     #
-    # #979: bleeding the FULL baseline (device-height) screenshot let the
+    # Bleeding the FULL baseline (device-height) screenshot let the
     # panel's dead-space tail (a scrolled list's own empty background below
     # its last row) become the thing that bleeds, not the content — some
     # slots (Home: 49% content, Daily: 39%, Settings: 52%) showed a large

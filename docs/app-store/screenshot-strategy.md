@@ -241,7 +241,7 @@ Audited, kept as-is (no honest fuller candidate exists):
 - **Sudoku Board**: `inProgress` (half-filled grid + one red error cell) is
   the *message-correct* choice, not the emptiest — the Direction-B callout
   chip is anchored to that red error cell to sell "catches mistakes
-  instantly" (#979). A fuller-looking `almostComplete` sibling exists but has
+  instantly". A fuller-looking `almostComplete` sibling exists but has
   no error highlighted, which would silently break the callout's claim.
   Kept `inProgress`.
 - **Sudoku Completion**: `loaded` vs. sibling `noLeaderboard` differ only in
@@ -274,7 +274,7 @@ in the script.
 ### Chip-width overflow — found by re-verifying every locale, not just `en`
 
 Auditing every callout chip across all 7 locales (not just the `en` used to
-verify the previous round, #979) found MS iPad Board's chip overlapping the
+verify the previous round) found MS iPad Board's chip overlapping the
 grid's rightmost cells for ja/es/th — those translated labels (790–868px)
 are wider than the ~772px of actual blank column space next to the grid,
 which `en`'s shorter label (662px) happened to fit inside without ever
@@ -287,3 +287,77 @@ new `chip_max_w` key in the `CALLOUTS` dict, currently only on
 `("minesweeper", "03-board")`'s `ipad-13` entry — the one placement proven
 to need it; the other three callout slots' available space was re-verified
 per-locale and left alone.
+
+### Fullness audit, round 2 — widened to every suite directory, not just the slot's own
+
+Round 1 only compared each baseline against siblings in its OWN
+`__Snapshots__/<Suite>/` folder. Widening the search to every suite
+directory in each package turned up better candidates that round 1's
+narrower method structurally could not see.
+
+Swapped:
+- **Minesweeper Board (iPhone)**: `beginner-covered`
+  (`MinesweeperBoardSnapshotTests` — every tile covered, status "Ready",
+  timer 0:00) → `beginner-flagged` (`MinesweeperBoardRevealedSnapshotTests`
+  — same suite that also holds `midReveal`). `flagged` is `midReveal`'s
+  revealed number cells (colour-coded 1–8, status "Playing", timer 0:42)
+  PLUS three flags placed on covered cells — a strict superset, and it
+  depicts both verbs the headline promises ("Flag, reveal, solve.") in one
+  frame, not just one. No iPad variant exists in that suite, so iPad keeps
+  `beginner-covered` (documented gap, not silently left stale). iPhone's
+  callout uses the default below-anchor drop (no `chip_at`, no grid to
+  overlap) anchored to the flag-count header, which is identical UI chrome
+  regardless of board content — re-verified at full res post-swap, still
+  clear.
+
+Reviewed and rejected (evaluated, not just skipped):
+- **Minesweeper**, `MinesweeperBoardRevealedSnapshotTests/mineHit` and
+  `MinesweeperBoardTerminalOverlaySnapshotTests/terminalOverlay`: both are
+  loss states ("Boom", red mine glyph) — losing is not what we're selling.
+- **Sudoku**, `BoardViewDigitFirstTests/armedDigit`: a number-pad selection
+  highlight, no pencil notes, no error cell — no more relevant to Board's
+  headline than the current `inProgress`.
+- **Sudoku**, `BoardViewBannerTests`: ad-banner-reservation states, not a
+  fuller version of anything in the current 5-shot storyline.
+- Suites with no state relevant to any of the 5 slots (Sudoku:
+  `PracticeHubViewTests`, `StatsViewTests`, `ToastTests`,
+  `AudioSettingsSectionTests`, `ReminderSettingsSectionTests`,
+  `SettingsIAPRowTests`, `BannerSlotDarkBandRegressionTests`,
+  `BoardLoaderViewFailedExitTests`; Minesweeper: `MinesweeperStatsTests`,
+  `MinesweeperBoardLoaderViewFailedExitTests`) — different screens
+  entirely, or failure/edge states, not alternate happy-states of a slot
+  already in use.
+
+**Found, NOT applied — flagging for a decision rather than swapping
+unilaterally**, because both trade off against something already reviewed
+and shipped in round 1, not just against emptiness:
+
+- **Sudoku Board**: `BoardViewPencilNotesTests/pencilNotes` shows REAL
+  pencil/candidate notes rendered inside grid cells (e.g. a full `1 2 3 4 5
+  6 7 8 9` candidate cell) — the literal thing the headline "Notes the way
+  you write them." promises, which the current `inProgress` fixture does
+  NOT actually show (its grid has zero pencil marks; what reads as
+  "notes-ish" there is only the number-pad's per-digit remaining-count
+  subscript, not an in-grid note). But `pencilNotes` has no red error cell
+  anywhere (confirmed: zero red pixels, scanned) — the Direction-B chip
+  "Catches mistakes instantly" has nothing to anchor to if we swap, since
+  that specific, already-translated claim depends on a visible mistake.
+  Recommendation: this is a real gap (the headline's #1 promise is
+  currently unproven), but swapping trades a proven, reviewed callout claim
+  for it — worth a call rather than a silent swap.
+- **Sudoku Settings**: `SettingsViewAppStoreRowsTests` shows three more real
+  rows than the current `purchased` fixture — "Invite Friends" (under Game
+  Center) and "Share App" / "Write a Review" (under About). But its only
+  recorded variant is the UNPURCHASED state, so it also shows "Remove Ads
+  $2.99" where the current fixture deliberately shows the ad-free
+  "purchased" state instead. No variant combines the extra rows with
+  "purchased". Recommendation: more content vs. a screenshot that mentions
+  price for the first time — a marketing-intent call, not a pure fullness
+  one.
+- **Sudoku Completion**: `CompletionOverlayScaffoldTests/playAgain` has a
+  grey (not white) card, no `Mistakes:` row, and a "Play Again" button the
+  current `CompletionViewTests` fixtures never show. Unclear whether this
+  is the real production surface with a button our chosen fixture just
+  doesn't exercise, or an earlier/simpler test double for the shared
+  overlay scaffold — didn't find enough evidence either way to call it, so
+  left as-is pending someone who knows which component actually ships.
