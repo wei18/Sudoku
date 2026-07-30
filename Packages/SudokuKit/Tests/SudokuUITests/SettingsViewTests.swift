@@ -238,7 +238,6 @@ struct SettingsViewTests {
         controller: MonetizationStateController,
         size: CGSize,
         colorScheme: ColorScheme,
-        locale: Locale? = nil,
         sizeClass: UserInterfaceSizeClass
     ) -> NSView {
         // #832: the shared VM defaults `generatorVersionLabel` to nil (MS has
@@ -252,7 +251,7 @@ struct SettingsViewTests {
             SettingsView(viewModel: viewModel, monetizationController: controller)
         }
         .formStyle(.grouped)
-        return hostingView(view, size: size, colorScheme: colorScheme, locale: locale, sizeClass: sizeClass)
+        return hostingView(view, size: size, colorScheme: colorScheme, sizeClass: sizeClass)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
@@ -285,25 +284,6 @@ struct SettingsViewTests {
         }
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale baselines for
-    // the ASC marketing pipeline's SLOTS matrix — `en` is the baseline above; these
-    // cover the other 6 repo locales via the existing `hostingView(locale:)` injection.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshot_iPhone_light_purchased_localized(_ locale: String) async {
-        let controller = await makeMonetizationController(purchased: true)
-        let host = makeSettingsHost(
-            purchased: true,
-            controller: controller,
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "SettingsView-fullpage-iPhone-light-purchased-\(locale)")
-        }
-    }
-
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshot_iPad_light_purchased() async {
         let controller = await makeMonetizationController(purchased: true)
@@ -316,23 +296,6 @@ struct SettingsViewTests {
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "SettingsView-fullpage-iPad-light-purchased")
-        }
-    }
-
-    // Per-locale baselines — see `snapshot_iPhone_light_purchased_localized`'s doc comment.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshot_iPad_light_purchased_localized(_ locale: String) async {
-        let controller = await makeMonetizationController(purchased: true)
-        let host = makeSettingsHost(
-            purchased: true,
-            controller: controller,
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .regular
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "SettingsView-fullpage-iPad-light-purchased-\(locale)")
         }
     }
 

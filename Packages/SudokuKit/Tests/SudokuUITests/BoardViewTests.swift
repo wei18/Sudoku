@@ -24,8 +24,8 @@ struct BoardViewTests {
     /// Empty 81-character clue string.
     private static let emptyClues = String(repeating: ".", count: 81)
 
-    /// Loose mid-game clue set (mix of givens). 33 clues. Internal (not `private`): also used by BoardViewLocalizedTests.swift, split out to stay under SwiftLint's file_length ceiling.
-    static let inProgressClues =
+    /// Loose mid-game clue set (mix of givens). 33 clues.
+    private static let inProgressClues =
         "53..7...." +
         "6..195..." +
         ".98....6." +
@@ -54,8 +54,10 @@ struct BoardViewTests {
         difficulty: .easy
     )
 
-    /// Build a preview VM. #849: `canUndo` defaults to `!userCells.isEmpty` (faithful to `!undoStack.isEmpty`, independent of `elapsedSeconds`); pass an explicit `canUndo` where they must diverge. Internal (not `private`): also used by BoardViewLocalizedTests.swift.
-    func makeViewModel(
+    /// Build a preview VM. #849: `canUndo` defaults to `!userCells.isEmpty`
+    /// (faithful to `!undoStack.isEmpty`, independent of `elapsedSeconds`);
+    /// pass an explicit `canUndo` where they must diverge.
+    private func makeViewModel(
         clues: String,
         userCells: [(row: Int, col: Int, digit: Int)] = [],
         errorCells: [(row: Int, col: Int)] = [],
@@ -149,7 +151,6 @@ struct BoardViewTests {
         }
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale baselines live in BoardViewLocalizedTests.swift (extension on this struct) — split out to stay under SwiftLint's file_length ceiling.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_iPad_light() throws {
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,

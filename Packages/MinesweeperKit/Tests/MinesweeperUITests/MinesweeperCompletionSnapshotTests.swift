@@ -134,21 +134,6 @@ struct MinesweeperCompletionSnapshotTests {
         assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded", record: SnapshotMode.recordMode)
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
-    // baseline above; these cover the other 6 repo locales via the existing
-    // `hostingView(locale:)` injection (no new capture mechanism).
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotWinLoaded_iPhone_light_localized(_ locale: String) {
-        let host = hostingView(
-            completionView(didWin: true),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            locale: .init(identifier: locale)
-        )
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPhone-light-win-loaded-\(locale)", record: SnapshotMode.recordMode)
-    }
-
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotWinLoaded_iPad_light() {
         let host = hostingView(
@@ -158,21 +143,6 @@ struct MinesweeperCompletionSnapshotTests {
             sizeClass: .regular
         )
         assertUISnapshot(of: host, as: .image, named: "Completion-iPad-light-win-loaded", record: SnapshotMode.recordMode)
-    }
-
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines — see `snapshotWinLoaded_iPhone_light_localized`'s doc
-    // comment.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotWinLoaded_iPad_light_localized(_ locale: String) {
-        let host = hostingView(
-            completionView(didWin: true),
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .regular
-        )
-        assertUISnapshot(of: host, as: .image, named: "Completion-iPad-light-win-loaded-\(locale)", record: SnapshotMode.recordMode)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

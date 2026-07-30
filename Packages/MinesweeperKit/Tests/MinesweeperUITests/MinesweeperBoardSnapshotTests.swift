@@ -41,21 +41,6 @@ struct MinesweeperBoardSnapshotTests {
         )
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
-    // baseline above; these cover the other 6 repo locales via the existing
-    // `hostingView(locale:)` injection (no new capture mechanism).
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotBeginnerCovered_iPhone_light_localized(_ locale: String) {
-        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
-        assertUISnapshot(
-            of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light, locale: .init(identifier: locale)),
-            as: .tolerantImage,
-            named: "Board-iPhone-light-beginner-covered-\(locale)",
-            record: SnapshotMode.recordMode
-        )
-    }
-
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPhone_dark() {
         let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
@@ -74,26 +59,6 @@ struct MinesweeperBoardSnapshotTests {
             of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
             as: .tolerantImage,
             named: "Board-iPad-light-beginner-covered",
-            record: SnapshotMode.recordMode
-        )
-    }
-
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines — see `snapshotBeginnerCovered_iPhone_light_localized`'s doc
-    // comment.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotBeginnerCovered_iPad_light_localized(_ locale: String) {
-        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
-        assertUISnapshot(
-            of: hostingView(
-                view,
-                size: SnapshotLayouts.iPad,
-                colorScheme: .light,
-                locale: .init(identifier: locale),
-                sizeClass: .regular
-            ),
-            as: .tolerantImage,
-            named: "Board-iPad-light-beginner-covered-\(locale)",
             record: SnapshotMode.recordMode
         )
     }

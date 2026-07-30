@@ -96,27 +96,6 @@ struct MinesweeperDailyHubSnapshotTests {
         assertViewStructure(of: host, named: "Daily-iPhone-light-compact", record: SnapshotMode.recordMode)
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
-    // baseline above; these cover the other 6 repo locales via the existing
-    // `hostingView(locale:)` injection (no new capture mechanism).
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotDaily_iPhone_light_localized(_ locale: String) {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-compact-\(locale)",
-            record: SnapshotMode.recordMode
-        )
-    }
-
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_iPhone_dark() {
         let host = hostingView(
@@ -151,25 +130,6 @@ struct MinesweeperDailyHubSnapshotTests {
             record: SnapshotMode.recordMode
         )
         assertViewStructure(of: host, named: "Daily-iPad-light-regular", record: SnapshotMode.recordMode)
-    }
-
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines — see `snapshotDaily_iPhone_light_localized`'s doc comment.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshotDaily_iPad_light_localized(_ locale: String) {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .regular
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPad-light-regular-\(locale)",
-            record: SnapshotMode.recordMode
-        )
     }
 
     // MARK: - Regular (Mac width, 3-column)

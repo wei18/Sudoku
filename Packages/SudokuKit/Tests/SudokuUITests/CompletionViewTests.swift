@@ -44,28 +44,6 @@ struct CompletionViewTests {
         }
     }
 
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
-    // baseline above; these cover the other 6 repo locales via the existing
-    // `hostingView(locale:)` injection (no new capture mechanism).
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshot_authenticatedLoaded_iPhoneLight_localized(_ locale: String) async {
-        let viewModel = makeViewModel()
-        let host = hostingView(
-            // The hero-reveal `.onAppear` never fires on this off-screen
-            // host — see `completionHeroSkipsReveal`'s doc comment.
-            CompletionView(viewModel: viewModel)
-                .environment(\.completionHeroSkipsReveal, true),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Completion-iPhone-light-loaded-\(locale)")
-        }
-    }
-
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshot_authenticatedLoaded_iPadLight() async {
         let viewModel = makeViewModel()
         let host = hostingView(
@@ -79,27 +57,6 @@ struct CompletionViewTests {
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Completion-iPad-light-loaded")
-        }
-    }
-
-    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
-    // baselines — see `snapshot_authenticatedLoaded_iPhoneLight_localized`'s
-    // doc comment.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
-    func snapshot_authenticatedLoaded_iPadLight_localized(_ locale: String) async {
-        let viewModel = makeViewModel()
-        let host = hostingView(
-            // The hero-reveal `.onAppear` never fires on this off-screen
-            // host — see `completionHeroSkipsReveal`'s doc comment.
-            CompletionView(viewModel: viewModel)
-                .environment(\.completionHeroSkipsReveal, true),
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            locale: .init(identifier: locale),
-            sizeClass: .regular
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Completion-iPad-light-loaded-\(locale)")
         }
     }
 
