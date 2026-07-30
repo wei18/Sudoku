@@ -144,6 +144,41 @@ struct HomeViewTests {
         assertViewStructure(of: host, named: "HomeView-iPhone-light", record: SnapshotMode.recordMode)
     }
 
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
+    // baseline above; these cover the other 6 repo locales via the existing
+    // `hostingView(locale:)` injection (no new capture mechanism). `.missing`
+    // record mode (SnapshotConfig.swift) means these self-record on first run.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotIPhoneLightLocalized(_ locale: String) {
+        let (rootVM, homeVM) = makeSudokuHomeViewModel()
+        let host = hostingView(
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Sudoku",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                )
+            ),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-iPhone-light-\(locale)")
+        }
+    }
+
     // #762 PR1 spec item E — AX5 smoke snapshot. `HomeScreen` + `HomeModeCard`
     // (GameShellUI) are the D-migration exemplar: their padding/gaps now
     // route through `ScaledSpacing` (content tier) and `theme.spacing.*`
@@ -255,6 +290,38 @@ struct HomeViewTests {
             assertSnapshot(of: host, as: .image, named: "HomeView-iPad-light")
         }
         assertViewStructure(of: host, named: "HomeView-iPad-light", record: SnapshotMode.recordMode)
+    }
+
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines — see `snapshotIPhoneLightLocalized`'s doc comment.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotIPadLightLocalized(_ locale: String) {
+        let (rootVM, homeVM) = makeSudokuHomeViewModel()
+        let host = hostingView(
+            GameHomeView(
+                viewModel: homeVM,
+                rootViewModel: rootVM,
+                title: "Sudoku",
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(
+                        firstLaunchAt: Date(timeIntervalSince1970: 0),
+                        hasPurchasedRemoveAds: true
+                    )
+                )),
+                attPrimer: ATTPrimerCoordinator(
+                    isNotDetermined: { false },
+                    requestSystemPrompt: {}
+                )
+            ),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-iPad-light-\(locale)")
+        }
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLight() {

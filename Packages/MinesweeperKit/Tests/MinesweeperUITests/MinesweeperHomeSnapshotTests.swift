@@ -102,6 +102,22 @@ struct MinesweeperHomeSnapshotTests {
         assertViewStructure(of: host, named: "Home-iPhone-light-compact", record: SnapshotMode.recordMode)
     }
 
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
+    // baseline above; these cover the other 6 repo locales via the existing
+    // `hostingView(locale:)` injection (no new capture mechanism).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotHome_iPhone_light_localized(_ locale: String) {
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Home-iPhone-light-compact-\(locale)", record: SnapshotMode.recordMode)
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotHome_iPhone_dark() {
         let host = hostingView(
@@ -126,6 +142,20 @@ struct MinesweeperHomeSnapshotTests {
         )
         assertUISnapshot(of: host, as: .image, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Home-iPad-light-regular", record: SnapshotMode.recordMode)
+    }
+
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines — see `snapshotHome_iPhone_light_localized`'s doc comment.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotHome_iPad_light_localized(_ locale: String) {
+        let host = hostingView(
+            homeView(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Home-iPad-light-regular-\(locale)", record: SnapshotMode.recordMode)
     }
 
     // MARK: - Regular (Mac width, 2-column)

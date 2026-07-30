@@ -43,6 +43,16 @@ enum SnapshotMode {
     static let recordMode: SnapshotTestingConfiguration.Record = .missing
 }
 
+/// Store-screenshot redesign (feat/store-screenshots-cb): the 6 repo locales
+/// (of 7) that need their OWN baseline for the ASC marketing pipeline's
+/// per-slot `SLOTS[device][app][slot]` map — `en` already has a baseline from
+/// the pre-existing (unparameterized) snapshot tests, so it's excluded here.
+/// Sourced via the existing `hostingView(locale:)` injection; no new capture
+/// mechanism. Keep in sync with SudokuKit's copy (separate packages).
+enum SnapshotLocales {
+    static let storeLocales = ["zh-Hant", "zh-Hans", "ja", "ko", "es", "th"]
+}
+
 /// Xcode Cloud detection — its distributed runner can't reach baseline PNGs
 /// via the library's `#filePath`-walk, so we resolve via `Bundle.module`.
 enum SnapshotEnv {

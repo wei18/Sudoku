@@ -132,6 +132,26 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-unfinished", record: SnapshotMode.recordMode)
     }
 
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines for the ASC marketing pipeline's SLOTS matrix — `en` is the
+    // baseline above; these cover the other 6 repo locales via the existing
+    // `hostingView(locale:)` injection (no new capture mechanism).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotUnfinishedIPhoneLightLocalized(_ locale: String) async {
+        let viewModel = await makeViewModel()
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-unfinished-\(locale)")
+        }
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEasyCompletedIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId
@@ -200,6 +220,24 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished")
         }
         assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
+    }
+
+    // Store-screenshot redesign (feat/store-screenshots-cb): per-locale
+    // baselines — see `snapshotUnfinishedIPhoneLightLocalized`'s doc comment.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud), arguments: SnapshotLocales.storeLocales)
+    func snapshotUnfinishedIPadLightLocalized(_ locale: String) async {
+        let viewModel = await makeViewModel()
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            locale: .init(identifier: locale),
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished-\(locale)")
+        }
     }
 
     // MARK: - #774 week-strip states
