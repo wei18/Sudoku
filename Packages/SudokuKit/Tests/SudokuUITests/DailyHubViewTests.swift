@@ -202,6 +202,46 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
     }
 
+    // mac-trait baselines for the App Store macOS screenshot pipeline
+    // (Daily hub previously had no mac render at all — mirrors
+    // MinesweeperDailyHubSnapshotTests' regular_light/regular_dark mac pair).
+    // Uses the `allDone` fixture (🔥 7+ day streak, all three cards checked)
+    // — the fullest honest state, not the emptiest — since these baselines
+    // become marketing screenshots.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedMacLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let allIds = Set(envelopes.map(\.identity.puzzleId))
+        let viewModel = await makeViewModel(completedDailyIds: allIds)
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-Mac-light-allDone")
+        }
+        assertViewStructure(of: host, named: "DailyHub-Mac-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedMacDark() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let allIds = Set(envelopes.map(\.identity.puzzleId))
+        let viewModel = await makeViewModel(completedDailyIds: allIds)
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.mac,
+            colorScheme: .dark,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-Mac-dark-allDone")
+        }
+        assertViewStructure(of: host, named: "DailyHub-Mac-dark-allDone", record: SnapshotMode.recordMode)
+    }
+
     // MARK: - #774 week-strip states
 
     /// Partial streak: today + yesterday completed via per-date scripting →
