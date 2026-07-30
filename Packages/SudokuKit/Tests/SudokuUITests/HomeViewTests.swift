@@ -286,6 +286,64 @@ struct HomeViewTests {
         assertViewStructure(of: host, named: "HomeView-Mac-light", record: SnapshotMode.recordMode)
     }
 
+    // mac-trait baselines for the App Store macOS screenshot pipeline
+    // (the generator needs a mac-shaped Home render — previously only
+    // `snapshotMacLight`'s cold-start, no-resume state existed). Mirrors
+    // MinesweeperHomeSnapshotTests' regular_light/regular_dark mac pair, but
+    // uses the resume-candidate view model (like
+    // `snapshotResumeCandidateIPhoneLight` above) so the marketing screenshot
+    // shows real content — a ResumePill plus the mode/stats cards — instead
+    // of a blank first-launch screen.
+    private func homeViewWithResume(
+        rootVM: RootViewModel,
+        homeVM: GameHomeViewModel<AppRoute>
+    ) -> some View {
+        GameHomeView(
+            viewModel: homeVM,
+            rootViewModel: rootVM,
+            title: "Sudoku",
+            adProvider: FakeAdProvider(),
+            adGate: AdGate(store: FakeAdGateStateStore(
+                initial: AdGateState(
+                    firstLaunchAt: Date(timeIntervalSince1970: 0),
+                    hasPurchasedRemoveAds: true
+                )
+            )),
+            attPrimer: ATTPrimerCoordinator(
+                isNotDetermined: { false },
+                requestSystemPrompt: {}
+            )
+        )
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLightWithResume() async {
+        let (rootVM, homeVM) = await makeSudokuHomeViewModelWithResume()
+        let host = hostingView(
+            homeViewWithResume(rootVM: rootVM, homeVM: homeVM),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-Mac-light-resume")
+        }
+        assertViewStructure(of: host, named: "HomeView-Mac-light-resume", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacDarkWithResume() async {
+        let (rootVM, homeVM) = await makeSudokuHomeViewModelWithResume()
+        let host = hostingView(
+            homeViewWithResume(rootVM: rootVM, homeVM: homeVM),
+            size: SnapshotLayouts.mac,
+            colorScheme: .dark,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "HomeView-Mac-dark-resume")
+        }
+        assertViewStructure(of: host, named: "HomeView-Mac-dark-resume", record: SnapshotMode.recordMode)
+    }
+
     // Home avatar chip (approved design variant A): a NEW baseline with
     // `homeAvatarImage` set, recorded once and eyeballed (chip visible,
     // trailing the nav title). Every other snapshot above passes no
