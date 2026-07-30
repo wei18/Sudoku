@@ -16,11 +16,10 @@ each device family:
   - iphone-6.9 : 1290×2796
   - ipad-13    : 2064×2752 (#506)
 
-Every slot now sources a PER-LOCALE baseline (SudokuUITests /
-MinesweeperUITests grew `*Localized` parameterized snapshot tests over the
-existing `hostingView(locale:)` injection — no new capture mechanism; `en`
-keeps using the original unparameterized baseline). Previously every locale
-composited its translated caption over the SAME English screenshot.
+Every locale composites its translated headline/subhead/callout copy over
+the SAME underlying screenshot baseline (one baseline per slot, not per
+locale). A per-locale-baseline variant was tried and backed out (#977) —
+see the `SLOTS`/`Slot` comment below for why.
 
 Outputs:  docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-<screen>.png
           (own tree — matches the uploader's <app>/<device>/<locale> contract;
@@ -249,82 +248,69 @@ CALLOUTS = {
 
 # ── Baseline → output slot mapping ─────────────────────────────────────────────
 #
-# Each slot now resolves a PER-LOCALE baseline: `en` keeps the original
-# unparameterized snapshot test's baseline; the other 6 locales come from the
-# new `*Localized` parameterized snapshot tests (SudokuUITests /
-# MinesweeperUITests) added alongside this redesign, which reuse the existing
-# `hostingView(locale:)` injection — same capture mechanism, one more axis.
+# One baseline per slot, reused for every locale — same as pre-redesign. A
+# per-locale-baseline variant was tried and backed out (#977): SwiftUI's
+# `Text(LocalizedStringKey)` resolves against `Bundle.main`, not
+# `.environment(\.locale, ...)`, so inside a headless `swift test` host (no
+# compiled `.lproj` in `Bundle.main`) the underlying screenshot never
+# localizes — all 108 locale-specific baselines that attempt came out
+# byte-identical to `en`. Only the composited overlay below (headline /
+# subhead / Direction-B callouts) is locale-aware; see #977 for the real fix.
 #
-# `named` is the `named:` string the ORIGINAL (en) test passes to
-# `assertSnapshot`/`assertUISnapshot`. `localized_prefix` is the new
-# parameterized test function's swift-testing-generated file prefix (verified
-# on disk after recording — `{func}-_.{named}-{locale}.png`).
+# `named` is the `named:` string the snapshot test passes to
+# `assertSnapshot`/`assertUISnapshot`.
 
 
 class Slot:
-    __slots__ = ("name", "suite_dir", "named", "en_prefix", "localized_prefix")
+    __slots__ = ("name", "suite_dir", "named", "prefix")
 
-    def __init__(self, name: str, suite_dir: str, named: str, en_prefix: str, localized_prefix: str):
+    def __init__(self, name: str, suite_dir: str, named: str, prefix: str):
         self.name = name
         self.suite_dir = suite_dir
         self.named = named
-        self.en_prefix = en_prefix
-        self.localized_prefix = localized_prefix
+        self.prefix = prefix
 
-    def baseline(self, baselines_root: Path, locale: str) -> Path:
-        d = baselines_root / self.suite_dir
-        if locale == "en":
-            return d / f"{self.en_prefix}.{self.named}.png"
-        return d / f"{self.localized_prefix}-_.{self.named}-{locale}.png"
+    def baseline(self, baselines_root: Path) -> Path:
+        return baselines_root / self.suite_dir / f"{self.prefix}.{self.named}.png"
 
 
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
-            Slot("01-home", "HomeViewTests", "HomeView-iPhone-light",
-                 "snapshotIPhoneLight", "snapshotIPhoneLightLocalized"),
-            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-unfinished",
-                 "snapshotUnfinishedIPhoneLight", "snapshotUnfinishedIPhoneLightLocalized"),
-            Slot("03-board", "BoardViewTests", "Board-iPhone-light-inProgress",
-                 "snapshotInProgress_iPhone_light", "snapshotInProgress_iPhone_light_localized"),
+            Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
+            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-unfinished", "snapshotUnfinishedIPhoneLight"),
+            Slot("03-board", "BoardViewTests", "Board-iPhone-light-inProgress", "snapshotInProgress_iPhone_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
-                 "snapshot_authenticatedLoaded_iPhoneLight", "snapshot_authenticatedLoaded_iPhoneLight_localized"),
+                 "snapshot_authenticatedLoaded_iPhoneLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPhone-light-purchased",
-                 "snapshot_iPhone_light_purchased", "snapshot_iPhone_light_purchased_localized"),
+                 "snapshot_iPhone_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact",
-                 "snapshotHome_iPhone_light", "snapshotHome_iPhone_light_localized"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-compact",
-                 "snapshotDaily_iPhone_light", "snapshotDaily_iPhone_light_localized"),
+            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-compact", "snapshotDaily_iPhone_light"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPhone-light-beginner-covered",
-                 "snapshotBeginnerCovered_iPhone_light", "snapshotBeginnerCovered_iPhone_light_localized"),
+                 "snapshotBeginnerCovered_iPhone_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-loaded",
-                 "snapshotWinLoaded_iPhone_light", "snapshotWinLoaded_iPhone_light_localized"),
+                 "snapshotWinLoaded_iPhone_light"),
         ],
     },
     "ipad-13": {
         "sudoku": [
-            Slot("01-home", "HomeViewTests", "HomeView-iPad-light",
-                 "snapshotIPadLight", "snapshotIPadLightLocalized"),
-            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished",
-                 "snapshotUnfinishedIPadLight", "snapshotUnfinishedIPadLightLocalized"),
-            Slot("03-board", "BoardViewTests", "Board-iPad-light-inProgress",
-                 "snapshotInProgress_iPad_light", "snapshotInProgress_iPad_light_localized"),
+            Slot("01-home", "HomeViewTests", "HomeView-iPad-light", "snapshotIPadLight"),
+            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
+            Slot("03-board", "BoardViewTests", "Board-iPad-light-inProgress", "snapshotInProgress_iPad_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
-                 "snapshot_authenticatedLoaded_iPadLight", "snapshot_authenticatedLoaded_iPadLight_localized"),
+                 "snapshot_authenticatedLoaded_iPadLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPad-light-purchased",
-                 "snapshot_iPad_light_purchased", "snapshot_iPad_light_purchased_localized"),
+                 "snapshot_iPad_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular",
-                 "snapshotHome_iPad_light", "snapshotHome_iPad_light_localized"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-regular",
-                 "snapshotDaily_iPad_light", "snapshotDaily_iPad_light_localized"),
+            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular", "snapshotHome_iPad_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-regular", "snapshotDaily_iPad_light"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
-                 "snapshotBeginnerCovered_iPad_light", "snapshotBeginnerCovered_iPad_light_localized"),
+                 "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
-                 "snapshotWinLoaded_iPad_light", "snapshotWinLoaded_iPad_light_localized"),
+                 "snapshotWinLoaded_iPad_light"),
         ],
     },
 }
@@ -691,7 +677,7 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                         })
                         continue
 
-                    baseline_path = slot.baseline(baselines_root, locale)
+                    baseline_path = slot.baseline(baselines_root)
                     if not baseline_path.exists():
                         results.append({
                             "device": device, "app": app, "slot": slot.name,

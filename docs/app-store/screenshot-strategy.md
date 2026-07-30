@@ -181,40 +181,27 @@ pending native-speaker review, same as any new marketing string)
 | MS Board | Flag suspected mines | 標記可疑地雷 | 标记可疑地雷 | 疑わしいマスに旗を立てる | 의심되는 칸에 깃발 표시 | Marca las minas sospechosas | ปักธงจุดที่สงสัยว่ามีระเบิด |
 | MS Completion | Every board, timed & ranked | 每一局，計時排名 | 每一局，计时排名 | 毎回タイム計測＆ランキング | 매 판마다 시간 측정 및 순위 | Cada tablero, cronometrado y clasificado | ทุกกระดาน จับเวลาและจัดอันดับ |
 
-### Localized UI — per-locale baselines, and a known limitation
+### Localized UI — tried, backed out, tracked as #977
 
-Every slot × device now sources a **per-locale baseline** (`en` uses the
-original unparameterized snapshot; the other 6 locales come from new
-`*Localized` parameterized `@Test(arguments:)` snapshot tests added to
-`SudokuUITests` / `MinesweeperUITests`, reusing the existing
-`hostingView(locale:)` injection that 3 pre-existing regression baselines
-already used — no new capture mechanism). Cost: 108 new baseline PNGs (60
-Sudoku + 48 MS, self-recording via the suites' existing `.missing` record
-mode) across 9 test files + 2 `SnapshotConfig.swift` additions.
+A per-locale-baseline variant of this pipeline was attempted (108 new
+`*Localized` snapshot-test baselines, one set per locale per slot) so the
+underlying app screenshot — not just the composited caption — would show
+real translated UI. It didn't work: SwiftUI's `Text(LocalizedStringKey)`
+resolves against `Bundle.main`, not `hostingView(locale:)`'s
+`.environment(\.locale, ...)`, and a headless `swift test` host's
+`Bundle.main` has no compiled `.lproj` resources — so every one of the 108
+new baselines came out **byte-for-byte identical** to `en`, for every slot,
+in both apps (verified via MD5, not eyeballed). Not a new bug — the 3
+pre-existing `BoardViewTests` locale baselines already had it — but scaling
+it to 108 files for zero signal wasn't worth landing, so that work was
+reverted.
 
-**Known limitation (pre-existing, not introduced by this change — but bigger
-than it first looks):** `hostingView(locale:)` only sets
-`.environment(\.locale, ...)` on the rendered subtree. SwiftUI's
-`Text(LocalizedStringKey)` resolves its string table against `Bundle.main`
-(the actual OS/device language), not the `\.locale` environment value — so
-inside a headless `swift test` host, whose `Bundle.main` is the xctest
-runner (no compiled `.lproj` resources at all), **no in-screen string
-localizes, full stop.** This isn't limited to difficulty labels or weekday
-letters: byte-for-byte comparison of the 108 new baselines confirms every
-locale's raw snapshot (`en`, `zh-Hant`, `zh-Hans`, `ja`, `ko`, `es`, `th`)
-is **pixel-identical** to the `en` baseline for every slot in both apps —
-Home, Board, Completion, Settings, Daily all included. This was already
-true of the 3 pre-existing `*_ja`/`*_ko`/`*_zhTW` regression baselines in
-`BoardViewTests` before this PR (verified: `Board-iPhone-dark-empty-ja.png`
-also shows "Easy" in English), so it's not a regression — but the 108 new
-baselines don't capture any new *content*, only new *file names* for the
-compositor to hang a locale-correct caption on. The MARKETING OVERLAY
-(headline/subhead/callout chips, composited by
-`build-ascspec-screenshots.py` from its own translation tables, independent
-of SwiftUI's Text resolution) is genuinely localized per the tables above —
-that's real. The underlying app screenshot is not, for any string,
-anywhere. Fixing this for real needs the app's `Text` call sites to accept
-an explicitly-injected per-locale `Bundle` (loading each `.lproj` as its own
-`Bundle` and threading it through `.environment(\.locale)` alongside an
-explicit `bundle:` argument, or an equivalent DI seam) — out of scope here,
-flagged for a follow-up issue rather than silently accepted or downplayed.
+**What's real:** the composited overlay (headline/subhead/Direction-B
+callout chips, from `build-ascspec-screenshots.py`'s own translation
+tables, independent of SwiftUI's `Text` resolution) IS genuinely localized
+per the tables above — every slot's *caption* is correct in all 7 locales.
+The screenshot underneath it is not, for any string, in any locale, and
+stays on the single `en`-sourced baseline the pipeline used before this
+redesign. Root cause, byte-identical evidence, and two real fix paths (with
+recommendation) are in #977 — read that before attempting a per-locale
+baseline again.
