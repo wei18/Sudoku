@@ -121,10 +121,10 @@ COPY = {
             "en":      ("Three puzzles. Every day.", "Easy, medium, hard — the same world over."),
             "zh-Hant": ("每天三題。世界同題。", "簡單、中等、困難，看你比別人快多少。"),
             "zh-Hans": ("每天三题。世界同题。", "简单、中等、困难，看你比别人快多少。"),
-            "ja":      ("毎日3問。世界中で同じ問題。", "簡単・中級・上級、タイムで世界と並ぶ。"),
+            "ja":      ("毎日3問。世界中で同じ問題。", "やさしい・ふつう・むずかしい、タイムで世界と並ぶ。"),
             "ko":      ("매일 세 문제. 전 세계 동일.", "쉬움, 보통, 어려움 — 시간이 곧 순위."),
             "es":      ("Tres puzles. Cada día.", "Fácil, medio, difícil — los mismos para todos."),
-            "th":      ("สามปริศนา ทุกวัน", "ง่าย กลาง ยาก ชุดเดียวกันทั่วโลก"),
+            "th":      ("สามปริศนา ทุกวัน", "ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
@@ -252,8 +252,17 @@ CALLOUTS = {
         # with room to spare. iPhone's anchor already has clear space
         # directly below it (verified — the stacked-controls layout puts the
         # grid much lower on that device), so it keeps the default drop.
+        #
+        # `chip_max_w` (iPad only): the "room to spare" comment above was
+        # verified against `en`'s 662px-wide chip only. Re-verifying every
+        # locale (feat/store-screenshots-cb fullness audit's own instruction)
+        # found ja (838px), es (868px) and th (790px) all wider than the
+        # ~772px of actual blank column space measured off the baseline —
+        # long enough to spill left onto the grid's rightmost cells. Capping
+        # at 30% of canvas width forces those into a second line instead.
         "anchor": {"iphone-6.9": (0.092, 0.045), "ipad-13": (0.700, 0.016)},
         "chip_at": {"ipad-13": (0.850, 0.200)},
+        "chip_max_w": {"ipad-13": 0.30},
         "en": "Flag suspected mines", "zh-Hant": "標記可疑地雷", "zh-Hans": "标记可疑地雷",
         "ja": "疑わしいマスに旗を立てる", "ko": "의심되는 칸에 깃발 표시",
         "es": "Marca las minas sospechosas", "th": "ปักธงจุดที่สงสัยว่ามีระเบิด",
@@ -265,7 +274,16 @@ CALLOUTS = {
         # land the chip ON the Close button — anchor to the Close BUTTON's own
         # bottom edge instead (measured the same way), which always has clear
         # canvas below it.
-        "anchor": {"iphone-6.9": (0.500, 0.637), "ipad-13": (0.500, 0.585)},
+        #
+        # iPhone diverges from iPad here because the two devices use DIFFERENT
+        # baseline fixtures (screenshot-fullness audit, feat/store-screenshots-cb):
+        # iPad still uses `win-loaded` (content ends at the Close button, 0.637 —
+        # same as before), but iPhone was swapped to `win-reminder`, which adds a
+        # real "Remind me when tomorrow's boards are ready" row below Close. The
+        # OLD 0.637 anchor (Close button's bottom edge) now lands ON that new
+        # row's text instead of past it — re-measured via detect_content_bottom()
+        # against the win-reminder baseline: content now ends at 0.702, not 0.637.
+        "anchor": {"iphone-6.9": (0.500, 0.702), "ipad-13": (0.500, 0.585)},
         "en": "Every board, timed & ranked", "zh-Hant": "每一局，計時排名", "zh-Hans": "每一局，计时排名",
         "ja": "毎回タイム計測＆ランキング", "ko": "매 판마다 시간 측정 및 순위",
         "es": "Cada tablero, cronometrado y clasificado", "th": "ทุกกระดาน จับเวลาและจัดอันดับ",
@@ -304,7 +322,7 @@ SLOTS = {
     "iphone-6.9": {
         "sudoku": [
             Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
-            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-unfinished", "snapshotUnfinishedIPhoneLight"),
+            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
             Slot("03-board", "BoardViewTests", "Board-iPhone-light-inProgress", "snapshotInProgress_iPhone_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
                  "snapshot_authenticatedLoaded_iPhoneLight"),
@@ -313,11 +331,11 @@ SLOTS = {
         ],
         "minesweeper": [
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-compact", "snapshotDaily_iPhone_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPhone-light-beginner-covered",
                  "snapshotBeginnerCovered_iPhone_light"),
-            Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-loaded",
-                 "snapshotWinLoaded_iPhone_light"),
+            Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
+                 "snapshotWinDailyReminder_iPhone_light"),
         ],
     },
     "ipad-13": {
@@ -531,6 +549,7 @@ def draw_callout_chip(
     accent_color: tuple[int, int, int],
     asc_w: int,
     chip_xy: Optional[tuple[int, int]] = None,
+    max_width: Optional[int] = None,
 ) -> None:
     """One Direction-B feature callout: a small dot at the anchor (the actual
     UI feature being called out), a leader line, and a rounded pill chip
@@ -542,7 +561,19 @@ def draw_callout_chip(
     chip instead of assuming "chip sits directly below the dot". When
     omitted, falls back to the original below-anchor default (chip centered
     under the dot, dropped by a fixed offset) for callouts that already have
-    clear space directly beneath their anchor."""
+    clear space directly beneath their anchor.
+
+    `max_width`, when given, caps the chip's own pixel width (independent of
+    the canvas-edge margin clamp below). Some placements are squeezed into a
+    space narrower than the canvas margins allow — MS iPad Board's chip sits
+    in the control column beside the grid, not against the canvas edge — so
+    the generic margin clamp alone doesn't stop a long translated label from
+    spilling sideways onto the grid. Found via a fullness audit
+    (feat/store-screenshots-cb) that swapped in fuller baselines and, per that
+    task's own instruction to re-verify geometry per locale rather than just
+    `en`, caught ja/es/th labels overlapping the MS iPad board grid — `en`'s
+    label was short enough to fit by accident. When the single-line label
+    would exceed `max_width`, it wraps onto a second line instead."""
     draw = ImageDraw.Draw(canvas, "RGBA")
     ax, ay = anchor_xy
 
@@ -552,12 +583,52 @@ def draw_callout_chip(
 
     chip_font = font_for(locale, int(asc_w * 0.030), bold=True)
     tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
-    bbox = tmp.textbbox((0, 0), label, font=chip_font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
     pad_x, pad_y = int(asc_w * 0.026), int(asc_w * 0.016)
+
+    def measure(s: str) -> tuple[int, int, int]:
+        b = tmp.textbbox((0, 0), s, font=chip_font)
+        return b[2] - b[0], b[3] - b[1], b[1]
+
+    text_w, text_h, top_bearing = measure(label)
+    lines = [label]
+    if max_width is not None and text_w + pad_x * 2 > max_width:
+        max_line_w = max_width - pad_x * 2
+        # Word-split first (Latin/Hangul), falling back to a character split
+        # for any "word" that alone exceeds max_line_w — CJK and Thai carry
+        # no spaces at all, so for them the whole label is one "word" and
+        # this fallback is the ONLY thing that wraps it (verified: a
+        # space-only splitter left ja/th completely unwrapped, still
+        # overflowing max_width, since `label.split()` never breaks them).
+        lines, current = [], ""
+        for word in label.split():
+            test = (current + " " + word).strip()
+            if measure(test)[0] <= max_line_w:
+                current = test
+                continue
+            if current:
+                lines.append(current)
+                current = ""
+            if measure(word)[0] <= max_line_w:
+                current = word
+            else:
+                for ch in word:
+                    test = current + ch
+                    if measure(test)[0] <= max_line_w or not current:
+                        current = test
+                    else:
+                        lines.append(current)
+                        current = ch
+        if current:
+            lines.append(current)
+        lines = lines[:2] or [label]  # cap at two lines — a third means the
+        # chip is too narrow for any locale's text and needs a wider slot,
+        # not more wrapping.
+        text_w = max(measure(line)[0] for line in lines)
+        _, text_h, top_bearing = measure(lines[0])
+
+    line_gap = int(text_h * 0.35)
     chip_w = text_w + pad_x * 2
-    chip_h = text_h + pad_y * 2
+    chip_h = text_h * len(lines) + line_gap * (len(lines) - 1) + pad_y * 2
 
     if chip_xy is not None:
         cx, cy = chip_xy
@@ -572,12 +643,15 @@ def draw_callout_chip(
 
     draw.rounded_rectangle(
         (chip_x, chip_y, chip_x + chip_w, chip_y + chip_h),
-        radius=chip_h // 2, fill=(*accent_color, 240)
+        radius=chip_h // len(lines) // 2 if len(lines) > 1 else chip_h // 2,
+        fill=(*accent_color, 240)
     )
-    draw.text(
-        (chip_x + pad_x, chip_y + pad_y - bbox[1]), label,
-        font=chip_font, fill=(255, 255, 255, 255)
-    )
+    ty = chip_y + pad_y - top_bearing
+    for line in lines:
+        line_w = measure(line)[0]
+        tx = chip_x + (chip_w - line_w) // 2
+        draw.text((tx, ty), line, font=chip_font, fill=(255, 255, 255, 255))
+        ty += text_h + line_gap
 
 
 def build_asc_image(baseline_path: Path,
@@ -747,7 +821,10 @@ def build_asc_image(baseline_path: Path,
             if chip_target:
                 cfx, cfy = chip_target
                 chip_xy = (SCREEN_MARGIN + int(cfx * screen_w), SCREEN_TOP + int(cfy * src_h_full * scale))
-            draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w, chip_xy=chip_xy)
+            chip_max_w_frac = callout.get("chip_max_w", {}).get(device)
+            max_width = int(chip_max_w_frac * asc_w) if chip_max_w_frac else None
+            draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w,
+                               chip_xy=chip_xy, max_width=max_width)
 
     # ── Final sanity: canvas must be RGB (no alpha) ───────────────────────────
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"

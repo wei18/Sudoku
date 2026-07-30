@@ -18,7 +18,7 @@ Screenshot count: **5 shots × 4 device classes × 7 locales = 140 PNG total**.
 | # | Screen | Why this shot | Hero element |
 |---|---|---|---|
 | 1 | Home (4 mode cards, Liquid Glass) | Entry point. Establishes brand: warm paper background, sage accents, Liquid Glass chrome. | Two large cards (Daily, Practice), translucent over warm paper |
-| 2 | Daily Hub (3 difficulties) | The daily ritual hook. One difficulty shown as already completed today to imply progress, not pressure. | Three difficulty rows, one with `✓ 04:32` style timestamp |
+| 2 | Daily Hub (3 difficulties) | The daily ritual hook. All three difficulties shown completed with a 7+ day streak to sell the habit payoff, not the empty-state grind. | Three difficulty rows, all badged done, streak strip up top |
 | 3 | Board mid-game (active grid + sage selected cell) | Core gameplay experience. Shows pencil notes in at least one cell and an active row/col highlight. | 9×9 grid, one selected cell, soft sage highlight band |
 | 4 | Completion (Solved + leaderboard slice) | The payoff moment. Calm "Solved" treatment (no confetti), with a 3-row leaderboard slice underneath showing world ranking. | "Solved" headline, time, top-3 leaderboard rows |
 | 5 | Settings or Leaderboard depth | Differentiator proof — 7 locale picker visible **and** Game Center integration row. iPad/Mac variant emphasizes keyboard hint. | Locale list (7 rows), Game Center status row |
@@ -53,10 +53,10 @@ Each shot has a 2-line overlay: a **headline** (≤ 5 words) and a **subhead** (
 |---|---|---|
 | en | Three puzzles. Every day. | Easy, medium, hard — the same world over. |
 | zh-Hant | 每天三題。世界同題。 | 簡單、中等、困難，看你比別人快多少。 |
-| ja | 毎日3問。世界中で同じ問題。 | 簡単・中級・上級、タイムで世界と並ぶ。 |
+| ja | 毎日3問。世界中で同じ問題。 | やさしい・ふつう・むずかしい、タイムで世界と並ぶ。 |
 | zh-Hans | 每天三题。世界同题。 | 简单、中等、困难，看你比别人快多少。 |
 | es | Tres puzles. Cada día. | Fácil, medio, difícil — los mismos para todos. |
-| th | สามปริศนา ทุกวัน | ง่าย กลาง ยาก ชุดเดียวกันทั่วโลก |
+| th | สามปริศนา ทุกวัน | ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก |
 | ko | 매일 세 문제. 전 세계 동일. | 쉬움, 보통, 어려움 — 시간이 곧 순위. |
 
 ### Shot 3 — Board mid-game
@@ -205,3 +205,85 @@ stays on the single `en`-sourced baseline the pipeline used before this
 redesign. Root cause, byte-identical evidence, and two real fix paths (with
 recommendation) are in #977 — read that before attempting a per-locale
 baseline again.
+
+### #967 — ja/th Daily-Hub vocabulary drift (fixed)
+
+The Shot 2 ja/th subhead had hand-written difficulty terms that didn't match
+the app's own shipped strings. Verified against
+`App/Sudoku/Resources/Localizable.xcstrings` (`Easy`/`Medium`/`Hard` keys) —
+ja: やさしい／ふつう／むずかしい (was 簡単・中級・上級); th: ปานกลาง for
+Medium specifically (was the shortened กลาง; ง่าย/ยาก for Easy/Hard were
+already correct). Table above updated to match; MS's own
+Beginner/Intermediate/Expert scale (a different, already-correct set of
+strings) is untouched.
+
+### Baseline-fixture fullness audit (feat/store-screenshots-cb)
+
+Every slot's baseline choice was re-audited against every sibling fixture in
+its snapshot suite directory, picking the fullest state that's still an
+honest representation of the screen (not a fabricated state) — the
+generator's dead-space crop (`detect_content_bottom()`) fixes layout
+whitespace, but an *empty-content* baseline (all-✕ Daily Hub, blank-slate
+Home) still reads as flat regardless of cropping.
+
+Swapped:
+- **Sudoku Daily Hub (iPhone)**: `unfinished` → `allDone` — 🔥 7+ day streak
+  strip, all three difficulties badged done, vs. seven grey ✕ and three
+  `Best —` rows. Same canvas size, same crop behavior.
+- **Minesweeper Daily Hub (iPhone)**: `compact` → `streak2` — adds a 2-day
+  streak strip above the same Beginner/Intermediate/Expert rows (the
+  Intermediate-done/Expert-Failed badges were already present in `compact`;
+  the swap only adds real positive content, introduces nothing new negative).
+
+Audited, kept as-is (no honest fuller candidate exists):
+- **Both apps, iPad, Daily Hub**: only one baseline exists per app (no
+  streak/all-done iPad variant recorded).
+- **Sudoku Board**: `inProgress` (half-filled grid + one red error cell) is
+  the *message-correct* choice, not the emptiest — the Direction-B callout
+  chip is anchored to that red error cell to sell "catches mistakes
+  instantly" (#979). A fuller-looking `almostComplete` sibling exists but has
+  no error highlighted, which would silently break the callout's claim.
+  Kept `inProgress`.
+- **Sudoku Completion**: `loaded` vs. sibling `noLeaderboard` differ only in
+  `Mistakes: 2` vs. `Mistakes: 0` — same amount of visible content either
+  way, not a fullness gap.
+- **Minesweeper Completion (iPad)**: only `win-loaded` exists (no
+  `win-reminder` iPad variant recorded); iPhone did swap (below).
+- **Both apps, Home (iPhone)**: the `...WithAvatar` sibling is
+  byte-identical to the default baseline in this crop (verified via
+  `ImageChops.difference` — empty diff bbox), so it adds nothing. The
+  `ResumeCandidate` sibling adds a "Resume Easy 3:21" pill but doesn't fix a
+  dead-space defect (the default already fills 5 full menu rows) and risks
+  muddying the "start your daily puzzles" headline with an abandoned-game
+  signal — kept the default.
+- **Both apps, iPad, Home / Board**: single baseline per slot, no sibling to
+  compare.
+
+Swapped separately (Minesweeper Completion, iPhone): `win-loaded` →
+`win-reminder` — adds the real "Remind me when tomorrow's boards are ready"
+notification-opt-in row below the Close button, filling space that was
+previously blank canvas. The Close-button position is pixel-identical
+between the two baselines, but the panel's own content-bottom is NOT (the
+Direction-B callout's iPhone anchor targeted the Close button's bottom edge
+at fraction 0.637 — with `win-reminder`'s added row, that fraction now
+lands mid-text on "Remind me…" instead of past all content). Re-measured
+via `detect_content_bottom()` against the new baseline (0.702) and updated
+the anchor; see the CALLOUTS comment at `("minesweeper", "04-completion")`
+in the script.
+
+### Chip-width overflow — found by re-verifying every locale, not just `en`
+
+Auditing every callout chip across all 7 locales (not just the `en` used to
+verify the previous round, #979) found MS iPad Board's chip overlapping the
+grid's rightmost cells for ja/es/th — those translated labels (790–868px)
+are wider than the ~772px of actual blank column space next to the grid,
+which `en`'s shorter label (662px) happened to fit inside without ever
+exercising the problem. `draw_callout_chip()` gained an optional
+`max_width` that wraps an overflowing label onto a second line (word-split
+for Latin/Hangul, falling back to a character split for CJK/Thai, which
+carry no spaces at all — a space-only splitter left those scripts
+completely unwrapped, since `str.split()` never breaks them). Wired via a
+new `chip_max_w` key in the `CALLOUTS` dict, currently only on
+`("minesweeper", "03-board")`'s `ipad-13` entry — the one placement proven
+to need it; the other three callout slots' available space was re-verified
+per-locale and left alone.
