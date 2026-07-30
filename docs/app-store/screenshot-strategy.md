@@ -153,3 +153,68 @@ overlay copy tabled above and (optionally) a device frame — that pass (droppin
 the alpha channel; iPad's baseline dimensions are already ASC-exact, iPhone and
 Mac still need the upscale) is what closes the gap to a real ASC upload. #311
 delivers the wiring + this honest gap doc only.
+
+## Store-screenshot redesign — Direction C + B (feat/store-screenshots-cb)
+
+Replaces the caption-panel-over-flat-tint + centered-bezel marketing frame
+(`scripts/build-ascspec-screenshots.py`) with:
+
+- **Direction C** (Home / Daily / Settings): full-bleed brand-gradient ground
+  in the app's OWN theme accent (Sudoku sage, Minesweeper steel-blue), the
+  headline/subhead set directly into the gradient (no caption card), the
+  device screenshot bleeding off the canvas's bottom edge, and a small
+  app-icon badge top-left. The headline/subhead copy tabled above is
+  UNCHANGED — it already fit the ≤5-word / ≤12-word constraint directly in
+  color.
+- **Direction B** (Board / Completion, layered on C): one feature-callout
+  chip + leader line per slot, anchored in normalized screen-fraction
+  coordinates (authored once per app/slot/device, reused across every
+  locale — never per-locale positions).
+
+### Direction B callout copy (NEW — not part of the locked table above;
+pending native-speaker review, same as any new marketing string)
+
+| Slot | en | zh-Hant | zh-Hans | ja | ko | es | th |
+|---|---|---|---|---|---|---|---|
+| Sudoku Board | Catches mistakes instantly | 即時抓出錯誤 | 实时揪出错误 | ミスをその場で検出 | 실수를 즉시 잡아냄 | Detecta errores al instante | จับข้อผิดพลาดได้ทันที |
+| Sudoku Completion | Every solve, timed & ranked | 每次完成，計時排名 | 每次完成，计时排名 | 解くたびにタイム計測＆ランキング | 풀 때마다 시간 측정 및 순위 | Cada partida, cronometrada y clasificada | ทุกครั้งที่ไข จับเวลาและจัดอันดับ |
+| MS Board | Flag suspected mines | 標記可疑地雷 | 标记可疑地雷 | 疑わしいマスに旗を立てる | 의심되는 칸에 깃발 표시 | Marca las minas sospechosas | ปักธงจุดที่สงสัยว่ามีระเบิด |
+| MS Completion | Every board, timed & ranked | 每一局，計時排名 | 每一局，计时排名 | 毎回タイム計測＆ランキング | 매 판마다 시간 측정 및 순위 | Cada tablero, cronometrado y clasificado | ทุกกระดาน จับเวลาและจัดอันดับ |
+
+### Localized UI — per-locale baselines, and a known limitation
+
+Every slot × device now sources a **per-locale baseline** (`en` uses the
+original unparameterized snapshot; the other 6 locales come from new
+`*Localized` parameterized `@Test(arguments:)` snapshot tests added to
+`SudokuUITests` / `MinesweeperUITests`, reusing the existing
+`hostingView(locale:)` injection that 3 pre-existing regression baselines
+already used — no new capture mechanism). Cost: 108 new baseline PNGs (60
+Sudoku + 48 MS, self-recording via the suites' existing `.missing` record
+mode) across 9 test files + 2 `SnapshotConfig.swift` additions.
+
+**Known limitation (pre-existing, not introduced by this change — but bigger
+than it first looks):** `hostingView(locale:)` only sets
+`.environment(\.locale, ...)` on the rendered subtree. SwiftUI's
+`Text(LocalizedStringKey)` resolves its string table against `Bundle.main`
+(the actual OS/device language), not the `\.locale` environment value — so
+inside a headless `swift test` host, whose `Bundle.main` is the xctest
+runner (no compiled `.lproj` resources at all), **no in-screen string
+localizes, full stop.** This isn't limited to difficulty labels or weekday
+letters: byte-for-byte comparison of the 108 new baselines confirms every
+locale's raw snapshot (`en`, `zh-Hant`, `zh-Hans`, `ja`, `ko`, `es`, `th`)
+is **pixel-identical** to the `en` baseline for every slot in both apps —
+Home, Board, Completion, Settings, Daily all included. This was already
+true of the 3 pre-existing `*_ja`/`*_ko`/`*_zhTW` regression baselines in
+`BoardViewTests` before this PR (verified: `Board-iPhone-dark-empty-ja.png`
+also shows "Easy" in English), so it's not a regression — but the 108 new
+baselines don't capture any new *content*, only new *file names* for the
+compositor to hang a locale-correct caption on. The MARKETING OVERLAY
+(headline/subhead/callout chips, composited by
+`build-ascspec-screenshots.py` from its own translation tables, independent
+of SwiftUI's Text resolution) is genuinely localized per the tables above —
+that's real. The underlying app screenshot is not, for any string,
+anywhere. Fixing this for real needs the app's `Text` call sites to accept
+an explicitly-injected per-locale `Bundle` (loading each `.lproj` as its own
+`Bundle` and threading it through `.environment(\.locale)` alongside an
+explicit `bundle:` argument, or an equivalent DI seam) — out of scope here,
+flagged for a follow-up issue rather than silently accepted or downplayed.
