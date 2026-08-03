@@ -234,10 +234,28 @@ Swapped:
   streak strip above the same Beginner/Intermediate/Expert rows (the
   Intermediate-done/Expert-Failed badges were already present in `compact`;
   the swap only adds real positive content, introduces nothing new negative).
+- **Minesweeper Daily Hub (iPad) — round-2 code-review finding, resolved.**
+  The only baseline that existed, `Daily-iPad-light-regular`, has
+  `weekStrip == .unknown` (skeleton dots, no streak) AND Expert badged
+  Failed — once `detect_content_bottom()` correctly crops the panel to its
+  real (tiny) content, that combination composited as the worst-emptiness
+  frame in the whole 126-PNG set (~7% of canvas height of panel, ~75% flat
+  gradient below), and a failure badge has no business in store copy
+  regardless of emptiness. No honest fuller iPad baseline existed to swap
+  to, so one was recorded:
+  `MinesweeperDailyHubSnapshotTests.snapshotDaily_iPad_light_streak` — same
+  2-day streak strip as the iPhone `streak2` swap above, all three
+  difficulties completed (Beginner/Intermediate/Expert), zero `isFailed`.
+  Wired into `SLOTS` in place of `Daily-iPad-light-regular`. No CALLOUTS
+  entry exists for `("minesweeper", "02-daily")` on either device, so no
+  chip-geometry re-verification was needed.
 
 Audited, kept as-is (no honest fuller candidate exists):
-- **Both apps, iPad, Daily Hub**: only one baseline exists per app (no
-  streak/all-done iPad variant recorded).
+- **Sudoku, iPad, Daily Hub**: only one baseline exists (`unfinished`, no
+  streak/all-done iPad variant recorded) — unlike the Minesweeper iPad case
+  above, its content isn't the worst-emptiness frame in the set, so it
+  wasn't escalated; still an open gap if a fuller iPad fixture is ever
+  wanted.
 - **Sudoku Board**: `inProgress` (half-filled grid + one red error cell) is
   the *message-correct* choice, not the emptiest — the Direction-B callout
   chip is anchored to that red error cell to sell "catches mistakes

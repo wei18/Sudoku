@@ -43,6 +43,7 @@ import argparse
 import hashlib
 import os
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Optional
 
@@ -358,7 +359,8 @@ SLOTS = {
         ],
         "minesweeper": [
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular", "snapshotHome_iPad_light"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-regular", "snapshotDaily_iPad_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
+                 "snapshotDaily_iPad_light_streak"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
@@ -549,6 +551,31 @@ def paste_icon_badge(canvas: Image.Image, app: str, asc_w: int, margin: int, siz
     )
 
 
+def grapheme_clusters(s: str) -> list[str]:
+    """Split a string into user-perceptible clusters — a base code point
+    plus any trailing Unicode combining marks (category Mn/Mc/Me) that
+    attach to it — instead of raw code points. Thai vowel/tone signs (MAI
+    HAN-AKAT, SARA U, SARA II, MAI EK, ...) are combining marks: iterating
+    `for ch in s` directly can break a line right before one, leaving a
+    bare diacritic floating over nothing on the next line.
+
+    Uses `unicodedata.category()`, NOT `unicodedata.combining()` — Thai is
+    a visual-order script, so Unicode assigns most of its vowel/tone marks
+    combining CLASS 0 (verified: of the 8 Mn marks in a real shipped Thai
+    callout label, only 3 have combining() != 0; category() catches all 8).
+    `combining()` is the wrong test for this script and silently reproduces
+    the exact bug this function exists to fix. Hangul is precomposed and
+    CJK carries no combining marks, so both pass through unchanged either
+    way."""
+    clusters: list[str] = []
+    for ch in s:
+        if clusters and unicodedata.category(ch) in ("Mn", "Mc", "Me"):
+            clusters[-1] += ch
+        else:
+            clusters.append(ch)
+    return clusters
+
+
 def draw_callout_chip(
     canvas: Image.Image,
     anchor_xy: tuple[int, int],
@@ -558,14 +585,15 @@ def draw_callout_chip(
     asc_w: int,
     chip_xy: Optional[tuple[int, int]] = None,
     max_width: Optional[int] = None,
+    slot_name: str = "",
 ) -> None:
     """One Direction-B feature callout: a small dot at the anchor (the actual
     UI feature being called out), a leader line, and a rounded pill chip
     carrying the (per-locale) label.
 
     `chip_xy`, when given, is the chip's own target position (verified empty
-    canvas — grid geometry measured directly off the baseline, not guessed;
-    #979) and the leader line is drawn straight from the anchor dot to the
+    canvas — grid geometry measured directly off the baseline, not guessed)
+    and the leader line is drawn straight from the anchor dot to the
     chip instead of assuming "chip sits directly below the dot". When
     omitted, falls back to the original below-anchor default (chip centered
     under the dot, dropped by a fixed offset) for callouts that already have
@@ -619,7 +647,7 @@ def draw_callout_chip(
             if measure(word)[0] <= max_line_w:
                 current = word
             else:
-                for ch in word:
+                for ch in grapheme_clusters(word):
                     test = current + ch
                     if measure(test)[0] <= max_line_w or not current:
                         current = test
@@ -628,9 +656,22 @@ def draw_callout_chip(
                         current = ch
         if current:
             lines.append(current)
-        lines = lines[:2] or [label]  # cap at two lines — a third means the
-        # chip is too narrow for any locale's text and needs a wider slot,
-        # not more wrapping.
+        lines = lines or [label]  # degenerate empty-label case: keep the
+        # pre-existing fallback rather than let max() below crash on [].
+        if len(lines) > 2:
+            # A third line means the chip is too narrow for this locale's
+            # text and needs a wider slot, not more wrapping — silently
+            # dropping the tail would ship truncated user-visible copy with
+            # every automated check still green (exactly how this pipeline's
+            # earlier chip-overlap defects slipped through). Fail loudly
+            # instead so the next locale/copy change that overflows here
+            # gets caught at generation time, not by someone eyeballing a
+            # screenshot after the fact.
+            raise ValueError(
+                f"callout chip label wraps to {len(lines)} lines (max 2) — "
+                f"slot={slot_name!r} locale={locale!r} label={label!r}; "
+                f"widen chip_max_w or shorten the translation"
+            )
         text_w = max(measure(line)[0] for line in lines)
         _, text_h, top_bearing = measure(lines[0])
 
@@ -670,7 +711,8 @@ def build_asc_image(baseline_path: Path,
                     asc_w: int = ASC_W,
                     asc_h: int = ASC_H,
                     callouts: Optional[list[dict]] = None,
-                    device: str = "iphone-6.9") -> Image.Image:
+                    device: str = "iphone-6.9",
+                    slot_name: str = "") -> Image.Image:
     """
     Compose one ASC-spec RGB PNG at the given canvas size — Direction C
     (full-bleed brand-gradient ground + headline set directly into the color +
@@ -736,7 +778,7 @@ def build_asc_image(baseline_path: Path,
             if text_w(word, font) <= max_width:
                 current = word
             else:
-                for ch in word:
+                for ch in grapheme_clusters(word):
                     test = current + ch
                     if text_w(test, font) <= max_width or not current:
                         current = test
@@ -832,7 +874,7 @@ def build_asc_image(baseline_path: Path,
             chip_max_w_frac = callout.get("chip_max_w", {}).get(device)
             max_width = int(chip_max_w_frac * asc_w) if chip_max_w_frac else None
             draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w,
-                               chip_xy=chip_xy, max_width=max_width)
+                               chip_xy=chip_xy, max_width=max_width, slot_name=slot_name)
 
     # ── Final sanity: canvas must be RGB (no alpha) ───────────────────────────
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
@@ -881,6 +923,7 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                             baseline_path, headline, subhead, app, locale,
                             asc_w=dev["w"], asc_h=dev["h"],
                             callouts=slot_callouts, device=device,
+                            slot_name=slot.name,
                         )
                         img.save(str(out_path), "PNG", optimize=False)
 
