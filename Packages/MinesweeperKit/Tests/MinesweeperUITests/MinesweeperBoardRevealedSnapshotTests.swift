@@ -180,5 +180,35 @@ struct MinesweeperBoardRevealedSnapshotTests {
             record: SnapshotMode.recordMode
         )
     }
+
+    // MARK: - macOS (hero frame for the macOS App Store screenshots)
+    //
+    // `flagged` is the only board fixture depicting BOTH verbs in-progress
+    // (revealed 1-8 numbers + placed flags) without a loss overlay — the
+    // same reasoning that picked it for the iPhone board screenshot
+    // ("Flag, reveal, solve."). This is Minesweeper's first macOS Board
+    // baseline; MS previously had macOS coverage only for Home/Daily/Stats.
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotFlagged_Mac_light() {
+        let view = seededBoard(cells: flaggedCells(), status: .playing, flagCount: 3)
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular),
+            as: .tolerantImage,
+            named: "Board-Mac-light-beginner-flagged",
+            record: SnapshotMode.recordMode
+        )
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotFlagged_Mac_dark() {
+        let view = seededBoard(cells: flaggedCells(), status: .playing, flagCount: 3)
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular),
+            as: .tolerantImage,
+            named: "Board-Mac-dark-beginner-flagged",
+            record: SnapshotMode.recordMode
+        )
+    }
 }
 #endif
