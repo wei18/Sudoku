@@ -328,36 +328,38 @@ Reviewed and rejected (evaluated, not just skipped):
   entirely, or failure/edge states, not alternate happy-states of a slot
   already in use.
 
-**Found, NOT applied — flagging for a decision rather than swapping
-unilaterally**, because both trade off against something already reviewed
-and shipped in round 1, not just against emptiness:
+Escalated, then ruled on:
 
-- **Sudoku Board**: `BoardViewPencilNotesTests/pencilNotes` shows REAL
-  pencil/candidate notes rendered inside grid cells (e.g. a full `1 2 3 4 5
-  6 7 8 9` candidate cell) — the literal thing the headline "Notes the way
-  you write them." promises, which the current `inProgress` fixture does
-  NOT actually show (its grid has zero pencil marks; what reads as
-  "notes-ish" there is only the number-pad's per-digit remaining-count
-  subscript, not an in-grid note). But `pencilNotes` has no red error cell
-  anywhere (confirmed: zero red pixels, scanned) — the Direction-B chip
-  "Catches mistakes instantly" has nothing to anchor to if we swap, since
-  that specific, already-translated claim depends on a visible mistake.
-  Recommendation: this is a real gap (the headline's #1 promise is
-  currently unproven), but swapping trades a proven, reviewed callout claim
-  for it — worth a call rather than a silent swap.
-- **Sudoku Settings**: `SettingsViewAppStoreRowsTests` shows three more real
-  rows than the current `purchased` fixture — "Invite Friends" (under Game
-  Center) and "Share App" / "Write a Review" (under About). But its only
-  recorded variant is the UNPURCHASED state, so it also shows "Remove Ads
-  $2.99" where the current fixture deliberately shows the ad-free
-  "purchased" state instead. No variant combines the extra rows with
-  "purchased". Recommendation: more content vs. a screenshot that mentions
-  price for the first time — a marketing-intent call, not a pure fullness
-  one.
-- **Sudoku Completion**: `CompletionOverlayScaffoldTests/playAgain` has a
-  grey (not white) card, no `Mistakes:` row, and a "Play Again" button the
-  current `CompletionViewTests` fixtures never show. Unclear whether this
-  is the real production surface with a button our chosen fixture just
-  doesn't exercise, or an earlier/simpler test double for the shared
-  overlay scaffold — didn't find enough evidence either way to call it, so
-  left as-is pending someone who knows which component actually ships.
+- **Sudoku Board — resolved, new baseline recorded.** `BoardViewPencilNotesTests/pencilNotes`
+  shows REAL pencil/candidate notes rendered inside grid cells — the literal thing the headline
+  "Notes the way you write them." promises, which the previous `inProgress` fixture did NOT
+  actually show (its grid had zero pencil marks; what read as "notes-ish" there was only the
+  number-pad's per-digit remaining-count subscript, not an in-grid note). But `pencilNotes` had
+  no red error cell (confirmed: zero red pixels, scanned) for the subhead's "Live error
+  highlighting" and the Direction-B chip "Catches mistakes instantly" to anchor to — swapping
+  to it would have moved the unproven-claim problem, not fixed it (headline proven, subhead no
+  longer proven). The ruling: neither existing fixture — record one that's both. Checked every
+  `BoardView*` suite (`BoardViewBannerTests`, `BoardViewDigitFirstTests`,
+  `BoardViewPencilNotesTests`, `BoardViewTests`) on both device classes for a fixture that
+  already combined pencil notes with a red error cell first (scanned every PNG for red pixels;
+  only the `InProgress` family has one, and none of those have notes) — none existed, so
+  `BoardViewPencilNotesTests.snapshotPencilNotesWithError_iPhone_light` /
+  `..._iPad_light` were recorded: `BoardViewTests.inProgressClues` reused byte-for-byte with the
+  SAME userCells/errorCells/selection/elapsedSeconds as `snapshotInProgress_iPhone_light` /
+  `..._iPad_light` (so the existing, already-reviewed Direction-B anchor coordinates for
+  `("sudoku", "03-board")` keep working without recalculation — verified post-swap, they did),
+  plus pencil notes added into three cells confirmed empty against the clue string and
+  userCells. Wired into `SLOTS` in place of `BoardViewTests/inProgress`.
+- **Sudoku Settings — rejected.** `SettingsViewAppStoreRowsTests` shows three more real rows
+  than the current `purchased` fixture ("Invite Friends", "Share App", "Write a Review"), but
+  its only recorded variant shows "Remove Ads **$2.99**" — the price changed to $0.99, so this
+  isn't a marketing-tone judgment call, it's a wrong-price defect no amount of extra content
+  buys off. Kept `purchased`. Filed #981 for the stale $2.99 baseline (and grepped every other
+  `2.99` fixture in the repo for the same staleness — 5 total committed snapshots affected,
+  Minesweeper unaffected); not fixed in this PR, out of scope.
+- **Sudoku Completion — left as-is.** `CompletionOverlayScaffoldTests/playAgain` has a grey (not
+  white) card, no `Mistakes:` row, and a "Play Again" button the current `CompletionViewTests`
+  fixtures never show. Couldn't tell a real production surface our chosen fixture just doesn't
+  exercise from an earlier/simpler test double for the shared overlay scaffold apart — not
+  enough evidence to call it, and the downside of guessing wrong (shipping a test-double
+  surface) outweighs the upside, so no further digging.

@@ -329,7 +329,8 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
-            Slot("03-board", "BoardViewTests", "Board-iPhone-light-inProgress", "snapshotInProgress_iPhone_light"),
+            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
+                 "snapshotPencilNotesWithError_iPhone_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
                  "snapshot_authenticatedLoaded_iPhoneLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPhone-light-purchased",
@@ -348,7 +349,8 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "HomeViewTests", "HomeView-iPad-light", "snapshotIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
-            Slot("03-board", "BoardViewTests", "Board-iPad-light-inProgress", "snapshotInProgress_iPad_light"),
+            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
+                 "snapshotPencilNotesWithError_iPad_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
                  "snapshot_authenticatedLoaded_iPadLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPad-light-purchased",
