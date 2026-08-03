@@ -243,8 +243,22 @@ struct SettingsViewTests {
         // #832: the shared VM defaults `generatorVersionLabel` to nil (MS has
         // no Generator row); pass Sudoku's production value explicitly so
         // these pre-#832 baselines keep showing the row.
+        //
+        // `appVersion` also defaults away from reality: the VM's own default
+        // ("1.0.0") is a placeholder for hosts with no Bundle.main to read
+        // (this synthetic NSHostingView/NSWindow test host has none) — the
+        // live app never shows it, since SudokuAppComposition/LiveRouteFactory
+        // reads `CFBundleShortVersionString` from Bundle.main at real
+        // runtime. Pass the shipping value explicitly, mirroring
+        // App/Sudoku/Info.plist's CFBundleShortVersionString, so these
+        // baselines (and any ASC marketing screenshot composited from them)
+        // show the real version instead of the placeholder (#986). This WILL
+        // drift again at the next version bump — nothing currently keeps it
+        // in sync automatically; re-grep this literal against
+        // App/Sudoku/Info.plist when bumping CFBundleShortVersionString.
         let viewModel = SettingsViewModel(
             generatorVersionLabel: GeneratorVersion.v1.rawValue,
+            appVersion: "2.6.0",
             persistence: FakePersistence()
         )
         let view = NavigationStack {
