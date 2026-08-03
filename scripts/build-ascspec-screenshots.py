@@ -2,6 +2,13 @@
 """
 build-ascspec-screenshots.py — Marketing-frame pass for ASC screenshots.
 
+Store-screenshot redesign (feat/store-screenshots-cb): Direction C (full-bleed
+brand-gradient ground, headline set directly into the color, device screenshot
+bleeding off the bottom edge, app-icon badge) for every slot, layered with
+Direction B (1-2 feature-callout chips + leader lines) on the Board/Completion
+slots. Replaces the earlier caption-panel-over-flat-tint + centered-bezel
+treatment (see git history for that version).
+
 Consumes committed snapshot-test baselines (RGBA, rendered at each device's
 exact ASC pixel size) and emits ASC-submission-spec PNGs (RGB, no alpha) for
 both apps in all 7 repo locales (en, zh-Hant, zh-Hans, ja, ko, es, th), for
@@ -9,10 +16,14 @@ each device family:
   - iphone-6.9 : 1290×2796
   - ipad-13    : 2064×2752 (#506)
 
+Every locale composites its translated headline/subhead/callout copy over
+the SAME underlying screenshot baseline (one baseline per slot, not per
+locale). A per-locale-baseline variant was tried and backed out (#977) —
+see the `SLOTS`/`Slot` comment below for why.
+
 Outputs:  docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-<screen>.png
           (own tree — matches the uploader's <app>/<device>/<locale> contract;
            leaves the preview symlinks under docs/app-store/screenshots/ untouched)
-          (sibling to the preview symlinks; never clobbers them)
 
 Tooling:  Python 3 + Pillow (PIL) — already present on this machine.
           No Homebrew / pip installs required.
@@ -32,6 +43,7 @@ import argparse
 import hashlib
 import os
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Optional
 
@@ -55,6 +67,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BASELINES_SUDOKU = REPO_ROOT / "Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__"
 BASELINES_MS = REPO_ROOT / "Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__"
 
+APP_ICONS = {
+    "sudoku": REPO_ROOT / "App/Sudoku/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png",
+    "minesweeper": REPO_ROOT / "App/Minesweeper/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png",
+}
+
 OUT_BASE = REPO_ROOT / "docs/app-store/screenshots"
 # ASC-spec assets live in their OWN tree so the layout matches the uploader's
 # contract exactly: <screenshots-dir>/<app>/<device>/<locale>/NN.png (no extra
@@ -67,20 +84,28 @@ OUT_ASCSPEC = REPO_ROOT / "docs/app-store/screenshots-ascspec"
 def hex_to_rgb(h: int) -> tuple[int, int, int]:
     return ((h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF)
 
-# Sudoku: warm-paper background, sage accent
-SUDOKU_BG        = hex_to_rgb(0xFAF8F3)
-SUDOKU_ACCENT    = hex_to_rgb(0x5C7A4F)
+
+def blend(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Linear-interpolate RGB `a` -> `b` at `t` in [0, 1]."""
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))  # type: ignore[return-value]
+
+
+# Sudoku: sage accent (accent.primary light 0x5C7A4F) — Direction C's full-bleed
+# gradient ground. Minesweeper: steel-blue accent (accent.primary light
+# 0x3E6B8C). Own-theme tokens per the redesign spec (do not share a palette).
+SUDOKU_ACCENT       = hex_to_rgb(0x5C7A4F)
+SUDOKU_ACCENT_DEEP  = blend(SUDOKU_ACCENT, (0, 0, 0), 0.38)   # gradient top
 SUDOKU_ACCENT_MUTED = hex_to_rgb(0xDCE6D0)
+SUDOKU_BG           = hex_to_rgb(0xFAF8F3)  # screenshot's own light background
 
-# Minesweeper: cool slate-blue background, steel-blue accent
-MS_BG            = hex_to_rgb(0xF4F6F8)
-MS_ACCENT        = hex_to_rgb(0x3E6B8C)
-MS_ACCENT_MUTED  = hex_to_rgb(0xD5E2EC)
+MS_ACCENT       = hex_to_rgb(0x3E6B8C)
+MS_ACCENT_DEEP  = blend(MS_ACCENT, (0, 0, 0), 0.38)
+MS_ACCENT_MUTED = hex_to_rgb(0xD5E2EC)
+MS_BG           = hex_to_rgb(0xF4F6F8)
 
-# Overlay copy panel (from screenshot-strategy.md §Overlay copy)
-OVERLAY_BG_HEX   = 0xFAF8F3  # warm-paper, used for Sudoku; MS gets its own bg tint
-
-# ── Overlay copy (per shot, per locale) ───────────────────────────────────────
+# ── Overlay copy (per shot, per locale) — source-locked to
+#    docs/app-store/screenshot-strategy.md for Sudoku (headline ≤5 words /
+#    subhead ≤12 words already fits directly-in-color type per the redesign). ──
 
 COPY = {
     "sudoku": {
@@ -97,10 +122,10 @@ COPY = {
             "en":      ("Three puzzles. Every day.", "Easy, medium, hard — the same world over."),
             "zh-Hant": ("每天三題。世界同題。", "簡單、中等、困難，看你比別人快多少。"),
             "zh-Hans": ("每天三题。世界同题。", "简单、中等、困难，看你比别人快多少。"),
-            "ja":      ("毎日3問。世界中で同じ問題。", "簡単・中級・上級、タイムで世界と並ぶ。"),
+            "ja":      ("毎日3問。世界中で同じ問題。", "やさしい・ふつう・むずかしい、タイムで世界と並ぶ。"),
             "ko":      ("매일 세 문제. 전 세계 동일.", "쉬움, 보통, 어려움 — 시간이 곧 순위."),
             "es":      ("Tres puzles. Cada día.", "Fácil, medio, difícil — los mismos para todos."),
-            "th":      ("สามปริศนา ทุกวัน", "ง่าย กลาง ยาก ชุดเดียวกันทั่วโลก"),
+            "th":      ("สามปริศนา ทุกวัน", "ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
@@ -173,61 +198,178 @@ COPY = {
     },
 }
 
-# ── Baseline → output slot mapping (matches mise-tasks/store/screenshots MAP) ──
+# ── Direction B: feature-callout chips (Board / Completion slots only) ────────
+#
+# NEW copy — not a rewrite of the locked screenshot-strategy.md headline/subhead
+# text above. Short (2-4 word) chip labels naming ONE concrete, currently-visible
+# UI element per slot. Authored ONCE per (app, slot, device) in NORMALIZED
+# SCREEN-FRACTION coordinates (fx, fy — fraction of the baseline PNG's own
+# width/height) and reused across every locale (translated text only, never a
+# per-locale position) per the redesign spec. Device classes get their OWN
+# anchor because the Board/Completion layouts are NOT proportionally identical
+# between iPhone (stacked) and iPad (side-by-side controls) — verified by
+# eyeballing both baselines, not guessed.
+CALLOUTS = {
+    ("sudoku", "03-board"): [{
+        # Anchor dot = the red error cell (row0,col2) — the actual thing
+        # "catches mistakes instantly" refers to. The OLD default (chip
+        # dropped straight below the dot) landed on row2's live "9"/"8"
+        # cells. A first `chip_at` attempt tried the empty block at
+        # columns 6-8 — that's real empty grid space, but the chip's own
+        # width (measured: ~42% of canvas width for the longest label) means
+        # centering it there pushes past the right margin, and the margin
+        # clamp in draw_callout_chip then drags it back LEFT onto the very
+        # cells being avoided. Fixed target instead: the empty gap in the
+        # HEADER ROW above the grid, between "Easy" and the timer/pause
+        # controls — measured directly (column-scan for non-background
+        # pixels in that row) at 56%/76% of the baseline's own width on
+        # iPhone/iPad respectively, comfortably wider than the chip in every
+        # locale, so no clamp ever engages.
+        "anchor": {"iphone-6.9": (0.295, 0.180), "ipad-13": (0.207, 0.315)},
+        "chip_at": {"iphone-6.9": (0.403, 0.112), "ipad-13": (0.360, 0.210)},
+        "en": "Catches mistakes instantly", "zh-Hant": "即時抓出錯誤", "zh-Hans": "实时揪出错误",
+        "ja": "ミスをその場で検出", "ko": "실수를 즉시 잡아냄",
+        "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
+    }],
+    ("sudoku", "04-completion"): [{
+        # Anchor = the completion card's OWN bottom edge (measured by scanning
+        # the baseline for the card's near-white bounding box), not the tiny
+        # time glyph inside it — an anchor that sits ON dense card content had
+        # the chip overlap the checkmark/"Solved!" text; the card's edge always
+        # has clear blank canvas below it to drop the chip into.
+        "anchor": {"iphone-6.9": (0.500, 0.620), "ipad-13": (0.500, 0.574)},
+        "en": "Every solve, timed & ranked", "zh-Hant": "每次完成，計時排名", "zh-Hans": "每次完成，计时排名",
+        "ja": "解くたびにタイム計測＆ランキング", "ko": "풀 때마다 시간 측정 및 순위",
+        "es": "Cada partida, cronometrada y clasificada", "th": "ทุกครั้งที่ไข จับเวลาและจัดอันดับ",
+    }],
+    ("minesweeper", "03-board"): [{
+        # iPad: the default below-anchor drop landed the chip on the covered
+        # grid tiles. `chip_at` moves the chip into the right-hand
+        # control column, well below the Reveal button (both measured off
+        # the baseline: grid's own right edge, and the button's bottom
+        # edge). fx is deliberately far enough right that draw_callout_chip's
+        # own margin clamp is what places it (any fx past ~0.83 clamps to
+        # the same spot) — the clamped position clears the grid's right edge
+        # with room to spare. iPhone's anchor already has clear space
+        # directly below it (verified — the stacked-controls layout puts the
+        # grid much lower on that device), so it keeps the default drop.
+        #
+        # `chip_max_w` (iPad only): the "room to spare" comment above was
+        # verified against `en`'s 662px-wide chip only. Re-verifying every
+        # locale (feat/store-screenshots-cb fullness audit's own instruction)
+        # found ja (838px), es (868px) and th (790px) all wider than the
+        # ~772px of actual blank column space measured off the baseline —
+        # long enough to spill left onto the grid's rightmost cells. Capping
+        # at 30% of canvas width forces those into a second line instead.
+        # LESSON: this is what happens when a `chip_at` callout is verified
+        # against one locale's chip width instead of measured space — any
+        # CALLOUTS entry that sets `chip_at` (squeezing the chip next to a
+        # fixed-position UI element rather than dropping it into open canvas)
+        # needs a `chip_max_w` sanity check as a matter of course, not just
+        # the slot someone happens to be touching that round.
+        "anchor": {"iphone-6.9": (0.092, 0.045), "ipad-13": (0.700, 0.016)},
+        "chip_at": {"ipad-13": (0.850, 0.200)},
+        "chip_max_w": {"ipad-13": 0.30},
+        "en": "Flag suspected mines", "zh-Hant": "標記可疑地雷", "zh-Hans": "标记可疑地雷",
+        "ja": "疑わしいマスに旗を立てる", "ko": "의심되는 칸에 깃발 표시",
+        "es": "Marca las minas sospechosas", "th": "ปักธงจุดที่สงสัยว่ามีระเบิด",
+    }],
+    ("minesweeper", "04-completion"): [{
+        # See the Sudoku completion callout's comment. MS's card sits closer to
+        # its own "Close" button than Sudoku's does to the canvas edge (no
+        # "Mistakes" row), so the fixed below-offset from the CARD bottom would
+        # land the chip ON the Close button — anchor to the Close BUTTON's own
+        # bottom edge instead (measured the same way), which always has clear
+        # canvas below it.
+        #
+        # iPhone diverges from iPad here because the two devices use DIFFERENT
+        # baseline fixtures (screenshot-fullness audit, feat/store-screenshots-cb):
+        # iPad still uses `win-loaded` (content ends at the Close button, 0.637 —
+        # same as before), but iPhone was swapped to `win-reminder`, which adds a
+        # real "Remind me when tomorrow's boards are ready" row below Close. The
+        # OLD 0.637 anchor (Close button's bottom edge) now lands ON that new
+        # row's text instead of past it — re-measured via detect_content_bottom()
+        # against the win-reminder baseline: content now ends at 0.702, not 0.637.
+        "anchor": {"iphone-6.9": (0.500, 0.702), "ipad-13": (0.500, 0.585)},
+        "en": "Every board, timed & ranked", "zh-Hant": "每一局，計時排名", "zh-Hans": "每一局，计时排名",
+        "ja": "毎回タイム計測＆ランキング", "ko": "매 판마다 시간 측정 및 순위",
+        "es": "Cada tablero, cronometrado y clasificado", "th": "ทุกกระดาน จับเวลาและจัดอันดับ",
+    }],
+}
 
-# SLOTS[device][app] = [(slot_name, baseline_path), ...]. The iPad arm reuses
-# the SAME slot storyline as iPhone (#506), sourced from the iPad-13 snapshot
-# baselines recorded at 2064×2752.
+# ── Baseline → output slot mapping ─────────────────────────────────────────────
+#
+# One baseline per slot, reused for every locale — same as pre-redesign. A
+# per-locale-baseline variant was tried and backed out (#977): SwiftUI's
+# `Text(LocalizedStringKey)` resolves against `Bundle.main`, not
+# `.environment(\.locale, ...)`, so inside a headless `swift test` host (no
+# compiled `.lproj` in `Bundle.main`) the underlying screenshot never
+# localizes — all 108 locale-specific baselines that attempt came out
+# byte-identical to `en`. Only the composited overlay below (headline /
+# subhead / Direction-B callouts) is locale-aware; see #977 for the real fix.
+#
+# `named` is the `named:` string the snapshot test passes to
+# `assertSnapshot`/`assertUISnapshot`.
+
+
+class Slot:
+    __slots__ = ("name", "suite_dir", "named", "prefix")
+
+    def __init__(self, name: str, suite_dir: str, named: str, prefix: str):
+        self.name = name
+        self.suite_dir = suite_dir
+        self.named = named
+        self.prefix = prefix
+
+    def baseline(self, baselines_root: Path) -> Path:
+        return baselines_root / self.suite_dir / f"{self.prefix}.{self.named}.png"
+
+
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
-            ("01-home",
-             BASELINES_SUDOKU / "HomeViewTests/snapshotIPhoneLight.HomeView-iPhone-light.png"),
-            ("02-daily",
-             BASELINES_SUDOKU / "DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"),
-            ("03-board",
-             BASELINES_SUDOKU / "BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"),
-            ("04-completion",
-             BASELINES_SUDOKU / "CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"),
-            ("05-settings",
-             BASELINES_SUDOKU / "SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"),
+            Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
+            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
+            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
+                 "snapshotPencilNotesWithError_iPhone_light"),
+            Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
+                 "snapshot_authenticatedLoaded_iPhoneLight"),
+            Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPhone-light-purchased",
+                 "snapshot_iPhone_light_purchased"),
         ],
         "minesweeper": [
-            ("01-home",
-             BASELINES_MS / "MinesweeperHomeSnapshotTests/snapshotHome_iPhone_light.Home-iPhone-light-compact.png"),
-            ("02-daily",
-             BASELINES_MS / "MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"),
-            ("03-board",
-             BASELINES_MS / "MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"),
-            ("04-completion",
-             BASELINES_MS / "MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"),
+            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
+            Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
+                 "snapshotFlagged_iPhone_light"),
+            Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
+                 "snapshotWinDailyReminder_iPhone_light"),
         ],
     },
     "ipad-13": {
         "sudoku": [
-            ("01-home",
-             BASELINES_SUDOKU / "HomeViewTests/snapshotIPadLight.HomeView-iPad-light.png"),
-            ("02-daily",
-             BASELINES_SUDOKU / "DailyHubViewTests/snapshotUnfinishedIPadLight.DailyHub-iPad-light-unfinished.png"),
-            ("03-board",
-             BASELINES_SUDOKU / "BoardViewTests/snapshotInProgress_iPad_light.Board-iPad-light-inProgress.png"),
-            ("04-completion",
-             BASELINES_SUDOKU / "CompletionViewTests/snapshot_authenticatedLoaded_iPadLight.Completion-iPad-light-loaded.png"),
-            ("05-settings",
-             BASELINES_SUDOKU / "SettingsViewTests/snapshot_iPad_light_purchased.SettingsView-fullpage-iPad-light-purchased.png"),
+            Slot("01-home", "HomeViewTests", "HomeView-iPad-light", "snapshotIPadLight"),
+            Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
+            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
+                 "snapshotPencilNotesWithError_iPad_light"),
+            Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
+                 "snapshot_authenticatedLoaded_iPadLight"),
+            Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPad-light-purchased",
+                 "snapshot_iPad_light_purchased"),
         ],
         "minesweeper": [
-            ("01-home",
-             BASELINES_MS / "MinesweeperHomeSnapshotTests/snapshotHome_iPad_light.Home-iPad-light-regular.png"),
-            ("02-daily",
-             BASELINES_MS / "MinesweeperDailyHubSnapshotTests/snapshotDaily_iPad_light.Daily-iPad-light-regular.png"),
-            ("03-board",
-             BASELINES_MS / "MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPad_light.Board-iPad-light-beginner-covered.png"),
-            ("04-completion",
-             BASELINES_MS / "MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPad_light.Completion-iPad-light-win-loaded.png"),
+            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular", "snapshotHome_iPad_light"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
+                 "snapshotDaily_iPad_light_streak"),
+            Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
+                 "snapshotBeginnerCovered_iPad_light"),
+            Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
+                 "snapshotWinLoaded_iPad_light"),
         ],
     },
 }
+
+BASELINES_ROOT = {"sudoku": BASELINES_SUDOKU, "minesweeper": BASELINES_MS}
 
 LOCALES = ["en", "zh-Hant", "zh-Hans", "ja", "ko", "es", "th"]
 
@@ -352,10 +494,213 @@ def draw_rounded_rect(draw: ImageDraw.ImageDraw,
 
 
 def make_frame(app: str) -> tuple:
-    """Return (bg_color, accent_color, accent_muted) for the app."""
+    """Return (bg_color, accent_color, accent_deep, accent_muted) for the app."""
     if app == "sudoku":
-        return SUDOKU_BG, SUDOKU_ACCENT, SUDOKU_ACCENT_MUTED
-    return MS_BG, MS_ACCENT, MS_ACCENT_MUTED
+        return SUDOKU_BG, SUDOKU_ACCENT, SUDOKU_ACCENT_DEEP, SUDOKU_ACCENT_MUTED
+    return MS_BG, MS_ACCENT, MS_ACCENT_DEEP, MS_ACCENT_MUTED
+
+
+def rounded_top_mask(size: tuple[int, int], radius: int) -> Image.Image:
+    """An 'L' mode mask: rounded top-left/top-right corners, square bottom —
+    the device screenshot's top edge reads as a screen, its bottom edge
+    bleeds flush into the canvas edge (Direction C's structural fix for the
+    old 'floating bezel in an empty canvas' problem)."""
+    w, h = size
+    mask = Image.new("L", size, 0)
+    d = ImageDraw.Draw(mask)
+    d.rounded_rectangle((0, 0, w - 1, h - 1 + radius), radius=radius, fill=255)
+    return mask
+
+
+def detect_content_bottom(img: Image.Image, bg_color: tuple[int, int, int], tolerance: int = 12) -> int:
+    """Return the y-coordinate (source pixel space) of the last row carrying
+    real content, scanning bottom-up. A pixel counts as content if it's not
+    (near-)transparent AND its color differs from the app's own background
+    by more than `tolerance` — one test that handles both baseline shapes in
+    this pipeline: a full opaque device screenshot (content ends where the
+    List/Form's own cream background starts) and a floating hero-reveal card
+    on a transparent canvas (content ends where alpha drops to ~0)."""
+    rgba = img if img.mode == "RGBA" else img.convert("RGBA")
+    w, h = rgba.size
+    px = rgba.load()
+    br, bg_g, bb = bg_color
+    for y in range(h - 1, -1, -1):
+        for x in range(0, w, 2):
+            r, g, b, a = px[x, y]
+            if a > 40 and (abs(r - br) + abs(g - bg_g) + abs(b - bb)) > tolerance:
+                return y
+    return 0
+
+
+def paste_icon_badge(canvas: Image.Image, app: str, asc_w: int, margin: int, size: int) -> None:
+    """Composite the app's own AppIcon (real shipped asset) as a small
+    rounded-square badge in the top-left corner, for shelf recognition."""
+    icon_path = APP_ICONS[app]
+    if not icon_path.exists():
+        return
+    icon = Image.open(icon_path).convert("RGBA").resize((size, size), Image.LANCZOS)
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, size - 1, size - 1), radius=int(size * 0.22), fill=255)
+    icon.putalpha(mask)
+    canvas.paste(icon, (margin, margin), icon)
+    # Hairline stroke so the badge pops off the gradient at low contrast.
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw.rounded_rectangle(
+        (margin, margin, margin + size - 1, margin + size - 1),
+        radius=int(size * 0.22), outline=(255, 255, 255, 130), width=3
+    )
+
+
+def grapheme_clusters(s: str) -> list[str]:
+    """Split a string into user-perceptible clusters — a base code point
+    plus any trailing Unicode combining marks (category Mn/Mc/Me) that
+    attach to it — instead of raw code points. Thai vowel/tone signs (MAI
+    HAN-AKAT, SARA U, SARA II, MAI EK, ...) are combining marks: iterating
+    `for ch in s` directly can break a line right before one, leaving a
+    bare diacritic floating over nothing on the next line.
+
+    Uses `unicodedata.category()`, NOT `unicodedata.combining()` — Thai is
+    a visual-order script, so Unicode assigns most of its vowel/tone marks
+    combining CLASS 0 (verified: of the 8 Mn marks in a real shipped Thai
+    callout label, only 3 have combining() != 0; category() catches all 8).
+    `combining()` is the wrong test for this script and silently reproduces
+    the exact bug this function exists to fix. Hangul is precomposed and
+    CJK carries no combining marks, so both pass through unchanged either
+    way."""
+    clusters: list[str] = []
+    for ch in s:
+        if clusters and unicodedata.category(ch) in ("Mn", "Mc", "Me"):
+            clusters[-1] += ch
+        else:
+            clusters.append(ch)
+    return clusters
+
+
+def draw_callout_chip(
+    canvas: Image.Image,
+    anchor_xy: tuple[int, int],
+    label: str,
+    locale: str,
+    accent_color: tuple[int, int, int],
+    asc_w: int,
+    chip_xy: Optional[tuple[int, int]] = None,
+    max_width: Optional[int] = None,
+    slot_name: str = "",
+) -> None:
+    """One Direction-B feature callout: a small dot at the anchor (the actual
+    UI feature being called out), a leader line, and a rounded pill chip
+    carrying the (per-locale) label.
+
+    `chip_xy`, when given, is the chip's own target position (verified empty
+    canvas — grid geometry measured directly off the baseline, not guessed)
+    and the leader line is drawn straight from the anchor dot to the
+    chip instead of assuming "chip sits directly below the dot". When
+    omitted, falls back to the original below-anchor default (chip centered
+    under the dot, dropped by a fixed offset) for callouts that already have
+    clear space directly beneath their anchor.
+
+    `max_width`, when given, caps the chip's own pixel width (independent of
+    the canvas-edge margin clamp below). Some placements are squeezed into a
+    space narrower than the canvas margins allow — MS iPad Board's chip sits
+    in the control column beside the grid, not against the canvas edge — so
+    the generic margin clamp alone doesn't stop a long translated label from
+    spilling sideways onto the grid. Found via a fullness audit
+    (feat/store-screenshots-cb) that swapped in fuller baselines and, per that
+    task's own instruction to re-verify geometry per locale rather than just
+    `en`, caught ja/es/th labels overlapping the MS iPad board grid — `en`'s
+    label was short enough to fit by accident. When the single-line label
+    would exceed `max_width`, it wraps onto a second line instead."""
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    ax, ay = anchor_xy
+
+    dot_r = max(6, int(asc_w * 0.007))
+    draw.ellipse((ax - dot_r, ay - dot_r, ax + dot_r, ay + dot_r),
+                 fill=(255, 255, 255, 255), outline=accent_color, width=3)
+
+    chip_font = font_for(locale, int(asc_w * 0.030), bold=True)
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    pad_x, pad_y = int(asc_w * 0.026), int(asc_w * 0.016)
+
+    def measure(s: str) -> tuple[int, int, int]:
+        b = tmp.textbbox((0, 0), s, font=chip_font)
+        return b[2] - b[0], b[3] - b[1], b[1]
+
+    text_w, text_h, top_bearing = measure(label)
+    lines = [label]
+    if max_width is not None and text_w + pad_x * 2 > max_width:
+        max_line_w = max_width - pad_x * 2
+        # Word-split first (Latin/Hangul), falling back to a character split
+        # for any "word" that alone exceeds max_line_w — CJK and Thai carry
+        # no spaces at all, so for them the whole label is one "word" and
+        # this fallback is the ONLY thing that wraps it (verified: a
+        # space-only splitter left ja/th completely unwrapped, still
+        # overflowing max_width, since `label.split()` never breaks them).
+        lines, current = [], ""
+        for word in label.split():
+            test = (current + " " + word).strip()
+            if measure(test)[0] <= max_line_w:
+                current = test
+                continue
+            if current:
+                lines.append(current)
+                current = ""
+            if measure(word)[0] <= max_line_w:
+                current = word
+            else:
+                for ch in grapheme_clusters(word):
+                    test = current + ch
+                    if measure(test)[0] <= max_line_w or not current:
+                        current = test
+                    else:
+                        lines.append(current)
+                        current = ch
+        if current:
+            lines.append(current)
+        lines = lines or [label]  # degenerate empty-label case: keep the
+        # pre-existing fallback rather than let max() below crash on [].
+        if len(lines) > 2:
+            # A third line means the chip is too narrow for this locale's
+            # text and needs a wider slot, not more wrapping — silently
+            # dropping the tail would ship truncated user-visible copy with
+            # every automated check still green (exactly how this pipeline's
+            # earlier chip-overlap defects slipped through). Fail loudly
+            # instead so the next locale/copy change that overflows here
+            # gets caught at generation time, not by someone eyeballing a
+            # screenshot after the fact.
+            raise ValueError(
+                f"callout chip label wraps to {len(lines)} lines (max 2) — "
+                f"slot={slot_name!r} locale={locale!r} label={label!r}; "
+                f"widen chip_max_w or shorten the translation"
+            )
+        text_w = max(measure(line)[0] for line in lines)
+        _, text_h, top_bearing = measure(lines[0])
+
+    line_gap = int(text_h * 0.35)
+    chip_w = text_w + pad_x * 2
+    chip_h = text_h * len(lines) + line_gap * (len(lines) - 1) + pad_y * 2
+
+    if chip_xy is not None:
+        cx, cy = chip_xy
+        chip_x = min(max(cx - chip_w // 2, int(asc_w * 0.04)), asc_w - chip_w - int(asc_w * 0.04))
+        chip_y = cy
+    else:
+        offset = int(asc_w * 0.12)
+        chip_x = min(max(ax - chip_w // 2, int(asc_w * 0.04)), asc_w - chip_w - int(asc_w * 0.04))
+        chip_y = ay + offset
+
+    draw.line((ax, ay, chip_x + chip_w // 2, chip_y), fill=(255, 255, 255, 220), width=3)
+
+    draw.rounded_rectangle(
+        (chip_x, chip_y, chip_x + chip_w, chip_y + chip_h),
+        radius=chip_h // len(lines) // 2 if len(lines) > 1 else chip_h // 2,
+        fill=(*accent_color, 240)
+    )
+    ty = chip_y + pad_y - top_bearing
+    for line in lines:
+        line_w = measure(line)[0]
+        tx = chip_x + (chip_w - line_w) // 2
+        draw.text((tx, ty), line, font=chip_font, fill=(255, 255, 255, 255))
+        ty += text_h + line_gap
 
 
 def build_asc_image(baseline_path: Path,
@@ -364,70 +709,62 @@ def build_asc_image(baseline_path: Path,
                     app: str,
                     locale: str,
                     asc_w: int = ASC_W,
-                    asc_h: int = ASC_H) -> Image.Image:
+                    asc_h: int = ASC_H,
+                    callouts: Optional[list[dict]] = None,
+                    device: str = "iphone-6.9",
+                    slot_name: str = "") -> Image.Image:
     """
-    Compose one ASC-spec RGB PNG at the given canvas size.
-
-    `asc_w`/`asc_h` default to the iPhone 6.9" canvas (1290×2796); pass the
-    iPad-13 canvas (2064×2752) for the iPad arm. Bezel and caption-panel WIDTHS
-    derive from `asc_w` and the top band / screen height derive from `asc_h`, but
-    the caption/font pixel constants (padding, corner radius, 72pt headline /
-    44pt subhead) are fixed and were tuned for the iPhone canvas — at iPad scale
-    the text block is proportionally smaller, which was accepted for the v1 iPad
-    slot. Retune these constants per-device if a denser iPad caption is wanted.
+    Compose one ASC-spec RGB PNG at the given canvas size — Direction C
+    (full-bleed brand-gradient ground + headline set directly into the color +
+    device screenshot bleeding off the bottom + app-icon badge), optionally
+    layered with Direction B (feature-callout chips, Board/Completion only).
 
     Layout (top → bottom):
-      - Opaque brand background (full canvas)
-      - Overlay caption block in the top-third
-          • headline (bold)
-          • subhead
-      - Device bezel (rounded rect, subtle shadow/border)
-          • game screen baseline scaled to fit inside
+      - Full-bleed vertical gradient (app's OWN accent, deep → mid)
+      - App-icon badge, top-left corner
+      - Headline (bold, set directly into the gradient) + subhead
+      - Device screenshot, full canvas width minus side margins, rounded top
+        corners, bottom edge bleeding past the canvas edge (PIL clips
+        automatically — no bezel/frame drawn around it). Cropped to its
+        content-bearing region first so the bleed cuts into content,
+        never a large flat area of the screenshot's own dead space.
+      - Direction B: callout chips + leader lines anchored to specific UI,
+        positioned in normalized screen-fraction coordinates (CALLOUTS above)
+        — `chip_at` optionally repositions the CHIP itself away from the
+        anchor when the default below-anchor drop would land on content.
     """
-    bg_color, accent_color, accent_muted = make_frame(app)
+    bg_color, accent_color, accent_deep, accent_muted = make_frame(app)
 
-    canvas = Image.new("RGB", (asc_w, asc_h), bg_color)
+    canvas = Image.new("RGB", (asc_w, asc_h), accent_color)
     draw = ImageDraw.Draw(canvas, "RGBA")
 
-    # ── Background gradient band (subtle, same hue family) ────────────────────
-    # Blend a slightly darker strip at top to give the caption area contrast.
-    top_band_h = asc_h // 3
-    top_r = max(0, bg_color[0] - 10)
-    top_g = max(0, bg_color[1] - 10)
-    top_b = max(0, bg_color[2] - 8)
-    for y in range(top_band_h):
-        t = y / top_band_h  # 0 → darker, 1 → bg_color
-        r = int(top_r + t * (bg_color[0] - top_r))
-        g = int(top_g + t * (bg_color[1] - top_g))
-        b = int(top_b + t * (bg_color[2] - top_b))
+    # ── Full-bleed brand gradient (deep accent at top → accent at ~55% down,
+    #    where the screenshot begins) ──────────────────────────────────────
+    gradient_h = int(asc_h * 0.55)
+    for y in range(gradient_h):
+        t = y / gradient_h
+        r, g, b = blend(accent_deep, accent_color, t)
         draw.line([(0, y), (asc_w, y)], fill=(r, g, b))
 
-    # ── Caption block ─────────────────────────────────────────────────────────
-    #
-    # At 1290×2796 we need generous font sizes. Strategy doc says overlay is
-    # in the top-third. We use:
-    #   headline: 72pt bold  (≈ 6% of canvas width per character, legible)
-    #   subhead:  44pt regular
-    #
-    # Caption panel background: warm-paper at ~92% opacity blended over bg
-    CAPTION_PADDING   = 60           # px padding inside panel
-    CAPTION_TOP       = 140          # px from top of canvas
-    CAPTION_WIDTH     = asc_w - 120  # 60px margin on each side
-    CAPTION_LEFT      = 60
+    # ── App-icon badge (top-left, shelf recognition) ──────────────────────
+    badge_margin = int(asc_w * 0.055)
+    badge_size = int(asc_w * 0.088)
+    paste_icon_badge(canvas, app, asc_w, badge_margin, badge_size)
 
-    font_headline = font_for(locale, 72, bold=True)
-    font_subhead  = font_for(locale, 44, bold=False)
+    # ── Headline + subhead set directly into the gradient ─────────────────
+    TEXT_LEFT = int(asc_w * 0.070)
+    TEXT_WIDTH = asc_w - TEXT_LEFT * 2
+    TEXT_TOP = badge_margin + badge_size + int(asc_h * 0.045)
 
-    # Measure text to size the panel dynamically
+    font_headline = font_for(locale, int(asc_w * 0.068), bold=True)
+    font_subhead = font_for(locale, int(asc_w * 0.036), bold=False)
+
     tmp_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
 
     def text_w(s: str, font: ImageFont.FreeTypeFont) -> int:
         bbox = tmp_draw.textbbox((0, 0), s, font=font)
         return bbox[2] - bbox[0]
 
-    # Wrap by words (Latin) and fall back to per-character wrapping for any
-    # token that itself overflows (CJK has no spaces, so a whole clause is one
-    # "word" — without this it would never wrap and could overrun the panel).
     def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
         lines, current = [], ""
         for word in text.split():
@@ -441,8 +778,7 @@ def build_asc_image(baseline_path: Path,
             if text_w(word, font) <= max_width:
                 current = word
             else:
-                # Word longer than the panel: break it character by character.
-                for ch in word:
+                for ch in grapheme_clusters(word):
                     test = current + ch
                     if text_w(test, font) <= max_width or not current:
                         current = test
@@ -453,113 +789,92 @@ def build_asc_image(baseline_path: Path,
             lines.append(current)
         return lines or [""]
 
-    text_width = CAPTION_WIDTH - CAPTION_PADDING * 2
-    headline_lines = wrap_text(headline, font_headline, text_width)
-    subhead_lines  = wrap_text(subhead,  font_subhead,  text_width)
+    headline_lines = wrap_text(headline, font_headline, TEXT_WIDTH)
+    subhead_lines = wrap_text(subhead, font_subhead, TEXT_WIDTH)
 
-    LINE_GAP_H = 16
-    LINE_GAP_S = 12
-    BLOCK_GAP  = 28  # between headline block and subhead block
+    LINE_GAP_H = int(asc_h * 0.006)
+    LINE_GAP_S = int(asc_h * 0.005)
+    BLOCK_GAP = int(asc_h * 0.014)
 
-    def block_height(lines: list[str], font: ImageFont.FreeTypeFont, gap: int) -> int:
-        if not lines:
-            return 0
-        bbox = tmp_draw.textbbox((0, 0), lines[0], font=font)
-        line_h = bbox[3] - bbox[1]
-        return line_h * len(lines) + gap * (len(lines) - 1)
-
-    h_block_h = block_height(headline_lines, font_headline, LINE_GAP_H)
-    s_block_h = block_height(subhead_lines, font_subhead, LINE_GAP_S)
-    panel_h   = CAPTION_PADDING * 2 + h_block_h + BLOCK_GAP + s_block_h
-
-    panel_rect = (
-        CAPTION_LEFT,
-        CAPTION_TOP,
-        CAPTION_LEFT + CAPTION_WIDTH,
-        CAPTION_TOP + panel_h,
-    )
-
-    # Draw semi-opaque panel (warm-paper tint, 92% = alpha 235/255)
-    panel_color_alpha = (*bg_color, 235)
-    draw.rounded_rectangle(panel_rect, radius=32,
-                            fill=panel_color_alpha,
-                            outline=(*accent_muted, 200), width=2)
-
-    # Headline text (accent color = sage / steel-blue)
-    ty = CAPTION_TOP + CAPTION_PADDING
+    ty = TEXT_TOP
     for line in headline_lines:
-        draw.text((CAPTION_LEFT + CAPTION_PADDING, ty), line,
-                  font=font_headline, fill=(*accent_color, 255))
+        draw.text((TEXT_LEFT, ty), line, font=font_headline, fill=(255, 255, 255, 255))
         bbox = tmp_draw.textbbox((0, 0), line, font=font_headline)
         ty += (bbox[3] - bbox[1]) + LINE_GAP_H
-    ty += BLOCK_GAP - LINE_GAP_H  # adjust for the inter-block gap
-
-    # Subhead text (slightly muted — 85% of primary text #1A1D21)
-    text_primary = (0x1A, 0x1D, 0x21)
+    ty += BLOCK_GAP - LINE_GAP_H
     for line in subhead_lines:
-        draw.text((CAPTION_LEFT + CAPTION_PADDING, ty), line,
-                  font=font_subhead, fill=(*text_primary, 217))
+        draw.text((TEXT_LEFT, ty), line, font=font_subhead, fill=(255, 255, 255, 217))
         bbox = tmp_draw.textbbox((0, 0), line, font=font_subhead)
         ty += (bbox[3] - bbox[1]) + LINE_GAP_S
 
-    # ── Device bezel ──────────────────────────────────────────────────────────
+    # ── Device screenshot: full width minus margins, rounded top corners,
+    #    bottom bleeds past the canvas edge when content reaches that far ──
     #
-    # Place game screen below caption, scaled to fit inside a bezel.
-    # Bezel occupies roughly 80% of canvas width, centered, below caption.
+    # Bleeding the FULL baseline (device-height) screenshot let the
+    # panel's dead-space tail (a scrolled list's own empty background below
+    # its last row) become the thing that bleeds, not the content — some
+    # slots (Home: 49% content, Daily: 39%, Settings: 52%) showed a large
+    # flat cream area inside the panel instead of the "no empty canvas is
+    # possible" guarantee Direction C was built for. Fix: crop the baseline
+    # to its content-bearing region (detect_content_bottom + a little
+    # padding) before compositing, at the SAME width-fill scale as before
+    # (unchanged) — so the panel is exactly as tall as its real content.
     #
-    BEZEL_TOP     = CAPTION_TOP + panel_h + 60
-    BEZEL_MARGIN  = 60               # px on each side
-    BEZEL_W       = asc_w - BEZEL_MARGIN * 2
-    BEZEL_CORNER  = 64               # bezel corner radius
-    BEZEL_BORDER  = 12               # bezel border thickness
-    BEZEL_PAD     = 20               # inner padding between bezel border and screen
+    # An earlier version of this fix also zoomed PAST the width-fill scale
+    # to force every slot to bleed all the way to the canvas edge. That
+    # regressed worse than the bug it fixed: a slot whose content is short
+    # relative to its width (MS iPad's covered board — grid + control panel
+    # together only reach 44% down) needed enough zoom to also outgrow
+    # screen_w, and center-cropping the overflow back down clipped the right
+    # control panel's own "Reveal" button off the edge — hiding real product
+    # UI, the exact failure mode Direction B's chip-overlap fix (below) also
+    # exists to avoid. A shorter panel with the brand gradient showing below
+    # it (not cream, not clipped controls) satisfies the actual acceptance
+    # bar — no flat area with nothing in it — without that risk. Slots whose
+    # content already reaches deep enough (Board's digit pad, ~92%) still
+    # bleed past the edge exactly as before; nothing tries to force it.
+    SCREEN_MARGIN = int(asc_w * 0.045)
+    SCREEN_TOP = ty + int(asc_h * 0.055)
+    screen_w = asc_w - SCREEN_MARGIN * 2
 
-    # Available height for the screen image
-    screen_inner_w = BEZEL_W - BEZEL_BORDER * 2 - BEZEL_PAD * 2
-    screen_inner_h_max = asc_h - BEZEL_TOP - 80 - BEZEL_BORDER * 2 - BEZEL_PAD * 2
+    CONTENT_PAD_FRAC = 0.03  # breathing room below the last content row
 
-    # Load and fit baseline
-    src = Image.open(baseline_path).convert("RGBA")
-    src_w, src_h = src.size
+    src_full = Image.open(baseline_path).convert("RGBA")
+    src_w, src_h_full = src_full.size
+    scale = screen_w / src_w
 
-    # Scale to fill screen_inner_w while maintaining aspect ratio (letterbox if needed)
-    scale = screen_inner_w / src_w
-    fit_w = screen_inner_w
-    fit_h = int(src_h * scale)
-    if fit_h > screen_inner_h_max:
-        scale = screen_inner_h_max / src_h
-        fit_h = screen_inner_h_max
-        fit_w = int(src_w * scale)
+    content_bottom_px = detect_content_bottom(src_full, bg_color)
+    crop_h = min(src_h_full, content_bottom_px + int(src_h_full * CONTENT_PAD_FRAC))
 
-    src_resized = src.resize((fit_w, fit_h), Image.LANCZOS)
-
-    # Actual bezel height wraps the screen
-    bezel_inner_h = fit_h + BEZEL_PAD * 2
-    bezel_h = bezel_inner_h + BEZEL_BORDER * 2
-    bezel_left = BEZEL_MARGIN
-    bezel_right = bezel_left + BEZEL_W
-    bezel_bottom = BEZEL_TOP + bezel_h
-
-    # Bezel outer rect (slightly off-white, like a device silver/white frame)
-    # Use accent_muted for a tasteful on-brand border
-    BEZEL_FILL    = (0xF8, 0xF8, 0xF8)  # near-white chassis
-    BEZEL_OUTLINE = accent_muted
-
-    draw_rounded_rect(draw,
-                      (bezel_left, BEZEL_TOP, bezel_right, bezel_bottom),
-                      BEZEL_CORNER,
-                      fill=BEZEL_FILL,
-                      outline=BEZEL_OUTLINE,
-                      outline_width=BEZEL_BORDER)
-
-    # Composite game screen inside bezel (flatten alpha onto bg)
-    screen_x = bezel_left + BEZEL_BORDER + BEZEL_PAD + (screen_inner_w - fit_w) // 2
-    screen_y = BEZEL_TOP  + BEZEL_BORDER + BEZEL_PAD
-
-    # Flatten the RGBA baseline onto bg_color before pasting (no transparency leak)
+    fit_w, fit_h = screen_w, int(crop_h * scale)
+    src_resized = src_full.crop((0, 0, src_w, crop_h)).resize((fit_w, fit_h), Image.LANCZOS)
     bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
     bg_patch.paste(src_resized, (0, 0), src_resized)
-    canvas.paste(bg_patch, (screen_x, screen_y))
+
+    corner_radius = int(asc_w * 0.045)
+    mask = rounded_top_mask((fit_w, fit_h), corner_radius)
+    canvas.paste(bg_patch, (SCREEN_MARGIN, SCREEN_TOP), mask)
+
+    # ── Direction B: feature-callout chips (Board / Completion only) ──────
+    #
+    # fx/fy are fractions of the ORIGINAL (uncropped) baseline — that's the
+    # stable reference frame regardless of how much the block above zoomed
+    # in, and X is unaffected by the (vertical-only) crop, so this maps
+    # correctly whether or not this slot needed any zoom.
+    if callouts:
+        for callout in callouts:
+            fx, fy = callout["anchor"][device]
+            anchor_xy = (SCREEN_MARGIN + int(fx * screen_w), SCREEN_TOP + int(fy * src_h_full * scale))
+            label = callout.get(locale) or callout["en"]
+            chip_target = callout.get("chip_at", {}).get(device)
+            chip_xy = None
+            if chip_target:
+                cfx, cfy = chip_target
+                chip_xy = (SCREEN_MARGIN + int(cfx * screen_w), SCREEN_TOP + int(cfy * src_h_full * scale))
+            chip_max_w_frac = callout.get("chip_max_w", {}).get(device)
+            max_width = int(chip_max_w_frac * asc_w) if chip_max_w_frac else None
+            draw_callout_chip(canvas, anchor_xy, label, locale, accent_color, asc_w,
+                               chip_xy=chip_xy, max_width=max_width, slot_name=slot_name)
 
     # ── Final sanity: canvas must be RGB (no alpha) ───────────────────────────
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
@@ -577,26 +892,29 @@ def generate_all(dry_run: bool = False) -> list[dict]:
     for device, apps in SLOTS.items():
         dev = DEVICES[device]
         for app, slots in apps.items():
-            for slot_name, baseline_path in slots:
+            for slot in slots:
+                baselines_root = BASELINES_ROOT[app]
+                slot_callouts = CALLOUTS.get((app, slot.name))
                 for locale in LOCALES:
-                    copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
+                    copy_block = COPY.get(app, {}).get(slot.name, {}).get(locale)
                     if copy_block is None:
                         results.append({
-                            "device": device, "app": app, "slot": slot_name,
+                            "device": device, "app": app, "slot": slot.name,
                             "locale": locale, "status": "SKIPPED-NO-COPY", "path": None,
                         })
                         continue
 
+                    baseline_path = slot.baseline(baselines_root)
                     if not baseline_path.exists():
                         results.append({
-                            "device": device, "app": app, "slot": slot_name,
+                            "device": device, "app": app, "slot": slot.name,
                             "locale": locale, "status": "SKIPPED-MISSING-BASELINE",
                             "baseline": str(baseline_path), "path": None,
                         })
                         continue
 
                     out_dir = OUT_ASCSPEC / app / device / locale
-                    out_path = out_dir / f"{slot_name}.png"
+                    out_path = out_dir / f"{slot.name}.png"
 
                     if not dry_run:
                         out_dir.mkdir(parents=True, exist_ok=True)
@@ -604,11 +922,13 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                         img = build_asc_image(
                             baseline_path, headline, subhead, app, locale,
                             asc_w=dev["w"], asc_h=dev["h"],
+                            callouts=slot_callouts, device=device,
+                            slot_name=slot.name,
                         )
                         img.save(str(out_path), "PNG", optimize=False)
 
                     results.append({
-                        "device": device, "app": app, "slot": slot_name,
+                        "device": device, "app": app, "slot": slot.name,
                         "locale": locale,
                         "status": "OK" if not dry_run else "DRY-RUN",
                         "path": out_path,
@@ -696,12 +1016,12 @@ def main() -> None:
         results = []
         for device, apps in SLOTS.items():
             for app, slots in apps.items():
-                for slot_name, _ in slots:
+                for slot in slots:
                     for locale in LOCALES:
-                        out_path = OUT_ASCSPEC / app / device / locale / f"{slot_name}.png"
-                        copy_block = COPY.get(app, {}).get(slot_name, {}).get(locale)
+                        out_path = OUT_ASCSPEC / app / device / locale / f"{slot.name}.png"
+                        copy_block = COPY.get(app, {}).get(slot.name, {}).get(locale)
                         results.append({
-                            "device": device, "app": app, "slot": slot_name,
+                            "device": device, "app": app, "slot": slot.name,
                             "locale": locale,
                             "status": "OK" if out_path.exists() and copy_block else "SKIPPED-NO-COPY",
                             "path": out_path if out_path.exists() else None,

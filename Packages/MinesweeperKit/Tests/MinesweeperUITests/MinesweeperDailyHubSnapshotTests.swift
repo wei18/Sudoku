@@ -282,6 +282,66 @@ struct MinesweeperDailyHubSnapshotTests {
     /// wrap); caption + card text scale. Env-injected Dynamic Type snapshots
     /// are a layout pin only (memory: dynamic-type-sim-verify-and-cap); sim
     /// verification is the authority for AX bugs.
+    /// Marketing-fixture gap (feat/store-screenshots-cb round 3): the iPad
+    /// Daily slot's only existing baseline (`Daily-iPad-light-regular`, above)
+    /// has `weekStrip == .unknown` (skeleton dots, no streak) AND Expert
+    /// badged Failed — once this PR's `detect_content_bottom()` crop is
+    /// correctly sizing the panel to its real content, that combination
+    /// renders as the worst-emptiness frame in the whole 126-PNG ASC set (a
+    /// ~7%-tall panel sliver over ~75% flat gradient), and a failure badge
+    /// has no business in a store screenshot regardless. All three
+    /// difficulties completed, no `isFailed` anywhere — same approach as
+    /// #979's macOS Home/Daily additions and this PR's own
+    /// `pencilNotesWithError` Board fixture: record the fuller baseline
+    /// directly instead of shipping the empty one. Same week-strip shape as
+    /// `snapshotDaily_iPhone_light_streak` above (2-day streak), iPad size.
+    private static let completedTrio: [MinesweeperDailyCard] = [
+        MinesweeperDailyCard(
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-beginner", difficulty: .beginner, seed: 1),
+            isCompleted: true,
+            bestTimeSeconds: 24
+        ),
+        MinesweeperDailyCard(
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-intermediate", difficulty: .intermediate, seed: 2),
+            isCompleted: true,
+            bestTimeSeconds: 118
+        ),
+        MinesweeperDailyCard(
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-expert", difficulty: .expert, seed: 3),
+            isCompleted: true,
+            bestTimeSeconds: 341
+        ),
+    ]
+
+    private func dailyHubViewAllCompletedWithStreak() -> some View {
+        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
+        viewModel.setStateForTesting(.loaded(Self.completedTrio))
+        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
+        // doc above for why this is needed alongside `setStateForTesting`.
+        viewModel.setPhase2PendingForTesting(false)
+        viewModel.setWeekStripForTesting(Self.partialStreakStrip())
+        return NavigationStack {
+            MinesweeperDailyHubView(viewModel: viewModel)
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDaily_iPad_light_streak() {
+        let host = hostingView(
+            dailyHubViewAllCompletedWithStreak(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        assertUISnapshot(
+            of: host,
+            as: .image,
+            named: "Daily-iPad-light-streak2",
+            record: SnapshotMode.recordMode
+        )
+        assertViewStructure(of: host, named: "Daily-iPad-light-streak2", record: SnapshotMode.recordMode)
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotDaily_iPhone_light_streak_ax3() {
         let host = hostingView(
