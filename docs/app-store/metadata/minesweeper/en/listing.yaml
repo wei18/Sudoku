@@ -2,43 +2,42 @@ locale: en-US
 name: "Minesweeper — Classic"
 subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
-  The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. We don't profile you; ads tailor only with your OK — decline or remove.
+  First tap always safe — no more losing on move one. Beginner, Intermediate, Expert. We don't profile you; ads tailor only with your OK — decline or remove.
 description: |-
-  Minesweeper, made for thinking — not for noise.
+  Minesweeper, the unhurried way.
 
-  The rules you already know: reveal cells, read the numbers, flag the mines, and clear the board without setting one off. Three classic difficulties — Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), and Expert (16×30, 99 mines).
+  The rules you already know — but the first tap is always safe, so you never lose on move one. Every midnight, three new boards arrive — Beginner, Intermediate, Expert, the same three for the whole world. Clear them at your pace; the leaderboard is there if you want to know how you compared, and easy to ignore if you don't.
 
-  The first tap is always safe
+  Want to skip the clock entirely? Play any of the three classic difficulties any time. Pick one, get a fresh board, and there's nothing to submit, nothing to live up to — just you and the mines.
 
-  Mines are placed after your first reveal, so your opening tap — and the cells around it — can never be a mine. No more losing on move one. Every board is fully determined by its difficulty and seed, so a board plays out the same way each time you replay it.
+  A day with Minesweeper
 
-  What's inside
+  • Daily — three difficulties, a leaderboard that resets at midnight UTC, one scoring attempt per board.
+  • Classic — Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), Expert (16×30, 99 mines), any time, no scores.
+  • First-click safety — the opening tap, and its neighbors, can never hold a mine.
+  • Tap to reveal, long-press to flag — right-click or control-click on Mac.
+  • Pick up exactly where you left off — saves are automatic, and the home screen remembers.
+  • Eleven Game Center achievements and three daily leaderboards, if you're into that.
 
-  • Three classic difficulties — Beginner, Intermediate, Expert.
-  • First-click safety — the opening tap can never lose.
-  • Tap to reveal, long-press to flag (right-click or control-click on Mac).
-  • Daily mode — three difficulties every day, recurring leaderboards that reset at UTC 00:00.
-  • Three Game Center daily leaderboards (Easy / Medium / Hard). Sign-in optional.
+  One app, genuinely two platforms
 
-  Truly cross-platform
+  Same codebase, same care, on both. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst — so window resizing and right-click flagging both work the way you'd expect. Start a board on your phone on the train, finish it on your Mac at your desk.
 
-  One codebase, two platforms. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst. Window resizing and right-click flagging work the way Mac users expect. Play on whichever device is near.
+  On privacy, plainly
 
-  Privacy, in plain words
-
-  No first-party analytics. No CRM. No backend of our own — nothing of ours builds a profile of you. Your data lives in your own iCloud Private Database — visible to you, not to us. The one third-party SDK is Google's banner-ad library; it may use an advertising identifier to keep ads relevant, and only with your permission. You can decline (ads still show, just less tailored) — or remove the banner permanently with a single in-app purchase. The identifier is for ad relevance, not a personal profile of you.
+  No first-party analytics. No CRM. No backend of our own — nothing of ours profiles you. Your data lives in your own iCloud Private Database, visible to you, not to us. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
 
   Remove Ads
 
-  A one-time, non-consumable purchase removes the banner everywhere, forever. Family Sharing included.
+  A one-time purchase, no subscription. Removes the banner everywhere, permanently, with Family Sharing included.
 
-  Seven languages
+  Seven languages, properly done
 
-  English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, and Korean.
+  English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, and Thai — the interface, Game Center, and this listing, all of it.
 
-  Accessibility
+  Built to be used
 
-  Dynamic Type, VoiceOver, light and dark mode.
+  Dynamic Type, full VoiceOver support, light and dark mode, and a sage-and-warm-paper palette that's easy to sit with for a while.
 
   Requires iOS 26 or macOS 26.
 keywords: "mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board,bomb,sweeper,mine sweeper,sapper"

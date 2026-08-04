@@ -2,43 +2,42 @@ locale: es-ES
 name: "Buscaminas — Clásico"
 subtitle: "Lógica limpia en iPhone y Mac"
 promotional_text: |-
-  El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. No te perfilamos; anuncios relevantes solo con permiso, o quítalos.
+  Primer toque siempre seguro: no pierdes en la primera jugada. Principiante, Intermedio, Experto. No te perfilamos; anuncios relevantes solo con tu permiso, o quítalos.
 description: |-
-  Buscaminas, hecho para pensar, no para el ruido.
+  Buscaminas, sin prisas.
 
-  Las reglas que ya conoces: descubre celdas, lee los números, marca las minas y limpia el tablero sin pisar ninguna. Tres dificultades clásicas: Principiante (9×9, 10 minas), Intermedio (16×16, 40 minas) y Experto (16×30, 99 minas).
+  Las reglas que ya conoces — pero el primer toque siempre es seguro, así que nunca pierdes en la primera jugada. Cada medianoche llegan tres tableros nuevos — Principiante, Intermedio, Experto, los mismos para todo el mundo. Despeja a tu ritmo; el ranking está ahí si quieres saber cómo te comparas, y es fácil de ignorar si no.
 
-  El primer toque siempre es seguro
+  ¿Quieres olvidarte del reloj por completo? Juega cualquiera de las tres dificultades clásicas cuando quieras. Elige una, recibe un tablero nuevo, y no hay nada que enviar ni nada que demostrar — solo tú y las minas.
 
-  Las minas se colocan después de tu primera revelación, así que tu toque inicial —y las celdas a su alrededor— nunca pueden ser una mina. Se acabó perder en la primera jugada. Cada tablero queda determinado por su dificultad y su semilla, así que un tablero se desarrolla igual cada vez que lo repites.
+  Un día con Buscaminas
 
-  Qué incluye
+  • Diario: tres dificultades, un ranking que se reinicia a medianoche UTC, una sola puntuación por tablero.
+  • Clásico: Principiante (9×9, 10 minas), Intermedio (16×16, 40 minas), Experto (16×30, 99 minas), cuando quieras, sin puntuaciones.
+  • Seguridad en el primer toque: la celda inicial, y sus vecinas, nunca pueden tener una mina.
+  • Toca para revelar, mantén pulsado para marcar — clic derecho o control-clic en Mac.
+  • Retoma justo donde lo dejaste — el guardado es automático y la pantalla principal lo recuerda.
+  • Once logros de Game Center y tres rankings diarios, si te va ese rollo.
 
-  • Tres dificultades clásicas: Principiante, Intermedio, Experto.
-  • Seguridad en el primer toque: la jugada inicial nunca pierde.
-  • Toca para revelar, mantén pulsado para marcar (clic derecho o control-clic en Mac).
-  • Modo Diario: tres dificultades cada día, rankings recurrentes que resetean a las 00:00 UTC.
-  • Tres rankings diarios de Game Center (Principiante / Intermedio / Experto). Inicio de sesión opcional.
+  Una sola app, de verdad dos plataformas
 
-  Realmente multiplataforma
+  Mismo código, el mismo cuidado, en ambas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst — así que redimensionar ventanas y marcar con clic derecho funcionan tal como esperas. Empieza un tablero en el móvil durante el trayecto, termínalo en el Mac en tu escritorio.
 
-  Una sola base de código, dos plataformas. La versión de Mac es una app de Mac SwiftUI de verdad, no iPad en Mac ni Catalyst. Cambiar el tamaño de la ventana y marcar con clic derecho funcionan como esperan los usuarios de Mac. Juega en el dispositivo que tengas cerca.
+  Privacidad, sin rodeos
 
-  Privacidad, en palabras claras
-
-  Sin analítica propia. Sin CRM. Sin servidor propio: nada nuestro crea un perfil de ti. Tus datos están en tu propia base de datos privada de iCloud: visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google; puede usar un identificador de publicidad para mantener los anuncios relevantes, y solo con tu permiso. Puedes rechazarlo (los anuncios siguen apareciendo, solo que menos personalizados) — o quitar el banner para siempre con una sola compra dentro de la app. El identificador es para la relevancia de los anuncios, no para crear un perfil personal de ti.
+  Sin analítica propia. Sin CRM. Sin servidor propio: nada nuestro te perfila. Tus datos están en tu propia base de datos privada de iCloud, visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google; con tu permiso, puede usar un identificador de publicidad para mantener los anuncios relevantes — recházalo y los anuncios seguirán apareciendo, solo que menos personalizados, o quita el banner para siempre con una sola compra.
 
   Quitar anuncios
 
-  Una compra única, no consumible, quita el banner en todas partes, para siempre. Compartir en Familia incluido.
+  Una compra única, sin suscripción. Quita el banner en todas partes, para siempre, con Compartir en Familia incluido.
 
-  Siete idiomas
+  Siete idiomas, hechos como es debido
 
-  Inglés, chino tradicional, japonés, chino simplificado, español, tailandés y coreano.
+  Inglés, chino tradicional, chino simplificado, japonés, coreano, español y tailandés — la interfaz, Game Center y esta ficha, todo.
 
-  Accesibilidad
+  Pensada para el día a día
 
-  Dynamic Type, VoiceOver, modo claro y oscuro.
+  Dynamic Type, soporte completo de VoiceOver, modo claro y oscuro, y una paleta verde salvia y papel cálido fácil de mirar durante ratos largos.
 
   Requiere iOS 26 o macOS 26.
 keywords: "minas,logica,puzle,clasico,mente,sin conexion,ipad,mac,bandera,numero,bomba,campo minado,buscamin"
