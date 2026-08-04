@@ -4,39 +4,41 @@ subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
   Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
 description: |-
-  Sudoku, the unhurried way. Every midnight, three new puzzles arrive — easy, medium, hard, the same three for the whole world. Solve at your pace; the leaderboard is there if you want to know how you compared, and easy to ignore if you don't.
+  Sudoku, the unhurried way.
 
-  When you want to practice instead of compete, switch to Practice mode. Random boards on demand, no clock pressure, no scores submitted, nothing to live up to.
+  Every midnight, three new puzzles arrive — easy, medium, hard, the same three for the whole world. Solve at your pace; the leaderboard is there if you want to know how you compared, and easy to ignore if you don't.
 
-  What's inside
+  Want to skip the clock entirely? Switch to Practice. Pick a difficulty, get a fresh board, and there's nothing to submit, nothing to live up to — just you and the grid.
 
-  • Daily mode — three difficulties per day, recurring leaderboards that reset at UTC 00:00, one scoring attempt per puzzle.
-  • Practice mode — unlimited random boards by difficulty, no scoring, no ranking.
-  • Pencil notes — up to nine candidates per cell, the way you'd write them on paper.
-  • Undo and redo — up to twenty steps back.
-  • Live error highlighting — find the wrong digit the moment you place it, not at the end.
-  • Resume any time — saves are automatic; the home screen offers a one-tap resume.
-  • Eight Game Center achievements, three daily leaderboards, totaling 500 points.
+  A day with Sudoku
 
-  Truly cross-platform
+  • Daily — three difficulties, a leaderboard that resets at midnight UTC, one scoring attempt per puzzle.
+  • Practice — as many random boards as you want, no scores, no pressure.
+  • Pencil notes — up to nine candidates a cell, written the way you'd write them on paper.
+  • Catches mistakes as you make them, not after you've filled the whole board.
+  • Twenty steps of undo, so a wrong guess is never the end of the puzzle.
+  • Pick up exactly where you left off — saves are automatic, and the home screen remembers.
+  • Eight Game Center achievements and three daily leaderboards, 500 points total, if you're into that.
 
-  One codebase, two platforms. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst. Window resizing, keyboard navigation (arrows, 1–9, delete, ⌘Z, ⌘⇧Z), and Mac-native menu items work the way Mac users expect. Pick up your in-progress board on the device you happen to be near.
+  One app, genuinely two platforms
 
-  Privacy, in plain words
+  Same codebase, same care, on both. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst — so window resizing, arrow-key and number-key input, and ⌘Z undo all work the way you'd expect. Start a puzzle on your phone on the train, finish it on your Mac at your desk.
+
+  On privacy, plainly
 
   No first-party analytics — nothing of ours profiles you. Your saves live in your own iCloud Private Database, visible to you, not to us. Game Center submissions go to Apple. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
 
   Remove Ads
 
-  A one-time, non-consumable purchase removes the banner everywhere, forever. Family Sharing included.
+  A one-time purchase, no subscription. Removes the banner everywhere, permanently, with Family Sharing included.
 
-  Seven languages
+  Seven languages, properly done
 
-  English, Traditional Chinese, Japanese, Simplified Chinese, Spanish, Thai, and Korean — interface, Game Center titles, and store metadata included.
+  English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, and Thai — the interface, Game Center, and this listing, all of it.
 
-  Accessibility
+  Built to be used
 
-  Dynamic Type, full VoiceOver coverage, light and dark mode, sage-and-warm-paper visuals tuned for long sessions.
+  Dynamic Type, full VoiceOver support, light and dark mode, and a sage-and-warm-paper palette that's easy to sit with for a while.
 
   Requires iOS 26 or macOS 26.
 keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,solver,board,classic,daily,streak"

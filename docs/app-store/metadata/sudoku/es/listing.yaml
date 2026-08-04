@@ -4,23 +4,25 @@ subtitle: "Lógica serena en iPhone y Mac"
 promotional_text: |-
   Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. No te perfilamos; los anuncios se adaptan solo con tu permiso: recházalos o quítalos.
 description: |-
-  Sudoku, sin prisas. Cada medianoche llegan tres puzles nuevos — fácil, medio, difícil, los mismos para todo el mundo. Resuelve a tu ritmo; el ranking está ahí si quieres saber cómo te comparas, y es fácil de ignorar si no.
+  Sudoku, sin prisas.
 
-  Si prefieres practicar en lugar de competir, cambia al modo Práctica. Tableros aleatorios cuando los necesites, sin cronómetro encima, sin envío de puntuaciones, sin nada que demostrar.
+  Cada medianoche llegan tres puzles nuevos — fácil, medio, difícil, los mismos para todo el mundo. Resuelve a tu ritmo; el ranking está ahí si quieres saber cómo te comparas, y es fácil de ignorar si no.
 
-  Contenido
+  ¿Quieres olvidarte del reloj por completo? Cambia a Práctica. Elige una dificultad, recibe un tablero nuevo, y no hay nada que enviar ni nada que demostrar — solo tú y la cuadrícula.
 
-  • Modo Diario: tres dificultades cada día, rankings recurrentes que se reinician a las 00:00 UTC, una sola puntuación por puzle.
-  • Modo Práctica: tableros aleatorios ilimitados por dificultad, sin puntuación ni clasificación.
-  • Notas a lápiz: hasta nueve candidatos por celda, igual que en papel.
-  • Deshacer y rehacer: hasta veinte pasos atrás.
-  • Detección de errores en tiempo real: el dígito incorrecto se marca al instante, no al final.
-  • Pausa y reanuda cuando quieras: el guardado es automático y la pantalla principal te ofrece continuar con un toque.
-  • Game Center: tres rankings diarios y ocho logros, 500 puntos en total.
+  Un día con Sudoku
 
-  Multiplataforma de verdad
+  • Diario: tres dificultades, un ranking que se reinicia a medianoche UTC, una sola puntuación por puzle.
+  • Práctica: tantos tableros aleatorios como quieras, sin puntuaciones, sin presión.
+  • Notas a lápiz: hasta nueve candidatos por celda, escritos como los escribirías en papel.
+  • Detecta los errores en cuanto los cometes, no después de rellenar todo el tablero.
+  • Veinte pasos de deshacer, para que un error nunca sea el final del puzle.
+  • Retoma justo donde lo dejaste — el guardado es automático y la pantalla principal lo recuerda.
+  • Ocho logros de Game Center y tres rankings diarios, 500 puntos en total, si te va ese rollo.
 
-  Una sola base de código, dos plataformas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst. Redimensionar ventanas, navegación con teclado (flechas, 1-9, supr, ⌘Z, ⌘⇧Z) y menús nativos de Mac funcionan como un usuario de Mac espera. Sigue tu partida en el dispositivo que tengas cerca.
+  Una sola app, de verdad dos plataformas
+
+  Mismo código, el mismo cuidado, en ambas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst — así que redimensionar ventanas, la navegación con flechas y teclas numéricas, y deshacer con ⌘Z funcionan tal como esperas. Empieza un puzle en el móvil durante el trayecto, termínalo en el Mac en tu escritorio.
 
   Privacidad, sin rodeos
 
@@ -28,15 +30,15 @@ description: |-
 
   Quitar anuncios
 
-  Una compra única, no consumible, quita el banner en todas partes, para siempre. Compartir en Familia incluido.
+  Una compra única, sin suscripción. Quita el banner en todas partes, para siempre, con Compartir en Familia incluido.
 
-  Siete idiomas
+  Siete idiomas, hechos como es debido
 
-  Chino tradicional, inglés, japonés, chino simplificado, español, tailandés y coreano — interfaz, títulos de Game Center y descripción incluidos.
+  Inglés, chino tradicional, chino simplificado, japonés, coreano, español y tailandés — la interfaz, Game Center y esta ficha, todo.
 
-  Accesibilidad
+  Pensada para el día a día
 
-  Dynamic Type, cobertura completa de VoiceOver, modo claro y oscuro, paleta verde salvia y papel cálido pensada para sesiones largas.
+  Dynamic Type, soporte completo de VoiceOver, modo claro y oscuro, y una paleta verde salvia y papel cálido fácil de mirar durante ratos largos.
 
   Requiere iOS 26 o macOS 26.
 keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,notas,rompecabezas,sudoko,clasico,diario,racha"
