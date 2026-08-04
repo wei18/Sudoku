@@ -113,23 +113,28 @@ MS_BG           = hex_to_rgb(0xF4F6F8)
 
 COPY = {
     "sudoku": {
+        # 01-home — REWRITTEN (marketing overhaul, decision P1 option B, 2026-08):
+        # replaces the "Calm logic, every day." / "Two modes..." pairing. Translated
+        # to all 7 locales (ai-translated-localization pass).
         "01-home": {
-            "en":      ("Calm logic, every day.", "Two modes, one focused place to think."),
-            "zh-Hant": ("每天，一場安靜的推理。", "兩種模式，一個專注思考的地方。"),
-            "zh-Hans": ("每天，一场安静的推理。", "两种模式，一个专注思考的地方。"),
-            "ja":      ("毎日、静かな論理を。", "ふたつのモード、ひとつの集中する場所。"),
-            "ko":      ("매일, 조용한 논리.", "두 가지 모드, 집중할 수 있는 한 곳."),
-            "es":      ("Lógica tranquila, cada día.", "Dos modos, un solo lugar para pensar."),
-            "th":      ("ตรรกะเงียบๆ ทุกวัน", "สองโหมด หนึ่งพื้นที่สำหรับคิด"),
+            "en":      ("A quiet place to think.", "Race the clock some days. Just think, on the others."),
+            "zh-Hant": ("一個安靜思考的地方。", "想比快就比，不想比就純粹想一想。"),
+            "zh-Hans": ("一个安静思考的地方。", "想比快就比，不想比就纯粹想一想。"),
+            "ja":      ("静かに考えられる場所。", "急ぐ日はタイムに挑み、そうでない日はただ考える。"),
+            "ko":      ("조용히 생각할 수 있는 곳.", "어떤 날은 시간과 겨룹니다. 어떤 날은 그냥 생각만 합니다."),
+            "es":      ("Un lugar tranquilo para pensar.", "Algunos días compites con el reloj. Otros, solo piensas."),
+            "th":      ("พื้นที่เงียบๆ สำหรับคิด", "บางวันแข่งกับเวลา บางวันแค่คิดเฉยๆ"),
         },
+        # 02-daily — REWRITTEN (decision P2, 2026-08): replaces "Three puzzles.
+        # Every day." Translated to all 7 locales (ai-translated-localization pass).
         "02-daily": {
-            "en":      ("Three puzzles. Every day.", "Easy, medium, hard — the same world over."),
-            "zh-Hant": ("每天三題。世界同題。", "簡單、中等、困難，看你比別人快多少。"),
-            "zh-Hans": ("每天三题。世界同题。", "简单、中等、困难，看你比别人快多少。"),
-            "ja":      ("毎日3問。世界中で同じ問題。", "やさしい・ふつう・むずかしい、タイムで世界と並ぶ。"),
-            "ko":      ("매일 세 문제. 전 세계 동일.", "쉬움, 보통, 어려움 — 시간이 곧 순위."),
-            "es":      ("Tres puzles. Cada día.", "Fácil, medio, difícil — los mismos para todos."),
-            "th":      ("สามปริศนา ทุกวัน", "ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก"),
+            "en":      ("Seven days running, and counting.", "Easy, medium, hard — the same three, for the whole world."),
+            "zh-Hant": ("連續好幾天，還在繼續。", "簡單、中等、困難——全世界拿到的是同一組。"),
+            "zh-Hans": ("连续好几天，还在继续。", "简单、中等、困难——全世界拿到的是同一组。"),
+            "ja":      ("7日連続、まだ更新中。", "やさしい・ふつう・むずかしい、世界中で同じ3問。"),
+            "ko":      ("7일 연속, 계속 이어지는 중.", "쉬움, 보통, 어려움 — 전 세계가 똑같은 세 문제."),
+            "es":      ("Siete días seguidos, y sigue.", "Fácil, medio, difícil — los mismos tres para todo el mundo."),
+            "th":      ("ต่อเนื่องเจ็ดวัน และนับต่อไป", "ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
@@ -149,14 +154,19 @@ COPY = {
         # statement independent of what's on screen (one scoring attempt
         # per puzzle). Translated to all 7 locales (ai-translated-
         # localization pass, #984 follow-up) — no locale claims a ranking.
+        # 04-completion subhead — REWRITTEN AGAIN (decision P2, 2026-08): "One
+        # scoring attempt per puzzle." → "It only counts once", same accuracy
+        # constraint as the #984 fix this replaces (only what's visible in THIS
+        # frame). Headline "Solved." unchanged. Translated to all 7 locales
+        # (ai-translated-localization pass).
         "04-completion": {
-            "en":      ("Solved.", "One scoring attempt per puzzle. Your time and mistake count, right here."),
-            "zh-Hant": ("完成。", "同一題只計分一次。你的時間與錯誤次數，就在這裡。"),
-            "zh-Hans": ("完成。", "同一题只计分一次。你的时间与错误次数，就在这里。"),
-            "ja":      ("解けた。", "1問につき1回のみスコア対象。あなたのタイムとミス数がここに。"),
-            "ko":      ("완료.", "퍼즐당 한 번만 기록됩니다. 당신의 시간과 실수 횟수, 바로 여기에."),
-            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo y tus errores, aquí mismo."),
-            "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียวต่อปริศนา เวลาและจำนวนที่พลาดของคุณอยู่ตรงนี้"),
+            "en":      ("Solved.", "It only counts once — your time and mistakes are right here."),
+            "zh-Hant": ("完成。", "同一題只計分一次——你的時間與錯誤次數，就在這裡。"),
+            "zh-Hans": ("完成。", "同一题只计分一次——你的时间与错误次数，就在这里。"),
+            "ja":      ("解けた。", "スコアは1回きり。あなたのタイムとミス数がここに。"),
+            "ko":      ("완료.", "점수는 한 번만 기록됩니다. 당신의 시간과 실수 횟수, 바로 여기에."),
+            "es":      ("Resuelto.", "Solo cuenta una vez. Tu tiempo y tus errores, aquí mismo."),
+            "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียว เวลาและจำนวนที่พลาดของคุณอยู่ตรงนี้"),
         },
         # 05-settings — REWRITTEN (#984): the old "Zero tracking." / "No
         # third-party SDKs." directly contradicts
@@ -170,14 +180,17 @@ COPY = {
         # privacy/tracking claim at all, to stay safely clear of
         # PrivacyInfo.xcprivacy. Translated to all 7 locales (ai-translated-
         # localization pass, #984 follow-up) — no locale claims tracking.
+        # 05-settings — REWRITTEN AGAIN (decision P2, 2026-08): replaces the #984
+        # "Seven languages, fully localized." pairing. Translated to all 7
+        # locales (ai-translated-localization pass).
         "05-settings": {
-            "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center included."),
-            "zh-Hant": ("七種語言，全面在地化。", "一次購買，永久移除廣告。內建 Game Center。"),
-            "zh-Hans": ("七种语言，全面本地化。", "一次购买，永久移除广告。内置 Game Center。"),
-            "ja":      ("7言語に完全対応。", "一度の購入で広告を完全に削除。Game Centerも搭載。"),
-            "ko":      ("일곱 가지 언어, 완벽 현지화.", "한 번 구매로 광고를 영구 제거. Game Center도 포함."),
-            "es":      ("Siete idiomas, totalmente traducidos.", "Una compra elimina los anuncios para siempre. Incluye Game Center."),
-            "th":      ("รองรับ 7 ภาษาอย่างสมบูรณ์", "ซื้อครั้งเดียว ลบโฆษณาถาวร รองรับ Game Center"),
+            "en":      ("Set it up once, then forget about it.", "Seven languages. One purchase drops the ads for good. Game Center's already there."),
+            "zh-Hant": ("設定一次，之後不用再管。", "七種語言全部到位。一次購買永久移除廣告，Game Center 也內建好了。"),
+            "zh-Hans": ("设置一次，之后不用再管。", "七种语言全部到位。一次购买永久移除广告，Game Center 也内置好了。"),
+            "ja":      ("一度設定すれば、あとは気にしなくていい。", "7言語すべて対応済み。一度の購入で広告を永久に削除、Game Centerも最初から搭載。"),
+            "ko":      ("한 번 설정하면 끝.", "일곱 가지 언어 모두 준비. 한 번 구매로 광고를 영구 제거, Game Center도 이미 포함."),
+            "es":      ("Configúralo una vez y olvídate.", "Siete idiomas. Una compra elimina los anuncios para siempre. Game Center ya está incluido."),
+            "th":      ("ตั้งค่าครั้งเดียว แล้วไม่ต้องกังวลอีก", "รองรับ 7 ภาษาครบ ซื้อครั้งเดียวลบโฆษณาถาวร มี Game Center พร้อมใช้งาน"),
         },
     },
     "minesweeper": {
@@ -191,23 +204,32 @@ COPY = {
         # corrected as part of the #984 caption-accuracy sweep. MS's
         # macOS-only "06-stats" slot (below) is a different, new slot, not a
         # settings shot.
+        # 01-home — REWRITTEN (marketing overhaul, decision P1, 2026-08): replaces
+        # the "Calm logic, every day." pairing. Translated to all 7 locales
+        # (ai-translated-localization pass).
         "01-home": {
-            "en":      ("Calm logic, every day.", "One board, every day. The same for everyone."),
-            "zh-Hant": ("每天，一場安靜的推理。", "每天一局，全球同題。"),
-            "zh-Hans": ("每天，一场安静的推理。", "每天一局，全球同题。"),
-            "ja":      ("毎日、静かな論理を。", "毎日ひとつの盤面。誰にとっても同じ問題。"),
-            "ko":      ("매일, 조용한 논리.", "매일 하나의 보드. 모두에게 동일합니다."),
-            "es":      ("Lógica tranquila, cada día.", "Un tablero cada día. El mismo para todos."),
-            "th":      ("ตรรกะเงียบๆ ทุกวัน", "กระดานเดียวทุกวัน เหมือนกันสำหรับทุกคน"),
+            "en":      ("First tap, always safe.", "Pure deduction. No guessing, no unlucky losses."),
+            "zh-Hant": ("第一下，永遠安全。", "純邏輯推理，不用猜，不會開局就爆。"),
+            "zh-Hans": ("第一下，永远安全。", "纯逻辑推理，不用猜，不会开局就炸。"),
+            "ja":      ("初手は、必ず安全。", "純粋な論理推理。推測不要、運で負けることもない。"),
+            "ko":      ("첫 탭은 언제나 안전합니다.", "순수한 논리 추론. 추측도, 억울한 패배도 없습니다."),
+            "es":      ("El primer toque, siempre seguro.", "Pura deducción. Sin adivinar, sin derrotas por mala suerte."),
+            "th":      ("แตะแรก ปลอดภัยเสมอ", "ใช้เหตุผลล้วนๆ ไม่ต้องเดา ไม่มีแพ้เพราะโชคร้าย"),
         },
+        # 02-daily headline — REWRITTEN (decision P2 mirror, 2026-08): "Two days
+        # running, and counting." NOT "seven" — MS's daily baseline shows a
+        # 2-day streak (see COPY_TWO_DAY note / DailyHub-iPhone-light-streak2
+        # fixture), unlike Sudoku's 7-day fixture. Subhead UNCHANGED. Translated
+        # to all 7 locales (ai-translated-localization pass) — no locale may say
+        # "seven" here.
         "02-daily": {
-            "en":      ("Three boards. Every day.", "Beginner, intermediate, expert — world-shared."),
-            "zh-Hant": ("每天三局。世界同局。", "初級、中級、高級，全球同一題。"),
-            "zh-Hans": ("每天三局。世界同局。", "初级、中级、高级，全球同一题。"),
-            "ja":      ("毎日3面。世界中で同じ盤面。", "初級・中級・上級、世界共通の盤面。"),
-            "ko":      ("매일 세 개의 보드. 전 세계 동일.", "초급, 중급, 고급 — 전 세계 공통."),
-            "es":      ("Tres tableros. Cada día.", "Principiante, intermedio, avanzado — el mismo para todos."),
-            "th":      ("สามกระดาน ทุกวัน", "มือใหม่ ระดับกลาง ขั้นสูง — เหมือนกันทั่วโลก"),
+            "en":      ("Two days running, and counting.", "Beginner, intermediate, expert — world-shared."),
+            "zh-Hant": ("連續兩天，還在繼續。", "初級、中級、高級，全球同一題。"),
+            "zh-Hans": ("连续两天，还在继续。", "初级、中级、高级，全球同一题。"),
+            "ja":      ("2日連続、まだ更新中。", "初級・中級・上級、世界共通の盤面。"),
+            "ko":      ("2일 연속, 계속 이어지는 중.", "초급, 중급, 고급 — 전 세계 공통."),
+            "es":      ("Dos días seguidos, y sigue.", "Principiante, intermedio, avanzado — el mismo para todos."),
+            "th":      ("ต่อเนื่องสองวัน และนับต่อไป", "มือใหม่ ระดับกลาง ขั้นสูง — เหมือนกันทั่วโลก"),
         },
         "03-board": {
             "en":      ("Flag, reveal, solve.", "Logical deduction. No guessing required."),
@@ -223,14 +245,18 @@ COPY = {
         # card shows only "You won" + time, no leaderboard/rank UI).
         # Translated to all 7 locales (ai-translated-localization pass, #984
         # follow-up) — no locale claims a ranking.
+        # 04-completion subhead — REWRITTEN AGAIN (decision P2 mirror, 2026-08),
+        # mirrors the Sudoku 04-completion rewrite above. Headline "Cleared."
+        # unchanged. Translated to all 7 locales (ai-translated-localization
+        # pass).
         "04-completion": {
-            "en":      ("Cleared.", "One attempt per board. Your solve time, right here."),
-            "zh-Hant": ("完成。", "每局僅一次挑戰。你的解題時間，就在這裡。"),
-            "zh-Hans": ("完成。", "每局仅一次挑战。你的解题时间，就在这里。"),
-            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムがここに。"),
-            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 클리어 시간, 바로 여기에."),
-            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, aquí mismo."),
-            "th":      ("สำเร็จ", "เล่นได้ครั้งเดียวต่อกระดาน เวลาไขของคุณอยู่ตรงนี้"),
+            "en":      ("Cleared.", "It only counts once — your solve time is right here."),
+            "zh-Hant": ("完成。", "每局只計分一次——你的解題時間，就在這裡。"),
+            "zh-Hans": ("完成。", "每局只计分一次——你的解题时间，就在这里。"),
+            "ja":      ("クリア。", "スコアは1回きり。あなたのクリアタイムがここに。"),
+            "ko":      ("클리어.", "점수는 한 번만 기록됩니다. 당신의 클리어 시간, 바로 여기에."),
+            "es":      ("Despejado.", "Solo cuenta una vez. Tu tiempo, aquí mismo."),
+            "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียว เวลาไขของคุณอยู่ตรงนี้"),
         },
         # 06-stats — macOS-only slot (#984), NEW copy: no iOS "Stats" slot
         # exists to reuse (MS has no iOS Settings slot either — see comment

@@ -2,15 +2,9 @@ locale: en-US
 name: "Minesweeper — Classic"
 subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
-  The classic logic game, made calm. Beginner, Intermediate, Expert. The first tap is always safe. We don't profile you; ads tailor only with your OK — decline or remove.
+  First tap always safe — no more losing on move one. Beginner, Intermediate, Expert. We don't profile you; ads tailor only with your OK — decline or remove.
 description: |-
-  Minesweeper, made for thinking — not for noise.
-
-  The rules you already know: reveal cells, read the numbers, flag the mines, and clear the board without setting one off. Three classic difficulties — Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), and Expert (16×30, 99 mines).
-
-  The first tap is always safe
-
-  Mines are placed after your first reveal, so your opening tap — and the cells around it — can never be a mine. No more losing on move one. Every board is fully determined by its difficulty and seed, so a board plays out the same way each time you replay it.
+  Minesweeper, the unhurried way. The rules you already know — but the first tap is always safe, so you never lose on move one.
 
   What's inside
 
@@ -26,7 +20,7 @@ description: |-
 
   Privacy, in plain words
 
-  No first-party analytics. No CRM. No backend of our own — nothing of ours builds a profile of you. Your data lives in your own iCloud Private Database — visible to you, not to us. The one third-party SDK is Google's banner-ad library; it may use an advertising identifier to keep ads relevant, and only with your permission. You can decline (ads still show, just less tailored) — or remove the banner permanently with a single in-app purchase. The identifier is for ad relevance, not a personal profile of you.
+  No first-party analytics. No CRM. No backend of our own — nothing of ours profiles you. Your data lives in your own iCloud Private Database, visible to you, not to us. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
 
   Remove Ads
 

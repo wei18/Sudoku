@@ -1,12 +1,10 @@
 locale: en-US
 name: "Sudoku — Daily & Practice"
-subtitle: "Calm logic for iPhone and Mac"
+subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
   Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
 description: |-
-  Sudoku, made for thinking — not for noise.
-
-  Every day at midnight UTC, three new puzzles arrive: Easy, Medium, and Hard. The same three for every player, everywhere. Your time is yours; the leaderboard tells you how it compared.
+  Sudoku, the unhurried way. Every midnight, three new puzzles arrive — easy, medium, hard, the same three for the whole world. Solve at your pace; the leaderboard is there if you want to know how you compared, and easy to ignore if you don't.
 
   When you want to practice instead of compete, switch to Practice mode. Random boards on demand, no clock pressure, no scores submitted, nothing to live up to.
 
@@ -26,7 +24,7 @@ description: |-
 
   Privacy, in plain words
 
-  We run no first-party analytics — nothing of ours builds a profile of you. Your saves live in your own iCloud Private Database — visible to you, not to us. Game Center submissions go to Apple. The one third-party SDK is Google's banner-ad library; it may use an advertising identifier to keep ads relevant, and only with your permission. You can decline (ads still show, just less tailored) — or remove the banner permanently with a single in-app purchase. The identifier is for ad relevance, not a personal profile of you.
+  No first-party analytics — nothing of ours profiles you. Your saves live in your own iCloud Private Database, visible to you, not to us. Game Center submissions go to Apple. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
 
   Remove Ads
 
@@ -41,7 +39,7 @@ description: |-
   Dynamic Type, full VoiceOver coverage, light and dark mode, sage-and-warm-paper visuals tuned for long sessions.
 
   Requires iOS 26 or macOS 26.
-keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,killer,solver,board,classic"
+keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,solver,board,classic,daily,streak"
 whats_new: |-
   Version 2.6
 

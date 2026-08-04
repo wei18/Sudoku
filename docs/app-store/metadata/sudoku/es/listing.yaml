@@ -4,9 +4,7 @@ subtitle: "Lógica serena en iPhone y Mac"
 promotional_text: |-
   Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. No te perfilamos; los anuncios se adaptan solo con tu permiso: recházalos o quítalos.
 description: |-
-  Sudoku, hecho para pensar, no para hacer ruido.
-
-  Cada día a las 00:00 UTC llegan tres puzles: Fácil, Medio y Difícil. Los mismos para todos los jugadores del mundo. Tu tiempo es tuyo; el ranking te muestra cómo se compara.
+  Sudoku, sin prisas. Cada medianoche llegan tres puzles nuevos — fácil, medio, difícil, los mismos para todo el mundo. Resuelve a tu ritmo; el ranking está ahí si quieres saber cómo te comparas, y es fácil de ignorar si no.
 
   Si prefieres practicar en lugar de competir, cambia al modo Práctica. Tableros aleatorios cuando los necesites, sin cronómetro encima, sin envío de puntuaciones, sin nada que demostrar.
 
@@ -26,7 +24,7 @@ description: |-
 
   Privacidad, sin rodeos
 
-  No tenemos analítica propia: nada nuestro crea un perfil de ti. Tus partidas viven en tu propia base de datos privada de iCloud — visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. El único SDK de terceros es la biblioteca de banners de Google; puede usar un identificador de publicidad para mantener los anuncios relevantes, y solo con tu permiso. Puedes rechazarlo (los anuncios siguen apareciendo, solo que menos personalizados) — o quitar el banner para siempre con una sola compra dentro de la app. El identificador es para la relevancia de los anuncios, no para crear un perfil personal de ti.
+  Sin analítica propia: nada nuestro te perfila. Tus partidas viven en tu propia base de datos privada de iCloud, visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. El único SDK de terceros es la biblioteca de banners de Google; con tu permiso, puede usar un identificador de publicidad para mantener los anuncios relevantes — recházalo y los anuncios seguirán apareciendo, solo que menos personalizados, o quita el banner para siempre con una sola compra.
 
   Quitar anuncios
 
@@ -41,7 +39,7 @@ description: |-
   Dynamic Type, cobertura completa de VoiceOver, modo claro y oscuro, paleta verde salvia y papel cálido pensada para sesiones largas.
 
   Requiere iOS 26 o macOS 26.
-keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,lapiz,notas,rompecabezas,sudoko,solver,clasico"
+keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,notas,rompecabezas,sudoko,clasico,diario,racha"
 whats_new: |-
   Versión 2.6
 

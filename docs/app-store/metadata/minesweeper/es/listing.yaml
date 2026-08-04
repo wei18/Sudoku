@@ -2,15 +2,9 @@ locale: es-ES
 name: "Buscaminas — Clásico"
 subtitle: "Lógica limpia en iPhone y Mac"
 promotional_text: |-
-  El clásico de lógica, en calma. Principiante, Intermedio, Experto. El primer toque siempre es seguro. No te perfilamos; anuncios relevantes solo con permiso, o quítalos.
+  Primer toque siempre seguro: no pierdes en la primera jugada. Principiante, Intermedio, Experto. No te perfilamos; anuncios relevantes solo con tu permiso, o quítalos.
 description: |-
-  Buscaminas, hecho para pensar, no para el ruido.
-
-  Las reglas que ya conoces: descubre celdas, lee los números, marca las minas y limpia el tablero sin pisar ninguna. Tres dificultades clásicas: Principiante (9×9, 10 minas), Intermedio (16×16, 40 minas) y Experto (16×30, 99 minas).
-
-  El primer toque siempre es seguro
-
-  Las minas se colocan después de tu primera revelación, así que tu toque inicial —y las celdas a su alrededor— nunca pueden ser una mina. Se acabó perder en la primera jugada. Cada tablero queda determinado por su dificultad y su semilla, así que un tablero se desarrolla igual cada vez que lo repites.
+  Buscaminas, sin prisas. Las reglas que ya conoces — pero el primer toque siempre es seguro, así que nunca pierdes en la primera jugada.
 
   Qué incluye
 
@@ -26,7 +20,7 @@ description: |-
 
   Privacidad, en palabras claras
 
-  Sin analítica propia. Sin CRM. Sin servidor propio: nada nuestro crea un perfil de ti. Tus datos están en tu propia base de datos privada de iCloud: visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google; puede usar un identificador de publicidad para mantener los anuncios relevantes, y solo con tu permiso. Puedes rechazarlo (los anuncios siguen apareciendo, solo que menos personalizados) — o quitar el banner para siempre con una sola compra dentro de la app. El identificador es para la relevancia de los anuncios, no para crear un perfil personal de ti.
+  Sin analítica propia. Sin CRM. Sin servidor propio: nada nuestro te perfila. Tus datos están en tu propia base de datos privada de iCloud, visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google; con tu permiso, puede usar un identificador de publicidad para mantener los anuncios relevantes — recházalo y los anuncios seguirán apareciendo, solo que menos personalizados, o quita el banner para siempre con una sola compra.
 
   Quitar anuncios
 
