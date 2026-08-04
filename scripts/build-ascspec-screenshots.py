@@ -15,7 +15,7 @@ both apps in all 7 repo locales (en, zh-Hant, zh-Hans, ja, ko, es, th), for
 each device family:
   - iphone-6.9 : 1290×2796
   - ipad-13    : 2064×2752 (#506)
-  - mac        : 2880×1800, APP_DESKTOP 16:10 (#985) — a DIFFERENT layout
+  - mac        : 2880×1800, APP_DESKTOP 16:10 (#984) — a DIFFERENT layout
     (copy left / app-window-with-chrome right, see `build_mac_asc_image()`),
     not a scaled variant of the iPhone/iPad full-bleed-bottom-bleed frame.
 
@@ -63,7 +63,7 @@ ASC_H = 2796
 DEVICES = {
     "iphone-6.9": {"w": 1290, "h": 2796},
     "ipad-13":    {"w": 2064, "h": 2752},
-    "mac":        {"w": 2880, "h": 1800},  # APP_DESKTOP 16:10, #985
+    "mac":        {"w": 2880, "h": 1800},  # APP_DESKTOP 16:10, #984
 }
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -140,7 +140,7 @@ COPY = {
             "es":      ("Notas como en el papel.", "Detección de errores al instante. Veinte pasos de deshacer."),
             "th":      ("โน้ตเหมือนเขียนบนกระดาษ", "เห็นผิดทันที ย้อนได้ยี่สิบขั้น"),
         },
-        # 04-completion subhead — REWRITTEN (#986): the old "Your time,
+        # 04-completion subhead — REWRITTEN (#984): the old "Your time,
         # ranked." claimed a ranking that is not depicted anywhere in the
         # frame (the completion card removed a leaderboard-slice presenter
         # in #698 and has been `state: .hidden` since v2.6 — see
@@ -148,7 +148,7 @@ COPY = {
         # visible in THIS frame (time, mistake count) or an outcome
         # statement independent of what's on screen (one scoring attempt
         # per puzzle). Translated to all 7 locales (ai-translated-
-        # localization pass, #986 follow-up) — no locale claims a ranking.
+        # localization pass, #984 follow-up) — no locale claims a ranking.
         "04-completion": {
             "en":      ("Solved.", "One scoring attempt per puzzle. Your time and mistake count, right here."),
             "zh-Hant": ("完成。", "同一題只計分一次。你的時間與錯誤次數，就在這裡。"),
@@ -158,7 +158,7 @@ COPY = {
             "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo y tus errores, aquí mismo."),
             "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียวต่อปริศนา เวลาและจำนวนที่พลาดของคุณอยู่ตรงนี้"),
         },
-        # 05-settings — REWRITTEN (#987): the old "Zero tracking." / "No
+        # 05-settings — REWRITTEN (#984): the old "Zero tracking." / "No
         # third-party SDKs." directly contradicts
         # `App/Sudoku/Resources/PrivacyInfo.xcprivacy`
         # (`NSPrivacyTracking = true`, 8 declared AdMob tracking domains) and
@@ -169,7 +169,7 @@ COPY = {
         # frame's "Ads Removed / Active" row and "Game Center" row) — no
         # privacy/tracking claim at all, to stay safely clear of
         # PrivacyInfo.xcprivacy. Translated to all 7 locales (ai-translated-
-        # localization pass, #987 follow-up) — no locale claims tracking.
+        # localization pass, #984 follow-up) — no locale claims tracking.
         "05-settings": {
             "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center included."),
             "zh-Hant": ("七種語言，全面在地化。", "一次購買，永久移除廣告。內建 Game Center。"),
@@ -188,7 +188,7 @@ COPY = {
         # against `SLOTS` below: iphone-6.9/ipad-13 "minesweeper" lists only
         # 01-04). An earlier version of this comment claimed shot 5 existed
         # for MS "since it's the shared SettingsUI" — that never shipped;
-        # corrected as part of the #986/#987 caption-accuracy sweep. MS's
+        # corrected as part of the #984 caption-accuracy sweep. MS's
         # macOS-only "06-stats" slot (below) is a different, new slot, not a
         # settings shot.
         "01-home": {
@@ -218,10 +218,10 @@ COPY = {
             "es":      ("Marca, revela, resuelve.", "Deducción lógica. Sin necesidad de adivinar."),
             "th":      ("ปักธง เปิดช่อง ไขปริศนา", "ใช้เหตุผลเชิงตรรกะล้วนๆ ไม่ต้องเดา"),
         },
-        # 04-completion subhead — REWRITTEN (#986), same reasoning as
+        # 04-completion subhead — REWRITTEN (#984), same reasoning as
         # Sudoku's: "ranked globally" is not depicted in this frame (the win
         # card shows only "You won" + time, no leaderboard/rank UI).
-        # Translated to all 7 locales (ai-translated-localization pass, #986
+        # Translated to all 7 locales (ai-translated-localization pass, #984
         # follow-up) — no locale claims a ranking.
         "04-completion": {
             "en":      ("Cleared.", "One attempt per board. Your solve time, right here."),
@@ -232,7 +232,7 @@ COPY = {
             "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, aquí mismo."),
             "th":      ("สำเร็จ", "เล่นได้ครั้งเดียวต่อกระดาน เวลาไขของคุณอยู่ตรงนี้"),
         },
-        # 06-stats — macOS-only slot (#985), NEW copy: no iOS "Stats" slot
+        # 06-stats — macOS-only slot (#984), NEW copy: no iOS "Stats" slot
         # exists to reuse (MS has no iOS Settings slot either — see comment
         # above — and Sudoku's own Stats screen was never one of the 5
         # iOS shots). Translated (#984 follow-up) — "Daily"/"Practice"
@@ -285,7 +285,7 @@ CALLOUTS = {
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
     }],
     ("sudoku", "04-completion"): [{
-        # No `anchor` here (#986): this slot renders with `crop_all_sides=True`
+        # No `anchor` here (#984): this slot renders with `crop_all_sides=True`
         # (see `build_asc_image`), which crops the completion card tightly on
         # all 4 sides and centers it (never upscaling past 1:1) instead of
         # the fixed-fraction-of-baseline placement every other callout uses —
@@ -293,7 +293,7 @@ CALLOUTS = {
         # land in the wrong place once the card's size/position on canvas
         # changes with locale-independent geometry. `build_asc_image` computes
         # this callout's anchor directly from the rendered card's own bottom
-        # edge instead. Label REWRITTEN (#986): "timed & ranked" claimed a
+        # edge instead. Label REWRITTEN (#984): "timed & ranked" claimed a
         # ranking nothing in the frame shows (see COPY's 04-completion
         # comment) — now names only what the card visibly shows. EN drafted
         # only — do not translate until approved.
@@ -350,7 +350,7 @@ CALLOUTS = {
         # row's text instead of past it — re-measured via detect_content_bottom()
         # against the win-reminder baseline: content now ends at 0.702, not 0.637.
         #
-        # #986: that fixed-fraction `anchor` is now DEAD — this slot renders
+        # #984: that fixed-fraction `anchor` is now DEAD — this slot renders
         # with `crop_all_sides=True` (see the Sudoku completion callout's
         # comment above; same reasoning applies here), so `build_asc_image`
         # computes the anchor from the rendered card's own bottom edge
@@ -366,8 +366,8 @@ CALLOUTS = {
 # ── Slots with EN-only copy pending Leader approval + native translation ──────
 #
 # (app, slot_name) pairs where the `en` COPY/CALLOUTS entry was just
-# rewritten (#986 completion accuracy fix, #987 privacy-claim fix) or is
-# brand new (#985 mac-only "06-stats", no iOS counterpart to reuse). Any
+# rewritten (#984 completion accuracy fix, #984 privacy-claim fix) or is
+# brand new (#984 mac-only "06-stats", no iOS counterpart to reuse). Any
 # OTHER locale entry present in COPY/CALLOUTS for these slots is stale
 # leftover text (the pre-fix wording, or simply absent) — `generate_all()`
 # skips rendering every locale but `en` for these until the ai-translated-
@@ -452,7 +452,7 @@ SLOTS = {
                  "snapshotWinLoaded_iPad_light"),
         ],
     },
-    # macOS APP_DESKTOP arm (#985). Slot NAMES intentionally reuse the iOS
+    # macOS APP_DESKTOP arm (#984). Slot NAMES intentionally reuse the iOS
     # slot names ("01-home", "03-board", "05-settings") wherever the same
     # copy applies — COPY/CALLOUTS lookup is keyed by (app, slot.name), so
     # reusing the name is what makes the mac frame automatically inherit the
@@ -704,15 +704,15 @@ def detect_content_bbox(img: Image.Image, bg_color: tuple[int, int, int], tolera
                          y_gap_threshold: Optional[int] = None) -> tuple[int, int, int, int]:
     """Content bounding box on ALL FOUR sides — `detect_content_bottom()`'s
     "any non-bg, non-transparent pixel" test extended to the horizontal
-    axis too (#985/#986), returning `(left, top, right, bottom)` in source
+    axis too (#984), returning `(left, top, right, bottom)` in source
     pixel space.
 
     Plain min/max (the default, `x_gap_threshold=y_gap_threshold=None`) is
     enough for a single content block near the canvas's own edges — a
-    completion card floating with dead margin on every side (#986), or the
+    completion card floating with dead margin on every side (#984), or the
     macOS Home/Settings/Stats baselines below, which already span nearly
     their own full width. It is NOT enough for the macOS Board baseline
-    (#982/#985): that bake's square 9×9 grid ends with a real ~56px gap, but
+    (#982/#984): that bake's square 9×9 grid ends with a real ~56px gap, but
     a header/Reveal-button sliver sits further right (individual UI runs of
     12-240px within an otherwise-empty ~600px band) — plain min/max follows
     that sliver to the far edge, leaving the dead band BETWEEN grid and
@@ -968,7 +968,7 @@ def build_asc_image(baseline_path: Path,
         — `chip_at` optionally repositions the CHIP itself away from the
         anchor when the default below-anchor drop would land on content.
 
-    `crop_all_sides` (#986, "04-completion" ONLY — every other slot must stay
+    `crop_all_sides` (#984, "04-completion" ONLY — every other slot must stay
     byte-identical to before): use `detect_content_bbox()` (all 4 sides)
     instead of `detect_content_bottom()` (bottom only), capping the fit
     scale at 1.0 (never upscale) and centering the resulting — possibly
@@ -1093,7 +1093,7 @@ def build_asc_image(baseline_path: Path,
     corner_radius = int(asc_w * 0.045)
 
     if crop_all_sides:
-        # #986 — see the docstring above. All 4 sides, capped scale, centered.
+        # #984 — see the docstring above. All 4 sides, capped scale, centered.
         left, top, right, bottom = detect_content_bbox(src_full, bg_color)
         pad = int(max(right - left, bottom - top) * CONTENT_PAD_FRAC)
         crop_box = (
@@ -1169,7 +1169,7 @@ def build_asc_image(baseline_path: Path,
     return canvas
 
 
-# ── macOS APP_DESKTOP layout (#985) — copy left / app-window right ──────────
+# ── macOS APP_DESKTOP layout (#984) — copy left / app-window right ──────────
 #
 # A DIFFERENT layout from Direction C above, not a scaled variant of it: the
 # 2880×1800 16:10 canvas is too wide/short for a bottom-bleeding portrait
@@ -1194,7 +1194,7 @@ MAC_CONTENT_PAD_FRAC = 0.02  # breathing room on all 4 sides inside the chrome
 # Slots needing the `x_gap_threshold`/`y_gap_threshold` opt-in on
 # `detect_content_bbox()` — see that function's docstring for why this is
 # per-slot, not a global default. Currently only the MS macOS Board's
-# header/Reveal-button sliver (#982/#985).
+# header/Reveal-button sliver (#982/#984).
 MAC_GAP_TRIM = {
     ("minesweeper", "03-board"): {"x_gap_threshold": 45},
 }
@@ -1208,7 +1208,7 @@ def _mac_wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int,
     function rather than hoisted to module scope so this new mac path
     cannot, even accidentally, change a single pixel of the existing
     iPhone/iPad output (only "04-completion" is allowed to change there,
-    #986)."""
+    #984)."""
     def text_w(s: str) -> int:
         bbox = tmp_draw.textbbox((0, 0), s, font=font)
         return bbox[2] - bbox[0]
@@ -1317,7 +1317,7 @@ def build_mac_asc_image(baseline_path: Path,
 
     # ── Copy column (left) — width-constrained to the gap between the left
     #    margin and this SLOT's own window rect (window width varies per
-    #    slot, #986), so translated text can never run under the art. ─────
+    #    slot, #984), so translated text can never run under the art. ─────
     copy_right = window_x - MAC_GUTTER
     copy_width = max(200, copy_right - MAC_LEFT_MARGIN)
 
@@ -1423,7 +1423,7 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                                 asc_w=dev["w"], asc_h=dev["h"],
                                 callouts=slot_callouts, device=device,
                                 slot_name=slot.name,
-                                # #986: ONLY 04-completion may render differently
+                                # #984: ONLY 04-completion may render differently
                                 # from before — every other iPhone/iPad slot must
                                 # stay byte-identical to what's already uploaded.
                                 crop_all_sides=(slot.name == "04-completion"),

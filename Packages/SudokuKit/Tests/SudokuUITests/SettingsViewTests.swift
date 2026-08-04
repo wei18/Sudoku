@@ -252,7 +252,7 @@ struct SettingsViewTests {
         // runtime. Pass the shipping value explicitly, mirroring
         // App/Sudoku/Info.plist's CFBundleShortVersionString, so these
         // baselines (and any ASC marketing screenshot composited from them)
-        // show the real version instead of the placeholder (#986). This WILL
+        // show the real version instead of the placeholder (#984). This WILL
         // drift again at the next version bump — nothing currently keeps it
         // in sync automatically; re-grep this literal against
         // App/Sudoku/Info.plist when bumping CFBundleShortVersionString.

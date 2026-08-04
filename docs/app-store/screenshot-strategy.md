@@ -7,7 +7,7 @@ Capture plan for Sudoku v1 App Store storefront. This file specifies **what to s
 > longer match what `scripts/build-ascspec-screenshots.py` actually generates
 > — see "Store-screenshot redesign — Direction C + B" further down for the
 > real, current pipeline. Two concrete contradictions worth calling out
-> (#986/#987 caption-accuracy sweep): there is **no dedicated Leaderboard-screen
+> (#984 caption-accuracy sweep): there is **no dedicated Leaderboard-screen
 > slot** anywhere in the generator (`SLOTS`) — Shot 5 is Settings only, and
 > **Sudoku-only** (Minesweeper has never had a Shot 5 / Settings slot on any
 > device, including the new macOS arm's "06-stats", which is a different slot).
@@ -392,7 +392,7 @@ Escalated, then ruled on:
   enough evidence to call it, and the downside of guessing wrong (shipping a test-double
   surface) outweighs the upside, so no further digging.
 
-## macOS APP_DESKTOP arm + caption-accuracy sweep (#985/#986/#987)
+## macOS APP_DESKTOP arm + caption-accuracy sweep (#984)
 
 Adds a THIRD device family, `mac` (2880×1800, APP_DESKTOP 16:10) — a
 different layout from the iPhone/iPad frames above, not a scaled variant:
