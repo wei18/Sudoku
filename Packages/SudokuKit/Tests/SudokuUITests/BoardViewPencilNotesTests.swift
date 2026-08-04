@@ -142,5 +142,40 @@ struct BoardViewPencilNotesTests {
             assertSnapshot(of: host, as: .image, named: "Board-iPad-light-pencilNotesWithError")
         }
     }
+
+    /// macOS counterpart (#984 audit): the mac `03-board` marketing slot
+    /// previously sourced `BoardViewTests.snapshotInProgress_Mac_light`,
+    /// which has zero in-grid pencil notes — the mac frame claimed "Notes
+    /// the way you write them." over a grid with none rendered. Same clue
+    /// string/cells/notes as the iPhone/iPad variants above, just the mac
+    /// layout box, so all three devices prove the same claim from the same
+    /// underlying game state.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotesWithError_Mac_light() throws {
+        var notes = NotesGrid()
+        for digit in [2, 4, 8] { _ = notes.toggle(digit: digit, row: 0, col: 6) }
+        for digit in [1, 3, 7] { _ = notes.toggle(digit: digit, row: 2, col: 4) }
+        for digit in [5, 6, 9] { _ = notes.toggle(digit: digit, row: 6, col: 3) }
+        var board = try Board(clues: Self.inProgressClues)
+        try board.setDigit(4, atRow: 0, column: 2)
+        try board.setDigit(6, atRow: 0, column: 3)
+        try board.setDigit(5, atRow: 4, column: 4)
+        let viewModel = GameViewModel(
+            identity: Self.identityEasy,
+            board: board,
+            notes: notes,
+            elapsedSeconds: 201,
+            errorIndices: [Board.index(row: 0, column: 2)],
+            selection: GridCoordinate(row: 4, column: 4)
+        )
+        let host = hostingView(
+            BoardView(viewModel: viewModel),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Board-Mac-light-pencilNotesWithError")
+        }
+    }
     #endif
 }

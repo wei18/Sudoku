@@ -147,16 +147,16 @@ COPY = {
         # `CompletionViewModel.swift`). Every claim here must now be either
         # visible in THIS frame (time, mistake count) or an outcome
         # statement independent of what's on screen (one scoring attempt
-        # per puzzle). EN drafted only — do not translate the other 6
-        # locales until this wording is approved (#986).
+        # per puzzle). Translated to all 7 locales (ai-translated-
+        # localization pass, #986 follow-up) — no locale claims a ranking.
         "04-completion": {
             "en":      ("Solved.", "One scoring attempt per puzzle. Your time and mistake count, right here."),
-            "zh-Hant": ("完成。", "同題一次計分機會。你的時間，全球排名。"),
-            "zh-Hans": ("完成。", "同题一次计分机会。你的时间，全球排名。"),
-            "ja":      ("解けた。", "1問1スコア。あなたのタイムが世界に並ぶ。"),
-            "ko":      ("완료.", "한 퍼즐당 한 번의 기록. 당신의 시간, 세계 순위에."),
-            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo, en el ranking."),
-            "th":      ("สำเร็จ", "คิดคะแนนครั้งเดียวต่อปริศนา เวลาคุณบนกระดานอันดับ"),
+            "zh-Hant": ("完成。", "同一題只計分一次。你的時間與錯誤次數，就在這裡。"),
+            "zh-Hans": ("完成。", "同一题只计分一次。你的时间与错误次数，就在这里。"),
+            "ja":      ("解けた。", "1問につき1回のみスコア対象。あなたのタイムとミス数がここに。"),
+            "ko":      ("완료.", "퍼즐당 한 번만 기록됩니다. 당신의 시간과 실수 횟수, 바로 여기에."),
+            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo y tus errores, aquí mismo."),
+            "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียวต่อปริศนา เวลาและจำนวนที่พลาดของคุณอยู่ตรงนี้"),
         },
         # 05-settings — REWRITTEN (#987): the old "Zero tracking." / "No
         # third-party SDKs." directly contradicts
@@ -168,16 +168,16 @@ COPY = {
         # Game Center, and the ads-removal purchase (both visible in this
         # frame's "Ads Removed / Active" row and "Game Center" row) — no
         # privacy/tracking claim at all, to stay safely clear of
-        # PrivacyInfo.xcprivacy. EN drafted only — do not translate the
-        # other 6 locales until this wording is approved (#987).
+        # PrivacyInfo.xcprivacy. Translated to all 7 locales (ai-translated-
+        # localization pass, #987 follow-up) — no locale claims tracking.
         "05-settings": {
             "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center built in."),
-            "zh-Hant": ("七種語言。零追蹤。", "內建 Game Center。沒有第三方 SDK。"),
-            "zh-Hans": ("七种语言。零追踪。", "内置 Game Center。没有第三方 SDK。"),
-            "ja":      ("7言語対応、追跡ゼロ。", "Game Center対応。サードパーティSDKなし。"),
-            "ko":      ("일곱 가지 언어. 추적은 0.", "Game Center 내장. 서드파티 SDK 없음."),
-            "es":      ("Siete idiomas. Cero seguimiento.", "Game Center integrado. Sin SDK de terceros."),
-            "th":      ("เจ็ดภาษา ไม่มีการติดตาม", "รองรับ Game Center ไม่มี SDK ของบุคคลที่สาม"),
+            "zh-Hant": ("七種語言，全面在地化。", "一次購買，永久移除廣告。內建 Game Center。"),
+            "zh-Hans": ("七种语言，全面本地化。", "一次购买，永久移除广告。内置 Game Center。"),
+            "ja":      ("7言語に完全対応。", "一度の購入で広告を完全に削除。Game Centerも搭載。"),
+            "ko":      ("일곱 가지 언어, 완벽 현지화.", "한 번 구매로 광고를 영구 제거. Game Center도 포함."),
+            "es":      ("Siete idiomas, totalmente traducidos.", "Una compra elimina los anuncios para siempre. Incluye Game Center."),
+            "th":      ("รองรับ 7 ภาษาอย่างสมบูรณ์", "ซื้อครั้งเดียว ลบโฆษณาถาวร รองรับ Game Center"),
         },
     },
     "minesweeper": {
@@ -220,25 +220,33 @@ COPY = {
         },
         # 04-completion subhead — REWRITTEN (#986), same reasoning as
         # Sudoku's: "ranked globally" is not depicted in this frame (the win
-        # card shows only "You won" + time, no leaderboard/rank UI). EN
-        # drafted only — do not translate the other 6 locales until
-        # approved.
+        # card shows only "You won" + time, no leaderboard/rank UI).
+        # Translated to all 7 locales (ai-translated-localization pass, #986
+        # follow-up) — no locale claims a ranking.
         "04-completion": {
             "en":      ("Cleared.", "One attempt per board. Your solve time, right here."),
-            "zh-Hant": ("完成。", "每局一次計時。你的成績，全球排名。"),
-            "zh-Hans": ("完成。", "每局一次计时。你的成绩，全球排名。"),
-            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムが世界に並ぶ。"),
-            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 시간, 세계 랭킹에."),
-            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, en el ranking global."),
-            "th":      ("สำเร็จ", "หนึ่งครั้งต่อกระดาน เวลาคุณบนอันดับโลก"),
+            "zh-Hant": ("完成。", "每局僅一次挑戰。你的解題時間，就在這裡。"),
+            "zh-Hans": ("完成。", "每局仅一次挑战。你的解题时间，就在这里。"),
+            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムがここに。"),
+            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 클리어 시간, 바로 여기에."),
+            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, aquí mismo."),
+            "th":      ("สำเร็จ", "เล่นได้ครั้งเดียวต่อกระดาน เวลาไขของคุณอยู่ตรงนี้"),
         },
         # 06-stats — macOS-only slot (#985), NEW copy: no iOS "Stats" slot
         # exists to reuse (MS has no iOS Settings slot either — see comment
         # above — and Sudoku's own Stats screen was never one of the 5
-        # iOS shots). EN drafted only; flagged for the ai-translated-localization
-        # pass — do NOT ship the other 6 locales untranslated.
+        # iOS shots). Translated (#984 follow-up) — "Daily"/"Practice"
+        # reuse the exact in-app MinesweeperKit `Localizable.xcstrings`
+        # terms, "synced with iCloud" mirrors the app's own "Stats sync
+        # with your iCloud account." footer string.
         "06-stats": {
-            "en": ("Every best time, saved.", "Daily and practice results, synced with iCloud."),
+            "en":      ("Every best time, saved.", "Daily and practice results, synced with iCloud."),
+            "zh-Hant": ("每個最佳時間，都被記錄下來。", "今日與練習成績，與 iCloud 同步。"),
+            "zh-Hans": ("每个最佳时间，都被记录下来。", "每日与练习成绩，与 iCloud 同步。"),
+            "ja":      ("すべてのベストタイムを記録。", "デイリーと練習の記録をiCloudと同期。"),
+            "ko":      ("모든 최고 기록을 저장합니다.", "데일리와 연습 기록을 iCloud와 동기화합니다."),
+            "es":      ("Cada mejor tiempo, guardado.", "Resultados de Diario y Práctica, sincronizados con iCloud."),
+            "th":      ("เวลาที่ดีที่สุด บันทึกไว้ทุกครั้ง", "ผลประจำวันและฝึกฝน ซิงค์กับ iCloud"),
         },
     },
 }
@@ -367,12 +375,12 @@ CALLOUTS = {
 # routine re-run of the full generator from silently regenerating 6 locales
 # of a slot using either untranslated English or the very wording that was
 # just found to be false/inaccurate.
-PENDING_TRANSLATION_SLOTS = {
-    ("sudoku", "04-completion"),
-    ("sudoku", "05-settings"),
-    ("minesweeper", "04-completion"),
-    ("minesweeper", "06-stats"),
-}
+#
+# All 4 slots below completed the ai-translated-localization pass (#984
+# follow-up) — every locale now carries the accuracy-fixed wording, so the
+# set is empty. Repopulate it with `(app, slot_name)` the next time an `en`
+# COPY/CALLOUTS entry is rewritten ahead of its translation pass.
+PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = set()
 
 # ── Baseline → output slot mapping ─────────────────────────────────────────────
 #
@@ -774,6 +782,32 @@ def grapheme_clusters(s: str) -> list[str]:
         else:
             clusters.append(ch)
     return clusters
+
+
+# Closing/trailing punctuation that must never START a wrapped line (kinsoku
+# shori) — CJK full-width terminators/brackets plus their common Latin
+# counterparts. A line consisting SOLELY of one of these (e.g. an orphaned
+# 「。」 pushed onto its own line by a width-driven wrap) has near-zero ink
+# height, which throws off ink-bbox-based line-height math elsewhere.
+_KINSOKU_LEADING_FORBIDDEN = "。、．，！？…」』）】》〉!?,.;:"
+
+
+def _apply_kinsoku(lines: list[str]) -> list[str]:
+    """Post-process a greedily-wrapped line list so no line starts with
+    closing punctuation: pull the offending leading character(s) back onto
+    the previous line, letting that line overflow max_width by the
+    punctuation's own (narrow) advance rather than orphan it onto a line by
+    itself. Standard kinsoku shori line-start rule."""
+    i = 1
+    while i < len(lines):
+        while lines[i] and lines[i][0] in _KINSOKU_LEADING_FORBIDDEN:
+            lines[i - 1] += lines[i][0]
+            lines[i] = lines[i][1:]
+        if not lines[i]:
+            del lines[i]
+            continue
+        i += 1
+    return lines
 
 
 def draw_callout_chip(
@@ -1200,7 +1234,7 @@ def _mac_wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int,
                     current = ch
     if current:
         lines.append(current)
-    return lines or [""]
+    return _apply_kinsoku(lines) or [""]
 
 
 def build_mac_asc_image(baseline_path: Path,
@@ -1294,30 +1328,40 @@ def build_mac_asc_image(baseline_path: Path,
     headline_lines = _mac_wrap_text(headline, font_headline, copy_width, tmp_draw)
     subhead_lines = _mac_wrap_text(subhead, font_subhead, copy_width, tmp_draw)
 
-    def line_h(line: str, font: ImageFont.FreeTypeFont) -> int:
-        bbox = tmp_draw.textbbox((0, 0), line, font=font)
-        return bbox[3] - bbox[1]
+    def line_h(font: ImageFont.FreeTypeFont) -> int:
+        # Fixed per-font metric (ascent + descent), NOT a per-line ink bbox —
+        # a line whose only glyph is closing punctuation (e.g. an orphaned
+        # 「。」) has near-zero ink height, and stacking by ink height let
+        # such a line collapse into the next line's baseline, overlapping
+        # its first glyph. Metrics-based height is constant regardless of
+        # which characters happen to be on the line, so the block still
+        # advances by a full line each time.
+        ascent, descent = font.getmetrics()
+        return ascent + descent
+
+    headline_line_h = line_h(font_headline)
+    subhead_line_h = line_h(font_subhead)
 
     line_gap_h = int(asc_h * 0.010)
     line_gap_s = int(asc_h * 0.008)
     block_gap = int(asc_h * 0.022)
 
     text_block_h = (
-        sum(line_h(l, font_headline) for l in headline_lines)
+        headline_line_h * len(headline_lines)
         + line_gap_h * (len(headline_lines) - 1)
         + block_gap
-        + sum(line_h(l, font_subhead) for l in subhead_lines)
+        + subhead_line_h * len(subhead_lines)
         + line_gap_s * (len(subhead_lines) - 1)
     )
     ty = (asc_h - text_block_h) // 2
 
     for line in headline_lines:
         draw.text((MAC_LEFT_MARGIN, ty), line, font=font_headline, fill=(255, 255, 255, 255))
-        ty += line_h(line, font_headline) + line_gap_h
+        ty += headline_line_h + line_gap_h
     ty += block_gap - line_gap_h
     for line in subhead_lines:
         draw.text((MAC_LEFT_MARGIN, ty), line, font=font_subhead, fill=(255, 255, 255, 217))
-        ty += line_h(line, font_subhead) + line_gap_s
+        ty += subhead_line_h + line_gap_s
 
     assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
     assert canvas.size == (asc_w, asc_h), f"Expected {asc_w}×{asc_h}, got {canvas.size}"
