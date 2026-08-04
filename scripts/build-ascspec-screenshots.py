@@ -171,7 +171,7 @@ COPY = {
         # PrivacyInfo.xcprivacy. Translated to all 7 locales (ai-translated-
         # localization pass, #987 follow-up) — no locale claims tracking.
         "05-settings": {
-            "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center built in."),
+            "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center included."),
             "zh-Hant": ("七種語言，全面在地化。", "一次購買，永久移除廣告。內建 Game Center。"),
             "zh-Hans": ("七种语言，全面本地化。", "一次购买，永久移除广告。内置 Game Center。"),
             "ja":      ("7言語に完全対応。", "一度の購入で広告を完全に削除。Game Centerも搭載。"),
