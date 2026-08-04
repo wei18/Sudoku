@@ -2,6 +2,16 @@
 
 Capture plan for Sudoku v1 App Store storefront. This file specifies **what to shoot, in what order, at what dimensions, with what overlay text** for every supported device class and locale. Actual PNG capture is Phase 10 A5 (Xcode Simulator + Liquid Glass enabled).
 
+> **Superseded by the pipeline below.** The "5-shot storyline" / "Shot 5 platform
+> variant" sections immediately below are the original v1 capture plan and no
+> longer match what `scripts/build-ascspec-screenshots.py` actually generates
+> — see "Store-screenshot redesign — Direction C + B" further down for the
+> real, current pipeline. Two concrete contradictions worth calling out
+> (#984 caption-accuracy sweep): there is **no dedicated Leaderboard-screen
+> slot** anywhere in the generator (`SLOTS`) — Shot 5 is Settings only, and
+> **Sudoku-only** (Minesweeper has never had a Shot 5 / Settings slot on any
+> device, including the new macOS arm's "06-stats", which is a different slot).
+
 ## Device classes (4) and required dimensions
 
 | Class | Apple required dim (px) | Notes |
@@ -381,3 +391,61 @@ Escalated, then ruled on:
   exercise from an earlier/simpler test double for the shared overlay scaffold apart — not
   enough evidence to call it, and the downside of guessing wrong (shipping a test-double
   surface) outweighs the upside, so no further digging.
+
+## macOS APP_DESKTOP arm + caption-accuracy sweep (#984)
+
+Adds a THIRD device family, `mac` (2880×1800, APP_DESKTOP 16:10) — a
+different layout from the iPhone/iPad frames above, not a scaled variant:
+copy on the left, the app window (given Mac chrome — rounded corners +
+traffic-light dots, since the baselines carry none of their own) vertically
+centered on the right with the FULL window always visible (never bled off
+the canvas — on a landscape Mac window that reads as a cropping mistake,
+unlike the deliberate portrait bleed on iPhone/iPad). Slots: Sudoku
+Board/Home/Settings, Minesweeper Board/Home/Stats (Stats has no iOS
+counterpart — new copy, `("minesweeper", "06-stats")`). Details, exact
+geometry, and per-locale verification live in the PR description, not
+duplicated here.
+
+A sweep triggered by that work (checking every slot's caption against what
+its frame actually shows) found three defects, all fixed in the same pass:
+
+- **`04-completion`, both apps, iPhone+iPad.** The subhead/callout claimed
+  "ranked" / "ranked globally" — the completion popup's leaderboard-slice
+  presenter was deleted in #698 (state has been `.hidden` since v2.6), so no
+  frame has shown any ranking UI since then. The Shot 4 table above ("a
+  3-row leaderboard slice underneath showing world ranking") is now also
+  stale for the same reason — that leaderboard slice does not exist in the
+  current app. Copy rewritten to name only what the card visibly shows
+  (time, mistake count for Sudoku). Same fixture ALSO had real dead space
+  ABOVE the card (a bottom-anchored card on a tall baseline canvas —
+  `detect_content_bottom()` only ever trimmed the bottom); fixed by cropping
+  the baseline on all 4 sides (`detect_content_bbox()`, a horizontal-axis
+  extension of the same "any non-bg pixel" test) and never upscaling past
+  1:1 — the card renders at its own native size, centered in the remaining
+  space, when that's smaller than the slot.
+- **Sudoku `05-settings`, iPhone+iPad+mac.** "Zero tracking." / "No
+  third-party SDKs." directly contradicted `PrivacyInfo.xcprivacy`
+  (`NSPrivacyTracking = true`, 8 declared AdMob tracking domains) and the
+  linked GoogleMobileAds dependency — a false privacy claim live in App
+  Store metadata. Rewritten to sell only what's true and visible in the
+  frame: seven fully-localized languages, the ads-removal purchase, Game
+  Center. No privacy/tracking claim at all now, by design — see the `en`
+  string's own comment in `build-ascspec-screenshots.py` for the full
+  reasoning.
+- **Sudoku Settings fixture — stale version.** The rendered "Version" row
+  showed "1.0.0" (the shipping app is 2.6.0) because
+  `SettingsViewTests.makeSettingsHost()` never passed `appVersion` to
+  `SettingsViewModel`, falling back to its placeholder default (the LIVE app
+  is unaffected — `LiveRouteFactory` reads `CFBundleShortVersionString` from
+  `Bundle.main` at runtime; only this synthetic test host had no bundle to
+  read). Fixed by passing the shipping version explicitly, mirroring
+  `App/Sudoku/Info.plist`. This will drift again at the next version bump —
+  nothing currently keeps it in sync automatically; see the comment at that
+  call site.
+
+All new/rewritten strings from this sweep — COPY headlines/subheads AND the
+CALLOUTS chip labels — carry the accuracy-fixed wording in all 7 locales
+(approved `en` → `ai-translated-localization` pass, chip vocabulary anchored
+to the same slot's COPY subhead). `PENDING_TRANSLATION_SLOTS` in
+`build-ascspec-screenshots.py` is the hold-back gate for any future rewrite;
+it is empty when, and only when, every table is fully translated.

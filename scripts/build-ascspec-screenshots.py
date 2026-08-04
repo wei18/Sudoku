@@ -15,6 +15,9 @@ both apps in all 7 repo locales (en, zh-Hant, zh-Hans, ja, ko, es, th), for
 each device family:
   - iphone-6.9 : 1290×2796
   - ipad-13    : 2064×2752 (#506)
+  - mac        : 2880×1800, APP_DESKTOP 16:10 (#984) — a DIFFERENT layout
+    (copy left / app-window-with-chrome right, see `build_mac_asc_image()`),
+    not a scaled variant of the iPhone/iPad full-bleed-bottom-bleed frame.
 
 Every locale composites its translated headline/subhead/callout copy over
 the SAME underlying screenshot baseline (one baseline per slot, not per
@@ -60,6 +63,7 @@ ASC_H = 2796
 DEVICES = {
     "iphone-6.9": {"w": 1290, "h": 2796},
     "ipad-13":    {"w": 2064, "h": 2752},
+    "mac":        {"w": 2880, "h": 1800},  # APP_DESKTOP 16:10, #984
 }
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -136,29 +140,57 @@ COPY = {
             "es":      ("Notas como en el papel.", "Detección de errores al instante. Veinte pasos de deshacer."),
             "th":      ("โน้ตเหมือนเขียนบนกระดาษ", "เห็นผิดทันที ย้อนได้ยี่สิบขั้น"),
         },
+        # 04-completion subhead — REWRITTEN (#984): the old "Your time,
+        # ranked." claimed a ranking that is not depicted anywhere in the
+        # frame (the completion card removed a leaderboard-slice presenter
+        # in #698 and has been `state: .hidden` since v2.6 — see
+        # `CompletionViewModel.swift`). Every claim here must now be either
+        # visible in THIS frame (time, mistake count) or an outcome
+        # statement independent of what's on screen (one scoring attempt
+        # per puzzle). Translated to all 7 locales (ai-translated-
+        # localization pass, #984 follow-up) — no locale claims a ranking.
         "04-completion": {
-            "en":      ("Solved.", "One scoring attempt per puzzle. Your time, ranked."),
-            "zh-Hant": ("完成。", "同題一次計分機會。你的時間，全球排名。"),
-            "zh-Hans": ("完成。", "同题一次计分机会。你的时间，全球排名。"),
-            "ja":      ("解けた。", "1問1スコア。あなたのタイムが世界に並ぶ。"),
-            "ko":      ("완료.", "한 퍼즐당 한 번의 기록. 당신의 시간, 세계 순위에."),
-            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo, en el ranking."),
-            "th":      ("สำเร็จ", "คิดคะแนนครั้งเดียวต่อปริศนา เวลาคุณบนกระดานอันดับ"),
+            "en":      ("Solved.", "One scoring attempt per puzzle. Your time and mistake count, right here."),
+            "zh-Hant": ("完成。", "同一題只計分一次。你的時間與錯誤次數，就在這裡。"),
+            "zh-Hans": ("完成。", "同一题只计分一次。你的时间与错误次数，就在这里。"),
+            "ja":      ("解けた。", "1問につき1回のみスコア対象。あなたのタイムとミス数がここに。"),
+            "ko":      ("완료.", "퍼즐당 한 번만 기록됩니다. 당신의 시간과 실수 횟수, 바로 여기에."),
+            "es":      ("Resuelto.", "Una puntuación por puzle. Tu tiempo y tus errores, aquí mismo."),
+            "th":      ("สำเร็จ", "คิดคะแนนเพียงครั้งเดียวต่อปริศนา เวลาและจำนวนที่พลาดของคุณอยู่ตรงนี้"),
         },
+        # 05-settings — REWRITTEN (#984): the old "Zero tracking." / "No
+        # third-party SDKs." directly contradicts
+        # `App/Sudoku/Resources/PrivacyInfo.xcprivacy`
+        # (`NSPrivacyTracking = true`, 8 declared AdMob tracking domains) and
+        # the linked GoogleMobileAds dependency (`AppMonetizationKit`) — a
+        # false privacy claim in live App Store metadata. New copy sells
+        # only what's true and defensible: seven fully-localized languages,
+        # Game Center, and the ads-removal purchase (both visible in this
+        # frame's "Ads Removed / Active" row and "Game Center" row) — no
+        # privacy/tracking claim at all, to stay safely clear of
+        # PrivacyInfo.xcprivacy. Translated to all 7 locales (ai-translated-
+        # localization pass, #984 follow-up) — no locale claims tracking.
         "05-settings": {
-            "en":      ("Seven languages. Zero tracking.", "Game Center built in. No third-party SDKs."),
-            "zh-Hant": ("七種語言。零追蹤。", "內建 Game Center。沒有第三方 SDK。"),
-            "zh-Hans": ("七种语言。零追踪。", "内置 Game Center。没有第三方 SDK。"),
-            "ja":      ("7言語対応、追跡ゼロ。", "Game Center対応。サードパーティSDKなし。"),
-            "ko":      ("일곱 가지 언어. 추적은 0.", "Game Center 내장. 서드파티 SDK 없음."),
-            "es":      ("Siete idiomas. Cero seguimiento.", "Game Center integrado. Sin SDK de terceros."),
-            "th":      ("เจ็ดภาษา ไม่มีการติดตาม", "รองรับ Game Center ไม่มี SDK ของบุคคลที่สาม"),
+            "en":      ("Seven languages, fully localized.", "One purchase removes ads for good. Game Center included."),
+            "zh-Hant": ("七種語言，全面在地化。", "一次購買，永久移除廣告。內建 Game Center。"),
+            "zh-Hans": ("七种语言，全面本地化。", "一次购买，永久移除广告。内置 Game Center。"),
+            "ja":      ("7言語に完全対応。", "一度の購入で広告を完全に削除。Game Centerも搭載。"),
+            "ko":      ("일곱 가지 언어, 완벽 현지화.", "한 번 구매로 광고를 영구 제거. Game Center도 포함."),
+            "es":      ("Siete idiomas, totalmente traducidos.", "Una compra elimina los anuncios para siempre. Incluye Game Center."),
+            "th":      ("รองรับ 7 ภาษาอย่างสมบูรณ์", "ซื้อครั้งเดียว ลบโฆษณาถาวร รองรับ Game Center"),
         },
     },
     "minesweeper": {
-        # Minesweeper storyline uses the same 5-shot structure per strategy doc,
-        # adapted for MS gameplay. Shots 1-4 have copy; shot 5 (Settings)
-        # is identical copy since it's the shared SettingsUI.
+        # Minesweeper storyline uses the same shot numbering as the strategy
+        # doc, adapted for MS gameplay. MS has NO "05-settings" slot in this
+        # generator — despite both apps sharing the same SettingsUI, no MS
+        # Settings ASC screenshot has ever been wired into `SLOTS` (verified
+        # against `SLOTS` below: iphone-6.9/ipad-13 "minesweeper" lists only
+        # 01-04). An earlier version of this comment claimed shot 5 existed
+        # for MS "since it's the shared SettingsUI" — that never shipped;
+        # corrected as part of the #984 caption-accuracy sweep. MS's
+        # macOS-only "06-stats" slot (below) is a different, new slot, not a
+        # settings shot.
         "01-home": {
             "en":      ("Calm logic, every day.", "One board, every day. The same for everyone."),
             "zh-Hant": ("每天，一場安靜的推理。", "每天一局，全球同題。"),
@@ -186,14 +218,35 @@ COPY = {
             "es":      ("Marca, revela, resuelve.", "Deducción lógica. Sin necesidad de adivinar."),
             "th":      ("ปักธง เปิดช่อง ไขปริศนา", "ใช้เหตุผลเชิงตรรกะล้วนๆ ไม่ต้องเดา"),
         },
+        # 04-completion subhead — REWRITTEN (#984), same reasoning as
+        # Sudoku's: "ranked globally" is not depicted in this frame (the win
+        # card shows only "You won" + time, no leaderboard/rank UI).
+        # Translated to all 7 locales (ai-translated-localization pass, #984
+        # follow-up) — no locale claims a ranking.
         "04-completion": {
-            "en":      ("Cleared.", "One attempt per board. Your time, ranked globally."),
-            "zh-Hant": ("完成。", "每局一次計時。你的成績，全球排名。"),
-            "zh-Hans": ("完成。", "每局一次计时。你的成绩，全球排名。"),
-            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムが世界に並ぶ。"),
-            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 시간, 세계 랭킹에."),
-            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, en el ranking global."),
-            "th":      ("สำเร็จ", "หนึ่งครั้งต่อกระดาน เวลาคุณบนอันดับโลก"),
+            "en":      ("Cleared.", "One attempt per board. Your solve time, right here."),
+            "zh-Hant": ("完成。", "每局僅一次挑戰。你的解題時間，就在這裡。"),
+            "zh-Hans": ("完成。", "每局仅一次挑战。你的解题时间，就在这里。"),
+            "ja":      ("クリア。", "1面につき1回の挑戦。あなたのタイムがここに。"),
+            "ko":      ("클리어.", "보드당 한 번의 시도. 당신의 클리어 시간, 바로 여기에."),
+            "es":      ("Despejado.", "Un intento por tablero. Tu tiempo, aquí mismo."),
+            "th":      ("สำเร็จ", "เล่นได้ครั้งเดียวต่อกระดาน เวลาไขของคุณอยู่ตรงนี้"),
+        },
+        # 06-stats — macOS-only slot (#984), NEW copy: no iOS "Stats" slot
+        # exists to reuse (MS has no iOS Settings slot either — see comment
+        # above — and Sudoku's own Stats screen was never one of the 5
+        # iOS shots). Translated (#984 follow-up) — "Daily"/"Practice"
+        # reuse the exact in-app MinesweeperKit `Localizable.xcstrings`
+        # terms, "synced with iCloud" mirrors the app's own "Stats sync
+        # with your iCloud account." footer string.
+        "06-stats": {
+            "en":      ("Every best time, saved.", "Daily and practice results, synced with iCloud."),
+            "zh-Hant": ("每個最佳時間，都被記錄下來。", "今日與練習成績，與 iCloud 同步。"),
+            "zh-Hans": ("每个最佳时间，都被记录下来。", "每日与练习成绩，与 iCloud 同步。"),
+            "ja":      ("すべてのベストタイムを記録。", "デイリーと練習の記録をiCloudと同期。"),
+            "ko":      ("모든 최고 기록을 저장합니다.", "데일리와 연습 기록을 iCloud와 동기화합니다."),
+            "es":      ("Cada mejor tiempo, guardado.", "Resultados de Diario y Práctica, sincronizados con iCloud."),
+            "th":      ("เวลาที่ดีที่สุด บันทึกไว้ทุกครั้ง", "ผลประจำวันและฝึกฝน ซิงค์กับ iCloud"),
         },
     },
 }
@@ -232,15 +285,22 @@ CALLOUTS = {
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
     }],
     ("sudoku", "04-completion"): [{
-        # Anchor = the completion card's OWN bottom edge (measured by scanning
-        # the baseline for the card's near-white bounding box), not the tiny
-        # time glyph inside it — an anchor that sits ON dense card content had
-        # the chip overlap the checkmark/"Solved!" text; the card's edge always
-        # has clear blank canvas below it to drop the chip into.
-        "anchor": {"iphone-6.9": (0.500, 0.620), "ipad-13": (0.500, 0.574)},
-        "en": "Every solve, timed & ranked", "zh-Hant": "每次完成，計時排名", "zh-Hans": "每次完成，计时排名",
-        "ja": "解くたびにタイム計測＆ランキング", "ko": "풀 때마다 시간 측정 및 순위",
-        "es": "Cada partida, cronometrada y clasificada", "th": "ทุกครั้งที่ไข จับเวลาและจัดอันดับ",
+        # No `anchor` here (#984): this slot renders with `crop_all_sides=True`
+        # (see `build_asc_image`), which crops the completion card tightly on
+        # all 4 sides and centers it (never upscaling past 1:1) instead of
+        # the fixed-fraction-of-baseline placement every other callout uses —
+        # a static fx/fy anchor computed against the OLD full-bleed crop would
+        # land in the wrong place once the card's size/position on canvas
+        # changes with locale-independent geometry. `build_asc_image` computes
+        # this callout's anchor directly from the rendered card's own bottom
+        # edge instead. Label REWRITTEN (#984): "timed & ranked" claimed a
+        # ranking nothing in the frame shows (see COPY's 04-completion
+        # comment) — now names only what the card visibly shows. All 7
+        # locales carry the rewritten wording, vocabulary anchored to the
+        # same slot's COPY subhead (approved en → l10n pass, #984).
+        "en": "Your time and mistake count", "zh-Hant": "你的時間與錯誤次數", "zh-Hans": "你的时间与错误次数",
+        "ja": "タイムとミス数", "ko": "시간과 실수 횟수",
+        "es": "Tu tiempo y tus errores", "th": "เวลาและจำนวนที่พลาดของคุณ",
     }],
     ("minesweeper", "03-board"): [{
         # iPad: the default below-anchor drop landed the chip on the covered
@@ -290,12 +350,39 @@ CALLOUTS = {
         # OLD 0.637 anchor (Close button's bottom edge) now lands ON that new
         # row's text instead of past it — re-measured via detect_content_bottom()
         # against the win-reminder baseline: content now ends at 0.702, not 0.637.
-        "anchor": {"iphone-6.9": (0.500, 0.702), "ipad-13": (0.500, 0.585)},
-        "en": "Every board, timed & ranked", "zh-Hant": "每一局，計時排名", "zh-Hans": "每一局，计时排名",
-        "ja": "毎回タイム計測＆ランキング", "ko": "매 판마다 시간 측정 및 순위",
-        "es": "Cada tablero, cronometrado y clasificado", "th": "ทุกกระดาน จับเวลาและจัดอันดับ",
+        #
+        # #984: that fixed-fraction `anchor` is now DEAD — this slot renders
+        # with `crop_all_sides=True` (see the Sudoku completion callout's
+        # comment above; same reasoning applies here), so `build_asc_image`
+        # computes the anchor from the rendered card's own bottom edge
+        # instead of a baseline-fraction lookup. Label REWRITTEN: "timed &
+        # ranked" claimed a ranking the win card never shows (only "You won"
+        # + time). All 7 locales carry the rewritten wording, vocabulary
+        # anchored to the same slot's COPY subhead (approved en → l10n, #984).
+        "en": "Your solve time", "zh-Hant": "你的解題時間", "zh-Hans": "你的解题时间",
+        "ja": "あなたのクリアタイム", "ko": "당신의 클리어 시간",
+        "es": "Tu tiempo de resolución", "th": "เวลาไขของคุณ",
     }],
 }
+
+# ── Slots with EN-only copy pending Leader approval + native translation ──────
+#
+# (app, slot_name) pairs where the `en` COPY/CALLOUTS entry was just
+# rewritten (#984 completion accuracy fix, #984 privacy-claim fix) or is
+# brand new (#984 mac-only "06-stats", no iOS counterpart to reuse). Any
+# OTHER locale entry present in COPY/CALLOUTS for these slots is stale
+# leftover text (the pre-fix wording, or simply absent) — `generate_all()`
+# skips rendering every locale but `en` for these until the ai-translated-
+# localization pass lands and this set is trimmed. This is what keeps a
+# routine re-run of the full generator from silently regenerating 6 locales
+# of a slot using either untranslated English or the very wording that was
+# just found to be false/inaccurate.
+#
+# All 4 slots below completed the ai-translated-localization pass (#984
+# follow-up) — every locale now carries the accuracy-fixed wording, so the
+# set is empty. Repopulate it with `(app, slot_name)` the next time an `en`
+# COPY/CALLOUTS entry is rewritten ahead of its translation pass.
+PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = set()
 
 # ── Baseline → output slot mapping ─────────────────────────────────────────────
 #
@@ -365,6 +452,31 @@ SLOTS = {
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
                  "snapshotWinLoaded_iPad_light"),
+        ],
+    },
+    # macOS APP_DESKTOP arm (#984). Slot NAMES intentionally reuse the iOS
+    # slot names ("01-home", "03-board", "05-settings") wherever the same
+    # copy applies — COPY/CALLOUTS lookup is keyed by (app, slot.name), so
+    # reusing the name is what makes the mac frame automatically inherit the
+    # already-authored/translated iOS copy with zero duplication, rather
+    # than a separate mac-specific copy table. "06-stats" (Minesweeper) has
+    # no iOS counterpart, hence the new slot name + new COPY entry above.
+    # Deliberately a plain dict keyed by slot name, same shape as the iOS
+    # device entries above, so a possible future 4th slot (Game Center
+    # leaderboards, under discussion) is a one-line addition, not a new code
+    # path.
+    "mac": {
+        "sudoku": [
+            Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
+            Slot("01-home", "HomeViewTests", "HomeView-Mac-light-resume", "snapshotMacLightWithResume"),
+            Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
+                 "snapshot_mac_light_purchased"),
+        ],
+        "minesweeper": [
+            Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
+                 "snapshotFlagged_Mac_light"),
+            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-mac-light-regular", "snapshotHome_regular_light"),
+            Slot("06-stats", "MinesweeperStatsTests", "Stats-mac-light", "snapshotMacLight"),
         ],
     },
 }
@@ -532,6 +644,104 @@ def detect_content_bottom(img: Image.Image, bg_color: tuple[int, int, int], tole
     return 0
 
 
+def _content_flags(rgba: Image.Image, bg_color: tuple[int, int, int], axis: str,
+                    tolerance: int, step: int) -> list[tuple[int, bool]]:
+    """Per-column (`axis="x"`) or per-row (`axis="y"`) list of
+    `(position, has_any_content_pixel)` — the same any-non-bg/non-transparent
+    pixel test `detect_content_bottom()` uses, sampled every `step` pixels on
+    both scan axes."""
+    w, h = rgba.size
+    px = rgba.load()
+    br, bg_g, bb = bg_color
+
+    def is_content(x: int, y: int) -> bool:
+        r, g, b, a = px[x, y]
+        return a > 40 and (abs(r - br) + abs(g - bg_g) + abs(b - bb)) > tolerance
+
+    flags: list[tuple[int, bool]] = []
+    if axis == "x":
+        for x in range(0, w, step):
+            flags.append((x, any(is_content(x, y) for y in range(0, h, step))))
+    else:
+        for y in range(0, h, step):
+            flags.append((y, any(is_content(x, y) for x in range(0, w, step))))
+    return flags
+
+
+def _axis_bounds(flags: list[tuple[int, bool]], step: int,
+                  gap_threshold: Optional[int] = None) -> tuple[Optional[int], Optional[int]]:
+    """First/last content position from a `_content_flags()` list.
+
+    `gap_threshold=None` (default): plain min/max over every position that
+    has any content — the direct horizontal-axis extension of
+    `detect_content_bottom()`'s own "any pixel" test, nothing fancier.
+
+    `gap_threshold=<pixels>`: stop the scan at the first run of background
+    at least that wide found AFTER the first content position, instead of
+    following content all the way to the far edge. Opt-in only — see the
+    `MAC_GAP_TRIM` comment below for why this can't be a global default.
+    """
+    positions_with_content = [p for p, has in flags if has]
+    if not positions_with_content:
+        return None, None
+    if gap_threshold is None:
+        return positions_with_content[0], positions_with_content[-1] + step
+
+    start_index = next(i for i, (_, has) in enumerate(flags) if has)
+    last_content_pos = flags[start_index][0]
+    background_run = 0
+    for pos, has in flags[start_index:]:
+        if has:
+            last_content_pos = pos
+            background_run = 0
+        else:
+            background_run += step
+            if background_run >= gap_threshold:
+                break
+    return flags[start_index][0], last_content_pos + step
+
+
+def detect_content_bbox(img: Image.Image, bg_color: tuple[int, int, int], tolerance: int = 12,
+                         step: int = 3, x_gap_threshold: Optional[int] = None,
+                         y_gap_threshold: Optional[int] = None) -> tuple[int, int, int, int]:
+    """Content bounding box on ALL FOUR sides — `detect_content_bottom()`'s
+    "any non-bg, non-transparent pixel" test extended to the horizontal
+    axis too (#984), returning `(left, top, right, bottom)` in source
+    pixel space.
+
+    Plain min/max (the default, `x_gap_threshold=y_gap_threshold=None`) is
+    enough for a single content block near the canvas's own edges — a
+    completion card floating with dead margin on every side (#984), or the
+    macOS Home/Settings/Stats baselines below, which already span nearly
+    their own full width. It is NOT enough for the macOS Board baseline
+    (#982/#984): that bake's square 9×9 grid ends with a real ~56px gap, but
+    a header/Reveal-button sliver sits further right (individual UI runs of
+    12-240px within an otherwise-empty ~600px band) — plain min/max follows
+    that sliver to the far edge, leaving the dead band BETWEEN grid and
+    sliver inside the crop (the "hole in the frame" that slot was flagged
+    for). `x_gap_threshold`/`y_gap_threshold` fix that by cutting at the
+    first sufficiently-wide background gap instead of the last content
+    found anywhere.
+
+    This can't be a global default: Sudoku/MS Home's two-column list layout
+    has genuine 350-500px gaps between its OWN left/right content columns
+    that must NOT be cut (verified — the MS macOS Board's dead-zone-boundary
+    gap that DOES need cutting is only ~56px, i.e. *smaller* than the gap
+    a correct crop must tolerate elsewhere; gap size alone can't tell the
+    two apart, so this is opt-in per slot, not a default — see
+    `MAC_GAP_TRIM`).
+    """
+    rgba = img if img.mode == "RGBA" else img.convert("RGBA")
+    w, h = rgba.size
+    x_flags = _content_flags(rgba, bg_color, "x", tolerance, step)
+    y_flags = _content_flags(rgba, bg_color, "y", tolerance, step)
+    left, right = _axis_bounds(x_flags, step, x_gap_threshold)
+    top, bottom = _axis_bounds(y_flags, step, y_gap_threshold)
+    if left is None or top is None:
+        return 0, 0, w, h
+    return left, top, min(right, w), min(bottom, h)
+
+
 def paste_icon_badge(canvas: Image.Image, app: str, asc_w: int, margin: int, size: int) -> None:
     """Composite the app's own AppIcon (real shipped asset) as a small
     rounded-square badge in the top-left corner, for shelf recognition."""
@@ -574,6 +784,32 @@ def grapheme_clusters(s: str) -> list[str]:
         else:
             clusters.append(ch)
     return clusters
+
+
+# Closing/trailing punctuation that must never START a wrapped line (kinsoku
+# shori) — CJK full-width terminators/brackets plus their common Latin
+# counterparts. A line consisting SOLELY of one of these (e.g. an orphaned
+# 「。」 pushed onto its own line by a width-driven wrap) has near-zero ink
+# height, which throws off ink-bbox-based line-height math elsewhere.
+_KINSOKU_LEADING_FORBIDDEN = "。、．，！？…」』）】》〉!?,.;:"
+
+
+def _apply_kinsoku(lines: list[str]) -> list[str]:
+    """Post-process a greedily-wrapped line list so no line starts with
+    closing punctuation: pull the offending leading character(s) back onto
+    the previous line, letting that line overflow max_width by the
+    punctuation's own (narrow) advance rather than orphan it onto a line by
+    itself. Standard kinsoku shori line-start rule."""
+    i = 1
+    while i < len(lines):
+        while lines[i] and lines[i][0] in _KINSOKU_LEADING_FORBIDDEN:
+            lines[i - 1] += lines[i][0]
+            lines[i] = lines[i][1:]
+        if not lines[i]:
+            del lines[i]
+            continue
+        i += 1
+    return lines
 
 
 def draw_callout_chip(
@@ -712,7 +948,8 @@ def build_asc_image(baseline_path: Path,
                     asc_h: int = ASC_H,
                     callouts: Optional[list[dict]] = None,
                     device: str = "iphone-6.9",
-                    slot_name: str = "") -> Image.Image:
+                    slot_name: str = "",
+                    crop_all_sides: bool = False) -> Image.Image:
     """
     Compose one ASC-spec RGB PNG at the given canvas size — Direction C
     (full-bleed brand-gradient ground + headline set directly into the color +
@@ -732,6 +969,18 @@ def build_asc_image(baseline_path: Path,
         positioned in normalized screen-fraction coordinates (CALLOUTS above)
         — `chip_at` optionally repositions the CHIP itself away from the
         anchor when the default below-anchor drop would land on content.
+
+    `crop_all_sides` (#984, "04-completion" ONLY — every other slot must stay
+    byte-identical to before): use `detect_content_bbox()` (all 4 sides)
+    instead of `detect_content_bottom()` (bottom only), capping the fit
+    scale at 1.0 (never upscale) and centering the resulting — possibly
+    much smaller than `screen_w` — content horizontally in the screen band
+    instead of stretching it to fill the width. Corners round on all 4
+    sides (the content no longer necessarily bleeds off the canvas bottom)
+    instead of just the top. Callout anchors for this mode are computed
+    from the actual rendered position/size, not a baseline-fraction lookup
+    (see the loop below) — a fixed fx/fy anchor would be wrong as soon as
+    crop+scale+center moves the content around.
     """
     bg_color, accent_color, accent_deep, accent_muted = make_frame(app)
 
@@ -843,29 +1092,68 @@ def build_asc_image(baseline_path: Path,
     src_w, src_h_full = src_full.size
     scale = screen_w / src_w
 
-    content_bottom_px = detect_content_bottom(src_full, bg_color)
-    crop_h = min(src_h_full, content_bottom_px + int(src_h_full * CONTENT_PAD_FRAC))
-
-    fit_w, fit_h = screen_w, int(crop_h * scale)
-    src_resized = src_full.crop((0, 0, src_w, crop_h)).resize((fit_w, fit_h), Image.LANCZOS)
-    bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
-    bg_patch.paste(src_resized, (0, 0), src_resized)
-
     corner_radius = int(asc_w * 0.045)
-    mask = rounded_top_mask((fit_w, fit_h), corner_radius)
-    canvas.paste(bg_patch, (SCREEN_MARGIN, SCREEN_TOP), mask)
+
+    if crop_all_sides:
+        # #984 — see the docstring above. All 4 sides, capped scale, centered.
+        left, top, right, bottom = detect_content_bbox(src_full, bg_color)
+        pad = int(max(right - left, bottom - top) * CONTENT_PAD_FRAC)
+        crop_box = (
+            max(0, left - pad), max(0, top - pad),
+            min(src_w, right + pad), min(src_h_full, bottom + pad),
+        )
+        content = src_full.crop(crop_box)
+        content_w, content_h = content.size
+        scale = min(1.0, screen_w / content_w)  # never upscale past 1:1
+        fit_w = max(1, round(content_w * scale))
+        fit_h = max(1, round(content_h * scale))
+        src_resized = content.resize((fit_w, fit_h), Image.LANCZOS)
+        bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
+        bg_patch.paste(src_resized, (0, 0), src_resized)
+        mask = Image.new("L", (fit_w, fit_h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, fit_w - 1, fit_h - 1), radius=corner_radius, fill=255)
+        paste_x = SCREEN_MARGIN + (screen_w - fit_w) // 2  # narrower than screen_w now — center it
+        # The capped (never-upscale) card is now much smaller than the
+        # canvas — top-anchoring it at SCREEN_TOP (like every other slot,
+        # which relies on bleeding past the bottom edge to fill the frame)
+        # leaves a huge stranded gradient gap below it instead of above it:
+        # same "empty space reads as a mistake" problem this fix exists to
+        # solve, just moved to the other side of the card. Center it in the
+        # remaining canvas instead, reserving room below for the callout
+        # chip + leader line so they don't collide with the canvas edge.
+        CHIP_RESERVE = int(asc_h * 0.09)
+        available_h = max(fit_h, asc_h - SCREEN_TOP - CHIP_RESERVE)
+        paste_y = SCREEN_TOP + (available_h - fit_h) // 2
+    else:
+        content_bottom_px = detect_content_bottom(src_full, bg_color)
+        crop_h = min(src_h_full, content_bottom_px + int(src_h_full * CONTENT_PAD_FRAC))
+
+        fit_w, fit_h = screen_w, int(crop_h * scale)
+        src_resized = src_full.crop((0, 0, src_w, crop_h)).resize((fit_w, fit_h), Image.LANCZOS)
+        bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
+        bg_patch.paste(src_resized, (0, 0), src_resized)
+        mask = rounded_top_mask((fit_w, fit_h), corner_radius)
+        paste_x = SCREEN_MARGIN
+        paste_y = SCREEN_TOP
+
+    canvas.paste(bg_patch, (paste_x, paste_y), mask)
 
     # ── Direction B: feature-callout chips (Board / Completion only) ──────
     #
     # fx/fy are fractions of the ORIGINAL (uncropped) baseline — that's the
     # stable reference frame regardless of how much the block above zoomed
     # in, and X is unaffected by the (vertical-only) crop, so this maps
-    # correctly whether or not this slot needed any zoom.
+    # correctly whether or not this slot needed any zoom. `crop_all_sides`
+    # slots have no `anchor` entry (dead once cropping moves the content) —
+    # anchor to the rendered card's own bottom-center instead.
     if callouts:
         for callout in callouts:
-            fx, fy = callout["anchor"][device]
-            anchor_xy = (SCREEN_MARGIN + int(fx * screen_w), SCREEN_TOP + int(fy * src_h_full * scale))
             label = callout.get(locale) or callout["en"]
+            if crop_all_sides:
+                anchor_xy = (paste_x + fit_w // 2, paste_y + fit_h)
+            else:
+                fx, fy = callout["anchor"][device]
+                anchor_xy = (SCREEN_MARGIN + int(fx * screen_w), SCREEN_TOP + int(fy * src_h_full * scale))
             chip_target = callout.get("chip_at", {}).get(device)
             chip_xy = None
             if chip_target:
@@ -883,6 +1171,205 @@ def build_asc_image(baseline_path: Path,
     return canvas
 
 
+# ── macOS APP_DESKTOP layout (#984) — copy left / app-window right ──────────
+#
+# A DIFFERENT layout from Direction C above, not a scaled variant of it: the
+# 2880×1800 16:10 canvas is too wide/short for a bottom-bleeding portrait
+# device screenshot to read as anything but a sliver. Instead: brand
+# gradient fills the canvas, the app window (given Mac chrome — rounded
+# corners + traffic-light dots, since the baselines carry none of their
+# own) sits vertically centered on the right with the FULL window visible
+# (never bled off the canvas edge — on a landscape Mac window that reads as
+# a cropping mistake, unlike the deliberate portrait bleed on iPhone/iPad),
+# headline/subhead sit vertically centered on the left, width-constrained
+# to the gap between the left margin and the window (computed from the
+# window's OWN rect, which varies per slot) so translated text can never
+# run under the art.
+MAC_WINDOW_MAX_W = 1580     # starting point from the approved prototype
+MAC_RIGHT_MARGIN = 90
+MAC_LEFT_MARGIN = 180
+MAC_GUTTER = 80              # min gap between the copy column and the window
+MAC_TITLEBAR_H = 64
+MAC_CHROME_RADIUS = 28
+MAC_CONTENT_PAD_FRAC = 0.02  # breathing room on all 4 sides inside the chrome
+
+# Slots needing the `x_gap_threshold`/`y_gap_threshold` opt-in on
+# `detect_content_bbox()` — see that function's docstring for why this is
+# per-slot, not a global default. Currently only the MS macOS Board's
+# header/Reveal-button sliver (#982/#984).
+MAC_GAP_TRIM = {
+    ("minesweeper", "03-board"): {"x_gap_threshold": 45},
+}
+
+
+def _mac_wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int,
+                    tmp_draw: ImageDraw.ImageDraw) -> list[str]:
+    """Word-wrap (falling back to a grapheme-cluster split for CJK/Thai,
+    which carry no spaces) at `max_width` — the same algorithm as
+    `build_asc_image()`'s own nested `wrap_text`, kept as a SEPARATE
+    function rather than hoisted to module scope so this new mac path
+    cannot, even accidentally, change a single pixel of the existing
+    iPhone/iPad output (only "04-completion" is allowed to change there,
+    #984)."""
+    def text_w(s: str) -> int:
+        bbox = tmp_draw.textbbox((0, 0), s, font=font)
+        return bbox[2] - bbox[0]
+
+    lines, current = [], ""
+    for word in text.split():
+        test = (current + " " + word).strip()
+        if text_w(test) <= max_width:
+            current = test
+            continue
+        if current:
+            lines.append(current)
+            current = ""
+        if text_w(word) <= max_width:
+            current = word
+        else:
+            for ch in grapheme_clusters(word):
+                test = current + ch
+                if text_w(test) <= max_width or not current:
+                    current = test
+                else:
+                    lines.append(current)
+                    current = ch
+    if current:
+        lines.append(current)
+    return _apply_kinsoku(lines) or [""]
+
+
+def build_mac_asc_image(baseline_path: Path,
+                        headline: str,
+                        subhead: str,
+                        app: str,
+                        locale: str,
+                        asc_w: int,
+                        asc_h: int,
+                        slot_name: str = "") -> Image.Image:
+    """Compose one macOS APP_DESKTOP ASC-spec RGB PNG — see the
+    `MAC_WINDOW_MAX_W` module comment above for the layout. No Direction-B
+    callout chips on this arm (not requested for mac; the copy-left/
+    window-right layout has no single anchored UI element the way the
+    full-bleed portrait frames do)."""
+    bg_color, accent_color, accent_deep, accent_muted = make_frame(app)
+
+    canvas = Image.new("RGB", (asc_w, asc_h), accent_color)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    # Full-bleed vertical gradient over the WHOLE canvas — unlike Direction
+    # C's iPhone/iPad frames, nothing bleeds off the bottom edge here, so
+    # there's no fixed point where the gradient needs to hand off to a
+    # screenshot; it simply covers top to bottom.
+    for y in range(asc_h):
+        t = y / asc_h
+        r, g, b = blend(accent_deep, accent_color, t)
+        draw.line([(0, y), (asc_w, y)], fill=(r, g, b))
+
+    # ── App window art (right, vertically centered, full window visible) ──
+    src_full = Image.open(baseline_path).convert("RGBA")
+    src_w, src_h = src_full.size
+    gap_cfg = MAC_GAP_TRIM.get((app, slot_name), {})
+    left, top, right, bottom = detect_content_bbox(
+        src_full, bg_color,
+        x_gap_threshold=gap_cfg.get("x_gap_threshold"),
+        y_gap_threshold=gap_cfg.get("y_gap_threshold"),
+    )
+    pad = int(max(right - left, bottom - top) * MAC_CONTENT_PAD_FRAC)
+    crop_box = (
+        max(0, left - pad), max(0, top - pad),
+        min(src_w, right + pad), min(src_h, bottom + pad),
+    )
+    content = src_full.crop(crop_box)
+    content_w, content_h = content.size
+
+    scale = min(1.0, MAC_WINDOW_MAX_W / content_w)  # never upscale past 1:1
+    win_content_w = max(1, round(content_w * scale))
+    win_content_h = max(1, round(content_h * scale))
+    content_resized = content.resize((win_content_w, win_content_h), Image.LANCZOS)
+
+    window_w = win_content_w
+    window_h = MAC_TITLEBAR_H + win_content_h
+    window_img = Image.new("RGB", (window_w, window_h), bg_color)
+    wdraw = ImageDraw.Draw(window_img)
+    wdraw.rectangle((0, 0, window_w, MAC_TITLEBAR_H), fill=(0xE3, 0xE3, 0xE6))
+    dot_r = 11
+    dot_cy = MAC_TITLEBAR_H // 2
+    for i, dot_color in enumerate([(0xFF, 0x5F, 0x57), (0xFF, 0xBD, 0x2E), (0x28, 0xC8, 0x40)]):
+        cx = 24 + i * 28
+        wdraw.ellipse((cx - dot_r, dot_cy - dot_r, cx + dot_r, dot_cy + dot_r), fill=dot_color)
+    content_patch = Image.new("RGB", (win_content_w, win_content_h), bg_color)
+    content_patch.paste(content_resized, (0, 0), content_resized)
+    window_img.paste(content_patch, (0, MAC_TITLEBAR_H))
+
+    window_mask = Image.new("L", (window_w, window_h), 0)
+    ImageDraw.Draw(window_mask).rounded_rectangle(
+        (0, 0, window_w - 1, window_h - 1), radius=MAC_CHROME_RADIUS, fill=255
+    )
+
+    window_x = asc_w - MAC_RIGHT_MARGIN - window_w
+    window_y = (asc_h - window_h) // 2
+    canvas.paste(window_img, (window_x, window_y), window_mask)
+
+    # ── Icon badge (top-left, shelf recognition — same brand language as
+    #    the iPhone/iPad frames) ─────────────────────────────────────────
+    badge_margin = int(asc_w * 0.035)
+    badge_size = int(asc_w * 0.045)
+    paste_icon_badge(canvas, app, asc_w, badge_margin, badge_size)
+
+    # ── Copy column (left) — width-constrained to the gap between the left
+    #    margin and this SLOT's own window rect (window width varies per
+    #    slot, #984), so translated text can never run under the art. ─────
+    copy_right = window_x - MAC_GUTTER
+    copy_width = max(200, copy_right - MAC_LEFT_MARGIN)
+
+    font_headline = font_for(locale, int(asc_w * 0.044), bold=True)
+    font_subhead = font_for(locale, int(asc_w * 0.020), bold=False)
+    tmp_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+
+    headline_lines = _mac_wrap_text(headline, font_headline, copy_width, tmp_draw)
+    subhead_lines = _mac_wrap_text(subhead, font_subhead, copy_width, tmp_draw)
+
+    def line_h(font: ImageFont.FreeTypeFont) -> int:
+        # Fixed per-font metric (ascent + descent), NOT a per-line ink bbox —
+        # a line whose only glyph is closing punctuation (e.g. an orphaned
+        # 「。」) has near-zero ink height, and stacking by ink height let
+        # such a line collapse into the next line's baseline, overlapping
+        # its first glyph. Metrics-based height is constant regardless of
+        # which characters happen to be on the line, so the block still
+        # advances by a full line each time.
+        ascent, descent = font.getmetrics()
+        return ascent + descent
+
+    headline_line_h = line_h(font_headline)
+    subhead_line_h = line_h(font_subhead)
+
+    line_gap_h = int(asc_h * 0.010)
+    line_gap_s = int(asc_h * 0.008)
+    block_gap = int(asc_h * 0.022)
+
+    text_block_h = (
+        headline_line_h * len(headline_lines)
+        + line_gap_h * (len(headline_lines) - 1)
+        + block_gap
+        + subhead_line_h * len(subhead_lines)
+        + line_gap_s * (len(subhead_lines) - 1)
+    )
+    ty = (asc_h - text_block_h) // 2
+
+    for line in headline_lines:
+        draw.text((MAC_LEFT_MARGIN, ty), line, font=font_headline, fill=(255, 255, 255, 255))
+        ty += headline_line_h + line_gap_h
+    ty += block_gap - line_gap_h
+    for line in subhead_lines:
+        draw.text((MAC_LEFT_MARGIN, ty), line, font=font_subhead, fill=(255, 255, 255, 217))
+        ty += subhead_line_h + line_gap_s
+
+    assert canvas.mode == "RGB", f"Expected RGB, got {canvas.mode}"
+    assert canvas.size == (asc_w, asc_h), f"Expected {asc_w}×{asc_h}, got {canvas.size}"
+    return canvas
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def generate_all(dry_run: bool = False) -> list[dict]:
@@ -896,6 +1383,13 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                 baselines_root = BASELINES_ROOT[app]
                 slot_callouts = CALLOUTS.get((app, slot.name))
                 for locale in LOCALES:
+                    if locale != "en" and (app, slot.name) in PENDING_TRANSLATION_SLOTS:
+                        results.append({
+                            "device": device, "app": app, "slot": slot.name,
+                            "locale": locale, "status": "SKIPPED-PENDING-TRANSLATION", "path": None,
+                        })
+                        continue
+
                     copy_block = COPY.get(app, {}).get(slot.name, {}).get(locale)
                     if copy_block is None:
                         results.append({
@@ -919,12 +1413,23 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                     if not dry_run:
                         out_dir.mkdir(parents=True, exist_ok=True)
                         headline, subhead = copy_block
-                        img = build_asc_image(
-                            baseline_path, headline, subhead, app, locale,
-                            asc_w=dev["w"], asc_h=dev["h"],
-                            callouts=slot_callouts, device=device,
-                            slot_name=slot.name,
-                        )
+                        if device == "mac":
+                            img = build_mac_asc_image(
+                                baseline_path, headline, subhead, app, locale,
+                                asc_w=dev["w"], asc_h=dev["h"],
+                                slot_name=slot.name,
+                            )
+                        else:
+                            img = build_asc_image(
+                                baseline_path, headline, subhead, app, locale,
+                                asc_w=dev["w"], asc_h=dev["h"],
+                                callouts=slot_callouts, device=device,
+                                slot_name=slot.name,
+                                # #984: ONLY 04-completion may render differently
+                                # from before — every other iPhone/iPad slot must
+                                # stay byte-identical to what's already uploaded.
+                                crop_all_sides=(slot.name == "04-completion"),
+                            )
                         img.save(str(out_path), "PNG", optimize=False)
 
                     results.append({
