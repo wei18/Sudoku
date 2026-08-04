@@ -443,8 +443,9 @@ its frame actually shows) found three defects, all fixed in the same pass:
   nothing currently keeps it in sync automatically; see the comment at that
   call site.
 
-New/rewritten English strings from this sweep were held to `en` only pending
-Leader approval and an `ai-translated-localization` pass — see
-`PENDING_TRANSLATION_SLOTS` in `build-ascspec-screenshots.py` for exactly
-which (app, slot) pairs are still on the pre-fix wording in the other 6
-locales.
+All new/rewritten strings from this sweep — COPY headlines/subheads AND the
+CALLOUTS chip labels — carry the accuracy-fixed wording in all 7 locales
+(approved `en` → `ai-translated-localization` pass, chip vocabulary anchored
+to the same slot's COPY subhead). `PENDING_TRANSLATION_SLOTS` in
+`build-ascspec-screenshots.py` is the hold-back gate for any future rewrite;
+it is empty when, and only when, every table is fully translated.
