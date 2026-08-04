@@ -2,7 +2,7 @@ locale: en-US
 name: "Minesweeper — Classic"
 subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
-  First tap always safe — no more losing on move one. Beginner, Intermediate, Expert. We don't profile you; ads tailor only with your OK — decline or remove.
+  First tap always safe — no more losing on move one. Beginner, Intermediate, Expert. Ads? One purchase removes them for good.
 description: |-
   Minesweeper, the unhurried way.
 
@@ -19,27 +19,7 @@ description: |-
   • Pick up exactly where you left off — saves are automatic, and the home screen remembers.
   • Eleven Game Center achievements and three daily leaderboards, if you're into that.
 
-  One app, genuinely two platforms
-
-  Same codebase, same care, on both. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst — so window resizing and right-click flagging both work the way you'd expect. Start a board on your phone on the train, finish it on your Mac at your desk.
-
-  On privacy, plainly
-
-  No first-party analytics. No CRM. No backend of our own — nothing of ours profiles you. Your data lives in your own iCloud Private Database, visible to you, not to us. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
-
-  Remove Ads
-
-  A one-time purchase, no subscription. Removes the banner everywhere, permanently, with Family Sharing included.
-
-  Seven languages, properly done
-
-  English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, and Thai — the interface, Game Center, and this listing, all of it.
-
-  Built to be used
-
-  Dynamic Type, full VoiceOver support, light and dark mode, and a sage-and-warm-paper palette that's easy to sit with for a while.
-
-  Requires iOS 26 or macOS 26.
+  The banner ad can be removed with a single one-time purchase — no subscription. And a board you start on your phone is waiting on your Mac.
 keywords: "mines,logic,puzzle,classic,brain,offline,ipad,mac,flag,number,board,bomb,sweeper,mine sweeper,sapper"
 whats_new: |-
   Version 1.0
