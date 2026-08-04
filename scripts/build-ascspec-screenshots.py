@@ -295,11 +295,12 @@ CALLOUTS = {
         # this callout's anchor directly from the rendered card's own bottom
         # edge instead. Label REWRITTEN (#984): "timed & ranked" claimed a
         # ranking nothing in the frame shows (see COPY's 04-completion
-        # comment) — now names only what the card visibly shows. EN drafted
-        # only — do not translate until approved.
-        "en": "Your time and mistake count", "zh-Hant": "每次完成，計時排名", "zh-Hans": "每次完成，计时排名",
-        "ja": "解くたびにタイム計測＆ランキング", "ko": "풀 때마다 시간 측정 및 순위",
-        "es": "Cada partida, cronometrada y clasificada", "th": "ทุกครั้งที่ไข จับเวลาและจัดอันดับ",
+        # comment) — now names only what the card visibly shows. All 7
+        # locales carry the rewritten wording, vocabulary anchored to the
+        # same slot's COPY subhead (approved en → l10n pass, #984).
+        "en": "Your time and mistake count", "zh-Hant": "你的時間與錯誤次數", "zh-Hans": "你的时间与错误次数",
+        "ja": "タイムとミス数", "ko": "시간과 실수 횟수",
+        "es": "Tu tiempo y tus errores", "th": "เวลาและจำนวนที่พลาดของคุณ",
     }],
     ("minesweeper", "03-board"): [{
         # iPad: the default below-anchor drop landed the chip on the covered
@@ -356,10 +357,11 @@ CALLOUTS = {
         # computes the anchor from the rendered card's own bottom edge
         # instead of a baseline-fraction lookup. Label REWRITTEN: "timed &
         # ranked" claimed a ranking the win card never shows (only "You won"
-        # + time). EN drafted only — do not translate until approved.
-        "en": "Your solve time", "zh-Hant": "每一局，計時排名", "zh-Hans": "每一局，计时排名",
-        "ja": "毎回タイム計測＆ランキング", "ko": "매 판마다 시간 측정 및 순위",
-        "es": "Cada tablero, cronometrado y clasificado", "th": "ทุกกระดาน จับเวลาและจัดอันดับ",
+        # + time). All 7 locales carry the rewritten wording, vocabulary
+        # anchored to the same slot's COPY subhead (approved en → l10n, #984).
+        "en": "Your solve time", "zh-Hant": "你的解題時間", "zh-Hans": "你的解题时间",
+        "ja": "あなたのクリアタイム", "ko": "당신의 클리어 시간",
+        "es": "Tu tiempo de resolución", "th": "เวลาไขของคุณ",
     }],
 }
 
