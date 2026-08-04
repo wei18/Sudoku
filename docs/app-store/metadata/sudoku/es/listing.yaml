@@ -2,7 +2,7 @@ locale: es
 name: "Sudoku — Diario y Práctica"
 subtitle: "Lógica serena en iPhone y Mac"
 promotional_text: |-
-  Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. No te perfilamos; los anuncios se adaptan solo con tu permiso: recházalos o quítalos.
+  Tres puzles nuevos cada día a las 00:00 UTC. Retoma la partida entre iPhone y Mac. ¿Anuncios? Una compra los quita para siempre.
 description: |-
   Sudoku, sin prisas.
 
@@ -20,27 +20,7 @@ description: |-
   • Retoma justo donde lo dejaste — el guardado es automático y la pantalla principal lo recuerda.
   • Ocho logros de Game Center y tres rankings diarios, 500 puntos en total, si te va ese rollo.
 
-  Una sola app, de verdad dos plataformas
-
-  Mismo código, el mismo cuidado, en ambas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst — así que redimensionar ventanas, la navegación con flechas y teclas numéricas, y deshacer con ⌘Z funcionan tal como esperas. Empieza un puzle en el móvil durante el trayecto, termínalo en el Mac en tu escritorio.
-
-  Privacidad, sin rodeos
-
-  Sin analítica propia: nada nuestro te perfila. Tus partidas viven en tu propia base de datos privada de iCloud, visibles para ti, no para nosotros. Las puntuaciones de Game Center las gestiona Apple. El único SDK de terceros es la biblioteca de banners de Google; con tu permiso, puede usar un identificador de publicidad para mantener los anuncios relevantes — recházalo y los anuncios seguirán apareciendo, solo que menos personalizados, o quita el banner para siempre con una sola compra.
-
-  Quitar anuncios
-
-  Una compra única, sin suscripción. Quita el banner en todas partes, para siempre, con Compartir en Familia incluido.
-
-  Siete idiomas, hechos como es debido
-
-  Inglés, chino tradicional, chino simplificado, japonés, coreano, español y tailandés — la interfaz, Game Center y esta ficha, todo.
-
-  Pensada para el día a día
-
-  Dynamic Type, soporte completo de VoiceOver, modo claro y oscuro, y una paleta verde salvia y papel cálido fácil de mirar durante ratos largos.
-
-  Requiere iOS 26 o macOS 26.
+  El banner se puede quitar con una sola compra única — sin suscripción. Y el puzle que empiezas en tu móvil te espera en el Mac.
 keywords: "puzle,logica,cerebro,numeros,offline,ipad,mac,notas,rompecabezas,sudoko,clasico,diario,racha"
 whats_new: |-
   Versión 2.6

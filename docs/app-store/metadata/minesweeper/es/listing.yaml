@@ -2,7 +2,7 @@ locale: es-ES
 name: "Buscaminas — Clásico"
 subtitle: "Lógica limpia en iPhone y Mac"
 promotional_text: |-
-  Primer toque siempre seguro: no pierdes en la primera jugada. Principiante, Intermedio, Experto. No te perfilamos; anuncios relevantes solo con tu permiso, o quítalos.
+  Primer toque siempre seguro: no pierdes en la primera jugada. Principiante, Intermedio, Experto. ¿Anuncios? Una compra los quita para siempre.
 description: |-
   Buscaminas, sin prisas.
 
@@ -19,27 +19,7 @@ description: |-
   • Retoma justo donde lo dejaste — el guardado es automático y la pantalla principal lo recuerda.
   • Once logros de Game Center y tres rankings diarios, si te va ese rollo.
 
-  Una sola app, de verdad dos plataformas
-
-  Mismo código, el mismo cuidado, en ambas. La versión de Mac es una app SwiftUI nativa real — no es iPad en Mac ni Catalyst — así que redimensionar ventanas y marcar con clic derecho funcionan tal como esperas. Empieza un tablero en el móvil durante el trayecto, termínalo en el Mac en tu escritorio.
-
-  Privacidad, sin rodeos
-
-  Sin analítica propia. Sin CRM. Sin servidor propio: nada nuestro te perfila. Tus datos están en tu propia base de datos privada de iCloud, visibles para ti, no para nosotros. El único SDK de terceros es la biblioteca de banners de Google; con tu permiso, puede usar un identificador de publicidad para mantener los anuncios relevantes — recházalo y los anuncios seguirán apareciendo, solo que menos personalizados, o quita el banner para siempre con una sola compra.
-
-  Quitar anuncios
-
-  Una compra única, sin suscripción. Quita el banner en todas partes, para siempre, con Compartir en Familia incluido.
-
-  Siete idiomas, hechos como es debido
-
-  Inglés, chino tradicional, chino simplificado, japonés, coreano, español y tailandés — la interfaz, Game Center y esta ficha, todo.
-
-  Pensada para el día a día
-
-  Dynamic Type, soporte completo de VoiceOver, modo claro y oscuro, y una paleta verde salvia y papel cálido fácil de mirar durante ratos largos.
-
-  Requiere iOS 26 o macOS 26.
+  El banner se puede quitar con una sola compra única — sin suscripción. Y el tablero que empiezas en tu móvil te espera en el Mac.
 keywords: "minas,logica,puzle,clasico,mente,sin conexion,ipad,mac,bandera,numero,bomba,campo minado,buscamin"
 whats_new: |-
   Versión 1.0

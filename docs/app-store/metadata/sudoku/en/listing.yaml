@@ -2,7 +2,7 @@ locale: en-US
 name: "Sudoku — Daily & Practice"
 subtitle: "Calm logic for iPhone & Mac"
 promotional_text: |-
-  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. We don't profile you; ads tailor only with consent — or remove them.
+  Three new Daily puzzles every day at midnight UTC. Pick up where you left off across iPhone and Mac. Ads? One purchase removes them for good.
 description: |-
   Sudoku, the unhurried way.
 
@@ -20,27 +20,7 @@ description: |-
   • Pick up exactly where you left off — saves are automatic, and the home screen remembers.
   • Eight Game Center achievements and three daily leaderboards, 500 points total, if you're into that.
 
-  One app, genuinely two platforms
-
-  Same codebase, same care, on both. The Mac version is a real SwiftUI Mac app — not iPad-on-Mac, not Catalyst — so window resizing, arrow-key and number-key input, and ⌘Z undo all work the way you'd expect. Start a puzzle on your phone on the train, finish it on your Mac at your desk.
-
-  On privacy, plainly
-
-  No first-party analytics — nothing of ours profiles you. Your saves live in your own iCloud Private Database, visible to you, not to us. Game Center submissions go to Apple. The one third-party SDK is Google's banner-ad library; with your permission, it may use an advertising identifier to keep ads relevant — decline and ads still show, just less tailored, or remove the banner for good with a single purchase.
-
-  Remove Ads
-
-  A one-time purchase, no subscription. Removes the banner everywhere, permanently, with Family Sharing included.
-
-  Seven languages, properly done
-
-  English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, and Thai — the interface, Game Center, and this listing, all of it.
-
-  Built to be used
-
-  Dynamic Type, full VoiceOver support, light and dark mode, and a sage-and-warm-paper palette that's easy to sit with for a while.
-
-  Requires iOS 26 or macOS 26.
+  The banner ad can be removed with a single one-time purchase — no subscription. And a puzzle you start on your phone is waiting on your Mac.
 keywords: "puzzle,logic,brain,number,offline,ipad,mac,pencil,notes,sudoko,solver,board,classic,daily,streak"
 whats_new: |-
   Version 2.6
