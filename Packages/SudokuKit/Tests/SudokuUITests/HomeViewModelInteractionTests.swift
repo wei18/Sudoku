@@ -7,6 +7,12 @@
 //
 // #513: signed-out GC leaderboard behaviour preserved — alert flag lives on the
 // stable `GameRootViewModel.showGameCenterSignedOutAlert` (not a transient VM).
+//
+// #983: Leaderboard is no longer a `presentLeaderboard` side-effect gated by
+// `presentGameCenterOrAlert` — it now has a route (`.dailyRank`) like every
+// other mode, so `GameHomeViewModel.select` pushes it unconditionally. The
+// not-signed-in explainer moved INSIDE `DailyRankView` (state 1 of the #983
+// spec) instead of gating the Home tap itself.
 
 import GameAppKit
 import GameCenterClient
@@ -23,7 +29,7 @@ import Testing
 private let sudokuHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
     .daily: HomeModeContent<AppRoute>(subtitleKey: "3 puzzles today", route: .daily),
     .practice: HomeModeContent<AppRoute>(subtitleKey: "Mixed difficulty pool", route: .practice),
-    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends"),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends", route: .dailyRank),
     .settings: HomeModeContent<AppRoute>(subtitleKey: "Account / language", route: .settings)
 ]
 
@@ -82,36 +88,36 @@ struct HomeViewModelInteractionTests {
         #expect(rootVM.path == [.daily, .practice])
     }
 
-    // MARK: - #513: Leaderboard signed-out affordance
+    // MARK: - #513/#983: Leaderboard push is unconditional (no signed-out gate)
 
-    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() async {
+    @Test func selectLeaderboardWhenUnauthenticatedStillPushesRoute() async {
         let (rootVM, homeVM) = await makeVMs(authResult: .failure(.cancelled))
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == true)
-        #expect(rootVM.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+        #expect(rootVM.showGameCenterSignedOutAlert == false)
+        #expect(rootVM.path == [.dailyRank])
     }
 
-    @Test func selectLeaderboardWhenUnknownSetsAlertFlag() async {
+    @Test func selectLeaderboardWhenUnknownStillPushesRoute() async {
         // No bootstrap — authState stays .unknown (the default).
         let (rootVM, homeVM) = await makeVMs()
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == true)
-        #expect(rootVM.path.isEmpty)
+        #expect(rootVM.showGameCenterSignedOutAlert == false)
+        #expect(rootVM.path == [.dailyRank])
     }
 
-    @Test func selectLeaderboardWhenRestrictedSetsAlertFlag() async {
+    @Test func selectLeaderboardWhenRestrictedStillPushesRoute() async {
         let (rootVM, homeVM) = await makeVMs(authResult: .success(.restricted))
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == true)
-        #expect(rootVM.path.isEmpty)
+        #expect(rootVM.showGameCenterSignedOutAlert == false)
+        #expect(rootVM.path == [.dailyRank])
     }
 
-    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() async {
+    @Test func selectLeaderboardWhenAuthenticatedPushesRoute() async {
         let player = PlayerSummary(teamPlayerId: "P001", displayName: "Tester")
         let (rootVM, homeVM) = await makeVMs(authResult: .success(.authenticated(player)))
         homeVM.select(.leaderboard)
         #expect(rootVM.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
-        #expect(rootVM.path.isEmpty, "leaderboard never pushes a route")
+        #expect(rootVM.path == [.dailyRank])
     }
 
     @Test func alertFlagDefaultsToFalse() async {

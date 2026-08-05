@@ -9,6 +9,13 @@
 //
 // #513: signed-out GC leaderboard behaviour preserved — alert flag lives on the
 // stable `GameRootViewModel.showGameCenterSignedOutAlert` (not a transient VM).
+//
+// #983: Leaderboard is no longer a `presentLeaderboard` side-effect gated by
+// `presentGameCenterOrAlert` — it now has a route (`.dailyRank`) like every
+// other mode, so `GameHomeViewModel.select` pushes it unconditionally
+// (`homeModes[mode]?.route != nil` short-circuits before the alert-gate
+// branch). The not-signed-in explainer moved INSIDE `DailyRankView` (state 1
+// of the #983 spec) instead of gating the Home tap itself.
 
 import GameAppKit
 import GameCenterClient
@@ -24,7 +31,7 @@ import Testing
 private let minesweeperHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
     .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
     .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
-    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Best times"),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends", route: .dailyRank),
     .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
 ]
 
@@ -84,33 +91,36 @@ struct MinesweeperHomeViewModelTests {
         #expect(rootVM.path == [.stats])
     }
 
-    // Leaderboard presents the native GC dashboard as a modal side-effect
-    // (#291 / #49) — it must NOT push a route.
-    @Test func selectLeaderboardPushesNoRoute() async {
+    // #983: Leaderboard now pushes the shared Daily Rank screen like every
+    // other mode (was a `presentLeaderboard` GC-dashboard side-effect, #291 / #49).
+    @Test func selectLeaderboardPushesDailyRankRoute() async {
         let (rootVM, homeVM) = await makeVMs()
         homeVM.select(.leaderboard)
-        #expect(rootVM.path.isEmpty)
+        #expect(rootVM.path == [.dailyRank])
     }
 
-    // MARK: - #513: Leaderboard signed-out affordance
+    // MARK: - #513/#983: Leaderboard push is unconditional (no signed-out gate)
 
-    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() async {
+    // #983: the route push is unconditional regardless of auth state — the
+    // not-signed-in explainer lives INSIDE `DailyRankView` now, so the Home
+    // tap itself never raises `showGameCenterSignedOutAlert` for Leaderboard.
+    @Test func selectLeaderboardWhenUnauthenticatedStillPushesRoute() async {
         let (rootVM, homeVM) = await makeVMs(
             authResult: .failure(.notAuthenticated)
         )
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == true)
-        #expect(rootVM.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+        #expect(rootVM.showGameCenterSignedOutAlert == false)
+        #expect(rootVM.path == [.dailyRank])
     }
 
-    @Test func selectLeaderboardWhenAuthenticatedDoesNotSetAlertFlag() async {
+    @Test func selectLeaderboardWhenAuthenticatedPushesRoute() async {
         let player = PlayerSummary(teamPlayerId: "P001", displayName: "Sweeper")
         let (rootVM, homeVM) = await makeVMs(
             authResult: .success(.authenticated(player))
         )
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
-        #expect(rootVM.path.isEmpty, "leaderboard never pushes a route")
+        #expect(rootVM.showGameCenterSignedOutAlert == false)
+        #expect(rootVM.path == [.dailyRank])
     }
 
     @Test func sequentialSelectionsAppendInOrder() async {
