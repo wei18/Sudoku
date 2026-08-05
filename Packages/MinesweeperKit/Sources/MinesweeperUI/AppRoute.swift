@@ -9,9 +9,11 @@
 //   - `.settings` → placeholder Settings screen.
 //   - `.board`    → a board with a chosen difficulty + seed.
 //
-// Leaderboard is intentionally NOT a route — mirroring Sudoku (#49) it is a
-// Game Center modal side-effect, not a stack push. MS has no GC surface yet
-// (#291), so the Home Leaderboard card is a disabled stub for now.
+// #983: `.dailyRank` adds a real leaderboard destination — the shared
+// `GameAppKit.DailyRankView` screen, pushed from the Home Leaderboard card
+// (MS has had a live GC surface since #291; the "disabled stub" framing
+// below is retired). `GameCenterDashboard.present()` stays reachable from a
+// secondary button ON that screen, not from the Home card.
 //
 // `Hashable + Sendable` is the minimum SwiftUI's `.navigationDestination(for:)`
 // + GameShellUI's `RouteFactory` require. `Codable` is intentionally not
@@ -65,4 +67,8 @@ public enum AppRoute: Hashable, Sendable {
     // deliberately NOT a `HomeMode` case (owner adjudication: must not
     // compete with the cards). Mirrors Sudoku's `AppRoute.stats`.
     case stats
+    // #983: the shared Daily Rank screen, pushed from the Home Leaderboard
+    // card (see `MinesweeperAppComposition/Live.swift`'s
+    // `homeModes[.leaderboard]`). Mirrors Sudoku's `AppRoute.dailyRank`.
+    case dailyRank
 }

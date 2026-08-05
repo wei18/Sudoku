@@ -15,10 +15,11 @@ public import GameCenterClient
 /// deliberately reuses each app's EXISTING difficulty-name catalog entries
 /// (Sudoku: "Easy"/"Medium"/"Hard"; Minesweeper: "Beginner"/"Intermediate"/
 /// "Expert") — no new difficulty-name strings are introduced by this screen.
-// Not `Sendable`: `LocalizedStringKey` (like `HomeModeContent.subtitleKey`)
-// isn't Sendable either. `DailyRankTab` only ever crosses into the
-// `@MainActor`-isolated `DailyRankViewModel`, so this mirrors that existing
-// precedent rather than needing its own workaround.
+///
+/// Not `Sendable`: `LocalizedStringKey` (like `HomeModeContent.subtitleKey`)
+/// isn't Sendable either. `DailyRankTab` only ever crosses into the
+/// `@MainActor`-isolated `DailyRankViewModel`, so this mirrors that existing
+/// precedent rather than needing its own workaround.
 public struct DailyRankTab: Identifiable, Equatable {
     public let id: String
     public let titleKey: LocalizedStringKey
