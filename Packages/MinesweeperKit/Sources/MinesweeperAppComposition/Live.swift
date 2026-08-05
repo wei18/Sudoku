@@ -130,11 +130,22 @@ extension MinesweeperAppComposition {
             homeModes: [
                 .daily: HomeModeContent(subtitleKey: "3 boards today", route: .daily),
                 .practice: HomeModeContent(subtitleKey: "All difficulties", route: .practice),
-                .leaderboard: HomeModeContent(subtitleKey: "Best times"),
+                // #983: Leaderboard is now a real push to the shared Daily
+                // Rank screen instead of a `presentLeaderboard` side-effect
+                // — subtitle changes from "Best times" to "Global / friends"
+                // (matching Sudoku's, which already said this) since the
+                // World/Friends toggle now actually lives on the pushed
+                // screen. `GameCenterDashboard.present()` moved to a
+                // secondary button ON that screen (see `LiveRouteFactory`'s
+                // `.dailyRank` case).
+                .leaderboard: HomeModeContent(subtitleKey: "Global / friends", route: .dailyRank),
                 .settings: HomeModeContent(subtitleKey: "Purchases / about", route: .settings)
             ],
             // MS Game Center dashboard presenter. Injected here (not inside
-            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            // GameAppKit) so GameAppKit stays free of the GK dependency. No
+            // longer reachable from the Home card (see `homeModes` above), but
+            // kept wired for API stability — `GameHomeViewModel.select` only
+            // calls it for a mode with `route == nil`, which no mode has now.
             presentLeaderboard: { GameCenterDashboard.present() },
             // #773: Home's Statistics entry pushes this route.
             statsRoute: .stats,
@@ -285,7 +296,11 @@ extension MinesweeperAppComposition {
             // simple UI-tap events, not the Sudoku-shaped game-outcome events
             // #699 scoped MS OUT of (see `telemetry` field's doc comment).
             // #773: also fans out the Statistics screen-viewed event.
-            telemetry: deps.telemetry
+            telemetry: deps.telemetry,
+            // #983: `.dailyRank`'s `DailyRankViewModel` starts from whatever
+            // `authState` bootstrap already resolved, instead of redundantly
+            // re-running `authenticate()`. Mirrors Sudoku's `makeRouteFactory`.
+            currentAuthState: { [rootViewModel] in rootViewModel.authState }
         )
     }
 

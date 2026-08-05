@@ -150,6 +150,12 @@ public struct LiveRouteFactory: RouteFactory {
     // `telemetry` fans out share/review/invite taps (unlike MS's game-outcome stores, #699).
     private let presentInviteFriends: (@MainActor () -> Void)?
     private let telemetry: Telemetry?
+    // #983: snapshot of `GameRootViewModel.authState` at the moment
+    // `.dailyRank` is built, mirroring `presentGameCenter`'s capture shape.
+    // `nil` (default) makes `DailyRankViewModel` start from `.unknown` for
+    // tests / previews that don't wire a Root VM — it re-authenticates on
+    // demand via its own `signIn()` regardless.
+    private let currentAuthState: (@MainActor () -> GameCenterAuthState)?
 
     public init(
         monetizationController: MonetizationStateController? = nil,
@@ -169,7 +175,8 @@ public struct LiveRouteFactory: RouteFactory {
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
         presentGameCenter: (@MainActor () -> Void)? = nil,
         presentInviteFriends: (@MainActor () -> Void)? = nil,
-        telemetry: Telemetry? = nil
+        telemetry: Telemetry? = nil,
+        currentAuthState: (@MainActor () -> GameCenterAuthState)? = nil
     ) {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
@@ -189,6 +196,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.presentGameCenter = presentGameCenter
         self.presentInviteFriends = presentInviteFriends
         self.telemetry = telemetry
+        self.currentAuthState = currentAuthState
     }
 
     @MainActor
@@ -340,6 +348,8 @@ public struct LiveRouteFactory: RouteFactory {
             )
         case .stats: // #773: Statistics screen — see LiveRouteFactory+Stats.swift.
             return Self.statsDestination(personalRecordStore, errorReporter, telemetry)
+        case .dailyRank: // #983: shared Daily Rank screen — see LiveRouteFactory+DailyRank.swift.
+            return Self.dailyRankDestination(gameCenter, currentAuthState)
         case .settings:
             let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String // #744

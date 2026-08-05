@@ -68,6 +68,9 @@ let testTargets: [Target] = [
         dependencies: [
             "GameAppKit",
             .product(name: "GameCenterClient", package: "GameCenterKit"),
+            // #983: FakeGameCenterClient for DailyRankViewModelTests — the
+            // same fake seam SudokuUITests / MinesweeperUITests use.
+            .product(name: "GameCenterTesting", package: "GameCenterKit"),
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
             // SudokuEngine for the `Mode` / `Difficulty` value types needed to

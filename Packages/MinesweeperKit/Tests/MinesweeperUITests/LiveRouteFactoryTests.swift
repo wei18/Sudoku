@@ -40,6 +40,17 @@ import GameShellUI
         _ = view
     }
 
+    // #983: the Home Leaderboard card's pushed destination. `LiveRouteFactory()`
+    // wires no `gameCenter` here, so this only proves the `.dailyRank` case
+    // compiles/doesn't crash (the nil-`gameCenter` fallback renders EmptyView
+    // — see `LiveRouteFactory+DailyRank.swift`), matching this suite's stated
+    // "constructs without crashing" scope, not pixel parity.
+    @Test func factoryReturnsViewForDailyRankRoute() {
+        let factory = LiveRouteFactory()
+        let view = factory.view(for: .dailyRank, path: nil)
+        _ = view
+    }
+
     // #288 / #289: the Home mode cards push these routes. Sentinel coverage —
     // a future switch refactor that drops a case fails compilation here.
 
