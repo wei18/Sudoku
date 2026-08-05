@@ -4,7 +4,9 @@
 // Friends scope (segmented) over a per-(tab,scope) result list, plus a
 // persistent "Open Game Center" secondary affordance so Apple's full
 // dashboard stays reachable (per §How: "A secondary 'Open Game Center'
-// affordance keeps Apple's full dashboard reachable").
+// affordance keeps Apple's full dashboard reachable"). Hidden in the
+// not-signed-in state, where `GKGameCenterViewController` refuses to present
+// and the button would be a dead no-op (#983).
 //
 // #536/#761 pattern: the view model is built by the caller (each app's
 // `LiveRouteFactory.view(for:)`) and stored via `@State` (first-value-wins),
@@ -53,16 +55,18 @@ public struct DailyRankView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Button {
-                viewModel.openGameCenter()
-            } label: {
-                Text("Open Game Center")
-                    .frame(maxWidth: .infinity)
+            if showsOpenGameCenterButton {
+                Button {
+                    viewModel.openGameCenter()
+                } label: {
+                    Text("Open Game Center")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(theme.accent.primary.resolved)
+                .padding(theme.spacing.medium)
+                .accessibilityIdentifier("dailyRank.openGameCenter")
             }
-            .buttonStyle(.bordered)
-            .tint(theme.accent.primary.resolved)
-            .padding(theme.spacing.medium)
-            .accessibilityIdentifier("dailyRank.openGameCenter")
         }
         .background(theme.surface.background.resolved)
         .navigationTitle("Daily Rank")
@@ -76,6 +80,18 @@ public struct DailyRankView: View {
 
     private var scopeBinding: Binding<DailyRankScope> {
         Binding(get: { viewModel.selectedScope }, set: { viewModel.selectScope($0) })
+    }
+
+    /// `GKGameCenterViewController` silently refuses to present when the
+    /// local player isn't authenticated, so the persistent CTA is a dead
+    /// no-op in exactly this state — hide it rather than disable it, since
+    /// the Sign In CTA above is the sole correct action here (#983
+    /// sim-verified defect).
+    private var showsOpenGameCenterButton: Bool {
+        if case .failed(.notSignedIn) = viewModel.state {
+            return false
+        }
+        return true
     }
 
     @ViewBuilder
