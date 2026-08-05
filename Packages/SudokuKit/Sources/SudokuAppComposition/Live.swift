@@ -118,11 +118,18 @@ extension SudokuAppComposition {
             homeModes: [
                 .daily: HomeModeContent(subtitleKey: "3 puzzles today", route: .daily),
                 .practice: HomeModeContent(subtitleKey: "Mixed difficulty pool", route: .practice),
-                .leaderboard: HomeModeContent(subtitleKey: "Global / friends"),
+                // #983: Leaderboard is now a real push to the shared Daily
+                // Rank screen instead of a `presentLeaderboard` side-effect —
+                // `GameCenterDashboard.present()` moved to a secondary button
+                // ON that screen (see `LiveRouteFactory`'s `.dailyRank` case).
+                .leaderboard: HomeModeContent(subtitleKey: "Global / friends", route: .dailyRank),
                 .settings: HomeModeContent(subtitleKey: "Account / language", route: .settings)
             ],
             // Sudoku's Game Center dashboard presenter. Injected here (not inside
-            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            // GameAppKit) so GameAppKit stays free of the GK dependency. No
+            // longer reachable from the Home card (see `homeModes` above), but
+            // kept wired for API stability — `GameHomeViewModel.select` only
+            // calls it for a mode with `route == nil`, which no mode has now.
             presentLeaderboard: { GameCenterDashboard.present() },
             // #773: Home's Statistics entry pushes this route.
             statsRoute: .stats,
@@ -307,7 +314,11 @@ extension SudokuAppComposition {
                         GameCenterDashboard.triggerFriending()
                     }
                 }
-            }
+            },
+            // #983: `.dailyRank`'s `DailyRankViewModel` starts from whatever
+            // `authState` bootstrap already resolved, instead of redundantly
+            // re-running `authenticate()`.
+            currentAuthState: { [rootViewModel] in rootViewModel.authState }
         )
     }
 

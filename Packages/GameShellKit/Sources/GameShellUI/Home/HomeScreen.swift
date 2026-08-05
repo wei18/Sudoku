@@ -65,16 +65,13 @@ public enum HomeMode: String, Sendable, Equatable, Hashable, CaseIterable, Ident
         }
     }
 
-    /// The card's trailing glyph. Every mode uses the push-navigation chevron
-    /// EXCEPT Leaderboard, which presents the system Game Center modal (not a
-    /// stack push, see `GameHomeViewModel.swift:118-126`) — H1: an outward-jump
-    /// glyph tells the user before they tap that this row won't drill down
-    /// in-app like the other four.
+    /// The card's trailing glyph. #983: Leaderboard used to present the
+    /// system Game Center modal as a side-effect (H1's outward-jump glyph
+    /// warned it wouldn't drill down in-app) — it is now a real push route to
+    /// the shared Daily Rank screen (`GameAppKit.DailyRankView`), so every
+    /// mode uses the same push-navigation chevron.
     public var trailingSymbolName: String {
-        switch self {
-        case .leaderboard: "arrow.up.forward"
-        case .daily, .practice, .settings: "chevron.right"
-        }
+        "chevron.right"
     }
 }
 
@@ -242,10 +239,10 @@ public struct HomeModeCard: View {
     let symbolName: String
     let titleKey: LocalizedStringKey
     let subtitleKey: LocalizedStringKey
-    /// The trailing glyph — "chevron.right" for push-navigation rows,
-    /// "arrow.up.forward" for Leaderboard's outward jump to the system Game
-    /// Center modal (H1). Defaults to the chevron so the #844 Statistics
-    /// call site (which doesn't push either, but IS an in-app destination)
+    /// The trailing glyph — "chevron.right" for every push-navigation row
+    /// (#983: Leaderboard is now one of them, see `HomeMode.trailingSymbolName`).
+    /// Defaults to the chevron so the #844 Statistics call site (which
+    /// doesn't push through `HomeMode` either, but IS an in-app destination)
     /// renders byte-identically without opting in.
     let trailingSymbolName: String
     @Environment(\.theme) private var theme

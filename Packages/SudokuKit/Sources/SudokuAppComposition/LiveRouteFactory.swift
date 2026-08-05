@@ -117,6 +117,12 @@ public struct LiveRouteFactory: RouteFactory {
     // in `presentGameCenterOrAlert`). `nil` (default) keeps the row absent for
     // tests / previews that don't wire a Root VM.
     private let presentInviteFriends: (@MainActor () -> Void)?
+    // #983: snapshot of `GameRootViewModel.authState` at the moment
+    // `.dailyRank` is built, mirroring `presentGameCenter`'s capture shape.
+    // `nil` (default) makes `DailyRankViewModel` start from `.unknown` for
+    // tests / previews that don't wire a Root VM — it re-authenticates on
+    // demand via its own `signIn()` regardless.
+    private let currentAuthState: (@MainActor () -> GameCenterAuthState)?
 
     public init(
         puzzleProvider: any PuzzleProviderProtocol,
@@ -136,7 +142,8 @@ public struct LiveRouteFactory: RouteFactory {
         audioSettings: AudioSettingsModel? = nil,
         onPresentBoard: (@MainActor (AppRoute) -> Void)? = nil,
         presentGameCenter: (@MainActor () -> Void)? = nil,
-        presentInviteFriends: (@MainActor () -> Void)? = nil
+        presentInviteFriends: (@MainActor () -> Void)? = nil,
+        currentAuthState: (@MainActor () -> GameCenterAuthState)? = nil
     ) {
         self.puzzleProvider = puzzleProvider
         self.persistence = persistence
@@ -156,6 +163,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.onPresentBoard = onPresentBoard
         self.presentGameCenter = presentGameCenter
         self.presentInviteFriends = presentInviteFriends
+        self.currentAuthState = currentAuthState
     }
 
     @MainActor
@@ -282,6 +290,37 @@ public struct LiveRouteFactory: RouteFactory {
                         persistence: persistence,
                         errorReporter: errorReporter,
                         telemetry: telemetry
+                    )
+                )
+            )
+        case .dailyRank:
+            // #983: the shared Daily Rank screen. Tabs reuse the SAME
+            // localized difficulty names Practice already renders
+            // (`Difficulty.rawValue.capitalized` → "Easy"/"Medium"/"Hard") —
+            // no new difficulty-name strings — and the SAME leaderboard ids
+            // Completion submits to (`LeaderboardIDs.id(for:)`).
+            return AnyView(
+                DailyRankView(
+                    viewModel: DailyRankViewModel(
+                        gameCenter: gameCenter,
+                        tabs: [
+                            DailyRankTab(
+                                id: Difficulty.easy.rawValue,
+                                titleKey: LocalizedStringKey(Difficulty.easy.rawValue.capitalized),
+                                leaderboardId: LeaderboardIDs.id(for: .dailyEasy)
+                            ),
+                            DailyRankTab(
+                                id: Difficulty.medium.rawValue,
+                                titleKey: LocalizedStringKey(Difficulty.medium.rawValue.capitalized),
+                                leaderboardId: LeaderboardIDs.id(for: .dailyMedium)
+                            ),
+                            DailyRankTab(
+                                id: Difficulty.hard.rawValue,
+                                titleKey: LocalizedStringKey(Difficulty.hard.rawValue.capitalized),
+                                leaderboardId: LeaderboardIDs.id(for: .dailyHard)
+                            )
+                        ],
+                        initialAuthState: currentAuthState?() ?? .unknown
                     )
                 )
             )
