@@ -94,29 +94,49 @@ struct DailyRankEmptyView: View {
 struct DailyRankResultView: View {
     let result: DailyRankResult
     let scope: DailyRankScope
+    @Environment(\.theme) private var theme
 
+    // `ScrollView { LazyVStack }` instead of `List`/`Section` — matches the
+    // rest of the app's content-screen convention (`HomeScreen`'s
+    // `ScrollView { LazyVGrid }`; `List`/`Form` stay Settings-only). `List`
+    // also needs the real-window layout pipeline `windowSnapshotView` exists
+    // for (`Form`/`NavigationSplitView`'s documented gap in SnapshotConfig.swift)
+    // — a bare `NSHostingView` renders every OTHER view here but leaves
+    // `List` row content empty, discovered recording this screen's baselines.
     var body: some View {
         if result.topEntries.isEmpty {
             DailyRankEmptyView(scope: scope)
         } else {
-            List {
-                Section("Top Ranked") {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: theme.spacing.small) {
+                    DailyRankSectionHeader(titleKey: "Top Ranked")
                     ForEach(result.topEntries, id: \.rank) { entry in
                         DailyRankRow(
                             entry: entry,
                             isLocalPlayer: entry.player.teamPlayerId == result.localPlayerId
                         )
                     }
-                }
-                if !result.localPlayerInTop, let own = result.localPlayerEntry {
-                    Section("Your Rank") {
+                    if !result.localPlayerInTop, let own = result.localPlayerEntry {
+                        DailyRankSectionHeader(titleKey: "Your Rank")
                         DailyRankRow(entry: own, isLocalPlayer: true)
                     }
                 }
+                .padding(theme.spacing.medium)
             }
-            .listStyle(.plain)
             .accessibilityIdentifier("dailyRank.list")
         }
+    }
+}
+
+private struct DailyRankSectionHeader: View {
+    let titleKey: LocalizedStringKey
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        Text(titleKey)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(theme.text.secondary.resolved)
+            .textCase(.uppercase)
     }
 }
 
@@ -145,8 +165,12 @@ private struct DailyRankRow: View {
                 .font(.body.monospacedDigit())
                 .foregroundStyle(theme.text.secondary.resolved)
         }
-        .padding(.vertical, 4)
-        .listRowBackground(isLocalPlayer ? theme.accent.muted.resolved.opacity(0.25) : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isLocalPlayer ? theme.accent.muted.resolved.opacity(0.25) : Color.clear)
+        )
         .accessibilityIdentifier(isLocalPlayer ? "dailyRank.row.localPlayer" : "dailyRank.row")
     }
 }

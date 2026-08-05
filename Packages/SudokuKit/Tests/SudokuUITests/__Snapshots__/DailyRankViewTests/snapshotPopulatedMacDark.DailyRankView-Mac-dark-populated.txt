@@ -1,0 +1,21 @@
+[   AF    ! WlU ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentGS1_GS1_GS1_GS1_GS1_V10GameAppKit13DailyRankViewGVS_30_EnvironmentKeyWritingModifierP11GameShellUI5Theme___GS4_V8SudokuUI10CellTokens__GS4_GSqOS_22UserInterfaceSizeClass___GS4_V10Foundation6Locale__GVS_26_PreferenceWritingModifierVS_23PreferredColorSchemeKey__VS_12_FrameLayout__ f=(0,0,900,600) b=(-) => <NSViewBackingLayer>
+  [   A     ! Wl  ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c660064432PlatformViewRepresentableAdaptorVS_P10$1c662161422SystemSegmentedControl__ f=(345,8,210,24) b=(-) => <NSViewBackingLayer>
+    [   AF    ! wL  ] h=-&- v=-&- SwiftUI.SwiftUISegmentedControl f=(0,0,210,24) b=(-) => <NSViewBackingLayer>
+      [   AF    ! Wl  ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ f=(0,0,210,24) b=(-) => <NSViewBackingLayer>
+        [   A     ! Wl  ] h=--- v=--- _TtGC6AppKit22NSCorePlatformViewHostGVS_32PlatformViewRepresentableAdaptorGVS_P10$195ae183412WindowPortalGV7SwiftUI21_ViewModifier_ContentVS_16LiftPortalEffect____ f=(0,0,70,24) b=(-) => <NSViewBackingLayer>
+          [   A     ! wL  ] h=-&- v=-&- _TtC6AppKitP33_3163C09D58C8C57067DCBFBB784729CE14LiftPortalView f=(0,0,70,24) b=(-) => <NSViewBackingLayer>
+            [   AF    ! W   ] h=-&- v=-&- _TtGC6AppKit18_NSCoreHostingViewGV7SwiftUI21_ViewModifier_ContentVS_16LiftPortalEffect__ f=(0,0,70,24) b=(-) => <NSViewBackingLayer>
+  [   A     ! Wl  ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c660064432PlatformViewRepresentableAdaptorVS_P10$1c662161422SystemSegmentedControl__ f=(384,40,132,24) b=(-) => <NSViewBackingLayer>
+    [   AF    ! wL  ] h=-&- v=-&- SwiftUI.SwiftUISegmentedControl f=(0,0,132,24) b=(-) => <NSViewBackingLayer>
+      [   AF    ! Wl  ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ f=(0,0,132,24) b=(-) => <NSViewBackingLayer>
+        [   A     ! Wl  ] h=--- v=--- _TtGC6AppKit22NSCorePlatformViewHostGVS_32PlatformViewRepresentableAdaptorGVS_P10$195ae183412WindowPortalGV7SwiftUI21_ViewModifier_ContentVS_16LiftPortalEffect____ f=(0,0,66,24) b=(-) => <NSViewBackingLayer>
+          [   A     ! wL  ] h=-&- v=-&- _TtC6AppKitP33_3163C09D58C8C57067DCBFBB784729CE14LiftPortalView f=(0,0,66,24) b=(-) => <NSViewBackingLayer>
+            [   AF    ! W   ] h=-&- v=-&- _TtGC6AppKit18_NSCoreHostingViewGV7SwiftUI21_ViewModifier_ContentVS_16LiftPortalEffect__ f=(0,0,66,24) b=(-) => <NSViewBackingLayer>
+  [   A     ! WlU ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer f=(0,64,900,480) b=(-) => <NSViewBackingLayer>
+    [   AF    ! wLU ] h=--- v=--- SwiftUI.HostingScrollView f=(0,0,900,480) b=(-) => <NSViewBackingLayer>
+      [   AF    ! wLU ] h=--- v=--- NSClipView f=(0,0,900,480) b=(-) => <NSViewBackingLayer>
+        [   AF    ! wLU ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
+          [   AF    ! W U ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
+      [  HAF    ! W U ] h=--- v=--- NSScroller f=(0,0,0,100) b=(-) => <NSViewBackingLayer>
+  [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,560,868,24) b=(-) => <NSViewBackingLayer>
+A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface
