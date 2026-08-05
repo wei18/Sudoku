@@ -144,4 +144,11 @@ struct RouteFactoryTests {
         let dump = String(describing: view)
         #expect(dump.contains("StatsView"))
     }
+
+    // #983: the Home Leaderboard card's pushed destination.
+    @Test func dailyRankRouteReturnsDailyRankView() {
+        let view = makeFactory().view(for: .dailyRank)
+        let dump = String(describing: view)
+        #expect(dump.contains("DailyRankView"))
+    }
 }
