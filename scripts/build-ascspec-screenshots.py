@@ -1213,8 +1213,16 @@ def build_asc_image(baseline_path: Path,
     # bar — no flat area with nothing in it — without that risk. Slots whose
     # content already reaches deep enough (Board's digit pad, ~92%) still
     # bleed past the edge exactly as before; nothing tries to force it.
-    SCREEN_MARGIN = int(asc_w * 0.045)
-    SCREEN_TOP = ty + int(asc_h * 0.055)
+    # #985: margin trimmed 0.045→0.030 (screen_w grows ~3.3%, so the
+    # width-fill scale below is proportionally bigger for every slot —
+    # more of the canvas is real app panel, less is decorative side
+    # gutter) and the subhead→panel gap trimmed 0.055→0.035 (this constant
+    # was the single biggest source of the panel's "floating in empty
+    # space" read; both apply uniformly to every slot so the panel starts
+    # at a small, CONSISTENT offset below the copy block rather than
+    # varying with each slot's own headline/subhead line count).
+    SCREEN_MARGIN = int(asc_w * 0.030)
+    SCREEN_TOP = ty + int(asc_h * 0.035)
     screen_w = asc_w - SCREEN_MARGIN * 2
 
     CONTENT_PAD_FRAC = 0.03  # breathing room below the last content row
@@ -1252,17 +1260,22 @@ def build_asc_image(baseline_path: Path,
         mask = Image.new("L", (fit_w, fit_h), 0)
         ImageDraw.Draw(mask).rounded_rectangle((0, 0, fit_w - 1, fit_h - 1), radius=corner_radius, fill=255)
         paste_x = SCREEN_MARGIN + (screen_w - fit_w) // 2  # narrower than screen_w now — center it
-        # The capped (never-upscale) card is now much smaller than the
-        # canvas — top-anchoring it at SCREEN_TOP (like every other slot,
-        # which relies on bleeding past the bottom edge to fill the frame)
-        # leaves a huge stranded gradient gap below it instead of above it:
-        # same "empty space reads as a mistake" problem this fix exists to
-        # solve, just moved to the other side of the card. Center it in the
-        # remaining canvas instead, reserving room below for the callout
-        # chip + leader line so they don't collide with the canvas edge.
-        CHIP_RESERVE = int(asc_h * 0.09)
-        available_h = max(fit_h, asc_h - SCREEN_TOP - CHIP_RESERVE)
-        paste_y = SCREEN_TOP + (available_h - fit_h) // 2
+        # #985: top-anchor at SCREEN_TOP — the SAME small, fixed
+        # gap-below-copy every other slot uses — instead of centering the
+        # card in the leftover canvas below the text. That centering was
+        # the actual cause of the 40-50% "gap above panel" measured on
+        # this slot and "02b-rank": centering in a large `available_h`
+        # (nearly the full remaining canvas) pushes a small, capped
+        # (never-upscaled) card deep into the middle of the frame, then
+        # leaves an even BIGGER stranded gradient band above it than the
+        # bottom-bleed slots ever had. Anchoring it directly below the
+        # copy block — where its own native (uncropped) size can't fill
+        # 60% of the canvas without upscaling past 1:1, so it stays
+        # smaller than the other slots' panels; see the module report —
+        # leaves the leftover gradient below the card instead, where
+        # Direction C's callout chip (04-completion) already anchors off
+        # the card's own bottom edge with room to spare.
+        paste_y = SCREEN_TOP
     else:
         content_bottom_px = detect_content_bottom(src_full, bg_color)
         crop_h = min(src_h_full, content_bottom_px + int(src_h_full * CONTENT_PAD_FRAC))
