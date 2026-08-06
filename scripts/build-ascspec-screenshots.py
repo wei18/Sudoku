@@ -146,8 +146,20 @@ COPY = {
         # ranking feature not shown, no "best time" (each day is one scoring
         # attempt per 04-completion's "it only counts once").
         "02b-rank": {
-            "en": ("World and Friends, every day.",
-                   "See exactly where you land — daily rank, your time, right there."),
+            "en":      ("World and Friends, every day.",
+                        "See exactly where you land — daily rank, your time, right there."),
+            "zh-Hant": ("全球、朋友，天天都在。",
+                        "看到自己確切排在哪裡——每日排名、你的時間，就在這裡。"),
+            "zh-Hans": ("全球、好友，天天都在。",
+                        "看到自己确切排在哪里——每日排名、你的时间，就在这里。"),
+            "ja":      ("グローバルとフレンド、毎日。",
+                        "自分の順位がひと目でわかる。デイリーランキングと、あなたのタイムがここに。"),
+            "ko":      ("전체와 친구, 매일.",
+                        "내 위치가 정확히 보입니다. 일일 순위와 나의 시간, 바로 여기에."),
+            "es":      ("Global y Amigos, cada día.",
+                        "Mira exactamente dónde te ubicas. Ranking diario, tu tiempo, aquí mismo."),
+            "th":      ("ทั่วโลกและเพื่อน ทุกวัน",
+                        "ดูอันดับของคุณได้ชัดเจน อันดับประจำวัน เวลาของคุณอยู่ตรงนี้"),
         },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
@@ -248,8 +260,20 @@ COPY = {
         # DailyRankView, same accuracy constraints. "solve time" mirrors this
         # app's own 04-completion vocabulary ("your solve time is right here").
         "02b-rank": {
-            "en": ("World and Friends, every day.",
-                   "See exactly where you land — daily rank, your solve time, right there."),
+            "en":      ("World and Friends, every day.",
+                        "See exactly where you land — daily rank, your solve time, right there."),
+            "zh-Hant": ("全球、朋友，天天都在。",
+                        "看到自己確切排在哪裡——每日排名、你的解題時間，就在這裡。"),
+            "zh-Hans": ("全球、好友，天天都在。",
+                        "看到自己确切排在哪里——每日排名、你的解题时间，就在这里。"),
+            "ja":      ("グローバルとフレンド、毎日。",
+                        "自分の順位がひと目でわかる。デイリーランキングと、あなたのクリアタイムがここに。"),
+            "ko":      ("전체와 친구, 매일.",
+                        "내 위치가 정확히 보입니다. 일일 순위와 나의 클리어 시간, 바로 여기에."),
+            "es":      ("Global y Amigos, cada día.",
+                        "Mira exactamente dónde te ubicas. Ranking diario, tu tiempo de resolución, aquí mismo."),
+            "th":      ("ทั่วโลกและเพื่อน ทุกวัน",
+                        "ดูอันดับของคุณได้ชัดเจน อันดับประจำวัน เวลาไขของคุณอยู่ตรงนี้"),
         },
         "03-board": {
             "en":      ("Flag, reveal, solve.", "Logical deduction. No guessing required."),
@@ -430,16 +454,11 @@ CALLOUTS = {
 # of a slot using either untranslated English or the very wording that was
 # just found to be false/inaccurate.
 #
-# The #984 slots below completed the ai-translated-localization pass —
-# every locale now carries the accuracy-fixed wording. "02b-rank" (#983) is
-# the current pending entry: brand-new slot, en COPY only, gated here until
-# the Leader approves the en copy and a translation pass lands. Repopulate
-# with `(app, slot_name)` the next time an `en` COPY/CALLOUTS entry is
-# rewritten ahead of its translation pass.
-PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = {
-    ("sudoku", "02b-rank"),
-    ("minesweeper", "02b-rank"),
-}
+# The #984 slots and "02b-rank" (#983) below completed the ai-translated-
+# localization pass — every locale now carries the accuracy-fixed / approved
+# wording. Repopulate with `(app, slot_name)` the next time an `en`
+# COPY/CALLOUTS entry is rewritten ahead of its translation pass.
+PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = set()
 
 # ── Baseline → output slot mapping ─────────────────────────────────────────────
 #

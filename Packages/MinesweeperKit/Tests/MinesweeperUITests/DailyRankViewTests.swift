@@ -16,7 +16,7 @@ import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-private let localPlayer = PlayerSummary(teamPlayerId: "P0001", displayName: "TestSweeper")
+private let localPlayer = PlayerSummary(teamPlayerId: "P0001", displayName: "Rin")
 
 @MainActor
 private func minesweeperTabs() -> [DailyRankTab] {

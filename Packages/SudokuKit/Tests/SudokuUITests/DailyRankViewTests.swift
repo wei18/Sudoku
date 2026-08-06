@@ -15,7 +15,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
-private let localPlayer = PlayerSummary(teamPlayerId: "P0001", displayName: "TestPlayer")
+private let localPlayer = PlayerSummary(teamPlayerId: "P0001", displayName: "Rin")
 
 @MainActor
 private func sudokuTabs() -> [DailyRankTab] {
