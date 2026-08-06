@@ -8,7 +8,7 @@
 # Sources of truth:
 #   - copyright holder ............ repo LICENSE ("Copyright (c) 2026 Wei18")
 #   - categories ................... README "Locked decisions (2026-05-20)"
-#   - review_information.notes ..... docs/app-store/review/sudoku-v2.5.md
+#   - review_information.notes ..... docs/app-store/review/sudoku-v2.6-review-information.md
 #
 # Values flagged "# FLAG:" below are placeholders awaiting user confirmation
 # (the real values are PII / account-private and must not be hardcoded here).
