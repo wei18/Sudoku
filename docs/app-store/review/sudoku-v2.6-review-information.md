@@ -25,6 +25,17 @@
 ```
 No account or login is required. The app runs fully on first launch.
 
+WHAT MAKES THIS APP DIFFERENT
+This build adds an app-owned Daily Rank screen (Home → Leaderboard card) with
+World and Friends scopes per difficulty, not just a link out to Apple's Game
+Center sheet. Daily puzzles are identical for every player worldwide with one
+scoring attempt per puzzle — deterministic generation, UTC rollover — so the
+leaderboard stays fair. The macOS build is a native SwiftUI app (Tuist
+`.mac` destination), not a Mac Catalyst wrapper. All UI text ships in 7 full
+localizations (en, zh-Hant, zh-Hans, ja, ko, es, th). Ads are banner-only —
+no interstitials, no watch-to-continue prompts — with a one-time Remove Ads
+unlock.
+
 PLATFORM DIFFERENCES (READ FIRST IF REVIEWING THE MAC BUILD)
 The macOS build ships NO advertising: Google's AdMob and UMP SDKs have no
 macOS slice, so no banner ever appears, the "Remove Ads" in-app purchase is
@@ -65,6 +76,23 @@ Three daily leaderboards (Easy / Medium / Hard, recurring, reset 00:00 UTC,
 one scoring attempt per puzzle) and eight achievements (500 points total).
 Game Center sign-in is optional; gameplay works fully signed-out. All score
 and achievement traffic is mediated by Apple's GameKit.
+
+The Daily Rank screen (new in this build) is reached from Home → the
+Leaderboard card, and is an app-owned in-app screen, not a redirect to
+Apple's Game Center sheet. It shows per-difficulty segmented tabs crossed
+with a World/Friends scope toggle; each combination lists the top-ranked
+players for today plus, when the local player falls outside that slice, a
+separate "Your Rank" row. A persistent "Open Game Center" button stays
+reachable for Apple's full dashboard — hidden only in the signed-out state,
+where GKGameCenterViewController refuses to present and the button would be
+a dead end otherwise. Every non-populated state is an explainer, never a
+blank screen: signed-out shows a "Sign in to Game Center" prompt; Friends
+scope without friends-list permission shows an "Allow Friends Access"
+prompt; a network failure shows Retry; a scope/difficulty with no scores yet
+shows "No Rankings Yet" with scope-specific copy.
+To test: sign in to Game Center (Sandbox Apple Account) → complete or start
+a Daily puzzle → open Home → Leaderboard → toggle World and Friends across
+the three difficulty tabs.
 
 RESUME / SAVED GAMES
 The app auto-saves progress. The home screen shows a one-tap "Resume" pill
