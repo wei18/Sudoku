@@ -69,7 +69,7 @@ review_information:
     (com.wei18.sudoku.iap.remove_ads, non-consumable, removes banner ads) —
     sandbox test steps in the source doc. Daily puzzles rotate at 00:00 UTC
     (intentional; keeps the global leaderboard fair). Three Game Center daily
-    leaderboards + eight achievements (optional sign-in). UMP + ATT consent on
+    leaderboards + eleven achievements (optional sign-in). UMP + ATT consent on
     first launch; declining is fully supported. CloudKit Private Database only,
     no app-owned backend. Only third-party SDK is Google Mobile Ads (banner).
     Paste the full Notes block from the source doc verbatim at submission.
