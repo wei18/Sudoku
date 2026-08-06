@@ -26,100 +26,68 @@
 No account or login is required. The app runs fully on first launch.
 
 WHAT MAKES THIS APP DIFFERENT
-This build adds an app-owned Daily Rank screen (Home → Leaderboard card) with
-World and Friends scopes per difficulty, not just a link out to Apple's Game
-Center sheet. Daily puzzles are identical for every player worldwide with one
-scoring attempt per puzzle — deterministic generation, UTC rollover — so the
-leaderboard stays fair. The macOS build is a native SwiftUI app (Tuist
-`.mac` destination), not a Mac Catalyst wrapper. All UI text ships in 7 full
-localizations (en, zh-Hant, zh-Hans, ja, ko, es, th). Ads are banner-only —
-no interstitials, no watch-to-continue prompts — with a one-time Remove Ads
-unlock.
+An app-owned Daily Rank screen (Home → Leaderboard card, new in this build)
+shows World and Friends daily rankings per difficulty — not just a link out
+to Apple's Game Center sheet. Daily puzzles are identical for every player
+worldwide with one scoring attempt each (deterministic generation, UTC
+rollover), so the leaderboard stays fair. The macOS build is a native
+SwiftUI app, not a Mac Catalyst wrapper. All UI text ships in 7 full
+localizations. Ads are banner-only — no interstitials — with a one-time
+Remove Ads unlock.
 
-PLATFORM DIFFERENCES (READ FIRST IF REVIEWING THE MAC BUILD)
-The macOS build ships NO advertising: Google's AdMob and UMP SDKs have no
-macOS slice, so no banner ever appears, the "Remove Ads" in-app purchase is
-not offered in Settings, and the ATT / UMP consent prompts never run. The
-three sections below marked "iOS only" therefore do not apply to the Mac
-build and cannot be exercised there. Everything else in this document —
-Daily / UTC rollover, Game Center, resume, CloudKit, privacy posture — is
-identical on both platforms.
+PLATFORM DIFFERENCES (IF REVIEWING THE MAC BUILD)
+The macOS build ships NO advertising: AdMob/UMP have no macOS slice, so no
+banner ever appears, the Remove Ads purchase is not offered, and the ATT /
+UMP prompts never run — the two sections marked "iOS only" cannot be
+exercised on the Mac build. Everything else (Daily, Game Center, resume,
+iCloud sync, privacy posture) is identical on both platforms.
 
 REMOVE ADS — IN-APP PURCHASE (sandbox test) — iOS only
-Product: com.wei18.sudoku.iap.remove_ads  (Non-Consumable, Family Sharing on)
-This is the only IAP. It permanently removes banner ads app-wide.
-To test:
-  1. Sign the device into a Sandbox Apple Account (Settings → Developer →
-     Sandbox Apple Account, or it will prompt at purchase).
-  2. Launch the app. A banner ad placeholder shows at the bottom of Home and
-     during Daily / Practice play.
-  3. Open Settings → Remove Ads (or the Remove Ads row on Home) and confirm
-     the StoreKit purchase sheet with the sandbox account.
-  4. After purchase the banner disappears everywhere and the Remove Ads row
-     hides. A "Restore Purchases" row remains in Settings for new-device restore.
-No server is involved in the purchase — Apple StoreKit 2 only.
+Product: com.wei18.sudoku.iap.remove_ads (Non-Consumable, Family Sharing).
+The only IAP; it permanently removes banner ads app-wide. To test: sign
+into a Sandbox Apple Account → banners show on Home and during play → open
+Settings → Purchases → Remove Ads → confirm the StoreKit sheet. Afterwards
+no ads appear anywhere and the row reads "Ads Removed"; a "Restore
+Purchases" row remains for new-device restore. StoreKit 2 only — no server
+is involved.
 
 DAILY PUZZLES — UTC ROLLOVER
-Daily mode serves three puzzles (Easy / Medium / Hard) that are identical for
-every player worldwide. The set rotates at 00:00 UTC, not local midnight, so
-near a UTC day boundary the "today" set may differ from the device's local
-calendar day. This is intentional and keeps the leaderboard fair globally.
-
-LATE-COMPLETION MARKER
-If you resume a Daily puzzle from a previous UTC day, the board header shows a
-"won't score" marker. Completing a past-day daily puzzle does NOT submit to
-the Game Center leaderboard (only the current UTC day scores). This is by
-design — the marker tells the player mid-game that the run is practice-only.
+Three puzzles daily (Easy / Medium / Hard), identical worldwide, rotating
+at 00:00 UTC rather than local midnight to keep the leaderboard fair.
+Resuming a previous UTC day's puzzle shows a "won't score" marker — late
+completions intentionally do not submit to the leaderboard.
 
 GAME CENTER
-Three daily leaderboards (Easy / Medium / Hard, recurring, reset 00:00 UTC,
-one scoring attempt per puzzle) and eight achievements (500 points total).
-Game Center sign-in is optional; gameplay works fully signed-out. All score
-and achievement traffic is mediated by Apple's GameKit.
+Three daily leaderboards (recurring, 00:00 UTC reset, one scoring attempt
+per puzzle) and eleven achievements. Sign-in is optional; gameplay works
+fully signed-out. The Daily Rank screen (Home → Leaderboard card) is
+app-owned: per-difficulty tabs crossed with a World/Friends toggle, today's
+top players, and a separate "Your Rank" row when the local player falls
+outside that slice. An "Open Game Center" button reaches Apple's full
+dashboard (hidden when signed out, where the system sheet cannot present).
+No state is a dead end: signed-out shows a Sign-In explainer, missing
+friends permission shows "Allow Friends Access", a network failure shows
+Retry, and an empty board shows "No Rankings Yet".
+To test: sign in to Game Center (Sandbox Apple Account) → play a Daily
+puzzle → Home → Leaderboard → toggle World and Friends across the tabs.
 
-The Daily Rank screen (new in this build) is reached from Home → the
-Leaderboard card, and is an app-owned in-app screen, not a redirect to
-Apple's Game Center sheet. It shows per-difficulty segmented tabs crossed
-with a World/Friends scope toggle; each combination lists the top-ranked
-players for today plus, when the local player falls outside that slice, a
-separate "Your Rank" row. A persistent "Open Game Center" button stays
-reachable for Apple's full dashboard — hidden only in the signed-out state,
-where GKGameCenterViewController refuses to present and the button would be
-a dead end otherwise. Every non-populated state is an explainer, never a
-blank screen: signed-out shows a "Sign in to Game Center" prompt; Friends
-scope without friends-list permission shows an "Allow Friends Access"
-prompt; a network failure shows Retry; a scope/difficulty with no scores yet
-shows "No Rankings Yet" with scope-specific copy.
-To test: sign in to Game Center (Sandbox Apple Account) → complete or start
-a Daily puzzle → open Home → Leaderboard → toggle World and Friends across
-the three difficulty tabs.
-
-RESUME / SAVED GAMES
-The app auto-saves progress. The home screen shows a one-tap "Resume" pill
-when a game is in progress. Saves sync via the user's iCloud Private Database
-(container iCloud.com.wei18.sudoku) — no app-owned backend.
+RESUME & ICLOUD
+Progress auto-saves; Home shows a one-tap Resume pill. Saves, statistics
+and the Remove-Ads entitlement sync via the user's own iCloud Private
+Database (container iCloud.com.wei18.sudoku) — no app-owned backend. The
+CloudKit schema is deployed to Production at submission time.
 
 ATT / UMP CONSENT — iOS only
-On first launch the Google UMP consent flow runs, followed (where applicable)
-by Apple's App Tracking Transparency prompt
-(NSUserTrackingUsageDescription is declared). Declining tracking is fully
-supported — ads still serve, just non-personalized. No tracking occurs before
-consent.
-
-CLOUDKIT
-Saved games, statistics, and the Remove-Ads entitlement mirror sync through
-the user's own iCloud Private Database (container iCloud.com.wei18.sudoku).
-The CloudKit schema is deployed to the PRODUCTION environment at submission
-time. No app-owned backend exists.
+First launch runs the Google UMP consent flow, then (where applicable)
+Apple's ATT prompt (NSUserTrackingUsageDescription declared). Declining is
+fully supported — ads still serve, non-personalized. No tracking occurs
+before consent.
 
 PRIVACY
-No first-party analytics, CRM, or backend. The only third-party SDK is Google
-Mobile Ads (AdMob) for the banner, declared in PrivacyInfo.xcprivacy
-(NSPrivacyTracking = true, AdMob ad-serving tracking domains, OtherUsageData
-used for third-party advertising). The Remove Ads IAP eliminates the ad SDK's
-runtime ad calls. On macOS the AdMob SDK is not linked at all, so none of that
-ad-serving or tracking activity occurs on that platform; the manifest is shared
-across both builds and describes the iOS worst case.
+No first-party analytics, CRM, or backend. The only third-party SDK is
+Google Mobile Ads for the banner, declared in PrivacyInfo.xcprivacy; on
+macOS it is not linked at all (the shared manifest describes the iOS worst
+case).
 ```
 
 ---
