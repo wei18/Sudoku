@@ -49,7 +49,7 @@ private func makePopulatedViewModel() async -> DailyRankViewModel {
     return viewModel
 }
 
-/// Populated-FULL (#993, marketing source art for the ASC "02b-rank" slot) —
+/// Populated-FULL (#983, marketing source art for the ASC "02b-rank" slot) —
 /// see SudokuKit's DailyRankViewTests.swift for the full rationale (same
 /// no-upscale-past-1:1 problem this fixes). 10 entries, local player mid-list
 /// at rank 5. Frozen fake names/scores, MS-appropriate solve-time range. The

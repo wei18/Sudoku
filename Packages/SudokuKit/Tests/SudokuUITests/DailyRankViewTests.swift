@@ -49,7 +49,7 @@ private func makePopulatedViewModel() async -> DailyRankViewModel {
     return viewModel
 }
 
-/// Populated-FULL (#993, marketing source art for the ASC "02b-rank" slot):
+/// Populated-FULL (#983, marketing source art for the ASC "02b-rank" slot):
 /// 10 entries, local player mid-list at rank 5 (inside `topEntries`, same
 /// "no separate Your Rank section" shape as the 3-entry fixture above, just
 /// enough rows to fill the panel at 1:1 scale instead of triggering

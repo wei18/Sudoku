@@ -450,7 +450,7 @@ to the same slot's COPY subhead). `PENDING_TRANSLATION_SLOTS` in
 `build-ascspec-screenshots.py` is the hold-back gate for any future rewrite;
 it is empty when, and only when, every table is fully translated.
 
-## Daily Rank slot — `02b-rank` (#993, marketing payoff of #983)
+## Daily Rank slot — `02b-rank` (marketing payoff of #983; composition follow-ups #995)
 
 A 6th slot, `02b-rank`, makes the shared Daily Rank screen (#989 —
 difficulty tabs, World/Friends scope toggle, "TOP RANKED" list with a "You"
