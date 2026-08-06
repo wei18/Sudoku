@@ -196,9 +196,11 @@ internal enum Config {
             referenceName: "Remove Ads v1",
             familyShareable: true,
             reviewNote: """
-                This non-consumable IAP removes banner and interstitial ads \
-                app-wide. Test by purchasing in Settings → Pro → Remove Ads. \
-                After purchase, ads should not appear anywhere in the app.
+                This non-consumable IAP removes banner ads app-wide (the \
+                app shows banner ads only — no interstitials). Test by \
+                purchasing in Settings → Purchases → Remove Ads. After \
+                purchase, no ads appear anywhere in the app and the row \
+                changes to "Ads Removed".
                 """
         ),
         IAPProduct(
@@ -206,9 +208,11 @@ internal enum Config {
             referenceName: "Remove Ads v1",
             familyShareable: true,
             reviewNote: """
-                This non-consumable IAP removes banner ads app-wide. Test \
-                by purchasing in Settings → Pro → Remove Ads. After \
-                purchase, ads should not appear anywhere in the app.
+                This non-consumable IAP removes banner ads app-wide (the \
+                app shows banner ads only — no interstitials). Test by \
+                purchasing in Settings → Purchases → Remove Ads. After \
+                purchase, no ads appear anywhere in the app and the row \
+                changes to "Ads Removed".
                 """
         )
     ]
