@@ -498,3 +498,56 @@ registered in `PENDING_TRANSLATION_SLOTS` pending Leader approval + an
 |---|---|---|
 | Sudoku | World and Friends, every day. | See exactly where you land — daily rank, your time, right there. |
 | Minesweeper | World and Friends, every day. | See exactly where you land — daily rank, your solve time, right there. |
+
+## Portrait panel-fill + gap-consistency pass (#985, picks up the #995 icon drift)
+
+The ASO audit's biggest conversion-lever finding: every portrait frame read
+as "a small card floating in a big empty colour field." Measured with a
+row-scan requiring a full-width run of panel-colour pixels across the
+centre 60% of each row (immune to the corner app-icon badge and to white
+headline text sitting in that same band — a naive row-brightness metric
+gets fooled by both). `build_asc_image()` (portrait iPhone/iPad only;
+`build_mac_asc_image()` untouched) changed on two axes:
+
+- **`SCREEN_MARGIN` 0.045→0.030 of `asc_w`.** Frees ~3-4% more canvas
+  width for the device screenshot at the SAME width-fill scale formula
+  every slot already used — a legitimate "thinner decorative gutter, more
+  real panel" gain, not a new kind of upscale.
+- **crop_all_sides slots (`04-completion`, `02b-rank`) top-anchored
+  instead of centered.** The #984 completion-card crop already capped its
+  own scale at `min(1.0, screen_w / content_w)` (never upscale past
+  1:1) — correct and untouched. The bug was *positioning*: it centered the
+  resulting small card in the leftover canvas below the copy block
+  (`available_h = asc_h - SCREEN_TOP - CHIP_RESERVE`), which pushed a
+  native-resolution card deep into the frame and measured as a 40-50%
+  gap-above-panel — the single worst offender in the pre-#985 set (`04-completion`
+  measured 50.0% gap / 15.2% panel on Sudoku iPhone). Anchoring at the
+  same `SCREEN_TOP` every other slot already uses brought both slots'
+  gap down to the same 20-30% band as everything else, with the leftover
+  gradient landing below the card (where the callout chip already
+  anchors off the card's own bottom edge) instead of above it.
+
+**What did NOT change:** the width-fill scale for the non-crop_all_sides
+slots (`01-home`/`02-daily`/`03-board`/`05-settings`) — that formula
+predates this pass and already exceeds 1:1 on iPhone (baseline snapshots
+are captured at a smaller point size than the 1290×2796 ASC canvas); this
+pass did not push it further. Consequently `01-home`/`02-daily` stay
+under the 60% aim on **iPad** specifically — measured directly
+(`detect_content_bbox`): the iPad Home/Daily baselines' real content
+already spans ~93-97% of the baseline's own width at native resolution,
+so there is no unused width to zoom into without upscaling past 1:1. Per
+this task's own constraint ("never upscale baseline art past 1:1 — shrink
+and report the number, don't blow it up"), those two iPad slots are
+reported short of 60% rather than forced. Re-extending the crop past
+`detect_content_bottom()`'s content-bearing region (to synthetically pad
+panel height with the app's own blank chrome) was considered and
+rejected — that's the exact "large flat cream area inside the panel"
+defect the original #984 pass already fixed once; doing it again would
+have gamed the row-scan metric without fixing the underlying perception.
+
+Before/after panel-fill (`en`, full table across every portrait slot/
+device/app in the PR body) — the crop_all_sides gap fix alone dropped
+`04-completion`/`02b-rank` gap-above from 40-53% to a consistent 20-30%
+band matching every other slot; panel-fill on the width-fill slots moved
+up 1-3 points from the margin trim (e.g. Sudoku iPhone `01-home`
+47.1%→48.8%, `03-board` 76.6%→79.2%).
