@@ -449,3 +449,52 @@ CALLOUTS chip labels — carry the accuracy-fixed wording in all 7 locales
 to the same slot's COPY subhead). `PENDING_TRANSLATION_SLOTS` in
 `build-ascspec-screenshots.py` is the hold-back gate for any future rewrite;
 it is empty when, and only when, every table is fully translated.
+
+## Daily Rank slot — `02b-rank` (#993, marketing payoff of #983)
+
+A 6th slot, `02b-rank`, makes the shared Daily Rank screen (#989 —
+difficulty tabs, World/Friends scope toggle, "TOP RANKED" list with a "You"
+highlight row) visible in the store carousel. Currently **en-only**,
+registered in `PENDING_TRANSLATION_SLOTS` pending Leader approval + an
+`ai-translated-localization` pass.
+
+- **Slot ordering.** Named `02b-rank` (not `06-*`) so it sorts right after
+  `02-daily` and before `03-board` in both Python string ordering and the
+  ASC upload tool's filename ordering (`"02-daily" < "02b-rank" <
+  "03-board"`) — inserted without renaming any existing slot, which would
+  otherwise force a full re-upload of every locale.
+- **Devices.** `iphone-6.9` and `mac` use native DailyRank baselines.
+  `ipad-13` has no dedicated DailyRank snapshot baseline (#989 only rendered
+  iPhone + Mac fixtures) — it reuses the iPhone baseline directly (`Slot`
+  resolution is device-key-independent). This slot renders in
+  `crop_all_sides` mode at capped (never-upscale-past-1:1) scale, so unlike
+  every other iPhone slot's width-fill upscale, the iPad frame does not get
+  blown up further — it centers the same native-resolution card smaller in
+  the wider canvas.
+- **Marketing fixture.** The original 3-row `populated` snapshot fixture
+  (used for regression coverage) crops to a mostly-empty panel once the
+  dead space before the persistent "Open Game Center" button is excluded —
+  this pipeline's most-repeated defect class. Fixed at the source, not in
+  the compositor: `DailyRankViewTests.swift` (both packages) gained a
+  second fixture, `populatedFull` (10 ranked entries, local player mid-list
+  at rank 5), used only for this ASC slot. The original 3-entry fixture is
+  untouched — it stays a regression test. `IOS_GAP_TRIM`/`MAC_GAP_TRIM`
+  (`y_gap_threshold=100`) trim the crop to the tab bar + toggle + all 10
+  rows, excluding the dead middle and the button below it, same mechanism
+  #984's `04-completion` crop already established.
+- **No Direction-B callout.** The 10-row list is dense and evenly spaced —
+  any anchor point sits on a rank row, and every candidate label restates
+  what the subhead already says. Skipped by design (a clean cropped frame
+  beats a decorated one), not an oversight.
+- **Truthfulness.** Every claim is either visible in the frame (World AND
+  Friends toggle tabs, numbered daily ranks, per-row time, the "You"
+  highlight) or a plain outcome statement ("every day" mirrors the screen's
+  own daily reset). No claim of "seeing all friends' scores" — the
+  captured tab is World, so copy only claims the toggle exists.
+
+### `en` copy (pending translation)
+
+| App | Headline | Subhead |
+|---|---|---|
+| Sudoku | World and Friends, every day. | See exactly where you land — daily rank, your time, right there. |
+| Minesweeper | World and Friends, every day. | See exactly where you land — daily rank, your solve time, right there. |

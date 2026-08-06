@@ -136,6 +136,19 @@ COPY = {
             "es":      ("Siete días seguidos, y sigue.", "Fácil, medio, difícil — los mismos tres para todo el mundo."),
             "th":      ("ต่อเนื่องเจ็ดวัน และนับต่อไป", "ง่าย ปานกลาง ยาก ชุดเดียวกันทั่วโลก"),
         },
+        # 02b-rank (#993, marketing payoff of #983) — NEW slot, en-only
+        # pending the ai-translated-localization pass (registered in
+        # PENDING_TRANSLATION_SLOTS below). Every claim is either visible in
+        # THIS frame (World/Friends toggle tabs, numbered "TOP RANKED" rows,
+        # per-row time, the "You" highlight row) or a plain outcome statement
+        # ("every day" mirrors the Daily Rank screen's own daily reset,
+        # matching 02-daily's "seven days running" framing) — no claim of a
+        # ranking feature not shown, no "best time" (each day is one scoring
+        # attempt per 04-completion's "it only counts once").
+        "02b-rank": {
+            "en": ("World and Friends, every day.",
+                   "See exactly where you land — daily rank, your time, right there."),
+        },
         "03-board": {
             "en":      ("Notes the way you write them.", "Live error highlighting. Twenty steps of undo."),
             "zh-Hant": ("筆記，跟你紙上寫法一樣。", "即時錯誤提示，20 步 undo。"),
@@ -231,6 +244,13 @@ COPY = {
             "es":      ("Dos días seguidos, y sigue.", "Principiante, intermedio, avanzado — el mismo para todos."),
             "th":      ("ต่อเนื่องสองวัน และนับต่อไป", "มือใหม่ ระดับกลาง ขั้นสูง — เหมือนกันทั่วโลก"),
         },
+        # 02b-rank — see the Sudoku "02b-rank" comment above; same shared
+        # DailyRankView, same accuracy constraints. "solve time" mirrors this
+        # app's own 04-completion vocabulary ("your solve time is right here").
+        "02b-rank": {
+            "en": ("World and Friends, every day.",
+                   "See exactly where you land — daily rank, your solve time, right there."),
+        },
         "03-board": {
             "en":      ("Flag, reveal, solve.", "Logical deduction. No guessing required."),
             "zh-Hant": ("標記、揭開、解題。", "純邏輯推理，無需猜測。"),
@@ -288,6 +308,12 @@ COPY = {
 # anchor because the Board/Completion layouts are NOT proportionally identical
 # between iPhone (stacked) and iPad (side-by-side controls) — verified by
 # eyeballing both baselines, not guessed.
+# No entry for ("sudoku"|"minesweeper", "02b-rank") (#993): even the fuller
+# 10-row "populatedFull" marketing fixture (see DailyRankViewTests.swift) is
+# a dense, evenly-spaced list — a leader-line dot anchored to any one row
+# (e.g. the "You" row) would sit ON that row's own text, and every anchor
+# points at something the subhead already names ("your time, right there").
+# A clean cropped frame beats a decorated one here — skipped, not forgotten.
 CALLOUTS = {
     ("sudoku", "03-board"): [{
         # Anchor dot = the red error cell (row0,col2) — the actual thing
@@ -404,11 +430,16 @@ CALLOUTS = {
 # of a slot using either untranslated English or the very wording that was
 # just found to be false/inaccurate.
 #
-# All 4 slots below completed the ai-translated-localization pass (#984
-# follow-up) — every locale now carries the accuracy-fixed wording, so the
-# set is empty. Repopulate it with `(app, slot_name)` the next time an `en`
-# COPY/CALLOUTS entry is rewritten ahead of its translation pass.
-PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = set()
+# The #984 slots below completed the ai-translated-localization pass —
+# every locale now carries the accuracy-fixed wording. "02b-rank" (#993) is
+# the current pending entry: brand-new slot, en COPY only, gated here until
+# the Leader approves the en copy and a translation pass lands. Repopulate
+# with `(app, slot_name)` the next time an `en` COPY/CALLOUTS entry is
+# rewritten ahead of its translation pass.
+PENDING_TRANSLATION_SLOTS: set[tuple[str, str]] = {
+    ("sudoku", "02b-rank"),
+    ("minesweeper", "02b-rank"),
+}
 
 # ── Baseline → output slot mapping ─────────────────────────────────────────────
 #
@@ -443,6 +474,14 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
+            # 02b-rank (#993, marketing payoff of #983): the shared Daily Rank
+            # screen (World/Friends toggle, "You" highlight) landed in #989.
+            # Lexicographic name deliberately sorts right after "02-daily"
+            # ("02-daily" < "02b-rank" < "03-board") so the upload tool's
+            # filename ordering places it there WITHOUT renaming any existing
+            # slot (a rename would force a full re-upload of every locale).
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-iPhone-light-populatedFull",
+                 "snapshotPopulatedFullIPhoneLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPhone_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
@@ -453,6 +492,10 @@ SLOTS = {
         "minesweeper": [
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
+            # 02b-rank — see the Sudoku comment above; same shared
+            # DailyRankView, MS's own populated baseline.
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-iPhone-light-populatedFull",
+                 "snapshotPopulatedFullIPhoneLight"),
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
                  "snapshotFlagged_iPhone_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
@@ -463,6 +506,19 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "HomeViewTests", "HomeView-iPad-light", "snapshotIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
+            # 02b-rank: NO iPad-13 DailyRank snapshot baseline exists (#989
+            # only rendered iPhone + Mac fixtures) — reuse the SAME iPhone
+            # "populatedFull" baseline (786×1704, #993's 10-row marketing
+            # fixture — see DailyRankViewTests.swift) here. `Slot.baseline()`
+            # resolves purely from suite_dir/named/prefix, independent of
+            # which device key this entry sits under, so pointing it at the
+            # iPhone file is a supported, not a hacked-in, path. This slot
+            # renders `crop_all_sides=True` at capped (never-upscale-past-1:1)
+            # scale (see IOS_GAP_TRIM below), so unlike every OTHER iPhone
+            # slot's width-fill upscale, this one does NOT get blown up
+            # further for the wider iPad-13 canvas — it just centers smaller.
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-iPhone-light-populatedFull",
+                 "snapshotPopulatedFullIPhoneLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPad_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
@@ -474,6 +530,9 @@ SLOTS = {
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular", "snapshotHome_iPad_light"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
                  "snapshotDaily_iPad_light_streak"),
+            # 02b-rank — see the Sudoku ipad-13 comment above.
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-iPhone-light-populatedFull",
+                 "snapshotPopulatedFullIPhoneLight"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
@@ -495,6 +554,10 @@ SLOTS = {
         "sudoku": [
             Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
             Slot("01-home", "HomeViewTests", "HomeView-Mac-light-resume", "snapshotMacLightWithResume"),
+            # 02b-rank — see the iPhone-6.9 "02b-rank" comment above; Mac has
+            # its own native DailyRank baseline (#989), no reuse needed here.
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-Mac-light-populatedFull",
+                 "snapshotPopulatedFullMacLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
                  "snapshot_mac_light_purchased"),
         ],
@@ -502,6 +565,9 @@ SLOTS = {
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
                  "snapshotFlagged_Mac_light"),
             Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-mac-light-regular", "snapshotHome_regular_light"),
+            # 02b-rank — see above.
+            Slot("02b-rank", "DailyRankViewTests", "DailyRankView-Mac-light-populatedFull",
+                 "snapshotPopulatedFullMacLight"),
             Slot("06-stats", "MinesweeperStatsTests", "Stats-mac-light", "snapshotMacLight"),
         ],
     },
@@ -965,6 +1031,26 @@ def draw_callout_chip(
         ty += text_h + line_gap
 
 
+# Slots needing the `y_gap_threshold` opt-in on `detect_content_bbox()` when
+# rendering in `crop_all_sides` mode — mirrors `MAC_GAP_TRIM` below, same
+# rationale (see that function's docstring): a plain min/max bbox follows
+# content all the way to the last non-background pixel found ANYWHERE, which
+# for the Daily Rank "populatedFull" fixture (#993, 10 rows — see
+# DailyRankViewTests.swift) is the persistent "Open Game Center" pill pinned
+# near the canvas bottom — that drags the crop across the dead gap between
+# the last rank row and the pill instead of stopping right after the list.
+# `y_gap_threshold=100` (verified against both apps' iPhone AND Mac
+# "populatedFull" baselines via `detect_content_bbox`: 100 and 150 give the
+# identical trimmed bbox, comfortably past the ~40px inter-row spacing and
+# well short of the dead gap before the pill, so it can't accidentally cut
+# mid-list) trims the crop to the tab bar + toggle + all 10 rows, excluding
+# only the empty middle and the button below it.
+IOS_GAP_TRIM = {
+    ("sudoku", "02b-rank"): {"y_gap_threshold": 100},
+    ("minesweeper", "02b-rank"): {"y_gap_threshold": 100},
+}
+
+
 def build_asc_image(baseline_path: Path,
                     headline: str,
                     subhead: str,
@@ -1122,7 +1208,15 @@ def build_asc_image(baseline_path: Path,
 
     if crop_all_sides:
         # #984 — see the docstring above. All 4 sides, capped scale, centered.
-        left, top, right, bottom = detect_content_bbox(src_full, bg_color)
+        # `IOS_GAP_TRIM` opt-in (#993, "02b-rank" only — see that dict's own
+        # comment): every other crop_all_sides slot keeps the plain min/max
+        # bbox (gap_cfg == {} -> both thresholds None, same call as before).
+        gap_cfg = IOS_GAP_TRIM.get((app, slot_name), {})
+        left, top, right, bottom = detect_content_bbox(
+            src_full, bg_color,
+            x_gap_threshold=gap_cfg.get("x_gap_threshold"),
+            y_gap_threshold=gap_cfg.get("y_gap_threshold"),
+        )
         pad = int(max(right - left, bottom - top) * CONTENT_PAD_FRAC)
         crop_box = (
             max(0, left - pad), max(0, top - pad),
@@ -1225,6 +1319,13 @@ MAC_CONTENT_PAD_FRAC = 0.02  # breathing room on all 4 sides inside the chrome
 # header/Reveal-button sliver (#982/#984).
 MAC_GAP_TRIM = {
     ("minesweeper", "03-board"): {"x_gap_threshold": 45},
+    # 02b-rank (#993): same dead-middle-gap fix as IOS_GAP_TRIM above, same
+    # threshold — the Mac "populatedFull" DailyRank baseline has an identical
+    # tab-bar+toggle+10-rows-then-gap-then-"Open Game Center"-pill shape as
+    # the iPhone one, verified independently via `detect_content_bbox` against
+    # the Mac baseline (100 and 150 both give the same trimmed bbox).
+    ("sudoku", "02b-rank"): {"y_gap_threshold": 100},
+    ("minesweeper", "02b-rank"): {"y_gap_threshold": 100},
 }
 
 
@@ -1451,10 +1552,16 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                                 asc_w=dev["w"], asc_h=dev["h"],
                                 callouts=slot_callouts, device=device,
                                 slot_name=slot.name,
-                                # #984: ONLY 04-completion may render differently
-                                # from before — every other iPhone/iPad slot must
-                                # stay byte-identical to what's already uploaded.
-                                crop_all_sides=(slot.name == "04-completion"),
+                                # #984: 04-completion was the first slot allowed
+                                # to render differently — every OTHER slot that
+                                # existed at the time must stay byte-identical to
+                                # what's already uploaded. "02b-rank" (#993) is a
+                                # brand-new slot with nothing already uploaded to
+                                # stay identical to, so adding it here is safe;
+                                # it needs the same tight all-sides crop to avoid
+                                # shipping the populated baseline's own dead
+                                # middle gap (see IOS_GAP_TRIM above).
+                                crop_all_sides=(slot.name in {"04-completion", "02b-rank"}),
                             )
                         img.save(str(out_path), "PNG", optimize=False)
 
