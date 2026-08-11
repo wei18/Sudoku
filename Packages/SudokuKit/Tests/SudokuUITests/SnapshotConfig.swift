@@ -194,7 +194,12 @@ func assertUISnapshot<Value, Format>(
 ///   - size:        device-pixel box (in points) the snapshot should fill.
 ///   - colorScheme: applied via `.preferredColorScheme` AND mirrored onto
 ///                  `host.appearance` so AppKit dynamic colors resolve.
-///   - locale:      injected via `.environment(\.locale, ...)` when supplied.
+///   - locale:      injected via `.environment(\.locale, ...)`. This changes
+///                  date/number formatting and layout direction ONLY. It does
+///                  NOT translate UI strings: `Text(LocalizedStringKey)` reads
+///                  `Bundle.main`, which in a headless test host is the xctest
+///                  runner with no `.lproj`. Locale-tagged baselines are
+///                  layout probes, never translation checks (#977).
 ///   - sizeClass:   horizontal size class for the SwiftUI subtree. Defaults
 ///                  to `.compact` (iPhone). Mac fixtures should pass `.regular`.
 @MainActor
@@ -275,7 +280,7 @@ func hostingView<V: SwiftUI.View>(
 ///   - size:        content size (in points) of the hosting window.
 ///   - colorScheme: applied via `.preferredColorScheme` AND mirrored onto the
 ///                  window's `appearance` so AppKit dynamic colors resolve.
-///   - locale:      injected via `.environment(\.locale, ...)` when supplied.
+///   - locale:      formatting/layout only — strings do NOT translate (#977).
 ///   - sizeClass:   horizontal size class. Defaults to `.regular` (Mac), the
 ///                  whole point of this harness; iPhone fixtures pass `.compact`.
 /// - Returns: the window's `contentView`, plus the owning `NSWindow` the caller
