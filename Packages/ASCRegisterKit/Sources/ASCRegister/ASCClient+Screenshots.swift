@@ -236,4 +236,26 @@ extension ASCClient {
             throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
         }
     }
+
+    /// PATCH the `appScreenshots` relationship on a set to REPLACE its order —
+    /// the array order IS the App Store carousel display order (#987); there is
+    /// no independent position/index field. `orderedIds` MUST be the FULL set of
+    /// screenshot ids in the desired order — a partial array would evict the
+    /// omitted ones from the set.
+    ///
+    /// `send` (not `mutate`): a JSON:API relationship replace returns 204 with
+    /// an EMPTY body, which `mutate`'s `decodeSingle` would reject. The
+    /// apply/plan gate is enforced by the CALLER (only invoked after an actual
+    /// upload under `--i-am-sure`), mirroring `deleteScreenshot`.
+    internal func reorderScreenshots(setId: String, orderedIds: [String]) async throws {
+        let path = "/v1/appScreenshotSets/\(setId)/relationships/appScreenshots"
+        let body: [String: Any] = [
+            "data": orderedIds.map { ["type": "appScreenshots", "id": $0] },
+        ]
+        let bodyData = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+        let (data, status) = try await send(method: "PATCH", path: path, body: bodyData)
+        guard (200..<300).contains(status) else {
+            throw ClientError.httpStatus(code: status, path: path, body: truncateBody(data))
+        }
+    }
 }

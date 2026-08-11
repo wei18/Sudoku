@@ -174,4 +174,17 @@ internal enum ScreenshotSetIndex {
         }
         return out
     }
+
+    /// The desired App Store carousel order for one set's screenshots: sorted by
+    /// filename (the committed `NN-screen.png` slot names sort into storyline
+    /// order by construction). The `appScreenshots` relationship array has no
+    /// independent position field — its array order IS the display order, and it
+    /// reflects insertion sequence, not filename (#987: a partial evict+re-upload
+    /// appends the recreated file at the END, silently corrupting order). Pure so
+    /// the ordering is unit-testable without a live GET.
+    internal static func filenameSortedIds(
+        _ byName: [String: ScreenshotRemoteState]
+    ) -> [String] {
+        byName.sorted { $0.key < $1.key }.map(\.value.id)
+    }
 }

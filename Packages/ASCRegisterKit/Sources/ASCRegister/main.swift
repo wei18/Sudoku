@@ -731,6 +731,11 @@ internal enum ASCRegisterCLI {
             let existing = try await client.listScreenshotSets(versionLocalizationId: loc.id)
             var setIdByDisplayType = ScreenshotSetIndex.setIdsByDisplayType(existing)
             let shotsBySet = ScreenshotSetIndex.screenshotsBySetId(existing)
+            // Every displayType this run uploaded (or would upload) into — the
+            // set of sets whose order needs re-asserting afterward (#987). A
+            // set nothing was uploaded into is never touched, so its
+            // (already-correct) order is left alone.
+            var touchedDisplayTypes: Set<String> = []
 
             for asset in familyAssets {
                 let displayType = asset.displayType
@@ -759,6 +764,7 @@ internal enum ASCRegisterCLI {
                     let evictNote = reason.map { "re-upload (\($0)): delete + " } ?? ""
                     print("  UPLOAD [\(token)] \(displayType) \(asset.fileName) "
                         + "(\(setNote)\(evictNote)reserve→PUT→commit)")
+                    touchedDisplayTypes.insert(displayType)
                     continue
                 }
                 // --- apply: ensure set, evict any stale shot, reserve → PUT → commit ---
@@ -779,6 +785,33 @@ internal enum ASCRegisterCLI {
                 }
                 try await uploadOneScreenshot(client: client, setId: setId, asset: asset, token: token)
                 uploaded += 1
+                touchedDisplayTypes.insert(displayType)
+            }
+
+            // Re-assert display order on every set this run actually uploaded
+            // into (#987). Apple's `appScreenshots` relationship array has no
+            // independent position field — its array order IS the App Store
+            // carousel order, and a partial evict+re-upload silently appends
+            // the recreated file at the END. Unconditional PATCH (not a
+            // diff-then-patch) is deliberate: reordering an already-correct
+            // array is a no-op. `--i-am-sure` gates the PATCH the same way it
+            // gates every other mutation in this loop.
+            if !apply {
+                for displayType in touchedDisplayTypes.sorted() {
+                    print("  REORDER [\(token)] \(displayType) would follow filename order after upload (dry-run)")
+                }
+            } else if !touchedDisplayTypes.isEmpty {
+                // Re-GET (once): the newly-created screenshot ids from THIS
+                // run's uploads must be included — the pre-upload snapshot
+                // doesn't have them.
+                let refreshed = try await client.listScreenshotSets(versionLocalizationId: loc.id)
+                let refreshedShots = ScreenshotSetIndex.screenshotsBySetId(refreshed)
+                for displayType in touchedDisplayTypes.sorted() {
+                    guard let setId = setIdByDisplayType[displayType] else { continue }
+                    let orderedIds = ScreenshotSetIndex.filenameSortedIds(refreshedShots[setId] ?? [:])
+                    try await client.reorderScreenshots(setId: setId, orderedIds: orderedIds)
+                    print("  REORDER [\(token)] \(displayType) → filename order (\(orderedIds.count) screenshot(s))")
+                }
             }
         }
         if apply {

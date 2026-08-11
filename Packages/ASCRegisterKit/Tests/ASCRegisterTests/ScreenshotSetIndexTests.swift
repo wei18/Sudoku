@@ -70,4 +70,14 @@ internal struct ScreenshotSetIndexTests {
         #expect(inSet["03-win.png"]?.sourceFileChecksum == "abc123")
         #expect(inSet["01-home.png"]?.sourceFileChecksum == nil)
     }
+
+    /// `filenameSortedIds` (#987) sorts a set's screenshots into filename
+    /// order regardless of the dictionary's (unordered) insertion order — the
+    /// desired App Store carousel order after a reorder PATCH.
+    @Test("filenameSortedIds sorts screenshot ids by filename")
+    internal func filenameSortedIdsSortsByFilename() throws {
+        let inSet = try #require(try Self.index()["set-67"])
+        let ordered = ScreenshotSetIndex.filenameSortedIds(inSet)
+        #expect(ordered == ["shot-complete", "shot-pending", "shot-checksum"])
+    }
 }
