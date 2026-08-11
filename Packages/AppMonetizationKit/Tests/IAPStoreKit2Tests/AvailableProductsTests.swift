@@ -36,7 +36,7 @@ struct IAPProductMapperTests {
     func localePriceVerbatim() {
         let cases: [(String, String)] = [
             ("ntd", "NT$89"),
-            ("usd", "$2.99"),
+            ("usd", "$0.99"),
             ("jpy", "¥360"),
             ("eur", "€2,99"),
         ]
@@ -80,7 +80,7 @@ struct AvailableProductsTests {
         bridge.setProduct(BridgeProduct(
             id: IAPProductIDs.removeAds,
             displayName: "Remove Ads",
-            displayPrice: "$2.99"
+            displayPrice: "$0.99"
         ))
         bridge.setEntitlements([IAPProductIDs.removeAds])
         let client = LiveStoreKit2IAPClient(

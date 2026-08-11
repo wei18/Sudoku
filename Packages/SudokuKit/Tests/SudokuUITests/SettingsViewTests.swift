@@ -219,7 +219,7 @@ struct SettingsViewTests {
             IAPProduct(
                 id: removeAdsProductId,
                 displayName: "Remove Ads",
-                displayPrice: "$2.99",
+                displayPrice: "$0.99",
                 isPurchased: purchased
             )
         ])

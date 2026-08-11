@@ -119,9 +119,9 @@ struct MonetizationStateControllerUpdatesTests {
 
     @Test func purchaseTap_pushesSuccessToast_whenWired() async {
         let (controller, iap, toast) = await make(
-            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false)]
+            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false)]
         )
-        let product = IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: true)
+        let product = IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: true)
         await iap.setPurchaseResult(for: removeAdsProductId, result: .success(product))
         await controller.bootstrap()
 
@@ -144,7 +144,7 @@ struct MonetizationStateControllerUpdatesTests {
 
     @Test func restoreTap_pushesSuccessToast_whenWired() async {
         let (controller, _, toast) = await make(
-            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false)]
+            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false)]
         )
 
         await controller.restorePurchases()
