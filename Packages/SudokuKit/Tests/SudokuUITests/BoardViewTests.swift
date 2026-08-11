@@ -2,8 +2,8 @@
 //
 // Snapshots use the test seam `GameViewModel(identity:board:...)` to bypass
 // the GameSession actor and render deterministic states. Three locale axes
-// (ja, ko, zh-TW) are baked into 3 of the 12 BoardView snapshots per
-// design.md §How.5.8.
+// (ja, ko, zh-TW) are LAYOUT probes, not translation checks — UI strings stay
+// English in a headless host; see `hostingView`'s `locale` note and #977.
 
 import Foundation
 import SnapshotTesting
@@ -93,7 +93,7 @@ struct BoardViewTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_dark_ja() throws {
-        // ja locale variant.
+        // ja layout probe (strings stay English — #977).
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(
             BoardView(viewModel: viewModel),
@@ -200,7 +200,7 @@ struct BoardViewTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotInProgress_Mac_dark_ko() throws {
-        // ko locale variant.
+        // ko layout probe (strings stay English — #977).
         let viewModel = try makeViewModel(
             clues: Self.inProgressClues,
             userCells: [(row: 4, col: 4, digit: 5)],
@@ -221,7 +221,7 @@ struct BoardViewTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAlmostComplete_iPhone_light_zhTW() throws {
-        // zh-TW locale variant.
+        // zh-TW layout probe (strings stay English — #977).
         let viewModel = try makeViewModel(
             clues: Self.almostCompleteClues,
             selection: GridCoordinate(row: 0, column: 0),

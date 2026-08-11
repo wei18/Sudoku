@@ -263,6 +263,9 @@ func hostingView<V: SwiftUI.View>(
         .environment(\.theme, MinesweeperTheme())
         .environment(\.minesweeperCell, MinesweeperTheme().cell)
         .environment(\.horizontalSizeClass, Optional(sizeClass))
+        // Formatting + layout direction only. `Text(LocalizedStringKey)` reads
+        // `Bundle.main` — the xctest runner here, with no `.lproj` — so UI
+        // strings do NOT translate. Locale baselines are layout probes (#977).
         .environment(\.locale, locale ?? .current)
         .preferredColorScheme(colorScheme)
         .frame(width: size.width, height: size.height)
@@ -292,6 +295,9 @@ func hostingView<V: SwiftUI.View>(
         .environment(\.theme, MinesweeperTheme())
         .environment(\.minesweeperCell, MinesweeperTheme().cell)
         .environment(\.horizontalSizeClass, Optional(sizeClass))
+        // Formatting + layout direction only. `Text(LocalizedStringKey)` reads
+        // `Bundle.main` — the xctest runner here, with no `.lproj` — so UI
+        // strings do NOT translate. Locale baselines are layout probes (#977).
         .environment(\.locale, locale ?? .current)
         .environment(\.dynamicTypeSize, dynamicTypeSize)
         .preferredColorScheme(colorScheme)
