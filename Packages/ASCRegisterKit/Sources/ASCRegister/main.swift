@@ -736,6 +736,16 @@ internal enum ASCRegisterCLI {
             // set nothing was uploaded into is never touched, so its
             // (already-correct) order is left alone.
             var touchedDisplayTypes: Set<String> = []
+            // How many local files map to each displayType — the minimum a
+            // touched set's post-upload re-GET must report. A short re-GET
+            // (malformed response, unexpected pagination, an API shape
+            // change) must never reach `reorderScreenshots`: a PATCH with
+            // fewer ids than the set actually holds EVICTS the omitted
+            // screenshot(s) (a to-many relationship PATCH replaces the whole
+            // relationship), and an empty array evicts everything.
+            let expectedCountByDisplayType = Dictionary(
+                grouping: familyAssets, by: \.displayType
+            ).mapValues(\.count)
 
             for asset in familyAssets {
                 let displayType = asset.displayType
@@ -809,6 +819,32 @@ internal enum ASCRegisterCLI {
                 for displayType in touchedDisplayTypes.sorted() {
                     guard let setId = setIdByDisplayType[displayType] else { continue }
                     let orderedIds = ScreenshotSetIndex.filenameSortedIds(refreshedShots[setId] ?? [:])
+                    let expectedCount = expectedCountByDisplayType[displayType] ?? 0
+                    // Never PATCH an array the re-GET under-reported — see the
+                    // eviction risk noted where `expectedCountByDisplayType` is
+                    // built. Not reachable today (a touched set always has ≥1
+                    // freshly-committed screenshot by re-GET time, and
+                    // `limit=50` covers the real 2-4 display types per
+                    // locale), but the downside is destroying a live listing's
+                    // screenshots, so the guard stays even though it can't
+                    // fire on the paths this code exercises now.
+                    guard !orderedIds.isEmpty else {
+                        let msg = "warn: metadata screenshots: [\(token)] \(displayType) reorder SKIPPED — "
+                            + "the post-upload re-GET reported ZERO screenshots for set \(setId). Refusing "
+                            + "to PATCH an empty relationship array (it would evict every screenshot from "
+                            + "the set). Re-run to retry.\n"
+                        FileHandle.standardError.write(Data(msg.utf8))
+                        continue
+                    }
+                    guard orderedIds.count >= expectedCount else {
+                        let msg = "warn: metadata screenshots: [\(token)] \(displayType) reorder SKIPPED — "
+                            + "the post-upload re-GET reported \(orderedIds.count) screenshot(s) for set "
+                            + "\(setId), fewer than the \(expectedCount) this run uploaded into it. Refusing "
+                            + "to PATCH a short array (it would evict the missing screenshot(s) from the "
+                            + "set). Re-run to retry.\n"
+                        FileHandle.standardError.write(Data(msg.utf8))
+                        continue
+                    }
                     try await client.reorderScreenshots(setId: setId, orderedIds: orderedIds)
                     print("  REORDER [\(token)] \(displayType) → filename order (\(orderedIds.count) screenshot(s))")
                 }
