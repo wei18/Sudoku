@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+#MISE description="ASC frame drift proxy gate (#1001): fail a PR that changes a snapshot baseline feeding a Slot() in scripts/build-ascspec-screenshots.py without touching docs/app-store/screenshots-ascspec/ in the same PR. Pure git/grep — no Python, no Pillow, no fonts, runs on ubuntu-latest. The real regenerate-and-diff check needs macOS system fonts (see script header) and can't run there."
+#USAGE flag "--base <ref>" help="Base ref to diff against (default: origin/main, falling back to main)"
+#USAGE flag "--list" help="Print the derived baseline -> slot mapping and exit 0 (no gate check)" default="false"
+#
+# What this catches (and does not):
+#   Catches exactly the #995/#998 failure mode: a committed snapshot baseline
+#   that FEEDS a Slot() in the ASC-spec generator changes, but no file under
+#   docs/app-store/screenshots-ascspec/ changes in the same PR — i.e. someone
+#   moved a baseline and forgot (or partially forgot, #998) to regenerate.
+#
+#   Does NOT verify pixel equality between the regenerated frame and the
+#   committed one — that needs the actual generator, which needs macOS system
+#   fonts (Hiragino Sans GB / PingFang / AppleSDGothicNeo / Ayuthaya, see
+#   scripts/build-ascspec-screenshots.py:606-643) and cannot run on this
+#   ubuntu-latest fleet. See #1001 for why the simple
+#   `python3 scripts/build-ascspec-screenshots.py && git diff --exit-code`
+#   gate was rejected.
+#
+#   Deliberately does NOT fire on every __Snapshots__ change — only on
+#   baselines that are actually referenced by a Slot(...) entry in the
+#   generator's SLOTS table. Most baselines feed no store frame at all; a
+#   gate that fired on all of them would be noise and would get disabled.
+#
+# Mapping derivation:
+#   The SLOTS table and BASELINES_SUDOKU/BASELINES_MS constants are parsed
+#   directly out of scripts/build-ascspec-screenshots.py on every run (no
+#   hardcoded slot list to rot). See parse_slots() below.
+#
+# Escape hatch (legitimate "this baseline change doesn't alter the frame"):
+#   - PR label `frame-drift-verified`, OR
+#   - a trailer on any commit in the PR range:
+#       Frame-Drift-Verified: <why the frame doesn't need regenerating>
+#   The workflow passes the label as FRAME_DRIFT_LABEL_OVERRIDE=1; the
+#   trailer is scanned directly from `git log` here.
+#
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$REPO_ROOT/scripts/build-ascspec-screenshots.py"
+ASCSPEC_PREFIX="docs/app-store/screenshots-ascspec/"
+
+BASE_REF=""
+LIST_ONLY=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) BASE_REF="${2:-}"; shift 2 ;;
+    --list) LIST_ONLY=1; shift ;;
+    -h|--help) sed -n '2,4p' "$0" | sed 's/^#MISE[^=]*=//; s/^"//; s/"$//'; exit 0 ;;
+    *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
+  esac
+done
+
+if [[ ! -f "$SCRIPT" ]]; then
+  echo "ERROR [store_frame_drift]: generator not found at $SCRIPT" >&2
+  exit 1
+fi
+
+# ── Derive baseline -> slot mapping from the generator source ────────────────
+#
+# Extract the two BASELINES_* roots (REPO_ROOT-relative) so we don't hardcode
+# the Packages/*/Tests/*UITests/__Snapshots__ paths either.
+BASELINES_SUDOKU_REL="$(grep -E '^BASELINES_SUDOKU = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_SUDOKU = REPO_ROOT \/ "([^"]+)".*/\1/')"
+BASELINES_MS_REL="$(grep -E '^BASELINES_MS = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_MS = REPO_ROOT \/ "([^"]+)".*/\1/')"
+
+if [[ -z "$BASELINES_SUDOKU_REL" || -z "$BASELINES_MS_REL" ]]; then
+  echo "ERROR [store_frame_drift]: could not parse BASELINES_SUDOKU/BASELINES_MS out of $SCRIPT — script format changed, gate needs updating." >&2
+  exit 1
+fi
+
+# Extract the SLOTS = { ... } block (up to the BASELINES_ROOT assignment that
+# immediately follows it), flatten to one line so a Slot(...) call that wraps
+# across source lines (long entries do, e.g. the "02b-rank" slots) still reads
+# as one token, then walk the token stream in order:
+#   "<device>": {           -> enter a device context
+#   "sudoku": [ / "minesweeper": [  -> enter an app context
+#   Slot(...)                -> emit one (device, app, slot) row
+TOKENS="$(sed -n '/^SLOTS = {/,/^BASELINES_ROOT = {/p' "$SCRIPT" | tr '\n' ' ' | \
+  grep -oE '"[A-Za-z0-9._-]+": \{|"(sudoku|minesweeper)": \[|Slot\([^)]*\)')"
+
+if [[ -z "$TOKENS" ]]; then
+  echo "ERROR [store_frame_drift]: found no SLOTS table content in $SCRIPT — script format changed, gate needs updating." >&2
+  exit 1
+fi
+
+# rows: device<TAB>app<TAB>slot_name<TAB>baseline_relpath (one per Slot()).
+ROWS=""
+device=""
+app=""
+while IFS= read -r tok; do
+  case "$tok" in
+    Slot\(*)
+      # Pull the 4 quoted args in declaration order: name, suite_dir, named, prefix.
+      # (bash 3.2-compatible: macOS system bash has no `mapfile`.)
+      args=()
+      while IFS= read -r a; do args+=("$a"); done < <(grep -oE '"[^"]*"' <<<"$tok" | sed -E 's/^"(.*)"$/\1/')
+      if [[ ${#args[@]} -ne 4 ]]; then
+        echo "ERROR [store_frame_drift]: Slot(...) with ${#args[@]} args (expected 4) while parsing $SCRIPT: $tok" >&2
+        exit 1
+      fi
+      if [[ -z "$device" || -z "$app" ]]; then
+        echo "ERROR [store_frame_drift]: Slot(...) found before a device/app context — parser out of sync with $SCRIPT: $tok" >&2
+        exit 1
+      fi
+      slot_name="${args[0]}"; suite_dir="${args[1]}"; named="${args[2]}"; prefix="${args[3]}"
+      case "$app" in
+        sudoku)       baselines_root="$BASELINES_SUDOKU_REL" ;;
+        minesweeper)  baselines_root="$BASELINES_MS_REL" ;;
+      esac
+      baseline_relpath="${baselines_root}/${suite_dir}/${prefix}.${named}.png"
+      ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\n'
+      ;;
+    \"*\":\ \{)
+      device="${tok#\"}"; device="${device%%\":*}"
+      ;;
+    \"sudoku\":\ \[|\"minesweeper\":\ \[)
+      app="${tok#\"}"; app="${app%%\":*}"
+      ;;
+  esac
+done <<<"$TOKENS"
+
+if [[ -z "$ROWS" ]]; then
+  echo "ERROR [store_frame_drift]: parsed zero Slot() entries out of $SCRIPT — parser out of sync with the script." >&2
+  exit 1
+fi
+
+if [[ "$LIST_ONLY" -eq 1 ]]; then
+  printf '%-11s %-13s %-11s %s\n' DEVICE APP SLOT BASELINE
+  echo "$ROWS" | sort | while IFS=$'\t' read -r device app slot_name baseline_relpath; do
+    [[ -z "$device" ]] && continue
+    printf '%-11s %-13s %-11s %s\n' "$device" "$app" "$slot_name" "$baseline_relpath"
+  done
+  exit 0
+fi
+
+# ── Determine the changed-file set for this PR ───────────────────────────────
+if [[ -z "$BASE_REF" ]]; then
+  if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    BASE_REF="origin/main"
+  elif git rev-parse --verify main >/dev/null 2>&1; then
+    BASE_REF="main"
+  else
+    echo "ERROR [store_frame_drift]: no --base given and neither origin/main nor main resolves locally." >&2
+    exit 1
+  fi
+fi
+
+if ! MERGE_BASE="$(git merge-base HEAD "$BASE_REF" 2>&1)"; then
+  echo "ERROR [store_frame_drift]: git merge-base HEAD $BASE_REF failed: $MERGE_BASE" >&2
+  exit 1
+fi
+
+CHANGED="$(git diff --name-only "$MERGE_BASE" HEAD)"
+
+# ── Cross-reference: which changed files are MAPPED baselines? ───────────────
+# (No associative arrays — macOS system bash is 3.2, which predates them;
+# `slots_for_baseline` below just re-scans ROWS, which is ~30 rows.)
+CHANGED_MAPPED=""
+while IFS=$'\t' read -r device app slot_name baseline_relpath; do
+  [[ -z "$baseline_relpath" ]] && continue
+  if grep -qxF "$baseline_relpath" <<<"$CHANGED"; then
+    CHANGED_MAPPED+="${baseline_relpath}"$'\n'
+  fi
+done <<<"$ROWS"
+CHANGED_MAPPED="$(printf '%s' "$CHANGED_MAPPED" | sort -u | sed '/^$/d')"
+
+slots_for_baseline() {
+  local target="$1" device app slot_name baseline_relpath out=""
+  while IFS=$'\t' read -r device app slot_name baseline_relpath; do
+    [[ "$baseline_relpath" == "$target" ]] || continue
+    if [[ -n "$out" ]]; then out+=", ${device}/${app}/${slot_name}"; else out="${device}/${app}/${slot_name}"; fi
+  done <<<"$ROWS"
+  printf '%s' "$out"
+}
+
+CHANGED_ASCSPEC="$(grep -F "$ASCSPEC_PREFIX" <<<"$CHANGED" || true)"
+
+if [[ -z "$CHANGED_MAPPED" || -n "$CHANGED_ASCSPEC" ]]; then
+  echo "PASS [store_frame_drift]: no mapped baseline drifted from docs/app-store/screenshots-ascspec/."
+  if [[ -n "$CHANGED_MAPPED" ]]; then
+    echo "  (mapped baseline(s) changed, but screenshots-ascspec/ changed too in this PR — regeneration assumed covered.)"
+  fi
+  exit 0
+fi
+
+# ── Escape hatch ──────────────────────────────────────────────────────────────
+ESCAPE_REASON=""
+if [[ "${FRAME_DRIFT_LABEL_OVERRIDE:-0}" == "1" ]]; then
+  ESCAPE_REASON="PR label 'frame-drift-verified'"
+elif TRAILER="$(git log --format=%B "${MERGE_BASE}..HEAD" | grep -iE '^Frame-Drift-Verified:' | head -1)"; then
+  if [[ -n "$TRAILER" ]]; then
+    ESCAPE_REASON="commit trailer: ${TRAILER}"
+  fi
+fi
+
+if [[ -n "$ESCAPE_REASON" ]]; then
+  echo "WARN [store_frame_drift]: mapped baseline(s) changed without a screenshots-ascspec/ update, but the escape hatch was used ($ESCAPE_REASON) — passing."
+  while IFS= read -r baseline_relpath; do
+    [[ -z "$baseline_relpath" ]] && continue
+    echo "  - $baseline_relpath"
+  done <<<"$CHANGED_MAPPED"
+  exit 0
+fi
+
+{
+  echo "FAIL [store_frame_drift]: mapped snapshot baseline(s) changed without a matching update under docs/app-store/screenshots-ascspec/ (the #995/#998 failure mode)."
+  echo
+  echo "Changed baseline(s) and the store slot(s) they feed:"
+  while IFS= read -r baseline_relpath; do
+    [[ -z "$baseline_relpath" ]] && continue
+    echo "  - $baseline_relpath"
+    echo "      feeds: $(slots_for_baseline "$baseline_relpath")"
+  done <<<"$CHANGED_MAPPED"
+  echo
+  echo "Fix: on macOS (the generator needs system fonts not present on this runner), run"
+  echo "    python3 scripts/build-ascspec-screenshots.py"
+  echo "  then commit the regenerated PNGs under docs/app-store/screenshots-ascspec/."
+  echo
+  echo "Escape hatch, only if this baseline change genuinely does not alter any ASC"
+  echo "frame (e.g. an unrelated test refactor produced byte-identical pixels): add"
+  echo "the PR label 'frame-drift-verified', or add a commit-message trailer:"
+  echo "    Frame-Drift-Verified: <why the frame doesn't need regenerating>"
+} >&2
+exit 1
