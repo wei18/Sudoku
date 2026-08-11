@@ -60,8 +60,11 @@ fi
 #
 # Extract the two BASELINES_* roots (REPO_ROOT-relative) so we don't hardcode
 # the Packages/*/Tests/*UITests/__Snapshots__ paths either.
-BASELINES_SUDOKU_REL="$(grep -E '^BASELINES_SUDOKU = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_SUDOKU = REPO_ROOT \/ "([^"]+)".*/\1/')"
-BASELINES_MS_REL="$(grep -E '^BASELINES_MS = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_MS = REPO_ROOT \/ "([^"]+)".*/\1/')"
+# `|| true` on each: under `set -o pipefail`, a no-match grep makes the whole
+# pipeline (and, under `set -e`, the script) exit right here with no output —
+# before the `-z` check below ever gets a chance to print its diagnostic.
+BASELINES_SUDOKU_REL="$(grep -E '^BASELINES_SUDOKU = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_SUDOKU = REPO_ROOT \/ "([^"]+)".*/\1/' || true)"
+BASELINES_MS_REL="$(grep -E '^BASELINES_MS = REPO_ROOT / "' "$SCRIPT" | sed -E 's/^BASELINES_MS = REPO_ROOT \/ "([^"]+)".*/\1/' || true)"
 
 if [[ -z "$BASELINES_SUDOKU_REL" || -z "$BASELINES_MS_REL" ]]; then
   echo "ERROR [store_frame_drift]: could not parse BASELINES_SUDOKU/BASELINES_MS out of $SCRIPT — script format changed, gate needs updating." >&2
@@ -72,11 +75,18 @@ fi
 # immediately follows it), flatten to one line so a Slot(...) call that wraps
 # across source lines (long entries do, e.g. the "02b-rank" slots) still reads
 # as one token, then walk the token stream in order:
-#   "<device>": {           -> enter a device context
-#   "sudoku": [ / "minesweeper": [  -> enter an app context
-#   Slot(...)                -> emit one (device, app, slot) row
+#   "<device>": {                    -> enter a device context
+#   "sudoku": [ / "minesweeper": [   -> enter an app context
+#   Slot(...)                        -> emit one (device, app, slot) row
+#   ]                                -> leave the current app context
+#   }                                -> leave the current device context
+# The bare `]`/`}` tokens exist so a header line that FAILS to match (a
+# reformat, a typo, anything) leaves device/app EMPTY rather than STALE at
+# the wrong value — see the "Slot(...) found before a device/app context"
+# guard below, and the mutation tests in the PR description for why a
+# presence-only check (no closing tokens) isn't enough.
 TOKENS="$(sed -n '/^SLOTS = {/,/^BASELINES_ROOT = {/p' "$SCRIPT" | tr '\n' ' ' | \
-  grep -oE '"[A-Za-z0-9._-]+": \{|"(sudoku|minesweeper)": \[|Slot\([^)]*\)')"
+  grep -oE '"[A-Za-z0-9._-]+": \{|"(sudoku|minesweeper)": \[|Slot\([^)]*\)|\]|\}' || true)"
 
 if [[ -z "$TOKENS" ]]; then
   echo "ERROR [store_frame_drift]: found no SLOTS table content in $SCRIPT — script format changed, gate needs updating." >&2
@@ -115,6 +125,14 @@ while IFS= read -r tok; do
       ;;
     \"sudoku\":\ \[|\"minesweeper\":\ \[)
       app="${tok#\"}"; app="${app%%\":*}"
+      ;;
+    ']'|'}')
+      # Leaving an app list ("]") always clears app; leaving a device dict
+      # ("}") clears both. Unconditional — a stray extra "}" at the very end
+      # of SLOTS (closing the top-level dict) just clears already-empty
+      # vars, a no-op.
+      app=""
+      if [[ "$tok" == "}" ]]; then device=""; fi
       ;;
   esac
 done <<<"$TOKENS"
