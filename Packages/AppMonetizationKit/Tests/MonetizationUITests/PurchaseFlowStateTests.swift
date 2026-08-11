@@ -169,7 +169,7 @@ struct PurchaseFlowStateTests {
 
         await iap.setPurchaseResult(
             for: removeAdsProductId,
-            result: .success(IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: true))
+            result: .success(IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: true))
         )
         await controller.purchaseRemoveAds()
 
@@ -297,7 +297,7 @@ struct PurchaseFlowStateTests {
         let gate = AdGate(store: store)
         let iap = FakeIAPClient()
         await iap.setProducts([
-            IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false),
+            IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false),
         ])
         let toastController = ToastController()
         let controller = MonetizationStateController(

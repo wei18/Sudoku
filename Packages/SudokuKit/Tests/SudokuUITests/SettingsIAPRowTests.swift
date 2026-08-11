@@ -56,14 +56,14 @@ struct SettingsIAPRowTests {
         let product = IAPProduct(
             id: removeAdsProductId,
             displayName: "Remove Ads",
-            displayPrice: "$2.99",
+            displayPrice: "$0.99",
             isPurchased: false
         )
         let (controller, _, _) = await makeController(products: [product])
         await controller.bootstrap()
 
         #expect(controller.hasPurchasedRemoveAds == false)
-        #expect(controller.removeAdsDisplayPrice == "$2.99")
+        #expect(controller.removeAdsDisplayPrice == "$0.99")
     }
 
     @Test func unpurchased_displayPrice_fallsBackTo0_99WhenLookupEmpty() async {
@@ -86,9 +86,9 @@ struct SettingsIAPRowTests {
 
     @Test func purchaseTap_callsPurchaseOnce() async {
         let (controller, iap, _) = await makeController(
-            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false)]
+            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false)]
         )
-        let product = IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: true)
+        let product = IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: true)
         await iap.setPurchaseResult(for: removeAdsProductId, result: .success(product))
         await controller.bootstrap()
 
@@ -104,7 +104,7 @@ struct SettingsIAPRowTests {
 
     @Test func restoreTap_callsRestoreOnce() async {
         let (controller, iap, _) = await makeController(
-            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false)]
+            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false)]
         )
 
         await controller.restorePurchases()
@@ -122,7 +122,7 @@ struct SettingsIAPRowTests {
 
     @Test func purchaseInFlight_flipsTrueWhileAwaitingResult() async {
         let (controller, iap, _) = await makeController(
-            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$2.99", isPurchased: false)]
+            products: [IAPProduct(id: removeAdsProductId, displayName: "Remove Ads", displayPrice: "$0.99", isPurchased: false)]
         )
         await iap.setPurchaseResult(for: removeAdsProductId, result: .userCancelled)
 
@@ -190,7 +190,7 @@ struct SettingsIAPRowTests {
             products: [IAPProduct(
                 id: removeAdsProductId,
                 displayName: "Remove Ads",
-                displayPrice: "$2.99",
+                displayPrice: "$0.99",
                 isPurchased: false
             )]
         )
@@ -228,7 +228,7 @@ struct SettingsIAPRowTests {
             products: [IAPProduct(
                 id: removeAdsProductId,
                 displayName: "Remove Ads",
-                displayPrice: "$2.99",
+                displayPrice: "$0.99",
                 isPurchased: false
             )]
         )

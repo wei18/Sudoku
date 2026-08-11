@@ -66,7 +66,7 @@ struct FakeIAPClientTests {
     private static let product = IAPProduct(
         id: "com.wei18.sudoku.iap.remove_ads",
         displayName: "Remove Ads",
-        displayPrice: "$2.99",
+        displayPrice: "$0.99",
         isPurchased: false
     )
 
