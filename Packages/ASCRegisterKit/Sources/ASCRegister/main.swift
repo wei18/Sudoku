@@ -731,6 +731,21 @@ internal enum ASCRegisterCLI {
             let existing = try await client.listScreenshotSets(versionLocalizationId: loc.id)
             var setIdByDisplayType = ScreenshotSetIndex.setIdsByDisplayType(existing)
             let shotsBySet = ScreenshotSetIndex.screenshotsBySetId(existing)
+            // Every displayType this run uploaded (or would upload) into — the
+            // set of sets whose order needs re-asserting afterward (#987). A
+            // set nothing was uploaded into is never touched, so its
+            // (already-correct) order is left alone.
+            var touchedDisplayTypes: Set<String> = []
+            // How many local files map to each displayType — the minimum a
+            // touched set's post-upload re-GET must report. A short re-GET
+            // (malformed response, unexpected pagination, an API shape
+            // change) must never reach `reorderScreenshots`: a PATCH with
+            // fewer ids than the set actually holds EVICTS the omitted
+            // screenshot(s) (a to-many relationship PATCH replaces the whole
+            // relationship), and an empty array evicts everything.
+            let expectedCountByDisplayType = Dictionary(
+                grouping: familyAssets, by: \.displayType
+            ).mapValues(\.count)
 
             for asset in familyAssets {
                 let displayType = asset.displayType
@@ -759,6 +774,7 @@ internal enum ASCRegisterCLI {
                     let evictNote = reason.map { "re-upload (\($0)): delete + " } ?? ""
                     print("  UPLOAD [\(token)] \(displayType) \(asset.fileName) "
                         + "(\(setNote)\(evictNote)reserve→PUT→commit)")
+                    touchedDisplayTypes.insert(displayType)
                     continue
                 }
                 // --- apply: ensure set, evict any stale shot, reserve → PUT → commit ---
@@ -779,6 +795,59 @@ internal enum ASCRegisterCLI {
                 }
                 try await uploadOneScreenshot(client: client, setId: setId, asset: asset, token: token)
                 uploaded += 1
+                touchedDisplayTypes.insert(displayType)
+            }
+
+            // Re-assert display order on every set this run actually uploaded
+            // into (#987). Apple's `appScreenshots` relationship array has no
+            // independent position field — its array order IS the App Store
+            // carousel order, and a partial evict+re-upload silently appends
+            // the recreated file at the END. Unconditional PATCH (not a
+            // diff-then-patch) is deliberate: reordering an already-correct
+            // array is a no-op. `--i-am-sure` gates the PATCH the same way it
+            // gates every other mutation in this loop.
+            if !apply {
+                for displayType in touchedDisplayTypes.sorted() {
+                    print("  REORDER [\(token)] \(displayType) would follow filename order after upload (dry-run)")
+                }
+            } else if !touchedDisplayTypes.isEmpty {
+                // Re-GET (once): the newly-created screenshot ids from THIS
+                // run's uploads must be included — the pre-upload snapshot
+                // doesn't have them.
+                let refreshed = try await client.listScreenshotSets(versionLocalizationId: loc.id)
+                let refreshedShots = ScreenshotSetIndex.screenshotsBySetId(refreshed)
+                for displayType in touchedDisplayTypes.sorted() {
+                    guard let setId = setIdByDisplayType[displayType] else { continue }
+                    let orderedIds = ScreenshotSetIndex.filenameSortedIds(refreshedShots[setId] ?? [:])
+                    let expectedCount = expectedCountByDisplayType[displayType] ?? 0
+                    // Never PATCH an array the re-GET under-reported — see the
+                    // eviction risk noted where `expectedCountByDisplayType` is
+                    // built. Not reachable today (a touched set always has ≥1
+                    // freshly-committed screenshot by re-GET time, and
+                    // `limit=50` covers the real 2-4 display types per
+                    // locale), but the downside is destroying a live listing's
+                    // screenshots, so the guard stays even though it can't
+                    // fire on the paths this code exercises now.
+                    guard !orderedIds.isEmpty else {
+                        let msg = "warn: metadata screenshots: [\(token)] \(displayType) reorder SKIPPED — "
+                            + "the post-upload re-GET reported ZERO screenshots for set \(setId). Refusing "
+                            + "to PATCH an empty relationship array (it would evict every screenshot from "
+                            + "the set). Re-run to retry.\n"
+                        FileHandle.standardError.write(Data(msg.utf8))
+                        continue
+                    }
+                    guard orderedIds.count >= expectedCount else {
+                        let msg = "warn: metadata screenshots: [\(token)] \(displayType) reorder SKIPPED — "
+                            + "the post-upload re-GET reported \(orderedIds.count) screenshot(s) for set "
+                            + "\(setId), fewer than the \(expectedCount) this run uploaded into it. Refusing "
+                            + "to PATCH a short array (it would evict the missing screenshot(s) from the "
+                            + "set). Re-run to retry.\n"
+                        FileHandle.standardError.write(Data(msg.utf8))
+                        continue
+                    }
+                    try await client.reorderScreenshots(setId: setId, orderedIds: orderedIds)
+                    print("  REORDER [\(token)] \(displayType) → filename order (\(orderedIds.count) screenshot(s))")
+                }
             }
         }
         if apply {

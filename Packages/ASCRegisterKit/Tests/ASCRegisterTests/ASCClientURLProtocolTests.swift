@@ -759,6 +759,16 @@ internal struct ASCClientURLProtocolTests {
             {"data":{"id":"shot-mp","type":"appScreenshots",
             "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
             """#),
+            // Post-loop reorder (#987): re-GET the set, then PATCH its order.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[{"id":"shot-mp","type":"appScreenshots"}]}}}],
+            "included":[{"id":"shot-mp","type":"appScreenshots",
+            "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}}],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots
         ])
 
         let client = Self.makeClient()
@@ -771,8 +781,9 @@ internal struct ASCClientURLProtocolTests {
         )
 
         let reqs = StubState.recordedRequests()
-        // GET×3, POST set, POST reserve, PUT, PUT, PATCH commit — TWO PUTs.
-        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "POST", "POST", "PUT", "PUT", "PATCH"])
+        // GET×3, POST set, POST reserve, PUT, PUT, PATCH commit, then the
+        // post-loop reorder: GET (refresh) + PATCH (relationships order).
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "POST", "POST", "PUT", "PUT", "PATCH", "GET", "PATCH"])
         let puts = reqs.filter { $0.method == "PUT" }
         #expect(puts.count == 2)
         // Each window went to its own URL with exactly its byte slice, in order.
@@ -864,6 +875,16 @@ internal struct ASCClientURLProtocolTests {
             {"data":{"id":"shot-1","type":"appScreenshots",
             "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
             """#),
+            // Post-loop reorder (#987): re-GET the set, then PATCH its order.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[{"id":"shot-1","type":"appScreenshots"}]}}}],
+            "included":[{"id":"shot-1","type":"appScreenshots",
+            "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}}],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots
         ])
 
         let client = Self.makeClient()
@@ -878,8 +899,9 @@ internal struct ASCClientURLProtocolTests {
 
         let reqs = StubState.recordedRequests()
         let methods = reqs.map(\.method)
-        // GET versions, GET version-locs, GET sets, POST set, POST reserve, PUT, PATCH commit.
-        #expect(methods == ["GET", "GET", "GET", "POST", "POST", "PUT", "PATCH"])
+        // GET versions, GET version-locs, GET sets, POST set, POST reserve, PUT,
+        // PATCH commit, then the post-loop reorder: GET (refresh) + PATCH (order).
+        #expect(methods == ["GET", "GET", "GET", "POST", "POST", "PUT", "PATCH", "GET", "PATCH"])
         // The set was created for the iPhone 6.9" display type.
         let createSet = try #require(reqs.first { $0.url.hasSuffix("/v1/appScreenshotSets") })
         let setBody = try #require(
@@ -978,6 +1000,26 @@ internal struct ASCClientURLProtocolTests {
         ]
     }
 
+    /// Post-loop reorder responses (#987): a re-GET of the set — now carrying
+    /// the newly-uploaded screenshot id — followed by the PATCH that asserts
+    /// filename order. Shared by every apply-mode test whose upload touches
+    /// exactly one set with one screenshot.
+    private static func reorderResponses(
+        setId: String, displayType: String, fileName: String, shotId: String
+    ) -> [StubResponse] {
+        [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"\#(setId)","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"\#(displayType)"},
+            "relationships":{"appScreenshots":{"data":[{"id":"\#(shotId)","type":"appScreenshots"}]}}}],
+            "included":[{"id":"\#(shotId)","type":"appScreenshots",
+            "attributes":{"fileName":"\#(fileName)","assetDeliveryState":{"state":"COMPLETE"}}}],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots
+        ]
+    }
+
     /// #370 Med-2: a screenshot with the right fileName but a NON-COMPLETE
     /// delivery state (a prior reserve whose PUT/commit failed) must be evicted
     /// (DELETE) and re-uploaded, not skipped forever.
@@ -1005,6 +1047,9 @@ internal struct ASCClientURLProtocolTests {
             StubResponse(status: 204, body: ""),  // DELETE the stale shot-x
         ]
         responses.append(contentsOf: Self.reuploadResponses(byteLen: bytes.count))
+        responses.append(contentsOf: Self.reorderResponses(
+            setId: "set-67", displayType: "APP_IPHONE_67", fileName: "01-home.png", shotId: "shot-new"
+        ))
         StubState.reset(with: responses)
 
         let client = Self.makeClient()
@@ -1017,8 +1062,9 @@ internal struct ASCClientURLProtocolTests {
         )
 
         let reqs = StubState.recordedRequests()
-        // GET versions, GET locs, GET sets, DELETE stale, reserve POST, PUT, commit PATCH.
-        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH"])
+        // GET versions, GET locs, GET sets, DELETE stale, reserve POST, PUT,
+        // commit PATCH, then the post-loop reorder: GET (refresh) + PATCH (order).
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET", "PATCH"])
         let del = try #require(reqs.first { $0.method == "DELETE" })
         #expect(del.url.hasSuffix("/v1/appScreenshots/shot-x"))
         // No createSet — the existing set-67 is reused for the re-reserve.
@@ -1054,6 +1100,9 @@ internal struct ASCClientURLProtocolTests {
             StubResponse(status: 204, body: ""),  // DELETE the drifted shot-x
         ]
         responses.append(contentsOf: Self.reuploadResponses(byteLen: bytes.count))
+        responses.append(contentsOf: Self.reorderResponses(
+            setId: "set-67", displayType: "APP_IPHONE_67", fileName: "01-home.png", shotId: "shot-new"
+        ))
         StubState.reset(with: responses)
 
         let client = Self.makeClient()
@@ -1066,7 +1115,8 @@ internal struct ASCClientURLProtocolTests {
         )
 
         let reqs = StubState.recordedRequests()
-        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH"])
+        // Post-loop reorder appends GET (refresh) + PATCH (order) after commit.
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET", "PATCH"])
         // The commit PATCH carried the NEW file's MD5 (the drift was corrected).
         let commit = try #require(reqs.first { $0.method == "PATCH" })
         let commitBody = try #require(
@@ -1112,6 +1162,575 @@ internal struct ASCClientURLProtocolTests {
         // Read-only: GET versions, GET version-locs, GET sets. Zero mutations.
         #expect(methods.allSatisfy { $0 == "GET" })
         #expect(methods == ["GET", "GET", "GET"])
+    }
+
+    // MARK: - Screenshot set display-order reorder (#987)
+    //
+    // Apple's `appScreenshots` relationship array has no independent
+    // position/index field — its array order IS the App Store carousel
+    // display order, and it reflects insertion sequence, not filename. A
+    // partial evict+re-upload (one file drifted, another didn't) appends the
+    // recreated file at the END, silently corrupting order. The fix:
+    // unconditionally PATCH `.../relationships/appScreenshots` with the FULL
+    // set in filename order after any set this run actually uploaded into.
+
+    /// Build a `screenshots/<app>/<device>/en/…` tree with several files
+    /// (optionally across several devices) in one temp root, for scenarios the
+    /// single-file `makeScreenshotTree` can't express. Locale is fixed to "en"
+    /// (every call site here uses it) to keep the entry a 3-member tuple.
+    private static func makeMultiScreenshotTree(
+        entries: [(device: String, fileName: String, bytes: Data)]
+    ) throws -> URL {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asc-shots-\(UUID().uuidString)")
+        for entry in entries {
+            let dir = root
+                .appendingPathComponent("sudoku")
+                .appendingPathComponent(entry.device)
+                .appendingPathComponent("en")
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try entry.bytes.write(to: dir.appendingPathComponent(entry.fileName))
+        }
+        return root
+    }
+
+    /// Regression test for #987: a set holding TWO files where one is
+    /// untouched (already COMPLETE, checksum matches → SKIP) and the other
+    /// drifted (non-COMPLETE → evict + re-upload). The re-GET after the
+    /// upload loop deliberately returns the recreated file FIRST (simulating
+    /// Apple's real append-to-end bug) — the emitted reorder PATCH must still
+    /// carry the FULL set, sorted back into filename order, not just the
+    /// re-uploaded id and not the corrupted order.
+    @Test("uploadScreenshots apply: evict+re-upload of one slot PATCHes the FULL set in filename order")
+    internal func reorderPatchesFullSetInFilenameOrder() async throws {
+        let bytes01 = Data("HOME-BYTES".utf8)
+        let bytes02 = Data("RANK-BYTES-NEW".utf8)
+        let tree = try Self.makeMultiScreenshotTree(entries: [
+            (device: "iphone-6.9", fileName: "01-home.png", bytes: bytes01),
+            (device: "iphone-6.9", fileName: "02-rank.png", bytes: bytes02),
+        ])
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // Existing set: 01-home.png COMPLETE + matching checksum (→ SKIP),
+            // 02-rank.png AWAITING_UPLOAD (a prior failed reserve → re-upload).
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[
+              {"id":"shot-01","type":"appScreenshots"},
+              {"id":"shot-02","type":"appScreenshots"}
+            ]}}}],
+            "included":[
+              {"id":"shot-01","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","sourceFileChecksum":"\#(AssetChecksum.md5Hex(bytes01))",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-02","type":"appScreenshots",
+               "attributes":{"fileName":"02-rank.png","assetDeliveryState":{"state":"AWAITING_UPLOAD"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // DELETE the stale shot-02
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-02-new", putURL: "https://assets.apple.example/u/rank", byteLen: bytes02.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-02-new","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+            // Post-loop re-GET: Apple appended the recreated file at the END —
+            // shot-02-new BEFORE shot-01 — the exact corruption #987 reports.
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[
+              {"id":"shot-02-new","type":"appScreenshots"},
+              {"id":"shot-01","type":"appScreenshots"}
+            ]}}}],
+            "included":[
+              {"id":"shot-02-new","type":"appScreenshots",
+               "attributes":{"fileName":"02-rank.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-01","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots
+        ])
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        #expect(assets.count == 2)
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        // 01-home.png is a pure SKIP (no request); 02-rank.png evicts+re-uploads;
+        // then ONE re-GET + ONE reorder PATCH for the touched set.
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET", "PATCH"])
+        let reorder = try #require(reqs.last)
+        #expect(reorder.method == "PATCH")
+        #expect(reorder.url.hasSuffix("/v1/appScreenshotSets/set-67/relationships/appScreenshots"))
+        let bodyJSON = try #require(try JSONSerialization.jsonObject(with: reorder.body) as? [String: Any])
+        let dataArr = try #require(bodyJSON["data"] as? [[String: Any]])
+        // The FULL set, sorted back into filename order — not the corrupted
+        // order the re-GET returned, and not just the re-uploaded id.
+        #expect(dataArr.map { $0["id"] as? String } == ["shot-01", "shot-02-new"])
+        #expect(dataArr.allSatisfy { $0["type"] as? String == "appScreenshots" })
+    }
+
+    /// Dry-run must NOT PATCH even when a set WOULD be touched (an existing
+    /// COMPLETE screenshot whose checksum drifted, so a real run would evict +
+    /// re-upload it, then reorder). No DELETE/POST/PUT/commit-PATCH/reorder-GET/
+    /// reorder-PATCH — only the read GETs.
+    @Test("uploadScreenshots dry-run: a would-be-touched set issues no reorder PATCH")
+    internal func reorderDryRunIssuesNoPatch() async throws {
+        let bytes = Data("PNGDATA-12345".utf8)
+        let tree = try Self.makeScreenshotTree(
+            device: "iphone-6.9", locale: "en", fileName: "01-home.png", bytes: bytes
+        )
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // COMPLETE, but the stored checksum is for DIFFERENT bytes → drift
+            // → a real run would evict + re-upload + reorder.
+            StubResponse(status: 200, body: Self.existingSetBody(
+                fileName: "01-home.png", state: "COMPLETE",
+                checksum: AssetChecksum.md5Hex(Data("OLD-STALE-BYTES".utf8))
+            )),
+        ])
+
+        let client = Self.makeClient(mode: .plan)
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: false
+        )
+
+        let methods = StubState.recordedRequests().map(\.method)
+        #expect(methods == ["GET", "GET", "GET"])
+        #expect(!methods.contains("PATCH"))
+        #expect(!methods.contains("DELETE"))
+    }
+
+    /// A set nothing was uploaded into (every file SKIPped) receives NO reorder
+    /// PATCH — only the set another device's upload actually touched does. Two
+    /// devices under the same iOS token: iPhone's file is already correct
+    /// (SKIP, untouched set); iPad's is non-COMPLETE (evict + re-upload,
+    /// touched set). Only `set-ipad` may see a reorder PATCH.
+    @Test("uploadScreenshots apply: a set with nothing uploaded into it receives no reorder PATCH")
+    internal func reorderSkipsUntouchedSet() async throws {
+        let iphoneBytes = Data("IPHONE-BYTES".utf8)
+        let ipadBytes = Data("IPAD-BYTES".utf8)
+        let tree = try Self.makeMultiScreenshotTree(entries: [
+            (device: "iphone-6.9", fileName: "01-home.png", bytes: iphoneBytes),
+            (device: "ipad-13", fileName: "01-home.png", bytes: ipadBytes),
+        ])
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // Two existing sets: iPhone's file is COMPLETE + matching checksum
+            // (untouched, SKIP); iPad's is AWAITING_UPLOAD (touched, re-upload).
+            StubResponse(status: 200, body: #"""
+            {"data":[
+              {"id":"set-iphone","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-iphone","type":"appScreenshots"}]}}},
+              {"id":"set-ipad","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPAD_PRO_3GEN_129"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-ipad","type":"appScreenshots"}]}}}
+            ],
+            "included":[
+              {"id":"shot-iphone","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","sourceFileChecksum":"\#(AssetChecksum.md5Hex(iphoneBytes))",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-ipad","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"AWAITING_UPLOAD"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // DELETE the stale ipad shot
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-ipad-new", putURL: "https://assets.apple.example/u/ipad", byteLen: ipadBytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-ipad-new","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+            // Post-loop re-GET (covers both sets in one call).
+            StubResponse(status: 200, body: #"""
+            {"data":[
+              {"id":"set-iphone","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-iphone","type":"appScreenshots"}]}}},
+              {"id":"set-ipad","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPAD_PRO_3GEN_129"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-ipad-new","type":"appScreenshots"}]}}}
+            ],
+            "included":[
+              {"id":"shot-iphone","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-ipad-new","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots — set-ipad ONLY
+        ])
+
+        let client = Self.makeClient()
+        // `ScreenshotDiscovery.discover` sorts by (device, fileName); "ipad-13"
+        // sorts before "iphone-6.9", so the ipad asset is processed first.
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        #expect(assets.count == 2)
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET", "PATCH"])
+        let reorderReqs = reqs.filter { $0.url.contains("/relationships/appScreenshots") }
+        #expect(reorderReqs.count == 1)
+        #expect(reorderReqs[0].url.hasSuffix("/v1/appScreenshotSets/set-ipad/relationships/appScreenshots"))
+        #expect(!reqs.contains { $0.url.hasSuffix("/v1/appScreenshotSets/set-iphone/relationships/appScreenshots") })
+    }
+
+    /// CR follow-up guard: a post-upload re-GET that under-reports a touched
+    /// set's screenshots (here: reports ZERO) must NOT reach
+    /// `reorderScreenshots` — a to-many relationship PATCH REPLACES the whole
+    /// relationship, so an empty (or short) array would EVICT every
+    /// screenshot the re-GET failed to report. Not reachable via any path
+    /// this code exercises today, but the guard must hold anyway: the
+    /// downside is destroying a live listing's screenshots.
+    @Test("uploadScreenshots apply: a re-GET that under-reports a touched set skips its reorder PATCH")
+    internal func reorderSkipsUnderReportedSet() async throws {
+        let bytes = Data("PNGDATA-12345".utf8)
+        let tree = try Self.makeScreenshotTree(
+            device: "iphone-6.9", locale: "en", fileName: "01-home.png", bytes: bytes
+        )
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        var responses = [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: Self.existingSetBody(
+                fileName: "01-home.png", state: "AWAITING_UPLOAD", checksum: nil
+            )),
+            StubResponse(status: 204, body: ""),  // DELETE the stale shot-x
+        ]
+        responses.append(contentsOf: Self.reuploadResponses(byteLen: bytes.count))
+        // Post-loop re-GET: set-67 comes back with an EMPTY appScreenshots
+        // relationship — as if the fresh commit never made it into this GET's
+        // response. `filenameSortedIds` therefore returns `[]`.
+        responses.append(StubResponse(status: 200, body: #"""
+        {"data":[{"id":"set-67","type":"appScreenshotSets",
+        "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+        "relationships":{"appScreenshots":{"data":[]}}}],
+        "included":[],
+        "links":{}}
+        """#))
+        // Deliberately NO reorder-PATCH stub queued — if the guard fails to
+        // skip, the reorder PATCH would consume the (absent) next response
+        // and the stub-queue-empty 599 would surface as a thrown error.
+        StubState.reset(with: responses)
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        // GET, GET, GET, DELETE, POST, PUT, PATCH(commit), GET(refresh) — the
+        // reorder PATCH the empty re-GET would otherwise trigger is ABSENT.
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET"])
+        #expect(!reqs.contains { $0.url.hasSuffix("/relationships/appScreenshots") })
+    }
+
+    /// Scrambled multi-screenshot ordering: a set of FOUR real slot names
+    /// (the actual Sudoku storyline order) whose post-upload re-GET returns
+    /// them in a genuinely shuffled order (not append-to-end, not a plain
+    /// reversal) — the reorder PATCH must still carry the FULL set sorted
+    /// back into filename order. Only `05-settings.png` drifted (checksum
+    /// mismatch) and was evicted + re-uploaded; the other three were SKIPped
+    /// untouched, proving the sort is a property of the re-GET response, not
+    /// of upload order.
+    @Test("uploadScreenshots apply: reorders 4 real slot names out of a genuinely scrambled re-GET")
+    internal func reorderSortsScrambledFourSlotSet() async throws {
+        let bytesHome = Data("HOME".utf8)
+        let bytesRank = Data("RANK".utf8)
+        let bytesBoard = Data("BOARD".utf8)
+        let bytesSettingsNew = Data("SETTINGS-NEW".utf8)
+        let tree = try Self.makeMultiScreenshotTree(entries: [
+            (device: "iphone-6.9", fileName: "01-home.png", bytes: bytesHome),
+            (device: "iphone-6.9", fileName: "02b-rank.png", bytes: bytesRank),
+            (device: "iphone-6.9", fileName: "03-board.png", bytes: bytesBoard),
+            (device: "iphone-6.9", fileName: "05-settings.png", bytes: bytesSettingsNew),
+        ])
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // 01/02b/03 COMPLETE + matching checksum (untouched, SKIP);
+            // 05-settings COMPLETE but stale checksum (drift → re-upload).
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[
+              {"id":"shot-01","type":"appScreenshots"},
+              {"id":"shot-02b","type":"appScreenshots"},
+              {"id":"shot-03","type":"appScreenshots"},
+              {"id":"shot-05-old","type":"appScreenshots"}
+            ]}}}],
+            "included":[
+              {"id":"shot-01","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","sourceFileChecksum":"\#(AssetChecksum.md5Hex(bytesHome))",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-02b","type":"appScreenshots",
+               "attributes":{"fileName":"02b-rank.png","sourceFileChecksum":"\#(AssetChecksum.md5Hex(bytesRank))",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-03","type":"appScreenshots",
+               "attributes":{"fileName":"03-board.png","sourceFileChecksum":"\#(AssetChecksum.md5Hex(bytesBoard))",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-05-old","type":"appScreenshots",
+               "attributes":{"fileName":"05-settings.png","sourceFileChecksum":"stale-checksum",
+               "assetDeliveryState":{"state":"COMPLETE"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // DELETE the drifted shot-05-old
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-05-new", putURL: "https://assets.apple.example/u/settings",
+                byteLen: bytesSettingsNew.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-05-new","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+            // Post-loop re-GET: a genuine shuffle — 03, 05-new, 01, 02b — not
+            // a sorted order, and not a plain reversal of filename order
+            // (which would be 05,03,02b,01).
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"set-67","type":"appScreenshotSets",
+            "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+            "relationships":{"appScreenshots":{"data":[
+              {"id":"shot-03","type":"appScreenshots"},
+              {"id":"shot-05-new","type":"appScreenshots"},
+              {"id":"shot-01","type":"appScreenshots"},
+              {"id":"shot-02b","type":"appScreenshots"}
+            ]}}}],
+            "included":[
+              {"id":"shot-03","type":"appScreenshots",
+               "attributes":{"fileName":"03-board.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-05-new","type":"appScreenshots",
+               "attributes":{"fileName":"05-settings.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-01","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-02b","type":"appScreenshots",
+               "attributes":{"fileName":"02b-rank.png","assetDeliveryState":{"state":"COMPLETE"}}}
+            ],
+            "links":{}}
+            """#),
+            StubResponse(status: 204, body: ""),  // PATCH relationships/appScreenshots
+        ])
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        #expect(assets.count == 4)
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == ["GET", "GET", "GET", "DELETE", "POST", "PUT", "PATCH", "GET", "PATCH"])
+        let reorder = try #require(reqs.last)
+        #expect(reorder.method == "PATCH")
+        #expect(reorder.url.hasSuffix("/v1/appScreenshotSets/set-67/relationships/appScreenshots"))
+        let bodyJSON = try #require(try JSONSerialization.jsonObject(with: reorder.body) as? [String: Any])
+        let dataArr = try #require(bodyJSON["data"] as? [[String: Any]])
+        // The real Sudoku storyline order, recovered from a genuine shuffle —
+        // not the scrambled re-GET order, not a reversal of it.
+        #expect(dataArr.map { $0["id"] as? String } == ["shot-01", "shot-02b", "shot-03", "shot-05-new"])
+        #expect(dataArr.allSatisfy { $0["type"] as? String == "appScreenshots" })
+    }
+
+    /// The complement to `reorderSkipsUntouchedSet`: TWO sets under one
+    /// locale where BOTH were uploaded into (the normal case for a locale
+    /// with both an iPhone and an iPad display type) — each must receive its
+    /// OWN correctly-scoped reorder PATCH, not just one of them.
+    @Test("uploadScreenshots apply: two sets both touched each get their own reorder PATCH")
+    internal func reorderPatchesBothTouchedSets() async throws {
+        let iphoneBytes = Data("IPHONE-NEW".utf8)
+        let ipadBytes = Data("IPAD-NEW".utf8)
+        let tree = try Self.makeMultiScreenshotTree(entries: [
+            (device: "iphone-6.9", fileName: "01-home.png", bytes: iphoneBytes),
+            (device: "ipad-13", fileName: "01-home.png", bytes: ipadBytes),
+        ])
+        defer { try? FileManager.default.removeItem(at: tree) }
+
+        StubState.reset(with: [
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"ios-v","type":"appStoreVersions",
+            "attributes":{"versionString":"1.0","platform":"IOS",
+            "appStoreState":"PREPARE_FOR_SUBMISSION"}}],"links":{}}
+            """#),
+            StubResponse(status: 200, body: #"""
+            {"data":[{"id":"loc-en","type":"appStoreVersionLocalizations",
+            "attributes":{"locale":"en-US"}}],"links":{}}
+            """#),
+            // Both sets need a re-upload: ipad's file is non-COMPLETE, iPhone's
+            // is a checksum drift.
+            StubResponse(status: 200, body: #"""
+            {"data":[
+              {"id":"set-iphone","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-iphone-old","type":"appScreenshots"}]}}},
+              {"id":"set-ipad","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPAD_PRO_3GEN_129"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-ipad-old","type":"appScreenshots"}]}}}
+            ],
+            "included":[
+              {"id":"shot-iphone-old","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","sourceFileChecksum":"stale-checksum",
+               "assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-ipad-old","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"AWAITING_UPLOAD"}}}
+            ],
+            "links":{}}
+            """#),
+            // `ScreenshotDiscovery.discover` sorts by (device, fileName);
+            // "ipad-13" sorts before "iphone-6.9" → ipad's asset first.
+            StubResponse(status: 204, body: ""),  // DELETE the stale ipad shot
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-ipad-new", putURL: "https://assets.apple.example/u/ipad2", byteLen: ipadBytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk (ipad)
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-ipad-new","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+            StubResponse(status: 204, body: ""),  // DELETE the drifted iphone shot
+            StubResponse(status: 201, body: Self.reservationBody(
+                id: "shot-iphone-new", putURL: "https://assets.apple.example/u/iphone2", byteLen: iphoneBytes.count
+            )),
+            StubResponse(status: 200, body: ""),  // PUT chunk (iphone)
+            StubResponse(status: 200, body: #"""
+            {"data":{"id":"shot-iphone-new","type":"appScreenshots",
+            "attributes":{"assetDeliveryState":{"state":"COMPLETE"}}}}
+            """#),
+            // ONE post-loop re-GET covers both sets.
+            StubResponse(status: 200, body: #"""
+            {"data":[
+              {"id":"set-iphone","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPHONE_67"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-iphone-new","type":"appScreenshots"}]}}},
+              {"id":"set-ipad","type":"appScreenshotSets",
+               "attributes":{"screenshotDisplayType":"APP_IPAD_PRO_3GEN_129"},
+               "relationships":{"appScreenshots":{"data":[{"id":"shot-ipad-new","type":"appScreenshots"}]}}}
+            ],
+            "included":[
+              {"id":"shot-iphone-new","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}},
+              {"id":"shot-ipad-new","type":"appScreenshots",
+               "attributes":{"fileName":"01-home.png","assetDeliveryState":{"state":"COMPLETE"}}}
+            ],
+            "links":{}}
+            """#),
+            // Sorted display-type order: APP_IPAD_PRO_3GEN_129 < APP_IPHONE_67.
+            StubResponse(status: 204, body: ""),  // PATCH relationships — set-ipad
+            StubResponse(status: 204, body: ""),  // PATCH relationships — set-iphone
+        ])
+
+        let client = Self.makeClient()
+        let assets = ScreenshotDiscovery.discover(
+            screenshotsDir: tree.path, app: "sudoku", platform: .ios, localeFilter: "en"
+        )
+        #expect(assets.count == 2)
+        try await ASCRegisterCLI.uploadScreenshots(
+            client: client, appId: "app-1", ascLocale: "en-US",
+            platform: .ios, assets: assets, apply: true
+        )
+
+        let reqs = StubState.recordedRequests()
+        #expect(reqs.map(\.method) == [
+            "GET", "GET", "GET",
+            "DELETE", "POST", "PUT", "PATCH",  // ipad evict + re-upload
+            "DELETE", "POST", "PUT", "PATCH",  // iphone evict + re-upload
+            "GET",                             // post-loop refresh
+            "PATCH", "PATCH",                  // reorder: set-ipad, then set-iphone
+        ])
+        let reorderReqs = reqs.filter { $0.url.contains("/relationships/appScreenshots") }
+        #expect(reorderReqs.count == 2)
+        #expect(reorderReqs[0].url.hasSuffix("/v1/appScreenshotSets/set-ipad/relationships/appScreenshots"))
+        #expect(reorderReqs[1].url.hasSuffix("/v1/appScreenshotSets/set-iphone/relationships/appScreenshots"))
+        // Each reorder PATCH carries ONLY its own set's freshly-uploaded id —
+        // not the other set's, and not both sets merged into one array.
+        let ipadBody = try #require(try JSONSerialization.jsonObject(with: reorderReqs[0].body) as? [String: Any])
+        let ipadData = try #require(ipadBody["data"] as? [[String: Any]])
+        #expect(ipadData.map { $0["id"] as? String } == ["shot-ipad-new"])
+        let iphoneBody = try #require(try JSONSerialization.jsonObject(with: reorderReqs[1].body) as? [String: Any])
+        let iphoneData = try #require(iphoneBody["data"] as? [[String: Any]])
+        #expect(iphoneData.map { $0["id"] as? String } == ["shot-iphone-new"])
     }
 
     // MARK: - IAP review screenshot upload (reserve → PUT → commit, #911)
