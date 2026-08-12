@@ -130,22 +130,22 @@ extension MinesweeperAppComposition {
             homeModes: [
                 .daily: HomeModeContent(subtitleKey: "3 boards today", route: .daily),
                 .practice: HomeModeContent(subtitleKey: "All difficulties", route: .practice),
-                // #983: Leaderboard is now a real push to the shared Daily
-                // Rank screen instead of a `presentLeaderboard` side-effect
-                // — subtitle changes from "Best times" to "Global / friends"
-                // (matching Sudoku's, which already said this) since the
-                // World/Friends toggle now actually lives on the pushed
-                // screen. `GameCenterDashboard.present()` moved to a
-                // secondary button ON that screen (see `LiveRouteFactory`'s
-                // `.dailyRank` case).
-                .leaderboard: HomeModeContent(subtitleKey: "Global / friends", route: .dailyRank),
+                // Leaderboard has no route — `GameHomeViewModel.select` falls
+                // back to the `presentLeaderboard` side-effect below, which
+                // presents Apple's native Game Center dashboard (its own
+                // global/friends toggle is why the subtitle reads that way,
+                // matching Sudoku's). #983 briefly routed this to an
+                // app-owned Daily Rank screen; that direction was reverted
+                // (see #983 follow-up).
+                .leaderboard: HomeModeContent(subtitleKey: "Global / friends"),
                 .settings: HomeModeContent(subtitleKey: "Purchases / about", route: .settings)
             ],
             // MS Game Center dashboard presenter. Injected here (not inside
-            // GameAppKit) so GameAppKit stays free of the GK dependency. No
-            // longer reachable from the Home card (see `homeModes` above), but
-            // kept wired for API stability — `GameHomeViewModel.select` only
-            // calls it for a mode with `route == nil`, which no mode has now.
+            // GameAppKit) so GameAppKit stays free of the GK dependency.
+            // `GameHomeViewModel.select` calls this for any mode with
+            // `route == nil` — Leaderboard (see `homeModes` above) is the
+            // only one, so tapping the Leaderboard card opens Apple's native
+            // Game Center dashboard directly.
             presentLeaderboard: { GameCenterDashboard.present() },
             // #773: Home's Statistics entry pushes this route.
             statsRoute: .stats,
@@ -297,9 +297,9 @@ extension MinesweeperAppComposition {
             // #699 scoped MS OUT of (see `telemetry` field's doc comment).
             // #773: also fans out the Statistics screen-viewed event.
             telemetry: deps.telemetry,
-            // #983: `.dailyRank`'s `DailyRankViewModel` starts from whatever
-            // `authState` bootstrap already resolved, instead of redundantly
-            // re-running `authenticate()`. Mirrors Sudoku's `makeRouteFactory`.
+            // Dormant since the #983 follow-up removed its only reader (the
+            // reverted `.dailyRank` route) — see `LiveRouteFactory`'s
+            // `currentAuthState` doc comment. Mirrors Sudoku's `makeRouteFactory`.
             currentAuthState: { [rootViewModel] in rootViewModel.authState }
         )
     }

@@ -53,9 +53,8 @@ private func makeMSHomeViewModels() -> (
 private let minesweeperHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
     .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
     .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
-    // #983: was subtitleKey "Best times" / no route (GC-dashboard side-effect)
-    // — now a real push to the shared Daily Rank screen, matching Live.swift.
-    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends", route: .dailyRank),
+    // No route — the GC-dashboard side-effect, matching Live.swift.
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends"),
     .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
 ]
 

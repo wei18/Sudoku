@@ -10,12 +10,10 @@
 // #513: signed-out GC leaderboard behaviour preserved — alert flag lives on the
 // stable `GameRootViewModel.showGameCenterSignedOutAlert` (not a transient VM).
 //
-// #983: Leaderboard is no longer a `presentLeaderboard` side-effect gated by
-// `presentGameCenterOrAlert` — it now has a route (`.dailyRank`) like every
-// other mode, so `GameHomeViewModel.select` pushes it unconditionally
-// (`homeModes[mode]?.route != nil` short-circuits before the alert-gate
-// branch). The not-signed-in explainer moved INSIDE `DailyRankView` (state 1
-// of the #983 spec) instead of gating the Home tap itself.
+// #983 briefly gave Leaderboard a route (`.dailyRank`) so every mode-card tap
+// pushed unconditionally; that direction was reverted (see #983 follow-up).
+// Leaderboard is back to a `presentLeaderboard` side-effect gated by
+// `GameRootViewModel.presentGameCenterOrAlert` — no route, no push.
 
 import GameAppKit
 import GameCenterClient
@@ -31,15 +29,18 @@ import Testing
 private let minesweeperHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
     .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
     .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
-    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends", route: .dailyRank),
+    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends"),
     .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
 ]
 
-/// Build VMs with a given auth state.
+/// Build VMs with a given auth state. `leaderboardPresented()` reports
+/// whether the injected `presentLeaderboard` side-effect fired, so the
+/// leaderboard matrix can assert the real dashboard presenter ran
+/// (authenticated) or didn't (every other auth state).
 @MainActor
 private func makeVMs(
     authResult: Result<GameCenterAuthState, GameCenterError>? = nil
-) async -> (rootVM: MinesweeperRootViewModel, homeVM: GameHomeViewModel<AppRoute>) {
+) async -> (rootVM: MinesweeperRootViewModel, homeVM: GameHomeViewModel<AppRoute>, leaderboardPresented: () -> Bool) {
     let gameCenter = FakeGameCenterClient()
     if let result = authResult {
         await gameCenter.setAuthResult(result)
@@ -51,14 +52,15 @@ private func makeVMs(
     if authResult != nil {
         await rootVM.bootstrap()
     }
+    var didPresentLeaderboard = false
     let homeVM = GameHomeViewModel<AppRoute>(
         rootViewModel: rootVM,
         homeModes: minesweeperHomeModes,
-        presentLeaderboard: { GameCenterDashboard.present(leaderboardId: nil) },
+        presentLeaderboard: { didPresentLeaderboard = true },
         // #773: mirrors MinesweeperAppComposition.live()'s statsRoute.
         statsRoute: .stats
     )
-    return (rootVM, homeVM)
+    return (rootVM, homeVM, { didPresentLeaderboard })
 }
 
 @MainActor
@@ -66,65 +68,65 @@ private func makeVMs(
 struct MinesweeperHomeViewModelTests {
 
     @Test func selectDailyPushesDailyRoute() async {
-        let (rootVM, homeVM) = await makeVMs()
+        let (rootVM, homeVM, _) = await makeVMs()
         homeVM.select(.daily)
         #expect(rootVM.path == [.daily])
     }
 
     @Test func selectPracticePushesPracticeRoute() async {
-        let (rootVM, homeVM) = await makeVMs()
+        let (rootVM, homeVM, _) = await makeVMs()
         homeVM.select(.practice)
         #expect(rootVM.path == [.practice])
     }
 
     @Test func selectSettingsPushesSettingsRoute() async {
-        let (rootVM, homeVM) = await makeVMs()
+        let (rootVM, homeVM, _) = await makeVMs()
         homeVM.select(.settings)
         #expect(rootVM.path == [.settings])
     }
 
     // #773: the secondary-weight Statistics entry pushes `.stats`.
     @Test func selectStatsPushesStatsRoute() async {
-        let (rootVM, homeVM) = await makeVMs()
+        let (rootVM, homeVM, _) = await makeVMs()
         #expect(homeVM.showsStatsEntry)
         homeVM.selectStats()
         #expect(rootVM.path == [.stats])
     }
 
-    // #983: Leaderboard now pushes the shared Daily Rank screen like every
-    // other mode (was a `presentLeaderboard` GC-dashboard side-effect, #291 / #49).
-    @Test func selectLeaderboardPushesDailyRankRoute() async {
-        let (rootVM, homeVM) = await makeVMs()
+    // MARK: - #513: Leaderboard is a side-effect, not a route
+
+    @Test func selectLeaderboardWhenUnknownSetsAlertFlag() async {
+        // No bootstrap — authState stays .unknown (the default).
+        let (rootVM, homeVM, leaderboardPresented) = await makeVMs()
         homeVM.select(.leaderboard)
-        #expect(rootVM.path == [.dailyRank])
+        #expect(rootVM.showGameCenterSignedOutAlert == true)
+        #expect(rootVM.path.isEmpty)
+        #expect(leaderboardPresented() == false)
     }
 
-    // MARK: - #513/#983: Leaderboard push is unconditional (no signed-out gate)
-
-    // #983: the route push is unconditional regardless of auth state — the
-    // not-signed-in explainer lives INSIDE `DailyRankView` now, so the Home
-    // tap itself never raises `showGameCenterSignedOutAlert` for Leaderboard.
-    @Test func selectLeaderboardWhenUnauthenticatedStillPushesRoute() async {
-        let (rootVM, homeVM) = await makeVMs(
+    @Test func selectLeaderboardWhenUnauthenticatedSetsAlertFlag() async {
+        let (rootVM, homeVM, leaderboardPresented) = await makeVMs(
             authResult: .failure(.notAuthenticated)
         )
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == false)
-        #expect(rootVM.path == [.dailyRank])
+        #expect(rootVM.showGameCenterSignedOutAlert == true)
+        #expect(rootVM.path.isEmpty, "unauthenticated leaderboard tap must not push a route")
+        #expect(leaderboardPresented() == false)
     }
 
-    @Test func selectLeaderboardWhenAuthenticatedPushesRoute() async {
+    @Test func selectLeaderboardWhenAuthenticatedPresentsLeaderboard() async {
         let player = PlayerSummary(teamPlayerId: "P001", displayName: "Sweeper")
-        let (rootVM, homeVM) = await makeVMs(
+        let (rootVM, homeVM, leaderboardPresented) = await makeVMs(
             authResult: .success(.authenticated(player))
         )
         homeVM.select(.leaderboard)
-        #expect(rootVM.showGameCenterSignedOutAlert == false)
-        #expect(rootVM.path == [.dailyRank])
+        #expect(rootVM.showGameCenterSignedOutAlert == false, "alert must not show when authenticated")
+        #expect(rootVM.path.isEmpty, "leaderboard never pushes a route")
+        #expect(leaderboardPresented() == true, "authenticated tap must present the native GC dashboard")
     }
 
     @Test func sequentialSelectionsAppendInOrder() async {
-        let (rootVM, homeVM) = await makeVMs()
+        let (rootVM, homeVM, _) = await makeVMs()
         homeVM.select(.daily)
         homeVM.select(.practice)
         homeVM.select(.settings)
@@ -143,7 +145,7 @@ struct MinesweeperHomeViewModelTests {
 
     // #410: the Home mode-items list carries no New Game entry.
     @Test func modeItemsHaveNoNewGameEntry() async {
-        let (_, homeVM) = await makeVMs()
+        let (_, homeVM, _) = await makeVMs()
         let ids = homeVM.modeItems.map(\.id)
         #expect(ids == ["daily", "practice", "leaderboard", "settings"])
         #expect(!ids.contains("newGame"))
