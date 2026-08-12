@@ -1,0 +1,12 @@
+# Fixture app-meta.yaml owned by MetadataConfigLoadTests (issue #1004).
+# Minimal — only exists so MetadataConfig.load(app: .sudoku, ...) finds a
+# valid subtree to pair with the listing.yaml block-scalar fixture next to
+# it. Not shipping copy; do not treat as a template for real app-meta.yaml.
+app: sudoku
+apple_id: null
+primary_category: null
+primary_first_sub_category: null
+primary_second_sub_category: null
+secondary_category: null
+secondary_first_sub_category: null
+secondary_second_sub_category: null

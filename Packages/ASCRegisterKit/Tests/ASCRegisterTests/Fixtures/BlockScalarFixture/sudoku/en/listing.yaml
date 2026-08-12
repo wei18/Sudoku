@@ -1,0 +1,27 @@
+# Fixture listing.yaml owned by MetadataConfigLoadTests (issue #1004).
+# Exercises the two block-scalar forms the real app-meta.yaml/listing.yaml
+# files actually use (inventoried 2026-08-12):
+#   - `|-` (literal, strip chomping)  — description/whats_new/promotional_text
+#     in every listing.yaml.
+#   - `|`  (literal, clip chomping)   — review_information.notes_summary /
+#     review_notes in app-meta.yaml and iap/*.yaml.
+# No `>` folded scalars or explicit indentation indicators appear anywhere
+# in docs/app-store/metadata, so this fixture does not invent coverage for
+# forms production never uses.
+locale: en
+name: "Fixture Listing"
+subtitle: "Fixture Subtitle"
+description: |-
+  Paragraph one line A.
+  Paragraph one line B.
+
+  Paragraph two, single line.
+
+  Paragraph three.
+promotional_text: |
+  Promo line one.
+
+  Promo line two.
+
+
+keywords: "fixture,test"
