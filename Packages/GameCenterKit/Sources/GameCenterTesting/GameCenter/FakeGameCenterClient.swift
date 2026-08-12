@@ -41,6 +41,14 @@ public actor FakeGameCenterClient: GameCenterClient {
     public var reportAchievementError: GameCenterError?
     public var fetchLeaderboardSliceError: GameCenterError?
 
+    /// Overrides for the `aroundLocalPlayer: true` ("own rank") fetch only —
+    /// e.g. `DailyRankViewModel`'s second, player-centred lookup when the
+    /// local player isn't in the top slice. `nil` (the default) falls back to
+    /// `leaderboardSlice` / `fetchLeaderboardSliceError` exactly as before,
+    /// so every existing caller that only scripts those two is unaffected.
+    public var ownRankSlice: LeaderboardSlice?
+    public var ownRankError: GameCenterError?
+
     private var authContinuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
 
     public init() {}
@@ -73,6 +81,14 @@ public actor FakeGameCenterClient: GameCenterClient {
 
     public func setFetchLeaderboardSliceError(_ error: GameCenterError?) {
         self.fetchLeaderboardSliceError = error
+    }
+
+    public func setOwnRankSlice(_ slice: LeaderboardSlice?) {
+        self.ownRankSlice = slice
+    }
+
+    public func setOwnRankError(_ error: GameCenterError?) {
+        self.ownRankError = error
     }
 
     /// Push an auth state into every active `authStateUpdates()` consumer.
@@ -150,6 +166,10 @@ public actor FakeGameCenterClient: GameCenterClient {
             aroundLocalPlayer: aroundLocalPlayer,
             limit: limit
         ))
+        if aroundLocalPlayer {
+            if let error = ownRankError { throw error }
+            if let slice = ownRankSlice { return slice }
+        }
         if let error = fetchLeaderboardSliceError { throw error }
         return leaderboardSlice
     }
