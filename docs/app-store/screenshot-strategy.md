@@ -465,7 +465,9 @@ gets fooled by both). `build_asc_image()` (portrait iPhone/iPad only;
   every slot already used — a legitimate "thinner decorative gutter, more
   real panel" gain, not a new kind of upscale.
 - **crop_all_sides slots (`04-completion`, `02b-rank`) top-anchored
-  instead of centered.** The #984 completion-card crop already capped its
+  instead of centered.** (`02b-rank` has since been removed with the
+  native-Game-Center revert; `crop_all_sides` is now `{"04-completion"}`.
+  The measurements below are the record of this pass as it ran.) The #984 completion-card crop already capped its
   own scale at `min(1.0, screen_w / content_w)` (never upscale past
   1:1) — correct and untouched. The bug was *positioning*: it centered the
   resulting small card in the leftover canvas below the copy block
@@ -498,7 +500,8 @@ have gamed the row-scan metric without fixing the underlying perception.
 
 Before/after panel-fill (`en`, full table across every portrait slot/
 device/app in the PR body) — the crop_all_sides gap fix alone dropped
-`04-completion`/`02b-rank` gap-above from 40-53% to a consistent 20-30%
+`04-completion`/`02b-rank` (the latter since removed) gap-above from
+40-53% to a consistent 20-30%
 band matching every other slot; panel-fill on the width-fill slots moved
 up 1-3 points from the margin trim (e.g. Sudoku iPhone `01-home`
 47.1%→48.8%, `03-board` 76.6%→79.2%).
