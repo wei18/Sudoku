@@ -450,55 +450,6 @@ to the same slot's COPY subhead). `PENDING_TRANSLATION_SLOTS` in
 `build-ascspec-screenshots.py` is the hold-back gate for any future rewrite;
 it is empty when, and only when, every table is fully translated.
 
-## Daily Rank slot — `02b-rank` (marketing payoff of #983; composition follow-ups #995)
-
-A 6th slot, `02b-rank`, makes the shared Daily Rank screen (#989 —
-difficulty tabs, World/Friends scope toggle, "TOP RANKED" list with a "You"
-highlight row) visible in the store carousel. Currently **en-only**,
-registered in `PENDING_TRANSLATION_SLOTS` pending Leader approval + an
-`ai-translated-localization` pass.
-
-- **Slot ordering.** Named `02b-rank` (not `06-*`) so it sorts right after
-  `02-daily` and before `03-board` in both Python string ordering and the
-  ASC upload tool's filename ordering (`"02-daily" < "02b-rank" <
-  "03-board"`) — inserted without renaming any existing slot, which would
-  otherwise force a full re-upload of every locale.
-- **Devices.** `iphone-6.9` and `mac` use native DailyRank baselines.
-  `ipad-13` has no dedicated DailyRank snapshot baseline (#989 only rendered
-  iPhone + Mac fixtures) — it reuses the iPhone baseline directly (`Slot`
-  resolution is device-key-independent). This slot renders in
-  `crop_all_sides` mode at capped (never-upscale-past-1:1) scale, so unlike
-  every other iPhone slot's width-fill upscale, the iPad frame does not get
-  blown up further — it centers the same native-resolution card smaller in
-  the wider canvas.
-- **Marketing fixture.** The original 3-row `populated` snapshot fixture
-  (used for regression coverage) crops to a mostly-empty panel once the
-  dead space before the persistent "Open Game Center" button is excluded —
-  this pipeline's most-repeated defect class. Fixed at the source, not in
-  the compositor: `DailyRankViewTests.swift` (both packages) gained a
-  second fixture, `populatedFull` (10 ranked entries, local player mid-list
-  at rank 5), used only for this ASC slot. The original 3-entry fixture is
-  untouched — it stays a regression test. `IOS_GAP_TRIM`/`MAC_GAP_TRIM`
-  (`y_gap_threshold=100`) trim the crop to the tab bar + toggle + all 10
-  rows, excluding the dead middle and the button below it, same mechanism
-  #984's `04-completion` crop already established.
-- **No Direction-B callout.** The 10-row list is dense and evenly spaced —
-  any anchor point sits on a rank row, and every candidate label restates
-  what the subhead already says. Skipped by design (a clean cropped frame
-  beats a decorated one), not an oversight.
-- **Truthfulness.** Every claim is either visible in the frame (World AND
-  Friends toggle tabs, numbered daily ranks, per-row time, the "You"
-  highlight) or a plain outcome statement ("every day" mirrors the screen's
-  own daily reset). No claim of "seeing all friends' scores" — the
-  captured tab is World, so copy only claims the toggle exists.
-
-### `en` copy (pending translation)
-
-| App | Headline | Subhead |
-|---|---|---|
-| Sudoku | World and Friends, every day. | See exactly where you land — daily rank, your time, right there. |
-| Minesweeper | World and Friends, every day. | See exactly where you land — daily rank, your solve time, right there. |
-
 ## Portrait panel-fill + gap-consistency pass (#985, picks up the #995 icon drift)
 
 The ASO audit's biggest conversion-lever finding: every portrait frame read
@@ -514,7 +465,9 @@ gets fooled by both). `build_asc_image()` (portrait iPhone/iPad only;
   every slot already used — a legitimate "thinner decorative gutter, more
   real panel" gain, not a new kind of upscale.
 - **crop_all_sides slots (`04-completion`, `02b-rank`) top-anchored
-  instead of centered.** The #984 completion-card crop already capped its
+  instead of centered.** (`02b-rank` has since been removed with the
+  native-Game-Center revert; `crop_all_sides` is now `{"04-completion"}`.
+  The measurements below are the record of this pass as it ran.) The #984 completion-card crop already capped its
   own scale at `min(1.0, screen_w / content_w)` (never upscale past
   1:1) — correct and untouched. The bug was *positioning*: it centered the
   resulting small card in the leftover canvas below the copy block
@@ -547,7 +500,8 @@ have gamed the row-scan metric without fixing the underlying perception.
 
 Before/after panel-fill (`en`, full table across every portrait slot/
 device/app in the PR body) — the crop_all_sides gap fix alone dropped
-`04-completion`/`02b-rank` gap-above from 40-53% to a consistent 20-30%
+`04-completion`/`02b-rank` (the latter since removed) gap-above from
+40-53% to a consistent 20-30%
 band matching every other slot; panel-fill on the width-fill slots moved
 up 1-3 points from the margin trim (e.g. Sudoku iPhone `01-home`
 47.1%→48.8%, `03-board` 76.6%→79.2%).

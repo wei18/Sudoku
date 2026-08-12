@@ -67,10 +67,12 @@ let testTargets: [Target] = [
         name: "GameAppKitTests",
         dependencies: [
             "GameAppKit",
+            // GameCenterClient only — the protocol, for the inline test doubles
+            // in GameRootViewModel*/TerminalPersistJoin/UITestSignedOut tests.
+            // GameCenterTesting was dropped with the Daily Rank removal: its
+            // only consumers here were DailyRankViewModelTests and
+            // GatedLeaderboardGameCenter, both deleted.
             .product(name: "GameCenterClient", package: "GameCenterKit"),
-            // #983: FakeGameCenterClient for DailyRankViewModelTests — the
-            // same fake seam SudokuUITests / MinesweeperUITests use.
-            .product(name: "GameCenterTesting", package: "GameCenterKit"),
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
             // SudokuEngine for the `Mode` / `Difficulty` value types needed to

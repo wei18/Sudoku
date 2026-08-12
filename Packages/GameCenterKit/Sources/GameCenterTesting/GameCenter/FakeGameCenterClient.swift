@@ -42,8 +42,8 @@ public actor FakeGameCenterClient: GameCenterClient {
     public var fetchLeaderboardSliceError: GameCenterError?
 
     /// Overrides for the `aroundLocalPlayer: true` ("own rank") fetch only —
-    /// e.g. `DailyRankViewModel`'s second, player-centred lookup when the
-    /// local player isn't in the top slice. `nil` (the default) falls back to
+    /// e.g. a player-centred second lookup when the local player isn't in the
+    /// top slice. `nil` (the default) falls back to
     /// `leaderboardSlice` / `fetchLeaderboardSliceError` exactly as before,
     /// so every existing caller that only scripts those two is unaffected.
     public var ownRankSlice: LeaderboardSlice?

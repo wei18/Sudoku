@@ -6,13 +6,13 @@
 // `NavigationStack(path:)` and be serialized for deep-link round-tripping.
 //
 // Issue #49 (2026-05-20): the `.leaderboard(leaderboardId:)` case was
-// removed. The full leaderboard dashboard was Apple's native Game Center
+// removed. The full leaderboard dashboard is Apple's native Game Center
 // UI, presented as a modal via `GameCenterDashboard.present(leaderboardId:)`.
-//
-// #983: `.dailyRank` reintroduces a leaderboard destination, but as a real
-// in-app push (not a re-add of #49's removed case) — the shared
-// `GameAppKit.DailyRankView` screen. `GameCenterDashboard.present()` stays
-// reachable from a secondary button ON that screen, not from the Home card.
+// #983 briefly reintroduced an in-app push destination (`.dailyRank`) backed
+// by a custom `GameAppKit.DailyRankView` screen; that direction was reverted
+// (see #983 follow-up) because the Friends tab it depended on was never
+// wired to GameKit. The Home Leaderboard card presents Apple's dashboard
+// directly again — there is no route for it.
 
 import Foundation
 
@@ -27,7 +27,4 @@ public enum AppRoute: Hashable, Sendable, Codable {
     // secondary-weight entry below the four mode cards — deliberately NOT a
     // `HomeMode` case (owner adjudication: must not compete with the cards).
     case stats
-    // #983: the shared Daily Rank screen, pushed from the Home Leaderboard
-    // card (see `SudokuAppComposition/Live.swift`'s `homeModes[.leaderboard]`).
-    case dailyRank
 }

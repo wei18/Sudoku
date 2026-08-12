@@ -26,14 +26,11 @@
 No account or login is required. The app runs fully on first launch.
 
 WHAT MAKES THIS APP DIFFERENT
-An app-owned Daily Rank screen (Home → Leaderboard card, new in this build)
-shows World and Friends daily rankings per difficulty — not just a link out
-to Apple's Game Center sheet. Daily puzzles are identical for every player
-worldwide with one scoring attempt each (deterministic generation, UTC
-rollover), so the leaderboard stays fair. The macOS build is a native
-SwiftUI app, not a Mac Catalyst wrapper. All UI text ships in 7 full
-localizations. Ads are banner-only — no interstitials — with a one-time
-Remove Ads unlock.
+Daily puzzles are identical for every player worldwide with one scoring
+attempt each (deterministic generation, UTC rollover), so the Game Center
+leaderboards stay fair. The macOS build is a native SwiftUI app, not a Mac
+Catalyst wrapper. All UI text ships in 7 full localizations. Ads are
+banner-only — no interstitials — with a one-time Remove Ads unlock.
 
 PLATFORM DIFFERENCES (IF REVIEWING THE MAC BUILD)
 The macOS build ships NO advertising: AdMob/UMP have no macOS slice, so no
@@ -60,16 +57,13 @@ completions intentionally do not submit to the leaderboard.
 GAME CENTER
 Three daily leaderboards (recurring, 00:00 UTC reset, one scoring attempt
 per puzzle) and eleven achievements. Sign-in is optional; gameplay works
-fully signed-out. The Daily Rank screen (Home → Leaderboard card) is
-app-owned: per-difficulty tabs crossed with a World/Friends toggle, today's
-top players, and a separate "Your Rank" row when the local player falls
-outside that slice. An "Open Game Center" button reaches Apple's full
-dashboard (hidden when signed out, where the system sheet cannot present).
-No state is a dead end: signed-out shows a Sign-In explainer, missing
-friends permission shows "Allow Friends Access", a network failure shows
-Retry, and an empty board shows "No Rankings Yet".
+fully signed-out. The Home screen's Leaderboard card opens Apple's native
+Game Center dashboard directly (GKAccessPoint / GKGameCenterViewController)
+— scope toggle, time-range filter, player profile drill-through and the
+sign-in affordance are all Apple's own UI, not app-owned.
 To test: sign in to Game Center (Sandbox Apple Account) → play a Daily
-puzzle → Home → Leaderboard → toggle World and Friends across the tabs.
+puzzle → Home → Leaderboard → confirm the puzzle's score appears in
+Apple's dashboard.
 
 RESUME & ICLOUD
 Progress auto-saves; Home shows a one-tap Resume pill. Saves, statistics
