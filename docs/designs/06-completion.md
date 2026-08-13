@@ -9,7 +9,8 @@
 > superseded by the shared in-board `CompletionOverlayScaffold` (#664/#669) —
 > completion is no longer its own modal/sheet presentation, and the
 > leaderboard slice it describes is not rendered (`state: .hidden`, #468 open
-> question); and **§d/§f's "Play again" pushing a new `BoardView`** is
+> question — since resolved: the slice chain was fully removed 2026-08-13,
+> #1010, see §a); and **§d/§f's "Play again" pushing a new `BoardView`** is
 > superseded by #652's Play Again CTA, which presents a fresh board modally
 > via `GameRootViewModel.presentGame(route:)` rather than pushing.
 
