@@ -14,9 +14,6 @@ public enum FakeGameCenterOperation: Sendable, Equatable, Hashable {
     case submitScore(puzzleId: String, elapsedSeconds: Int, leaderboardKind: LeaderboardKind)
     case submitRawScore(leaderboardId: String, elapsedSeconds: Int)
     case reportAchievement(achievementId: String, percentComplete: Double)
-    case fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, aroundLocalPlayer: Bool, limit: Int)
-    case friendsAuthorizationStatus
-    case requestFriendsAuthorization
 }
 
 public actor FakeGameCenterClient: GameCenterClient {
@@ -28,26 +25,8 @@ public actor FakeGameCenterClient: GameCenterClient {
     public var authResult: Result<GameCenterAuthState, GameCenterError> = .success(
         .authenticated(PlayerSummary(teamPlayerId: "P0001", displayName: "TestPlayer"))
     )
-    public var friendsStatus: FriendsAuthStatus = .authorized
-    public var requestFriendsResult: Result<FriendsAuthStatus, GameCenterError> = .success(.authorized)
-    public var leaderboardSlice: LeaderboardSlice = LeaderboardSlice(
-        leaderboardId: "",
-        scope: .globalAllTime,
-        entries: [],
-        totalPlayerCount: 0,
-        fetchedAt: Date(timeIntervalSince1970: 0)
-    )
     public var submitScoreError: GameCenterError?
     public var reportAchievementError: GameCenterError?
-    public var fetchLeaderboardSliceError: GameCenterError?
-
-    /// Overrides for the `aroundLocalPlayer: true` ("own rank") fetch only —
-    /// e.g. a player-centred second lookup when the local player isn't in the
-    /// top slice. `nil` (the default) falls back to
-    /// `leaderboardSlice` / `fetchLeaderboardSliceError` exactly as before,
-    /// so every existing caller that only scripts those two is unaffected.
-    public var ownRankSlice: LeaderboardSlice?
-    public var ownRankError: GameCenterError?
 
     private var authContinuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
 
@@ -59,36 +38,12 @@ public actor FakeGameCenterClient: GameCenterClient {
         self.authResult = result
     }
 
-    public func setFriendsStatus(_ status: FriendsAuthStatus) {
-        self.friendsStatus = status
-    }
-
-    public func setRequestFriendsResult(_ result: Result<FriendsAuthStatus, GameCenterError>) {
-        self.requestFriendsResult = result
-    }
-
-    public func setLeaderboardSlice(_ slice: LeaderboardSlice) {
-        self.leaderboardSlice = slice
-    }
-
     public func setSubmitScoreError(_ error: GameCenterError?) {
         self.submitScoreError = error
     }
 
     public func setReportAchievementError(_ error: GameCenterError?) {
         self.reportAchievementError = error
-    }
-
-    public func setFetchLeaderboardSliceError(_ error: GameCenterError?) {
-        self.fetchLeaderboardSliceError = error
-    }
-
-    public func setOwnRankSlice(_ slice: LeaderboardSlice?) {
-        self.ownRankSlice = slice
-    }
-
-    public func setOwnRankError(_ error: GameCenterError?) {
-        self.ownRankError = error
     }
 
     /// Push an auth state into every active `authStateUpdates()` consumer.
@@ -152,41 +107,5 @@ public actor FakeGameCenterClient: GameCenterClient {
             percentComplete: achievement.percentComplete
         ))
         if let error = reportAchievementError { throw error }
-    }
-
-    public func fetchLeaderboardSlice(
-        leaderboardId: String,
-        scope: LeaderboardScope,
-        aroundLocalPlayer: Bool,
-        limit: Int
-    ) async throws -> LeaderboardSlice {
-        operations.append(.fetchLeaderboardSlice(
-            leaderboardId: leaderboardId,
-            scope: scope,
-            aroundLocalPlayer: aroundLocalPlayer,
-            limit: limit
-        ))
-        if aroundLocalPlayer {
-            if let error = ownRankError { throw error }
-            if let slice = ownRankSlice { return slice }
-        }
-        if let error = fetchLeaderboardSliceError { throw error }
-        return leaderboardSlice
-    }
-
-    public func friendsAuthorizationStatus() async -> FriendsAuthStatus {
-        operations.append(.friendsAuthorizationStatus)
-        return friendsStatus
-    }
-
-    public func requestFriendsAuthorization() async throws -> FriendsAuthStatus {
-        operations.append(.requestFriendsAuthorization)
-        switch requestFriendsResult {
-        case .success(let status):
-            self.friendsStatus = status
-            return status
-        case .failure(let error):
-            throw error
-        }
     }
 }

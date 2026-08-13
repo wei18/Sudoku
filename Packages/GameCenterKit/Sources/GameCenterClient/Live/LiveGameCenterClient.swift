@@ -16,8 +16,7 @@
 // `GKLeaderboard.submitScore` / `GKAchievement.report` calls — #580,
 // device-verified); unit tests inject spies so the conversion + forwarding are
 // tested in isolation. See impl-notes
-// `meetings/2026-05-20_submit-score-centisecond.impl-notes.md`. `fetchLeaderboardSlice`
-// delegates to `LeaderboardSliceService` (+ `GKLeaderboardLoader`).
+// `meetings/2026-05-20_submit-score-centisecond.impl-notes.md`.
 
 internal import Foundation
 
@@ -46,7 +45,6 @@ public actor LiveGameCenterClient: GameCenterClient {
     private let authDriver: any AuthDriver
     private let submitScoreHook: SubmitScoreHook
     private let reportAchievementHook: ReportAchievementHook
-    private let leaderboardLoader: any LeaderboardLoader
     private var cachedState: GameCenterAuthState = .unknown
     private var continuations: [UUID: AsyncStream<GameCenterAuthState>.Continuation] = [:]
     private var observerTask: Task<Void, Never>?
@@ -54,13 +52,11 @@ public actor LiveGameCenterClient: GameCenterClient {
     public init(
         authDriver: any AuthDriver,
         submitScoreHook: @escaping SubmitScoreHook = { _, _ in },
-        reportAchievementHook: @escaping ReportAchievementHook = { _, _ in },
-        leaderboardLoader: any LeaderboardLoader = GKLeaderboardLoader()
+        reportAchievementHook: @escaping ReportAchievementHook = { _, _ in }
     ) {
         self.authDriver = authDriver
         self.submitScoreHook = submitScoreHook
         self.reportAchievementHook = reportAchievementHook
-        self.leaderboardLoader = leaderboardLoader
     }
 
     deinit {
@@ -188,39 +184,5 @@ public actor LiveGameCenterClient: GameCenterClient {
         // #580: forward to the GameKit reporter seam. The id is already
         // prefixed by GameCenterSink; percentComplete is GameKit's 0–100 scale.
         try await reportAchievementHook(achievement.achievementId, achievement.percentComplete)
-    }
-
-    public func fetchLeaderboardSlice(
-        leaderboardId: String,
-        scope: LeaderboardScope,
-        aroundLocalPlayer: Bool,
-        limit: Int
-    ) async throws -> LeaderboardSlice {
-        // Per §How.3.5: delegate the friends-auth precondition + load to
-        // LeaderboardSliceService. Closures hop back through self so the
-        // friends status reflects this actor's latest known state.
-        let loader = leaderboardLoader
-        return try await LeaderboardSliceService.fetch(
-            loader: loader,
-            friendsStatus: { [weak self] in
-                await self?.friendsAuthorizationStatus() ?? .notDetermined
-            },
-            requestFriendsAuthorization: { [weak self] in
-                guard let self else { return .notDetermined }
-                return try await self.requestFriendsAuthorization()
-            },
-            leaderboardId: leaderboardId,
-            scope: scope,
-            aroundLocalPlayer: aroundLocalPlayer,
-            limit: limit
-        )
-    }
-
-    public func friendsAuthorizationStatus() async -> FriendsAuthStatus {
-        .notDetermined
-    }
-
-    public func requestFriendsAuthorization() async throws -> FriendsAuthStatus {
-        throw GameCenterError.friendsAccessDenied
     }
 }

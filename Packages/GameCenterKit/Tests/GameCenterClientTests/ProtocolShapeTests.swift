@@ -19,23 +19,13 @@ struct GameCenterClientProtocolShapeTests {
         requireSendableEquatable(GameCenterAuthState.self)
         requireSendableEquatable(PlayerSummary.self)
         requireSendableEquatable(LeaderboardKind.self)
-        requireSendableEquatable(LeaderboardScope.self)
-        requireSendableEquatable(LeaderboardEntry.self)
-        requireSendableEquatable(LeaderboardSlice.self)
         requireSendableEquatable(AchievementProgress.self)
-        requireSendableEquatable(FriendsAuthStatus.self)
         requireSendableEquatable(GameCenterError.self)
     }
 
     @Test func leaderboardKindRoundTripsRawValue() throws {
         for kind in LeaderboardKind.allCases {
             #expect(LeaderboardKind(rawValue: kind.rawValue) == kind)
-        }
-    }
-
-    @Test func leaderboardScopeRoundTripsRawValue() throws {
-        for scope in LeaderboardScope.allCases {
-            #expect(LeaderboardScope(rawValue: scope.rawValue) == scope)
         }
     }
 

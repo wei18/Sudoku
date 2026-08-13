@@ -29,8 +29,6 @@
 //   GameCenterSink and SubmitGuards; they were Sudoku-specific, not part
 //   of this game-agnostic seam.
 
-public import Foundation
-
 public protocol GameCenterClient: Sendable {
     /// Run the GameKit authentication handshake exactly once per session.
     /// Returns the resulting auth state (including degraded states).
@@ -63,26 +61,6 @@ public protocol GameCenterClient: Sendable {
 
     /// Report a single achievement's progress percent (0...100).
     func reportAchievement(_ achievement: AchievementProgress) async throws
-
-    /// Fetch a leaderboard slice in the given scope. Set `aroundLocalPlayer`
-    /// to `true` to request a window centred on the local player's rank;
-    /// leave it `false` for "top of the world" requests. Only the local
-    /// player can be centred (see `LeaderboardLoader.loadSlice`); centring on
-    /// an arbitrary player is deferred to a friends-leaderboard feature.
-    func fetchLeaderboardSlice(
-        leaderboardId: String,
-        scope: LeaderboardScope,
-        aroundLocalPlayer: Bool,
-        limit: Int
-    ) async throws -> LeaderboardSlice
-
-    /// Current GameKit friends-list authorization status. Step 7.5
-    /// requires `.authorized` before issuing a `friendsAllTime` fetch.
-    func friendsAuthorizationStatus() async -> FriendsAuthStatus
-
-    /// Trigger the system friends-authorization prompt. The returned
-    /// status reflects the user's response.
-    func requestFriendsAuthorization() async throws -> FriendsAuthStatus
 }
 
 // MARK: - Value types
@@ -116,47 +94,6 @@ public enum LeaderboardKind: String, Sendable, Equatable, Hashable, Codable, Cas
     case dailyHard
 }
 
-public enum LeaderboardScope: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
-    case globalAllTime
-    case globalToday
-    case friendsAllTime
-}
-
-public struct LeaderboardEntry: Sendable, Equatable, Hashable, Codable {
-    public let rank: Int
-    public let player: PlayerSummary
-    /// Score in elapsed seconds. Lower = better (time-based leaderboard).
-    public let score: Int
-
-    public init(rank: Int, player: PlayerSummary, score: Int) {
-        self.rank = rank
-        self.player = player
-        self.score = score
-    }
-}
-
-public struct LeaderboardSlice: Sendable, Equatable, Hashable, Codable {
-    public let leaderboardId: String
-    public let scope: LeaderboardScope
-    public let entries: [LeaderboardEntry]
-    public let totalPlayerCount: Int
-    public let fetchedAt: Date
-
-    public init(
-        leaderboardId: String,
-        scope: LeaderboardScope,
-        entries: [LeaderboardEntry],
-        totalPlayerCount: Int,
-        fetchedAt: Date
-    ) {
-        self.leaderboardId = leaderboardId
-        self.scope = scope
-        self.entries = entries
-        self.totalPlayerCount = totalPlayerCount
-        self.fetchedAt = fetchedAt
-    }
-}
-
 public struct AchievementProgress: Sendable, Equatable, Hashable, Codable {
     /// Short stable id (e.g. `"first_puzzle"`). The GameKit prefix
     /// `com.wei18.sudoku.achievement.` is prepended at submit time.
@@ -170,19 +107,11 @@ public struct AchievementProgress: Sendable, Equatable, Hashable, Codable {
     }
 }
 
-public enum FriendsAuthStatus: String, Sendable, Equatable, Hashable, Codable, CaseIterable {
-    case notDetermined
-    case restricted
-    case denied
-    case authorized
-}
-
 public enum GameCenterError: Error, Sendable, Equatable {
     case notAuthenticated
     case cancelled
     case restricted
     case unavailableInRegion
-    case friendsAccessDenied
     case scoreSubmitFailed(reason: String)
     case achievementReportFailed(reason: String)
     case underlying(domain: String, code: Int, description: String)

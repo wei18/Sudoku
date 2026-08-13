@@ -16,7 +16,7 @@
 ## a. View identity
 
 - **Purpose**: Shown when a session reaches `completed`. Displays time, personal record delta, and a leaderboard slice (top + around-player). Modal.
-- **Triggers** (per §How.5.1): `GameCenterClient.fetchLeaderboardSlice(.globalTop)` + `.aroundPlayer` (Daily mode + authenticated only); `Persistence` to compute personal record delta.
+- **Triggers** (per §How.5.1): ~~`GameCenterClient.fetchLeaderboardSlice(.globalTop)` + `.aroundPlayer`~~ (Daily mode + authenticated only) — removed 2026-08-13, #1010 (zero production callers); `Persistence` to compute personal record delta.
 - **Presentation**: iPhone `.fullScreenCover`; Mac `.sheet`.
 - **States**:
   - `loading` — fetching leaderboard slice

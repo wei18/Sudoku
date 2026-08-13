@@ -77,11 +77,6 @@ private struct JoinTestGameCenter: GameCenterClient {
     func submitScore(puzzleId: String, elapsedSeconds: Int, leaderboardKind: LeaderboardKind) async throws {}
     func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}
     func reportAchievement(_ achievement: AchievementProgress) async throws {}
-    func fetchLeaderboardSlice(leaderboardId: String, scope: LeaderboardScope, aroundLocalPlayer: Bool, limit: Int) async throws -> LeaderboardSlice {
-        LeaderboardSlice(leaderboardId: leaderboardId, scope: scope, entries: [], totalPlayerCount: 0, fetchedAt: Date(timeIntervalSince1970: 0))
-    }
-    func friendsAuthorizationStatus() async -> FriendsAuthStatus { .notDetermined }
-    func requestFriendsAuthorization() async throws -> FriendsAuthStatus { .notDetermined }
 }
 
 // MARK: - TerminalPersistJoin (isolated)

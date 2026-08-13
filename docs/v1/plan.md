@@ -525,11 +525,14 @@ Implementation: `Sources/GameCenterClient/AchievementEvaluator.swift`: reads `Pe
 Acceptance: 5 green.
 Depends on: 7.3, Phase 5.
 
-### 7.5 `fetchLeaderboardSlice` (3 scopes) + friends auth precondition
+### 7.5 `fetchLeaderboardSlice` (3 scopes) + friends auth precondition — REMOVED 2026-08-13, #1010
 
-Tests:
+Whole dead leaderboard-slice chain (zero production callers after #1009) removed;
+this step's implementation + tests no longer exist. Kept here for history only.
+
+Tests (removed):
 - `LeaderboardSliceTests.swift`: `globalTopReturnsTopN`; `aroundPlayerSplitsAroundSelf`; `friendsOnlyRequiresAuthorization` (`.denied` throws `.friendsAccessDenied`); `notDeterminedTriggersRequest`; `cacheStaleAfter5min`.
-Implementation: `Sources/GameCenterClient/Leaderboard/Slice.swift`: wraps `GKLeaderboard.loadEntries`.
+Implementation (removed): `Sources/GameCenterClient/Leaderboard/Slice.swift`: wraps `GKLeaderboard.loadEntries`.
 Acceptance: 5 green.
 Depends on: 7.2.
 
