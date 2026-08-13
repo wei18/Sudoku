@@ -15,8 +15,8 @@ let swiftSettings: [SwiftSetting] = [
 // GameCenterKit is the fifth sibling local package extracted from SudokuKit
 // (Stage 3 of the staged module split — see docs/foundations.md §2 演進).
 //
-// Hosts the Game Center seam (LiveGameCenterClient, GKAuthDriver,
-// GKLeaderboardLoader). GameKit is guarded inside `Sources/.../Live/*.swift`
+// Hosts the Game Center seam (LiveGameCenterClient, GKAuthDriver).
+// GameKit is guarded inside `Sources/.../Live/*.swift`
 // via `#if canImport(GameKit)`, so the target compiles cross-platform
 // (iOS + macOS); the SPM target itself stays unconditional.
 //
@@ -57,9 +57,9 @@ let package = Package(
             ],
             swiftSettings: swiftSettings
         ),
-        // GameCenterTesting — FakeGameCenterClient + FakeLeaderboardLoader +
-        // FakeAuthDriver. Carved out of SudokuKitTesting/GameCenter/ on
-        // Stage 3 so consumers can pull only the GameCenter-shaped helpers.
+        // GameCenterTesting — FakeGameCenterClient + FakeAuthDriver. Carved
+        // out of SudokuKitTesting/GameCenter/ on Stage 3 so consumers can
+        // pull only the GameCenter-shaped helpers.
         .target(
             name: "GameCenterTesting",
             dependencies: [

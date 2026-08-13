@@ -31,23 +31,6 @@ struct UITestSignedOutGameCenterClientTests {
         #expect(sawValue == false)
     }
 
-    @Test func friendsAuthorizationStatusIsNotDetermined() async {
-        let fake = UITestSignedOutGameCenterClient()
-        let status = await fake.friendsAuthorizationStatus()
-        #expect(status == .notDetermined)
-    }
-
-    @Test func fetchLeaderboardSliceReturnsEmptySlice() async throws {
-        let fake = UITestSignedOutGameCenterClient()
-        let slice = try await fake.fetchLeaderboardSlice(
-            leaderboardId: "any.leaderboard",
-            scope: .globalAllTime,
-            aroundLocalPlayer: false,
-            limit: 10
-        )
-        #expect(slice.entries.isEmpty)
-        #expect(slice.leaderboardId == "any.leaderboard")
-    }
 }
 
 #endif

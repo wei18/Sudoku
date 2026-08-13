@@ -339,6 +339,13 @@ public protocol GameCenterClient: Sendable {
     /// 回報單一 achievement 進度（0...100）。
     func reportAchievement(_ achievement: AchievementProgress) async throws
 
+    // 以下 fetchLeaderboardSlice / friendsAuthorizationStatus /
+    // requestFriendsAuthorization 三個 method（連同 LeaderboardScope /
+    // LeaderboardEntry / LeaderboardSlice / FriendsAuthStatus /
+    // GameCenterError.friendsAccessDenied）已於 2026-08-13 整條死鏈移除
+    // （零 production caller，issue #1010）；下方為移除前的歷史設計，
+    // 不再對應目前 source。
+
     /// 拉 leaderboard slice。`around` 為 nil → 該 scope 的 top-of-world；
     /// 帶 player ID → 以該玩家為中心 ±`limit/2` 視窗。
     ///
@@ -440,7 +447,7 @@ public enum GameCenterError: Error, Sendable, Equatable {
 - `submitScore` 接 `puzzleId` + `difficulty` + `LeaderboardKind`、不接組好的 leaderboard ID — `.v1` suffix 邏輯收斂在 `LeaderboardIDs`，避免 VM 重複組 ID。
 - `PlayerSummary.teamPlayerId` 對應 `GKPlayer.gamePlayerID`；命名上去除 GameKit 字眼。
 - `LeaderboardEntry.score` 為「已耗秒數」（lower = better）；UI 顯示用的 `mm:ss.SS` 字串由 §How.3.1 formatter 在呈現層生成（不污染 transport 型別）。
-- `LeaderboardScope` 只有 3 個 case；「我的鄰近」窗格透過 `fetchLeaderboardSlice` 的 `around player:` 參數表達，而非獨立 scope（§How.3.5 三種視圖共用底層 API）。
+- `LeaderboardScope` 只有 3 個 case；「我的鄰近」窗格透過 `fetchLeaderboardSlice` 的 `around player:` 參數表達，而非獨立 scope（§How.3.5 三種視圖共用底層 API）。（`LeaderboardScope` 已於 2026-08-13 隨死鏈移除，#1010）
 
 **Sink 使用模式**：
 
@@ -499,7 +506,7 @@ case .puzzleCompleted(puzzleId, mode, difficulty, seconds):
 | 我的鄰近 ±N | `.globalAllTime` + `around player:` | （v1 不使用；保留 API 形狀供 v2） | — |
 | 朋友圈 | `.friendsAllTime` | 由 Apple 原生 GC dashboard 提供 scope 切換 | Apple 控制 |
 
-**資料來源**：mini-slice 走 `GKLeaderboard.loadEntries(for: .global, ...)` + `entryRange`；朋友圈 scope 切換不再由 App SwiftUI 自製，改由 Apple 原生 GC dashboard 處理（issue #49, 2026-05-20）。`friendsAuthorizationStatus()` / `requestFriendsAuthorization()` 仍保留 protocol method，供 v2 或 backlog 需要顯式預檢的情境。**macOS friends API 平台支援以官方文件為準**（plan.md 落地時驗證）。
+**資料來源**：mini-slice 走 `GKLeaderboard.loadEntries(for: .global, ...)` + `entryRange`；朋友圈 scope 切換不再由 App SwiftUI 自製，改由 Apple 原生 GC dashboard 處理（issue #49, 2026-05-20）。`friendsAuthorizationStatus()` / `requestFriendsAuthorization()` 曾保留 protocol method 供 v2 或 backlog 需要顯式預檢的情境，但零 production 呼叫端，已於 2026-08-13 隨死鏈移除（#1010）。**macOS friends API 平台支援以官方文件為準**（plan.md 落地時驗證）。
 
 **快取**：CompletionView 進場拉一次、不即時刷新；手動下拉 refresh 才重拉。失敗時顯示「目前無法載入」+ 重試按鈕、不擋完成流程。
 
@@ -718,7 +725,7 @@ App 端只支援**單一**最新 `GeneratorVersion`；舊 build 的玩家若已�
 | `DailyHubView` | Home | `PuzzleStore.fetchDailyTrio(date:)`、`Persistence.fetchCompletedDailyIds(date:)` | 今日 3 題卡片 + 完成狀態 |
 | `PracticeHubView` | Home | `PuzzleStore.fetchPracticePool(difficulty:)`（即時本機 generator 抽題） | 難度切換 + 抽題 |
 | `BoardView` | DailyHub / PracticeHub | `Persistence.loadOrCreate`、`Persistence.save` (debounce 500ms)、scenePhase 強制 flush | 單局狀態機（§How.5.3） |
-| `CompletionView` | BoardView（modal）| `GameCenterClient.fetchLeaderboardSlice(.globalAllTime, limit: 3)`（僅 daily + `.authenticated`）；`Persistence` 狀態轉換 | top-3 mini-slice + 個人紀錄 delta + 「View full leaderboard」CTA → Apple 原生 GC dashboard |
+| `CompletionView` | BoardView（modal）| ~~`GameCenterClient.fetchLeaderboardSlice(.globalAllTime, limit: 3)`（僅 daily + `.authenticated`）~~ 已於 2026-08-13 隨死鏈移除，#1010；`Persistence` 狀態轉換 | 個人紀錄 delta + 「View full leaderboard」CTA → Apple 原生 GC dashboard |
 | `SettingsView` | Home | `GameCenterClient.currentAuthState`、`Persistence.totalCompletedCount`（只讀）| GC 狀態、locale、版本、清快取 |
 
 v1 共 **7 個 top-level Views**（含 Root）。Issue #49（2026-05-20）將自製 `LeaderboardView` 退役，全版排行瀏覽改由 Apple 原生 Game Center UI 承載；entry points：
@@ -1334,7 +1341,7 @@ func vmActiveNoAutoResume() async { /* … */ }
 | 欄位 | 內容 |
 |---|---|
 | Pyramid layer | **Integration with fakes**（live `GKLocalPlayer` 實作**不**在 CI 測）|
-| Coverage target | **≥ 80%**（不含 live 實作）。Must-cover：`AuthState` 全部 transition、`submitScore` 對單題 + 難度總 fan-out、Achievement 解鎖去重、`fetchLeaderboardSlice` 三 scope、未認證無離線佇列、`GameCenterSink` 路由 |
+| Coverage target | **≥ 80%**（不含 live 實作）。Must-cover：`AuthState` 全部 transition、`submitScore` 對單題 + 難度總 fan-out、Achievement 解鎖去重、~~`fetchLeaderboardSlice` 三 scope~~（已於 2026-08-13 隨死鏈移除，#1010）、未認證無離線佇列、`GameCenterSink` 路由 |
 
 **Fakes / fixtures**：`FakeGameCenterClient`（actor）— `scriptedAuthState`、`submittedScores`、`unlockedAchievements`、`seededLeaderboards`。Live 實作的少量驗證走開發機 manual checklist。
 
@@ -1469,7 +1476,7 @@ func boardA11yLabels() {
 - **跨日完成不提交 GC**：玩家 23:59 UTC 開始、00:01 UTC 完成 → Sink 偵測完成時間 UTC 日 ≠ `puzzleId` UTC 日，跳過 GC submission 並 toast，仍寫 `PersonalRecord`。理由：GameKit `submitScore` 永遠寫入當前 active occurrence，無法 retarget 已關閉 occurrence（§How.3.1 reset 邊緣案例）。
 - **AppRoute 6 case 結構**：`home` / `daily` / `practice` / `board` / `completion` / `settings`，僅 `board` / `completion` 帶參數（§How.5.2）。`completion` 不帶 difficulty / mode 為已知限制 — 詳 §Backlog "Completion 攜帶 difficulty / mode" 條（issue #45）。原 `.leaderboard(leaderboardId:)` case 已於 issue #49（2026-05-20）刪除，全版排行改由 Apple 原生 GC dashboard 承載。
 - **L10n = 7 locale**：zh-TW、en、ja、zh-Hans、es、th、ko；用 `Localizable.xcstrings` + AI translation flow，源語 zh-TW + en 手寫，其餘由 agent 翻譯。擴充候選（fr / de / pt-BR）入 §Backlog（`ai-translated-localization` skill、2026-05-15）。
-- **Native GameCenter UI switch（landed 2026-05-20，issue #49）**：自製 `LeaderboardView` + `LeaderboardViewModel` 退役（~400 行 production + tests 刪除），全版排行改由 Apple 原生 dashboard 承載；entry seam `GameCenterDashboard.present(leaderboardId:)`（`Packages/SudokuKit/Sources/SudokuUI/Leaderboard/GameCenterDashboard.swift`，`nil` 走 `GKAccessPoint.shared.trigger(state: .leaderboards)`，帶 ID 走 `GKGameCenterViewController(leaderboardID:playerScope:timeScope:)` 模態呈現）。AppRoute `.leaderboard(leaderboardId:)` case 移除；CompletionView 仍保留 top-3 mini-slice（post-solve 即時排名感受），其資料源 `GameCenterClient.fetchLeaderboardSlice` 同步保留。impl-notes：`meetings/2026-05-20_native-gamecenter-switch.impl-notes.md`。
+- **Native GameCenter UI switch（landed 2026-05-20，issue #49）**：自製 `LeaderboardView` + `LeaderboardViewModel` 退役（~400 行 production + tests 刪除），全版排行改由 Apple 原生 dashboard 承載；entry seam `GameCenterDashboard.present(leaderboardId:)`（`Packages/SudokuKit/Sources/SudokuUI/Leaderboard/GameCenterDashboard.swift`，`nil` 走 `GKAccessPoint.shared.trigger(state: .leaderboards)`，帶 ID 走 `GKGameCenterViewController(leaderboardID:playerScope:timeScope:)` 模態呈現）。AppRoute `.leaderboard(leaderboardId:)` case 移除；CompletionView 當時仍保留 top-3 mini-slice（post-solve 即時排名感受），其資料源 `GameCenterClient.fetchLeaderboardSlice` 同步保留 —— 該 mini-slice 後續退場、`fetchLeaderboardSlice` 淪為零 production 呼叫端的死鏈，已於 2026-08-13 整條移除（#1010）。impl-notes：`meetings/2026-05-20_native-gamecenter-switch.impl-notes.md`。
 
 ---
 

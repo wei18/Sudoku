@@ -9,20 +9,21 @@
 > superseded by the shared in-board `CompletionOverlayScaffold` (#664/#669) —
 > completion is no longer its own modal/sheet presentation, and the
 > leaderboard slice it describes is not rendered (`state: .hidden`, #468 open
-> question); and **§d/§f's "Play again" pushing a new `BoardView`** is
+> question — since resolved: the slice chain was fully removed 2026-08-13,
+> #1010, see §a); and **§d/§f's "Play again" pushing a new `BoardView`** is
 > superseded by #652's Play Again CTA, which presents a fresh board modally
 > via `GameRootViewModel.presentGame(route:)` rather than pushing.
 
 ## a. View identity
 
-- **Purpose**: Shown when a session reaches `completed`. Displays time, personal record delta, and a leaderboard slice (top + around-player). Modal.
-- **Triggers** (per §How.5.1): `GameCenterClient.fetchLeaderboardSlice(.globalTop)` + `.aroundPlayer` (Daily mode + authenticated only); `Persistence` to compute personal record delta.
+- **Purpose**: Shown when a session reaches `completed`. Displays time, personal record delta, ~~and a leaderboard slice (top + around-player)~~ (slice chain removed 2026-08-13, #1010). Modal.
+- **Triggers** (per §How.5.1): ~~`GameCenterClient.fetchLeaderboardSlice(.globalTop)` + `.aroundPlayer`~~ (Daily mode + authenticated only) — removed 2026-08-13, #1010 (zero production callers); `Persistence` to compute personal record delta.
 - **Presentation**: iPhone `.fullScreenCover`; Mac `.sheet`.
-- **States**:
-  - `loading` — fetching leaderboard slice
-  - `authenticated(slice)` — happy path
+- **States** (~~slice-driven states~~ removed 2026-08-13, #1010 — no leaderboard fetch exists anymore):
+  - ~~`loading` — fetching leaderboard slice~~
+  - ~~`authenticated(slice)` — happy path~~
   - `unauthenticated` — GC degraded; show CTA "Sign in to Game Center"
-  - `fetchFailed` — show personal record only + "Couldn't load leaderboard" inline
+  - ~~`fetchFailed` — show personal record only + "Couldn't load leaderboard" inline~~
   - `practiceMode` — no leaderboard call at all; just personal record + "Play again"
 
 ## b. ASCII wireframe

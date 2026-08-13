@@ -102,22 +102,6 @@ private actor NearWinNoopGameCenterClient: GameCenterClient {
     ) async throws {}
     func submitScore(leaderboardId: String, elapsedSeconds: Int) async throws {}
     func reportAchievement(_ achievement: AchievementProgress) async throws {}
-    func fetchLeaderboardSlice(
-        leaderboardId: String,
-        scope: LeaderboardScope,
-        aroundLocalPlayer: Bool,
-        limit: Int
-    ) async throws -> LeaderboardSlice {
-        LeaderboardSlice(
-            leaderboardId: leaderboardId,
-            scope: scope,
-            entries: [],
-            totalPlayerCount: 0,
-            fetchedAt: Date()
-        )
-    }
-    func friendsAuthorizationStatus() async -> FriendsAuthStatus { .notDetermined }
-    func requestFriendsAuthorization() async throws -> FriendsAuthStatus { .notDetermined }
 }
 
 #endif // os(iOS)

@@ -47,13 +47,16 @@ Apple's GC dashboard ships with all the affordances that the retired
   these; only achievement / leaderboard *names* still ship via ASC
   metadata, see §e)
 
-## d. CompletionView mini-slice (kept)
+## d. CompletionView mini-slice (dormant machinery removed 2026-08-13, #1010)
 
-`CompletionView` still renders an embedded top-3 mini-slice on the
-post-solve screen — that is a different affordance (immediate rank
-feedback) and is **not** the full leaderboard. Its data source remains
-`GameCenterClient.fetchLeaderboardSlice(.globalAllTime, limit: 3)`
-(docs/v1/design.md §How.3.3 still defines this protocol method).
+`CompletionView` was designed to render an embedded top-3 mini-slice on
+the post-solve screen — a different affordance (immediate rank
+feedback) from the full leaderboard. It was never live (`state: .hidden`
+per the banner above, #468); its would-be data source,
+`GameCenterClient.fetchLeaderboardSlice(.globalAllTime, limit: 3)`, had
+zero production callers and was removed along with the rest of the
+leaderboard-slice chain (#1010). docs/v1/design.md §How.3.3 keeps the
+historical shape annotated as removed.
 
 The "View full leaderboard" button below the mini-slice is the
 deep-link into Apple's dashboard via the §b CompletionView trigger
@@ -100,9 +103,10 @@ continue to inject via `any GameCenterClient`.
 ## h. Out of scope (v1)
 
 - Embedded leaderboard preview in views other than CompletionView
-  (e.g. a Home-tab summary widget). If product later wants this, the
-  existing `fetchLeaderboardSlice` protocol method already covers it
-  (see §d).
+  (e.g. a Home-tab summary widget). The `fetchLeaderboardSlice` protocol
+  method that would have covered this was removed 2026-08-13 (#1010,
+  zero production callers — see §d); a future re-add starts from
+  scratch rather than reviving the old seam.
 - Deep-link routing to a focused leaderboard via URL scheme / Universal
   Link. v1 has no such deep link; the absence of `AppRoute.leaderboard`
   is intentional. A future re-add would attach a side-effect handler
