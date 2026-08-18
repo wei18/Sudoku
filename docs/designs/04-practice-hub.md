@@ -6,6 +6,8 @@
 > "push to BoardView", read "present modally" on iOS. Canonical flow spec:
 > `docs/navigation-flows.md`.
 
+> **v3 NOTE (2026-08-18):** superseded in part by [docs/designs/v3/design.md](v3/design.md) — the 3.0 redesign (3-tab root, board-first, Liquid Glass relocation, IC color layer). This file remains the v1/v2 record.
+
 ## a. View identity
 
 - **Purpose**: Pick a difficulty, generate a fresh puzzle locally via the deterministic generator. Open-ended play, no pool, no Starter Pack.

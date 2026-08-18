@@ -14,6 +14,8 @@
 > superseded by #652's Play Again CTA, which presents a fresh board modally
 > via `GameRootViewModel.presentGame(route:)` rather than pushing.
 
+> **v3 NOTE (2026-08-18):** superseded in part by [docs/designs/v3/design.md](v3/design.md) — the 3.0 redesign (3-tab root, board-first, Liquid Glass relocation, IC color layer). This file remains the v1/v2 record.
+
 ## a. View identity
 
 - **Purpose**: Shown when a session reaches `completed`. Displays time, personal record delta, ~~and a leaderboard slice (top + around-player)~~ (slice chain removed 2026-08-13, #1010). Modal.

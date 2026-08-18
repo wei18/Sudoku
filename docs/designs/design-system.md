@@ -1,5 +1,7 @@
 # Design System — Sudoku v1
 
+> **v3 NOTE (2026-08-18):** superseded in part by [docs/designs/v3/design.md](v3/design.md) — the 3.0 redesign (3-tab root, board-first, Liquid Glass relocation, IC color layer). This file remains the v1/v2 record.
+
 Top-level visual + interaction tokens shared by all 8 Views. All per-View files reference token names from this document.
 
 ---
