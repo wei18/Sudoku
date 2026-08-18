@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku &amp; Minesweeper 3.0</title>
+<style>
+:root{
+  --c-page:#ECEEF1;--c-panel:#FFFFFF;--c-ink:#13161A;--c-ink2:#545A62;--c-ink3:#868C94;
+  --c-rule:#D9DBE0;--c-accent:#2C5D8A;
+  --c-warn-bg:#FFF7E6;--c-warn-line:#E0A33B;
+  --c-danger-bg:#FDF0EE;--c-danger-line:#C8362B;
+  --c-ok-bg:#EDF5EE;--c-ok-line:#1B7A3E;
+  --c-info-bg:#EDF1F6;--c-info-line:#5B87B4;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue","PingFang TC","Noto Sans TC",sans-serif;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:var(--c-page);color:var(--c-ink);font-family:var(--sans);font-size:15px;line-height:1.55;}
+.wrap{max-width:1560px;margin:0 auto;padding:0 28px 90px;}
+
+/* masthead */
+.masthead{background:linear-gradient(135deg,#0D1216 0%,#1F3140 44%,#38503F 100%);color:#fff;padding:44px 28px 32px;margin-bottom:34px;position:relative;overflow:hidden;}
+.masthead:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 32px);}
+.mh{max-width:1560px;margin:0 auto;position:relative;z-index:1;}
+.mh .kicker{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.62;margin-bottom:10px;}
+.mh h1{font-size:40px;line-height:1.12;margin:0 0 10px;font-weight:700;letter-spacing:-.6px;}
+.mh .sub{font-size:16px;opacity:.88;margin:0 0 20px;max-width:76ch;}
+.mh .meta{font-family:var(--mono);font-size:11.5px;opacity:.58;}
+.mhtags{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.16);}
+.mhtag{font-size:11.5px;padding:4px 11px;border-radius:20px;background:rgba(255,255,255,.13);}
+
+h2.sec{font-size:12px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--c-ink3);margin:56px 0 6px;padding-bottom:9px;border-bottom:2px solid var(--c-rule);}
+h2.sec .n{color:var(--c-accent);margin-right:9px;}
+h3.sub{font-size:19px;font-weight:650;margin:28px 0 4px;letter-spacing:-.2px;}
+p.lede{color:var(--c-ink2);margin:6px 0 18px;max-width:88ch;}
+.note{font-size:12.5px;color:var(--c-ink3);margin-top:8px;}
+code{font-family:var(--mono);font-size:.88em;background:#E1E4E8;padding:1px 5px;border-radius:4px;color:#262C34;}
+.card{background:var(--c-panel);border:1px solid var(--c-rule);border-radius:14px;padding:20px 22px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+.callout{border-radius:14px;padding:18px 20px;border:1px solid;margin:14px 0;}
+.callout .tag{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;display:inline-block;padding:3px 9px;border-radius:20px;margin-bottom:9px;}
+.callout h4{margin:0 0 7px;font-size:16.5px;font-weight:650;}
+.callout p{margin:0 0 8px;font-size:14px;line-height:1.62;}
+.callout p:last-child{margin-bottom:0;}
+.co-err{background:var(--c-danger-bg);border-color:var(--c-danger-line);} .co-err .tag{background:var(--c-danger-line);color:#fff;}
+.co-ok{background:var(--c-ok-bg);border-color:var(--c-ok-line);} .co-ok .tag{background:var(--c-ok-line);color:#fff;}
+.co-warn{background:var(--c-warn-bg);border-color:var(--c-warn-line);} .co-warn .tag{background:var(--c-warn-line);color:#fff;}
+.co-info{background:var(--c-info-bg);border-color:var(--c-info-line);} .co-info .tag{background:var(--c-info-line);color:#fff;}
+
+blockquote.hig{margin:11px 0;padding:11px 15px;background:#F2F4F7;border-left:3px solid var(--c-accent);font-size:13px;line-height:1.62;color:#2F343B;border-radius:0 8px 8px 0;}
+blockquote.hig cite{display:block;margin-top:6px;font-family:var(--mono);font-size:10.5px;color:var(--c-ink3);font-style:normal;}
+
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:12px 0;}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--c-rule);vertical-align:middle;}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--c-ink3);font-weight:700;background:#F5F6F9;}
+td.num{font-family:var(--mono);font-size:11.5px;white-space:nowrap;}
+.pass{color:#1B7A3E;font-weight:700;} .fail{color:#C8362B;font-weight:700;} .warnv{color:#A8700E;font-weight:700;}
+.keep{background:#F0F7F1;} .drop{background:#FDF1EF;}
+.arrow{color:var(--c-ink3);margin:0 3px;}
+ul.tick{list-style:none;padding:0;margin:10px 0;}
+ul.tick li{padding:6px 0 6px 24px;position:relative;font-size:13.5px;line-height:1.55;border-bottom:1px solid var(--c-rule);}
+ul.tick li:last-child{border-bottom:none;}
+ul.tick li:before{content:"";position:absolute;left:4px;top:13px;width:7px;height:7px;border-radius:50%;background:var(--c-accent);}
+ul.tick li.q:before{background:var(--c-warn-line);} ul.tick li.x:before{background:var(--c-danger-line);} ul.tick li.g:before{background:var(--c-ok-line);}
+.lvl{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.4px;vertical-align:1px;}
+.lvl.off{background:#DCEDE1;color:#12622F;} .lvl.com{background:#FBEEDA;color:#8A5D0B;} .lvl.our{background:#E3E5EA;color:#4C525A;}
+
+/* ============ PHONE ============ */
+.rail{overflow-x:auto;padding:10px 0 24px;}
+.rail-inner{display:flex;gap:56px;align-items:flex-start;min-width:max-content;padding:0 4px;}
+.phone{width:393px;flex-shrink:0;}
+.phone-shell{position:relative;width:393px;height:852px;border-radius:47.33px;overflow:hidden;
+  box-shadow:0 0 0 4px #17191D,0 22px 46px rgba(0,0,0,.20);display:flex;flex-direction:column;}
+.di{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:125px;height:37px;background:#000;border-radius:20px;z-index:90;}
+.hind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;background:currentColor;opacity:.32;border-radius:3px;z-index:95;}
+.plabel{margin-top:12px;font-size:12.5px;color:var(--c-ink2);font-weight:600;text-align:center;}
+.plabel small{display:block;font-weight:400;color:var(--c-ink3);font-size:11.5px;margin-top:3px;line-height:1.45;}
+
+/* content plane sits UNDER the chrome so glass has something to refract */
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;}
+.content{position:absolute;inset:0;overflow:hidden;padding:104px 16px 0;display:flex;flex-direction:column;gap:13px;}
+.content.flush{padding:104px 0 0;}
+
+/* --- status bar --- */
+.sbar{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 6px;font-size:15px;font-weight:600;z-index:70;pointer-events:none;}
+.sbar .ic{display:flex;gap:5px;align-items:center;}
+
+/* --- GLASS NAV / TOOLBAR (G2) : blurred, translucent, fades out at its lower edge
+       = the scroll edge effect look. Content scrolls UNDER it.               --- */
+.navglass{position:absolute;top:0;left:0;right:0;z-index:60;padding:56px 20px 12px;
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  background:linear-gradient(180deg,var(--chrome) 0%,var(--chrome) 58%,transparent 100%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 58%,transparent 100%);
+          mask-image:linear-gradient(180deg,#000 0%,#000 58%,transparent 100%);
+  display:flex;align-items:flex-end;gap:12px;}
+.navglass .ttl{font-size:33px;line-height:38px;font-weight:700;letter-spacing:-.6px;color:var(--tp);}
+.navglass .gear{width:27px;height:27px;color:var(--acc);margin-left:auto;margin-bottom:5px;}
+/* board toolbar variant: compact row, same glass */
+.navglass.bar{padding:56px 18px 11px;align-items:center;}
+.navglass.bar .tm{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--tp);}
+.navglass.bar .dim{font-size:13px;color:var(--ts);}
+.navglass.bar .sp{margin-left:auto;}
+.navglass.bar svg{width:21px;height:21px;color:var(--acc);}
+/* back-style inline title */
+.navglass.inline{padding:56px 16px 11px;align-items:center;}
+.navglass.inline .bk{color:var(--acc);font-size:16px;}
+.navglass.inline .t{font-size:17px;font-weight:600;margin:0 auto;}
+
+/* --- GLASS TAB BAR (G1) : FLOATING CAPSULE, inset from edges, content peeks under --- */
+.tabbar{position:absolute;left:14px;right:14px;bottom:19px;height:62px;border-radius:31px;z-index:65;display:flex;
+  background:var(--glasstint);
+  -webkit-backdrop-filter:blur(26px) saturate(200%);backdrop-filter:blur(26px) saturate(200%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(0,0,0,.05),
+             0 10px 30px rgba(0,0,0,.17),0 2px 6px rgba(0,0,0,.07);}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--tt);font-size:10px;position:relative;}
+.tab.on{color:var(--acc);}
+.tab svg{width:24px;height:24px;}
+.tab .bdg{position:absolute;top:8px;left:calc(50% + 9px);width:9px;height:9px;border-radius:50%;background:var(--err);box-shadow:0 0 0 2px rgba(255,255,255,.92);}
+/* banner as tab accessory, riding just above the capsule */
+.accessory{position:absolute;left:14px;right:14px;bottom:89px;height:50px;border-radius:16px;z-index:64;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;letter-spacing:.6px;color:var(--tt);
+  background:var(--glasstint);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 20px rgba(0,0,0,.12);}
+
+/* ============ SKINS ============ */
+.sk-sud{--bg:#FAF8F3;--surf:#FFFFFF;--tp:#1A1D21;--ts:#54595F;--tt:#86898E;
+  --acc:#5C7A4F;--accm:#DCE6D0;--ok:#1B7A3E;--err:#C8362B;
+  --t1:#6F935F;--t2:#557049;--t3:#3B4E33;--pipoff:#719561;
+  --th-empty:#FFFFFF;--th-a:#859B7B;--th-b:#5C7A4F;--th-line:#CFD4CD;
+  --cellgiven:#EFEBE2;--cellbase:#FFFFFF;--gridline:#7A7F86;--gridedge:#4A4F56;
+  --chrome:rgba(250,248,243,.80);--glasstint:rgba(255,255,255,.55);--glow:rgba(92,122,79,.42);}
+.sk-ms{--bg:#F4F6F8;--surf:#FFFFFF;--tp:#1A1E24;--ts:#545B63;--tt:#868D95;
+  --acc:#3E6B8C;--accm:#D5E2EC;--ok:#1B7A3E;--err:#C8362B;
+  --t1:#578DB4;--t2:#3E6C8D;--t3:#2B4B62;--pipoff:#5B8FB6;
+  --th-empty:#FFFFFF;--th-a:#7897AE;--th-b:#3E6B8C;--th-line:#CBD2D8;
+  --cellgiven:#D6DEE6;--cellbase:#FFFFFF;--gridline:#8A9099;--gridedge:#5A626B;
+  --chrome:rgba(244,246,248,.80);--glasstint:rgba(255,255,255,.55);--glow:rgba(212,80,31,.38);}
+.sk .phone-shell{background:var(--bg);color:var(--tp);}
+.sk .sbar{color:var(--tp);}
+
+/* ============ CONTENT PIECES ============ */
+.streakrow{display:flex;align-items:center;gap:10px;padding:2px 4px 0;flex:0 0 auto;}
+.streakrow .n{font-size:15px;font-weight:600;color:var(--tp);}
+.streakrow .u{font-size:15px;color:var(--ts);}
+.streakrow .best{margin-left:auto;font-size:12px;color:var(--tt);}
+.strip{display:flex;gap:7px;}
+.pip{width:10px;height:10px;border-radius:50%;flex:0 0 10px;}
+.pip.on{background:var(--acc);} .pip.off{background:transparent;box-shadow:inset 0 0 0 2px var(--pipoff);}
+.pip.today{background:var(--acc);box-shadow:0 0 0 3px var(--accm);}
+.pip.adv{background:var(--acc);box-shadow:0 0 0 4px var(--accm);}
+.pip.skel{background:rgba(0,0,0,.07);box-shadow:none;}
+
+/* thumbnails */
+.thumb{display:grid;background:var(--th-line);border:1.5px solid var(--gridedge);border-radius:5px;overflow:hidden;flex:0 0 auto;}
+.thumb.s9{grid-template-columns:repeat(9,1fr);gap:1px;width:96px;height:96px;}
+.thumb.wide{grid-template-columns:repeat(15,1fr);gap:1px;width:96px;height:51px;}
+.thumb i{background:var(--th-empty);display:block;}
+.thumb i.a{background:var(--th-a);} .thumb i.b{background:var(--th-b);}
+.thumb.skel i{background:rgba(0,0,0,.05);}
+
+.bcard{background:var(--surf);border-radius:16px;padding:12px;display:flex;align-items:center;gap:13px;flex:0 0 auto;}
+.bcard .meta{flex:1;min-width:0;}
+.bcard .nm{font-size:19px;line-height:24px;font-weight:500;color:var(--tp);}
+.bcard .st{font-size:12.5px;color:var(--ts);margin-top:2px;}
+.bcard .st.done{color:var(--ok);} .bcard .st.fail{color:var(--err);font-weight:600;}
+.pips{display:flex;gap:3px;margin-top:5px;}
+.pips i{width:8px;height:8px;border-radius:50%;display:block;background:rgba(0,0,0,.10);}
+.pips.l1 i:nth-child(1){background:var(--t1);}
+.pips.l2 i:nth-child(-n+2){background:var(--t2);}
+.pips.l3 i{background:var(--t3);}
+.bcard .cv{color:var(--tt);font-size:17px;}
+
+/* resume: standard material over blurred board snapshot (G5 deleted) */
+.resumewrap{position:relative;border-radius:18px;overflow:hidden;flex:0 0 auto;height:86px;}
+.resumebg{position:absolute;inset:0;display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--gridline);filter:blur(5px) saturate(70%);opacity:.85;transform:scale(1.14);}
+.resumebg i{background:var(--th-empty);} .resumebg i.a{background:var(--th-a);} .resumebg i.b{background:var(--th-b);}
+.resumepanel{position:absolute;left:9px;right:9px;top:11px;bottom:11px;display:flex;align-items:center;gap:12px;padding:0 15px;border-radius:14px;
+  background:rgba(255,255,255,.86);box-shadow:0 2px 10px rgba(0,0,0,.10);}
+.resumepanel .lb{font-size:15.5px;font-weight:600;color:var(--tp);}
+.resumepanel .sb{font-size:12.5px;color:var(--ts);}
+.resumepanel .go{margin-left:auto;width:29px;height:29px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;}
+
+.alldone{background:var(--surf);border-radius:16px;padding:26px 20px;text-align:center;flex:0 0 auto;}
+.alldone .ck{width:40px;height:40px;margin:0 auto 10px;color:var(--ok);}
+.alldone .h{font-size:21px;font-weight:600;color:var(--tp);}
+.alldone .p{font-size:14px;color:var(--ts);margin-top:4px;}
+.alldone .z{font-size:11.5px;color:var(--tt);margin-top:9px;line-height:1.5;}
+.emptyblock{background:var(--surf);border-radius:16px;padding:22px 18px;text-align:center;flex:0 0 auto;}
+.emptyblock .h{font-size:16px;font-weight:600;margin-top:8px;}
+.emptyblock .p{font-size:13px;color:var(--ts);margin-top:4px;}
+.ebtns{display:flex;gap:9px;margin-top:14px;}
+.ebtns b{flex:1;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;}
+.ebtns b.pri{background:var(--acc);color:#fff;} .ebtns b.sec{color:var(--acc);box-shadow:inset 0 0 0 1.5px var(--accm);}
+.skelbar{background:rgba(0,0,0,.06);border-radius:6px;height:12px;}
+
+.cta{height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;background:var(--acc);color:#fff;flex:0 0 auto;}
+.cta.plain{background:transparent;color:var(--acc);}
+
+/* stats / progress */
+.record{background:var(--surf);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px;flex:0 0 auto;}
+.record .rl{font-size:15px;color:var(--tp);} .record .rs{font-size:11px;color:var(--tt);margin-top:1px;}
+.record .rt{font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--tp);margin-left:auto;}
+.calwrap{background:var(--surf);border-radius:16px;padding:13px 14px;flex:0 0 auto;}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px;}
+.calgrid i{aspect-ratio:1;border-radius:5px;display:block;background:rgba(0,0,0,.055);}
+.calgrid i.on{background:var(--acc);} .calgrid i.tdy{background:var(--acc);box-shadow:0 0 0 2px var(--accm);}
+.lrow{background:var(--surf);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+.lrow .nm{font-size:16.5px;color:var(--tp);} .lrow .ex{margin-left:auto;color:var(--acc);}
+.grouph{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--tt);flex:0 0 auto;}
+
+/* settings form */
+.formsec{background:var(--surf);border-radius:14px;overflow:hidden;flex:0 0 auto;}
+.formrow{min-height:46px;padding:11px 15px;display:flex;align-items:center;gap:10px;border-bottom:.5px solid rgba(0,0,0,.08);font-size:15.5px;color:var(--tp);}
+.formrow:last-child{border-bottom:none;}
+.formrow .v{margin-left:auto;color:var(--tt);font-size:14.5px;}
+
+/* ============ BOARD ============ */
+.boardstage{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;}
+.fullboard{width:100%;display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--gridline);
+  border-top:2px solid var(--gridedge);border-bottom:2px solid var(--gridedge);aspect-ratio:1;}
+.fullboard span{background:var(--cellbase);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--tp);}
+.fullboard span.g{background:var(--cellgiven);font-weight:600;}
+.fullboard span.u{color:var(--acc);font-weight:500;}
+.fullboard span.hl{background:var(--accm);}
+.fullboard span.er{background:#F2C4C0;color:#A52A20;box-shadow:inset 0 0 0 2px #C8362B;}
+.msboard{width:100%;display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--gridline);border-top:2px solid var(--gridedge);border-bottom:2px solid var(--gridedge);}
+.msboard span{background:var(--cellgiven);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
+.msboard span.o{background:var(--cellbase);color:var(--acc);}
+.msboard span.f{color:#9C5C1C;}
+.msboard span.boom{background:#C8362B;color:#fff;}
+
+/* G4 : the ONE custom glass cluster — GlassEffectContainer */
+.cluster{position:absolute;left:12px;right:12px;bottom:22px;padding:11px;z-index:55;border-radius:24px;
+  background:var(--glasstint);
+  -webkit-backdrop-filter:blur(26px) saturate(200%);backdrop-filter:blur(26px) saturate(200%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(0,0,0,.05),0 10px 28px rgba(0,0,0,.15);}
+.padgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.padgrid b{height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--tp);background:rgba(255,255,255,.44);}
+.clustertools{display:flex;gap:6px;margin-top:7px;}
+.clustertools b{flex:1;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.44);color:var(--tp);}
+.clustertools b svg{width:18px;height:18px;}
+.clustertools b.on{background:var(--acc);color:#fff;}
+.modeseg{display:flex;gap:6px;}
+.modeseg b{flex:1;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14.5px;font-weight:600;background:rgba(255,255,255,.44);color:var(--tp);}
+.modeseg b.on{background:var(--acc);color:#fff;}
+.modeseg b svg{width:17px;height:17px;}
+
+/* pause overlay: ultraThinMaterial, NOT liquid glass */
+.pauseveil{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:rgba(240,240,238,.62);-webkit-backdrop-filter:blur(34px);backdrop-filter:blur(34px);}
+.pausecard{width:280px;background:var(--surf);border-radius:20px;padding:22px 20px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,.18);}
+.pausecard .h{font-size:19px;font-weight:650;}
+.pausecard .p{font-size:13.5px;color:var(--ts);margin-top:6px;}
+.pausecard .b1{margin-top:16px;height:46px;border-radius:12px;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;}
+.pausecard .b2{margin-top:9px;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--err);font-weight:600;}
+
+/* G6 completion panel */
+.glow{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);width:160%;height:54%;z-index:40;pointer-events:none;
+  background:radial-gradient(ellipse at center,var(--glow) 0%,transparent 70%);}
+.cmppanel{position:absolute;left:0;right:0;bottom:0;height:63%;z-index:50;border-radius:30px 30px 0 0;padding:26px 22px 34px;display:flex;flex-direction:column;
+  background:var(--glasstint);
+  -webkit-backdrop-filter:blur(30px) saturate(190%);backdrop-filter:blur(30px) saturate(190%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 -10px 34px rgba(0,0,0,.13);}
+.cmppanel .t{font-size:33px;line-height:39px;font-weight:600;letter-spacing:-.5px;color:var(--tp);}
+.cmppanel .tm{font-size:22px;line-height:28px;font-weight:500;margin-top:7px;font-variant-numeric:tabular-nums;color:var(--tp);}
+.cmppanel .d{font-size:16px;color:var(--ts);margin-top:5px;}
+.cmpstreak{margin-top:auto;padding:13px 0;border-top:.5px solid rgba(0,0,0,.11);}
+.cmpstreak .lb{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:var(--tt);font-weight:700;}
+.cmpstreak .rw{display:flex;align-items:center;gap:12px;margin-top:8px;}
+.cmpstreak .num{font-size:19px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums;}
+.remrow{display:flex;align-items:center;gap:9px;padding:11px 13px;background:rgba(255,255,255,.55);border-radius:12px;font-size:12.5px;color:var(--ts);line-height:1.4;margin-top:10px;}
+
+/* ============ DESKTOP ============ */
+.deskstack{display:flex;flex-direction:column;gap:34px;padding:8px 0 6px;}
+.mac{width:100%;max-width:1120px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #C2C6CC,0 20px 44px rgba(0,0,0,.17);}
+.mac-bar{height:38px;background:#E7E9EC;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #CFD3D8;}
+.mac-bar i{width:12px;height:12px;border-radius:50%;display:block;}
+.mac-bar .t{margin-left:10px;font-size:13px;color:#545A62;font-weight:600;}
+.mac-body{display:grid;grid-template-columns:230px 1fr;height:430px;background:var(--bg);position:relative;}
+.sidebar{padding:14px 10px;display:flex;flex-direction:column;gap:2px;position:relative;z-index:5;
+  background:var(--glasstint);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:inset -1px 0 0 rgba(0,0,0,.07),4px 0 18px rgba(0,0,0,.05);}
+.sbrow{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:9px;font-size:14px;color:var(--tp);}
+.sbrow svg{width:19px;height:19px;color:var(--ts);}
+.sbrow.on{background:var(--accm);color:var(--acc);font-weight:600;}
+.sbrow.on svg{color:var(--acc);}
+.sbrow .bdg{margin-left:auto;width:9px;height:9px;border-radius:50%;background:var(--err);}
+.sbsep{height:1px;background:rgba(0,0,0,.09);margin:10px 6px;}
+.detail{padding:24px 26px 20px;position:relative;overflow:hidden;}
+.detail .dt{font-size:26px;font-weight:700;letter-spacing:-.4px;margin-bottom:14px;color:var(--tp);}
+.bleedstrip{display:flex;gap:18px;margin-left:-62px;}
+.dgrid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.macboardwrap{display:flex;align-items:center;justify-content:center;height:100%;position:relative;}
+.macboard{width:330px;}
+
+.statbox{display:flex;gap:26px;flex-wrap:wrap;margin:12px 0;}
+.statbox div{text-align:center;}
+.statbox .v{font-size:29px;font-weight:700;letter-spacing:-.5px;color:var(--c-accent);line-height:1.1;}
+.statbox .k{font-size:11px;color:var(--c-ink3);text-transform:uppercase;letter-spacing:.8px;margin-top:2px;}
+.apphead{display:flex;align-items:center;gap:11px;margin:26px 0 10px;}
+.appdot{width:15px;height:15px;border-radius:4px;flex:0 0 15px;}
+.apphead h4{margin:0;font-size:16px;font-weight:650;}
+.apphead span{font-family:var(--mono);font-size:11px;color:var(--c-ink3);}
+.swrow{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--c-rule);font-size:12px;}
+.swrow:last-child{border-bottom:none;}
+.swrow .nm{flex:1;min-width:0;font-weight:600;}
+.swb{width:28px;height:24px;border-radius:5px;flex:0 0 28px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
+.swv{font-family:var(--mono);font-size:10px;color:var(--c-ink3);width:62px;flex:0 0 62px;}
+.swc{font-family:var(--mono);font-size:10.5px;width:48px;flex:0 0 48px;text-align:right;}
+
+@media print{body{background:#fff;}.masthead{background:#1F3140 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rail{overflow:visible;}@page{size:A3 landscape;margin:8mm;}}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="mh">
+    <div class="kicker">Complete design · sign-off candidate · 2026-08-17</div>
+    <h1>Sudoku &amp; Minesweeper 3.0</h1>
+    <p class="sub">功能集不變。三件事:根導航換成三個常駐分頁、盤面成為每一屏的主角、玻璃從內容層搬到功能層。這一份是完整設計,讀這一份就夠。</p>
+    <div class="meta">r2 · 2026-08-18 · 第一順位依據:Adopting Liquid Glass(Technology Overviews,owner 指定,全文讀畢)· 對比度改用 per-token 目標 surface 重算 · 契約條數已錨回 canonical</div>
+    <div class="mhtags">
+      <span class="mhtag">3 tab · route 7→3 / 8→5</span>
+      <span class="mhtag">自訂玻璃 2 片</span>
+      <span class="mhtag">IC 六色井</span>
+      <span class="mhtag">契約 36 + 28 條(40 + 32 錨點列)</span>
+      <span class="mhtag">15 條自我更正</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<h2 class="sec"><span class="n">01</span>設計主張與依據等級</h2>
+<p class="lede">每條主張標三種等級之一,讓 owner 分辨「Apple 規定的」與「我們決定的」。</p>
+
+<div class="grid3">
+  <div class="card" style="border-left:4px solid #1B7A3E">
+    <span class="lvl off">官方</span>
+    <p style="font-size:13px;color:var(--c-ink2);margin:9px 0 0">Apple 文件逐字支持,附出處。本案有:成就呈現格式 · GC 術語 · 回饋動畫 · 觸覺 · 玻璃的層歸屬與用量 · IC 變體要求。</p>
+  </div>
+  <div class="card" style="border-left:4px solid #E0A33B">
+    <span class="lvl com">常見做法</span>
+    <p style="font-size:13px;color:var(--c-ink2);margin:9px 0 0">業界普遍如此但查無官方規範,二手來源。本案有:進場儀式轉場 · 載入的遊戲化過場。</p>
+  </div>
+  <div class="card" style="border-left:4px solid #868C94">
+    <span class="lvl our">我方推論</span>
+    <p style="font-size:13px;color:var(--c-ink2);margin:9px 0 0"><strong>核心主張「盤面即主角」屬於這一類。</strong>我們讀完了官方 <em>Designing for Games</em> 專章,它<strong>不含畫面結構 / 首頁 / 轉場 / 盤面 / 進度陳列的任何指引</strong>。</p>
+  </div>
+</div>
+
+<div class="callout co-ok">
+  <span class="tag">最重要的一次認知修正</span>
+  <h4>3.0 不是「加玻璃」也不是「拿掉玻璃」,是把玻璃從內容層搬到功能層</h4>
+  <p>現行出貨程式碼<strong>已經有 6 處 <code>.glassEffect</code> 套在內容層卡片上</strong> —— <code>HomeScreen.swift:295</code>(共用 ModeCard)· <code>DailyHubView.swift:278</code> · <code>PracticeHubView.swift:74,153</code> · <code>MinesweeperDailyHubView.swift:208</code> · <code>MinesweeperPracticeHubView.swift:91,141</code>。</p>
+  <blockquote class="hig" style="background:rgba(255,255,255,.7)"><strong>Don't use Liquid Glass in the content layer.</strong><cite>~/.claude/skills/hig/materials.md:28</cite></blockquote>
+  <p><strong>所以 D-5(卡片不用玻璃)不是設計偏好,是修一個既存的 HIG 違規。</strong>這也精準回答 owner 的「要採用 iOS 26 Liquid Glass」:<strong>我們已經用了,只是用錯地方。</strong></p>
+</div>
+
+<div class="card">
+  <h3 class="sub" style="margin-top:0">遊戲感從哪裡來 —— 在不放棄 calm 品牌的前提下</h3>
+  <p style="font-size:13.5px;color:var(--c-ink2)"><strong>沒有官方證據顯示低彩度與遊戲感互斥。</strong>官方三個遊戲感訊號(collectible card、succinct animation、consistent haptics)全部可在低彩度下做到。<strong>病灶不是彩度,把品牌糖果化是錯的解法。</strong></p>
+  <table style="margin-top:6px">
+    <thead><tr><th style="width:34px">#</th><th>病灶</th><th style="width:120px">依據等級</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>全 App 看不見盤面</td><td><span class="lvl our">我方推論</span></td></tr>
+      <tr><td class="num">2</td><td>進度做成統計數字堆疊而非視覺陳列</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">3</td><td>動作回饋沒有簡短精準的因果動畫</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">4</td><td>進入遊戲沒有儀式</td><td><span class="lvl com">常見做法</span></td></tr>
+    </tbody>
+  </table>
+  <div class="note">參照對象是 <strong>Apple Fitness 的獎章與 Photos 的回憶</strong>,不是糖果色手遊 —— 兩者都是低彩度系統原生調性,靠「把成果做成可收藏可回看的東西」建立儀式感。<strong>calm 的顏色 + 收藏品的骨架。</strong></div>
+</div>
+
+<h2 class="sec"><span class="n">02</span>導航模型</h2>
+
+<div class="grid2">
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">三個分頁 + 每分頁一條 path</h3>
+    <table style="margin-top:6px">
+      <thead><tr><th>Route table</th><th>現況</th><th>3.0</th></tr></thead>
+      <tbody>
+        <tr><td>Sudoku</td><td class="num">7 條</td><td class="num pass">3 條</td></tr>
+        <tr><td>Minesweeper</td><td class="num">8 條</td><td class="num pass">5 條</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><code>daily</code> / <code>practice</code> / <code>stats</code> 從 route 變成 <strong>tab 身分</strong>;<code>home</code> 本來就從不 push,直接移除。每個 tab 各持一條 <code>NavigationPath</code> —— 從 Practice 開局完成回來,不該把 Today 的堆疊清掉。</div>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0"><span class="lvl off">官方</span> 兩層模型與 sidebar 適配</h3>
+    <blockquote class="hig"><strong>Establish a clear navigation hierarchy.</strong> …Ensure that you clearly separate your content from navigation elements, like tab bars and sidebars, <strong>to establish a distinct functional layer above the content layer</strong>.<cite>Adopting Liquid Glass, Technology Overviews</cite></blockquote>
+    <div class="note">一份 <code>sidebarAdaptable</code> TabView 同時給 iPhone tab bar 與 iPad/macOS sidebar —— 正中 D1 mirror principle 與 D22(iPad 不是第三套 contract)。</div>
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="callout co-warn" style="margin:0">
+    <span class="tag">Today badge · 官方約束</span>
+    <h4>圓點,不是數字</h4>
+    <blockquote class="hig" style="background:rgba(255,255,255,.72)">Use a badge only to show people how many unread notifications they have. <strong>Don't use a badge to convey numeric information that isn't related to notifications, such as … game scores.</strong><cite>HIG · Notifications(tab-bars 頁把 badge 指引指向此頁)</cite></blockquote>
+    <p><strong>⚠️ 實作綁定:只准用系統 <code>.badge()</code> API,不得自繪。</strong>官方明文避免自繪模仿 badge 的元件,而官方 badge 形態中<strong>沒有「無數字圓點」這一種</strong> → 本條降為 <span class="lvl our">我方推論 + 系統 API 綁定</span>,新增 <strong>U-12</strong>(實作前驗);<strong>系統 API 做不到就整個放棄 badge</strong>(官方也說 badge 不得是唯一通道,Today 內容本身就是信號)。下圖紅點是<strong>意圖示意,以系統 API 呈現為準</strong>。</p>
+    <p>「今日未完成題數」屬進度數據,與被點名的 game scores 同類。<strong>定案:無數字圓點</strong> —— 今日尚有未完成時出現,全完成即消失;資料來自既有 daily 完成狀態,<strong>CK 失敗時不顯示 badge</strong>(不是顯示 0)。</p>
+  </div>
+  <div class="callout co-info" style="margin:0">
+    <span class="tag">Banner · tab accessory</span>
+    <h4><code>tabViewBottomAccessory</code>,附降級備案</h4>
+    <p><span class="lvl off">官方</span> <code>View.tabViewBottomAccessory(content:)</code> + <code>TabViewBottomAccessoryPlacement</code>(<code>.inline</code> / <code>.expanded</code>),iOS/iPadOS/Mac Catalyst 26.0+。<code>.expanded</code> 浮在 tab bar 上方;捲動最小化時收成 <code>.inline</code>。</p>
+    <p>⚠️ <strong>AdMob banner 是 <code>UIViewRepresentable</code>,包進 accessory 的相容性未驗證(U-10)。降級備案:不相容則退回 tab 內容底部。變現路徑不卡在未驗證 API 上。</strong></p>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">03</span>iPhone 全畫面</h2>
+<p class="lede">每一框都畫出 iOS 26 的樣子:<strong>浮動玻璃膠囊 tab bar</strong>(懸浮、圓角、半透明、與邊緣有間距、底下內容 peek through)與<strong>玻璃 toolbar</strong>(半透明 + 模糊 + 下緣淡出的 scroll edge effect)。內容從玻璃底下透出,這是兩層模型的具體樣子。</p>
+
+<div class="apphead"><span class="appdot" style="background:#5C7A4F"></span><h4>Sudoku</h4><span>sage #5C7A4F · 暖紙 #FAF8F3</span></div>
+
+<div class="rail sk sk-sud">
+ <div class="rail-inner">
+
+  <!-- 1 Today loaded -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n">12</span><span class="u">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip today"></i><i class="pip off"></i></span>
+          <span class="best">Best 31</span></div>
+        <div class="resumewrap"><div class="resumebg">
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i>
+          <i></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+          <i class="b"></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i></i>
+          <i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i>
+          <i class="a"></i><i></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i class="b"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="b"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i></div>
+          <div class="resumepanel"><div><div class="lb">Resume</div><div class="sb">Medium · 3:12 · 34 of 81</div></div><div class="go">▸</div></div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i>
+          <i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i>
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i>
+          <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Easy</div><div class="st done">Solved · 4:32</div><div class="pips l1"><i></i><i></i><i></i></div></div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Medium</div><div class="st">Not started · 30 givens</div><div class="pips l2"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i class="a"></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i></div>
+          <div class="meta"><div class="nm">Hard</div><div class="st">Not started · 24 givens</div><div class="pips l3"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · loaded<small>三張真實盤面;玻璃膠囊底下透出第三張卡與 banner</small></div></div>
+
+  <!-- 2 Today allDone -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n">13</span><span class="u">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip today"></i></span>
+          <span class="best">Best 31</span></div>
+        <div class="alldone">
+          <svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9.4"/><path d="M7.5 12.4l3.2 3.2L16.6 9.4" stroke-width="2.3"/></svg>
+          <div class="h">All done today</div><div class="p">今天完成了</div>
+          <div class="z">Tomorrow's puzzles arrive at midnight<br>明天的題目午夜送達</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i>
+          <i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i>
+          <i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i>
+          <i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="b"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Hard</div><div class="st done">Solved · 14:20</div><div class="pips l3"><i></i><i></i><i></i></div></div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · allDone<small>三卡改「明日預告」;<strong>badge 消失</strong>;最後一題的完成盤面留著給你看</small></div></div>
+
+  <!-- 3 Today degraded -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n" style="color:var(--tt)">—</span><span class="u" style="color:var(--tt)">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i></span></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i>
+          <i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i>
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i>
+          <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Easy</div><div class="st">Not started</div><div class="pips l1"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Medium</div><div class="st">Not started</div><div class="pips l2"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i class="a"></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i></div>
+          <div class="meta"><div class="nm">Hard</div><div class="st">Not started</div><div class="pips l3"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · degraded(CK 失敗)<small><strong>縮圖仍畫得出來</strong>(盤面由 seed 決定,不依賴 CK);只有完成狀態不可知 → 一律未開始態;streak 骨架化;<strong>badge 不顯示</strong></small></div></div>
+
+  <!-- 4 Practice -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i></div>
+          <div class="meta"><div class="nm">Easy</div><div class="st">36 givens · 密度高</div><div class="pips l1"><i></i><i></i><i></i></div></div></div>
+        <div class="bcard" style="box-shadow:inset 0 0 0 2.5px var(--acc)"><div class="thumb s9">
+          <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i>
+          <i></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+          <i class="b"></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i></i>
+          <i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i>
+          <i class="a"></i><i></i><i></i><i class="b"></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i class="a"></i><i class="b"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="b"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i></div>
+          <div class="meta"><div class="nm">Medium</div><div class="st">30 givens</div><div class="pips l2"><i></i><i></i><i></i></div></div>
+          <div class="cv" style="color:var(--acc)">✓</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+          <i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i>
+          <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i class="a"></i>
+          <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i></div>
+          <div class="meta"><div class="nm">Hard</div><div class="st">24 givens · 密度低</div><div class="pips l3"><i></i><i></i><i></i></div></div></div>
+        <div style="font-size:12.5px;color:var(--tt);text-align:center;flex:0 0 auto">Medium · ready</div>
+        <div style="flex:1"></div>
+        <div class="cta" style="margin-bottom:104px">New Game</div>
+      </div>
+      <div class="navglass"><span class="ttl">Practice</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">PRACTICE<small>難度卡帶<strong>密度預覽</strong>(代表性樣本,非真實下一局);CTA 從玻璃底下透出</small></div></div>
+
+  <!-- 5 Progress -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content" style="gap:10px">
+        <div class="grouph">Personal bests</div>
+        <div class="record"><span class="pips l1" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Easy</div><div class="rs">14 solved · avg 4:02</div></div><div class="rt">3:12</div></div>
+        <div class="record"><span class="pips l2" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Medium</div><div class="rs">9 solved · avg 8:15</div></div><div class="rt">6:41</div></div>
+        <div class="record"><span class="pips l3" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Hard</div><div class="rs">3 solved · avg 17:03</div></div><div class="rt">14:20</div></div>
+        <div class="calwrap">
+          <div style="display:flex;align-items:baseline"><span style="font-size:14.5px;font-weight:600">August</span><span style="margin-left:auto;font-size:11.5px;color:var(--tt)">Current 13 · Best 31</span></div>
+          <div class="calgrid">
+            <i></i><i></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i class="tdy"></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="lrow"><div class="nm">Achievements</div><div class="ex">↗</div></div>
+        <div class="lrow"><div class="nm">Leaderboards</div><div class="ex">↗</div></div>
+        <div style="font-size:10.5px;color:var(--tt);text-align:center;line-height:1.5;flex:0 0 auto">官方術語 —— 不可寫 Trophies / Awards / Medals / Rankings</div>
+      </div>
+      <div class="navglass"><span class="ttl">Progress</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">PROGRESS<small>紀錄陳列而非試算表;<strong>兩列走 GC 原生 dashboard</strong>(D7),不自建成就系統;無 banner</small></div></div>
+
+ </div>
+</div>
+
+<div class="rail sk sk-sud">
+ <div class="rail-inner">
+
+  <!-- 6 Board playing -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="fullboard">
+          <span class="g">5</span><span class="g">3</span><span></span><span></span><span class="g">7</span><span></span><span></span><span></span><span></span>
+          <span class="g">6</span><span></span><span></span><span class="g">1</span><span class="g">9</span><span class="g">5</span><span></span><span></span><span></span>
+          <span></span><span class="g">9</span><span class="g">8</span><span></span><span></span><span></span><span></span><span class="g">6</span><span></span>
+          <span class="g">8</span><span></span><span></span><span></span><span class="g">6</span><span></span><span></span><span></span><span class="g">3</span>
+          <span class="hl">4</span><span class="hl"></span><span class="hl"></span><span class="hl">8</span><span class="hl u">5</span><span class="hl">3</span><span class="hl"></span><span class="hl"></span><span class="hl">1</span>
+          <span class="g">7</span><span></span><span></span><span></span><span class="g">2</span><span></span><span></span><span></span><span class="g">6</span>
+          <span></span><span class="g">6</span><span></span><span></span><span></span><span></span><span class="g">2</span><span class="g">8</span><span></span>
+          <span></span><span></span><span></span><span class="g">4</span><span class="g">1</span><span class="g">9</span><span></span><span></span><span class="g">5</span>
+          <span></span><span></span><span></span><span></span><span class="g">8</span><span></span><span></span><span class="g">7</span><span class="g">9</span>
+        </div>
+      </div>
+      <div class="navglass bar"><span class="pips l2" style="margin:0;gap:3px"><i style="width:8px;height:8px;border-radius:50%;display:block;background:var(--t2)"></i><i style="width:8px;height:8px;border-radius:50%;display:block;background:var(--t2)"></i><i style="width:8px;height:8px;border-radius:50%;display:block;background:rgba(0,0,0,.1)"></i></span>
+        <span class="dim">Medium</span><span class="tm">3:12</span><span class="sp"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="7" y="5" width="3.4" height="14" rx="1.2"/><rect x="13.6" y="5" width="3.4" height="14" rx="1.2"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="cluster">
+        <div class="padgrid"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b><b style="font-size:15px">⌫</b></div>
+        <div class="clustertools">
+          <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg></b>
+          <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 000 10h3"/></svg></b>
+          <b class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg></b></div></div>
+      
+    </div><div class="hind"></div></div>
+    <div class="plabel">SUD-BOARD · 進行中<small><strong>⚠️ F1 更正:iPhone board 是 <code>fullScreenCover</code>(D3),會蓋掉 tab bar —— 前一版誤畫了三分頁列,已移除,G4 收回讓出的空間。</strong><strong>盤面滿版到左右兩邊</strong>,G4 叢集與 tab bar 浮在它的下緣;兩者都內縮於螢幕邊,所以盤面在它們的<strong>四周與底下露出</strong>。格徑 43.2pt(393pt 裝置)。⚠️ 誠實說明:9×9 是正方形,在 Pro 尺寸上盤面高度小於可用高度,<strong>叢集下方仍有背景</strong> —— 重點是那塊空間現在被控制項使用,而不是死留白</small></div></div>
+
+  <!-- 7 Board paused -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="fullboard">
+          <span class="g">5</span><span class="g">3</span><span></span><span></span><span class="g">7</span><span></span><span></span><span></span><span></span>
+          <span class="g">6</span><span></span><span></span><span class="g">1</span><span class="g">9</span><span class="g">5</span><span></span><span></span><span></span>
+          <span></span><span class="g">9</span><span class="g">8</span><span></span><span></span><span></span><span></span><span class="g">6</span><span></span>
+          <span class="g">8</span><span></span><span></span><span></span><span class="g">6</span><span></span><span></span><span></span><span class="g">3</span>
+          <span>4</span><span></span><span></span><span>8</span><span class="u">5</span><span>3</span><span></span><span></span><span>1</span>
+          <span class="g">7</span><span></span><span></span><span></span><span class="g">2</span><span></span><span></span><span></span><span class="g">6</span>
+          <span></span><span class="g">6</span><span></span><span></span><span></span><span></span><span class="g">2</span><span class="g">8</span><span></span>
+          <span></span><span></span><span></span><span class="g">4</span><span class="g">1</span><span class="g">9</span><span></span><span></span><span class="g">5</span>
+          <span></span><span></span><span></span><span></span><span class="g">8</span><span></span><span></span><span class="g">7</span><span class="g">9</span>
+        </div>
+      </div>
+      <div class="pauseveil"><div class="pausecard">
+        <div class="h">Leave Game?</div>
+        <div class="p">你的進度會被保存,可以稍後繼續。</div>
+        <div class="b1">Resume</div><div class="b2">Leave</div></div></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">SUD-BOARD · 暫停<small>D5/D6 <strong>完全不碰</strong>。遮罩是 <code>ultraThinMaterial</code>(standard material,<strong>非</strong> Liquid Glass)—— 不構成玻璃疊玻璃;G4 與 tab bar 在 pause 期間退場</small></div></div>
+
+  <!-- 8 Completion liveSolve -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="fullboard">
+          <span class="g">5</span><span class="g">3</span><span class="u">4</span><span class="u">6</span><span class="g">7</span><span class="u">8</span><span class="u">9</span><span class="u">1</span><span class="u">2</span>
+          <span class="g">6</span><span class="u">7</span><span class="u">2</span><span class="g">1</span><span class="g">9</span><span class="g">5</span><span class="u">3</span><span class="u">4</span><span class="u">8</span>
+          <span class="u">1</span><span class="g">9</span><span class="g">8</span><span class="u">3</span><span class="u">4</span><span class="u">2</span><span class="u">5</span><span class="g">6</span><span class="u">7</span>
+          <span class="g">8</span><span class="u">5</span><span class="u">9</span><span class="u">7</span><span class="g">6</span><span class="u">1</span><span class="u">4</span><span class="u">2</span><span class="g">3</span>
+          <span class="u">4</span><span class="u">2</span><span class="u">6</span><span class="u">8</span><span class="u">5</span><span class="u">3</span><span class="u">7</span><span class="u">9</span><span class="u">1</span>
+          <span class="g">7</span><span class="u">1</span><span class="u">3</span><span class="u">9</span><span class="g">2</span><span class="u">4</span><span class="u">8</span><span class="u">5</span><span class="g">6</span>
+          <span class="u">9</span><span class="g">6</span><span class="u">1</span><span class="u">5</span><span class="u">3</span><span class="u">7</span><span class="g">2</span><span class="g">8</span><span class="u">4</span>
+          <span class="u">2</span><span class="u">8</span><span class="u">7</span><span class="g">4</span><span class="g">1</span><span class="g">9</span><span class="u">6</span><span class="u">3</span><span class="g">5</span>
+          <span class="u">3</span><span class="u">4</span><span class="u">5</span><span class="u">2</span><span class="g">8</span><span class="u">6</span><span class="u">1</span><span class="g">7</span><span class="g">9</span>
+        </div>
+      </div>
+      <div class="glow"></div>
+      <div class="cmppanel">
+        <div class="t">Solved</div><div class="tm">4:32</div>
+        <div class="d">18s faster than your best</div>
+        <div class="cmpstreak"><div class="lb">Streak</div>
+          <div class="rw"><span class="strip"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip adv"></i></span><span class="num">12 → 13</span></div></div>
+        <div class="cta" style="margin-top:12px">Next: Medium</div>
+        <div class="cta plain">Done</div>
+      </div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      
+    </div><div class="hind"></div></div>
+    <div class="plabel">COMPLETION · liveSolve<small>G6 玻璃面板從<strong>你剛解完的盤面</strong>升起,盤面留在後方被折射;accent 光暈畫在<strong>玻璃背後</strong>。<strong>G4 已退場</strong>(不得玻璃疊玻璃)</small></div></div>
+
+  <!-- 9 Completion review -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage" style="opacity:.9">
+        <div class="fullboard">
+          <span class="g">5</span><span class="g">3</span><span class="u">4</span><span class="u">6</span><span class="g">7</span><span class="u">8</span><span class="u">9</span><span class="u">1</span><span class="u">2</span>
+          <span class="g">6</span><span class="u">7</span><span class="u">2</span><span class="g">1</span><span class="g">9</span><span class="g">5</span><span class="u">3</span><span class="u">4</span><span class="u">8</span>
+          <span class="u">1</span><span class="g">9</span><span class="g">8</span><span class="u">3</span><span class="u">4</span><span class="u">2</span><span class="u">5</span><span class="g">6</span><span class="u">7</span>
+          <span class="g">8</span><span class="u">5</span><span class="u">9</span><span class="u">7</span><span class="g">6</span><span class="u">1</span><span class="u">4</span><span class="u">2</span><span class="g">3</span>
+          <span class="u">4</span><span class="u">2</span><span class="u">6</span><span class="u">8</span><span class="u">5</span><span class="u">3</span><span class="u">7</span><span class="u">9</span><span class="u">1</span>
+          <span class="g">7</span><span class="u">1</span><span class="u">3</span><span class="u">9</span><span class="g">2</span><span class="u">4</span><span class="u">8</span><span class="u">5</span><span class="g">6</span>
+          <span class="u">9</span><span class="g">6</span><span class="u">1</span><span class="u">5</span><span class="u">3</span><span class="u">7</span><span class="g">2</span><span class="g">8</span><span class="u">4</span>
+          <span class="u">2</span><span class="u">8</span><span class="u">7</span><span class="g">4</span><span class="g">1</span><span class="g">9</span><span class="u">6</span><span class="u">3</span><span class="g">5</span>
+          <span class="u">3</span><span class="u">4</span><span class="u">5</span><span class="u">2</span><span class="g">8</span><span class="u">6</span><span class="u">1</span><span class="g">7</span><span class="g">9</span>
+        </div>
+      </div>
+      <div class="cmppanel" style="height:52%">
+        <div class="t" style="color:var(--ts)">Solved</div><div class="tm">5:44</div>
+        <div class="d">Easy · Tue, Aug 12</div>
+        <div style="flex:1"></div>
+        <div class="cta plain" style="box-shadow:inset 0 0 0 1.5px var(--accm)">Close</div>
+      </div>
+      <div class="navglass inline"><span class="bk">‹ Today</span><span class="t">Tue, Aug 12</span><span style="width:52px"></span></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">COMPLETION · review(回顧)<small><strong>無光暈、無 streak 帶、面板不播升起、無觸覺</strong> —— 什麼都沒推進,播了就是謊報。這是 4 條完成路徑共用 scaffold 的必要區分</small></div></div>
+
+  <!-- 10 Settings -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content" style="gap:16px">
+        <div class="formsec">
+          <div class="formrow">Remove Ads<span class="v">NT$90</span></div>
+          <div class="formrow">Restore Purchases<span class="v">›</span></div></div>
+        <div class="formsec">
+          <div class="formrow">Game Center<span class="v">已登入 ›</span></div></div>
+        <div class="formsec">
+          <div class="formrow">Daily reminder<span class="v">21:00 ›</span></div></div>
+        <div class="formsec">
+          <div class="formrow">Sound<span class="v">›</span></div>
+          <div class="formrow">Haptics<span class="v">開啟</span></div></div>
+        <div class="formsec">
+          <div class="formrow">Version<span class="v">3.0 (202608)</span></div>
+          <div class="formrow">Acknowledgements<span class="v">›</span></div></div>
+        <div class="formsec"><div class="formrow" style="color:var(--acc)">Clear cache</div></div>
+      </div>
+      <div class="navglass inline"><span class="bk">‹ Today</span><span class="t">Settings</span><span style="width:52px"></span></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">SETTINGS<small>D20 <strong>保持原生 Form,不碰</strong>。從每個 tab 右上齒輪 push 進來,所以 tab bar 仍在;<strong>列從玻璃底下捲過去</strong>(scroll edge effect)</small></div></div>
+
+ </div>
+</div>
+
+<div class="apphead"><span class="appdot" style="background:#3E6B8C"></span><h4>Minesweeper</h4><span>blueprint #3E6B8C · 冷紙 #F4F6F8 —— 同一份 shell,只換 token 與盤面</span></div>
+
+<div class="rail sk sk-ms">
+ <div class="rail-inner">
+
+  <!-- Today loaded -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n">7</span><span class="u">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip on"></i><i class="pip on"></i><i class="pip off"></i><i class="pip on"></i><i class="pip on"></i><i class="pip today"></i><i class="pip off"></i></span>
+          <span class="best">Best 22</span></div>
+        <div class="resumewrap"><div class="resumebg">
+          <i></i><i></i><i class="a"></i><i class="a"></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="a"></i>
+          <i></i><i></i><i></i><i class="a"></i><i class="b"></i><i class="a"></i><i></i><i></i><i class="a"></i>
+          <i class="a"></i><i></i><i></i><i></i><i class="a"></i><i class="a"></i><i></i><i></i><i></i>
+          <i class="a"></i><i class="a"></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i></i><i></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="resumepanel"><div><div class="lb">Resume</div><div class="sb">Intermediate · 1:48 · 2 flags</div></div><div class="go">▸</div></div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="meta"><div class="nm">Beginner</div><div class="st done">Cleared · 1:12</div><div class="pips l1"><i></i><i></i><i></i></div></div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Intermediate</div><div class="st fail">Failed</div><div class="pips l2"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb wide">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Expert</div><div class="st">Not started · 16 × 30</div><div class="pips l3"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · loaded<small>MS 多一個 <code>Failed</code> 尾標(D21);<strong>Expert 縮圖同時傳達「盤面有多大」</strong>(16×30 寬扁)—— 文字副標做不到</small></div></div>
+
+  <!-- Today allDone -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n">8</span><span class="u">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip on"></i><i class="pip on"></i><i class="pip off"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip today"></i></span>
+          <span class="best">Best 22</span></div>
+        <div class="alldone">
+          <svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9.4"/><path d="M7.5 12.4l3.2 3.2L16.6 9.4" stroke-width="2.3"/></svg>
+          <div class="h">All done today</div><div class="p">今天完成了</div>
+          <div class="z">Tomorrow's boards arrive at midnight<br>明天的盤面午夜送達</div></div>
+        <div class="bcard"><div class="thumb wide">
+          <i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i>
+          <i class="b"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="b"></i><i></i>
+          <i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i></div>
+          <div class="meta"><div class="nm">Expert</div><div class="st done">Cleared · 11:05</div><div class="pips l3"><i></i><i></i><i></i></div></div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · allDone<small>文案只有名詞不同(boards vs puzzles),<strong>版面完全共用</strong></small></div></div>
+
+  <!-- Today degraded -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="streakrow"><span class="n" style="color:var(--tt)">—</span><span class="u" style="color:var(--tt)">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i><i class="pip skel"></i></span></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Beginner</div><div class="st">Not started</div><div class="pips l1"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Intermediate</div><div class="st">Not started</div><div class="pips l2"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+        <div class="bcard"><div class="thumb wide">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Expert</div><div class="st">Not started</div><div class="pips l3"><i></i><i></i><i></i></div></div><div class="cv">›</div></div>
+      </div>
+      <div class="navglass"><span class="ttl">Today</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="accessory">BANNER · tab accessory</div>
+      <div class="tabbar">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">TODAY · degraded<small>MS 結構上沒有 empty/failed(D21),但 CK 降級的 hero 骨架與縮圖續畫<strong>兩 app 一致</strong></small></div></div>
+
+  <!-- Practice -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content">
+        <div class="bcard"><div class="thumb s9">
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i></div>
+          <div class="meta"><div class="nm">Beginner</div><div class="st">9 × 9 · 10 mines · 密度低</div><div class="pips l1"><i></i><i></i><i></i></div></div></div>
+        <div class="bcard" style="box-shadow:inset 0 0 0 2.5px var(--acc)"><div class="thumb s9">
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i>
+          <i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i>
+          <i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="a"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Intermediate</div><div class="st">16 × 16 · 40 mines</div><div class="pips l2"><i></i><i></i><i></i></div></div>
+          <div class="cv" style="color:var(--acc)">✓</div></div>
+        <div class="bcard"><div class="thumb wide">
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i>
+          <i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i>
+          <i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i><i class="b"></i><i class="a"></i></div>
+          <div class="meta"><div class="nm">Expert</div><div class="st">16 × 30 · 99 mines · 密度高</div><div class="pips l3"><i></i><i></i><i></i></div></div></div>
+        <div style="flex:1"></div>
+        <div class="cta" style="margin-bottom:104px">New Game</div>
+      </div>
+      <div class="navglass"><span class="ttl">Practice</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">PRACTICE<small><strong>雷密度與盤面比例都看得見</strong>;MS <strong>無 shimmer</strong>(同步產盤 —— 真實玩法差異,不強行對齊)</small></div></div>
+
+  <!-- Progress -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="content" style="gap:10px">
+        <div class="grouph">Personal bests</div>
+        <div class="record"><span class="pips l1" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Beginner</div><div class="rs">21 cleared · avg 1:14</div></div><div class="rt">0:48</div></div>
+        <div class="record"><span class="pips l2" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Intermediate</div><div class="rs">11 cleared · avg 4:40</div></div><div class="rt">3:22</div></div>
+        <div class="record"><span class="pips l3" style="margin:0"><i></i><i></i><i></i></span><div><div class="rl">Expert</div><div class="rs">2 cleared · avg 13:31</div></div><div class="rt">11:05</div></div>
+        <div class="calwrap">
+          <div style="display:flex;align-items:baseline"><span style="font-size:14.5px;font-weight:600">August</span><span style="margin-left:auto;font-size:11.5px;color:var(--tt)">Current 8 · Best 22</span></div>
+          <div class="calgrid">
+            <i></i><i></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i>
+            <i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+            <i class="on"></i><i class="on"></i><i class="tdy"></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="lrow"><div class="nm">Achievements</div><div class="ex">↗</div></div>
+        <div class="lrow"><div class="nm">Leaderboards</div><div class="ex">↗</div></div>
+        <div style="font-size:10.5px;color:var(--tt);text-align:center;line-height:1.5;flex:0 0 auto">官方術語 —— 不可寫 Trophies / Awards / Medals / Rankings</div>
+      </div>
+      <div class="navglass"><span class="ttl">Progress</span>
+        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="tabbar">
+        <div class="tab"><span class="bdg"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+    </div><div class="hind"></div></div>
+    <div class="plabel">PROGRESS<small>內容夠長,<strong>最後一列從玻璃膠囊底下透出</strong> —— 一屏一個滾動軸,排行榜列不可捲動</small></div></div>
+
+  <!-- Board playing -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="msboard">
+          <span class="o">1</span><span></span><span class="f">⚑</span><span></span><span></span><span class="o"></span><span class="o">1</span><span></span><span></span>
+          <span class="o">1</span><span class="o">2</span><span></span><span></span><span class="o">1</span><span class="o"></span><span class="o">1</span><span></span><span></span>
+          <span class="o"></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o">1</span><span class="f">⚑</span><span></span>
+          <span class="o"></span><span class="o"></span><span class="o"></span><span class="o"></span><span class="o"></span><span class="o"></span><span class="o">2</span><span></span><span></span>
+          <span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="o">1</span><span></span><span></span>
+          <span></span><span></span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span></span><span></span><span></span>
+          <span></span><span></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="navglass bar"><span class="dim">⚑ 8</span><span class="tm">0:42</span><span class="sp"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="7" y="5" width="3.4" height="14" rx="1.2"/><rect x="13.6" y="5" width="3.4" height="14" rx="1.2"/></svg></div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      <div class="cluster">
+        <div class="modeseg">
+          <b class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8"/></svg>Reveal</b>
+          <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 21V4h11l-2.5 4L17 12H6"/></svg>Flag</b></div>
+        <div class="clustertools"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg></b></div></div>
+      
+    </div><div class="hind"></div></div>
+    <div class="plabel">MS-BOARD · 進行中<small><strong>⚠️ F1 更正:同樣移除誤畫的 tab bar。</strong>v3.1 那塊「~130pt 真空」不見了 —— <strong>那塊空間本來就該是控制項的家</strong>。分組:輸入類(模式)與編輯類(undo)兩組</small></div></div>
+
+  <!-- Completion liveSolve -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="msboard">
+          <span class="o">1</span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span>
+          <span class="o">1</span><span class="o">2</span><span class="o">2</span><span class="o">2</span><span class="o">1</span><span class="o"></span><span class="o">1</span><span class="o">2</span><span class="o">2</span>
+          <span class="o"></span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span>
+          <span class="o"></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">2</span><span class="o">2</span><span class="o">2</span>
+          <span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span>
+          <span class="o">1</span><span class="f">⚑</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="o">2</span><span class="o">2</span><span class="o">1</span>
+          <span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span>
+          <span class="o"></span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="f">⚑</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span>
+          <span class="o"></span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o"></span>
+        </div>
+      </div>
+      <div class="glow"></div>
+      <div class="cmppanel">
+        <div class="t">Cleared</div><div class="tm">1:12</div>
+        <div class="d">6s faster than your best</div>
+        <div class="cmpstreak"><div class="lb">Streak</div>
+          <div class="rw"><span class="strip"><i class="pip on"></i><i class="pip on"></i><i class="pip off"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip adv"></i></span><span class="num">7 → 8</span></div></div>
+        <div class="cta" style="margin-top:12px">Next: Intermediate</div>
+        <div class="cta plain">Done</div>
+      </div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      
+    </div><div class="hind"></div></div>
+    <div class="plabel">COMPLETION · liveSolve<small>光暈用 MS 自己的 <code>accent.celebratory</code> <code>#D4501F</code>,<strong>不借 Sudoku 的 accent</strong>(#767 D1)</small></div></div>
+
+  <!-- Completion loss -->
+  <div class="phone"><div class="phone-shell"><div class="di"></div>
+    <div class="scr">
+      <div class="boardstage">
+        <div class="msboard">
+          <span class="o">1</span><span></span><span class="f">⚑</span><span></span><span></span><span class="o"></span><span class="o">1</span><span></span><span></span>
+          <span class="o">1</span><span class="o">2</span><span></span><span></span><span class="o">1</span><span class="o"></span><span class="o">1</span><span></span><span></span>
+          <span class="o"></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o">1</span><span class="f">⚑</span><span></span>
+          <span class="o"></span><span class="o"></span><span class="o"></span><span class="boom">✻</span><span class="o"></span><span class="o"></span><span class="o">2</span><span></span><span></span>
+          <span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span class="o">1</span><span></span><span></span>
+          <span></span><span></span><span class="o">1</span><span class="o"></span><span class="o"></span><span class="o">1</span><span></span><span></span><span></span>
+          <span></span><span></span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span class="o">1</span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="cmppanel" style="height:56%">
+        <div class="t" style="color:var(--err)">Boom</div>
+        <div class="d" style="margin-top:10px">The daily board is recorded as failed.<br><span style="font-size:12.5px;color:var(--tt)">今日盤面記為失敗。可自由重玩,不計分。</span></div>
+        <div style="flex:1"></div>
+        <div class="cta">Try Again</div><div class="cta plain">Close</div>
+      </div>
+      <div class="sbar"><span>9:41</span><span class="ic"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg></span></div>
+      
+    </div><div class="hind"></div></div>
+    <div class="plabel">COMPLETION · MS loss<small><strong>無光暈、無 streak 帶、無 success 觸覺</strong> —— 改用 <code>.error</code>(語意互斥,同一 pattern 不得同時用於正負結果)</small></div></div>
+
+ </div>
+</div>
+
+<h2 class="sec"><span class="n">04</span>iPad / macOS</h2>
+<p class="lede">同一份 <code>sidebarAdaptable</code> TabView。sidebar 本身是玻璃層 —— <span class="lvl off">官方</span>「A background extension effect <strong>mirrors the adjacent content</strong> to give the impression of stretching it under the sidebar, and applies a blur to maintain legibility」。</p>
+<div class="callout co-warn"><span class="tag">用法更正</span><h4>它是「鏡射背景製造延伸的印象」,不是真的把內容塞到 sidebar 下</h4><p>前一版把<strong>可點的卡片列</strong>塞進 sidebar 範圍並被裁切 —— 那不是這個 API 的用法,而且會讓互動元素被遮住。<strong>更正:效果只用於背景層;互動卡列必須留在 sidebar 範圍外。</strong>下圖的縮圖列已退出 sidebar 範圍。</p></div>
+
+<div class="deskstack sk sk-sud">
+  <div class="mac">
+    <div class="mac-bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span class="t">Sudoku — Today</span></div>
+    <div class="mac-body">
+      <div class="sidebar">
+        <div class="sbrow on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today<span class="bdg"></span></div>
+        <div class="sbrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="sbrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+        <div class="sbsep"></div>
+        <div class="sbrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.02 7.02 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 00-.61.22L2.65 8.84a.5.5 0 00.12.64l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.12.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58z"/><circle cx="12" cy="12" r="3.1"/></svg>Settings</div>
+      </div>
+      <div class="detail">
+        <div class="dt">Today</div>
+        <div class="bleedstrip" style="margin-left:0">
+          <div><div class="thumb s9" style="width:112px;height:112px">
+            <i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i><i class="b"></i>
+            <i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i><i class="a"></i>
+            <i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i><i></i>
+            <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i><i class="b"></i>
+            <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i><i></i>
+            <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i><i class="a"></i>
+            <i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i><i></i>
+            <i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i class="b"></i>
+            <i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i><i></i><i class="b"></i><i class="a"></i></div>
+            <div style="font-size:14px;font-weight:500;margin-top:8px">Easy</div><div style="font-size:11.5px;color:var(--ok)">Solved · 4:32</div></div>
+          <div><div class="thumb s9" style="width:112px;height:112px">
+            <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+            <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+            <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+            <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+            <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+            <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i>
+            <i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i>
+            <i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i></i><i></i>
+            <i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i></div>
+            <div style="font-size:14px;font-weight:500;margin-top:8px">Medium</div><div style="font-size:11.5px;color:var(--ts)">Not started · 30 givens</div></div>
+          <div><div class="thumb s9" style="width:112px;height:112px">
+            <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+            <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i>
+            <i class="a"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i></i>
+            <i></i><i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i>
+            <i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i class="a"></i>
+            <i></i><i class="a"></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i class="a"></i><i></i><i></i><i class="a"></i><i></i></div>
+            <div style="font-size:14px;font-weight:500;margin-top:8px">Hard</div><div style="font-size:11.5px;color:var(--ts)">Not started · 24 givens</div></div>
+        </div>
+        <div class="streakrow" style="margin-top:22px"><span class="n">12</span><span class="u">day streak</span>
+          <span class="strip" style="margin-left:8px"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip today"></i><i class="pip off"></i></span>
+          <span class="best">Best 31</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="plabel" style="text-align:left">Sudoku · macOS / iPad regular — Today<small><strong>互動卡列留在 sidebar 範圍外</strong>(更正:前一版把它裁進 sidebar 下是錯用);<code>backgroundExtensionEffect()</code> 只作用於<strong>背景層</strong>。sidebar 是玻璃層,不是實色欄</small></div>
+
+  <div class="mac">
+    <div class="mac-bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span class="t">Sudoku — Board(detail 欄 push)</span></div>
+    <div class="mac-body">
+      <div class="sidebar">
+        <div class="sbrow on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Today</div>
+        <div class="sbrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></svg>Practice</div>
+        <div class="sbrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-5"/></svg>Progress</div>
+      </div>
+      <div class="detail" style="padding:0">
+        <div class="macboardwrap">
+          <div class="macboard">
+            <div class="fullboard" style="font-size:15px">
+              <span class="g">5</span><span class="g">3</span><span></span><span></span><span class="g">7</span><span></span><span></span><span></span><span></span>
+              <span class="g">6</span><span></span><span></span><span class="g">1</span><span class="g">9</span><span class="g">5</span><span></span><span></span><span></span>
+              <span></span><span class="g">9</span><span class="g">8</span><span></span><span></span><span></span><span></span><span class="g">6</span><span></span>
+              <span class="g">8</span><span></span><span></span><span></span><span class="g">6</span><span></span><span></span><span></span><span class="g">3</span>
+              <span class="hl">4</span><span class="hl"></span><span class="hl"></span><span class="hl">8</span><span class="hl u">5</span><span class="hl">3</span><span class="hl"></span><span class="hl"></span><span class="hl">1</span>
+              <span class="g">7</span><span></span><span></span><span></span><span class="g">2</span><span></span><span></span><span></span><span class="g">6</span>
+              <span></span><span class="g">6</span><span></span><span></span><span></span><span></span><span class="g">2</span><span class="g">8</span><span></span>
+              <span></span><span></span><span></span><span class="g">4</span><span class="g">1</span><span class="g">9</span><span></span><span></span><span class="g">5</span>
+              <span></span><span></span><span></span><span></span><span class="g">8</span><span></span><span></span><span class="g">7</span><span class="g">9</span>
+            </div>
+          </div>
+          <div class="cluster" style="left:auto;right:24px;bottom:auto;top:50%;transform:translateY(-50%);width:210px;padding:12px">
+            <div class="padgrid" style="grid-template-columns:repeat(3,1fr)"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></div>
+            <div class="clustertools">
+              <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg></b>
+              <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 000 10h3"/></svg></b>
+              <b class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg></b></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="plabel" style="text-align:left">Sudoku · macOS — Board<small>D3:macOS 是 <strong>detail 欄 push</strong> 不是 modal。G4 叢集在桌面移到 trailing 側,但<strong>分組原則與跨平台一致性不變</strong></small></div>
+</div>
+
+<div class="callout co-err">
+  <span class="tag">最高實作風險 · R2</span>
+  <h4><code>sidebarAdaptable</code> 會改寫 <code>RootShellView</code>,而 #763 的 overlay 上提就掛在那裡</h4>
+  <p><code>RootShellView.swift:81-90</code> 目前把 pause / completion overlay 上提到 split view 外層,修的正是「macOS 遮罩逃出視窗、sidebar 在 overlay 底下仍可點」。<strong>不明確保留就等於把 #763 重新引入一次。</strong></p>
+  <p><strong>驗收條件必須明文包含:macOS 與 iPad regular 版面下,pause 與 completion 期間 sidebar 與 tab 切換皆不可互動。快照測試驗不了這條(它驗像素,不驗可互動性),必須 idb 實機驅動。</strong>→ B-4,且<strong>必須排在階段 1 的驗收裡,不能留到最後</strong>。</p>
+</div>
+
+<h2 class="sec"><span class="n">05</span>玻璃系統</h2>
+
+<blockquote class="hig">
+  <strong>Avoid overusing Liquid Glass effects.</strong> If you apply Liquid Glass effects to a custom control, do so sparingly… <strong>Limit these effects to the most important functional elements in your app.</strong>
+  <cite>Adopting Liquid Glass, Technology Overviews</cite>
+</blockquote>
+
+<div class="card" style="overflow-x:auto">
+  <h3 class="sub" style="margin-top:0">最終表面清單 —— 自訂玻璃只有 2 片</h3>
+  <table>
+    <thead><tr><th style="width:46px">#</th><th>表面</th><th style="width:120px">類型</th><th>是否屬「most important functional elements」</th><th style="width:160px">裁定</th></tr></thead>
+    <tbody>
+      <tr class="keep"><td class="num">G1</td><td>Tab bar / sidebar</td><td><strong>系統自帶</strong></td><td>免計 —— 標準元件自動取得玻璃</td><td class="pass">✅ 保留</td></tr>
+      <tr class="keep"><td class="num">G2</td><td>Toolbar(含齒輪、board 的計時/暫停)</td><td><strong>系統自帶</strong></td><td>免計</td><td class="pass">✅ 保留</td></tr>
+      <tr class="drop"><td class="num">G3</td><td>Board 上緣自訂膠囊</td><td>自訂</td><td class="fail">❌ 系統 toolbar 本來就能做</td><td class="fail">🗑 刪除 → 併入 G2</td></tr>
+      <tr class="keep"><td class="num">G4</td><td>Board 下緣控制叢集</td><td><strong>自訂</strong></td><td class="pass">✅ 盤面的主要輸入介面,玩法核心操作都在這裡</td><td class="pass">✅ 保留</td></tr>
+      <tr class="drop"><td class="num">G5</td><td>Resume 面板</td><td>自訂</td><td class="fail">❌ 它是 Today <strong>內容層</strong>裡會捲動的卡片</td><td class="fail">🗑 刪除 → standard material</td></tr>
+      <tr class="keep"><td class="num">G6</td><td>Completion 面板</td><td><strong>自訂</strong></td><td class="warnv">⚠️ 明示例外(見下)</td><td class="pass">✅ 保留</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="callout co-info" style="margin:0">
+    <span class="tag">D-3.3 已裁定:A</span>
+    <h4>G6 的明示例外:自訂玻璃面板,因它必須在 sheet 不可用的脈絡中渲染</h4>
+    <p>官方對 sheet 的描述幾乎就是我們 completion 面板的設計(自動玻璃、增大圓角、half sheet peek-through),改系統 sheet 可再省一片自訂玻璃。<strong>但裁定維持盤內 overlay。</strong></p>
+    <p><strong>理由:</strong>completion 有 <strong>4 條 production 路徑</strong>共用同一個 scaffold,其中 pushed review route 在 macOS / iPad 是 <strong>detail 欄 push</strong>;系統 sheet 在該脈絡是錯的呈現(macOS sheet = 視窗置中 modal,<strong>回顧畫面不該是 modal</strong>)。<strong>overlay 是唯一能讓 4 條路徑跨三平台一致的機制。</strong></p>
+    <p><strong>代價:</strong>多一片自訂玻璃,以退場規則約束。</p>
+  </div>
+  <div class="callout co-warn" style="margin:0">
+    <span class="tag">退場規則</span>
+    <h4>同一畫面同一時間,只有一個自訂玻璃「場景」可見</h4>
+    <blockquote class="hig" style="background:rgba(255,255,255,.72)"><strong>Check for crowding or overlapping of controls.</strong> …<strong>avoid overcrowding or layering Liquid Glass elements on top of each other.</strong><cite>Adopting Liquid Glass</cite></blockquote>
+    <ul class="tick">
+      <li class="x"><strong>completion 面板出現 → G4 必須先退場</strong>(不是被蓋住,是真的 unmount 或去玻璃化)</li>
+      <li>pause overlay 是 <code>ultraThinMaterial</code>(standard material,<strong>非</strong> Liquid Glass),不構成疊層 —— 但 G4 在 pause 期間本來就該隱藏</li>
+      <li class="g">這條抓到 v3.2 的一個實際違規,已修正</li>
+      <li class="q"><strong>措辭更正:</strong>G4 依官方「don't mix text and icons across items that share a background」拆成<strong>兩個 group</strong>(數字鍵 / 工具鍵),所以「最多一<strong>片</strong>」會自打臉 —— 約束單位是<strong>場景</strong>:board 的 G4(同屬一個 <code>GlassEffectContainer</code>)與 completion 的 G6 不得同時存在</li>
+    </ul>
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="card">
+    <h3 class="sub" style="margin-top:0"><span class="lvl off">官方</span> 容器 · 間距 · 圓角</h3>
+    <blockquote class="hig"><strong>Combine custom Liquid Glass effects to improve rendering performance.</strong> …<strong>make sure to combine them using a</strong> [GlassEffectContainer]<cite>Adopting Liquid Glass</cite></blockquote>
+    <ul class="tick">
+      <li>G4 = <strong><code>GlassEffectContainer</code></strong>(SwiftUI,26.0+)</li>
+      <li class="x"><strong>⚠️ 前一版把用法寫反了,已更正。</strong>官方:「Each view with a Liquid Glass effect <strong>contributes a shape</strong> rendered with the effect to a set of shapes… Configure how shapes interact by <strong>customizing the default spacing value of the container</strong>」—— <strong>容器靠子視圖各自的 <code>.glassEffect</code> 來合併</strong>;「容器內不套」做出來的是空容器</li>
+      <li class="g"><strong>正確寫法:容器內按鈕各自套 <code>.glassEffect</code>,或用 <code>.buttonStyle(.glass)</code></strong>。官方那句「Instead of creating buttons with custom Liquid Glass effects…」的本意是<strong>不要自己手刻玻璃外觀</strong>,不是「不要套 glass 修飾符」</li>
+      <li>容器的 <strong>spacing</strong> 參數控制形狀何時開始融合 —— 部分回答 U-2(官方確有 spacing 語意,是融合距離而非內距)</li>
+      <li class="x"><strong>不覆寫標準間距</strong>:「Prefer to use <strong>standard spacing metrics</strong> instead of overriding them」→ 叢集內距引用系統標準,不寫死數值</li>
+      <li><strong>分組原則用官方的</strong>:功能相似 / 影響同一區域,且<strong>跨平台一致</strong> → <strong>輸入組</strong>(數字鍵 / 模式)與<strong>編輯組</strong>(undo / redo / 鉛筆)</li>
+      <li class="x"><strong>G4 拆成兩個 group</strong>:官方同段「<strong>don't mix text and icons across items that share a background</strong>」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一背景</li>
+      <li class="g"><strong>【官方】每個圖示按鈕必須有 accessibility label</strong>:「Provide an accessibility label for every icon.」</li>
+      <li><strong>圓角同心</strong>【官方】;但<strong>「內圓角 = 外圓角 − 內距」這條公式是【我方推論】</strong>,官方沒給公式</li>
+      <li class="q">官方<strong>沒給</strong>「一組最多幾項」的數字 → <strong>不自訂上限</strong></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">變體與著色</h3>
+    <p style="font-size:13.5px;color:var(--c-ink2)"><strong>一律 <code>regular</code>,不用 <code>clear</code>。</strong><code>clear</code> 的適用對象明文是「media backgrounds — such as <strong>photos and videos</strong>」;盤面是高對比線稿與文字,不是 media。而我們的叢集<strong>全都含大量文字</strong>,正是官方點名該用 <code>regular</code> 的情況。<strong>連帶好處:35% dimming 層不需要。</strong></p>
+    <table style="margin-top:8px">
+      <thead><tr><th>對象</th><th>著色規則</th></tr></thead>
+      <tbody>
+        <tr><td>玻璃<strong>表面</strong>本身</td><td class="fail">一律不著色 —— 取背後內容的顏色</td></tr>
+        <tr><td>狀態指示</td><td class="pass">可著色:MS Reveal/Flag 選取態、Sudoku 鉛筆開啟態</td></tr>
+        <tr><td>主要動作</td><td class="pass">可著色:G6 的主 CTA</td></tr>
+        <tr><td><strong>同一片玻璃</strong></td><td class="warnv"><strong>最多一個</strong>著色控制項</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><span class="lvl off">官方</span>「To emphasize primary actions, apply color to the <strong>background</strong> rather than to symbols or text… <strong>Refrain from adding color to the background of multiple controls.</strong>」</div>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">06</span>Token 總表</h2>
+<p class="lede">每值附實算對比(WCAG 公式,從原始 hex,取 <code>surface.primary</code> 與 <code>surface.background</code> 的較差者)。IC 門檻:文字 ≥7:1(AAA)、非文字 ≥4.5:1。</p>
+
+<div class="grid2">
+  <div class="card">
+    <div class="apphead" style="margin-top:0"><span class="appdot" style="background:#5C7A4F"></span><h4>Sudoku</h4><span>light → IC light</span></div>
+    <div class="swrow"><span class="nm">text.primary</span><span class="swb" style="background:#1A1D21"></span><span class="swv">#1A1D21</span><span class="swc">15.94</span><span class="arrow">→</span><span class="swb" style="background:#1A1D21"></span><span class="swv">不變</span><span class="swc pass">AAA</span></div>
+    <div class="swrow"><span class="nm">text.secondary</span><span class="swb" style="background:#54595F"></span><span class="swv">#54595F</span><span class="swc">6.66</span><span class="arrow">→</span><span class="swb" style="background:#51555B"></span><span class="swv">#51555B</span><span class="swc pass">7.07</span></div>
+    <div class="swrow"><span class="nm">text.tertiary</span><span class="swb" style="background:#86898E"></span><span class="swv">#86898E</span><span class="swc fail">3.31</span><span class="arrow">→</span><span class="swb" style="background:#535559"></span><span class="swv">#535559</span><span class="swc pass">7.04</span></div>
+    <div class="swrow"><span class="nm">accent.primary</span><span class="swb" style="background:#5C7A4F"></span><span class="swv">#5C7A4F</span><span class="swc">4.83</span><span class="arrow">→</span><span class="swb" style="background:#485F3E"></span><span class="swv">#485F3E</span><span class="swc pass">7.04</span></div>
+    <div class="swrow"><span class="nm">identity.tier1</span><span class="swb" style="background:#6F935F"></span><span class="swv">#6F935F</span><span class="swc fail">3.29</span><span class="arrow">→</span><span class="swb" style="background:#5D7C50"></span><span class="swv">#5D7C50</span><span class="swc pass">4.70</span></div>
+    <div class="swrow"><span class="nm">identity.tier2</span><span class="swb" style="background:#557049"></span><span class="swv">#557049</span><span class="swc">5.21</span><span class="arrow">→</span><span class="swb" style="background:#445A3A"></span><span class="swv">#445A3A</span><span class="swc pass">7.58</span></div>
+    <div class="swrow"><span class="nm">identity.tier3</span><span class="swb" style="background:#3B4E33"></span><span class="swv">#3B4E33</span><span class="swc">8.52</span><span class="arrow">→</span><span class="swb" style="background:#2B3925"></span><span class="swv">#2B3925</span><span class="swc pass">12.25</span></div>
+    <div class="swrow"><span class="nm">thumb.given</span><span class="swb" style="background:#859B7B"></span><span class="swv">#859B7B</span><span class="swc fail">3.01</span><span class="arrow">→</span><span class="swb" style="background:#5D7C50"></span><span class="swv">#5D7C50</span><span class="swc pass">4.70</span></div>
+    <div class="swrow"><span class="nm">thumb.userFilled</span><span class="swb" style="background:#5C7A4F"></span><span class="swv">#5C7A4F</span><span class="swc">4.83</span><span class="arrow">→</span><span class="swb" style="background:#3D5135"></span><span class="swv">#3D5135</span><span class="swc pass">8.65</span></div>
+    <div class="swrow"><span class="nm">streak.pipOff</span><span class="swb" style="background:#719561"></span><span class="swv">#719561</span><span class="swc fail">3.20</span><span class="arrow">→</span><span class="swb" style="background:#5D7A50"></span><span class="swv">#5D7A50</span><span class="swc pass">4.53</span></div>
+    <div class="swrow"><span class="nm">status.success</span><span class="swb" style="background:#1B7A3E"></span><span class="swv">#1B7A3E</span><span class="swc">5.07</span><span class="arrow">→</span><span class="swb" style="background:#156131"></span><span class="swv">#156131</span><span class="swc pass">7.10</span></div>
+    <div class="swrow"><span class="nm">status.warning</span><span class="swb" style="background:#A86A0E"></span><span class="swv">#A86A0E</span><span class="swc">4.18</span><span class="arrow">→</span><span class="swb" style="background:#774B0A"></span><span class="swv">#774B0A</span><span class="swc pass">7.08</span></div>
+    <div class="swrow"><span class="nm">status.error</span><span class="swb" style="background:#C8362B"></span><span class="swv">#C8362B</span><span class="swc">4.92</span><span class="arrow">→</span><span class="swb" style="background:#9E2B22"></span><span class="swv">#9E2B22</span><span class="swc pass">7.01</span></div>
+  </div>
+  <div class="card">
+    <div class="apphead" style="margin-top:0"><span class="appdot" style="background:#3E6B8C"></span><h4>Minesweeper</h4><span>light → IC light</span></div>
+    <div class="swrow"><span class="nm">text.primary</span><span class="swb" style="background:#1A1E24"></span><span class="swv">#1A1E24</span><span class="swc">15.44</span><span class="arrow">→</span><span class="swb" style="background:#1A1E24"></span><span class="swv">不變</span><span class="swc pass">AAA</span></div>
+    <div class="swrow"><span class="nm">text.secondary</span><span class="swb" style="background:#545B63"></span><span class="swv">#545B63</span><span class="swc">6.35</span><span class="arrow">→</span><span class="swb" style="background:#4E545C"></span><span class="swv">#4E545C</span><span class="swc pass">7.06</span></div>
+    <div class="swrow"><span class="nm">text.tertiary</span><span class="swb" style="background:#868D95"></span><span class="swv">#868D95</span><span class="swc fail">3.10</span><span class="arrow">→</span><span class="swb" style="background:#4F545A"></span><span class="swv">#4F545A</span><span class="swc pass">7.05</span></div>
+    <div class="swrow"><span class="nm">accent.primary</span><span class="swb" style="background:#3E6B8C"></span><span class="swv">#3E6B8C</span><span class="swc">5.70</span><span class="arrow">→</span><span class="swb" style="background:#365C79"></span><span class="swv">#365C79</span><span class="swc pass">7.09</span></div>
+    <div class="swrow"><span class="nm">accent.celebratory</span><span class="swb" style="background:#D4501F"></span><span class="swv">#D4501F</span><span class="swc">3.90</span><span class="arrow">→</span><span class="swb" style="background:#C2491C"></span><span class="swv">#C2491C</span><span class="swc pass">4.55</span></div>
+    <div class="swrow"><span class="nm">identity.tier1</span><span class="swb" style="background:#578DB4"></span><span class="swv">#578DB4</span><span class="swc fail">3.30</span><span class="arrow">→</span><span class="swb" style="background:#46799E"></span><span class="swv">#46799E</span><span class="swc pass">4.68</span></div>
+    <div class="swrow"><span class="nm">identity.tier2</span><span class="swb" style="background:#3E6C8D"></span><span class="swv">#3E6C8D</span><span class="swc">5.19</span><span class="arrow">→</span><span class="swb" style="background:#335772"></span><span class="swv">#335772</span><span class="swc pass">7.64</span></div>
+    <div class="swrow"><span class="nm">identity.tier3</span><span class="swb" style="background:#2B4B62"></span><span class="swv">#2B4B62</span><span class="swc">8.48</span><span class="arrow">→</span><span class="swb" style="background:#203748"></span><span class="swv">#203748</span><span class="swc pass">12.34</span></div>
+    <div class="swrow"><span class="nm">thumb.covered</span><span class="swb" style="background:#7897AE"></span><span class="swv">#7897AE</span><span class="swc fail">3.07</span><span class="arrow">→</span><span class="swb" style="background:#46799E"></span><span class="swv">#46799E</span><span class="swc pass">4.68</span></div>
+    <div class="swrow"><span class="nm">thumb.flag</span><span class="swb" style="background:#3E6B8C"></span><span class="swv">#3E6B8C</span><span class="swc">5.70</span><span class="arrow">→</span><span class="swb" style="background:#2E4F68"></span><span class="swv">#2E4F68</span><span class="swc pass">8.63</span></div>
+    <div class="swrow"><span class="nm">streak.pipOff</span><span class="swb" style="background:#5B8FB6"></span><span class="swv">#5B8FB6</span><span class="swc fail">3.20</span><span class="arrow">→</span><span class="swb" style="background:#44759A"></span><span class="swv">#44759A</span><span class="swc pass">4.55</span></div>
+    <div class="swrow"><span class="nm">status.success</span><span class="swb" style="background:#1B7A3E"></span><span class="swv">#1B7A3E</span><span class="swc">4.97</span><span class="arrow">→</span><span class="swb" style="background:#156031"></span><span class="swv">#156031</span><span class="swc pass">7.05</span></div>
+    <div class="swrow"><span class="nm">status.warning</span><span class="swb" style="background:#D9822B"></span><span class="swv">#D9822B</span><span class="swc fail">2.70</span><span class="arrow">→</span><span class="swb" style="background:#7A4816"></span><span class="swv">#7A4816</span><span class="swc pass">7.01</span></div>
+    <div class="swrow"><span class="nm">status.error</span><span class="swb" style="background:#C8362B"></span><span class="swv">#C8362B</span><span class="swc">4.82</span><span class="arrow">→</span><span class="swb" style="background:#9C2A22"></span><span class="swv">#9C2A22</span><span class="swc pass">7.00</span></div>
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="callout co-err" style="margin:0">
+    <span class="tag">F2 · 方法論更正</span>
+    <h4>前一版宣稱「一律對兩 surface 取較差者」,但數字混用了不同基準</h4>
+    <p>r2 改採 <strong>per-token 目標 surface</strong>:每個 token 對「它實際畫在哪」計算。<code>identity.*</code> / <code>thumb.*</code> / <code>status.*</code> → <strong>surface.primary</strong>;<code>streak.pipOff</code> / <code>accent.celebratory</code> → <strong>surface.background</strong>;<code>text.*</code> → 兩者較差;<code>accent.primary</code> → 承載的 ink。</p>
+    <p><strong>連帶修掉三件事:</strong>① IC-Dark 的 identity 三階先前<strong>從未真正達標</strong>(距 4.7/7.6/12.3 差 0.4–1.1),已重新推導;② <code>text.tertiary</code> 的 Dark 欄<strong>誤抄成 light 值</strong>(3.31,實為 3.89 / 3.93);③ 4 個 IC 值在舊規則下其實破 4.5。<strong>對照表隨 <code>ic3.py</code> 一起落 repo</strong>,§11 的「腳本自動驗收」才成立。</p>
+  </div>
+  <div class="callout co-warn" style="margin:0">
+    <span class="tag">IC 的一般性結論</span>
+    <h4>提高對比下限會壓縮 ramp —— 多階 ramp 必須整體重排</h4>
+    <p>逐階推的後果:<code>identity.tier1</code> 相鄰間距從 1.58:1 崩到 <strong>1.15:1</strong>;thumbnail 兩階崩到 <strong>1.06:1</strong>(幾乎無法區分)。</p>
+    <p><strong>修法:</strong>重設整條 ramp 目標 —— identity <strong>4.7 / 7.6 / 12.3</strong>、thumbnail <strong>4.7 / 8.6</strong>。重排後兩 app、明暗四組全部 rung PASS 且相鄰間距 <strong>1.61–1.84</strong>。</p>
+    <p><span class="lvl off">D-3.1 已裁定:接受</span> IC 下難度色退化為純明度階 —— pip <strong>數量</strong>冗餘編碼仍有效,<strong>與 WCAG 1.4.1 相容性反而更好</strong>。</p>
+  </div>
+  <div class="callout co-err" style="margin:0">
+    <span class="tag">工程成本要誠實說</span>
+    <h4>這不是「加個變體」,是把全部 token 遷移到 Asset Catalog</h4>
+    <p>repo 目前<strong>一個 Asset Catalog color set 都沒有</strong>,token 全是程式碼 hex 常數(<code>ThemeColor</code> struct);<code>colorSchemeContrast</code> / <code>accessibilityReduceTransparency</code> / <code>accessibilityDifferentiateWithoutColor</code> <strong>全部零命中</strong>。</p>
+    <p><span class="lvl off">官方</span> Asset Catalog 支援 Appearances + 獨立 High Contrast 勾選,交叉 <strong>6 色井</strong>;官方明講<strong>單純換色就交給 Asset Catalog,不要在程式碼判斷</strong> —— 所以<strong>不寫程式碼分支備案</strong>。</p>
+    <p><strong>影響:</strong>兩 app 全部 token · <code>ThemeColor</code> 型別 · 既有快照基準(可能整批 churn)· theme 注入路徑。<strong>建議與 UI 重構分開排期。</strong></p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h3 class="sub" style="margin-top:0"><span class="lvl our">明示裁定 D-3.2</span> IC 只動前景,不動 surface</h3>
+  <p style="font-size:13.5px;color:var(--c-ink2);margin:0"><strong>規則:</strong>Increased Contrast 變體只調整前景(文字 / 填色 / 描邊),不調整 surface。<br>
+  <strong>理由:</strong>surface 已是近白與近黑,再推空間極小;而改動 surface 會讓<strong>每一個既有配對的對比幾何全部位移</strong>,等於重算整份 token。只動前景可達同等辨識度提升,<strong>改動半徑小一個數量級</strong>。<br>
+  <strong>適用範圍:</strong>兩 app 全部 IC 變體。日後若出現「IC 下必須改 surface」的個案,須單獨裁定並記錄,<strong>不得作為通則援引</strong>。</p>
+  <div class="note">⚠️ <strong>既有 drift:</strong>兩 app 的 <code>status.warning</code> 值不同(<code>#A86A0E</code> vs <code>#D9822B</code>),依「功能色不可覆寫」原則應統一,<strong>但超出 3.0 範圍</strong>。另 MS 的 <code>#D9822B</code> light 只有 <strong>2.70:1</strong>,連預設集門檻都不過 —— <strong>使用位置未查清,本文不宣稱它是 bug</strong>(U-11)。</div>
+</div>
+
+<h2 class="sec"><span class="n">07</span>動效與觸覺總表</h2>
+
+<div class="card" style="overflow-x:auto">
+  <table>
+    <thead><tr><th style="width:50px">#</th><th>動效</th><th>預設</th><th>Reduce Motion 降級</th><th style="width:78px">依據</th></tr></thead>
+    <tbody>
+      <tr><td class="num">M1</td><td>Completion accent 滲透波</td><td>0.6s ease-out,<strong>不擋互動</strong></td><td>crossfade 0.25s</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M2</td><td>Completion hero 揭示</td><td>350ms fade + 8pt 上升,stagger 60ms</td><td>純 fade,無位移</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M3</td><td>Streak pip 推進</td><td>0.35s 填色 + 1.0→1.12→1.0</td><td><strong>只填色,不縮放</strong></td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M4</td><td>連續數 +1</td><td>0.3s 數字上滑替換</td><td>crossfade 替換</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M5</td><td>Tab badge 出現</td><td>0.2s scale 0.6→1.0 + fade</td><td>只 fade</td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M6</td><td>Tab badge 消失</td><td>0.2s fade out</td><td>同</td><td>—</td></tr>
+      <tr><td class="num">M7</td><td>卡片 loading → loaded</td><td>shimmer(100–500ms)</td><td>靜態 placeholder</td><td>—</td></tr>
+      <tr><td class="num">M8</td><td>Tab 切換</td><td>系統預設</td><td>系統處理</td><td>—</td></tr>
+      <tr><td class="num">M9</td><td>縮圖 → 盤面 shared-element</td><td>矩形放大 + 交叉淡入 0.4s</td><td><strong>純 crossfade</strong></td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M10</td><td>Completion 玻璃升起</td><td>由下升起 0.45s + 光暈 0.6s</td><td><strong>面板 fade 就位不位移</strong></td><td><span class="lvl off">官方</span></td></tr>
+      <tr><td class="num">M11</td><td>G4 叢集進場</td><td>隨盤面就位淡入 0.25s</td><td>同</td><td>—</td></tr>
+      <tr class="keep"><td class="num">M12</td><td><strong>Sudoku 填對數字</strong></td><td>80ms scale 0.9→1.0;行/列/宮完成則 180ms 淡光掃過</td><td>無縮放;淡光改靜態閃現</td><td><span class="lvl off">官方</span></td></tr>
+      <tr class="keep"><td class="num">M13</td><td><strong>MS 正確揭開連通區</strong></td><td>由點擊點向外 120ms 波狀展開(每格 8ms,上限 200ms)</td><td><strong>全部同時顯示,無延遲</strong></td><td><span class="lvl off">官方</span></td></tr>
+    </tbody>
+  </table>
+  <blockquote class="hig"><strong>Aim for brevity and precision in feedback animations.</strong> …<strong>when a game displays a succinct animation that's precisely tied to a successful action, players can instantly get the message without being distracted from their gameplay.</strong><cite>~/.claude/skills/hig/motion.md:34 —— M12 / M13 的依據</cite></blockquote>
+  <div class="note"><strong>兩條硬約束:</strong>① <strong>不得擋互動</strong> —— 完成動畫每局都觸發,CTA 從第 0 frame 就可點;② <strong>Reduce Motion 不是關掉,是換 fade</strong>。</div>
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">觸覺</h3>
+    <table style="margin-top:6px">
+      <thead><tr><th>事件</th><th style="width:120px">觸覺</th></tr></thead>
+      <tbody>
+        <tr><td>Daily / Practice 完成(勝利)</td><td class="pass"><code>.success</code> <strong>×1</strong></td></tr>
+        <tr><td>MS 踩雷</td><td class="fail"><code>.error</code> ×1</td></tr>
+        <tr><td><code>review</code> 開啟</td><td>無 —— 沒有任務完成,放了是謊報</td></tr>
+        <tr><td>Streak pip 推進</td><td>無獨立觸覺(與完成同一因果事件)</td></tr>
+        <tr><td>M12 / M13 格子級</td><td>無(一局 40+ 次會稀釋 completion 那一次)</td></tr>
+        <tr><td>Tab badge / 難度卡選取</td><td>無</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><span class="lvl off">官方</span><strong>禁則:同一個 haptic pattern 不得同時用於正面與負面結果</strong>;<strong>必須可關閉</strong> —— Settings 的 Sound 區已有 haptics toggle,新觸覺接同一開關,<strong>不新增第二個設定</strong>。</div>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">無障礙:三個正交開關 = 8 種組合</h3>
+    <table style="margin-top:6px">
+      <thead><tr><th>項目</th><th>規則</th></tr></thead>
+      <tbody>
+        <tr><td>玻璃降級</td><td><strong>分兩種</strong>:G1/G2(系統元件)<strong>自動適應</strong>;<strong>G4/G6 是自訂玻璃,官方只保證「要測」不保證自動降級</strong> → 走 B-5。我們負責提供 IC 色彩變體</td></tr>
+        <tr><td><strong>版面硬規則</strong></td><td><strong>G4 不得覆蓋任何可互動格子</strong> —— 版面規則,幾何不隨開關改變,<strong>以最壞情況(IC+RT)為設計基準</strong></td></tr>
+        <tr><td>顏色非唯一通道</td><td>難度用 pip <strong>數量</strong>冗餘;縮圖進度必配文字狀態</td></tr>
+        <tr><td>動態播報</td><td>完成/全完成須 announcement(WCAG 4.1.3),不能只做視覺</td></tr>
+        <tr><td>Dynamic Type</td><td>200% 不截斷<strong>且不減內容量</strong>;盤面格內數字是已記錄的例外</td></tr>
+      </tbody>
+    </table>
+    <div class="note">⚠️ 玻璃在 IC / RT 下官方<strong>只有質化描述,沒有數值門檻</strong> —— 任何不透明度/描邊數值都是<strong>我方自訂</strong>。官方要求的是「<strong>測</strong>」不是「達到某數值」。</div>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">08</span>定案彙整</h2>
+
+<div class="grid2">
+  <div class="card" style="overflow-x:auto">
+    <h3 class="sub" style="margin-top:0">3.0 新裁定</h3>
+    <table>
+      <thead><tr><th style="width:56px">#</th><th>決策</th><th style="width:150px">裁定</th></tr></thead>
+      <tbody>
+        <tr><td class="num">D-1</td><td>Streak hero 形態</td><td>週條放大 → v3.3 降為一列</td></tr>
+        <tr><td class="num">D-2</td><td>難度色方案</td><td>各 app accent 單色明度階 + pip 數量</td></tr>
+        <tr><td class="num">D-3</td><td>Today badge</td><td><strong>無數字圓點</strong></td></tr>
+        <tr><td class="num">D-4</td><td>明日預告語氣</td><td><code>See you tomorrow</code> + 事實副標</td></tr>
+        <tr><td class="num">D-5</td><td>卡片的 Liquid Glass</td><td><strong>收回 —— 是修既存違規</strong></td></tr>
+        <tr><td class="num">D-6</td><td>Resume 位置</td><td>只在 Today</td></tr>
+        <tr><td class="num">D-7</td><td>下一題怎麼挑</td><td>剩下最簡單的</td></tr>
+        <tr><td class="num">D-2.1</td><td>難度預覽</td><td>代表性樣本</td></tr>
+        <tr><td class="num">D-2.2</td><td>顯示幾局真實進度</td><td>只有 resume 那一局</td></tr>
+        <tr><td class="num">D-2.3</td><td>Progress 連續紀錄</td><td>月曆</td></tr>
+        <tr><td class="num">D-2.4</td><td>Streak 用玻璃?</td><td><strong>不用</strong>(內容層)</td></tr>
+        <tr><td class="num">D-2.5</td><td>格子級配觸覺?</td><td>不配</td></tr>
+        <tr><td class="num">D-2.6</td><td>Resume restore 規則</td><td>記為明示例外</td></tr>
+        <tr><td class="num">D-2.7</td><td>成就插畫 epic</td><td>#1012,不綁 3.0</td></tr>
+        <tr class="keep"><td class="num">D-3.1</td><td>IC 難度色退化</td><td class="pass">✅ 接受</td></tr>
+        <tr class="keep"><td class="num">D-3.2</td><td>IC 只動前景</td><td class="pass">✅ 記為明示裁定</td></tr>
+        <tr class="keep"><td class="num">D-3.3</td><td>Completion 改系統 sheet?</td><td class="pass">✅ <strong>A:維持 overlay</strong></td></tr>
+        <tr class="keep"><td class="num">D-3.4</td><td>G5 改 standard material</td><td class="pass">✅ 接受</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    <h3 class="sub" style="margin-top:0">22 條既有決策的存廢</h3>
+    <table>
+      <thead><tr><th style="width:42px">#</th><th>決策</th><th style="width:112px">3.0 狀態</th></tr></thead>
+      <tbody>
+        <tr><td class="num">D1</td><td>Mirror principle</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D2</td><td>GameShellKit 零依賴</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D3</td><td>board iOS modal / macOS push</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D4</td><td>completion overlay 唯一終端</td><td class="pass">✅ 沿用並強化</td></tr>
+        <tr><td class="num">D5</td><td>pause 合併單一按鈕</td><td class="pass">✅ 沿用,不碰</td></tr>
+        <tr><td class="num">D6</td><td>AD-002 pause 重設計取消</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D7</td><td>排行榜走 GC 原生</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D8</td><td>completion 無排行榜切片</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D9</td><td>計時器在盤面 header</td><td class="warnv">⚠️ 修改 → 系統 toolbar</td></tr>
+        <tr><td class="num">D10</td><td>不慶祝 / glass 限導航</td><td class="warnv">⚠️ 演進 → 安靜儀式 / 限功能層</td></tr>
+        <tr><td class="num">D11</td><td>Sudoku sage accent</td><td class="pass">✅ 沿用 + IC</td></tr>
+        <tr><td class="num">D12</td><td>MS blueprint theme</td><td class="pass">✅ 沿用 + IC</td></tr>
+        <tr><td class="num">D13</td><td>Practice 不進 GC</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D14</td><td>OS floor iOS 26</td><td class="pass">✅ 沿用(玻璃 API 依賴它)</td></tr>
+        <tr><td class="num">D15</td><td>7 locale 齊全</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D16</td><td>Statistics 不是 HomeMode</td><td class="fail">❌ 推翻 → Progress tab</td></tr>
+        <tr><td class="num">D17</td><td>Home 移除 Remove Ads 卡</td><td>⚪ 失效(Home 退役)</td></tr>
+        <tr><td class="num">D18</td><td>Banner 覆蓋是 feature</td><td class="pass">✅ 沿用(位置改 accessory)</td></tr>
+        <tr><td class="num">D19</td><td>不做 onboarding</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D20</td><td>Settings 原生 Form</td><td class="pass">✅ 沿用,不碰</td></tr>
+        <tr><td class="num">D21</td><td>MS 無 empty/exhausted</td><td class="pass">✅ 沿用</td></tr>
+        <tr><td class="num">D22</td><td>iPad 不是第三套 contract</td><td class="pass">✅ 沿用(更強化)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">09</span>行為契約變更總表(已逐列複核)</h2>
+
+<div class="callout co-err">
+  <span class="tag">先更正三個數字 —— 先前的累計數是錯的</span>
+  <h4>同一個錯誤犯了兩次:把「BREAK 的數量」和「總列數」相加</h4>
+  <table style="margin-top:8px;background:rgba(255,255,255,.6);border-radius:8px">
+    <thead><tr><th style="width:34px">#</th><th>錯誤宣稱</th><th style="width:130px">實際</th><th>錯在哪</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>v3.1:「navigation-flows <strong>24 條中 9 條 BREAK</strong>」</td><td class="num pass">8 條 BREAK</td><td>多算一條</td></tr>
+      <tr><td class="num">2</td><td>v3.2:「screen-contracts 累計 <strong>9 + 11 = 20</strong>」</td><td class="num pass">17 + 15 = 32</td><td>把 v3.1 的 <strong>BREAK 小計(9)</strong>當成<strong>總列數(17)</strong>相加;且「+11」是舊值,後來補了 C-29…C-32 變 15,摘要沒更新</td></tr>
+      <tr><td class="num">3</td><td>v3.2:「navigation-flows 累計 <strong>9 + 3 = 12</strong>」</td><td class="num pass">24 + 3 = 27</td><td>同上 —— 又拿 BREAK 小計當總數</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">複核後的正確總表</h3>
+    <table>
+      <thead><tr><th>文件</th><th class="num">v3.1</th><th class="num">v3.2</th><th class="num">v3.2.1</th><th class="num">合計</th></tr></thead>
+      <tbody>
+        <tr><td><code>screen-contracts.md</code></td><td class="num">17</td><td class="num">15</td><td class="num">+4</td><td class="num pass"><strong>36</strong></td></tr>
+        <tr><td><code>navigation-flows.md</code></td><td class="num">24</td><td class="num">3</td><td class="num">+1</td><td class="num pass"><strong>28</strong></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>編號完整性已驗:</strong>C-1…C-36 連續無跳號無重複。<br>⚠️ <strong>F5 更正:基數本身也是錯的。</strong>canonical 實際是 <code>screen-contracts.md</code> <strong>23 個 slug 段落</strong>、<code>navigation-flows.md</code> <strong>38 列</strong>(S1–7 + M1–8 + N1–23)。我們一直在數「自己寫了幾條變更」卻講成「文件有幾條」—— 與更正 6 同類。<strong>覆蓋率:23 段中的 19 段、38 列中的 <strong>24 列</strong>(以 <code>contracts.py</code> 實測為準)。</strong><br>單位提醒:<strong>36 / 28 是邏輯條數,腳本印的 40 / 32 是錨點列數</strong>(一條變更可拆成兩 app 的落點,如 <code>C-2</code>/<code>C-2b</code>)。尚未錨定的 <strong>9 條</strong>:<code>C-16</code> · <code>C-27</code> · <code>N-A</code> · <code>N-B</code> · <code>N-C</code> · <code>N-X</code> · <code>N-Y</code> · <code>N-Z</code> · <code>N-AB</code>(新增段落/負向列,或散文層模型改寫)。<strong>逐條錨點表是 spec PR 的第一項工作</strong>;<code>contracts.py</code> 已交付,輸出見 design.md 附錄 A。</div>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">判定分佈</h3>
+    <table>
+      <thead><tr><th></th><th class="num">BREAK</th><th class="num">EXTEND</th><th class="num">KEEP</th><th class="num">NEW</th><th class="num">合計</th></tr></thead>
+      <tbody>
+        <tr><td>screen-contracts</td><td class="num">17</td><td class="num">11</td><td class="num">1</td><td class="num">7</td><td class="num pass">36</td></tr>
+        <tr><td>navigation-flows</td><td class="num">8</td><td class="num">5</td><td class="num">10</td><td class="num">5</td><td class="num pass">28</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>好消息:BREAK 集中在入口與落點敘述,不是狀態機本身。</strong>內圈(MS 四層 loader、pause 狀態機、completion 的 <code>dismiss()</code>/<code>exitToHub</code> 機制、IAP、ATT、UMP)幾乎原封不動。</div>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">10</span>Unconfirmed 與驗證步驟</h2>
+
+<div class="grid2">
+  <div class="card" style="overflow-x:auto">
+    <h3 class="sub" style="margin-top:0">Unconfirmed</h3>
+    <table>
+      <thead><tr><th style="width:56px">#</th><th>項目</th><th style="width:110px">擋實作?</th></tr></thead>
+      <tbody>
+        <tr class="keep"><td class="num">U-1</td><td>tab accessory API</td><td class="pass">✅ 已解</td></tr>
+        <tr class="keep"><td class="num">U-3</td><td>IC 變體要求</td><td class="pass">✅ 已解(官方要求)</td></tr>
+        <tr class="keep"><td class="num">U-4</td><td>Resume 盤面資料</td><td class="pass">✅ 已解(判定 B)</td></tr>
+        <tr class="keep"><td class="num">U-5</td><td>games 專章</td><td class="pass">✅ 結案:無介面規範</td></tr>
+        <tr class="keep"><td class="num">U-6</td><td><code>GlassEffectContainer</code></td><td class="pass">✅ 已解(26.0+)</td></tr>
+        <tr><td class="num">U-2</td><td>玻璃叢集官方間距數值</td><td>❌ 不擋(引用系統標準)</td></tr>
+        <tr><td class="num">U-7</td><td>各語系系統 GC 用詞</td><td class="warnv">⚠️ 擋 L10n 定案</td></tr>
+        <tr><td class="num">U-9</td><td>容器 × 系統 button style</td><td class="warnv">⚠️ 擋 G4 實作細節</td></tr>
+        <tr><td class="num">U-10</td><td>accessory × AdMob</td><td>❌ 不擋(有降級備案)</td></tr>
+        <tr><td class="num">U-11</td><td>MS <code>status.warning</code> 使用位置</td><td>❌ 不擋</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    <h3 class="sub" style="margin-top:0">驗證步驟</h3>
+    <table>
+      <thead><tr><th style="width:44px">#</th><th>項目</th><th>判準</th><th style="width:80px">現在可跑?</th></tr></thead>
+      <tbody>
+        <tr><td class="num">B-1</td><td>MS 盤面留白成因</td><td>Beginner &gt;32pt 且 Expert ≈0 → 成因確認</td><td class="pass">✅</td></tr>
+        <tr><td class="num">B-2</td><td>Dynamic Type AX5</td><td>不截斷且不減內容量。<strong>⚠️ 不可用注入 env 快照</strong></td><td class="pass">✅</td></tr>
+        <tr><td class="num">B-3</td><td>GC 六語系實機用詞</td><td>我方譯法與系統一致</td><td class="pass">✅</td></tr>
+        <tr><td class="num">B-4</td><td><code>sidebarAdaptable</code> vs #763</td><td>pause/completion 期間 sidebar 與 tab 皆不可互動</td><td class="fail">❌ 需原型</td></tr>
+        <tr><td class="num">B-5</td><td>八種開關組合</td><td>格全可見可點 · IC 下 pip 可辨 · RT 下不位移 · RM 走 fade</td><td class="pass">✅</td></tr>
+        <tr><td class="num">B-6</td><td>accessory × AdMob</td><td>banner 不塌、impression 正常</td><td class="pass">✅ 樣板</td></tr>
+        <tr><td class="num">B-7</td><td>容器 × button style</td><td>正確合併為單一玻璃形狀</td><td class="pass">✅ 樣板</td></tr>
+      </tbody>
+    </table>
+    <div class="note">⚠️ <strong>B-2 我預期會失敗</strong>:streak 一列在 AX5 下「12 day streak + 7 pip + Best 31」極可能放不下,需 <code>ViewThatFits</code> 或換行策略。<strong>失敗是預期結果不是意外。</strong></div>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">11</span>給開發的分期建議</h2>
+
+<div class="grid2">
+  <div class="callout co-ok" style="margin:0">
+    <span class="tag">階段 0 · 現在就能開始,無阻擋</span>
+    <h4>四項與 UI 重構完全解耦</h4>
+    <ul class="tick">
+      <li class="g"><strong>Token 遷移到 Asset Catalog</strong> —— 做完才有地方放 IC 變體</li>
+      <li class="g"><strong>IC 色彩層</strong> —— 六色井填入 §06 的值</li>
+      <li class="g"><strong><code>BoardPreview</code> 值型別 + mapper 擴充</strong> —— 停止丟棄 <code>boardState</code> / <code>stateBlob</code>,純資料層</li>
+      <li class="g"><strong>M12 / M13 格子級回饋動畫</strong> —— 現有 board 就能加</li>
+      <li class="x"><strong>B-4 spike:<code>sidebarAdaptable</code> × #763</strong> —— 只搭最小骨架(sidebarAdaptable + pause overlay),<strong>不含三屏內容</strong>。<strong>從階段 1 提前到這裡</strong>:它決定整個 shell 可行性,驗過才展開階段 1,否則整期返工</li>
+    </ul>
+    <p><strong>建議的第一個 PR:Token 遷移 + IC 層。</strong>它是後面所有視覺工作的地基、與 UI 完全解耦、可獨立驗收(對比度可腳本自動驗),而且<strong>它修的是一個目前完全不存在的無障礙能力</strong>。</p>
+    <p>⚠️ <strong>前置動作:把對比度腳本落進 repo</strong>(建議 <code>Scripts/design/</code>),否則 §06 的 60 多個數值沒有人能複驗。</p>
+  </div>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">階段 1 · UI 重構主體</h3>
+    <ul class="tick">
+      <li>3 tab 骨架(<code>sidebarAdaptable</code>)+ per-tab path</li>
+      <li>Today / Practice / Progress 三屏(前置:階段 0 的 <code>BoardPreview</code>)</li>
+      <li>Board 滿版 + G4 玻璃叢集(前置:B-7)</li>
+      <li>Completion 全高面板 + 兩變體</li>
+      <li class="q"><strong>B-4 已提前到階段 0 spike</strong>,本階段完成時再跑一次回歸</li>
+    </ul>
+    <h3 class="sub">階段 2 · 等驗證</h3>
+    <ul class="tick">
+      <li class="q">Banner 改 accessory ← B-6;<strong>沒等到就退回 tab 內容底部,不阻擋出貨</strong></li>
+      <li class="q">L10n 新字串定案 ← B-3 / U-7;先只上英文</li>
+    </ul>
+    <h3 class="sub">階段 3 · 獨立 PR,不綁 3.0</h3>
+    <ul class="tick">
+      <li class="x"><strong>#1012 成就插畫</strong> —— 22 張不重用插畫 + ASCRegister 上傳路徑,需美術產能</li>
+      <li class="x"><strong>孤兒字串清理</strong> —— 8 個 GC 死鍵 + 英文禁用詞鍵(#49 收尾)</li>
+      <li class="x"><code>status.warning</code> 跨 app 統一</li>
+      <li class="x"><strong>MS 四層 loader 收斂</strong> —— 3.0 明確不碰;各 tier 修的是真實競態,硬併會重新引入 bug</li>
+    </ul>
+  </div>
+</div>
+
+<h2 class="sec"><span class="n">12</span>已知錯誤更正紀錄</h2>
+<p class="lede">這一節保留在定稿裡,因為它們影響過敘事,讀者有權知道。<strong>全部是我自己寫錯的</strong> —— 前 6 條在 v3.2.1 已列,中間 7 條是 r2 三位 reviewer 抓出來的,<strong>最後 2 條是交付的閘門腳本自己抓出來的</strong>。</p>
+
+<div class="card" style="overflow-x:auto">
+  <table>
+    <thead><tr><th style="width:34px">#</th><th>錯誤</th><th>更正</th><th>教訓</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>「卡片不用玻璃」隱含現況無玻璃</td><td>現況<strong>有 6 處</strong> shipping 玻璃在內容層</td><td><strong>談現況要查程式碼,不要只讀設計文件</strong></td></tr>
+      <tr><td class="num">2</td><td>MS 成就 13 個</td><td><strong>11 個</strong>(兩 app 各 11,合計 22)</td><td><strong>數量要找權威列舉,不要 grep 宣告樣式</strong></td></tr>
+      <tr><td class="num">3</td><td>ja「兩種譯法並存」+ 英文來源詞全合規</td><td>並存不成立(8/9 是孤兒);英文 <code>No Rankings Yet</code> / <code>Couldn't Load Rankings</code> <strong>本身就用了禁用詞</strong></td><td><strong>判定合規要看全部樣本,不能只看一個鍵</strong></td></tr>
+      <tr><td class="num">4</td><td>「v3.2 有 14 片玻璃」</td><td>實際宣告 <strong>6 片</strong> —— 14 是我的腳本數 HTML class 出現次數</td><td><strong>驗證腳本的計數欄位要對齊它宣稱測量的概念</strong></td></tr>
+      <tr><td class="num">5</td><td>「Sudoku 側沒有等價 <code>allShortIds</code>」</td><td><strong>有</strong>,在 <code>SudokuEngine/GameCenterIdentifiers.swift:82-94</code></td><td><strong>找不到時先確認找對模組;跨 app 對稱假設不是每處都成立</strong></td></tr>
+      <tr><td class="num">6</td><td>契約累計 20 / 12</td><td><strong>32 / 27</strong>(r2 再更正 <strong>36 / 28</strong>,見 #10)</td><td><strong>不同量綱不能相加</strong>(BREAK 小計 ≠ 總列數)</td></tr>
+      <tr class="drop"><td class="num">7</td><td>§3.4 ASCII 圖把 <strong>G4 的 MS 變體標成「tab bar」</strong></td><td>那一列是 <strong>G4(MS 版)</strong></td><td><strong>圖表標籤錯一個字,prototype 就照著錯畫了五個框</strong> —— 圖是規格的一部分,要跟文字一樣校對</td></tr>
+      <tr class="drop"><td class="num">8</td><td><code>GlassEffectContainer</code> 用法<strong>寫反</strong></td><td>官方:容器<strong>靠</strong>子視圖各自的 <code>.glassEffect</code> 合併</td><td><strong>引用一句話前要讀完整段</strong>;「不手刻玻璃按鈕」與「不套 glass 修飾符」是兩件事</td></tr>
+      <tr class="drop"><td class="num">9</td><td>五條 reduce-motion 原則標成 <code>motion.md</code></td><td>實際在 <code>accessibility.md:177-181</code></td><td><strong>內容對、出處錯也是錯</strong> —— 出處錯了就無法複驗</td></tr>
+      <tr class="drop"><td class="num">10</td><td>契約基數「17 條 / 24 條」</td><td>canonical 是 <strong>23 段 / 38 列</strong>;我們數的是自己的變更條數</td><td><strong>「我寫了幾條」與「文件有幾條」是兩個量</strong> —— 與 #6 同類換位置再犯</td></tr>
+      <tr class="drop"><td class="num">11</td><td><code>ResumeCandidate</code> 說在 GameShellKit</td><td>在 <strong>GameAppKit</strong></td><td>同 #5:<strong>假設模組位置前先查</strong></td></tr>
+      <tr class="drop"><td class="num">12</td><td>自訂玻璃降級講成「系統處理」</td><td>只有 G1/G2 自動;<strong>G4/G6 官方只保證「要測」</strong></td><td><strong>把系統元件的保證套到自訂元件上</strong></td></tr>
+      <tr class="drop"><td class="num">13</td><td>「ATT 幾乎原封不動」</td><td>ATT 錨點依附 HOME,<strong>必須改錨</strong>(C-33)</td><td><strong>移除一個畫面時要追它身上掛了什麼</strong></td></tr>
+      <tr class="drop"><td class="num">14</td><td><code>contrast.py</code> 例外清單把 <code>status.error</code> dark 記成「4.86:1 未達 AA」</td><td><strong>4.86 ≥ 4.5,本來就通過</strong> —— 比較方向寫反;腳本首跑即判 <code>STALE</code> 並 exit 1</td><td><strong>會抓自己作者的閘門才有價值</strong> —— 這條不是我複核抓到的</td></tr>
+      <tr class="drop"><td class="num">15</td><td>§9.3 只寫「36 / 28 條」,沒說腳本會印 <strong>40 / 32</strong> 個錨點列</td><td>兩種單位:一條邏輯變更可拆成兩 app 的錨點列(<code>C-2</code>/<code>C-2b</code>),36+4=40、28+4=32</td><td><strong>同一件事有兩種計數單位時,文件要兩個都寫</strong> —— 第 4 次數字漂移,也是最後一次人工對帳</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="statbox">
+    <div><div class="v">19</div><div class="k">iPhone 畫面</div></div>
+    <div><div class="v">2</div><div class="k">桌面畫面</div></div>
+    <div><div class="v">2</div><div class="k">自訂玻璃</div></div>
+    <div><div class="v">26</div><div class="k">IC token</div></div>
+    <div><div class="v">36 / 28</div><div class="k">契約變更</div></div>
+    <div><div class="v">7</div><div class="k">驗證步驟</div></div>
+    <div><div class="v">13</div><div class="k">自我更正</div></div>
+  </div>
+</div>
+
+<div style="margin-top:40px;padding-top:20px;border-top:1px solid var(--c-rule);font-size:12px;color:#868C94;line-height:1.7">
+  <strong>方法說明.</strong> 第一順位依據為 owner 指定的 <em>Adopting Liquid Glass</em>(Technology Overviews),全文讀畢,引文逐字未改寫;次順位為本機 HIG 語料 <code>~/.claude/skills/hig/*.md</code>(標行號),未下載頁面經 DocC JSON endpoint 取得。對比度以 WCAG 2.x 相對亮度公式從 token 原始 hex 實算,不四捨五入,每個 token 同時對 <code>surface.primary</code> 與 <code>surface.background</code> 計算取較差者;推導腳本 <code>ic.py</code> / <code>ic2.py</code> / <code>contrast*.py</code>。格徑以裝置點寬度實算。契約條數以 <code>contracts.py</code> 逐列 parse 三份文件複核。<br>
+  本頁為<strong>視覺 prototype</strong>,非可點原型、非生產程式碼。玻璃以 CSS <code>backdrop-filter</code> 近似,實機由系統材質決定;IC / RT 外觀為示意,官方無數值門檻。
+</div>
+
+</div>
+</body>
+</html>

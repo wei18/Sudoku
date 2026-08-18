@@ -11,6 +11,8 @@
 > #468 open question. Same removed UI is flagged from the destination angle in
 > `06-completion.md`'s banner. Canonical flow spec: `docs/navigation-flows.md`.
 
+> **v3 NOTE (2026-08-18):** superseded in part by [docs/designs/v3/design.md](v3/design.md) — the 3.0 redesign (3-tab root, board-first, Liquid Glass relocation, IC color layer). This file remains the v1/v2 record.
+
 ## a. Decision
 
 v1 uses Apple's native Game Center UI for full leaderboard browsing

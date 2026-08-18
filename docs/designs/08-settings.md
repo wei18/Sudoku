@@ -9,6 +9,8 @@
 > tonal-continuity exception to the "unbranded Settings" rationale below
 > (structure/rows remain native).
 
+> **v3 NOTE (2026-08-18):** superseded in part by [docs/designs/v3/design.md](v3/design.md) — the 3.0 redesign (3-tab root, board-first, Liquid Glass relocation, IC color layer). This file remains the v1/v2 record.
+
 ## a. View identity
 
 - **Purpose**: Read-only status surface + minimal preferences. GC auth state, locale, app version, "clear cache" action.
