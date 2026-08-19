@@ -13,7 +13,16 @@ struct SudokuApp: App {
 
     var body: some Scene {
         WindowGroup {
-            composition.rootView
+            // THROWAWAY spike hijack — issue #1019 (epic #1014, B-4). Never
+            // merge past this branch: `-spike1019` swaps the real
+            // composition root for a `sidebarAdaptable` TabView skeleton
+            // with NO real screen content, to answer whether #763's
+            // sidebar-interaction fix survives a `RootShellView` rewrite.
+            if ProcessInfo.processInfo.arguments.contains("-spike1019") {
+                Spike1019RootView()
+            } else {
+                composition.rootView
+            }
         }
     }
 }

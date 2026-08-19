@@ -95,6 +95,11 @@ let sudokuTarget = Target.target(
         // bundle. P1 only defines the package; gameplay triggers + composition
         // wiring land in P2.
         .package(product: "GameAudio"),
+        // THROWAWAY spike/1019-sidebaradaptable-b4 (#1019): direct link so
+        // `App/Sudoku/Spike1019/*.swift` can `import GameShellUI` for
+        // `BoardModalOverlayActivePreferenceKey`. Remove with the rest of
+        // Spike1019 when this branch is discarded — never land on main.
+        .package(product: "GameShellUI"),
     ],
     settings: .settings(base: appTargetSettings)
 )
