@@ -115,6 +115,10 @@ let productionTargets: [Target] = [
             // failures to telemetry). See foundations.md §3.
             .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
+        // #1015: Theme/CellTokens color sets — `ThemeColor` resolves them via
+        // `Color(name, bundle: .module)`, so this target needs its own
+        // `Bundle.module` (SwiftPM synthesizes it once a target has `resources:`).
+        resources: [.process("Resources")],
         swiftSettings: swiftSettings
     ),
     .target(

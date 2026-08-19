@@ -90,6 +90,10 @@ let productionTargets: [Target] = [
             // restores them for the `.resumeBoard` route. Same-package target.
             "MinesweeperPersistence",
         ],
+        // #1015: Theme/CellTokens color sets — `ThemeColor` resolves them via
+        // `Color(name, bundle: .module)`, so this target needs its own
+        // `Bundle.module` (SwiftPM synthesizes it once a target has `resources:`).
+        resources: [.process("Resources")],
         swiftSettings: swiftSettings
     ),
     .target(
