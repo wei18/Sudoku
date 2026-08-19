@@ -15,7 +15,9 @@
 // All tokens are `Sendable` for cross-actor passing.
 
 public import SwiftUI
-internal import Foundation  // WCAGContrast: `pow` for the relative-luminance formula.
+// public: `ThemeColor.init(name:light:dark:bundle:)` takes a `Bundle` param
+// (#1015 Asset Catalog migration); WCAGContrast also uses `pow` from here.
+public import Foundation
 
 public protocol Theme: Sendable {
     var surface: SurfaceTokens { get }
@@ -28,22 +30,43 @@ public protocol Theme: Sendable {
 
 // MARK: - Color pair
 
-/// A light/dark color pair. Resolved into a SwiftUI `Color` via
-/// `Color(light:dark:)`; tests can read either component directly.
+/// A light/dark color pair. `lightHex`/`darkHex` stay available for
+/// math-only consumers (WCAG contrast tests, `onTintInk`); the rendered
+/// SwiftUI `Color` (`resolved`) comes from an Asset Catalog color set when
+/// one is supplied, so Light/Dark/Increased-Contrast resolution happens in
+/// the catalog, not in code (#1015).
 public struct ThemeColor: Sendable, Equatable, Hashable {
     public let lightHex: UInt32
     public let darkHex: UInt32
+    private let assetColor: Color?
 
+    /// Literal-hex constructor — used only where no Asset Catalog color set
+    /// exists (e.g. GameShellUI's palette-neutral `NeutralTheme` fallback,
+    /// which deliberately never carries a real app's brand colors).
     public init(light: UInt32, dark: UInt32) {
         self.lightHex = light
         self.darkHex = dark
+        self.assetColor = nil
+    }
+
+    /// Asset-Catalog-backed constructor. `name` is the color set's name in
+    /// `bundle` (e.g. `Color(name, bundle: bundle)`); `light`/`dark` are kept
+    /// verbatim as the same hex values baked into the color set, so
+    /// math-only consumers (`lightHex`/`darkHex`) keep working unchanged.
+    public init(name: String, light: UInt32, dark: UInt32, bundle: Bundle) {
+        self.lightHex = light
+        self.darkHex = dark
+        self.assetColor = Color(name, bundle: bundle)
     }
 
     public var light: Color { Color(hex: lightHex) }
     public var dark: Color { Color(hex: darkHex) }
 
-    /// The SwiftUI `Color` that auto-resolves per `colorScheme`.
-    public var resolved: Color { Color(light: light, dark: dark) }
+    /// The SwiftUI `Color` that auto-resolves per `colorScheme` (and, for
+    /// Asset-Catalog-backed tokens, per the system's contrast setting —
+    /// resolved by the OS from the color set, never branched on in code
+    /// here; see the Environment key of the same name for why).
+    public var resolved: Color { assetColor ?? Color(light: light, dark: dark) }
 }
 
 // MARK: - Token bundles
