@@ -115,6 +115,7 @@ let productionTargets: [Target] = [
             // failures to telemetry). See foundations.md §3.
             .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
+        resources: [.process("Resources")], // #1015: color sets — gives this target a `Bundle.module`.
         swiftSettings: swiftSettings
     ),
     .target(
