@@ -66,8 +66,16 @@ def hexs(rgb: int) -> str:
 
 # ----------------------------------------------------------------------------- surfaces
 SURFACES = {
-    "sudoku":      {"primary": (0xFFFFFF, 0x1E2024), "background": (0xFAF8F3, 0x15171A)},
-    "minesweeper": {"primary": (0xFFFFFF, 0x1C2026), "background": (0xF4F6F8, 0x14171B)},
+    "sudoku":      {"primary": (0xFFFFFF, 0x1E2024), "background": (0xFAF8F3, 0x15171A),
+                     # cell.error — the wash `text.errorDigit` always renders on
+                     # (BoardCellView's bg-priority puts `error` first whenever
+                     # `isError` is true, which is the only time errorDigit is used).
+                     "error": (0xF2C4C0, 0x602924)},
+    "minesweeper": {"primary": (0xFFFFFF, 0x1C2026), "background": (0xF4F6F8, 0x14171B),
+                     # cell.covered / cell.mine — the two fills `cell.flagInk` can
+                     # render on (in-play flag sits on `covered`; a flagged mine
+                     # surfaced on loss sits on `mine` — see MinesweeperCellButton).
+                     "covered": (0xD6DEE6, 0x2B333D), "mine": (0xFBE3E1, 0x4A2724)},
 }
 
 # token -> (role, target)
@@ -88,12 +96,25 @@ TARGETS = {
     "status.success":     ("text",    "primary"),
     "status.warning":     ("text",    "primary"),
     "status.error":       ("text",    "primary"),
+    # #1034 — the 10 tokens design.md's §5.2/§5.3 tables gave no values for.
+    # difficulty.*/cell.numbers.* are drawn both as a "pip" fill AND as literal
+    # Text() foregroundStyle (DailyPuzzleCard / MinesweeperCellButton), so they
+    # take the stricter "text" role rather than nontext, same call as status.*.
+    "difficulty.hard":    ("text",    "primary"),
+    "difficulty.medium":  ("text",    "primary"),
+    "text.errorDigit":    ("text",    "error"),
+    "cell.flagInk":       ("nontext", "worse:covered:mine"),
+    "cell.numbers.4":     ("text",    "primary"),
+    "cell.numbers.5":     ("text",    "primary"),
+    "cell.numbers.6":     ("text",    "primary"),
 }
 TARGET_RATIONALE = {
     "worse":      "出現在卡片與背景兩處 → 取較差者",
     "primary":    "只畫在卡片上",
     "background": "直接坐在 app 背景上",
     "ink":        "它是填色;判定的是落在它上面的 ink",
+    "error":      "只畫在 cell.error(錯誤格底色)上",
+    "worse:covered:mine": "旗標畫在 cell.covered(未翻)與 cell.mine(輸局翻出)兩種底色上 → 取較差者",
 }
 
 # ----------------------------------------------------------------------------- tokens
@@ -120,6 +141,11 @@ TOKENS = {
   "status.success":    (0x1B7A3E, 0x4BC579, 0x176634, None),
   "status.warning":    (0xA86A0E, 0xE0A95C, 0x7D4F0A, None),
   "status.error":      (0xC8362B, 0xE66258, 0xA52C23, 0xED918A),
+  # #1034 — 10 open-question tokens design.md gave no IC value for.
+  "accent.celebratory":(0xE0662E, 0xEB8F65, 0xBF501C, None),
+  "difficulty.hard":   (0xE6A857, 0xEFC07F, 0x7C4F13, None),
+  "difficulty.medium": (0xC97D5F, 0xD89A82, 0x88472E, 0xD99C84),
+  "text.errorDigit":   (0xA52A20, 0xFF8077, 0x721D16, 0xFFBAB5),
  },
  "minesweeper": {
   "text.primary":      (0x1A1E24, 0xEEF1F4, None,     None),
@@ -136,6 +162,16 @@ TOKENS = {
   "status.success":    (0x1B7A3E, 0x4BC579, 0x176634, None),
   "status.warning":    (0xD9822B, 0xE8A560, 0x824C17, None),
   "status.error":      (0xC8362B, 0xE66258, 0xA52C23, 0xED918A),
+  # #1034 — 10 open-question tokens design.md gave no IC value for.
+  "cell.flagInk":      (0x9C5C1C, 0xE8A560, 0x8E5319, None),
+  "difficulty.hard":   (0xB23A48, 0xD96B77, 0x9D3340, 0xE4949D),
+  "difficulty.medium": (0xC97D5F, 0xD89A82, 0x88472E, 0xD99C84),
+  # cell.numbers.4/5/6 — appearance-flat glyph inks (same rung of #1033's
+  # already-shipped cell.numbers.1/2/3/7/8 wells): one hex renders in both
+  # light and dark, so IC is a single "high" hex reused in both high wells.
+  "cell.numbers.4":    (0x5C4B9E, 0x5C4B9E, None, None),
+  "cell.numbers.5":    (0xA2845E, 0xA2845E, 0x69553D, 0x69553D),
+  "cell.numbers.6":    (0x2E8C9E, 0x2E8C9E, 0x20616D, 0x20616D),
  },
 }
 
@@ -159,6 +195,35 @@ EXCEPTIONS = {
    "4.44:1,差 0.06 未達 AA(不四捨五入,4.44 不算過)。與 MS 的同名 token 值不同(跨 app drift),統一與修復同列 backlog",
  ("minesweeper", "status.warning", "default", "light"):
    "2.93:1,連非文字 3:1 都不過。實際使用位置未查清(U-11)→ 未宣稱為 bug,但列為已知例外",
+ # #1034 — the 10 open-question tokens' STANDARD sets were not touched (only
+ # IC wells were added); pre-existing default-set gaps surface once the token
+ # is gated for the first time. Not introduced by this change.
+ ("sudoku", "difficulty.hard", "default", "light"):
+   "2.08:1,未達 AA。標準值不在 #1034 範圍(只補 IC);IC 已修到 7.04",
+ ("sudoku", "difficulty.medium", "default", "light"):
+   "3.19:1,未達 AA。同上;IC 已修到 7.03",
+ ("minesweeper", "difficulty.medium", "default", "light"):
+   "3.19:1(與 Sudoku 同名 token 同值,既有跨 app 共用值);未達 AA。IC 已修到 7.03",
+ # cell.numbers.4/5/6 are appearance-flat (one hex used for both light and
+ # dark, mirroring #1033's already-shipped numbers.1/2/3/7/8 — see e.g.
+ # numbers.8 at 3.36:1 default light, also ungated/unfixed). A single fixed
+ # hex cannot simultaneously clear any AA/AAA floor against both a near-white
+ # AND a near-black surface.primary — the light-vs-dark gap on these tokens
+ # is a structural property of the convention, not a defect introduced here.
+ ("minesweeper", "cell.numbers.4", "default", "dark"):
+   "appearance-flat token;固定色值在 dark surface.primary 僅 2.30:1,未達 AA — 沿用 #1033 numbers.1/2/3/7/8 的既有落差模式",
+ ("minesweeper", "cell.numbers.4", "ic", "dark"):
+   "同上;固定色值無法同時滿足 light 與 dark 兩端的 AAA 門檻(數學上不可能同時 ≤0.10 與 ≥0.377 相對亮度)",
+ ("minesweeper", "cell.numbers.5", "default", "light"):
+   "3.50:1,未達 AA(既有缺陷,同 numbers.8 的既有落差模式)",
+ ("minesweeper", "cell.numbers.5", "ic", "dark"):
+   "appearance-flat 固定色值,dark 端僅 2.31:1,結構性無法達 AAA(同 numbers.4 的說明)",
+ ("minesweeper", "cell.numbers.6", "default", "light"):
+   "3.92:1,未達 AA(既有缺陷)",
+ ("minesweeper", "cell.numbers.6", "default", "dark"):
+   "4.18:1,未達 AA(既有缺陷)",
+ ("minesweeper", "cell.numbers.6", "ic", "dark"):
+   "appearance-flat 固定色值,dark 端僅 2.33:1,結構性無法達 AAA(同 numbers.4 的說明)",
 }
 
 # ----------------------------------------------------------------------------- checking
@@ -185,8 +250,13 @@ def measure(app: str, token: str, colour: int, scheme_idx: int):
         p, b = surf["primary"][scheme_idx], surf["background"][scheme_idx]
         rp, rb = contrast(colour, p), contrast(colour, b)
         return (rp, "surface.primary") if rp <= rb else (rb, "surface.background")
+    if target.startswith("worse:"):
+        _, a, b = target.split(":")
+        ra, rb = contrast(colour, surf[a][scheme_idx]), contrast(colour, surf[b][scheme_idx])
+        return (ra, "cell." + a) if ra <= rb else (rb, "cell." + b)
     s = surf[target][scheme_idx]
-    return contrast(colour, s), "surface." + target
+    label = "surface." + target if target in ("primary", "background") else "cell." + target
+    return contrast(colour, s), label
 
 def run(verbose: bool) -> Result:
     res = Result()
