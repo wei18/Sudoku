@@ -24,6 +24,11 @@ let swiftSettings: [SwiftSetting] = [
 // while keeping Sudoku byte-identical.
 
 let productionTargets: [Target] = [
+    // #1032: build-tool plugin that runs `actool` (+ writes the bundle
+    // `Info.plist`) for `swift build`/`swift test`, so Asset-Catalog-backed
+    // `ThemeColor`s resolve in SwiftPM CLI snapshot runs. No-op under Xcode
+    // and on non-macOS hosts. Consumed by SudokuUI + MinesweeperUI.
+    .plugin(name: "AssetCatalogCompiler", capability: .buildTool()),
     .target(
         name: "GameShellUI",
         // The reminder permission-priming UI (primer sheet + the reminder
@@ -66,6 +71,7 @@ let package = Package(
     ],
     products: [
         .library(name: "GameShellUI", targets: ["GameShellUI"]),
+        .plugin(name: "AssetCatalogCompiler", targets: ["AssetCatalogCompiler"]),
     ],
     dependencies: [],
     targets: productionTargets + testTargets,

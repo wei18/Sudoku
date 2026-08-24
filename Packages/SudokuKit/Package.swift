@@ -110,13 +110,13 @@ let productionTargets: [Target] = [
             // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
             // impossible-state / programmer-error catches (fails tests +
             // purple-warns in #Preview, non-fatal in release). Deliberate
-            // restricted-import allowance — treated like a logger, NOT a
-            // replacement for ErrorReporter (which routes expected runtime
-            // failures to telemetry). See foundations.md §3.
+            // restricted-import allowance — treated like a logger, NOT a replacement
+            // for ErrorReporter (expected runtime failures → telemetry). foundations.md §3.
             .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
         resources: [.process("Resources")], // #1015: color sets — gives this target a `Bundle.module`.
-        swiftSettings: swiftSettings
+        swiftSettings: swiftSettings,
+        plugins: [.plugin(name: "AssetCatalogCompiler", package: "GameShellKit")] // #1032: actool for `swift test`.
     ),
     .target(
         name: "SudokuKitTesting",
