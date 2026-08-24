@@ -98,6 +98,13 @@ TARGET_RATIONALE = {
 
 # ----------------------------------------------------------------------------- tokens
 # (light_default, dark_default, light_ic, dark_ic)  — None means "IC same as default"
+#
+# identity.tier1-3 / thumb.mid / thumb.strong / streak.pipOff have NO Asset Catalog
+# colorset yet (#1016) — the features that would draw them (identity pips, thumbnail
+# fills, streak row) are not built (see #1015's clarification). This table is still
+# the DESIGN-value-level source of truth per §5.2/§5.3: the checks and ramp-separation
+# assertions below run against these hex constants directly, independent of whether a
+# colorset exists. When those colorsets land, wire their IC wells from these same values.
 TOKENS = {
  "sudoku": {
   "text.primary":      (0x1A1D21, 0xF2F3F5, None,     None),
