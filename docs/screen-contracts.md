@@ -1,6 +1,19 @@
 # Screen Contracts — Sudoku & Minesweeper (AS-BUILT)
 
 **Status:** AS-BUILT · **Date:** 2026-07-05 · **main @** `9d6bf71`
+
+> ⚠️ **Partially superseded by 3.0 (#1020, 2026-08-25).** The HOME screen
+> (`GameHomeView` / `GameHomeViewModel` / `HomeScreen`), the hand-authored
+> sidebar (`SidebarItem` / `NavigationStackHost`) and the `home` / `daily` /
+> `practice` / `stats` routes no longer exist. The root is a `sidebarAdaptable`
+> TabView (`GameShellUI/RootShellView.swift`) with one path per tab
+> (`GameAppKit/GameRootViewModel.swift`); ATT-PRIMER's entry point is the Today
+> tab's banner slot (`GameAppKit/TodayTabHost.swift`, C-33); the HOME
+> Leaderboard card is gone (C-35) and Progress gained an `Achievements` row
+> (`GameAppKit/AchievementsRow.swift`, C-36); resume-pill refresh follows
+> design.md §3.6.2 (C-34 / N-AB). Current model: `docs/designs/v3/design.md`
+> §2.1–§2.3, §3.6, §9.4. Rows below that cite the retired screens are kept as
+> the pre-3.0 as-built record until this doc is regenerated for 3.0.
 **Companion to:** `docs/navigation-flows.md` (nav model + flow chains + negative
 flows references the screen IDs defined here). This doc supersedes the flow
 claims in `docs/v1/design.md` §How.5 and `docs/designs/01-06`.
