@@ -344,23 +344,17 @@ public final class DailyHubViewModel {
     /// unexpected for a card the caller already believes is completed) is
     /// treated the same as a thrown fetch error: neither has real completion
     /// data to show, so both fall back to `.board`.
-    /// #686: the `.exhausted` alert's primary CTA. The Daily hub has no
-    /// difficulty picker of its own — the Practice hub does — so "try
-    /// another difficulty" routes there.
-    ///
-    /// #1020 (design.md §3.1): Today is a tab identity now, not a route
-    /// pushed from Home, so there is no `.practice` route left to swap the
-    /// path to — switch tabs via the injected `selectTab` closure instead.
+    /// #686: the `.exhausted` alert's primary CTA — routes to Practice (its
+    /// difficulty picker), since the Daily hub has none of its own. #1020
+    /// (design.md §3.1): Practice is a tab now, not a `.practice` route to
+    /// swap the path to — switch tabs via the injected `selectTab` closure.
     public func tryPracticeInstead() {
         selectTab(.practice)
     }
 
-    /// #686: the `.exhausted` alert's dismiss CTA.
-    ///
-    /// #1020 (design.md §3.1, exhausted row): "Cancel" closes the inline
-    /// block and stays on Today — there is no Home to pop back to any more
-    /// (Today IS the tab root). Dropping to an empty `.loaded` state clears
-    /// the exclamation-mark block without pretending a fetch succeeded.
+    /// #686/#1020 (design.md §3.1, exhausted row): the dismiss CTA. Today is
+    /// the tab root now, not a route pushed from Home — "Cancel" closes the
+    /// block by dropping to an empty `.loaded` state and stays on Today.
     public func dismissExhausted() {
         guard case .exhausted = state else { return }
         state = .loaded([])
