@@ -69,11 +69,11 @@ tuist generate                               # workspace; new sibling packages a
   module X") in fresh/cross-target files are usually **stale noise**.
 - Snapshot baselines are committed; suites failing on PNGs = behavior changed —
   STOP and investigate, don't re-record to make tests pass.
-  **Known exception (#1015/#1032):** themed-view `snapshot*` suites in
-  SudokuKit/MinesweeperKit are red under `swift test` by design — SwiftPM CLI
-  copies `Colors.xcassets` without running actool, so `Color(name:bundle:)`
-  renders blank. NOT a regression; verify themed rendering via Tuist/xcodebuild
-  until #1032 lands. Logic/VM/persistence tests remain trustworthy.
+  Themed views render under `swift test` because GameShellKit's
+  `AssetCatalogCompiler` build-tool plugin (#1032) runs actool over
+  `Colors.xcassets` + writes the bundle `Info.plist` for SwiftPM CLI builds
+  (no-op under Xcode / Linux). A fully **blank** snapshot means that plugin
+  isn't attached to the target (`plugins:` in Package.swift), not a theme bug.
 - Don't trust "it compiles": tests that construct `.live()` run in an
   **unentitled runner** — eager `CKContainer.default()` crashes with an uncatchable
   ObjC `CKException`. CloudKit resolution must stay lazy (see `PrivateCKGatewayFactory`).
