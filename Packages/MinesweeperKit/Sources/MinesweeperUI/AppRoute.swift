@@ -1,19 +1,19 @@
 // AppRoute — Minesweeper's navigation destination enum.
 //
-// #288 / #289 (2026-06-04): MS now opens to a Home mode-card surface (mirror
-// of Sudoku's `HomeView`) instead of straight to `NewGameView`. The Home cards
-// push these routes:
-//   - `.daily`    → MinesweeperDailyHubView (existed in source but was
-//                   unreachable — no AppRoute case wired it).
-//   - `.practice` → MinesweeperPracticeHubView (same — now reachable).
-//   - `.settings` → placeholder Settings screen.
-//   - `.board`    → a board with a chosen difficulty + seed.
+// #1020 (design.md §2.1–§2.2): `daily` / `practice` / `stats` are gone — they
+// are now TAB IDENTITIES (`GameShellUI.AppTab.today` / `.practice` /
+// `.progress`), each with its own `NavigationStack` path; MS never had a
+// `.home` case to begin with (Home was always the universal mode-card
+// surface `makeGameApp` built, not a pushed route). What remains are the
+// destinations that genuinely PUSH onto a tab's stack: Board,
+// ReplayDailyBoard, Completion, ResumeBoard, Settings.
 //
 // #983 briefly added an in-app push destination (`.dailyRank`) backed by a
 // custom `GameAppKit.DailyRankView` screen; that direction was reverted (see
 // #983 follow-up) because the Friends tab it depended on was never wired to
-// GameKit. The Home Leaderboard card presents Apple's native Game Center
-// dashboard directly again — there is no route for it.
+// GameKit. The Progress tab's `AchievementsRow` (#1020, C-36) presents
+// Apple's native Game Center dashboard directly again — there is no route
+// for it.
 //
 // `Hashable + Sendable` is the minimum SwiftUI's `.navigationDestination(for:)`
 // + GameShellUI's `RouteFactory` require. `Codable` is intentionally not
@@ -59,12 +59,5 @@ public enum AppRoute: Hashable, Sendable {
     // fresh `.board` can't express this — it would re-derive a NEW board from
     // the seed instead of replaying the saved reveal/flag state.
     case resumeBoard(recordName: String, mode: GameMode)
-    case daily
-    case practice
     case settings
-    // #773: Statistics screen (MinesweeperPersonalRecord readout). Pushed
-    // from the Home secondary-weight entry below the four mode cards —
-    // deliberately NOT a `HomeMode` case (owner adjudication: must not
-    // compete with the cards). Mirrors Sudoku's `AppRoute.stats`.
-    case stats
 }

@@ -250,10 +250,11 @@ public struct MinesweeperBoardView: View {
     // MARK: - Overlay-active predicate (#763)
 
     /// True whenever this board's own Pause/idle-leave or Completion overlay
-    /// is up. MUST track the EXACT same condition as the `.overlay { … }`
-    /// mounted in `body` — it feeds the `.preference` published right after
-    /// that overlay, which `RootShellView` uses to mask + disable the macOS
-    /// sidebar (see `BoardModalOverlayActivePreferenceKey`).
+    /// is up. Passed as the single `isActive` argument to
+    /// `.boardModalOverlay(isActive:content:)` in `body`, which drives BOTH
+    /// that overlay's rendering and the published
+    /// `BoardModalOverlayActivePreferenceKey` `RootShellView` reads to mask +
+    /// disable the shell — the two cannot drift by construction now (#1020).
     var isModalOverlayActive: Bool {
         (viewModel.isTerminal && completionViewModel != nil) || viewModel.isPaused || showIdleLeaveOverlay
     }
@@ -305,7 +306,11 @@ public struct MinesweeperBoardView: View {
         // area; content remains within it). This keeps the hero icon below the
         // Dynamic Island / status bar safe area while the background colour still
         // fills behind the status bar and home indicator.
-        .overlay {
+        // #763/#1019/#1020: `boardModalOverlay(isActive:content:)` renders this
+        // AND publishes `BoardModalOverlayActivePreferenceKey` from the same
+        // `isModalOverlayActive` condition by construction — see
+        // `BoardModalOverlayHoist.swift` for the in-place vs. hoisted split.
+        .boardModalOverlay(isActive: isModalOverlayActive) {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
             }
@@ -330,12 +335,6 @@ public struct MinesweeperBoardView: View {
                 )
             }
         }
-        // #763: publish whether the overlay above is up, so the macOS split-view
-        // shell (RootShellView) can also mask + disable the sidebar — this
-        // overlay's `.ignoresSafeArea()` only fills the detail column there, not
-        // the whole split view. MUST track the exact same condition as `.overlay`
-        // above; see `isModalOverlayActive` below.
-        .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isModalOverlayActive)
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
@@ -545,7 +544,7 @@ public struct MinesweeperBoardView: View {
                 // "card" placeholder tone reads as a mismatched seam against
                 // the page background (audit-ms-01, dark mode). Match the
                 // page background instead so an empty/loading slot is
-                // invisible; mirrors the same fix in `GameHomeView`.
+                // invisible; mirrors the same fix in `GameAppKit.TodayTabHost`.
                 backgroundColor: theme.surface.background.resolved,
                 progressTint: theme.accent.primary.resolved,
                 captionColor: theme.text.secondary.resolved,

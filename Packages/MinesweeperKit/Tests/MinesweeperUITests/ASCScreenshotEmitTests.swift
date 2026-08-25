@@ -29,15 +29,6 @@ import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-// MS home mode config — byte-identical to Live.swift subtitles.
-@MainActor
-private let minesweeperAscHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
-    .daily: HomeModeContent<AppRoute>(subtitleKey: "3 boards today", route: .daily),
-    .practice: HomeModeContent<AppRoute>(subtitleKey: "All difficulties", route: .practice),
-    .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Best times"),
-    .settings: HomeModeContent<AppRoute>(subtitleKey: "Purchases / about", route: .settings)
-]
-
 @MainActor
 @Suite("ASC screenshots — Minesweeper (emit; gated on ASC_EMIT_SCREENSHOTS)")
 struct ASCScreenshotEmitTests {
@@ -99,33 +90,37 @@ struct ASCScreenshotEmitTests {
         )
     }
 
-    private func homeView() -> some View {
-        // #572: migrated from MinesweeperHomeView to shared GameHomeView.
+    // #1020: HOME is gone — the marketing "01-home" slot (name kept; ASC
+    // ordering depends on it) now renders the Today tab's real content:
+    // `TodayTabHost` (resume pill + banner + ATT anchor) wrapping the Daily
+    // hub, exactly what `Live+TabRoots.swift` wires for the `.today` tab.
+    private func todayTabView() -> some View {
         let rootVM = MinesweeperRootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
         )
-        let homeVM = GameHomeViewModel<AppRoute>(
+        let dailyViewModel = MinesweeperDailyHubViewModel(path: .constant([]))
+        dailyViewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        // `setStateForTesting` bypasses `bootstrap()` and leaves
+        // `isPhase2Pending` at its default `true`. Since #941 the pending flag
+        // no longer dims cards, so this only pins the settled in-flight state
+        // for determinism.
+        dailyViewModel.setPhase2PendingForTesting(false)
+        return TodayTabHost(
             rootViewModel: rootVM,
-            homeModes: minesweeperAscHomeModes
-        )
-        return NavigationStack {
-            GameHomeView(
-                viewModel: homeVM,
-                rootViewModel: rootVM,
-                title: "Minesweeper",
-                adProvider: FakeAdProvider(),
-                adGate: AdGate(store: FakeAdGateStateStore(
-                    initial: AdGateState(
-                        firstLaunchAt: Date(timeIntervalSince1970: 0),
-                        hasPurchasedRemoveAds: true
-                    )
-                )),
-                attPrimer: ATTPrimerCoordinator(
-                    isNotDetermined: { false },
-                    requestSystemPrompt: {}
+            adProvider: FakeAdProvider(),
+            adGate: AdGate(store: FakeAdGateStateStore(
+                initial: AdGateState(
+                    firstLaunchAt: Date(timeIntervalSince1970: 0),
+                    hasPurchasedRemoveAds: true
                 )
+            )),
+            attPrimer: ATTPrimerCoordinator(
+                isNotDetermined: { false },
+                requestSystemPrompt: {}
             )
+        ) {
+            MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
         .environment(\.theme, MinesweeperTheme())
     }
@@ -163,7 +158,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPhone_home() throws {
         try emitASCScreenshot(
-            homeView(),
+            todayTabView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView
@@ -205,7 +200,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_home() throws {
         try emitASCScreenshot(
-            homeView(),
+            todayTabView(),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView
@@ -227,7 +222,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_mac_home() throws {
         try emitASCScreenshot(
-            homeView(),
+            todayTabView(),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView

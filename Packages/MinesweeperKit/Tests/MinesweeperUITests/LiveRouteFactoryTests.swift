@@ -6,12 +6,20 @@
 // AnyView's payload isn't introspectable without snapshot infra — coverage
 // is "factory constructs without crashing for every case", not pixel parity.
 
+import Foundation
 import SwiftUI
 import Testing
 @testable import MinesweeperAppComposition
+import GameAppKit
+import GameCenterTesting
 import MinesweeperUI
 import MinesweeperEngine
+import MinesweeperPersistence
 import GameShellUI
+import MonetizationCore
+import MonetizationTesting
+import PersistenceTesting
+import Telemetry
 
 @MainActor
 @Suite struct LiveRouteFactoryTests {
@@ -31,40 +39,6 @@ import GameShellUI
         let factory = LiveRouteFactory()
         let view = factory.view(for: .settings, path: nil)
         _ = view
-    }
-
-    // #773: the Home secondary entry's pushed destination.
-    @Test func factoryReturnsViewForStatsRoute() {
-        let factory = LiveRouteFactory()
-        let view = factory.view(for: .stats, path: nil)
-        _ = view
-    }
-
-    // #288 / #289: the Home mode cards push these routes. Sentinel coverage —
-    // a future switch refactor that drops a case fails compilation here.
-
-    @Test func factoryReturnsViewForDailyRoute() {
-        let factory = LiveRouteFactory()
-        var path: [AppRoute] = []
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        let view = factory.view(for: .daily, path: binding)
-        _ = view
-    }
-
-    @Test func factoryReturnsViewForPracticeRoute() {
-        let factory = LiveRouteFactory()
-        var path: [AppRoute] = []
-        let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
-        let view = factory.view(for: .practice, path: binding)
-        _ = view
-    }
-
-    @Test func factoryHandlesNilBindingForHubRoutes() {
-        // Hub routes fall back to `.constant([])` when no binding is supplied
-        // (preview path); must not trap.
-        let factory = LiveRouteFactory()
-        _ = factory.view(for: .daily, path: nil)
-        _ = factory.view(for: .practice, path: nil)
     }
 
     // #386: the solved-daily re-view route renders the standalone Completion
@@ -161,5 +135,37 @@ import GameShellUI
         let view = factory.view(for: .resumeBoard(recordName: "ms-daily-2026-06-12", mode: .daily), path: binding)
         let dump = String(describing: view)
         #expect(dump.contains("GameBoardRedirect"), "Expected GameBoardRedirect but got: \(dump)")
+    }
+
+    // MARK: - #1020: makeTabRoot (Today / Practice / Progress)
+
+    /// #1020: `daily` / `practice` / `stats` stopped being ROUTES this factory
+    /// resolves and became tab identities instead — `MinesweeperAppComposition
+    /// .makeTabRoot` is what `GameConfig.makeTabRoot` calls for each of the
+    /// three tabs. Pins that every tab yields a real (non-empty) view.
+    @Test func makeTabRootYieldsViewForEachTab() {
+        let rootViewModel = GameRootViewModel<AppRoute>(
+            gameCenter: FakeGameCenterClient(),
+            persistence: FakePersistence()
+        )
+        let gateway = FakePrivateCKGateway()
+        for tab in AppTab.allCases {
+            let view = MinesweeperAppComposition.makeTabRoot(
+                tab: tab,
+                persistence: FakePersistence(),
+                errorReporter: NoopErrorReporter(),
+                telemetry: Telemetry(sinks: []),
+                adProvider: FakeAdProvider(),
+                adGate: AdGate(store: FakeAdGateStateStore(
+                    initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
+                )),
+                savedGameStore: MinesweeperSavedGameStore(gateway: gateway),
+                dailyOverlayReading: nil,
+                personalRecordStore: MinesweeperPersonalRecordStore(gateway: gateway),
+                rootViewModel: rootViewModel
+            )
+            let dump = String(describing: view)
+            #expect(!dump.isEmpty, "tab \(tab) should produce a non-empty view")
+        }
     }
 }
