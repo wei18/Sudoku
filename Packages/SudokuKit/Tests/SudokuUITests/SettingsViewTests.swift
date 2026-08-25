@@ -4,8 +4,8 @@
 // (`SettingsIAPRowTests` only). Full-page Form chrome — including the
 // Option A redesign (Purchases section, grouped-list capsules, leading
 // SF Symbols) — needs `NavigationStack { ... }.formStyle(.grouped)` to
-// match production styling (RouteFactory pushes SettingsView onto
-// `NavigationStackHost`).
+// match production styling (RouteFactory pushes SettingsView onto a tab's
+// `NavigationStack`).
 
 import Foundation
 import SwiftUI
@@ -202,7 +202,7 @@ struct SettingsViewTests {
     //
     // Wraps the SettingsView in `NavigationStack { ... }.formStyle(.grouped)`
     // so the snapshot chrome matches production (`RouteFactory` pushes
-    // SettingsView onto `NavigationStackHost`). Pre-#181 component-level
+    // SettingsView onto a tab's `NavigationStack`). Pre-#181 component-level
     // snapshots in SettingsIAPRowTests render as plain-list — they miss
     // the Option A grouped-capsule visual delta.
 

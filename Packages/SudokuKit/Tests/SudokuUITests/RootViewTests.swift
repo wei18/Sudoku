@@ -1,11 +1,10 @@
 // RootView — bootstrap behavior tests.
 //
-// #557: RootView retired (GameHomeView + makeGameApp replace it).
-// The snapshot baselines that were here snapshotted the full GameRoot
-// navigation shell + HomeView — a superset of what HomeViewTests covers.
-// HomeViewTests now snapshots GameHomeView (the inner content surface)
-// with identical mode cards and subtitle copy. The GameRoot navigation
-// shell is integration-tested via the live wired stack (SudokuAppComposition).
+// #557: RootView retired (`makeGameApp` replaces it). #1020: its HOME
+// content surface is retired too — see `TodayTabViewTests` for the Today
+// tab's snapshot coverage. The GameRoot navigation shell (now the 3-tab
+// `sidebarAdaptable` shell) is integration-tested via the live wired stack
+// (SudokuAppComposition).
 //
 // Behavioral tests kept as-is — they test RootViewModel (= GameRootViewModel<AppRoute>)
 // directly and do not reference RootView.

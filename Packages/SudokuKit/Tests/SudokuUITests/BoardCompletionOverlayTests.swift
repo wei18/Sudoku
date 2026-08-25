@@ -131,13 +131,17 @@ struct BoardCompletionOverlayTests {
             elapsedSeconds: 42,
             mistakeCount: 0
         )
-        var routes: [AppRoute] = [.daily, .board(puzzleId: Self.dailyIdentity.puzzleId)]
+        // #1020: `.settings` stands in for "whatever hub pushed the board" —
+        // Daily/Practice hubs are tab roots now, not pushable routes; only
+        // this pop mechanic (leave the entry beneath the board untouched) is
+        // under test here.
+        var routes: [AppRoute] = [.settings, .board(puzzleId: Self.dailyIdentity.puzzleId)]
         let path = Binding(get: { routes }, set: { routes = $0 })
         let boardView = BoardView(viewModel: viewModel, path: path)
 
         boardView.exitToHub(dismiss: EnvironmentValues().dismiss)
 
-        #expect(routes == [.daily],
+        #expect(routes == [.settings],
                 "Close must pop only the board's own entry — never strand the player on the solved board")
     }
 

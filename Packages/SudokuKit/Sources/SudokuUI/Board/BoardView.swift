@@ -98,7 +98,11 @@ public struct BoardView: View {
         .background(theme.surface.background.resolved)
         // #610: full-cover Completion overlay (MS #292/#518 mirror).
         // fix *2: pass dismiss so Close returns the user to the hub.
-        .overlay {
+        // #763/#1019/#1020: `boardModalOverlay(isActive:content:)` renders this
+        // AND publishes `BoardModalOverlayActivePreferenceKey` from the same
+        // `isModalOverlayActive` condition by construction — see
+        // `BoardModalOverlayHoist.swift` for the in-place vs. hoisted split.
+        .boardModalOverlay(isActive: isModalOverlayActive) {
             if let completionViewModel {
                 completionSurface(completionViewModel, dismiss: dismiss, persistJoin: persistJoin)
             }
@@ -118,12 +122,6 @@ public struct BoardView: View {
                 )
             }
         }
-        // #763: publish whether the overlay above is up, so the macOS split-view
-        // shell (RootShellView) can also mask + disable the sidebar — this
-        // overlay's `.ignoresSafeArea()` only fills the detail column there, not
-        // the whole split view. MUST track the exact same condition as `.overlay`
-        // above; see `isModalOverlayActive` (BoardView+Completion.swift).
-        .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isModalOverlayActive)
         // #610: build VM+primer on .completed; clear on Close. CR #518-R2: keyed on
         // overlay presence so Close restores chrome. `shouldPresentCompletionOverlay`
         // gates to path==nil — macOS (path!=nil) uses push path, no double-present.
@@ -271,9 +269,9 @@ public struct BoardView: View {
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
             // #688 item 2: was `theme.surface.placeholder.resolved` — mirrors
-            // the MS fix in `MinesweeperBoardView`/`GameHomeView` so both
-            // apps' banner containers match their own page background
-            // instead of a "card" tone that reads as a seam in dark mode.
+            // the MS fix in `MinesweeperBoardView` so both apps' banner
+            // containers match their own page background instead of a
+            // "card" tone that reads as a seam in dark mode.
             backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,

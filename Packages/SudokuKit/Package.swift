@@ -89,9 +89,9 @@ let productionTargets: [Target] = [
             // `SettingsView` + `RootView` + `RouteFactory` and resolves
             // its theme tints at the call site via `tintColor:` params.
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
-            // PR X1: NavigationStackHost lives here now. Will grow as more
-            // shell components extract (RootView, Settings shell, Daily /
-            // Practice hubs — Phase X PRs).
+            // PR X1: the shared navigation-stack host lives here now. Will
+            // grow as more shell components extract (RootView, Settings
+            // shell, Daily / Practice hubs — Phase X PRs).
             .product(name: "GameShellUI", package: "GameShellKit"),
             // #448 step 1a: `RootViewModel = GameRootViewModel<AppRoute>`.
             gameAppDep,

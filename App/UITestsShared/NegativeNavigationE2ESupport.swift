@@ -10,15 +10,17 @@ import XCTest
 // SudokuE2ETests and MinesweeperE2ETests (mirror principle, matching
 // GameE2ESupport / ScenePhaseRepollE2ESupport).
 enum NegativeNavigationE2ESupport {
-    /// Shared HOME scaffold anchor (`GameShellUI.HomeScreen`, #935). Both
-    /// apps render this at the Home root, so it doubles as "landed back on
-    /// Home" for every near-win-launched board (N8/N9/N10/N11 — presented as
-    /// a `fullScreenCover` directly over Home by the DEBUG near-win
-    /// modifiers) and MS's resume-load-failure loader (N2: `-uitest-route
-    /// resumeFail` replaces `path` with a single `.resumeBoard` entry that
-    /// `GameBoardRedirect` immediately pops back to empty, presenting the
-    /// loader modally over Home — see `GameBoardRedirect.swift`).
-    static let homeRootID = "game.home.root"
+    /// Shared Today-tab-root anchor (`GameAppKit.TodayTabHost`, #935/#1020).
+    /// Both apps mount this as their Today tab's root content, so it doubles
+    /// as "landed back on Today" for every near-win-launched board (N8/N9/
+    /// N10/N11 — presented as a `fullScreenCover` directly over the app root
+    /// by the DEBUG near-win modifiers) and MS's resume-load-failure loader
+    /// (N2: `-uitest-route resumeFail` replaces `path` with a single
+    /// `.resumeBoard` entry that `GameBoardRedirect` immediately pops back to
+    /// empty, presenting the loader modally over Today — see
+    /// `GameBoardRedirect.swift`). Replaces the retired HOME scaffold's
+    /// `game.home.root` (#1020: HOME is gone, Today is a permanent tab).
+    static let todayRootID = "game.today.root"
 
     /// Close button on the shared `CompletionOverlayScaffold` (N10/N11, #935).
     static let completionCloseID = "game.completion.close"
@@ -26,22 +28,22 @@ enum NegativeNavigationE2ESupport {
     /// Leave button on the shared `PauseOverlayView` (N9, #935).
     static let pauseLeaveID = "game.pause.leave"
 
-    /// N10/N11/N9: asserts the player landed back on Home after a
-    /// Close/Leave — the stranded-on-solved-board / stranded-on-paused-board
-    /// check. The Home anchor must be present AND both the caller's own
+    /// N10/N11/N9: asserts the player landed back on the Today tab root after
+    /// a Close/Leave — the stranded-on-solved-board / stranded-on-paused-board
+    /// check. The Today-root anchor must be present AND both the caller's own
     /// board anchor (e.g. `sudoku.board.pauseToggle`) and the completion
     /// hero must be gone.
     @MainActor
-    static func assertLandedOnHome(
+    static func assertLandedOnTodayRoot(
         in app: XCUIApplication,
         departedBoardAnchorID: String,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let home = app.descendants(matching: .any)[homeRootID]
+        let today = app.descendants(matching: .any)[todayRootID]
         XCTAssertTrue(
-            home.waitForExistence(timeout: 15),
-            "should land back on Home (\(homeRootID)) — not stranded",
+            today.waitForExistence(timeout: 15),
+            "should land back on the Today tab root (\(todayRootID)) — not stranded",
             file: file, line: line
         )
         assertDeparted(
@@ -154,14 +156,14 @@ enum NegativeNavigationE2ESupport {
     static let attPrimerNotNowID = "att.primer.notNow"
 
     /// N15 (#935 batch 5): caller already launched with
-    /// `-uitest-fake-ad-gate-repoll` + `-uitest-att-primer` and lands on
-    /// HOME. The banner slot's ad-gate (faked open only after a real
+    /// `-uitest-fake-ad-gate-repoll` + `-uitest-att-primer` and lands on the
+    /// Today tab. The banner slot's ad-gate (faked open only after a real
     /// background→foreground cycle — same mechanism
     /// `ScenePhaseRepollE2ESupport` pins) fires `onAdContext` on its first
     /// load, which is the ATT primer's ONLY trigger
     /// (`ATTPrimerCoordinator.maybePresentOnAdContext()`), so the sheet
     /// presents only after that first cycle. Asserts "Not now" dismisses it,
-    /// Home stays present, and a SECOND background→foreground cycle does
+    /// Today stays present, and a SECOND background→foreground cycle does
     /// NOT re-present it (the `hasOffered` latch).
     @MainActor
     static func assertATTPrimerDeclineDismissesAndLatches(
@@ -169,10 +171,10 @@ enum NegativeNavigationE2ESupport {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let home = app.descendants(matching: .any)[homeRootID]
+        let today = app.descendants(matching: .any)[todayRootID]
         XCTAssertTrue(
-            home.waitForExistence(timeout: 15),
-            "N15: should land on Home before the ad-gate repoll",
+            today.waitForExistence(timeout: 15),
+            "N15: should land on Today before the ad-gate repoll",
             file: file, line: line
         )
 
@@ -198,8 +200,8 @@ enum NegativeNavigationE2ESupport {
             file: file, line: line
         )
         XCTAssertTrue(
-            home.exists,
-            "N15: Home should remain present — no navigation on decline",
+            today.exists,
+            "N15: Today should remain present — no navigation on decline",
             file: file, line: line
         )
 

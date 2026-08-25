@@ -38,13 +38,13 @@ public import SettingsUI
 // `AudioSettingsModel` (injected into Settings) both appear in this factory's
 // public init signature. The seam only — no `AVFoundation`.
 public import GameAudio
-// SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
-// `onPresentBoard` is wired, so board views are presented as fullScreenCover
-// modals instead of NavigationStack pushes. `LastSelectionStore` backs the
-// #720 G1 Practice-difficulty persistence below.
-public import GameAppKit
-// #720 G1: `Difficulty` used to seed/persist the Practice hub's last-selected
-// difficulty. Internal only — not part of this factory's public API surface.
+// SDD-003 Epic 1: `boardDestination`/`GameBoardRedirect` wrap board-route
+// destinations when `onPresentBoard` is wired, so board views are presented
+// as fullScreenCover modals instead of NavigationStack pushes. Internal
+// only — no GameAppKit type appears in this factory's public API surface.
+internal import GameAppKit
+// `GeneratorVersion.v1.rawValue` seeds the `.settings` case's Generator row
+// label. Internal only — not part of this factory's public API surface.
 internal import SudokuEngine
 
 // MARK: - LiveRouteFactory
@@ -168,41 +168,6 @@ public struct LiveRouteFactory: RouteFactory {
     @MainActor
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
-        case .home:
-            // `.home` is never pushed (root content renders HomeView). Keep
-            // the switch exhaustive without forcing destination views to model
-            // the un-pushable case.
-            return AnyView(EmptyView())
-        case .daily:
-            return AnyView(
-                DailyHubView(
-                    viewModel: DailyHubViewModel(
-                        provider: puzzleProvider,
-                        persistence: persistence,
-                        errorReporter: errorReporter,
-                        path: path
-                    ),
-                    banner: { themedBanner() }
-                )
-            )
-        case .practice:
-            // #720 G1: remember the player's last-picked Practice difficulty
-            // across launches instead of always resetting to Medium.
-            let difficultyStore = LastSelectionStore(
-                key: "com.wei18.sudoku.practice.lastDifficulty",
-                fallback: Difficulty.medium.rawValue
-            )
-            return AnyView(
-                PracticeHubView(
-                    viewModel: PracticeHubViewModel(
-                        provider: puzzleProvider,
-                        initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .medium,
-                        persistDifficulty: { difficultyStore.save($0.rawValue) },
-                        path: path
-                    ),
-                    banner: { themedBanner() }
-                )
-            )
         case .board(let puzzleId):
             // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
             // the shared `boardDestination` helper in GameAppKit.
@@ -279,19 +244,6 @@ public struct LiveRouteFactory: RouteFactory {
                     }
                 )
             )
-        case .stats:
-            // #773: Statistics screen — PersonalRecord readout, pushed from
-            // the Home secondary entry. No banner: the proposal's scope note
-            // (§7) explicitly introduces no monetization surface here.
-            return AnyView(
-                StatsView(
-                    viewModel: StatsViewModel(
-                        persistence: persistence,
-                        errorReporter: errorReporter,
-                        telemetry: telemetry
-                    )
-                )
-            )
         case .settings:
             let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             // #744: this app's numeric App Store Connect id — same
@@ -322,7 +274,7 @@ public struct LiveRouteFactory: RouteFactory {
                     telemetryEmit: { event in
                         Task { await telemetry.observe(event) }
                     },
-                    banner: { themedBanner() }
+                    banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate) }
                 )
             )
         }
@@ -330,25 +282,30 @@ public struct LiveRouteFactory: RouteFactory {
 
     // MARK: - Banner helper
 
-    /// Epic 5: themed `BannerSlotView` for all non-Home, non-Board screens.
-    /// Same theme tokens as HomeView's `bannerSlot` — no per-screen override.
-    /// Board never calls this; it owns its own `themedBanner` method.
+    /// Epic 5: themed `BannerSlotView` for all non-Board screens. Same theme
+    /// tokens across Today/Practice/Settings — no per-screen override. Board
+    /// never calls this; it owns its own `themedBanner` method.
     /// The cast from `AdProvider` → `BannerViewProviding` follows the same
-    /// pattern as HomeView and BoardView (§9.1: keeps SudokuUI off AdsAdMob).
+    /// pattern as BoardView (§9.1: keeps SudokuUI off AdsAdMob).
     ///
     /// #851: `backgroundColor` was `Color.secondary.opacity(0.12)` — a
     /// translucent SYSTEM-GRAY tint left over from before #688 gave
     /// `BannerSlotView` a themed default. Composited over the app's actual
     /// warm-dark page background (`DefaultTheme.surface.background.dark`,
     /// 0x15171A) it painted a visibly lighter 50pt rounded band across the
-    /// bottom of Daily/Practice/Settings whenever the ad gate opened —
+    /// bottom of Today/Practice/Settings whenever the ad gate opened —
     /// exactly the "faint horizontal banding" reported. `LiveRouteFactory` is
     /// a plain struct (not a `View`), so it cannot read `@Environment(\.theme)`
     /// like `BoardView.themedBanner` does; `DefaultTheme()` is the same
     /// concrete theme the app injects into the environment everywhere else,
     /// so resolving it directly here yields an identical color.
+    ///
+    /// #1020: `static` (not an instance method) so `Live+TabRoots.swift`'s
+    /// Today/Practice tab-root builder — which has no `LiveRouteFactory`
+    /// instance to call through, only the wired `GameDeps` bag — can reuse
+    /// the exact same banner instead of re-deriving it.
     @MainActor
-    private func themedBanner() -> some View {
+    static func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
         BannerSlotView(
             adProvider: adProvider,
             adGate: adGate,

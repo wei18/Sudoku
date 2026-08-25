@@ -12,6 +12,7 @@ import Foundation
 import Testing
 @testable import SudokuUI
 
+import GameShellUI
 import SudokuGameState
 import Persistence
 import SudokuPersistence
@@ -329,52 +330,49 @@ struct DailyHubViewModelInteractionTests {
         #expect(count == 0)
     }
 
-    // MARK: - #686: `.exhausted` alert CTAs
+    // MARK: - #686/#1020: `.exhausted` block CTAs
 
-    @Test func tryPracticeInsteadSwapsLastPathEntryFromDailyToPractice() async {
+    /// #1020 (design.md §3.1): "Try Practice" switches tabs now — Practice is
+    /// a tab identity, not a route this VM's own `path` can push/swap to.
+    @Test func tryPracticeInsteadSelectsPracticeTab() async {
         let provider = FakePuzzleProvider()
         let persistence = FakePersistence()
-        let box = RoutePathBox()
-        box.binding.wrappedValue = [.home, .daily]
-        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        var selected: [AppTab] = []
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            dateProvider: { Self.fixedDate },
+            selectTab: { selected.append($0) }
+        )
 
         viewModel.tryPracticeInstead()
 
-        #expect(box.routes == [.home, .practice])
+        #expect(selected == [.practice])
     }
 
-    @Test func tryPracticeInsteadAppendsWhenPathIsEmpty() async {
+    /// #1020 (design.md §3.1): "Cancel" now closes the block by dropping to
+    /// an empty `.loaded` state — only meaningful while `.exhausted`.
+    @Test func dismissExhaustedClosesBlockToEmptyLoadedState() async {
         let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.failure(.generatorFailed(underlying: "exhausted")))
         let persistence = FakePersistence()
-        let box = RoutePathBox()
-        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
-
-        viewModel.tryPracticeInstead()
-
-        #expect(box.routes == [.practice])
-    }
-
-    @Test func dismissExhaustedPopsBackToHome() async {
-        let provider = FakePuzzleProvider()
-        let persistence = FakePersistence()
-        let box = RoutePathBox()
-        box.binding.wrappedValue = [.home, .daily]
-        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: RoutePathBox())
+        await viewModel.bootstrap()
+        #expect(viewModel.state == .exhausted)
 
         viewModel.dismissExhausted()
 
-        #expect(box.routes == [.home])
+        #expect(viewModel.state == .loaded([]))
     }
 
-    @Test func dismissExhaustedIsNoOpWhenPathIsAlreadyEmpty() async {
+    @Test func dismissExhaustedIsNoOpWhenNotExhausted() async {
         let provider = FakePuzzleProvider()
         let persistence = FakePersistence()
-        let box = RoutePathBox()
-        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: box)
+        let viewModel = makeViewModel(provider: provider, persistence: persistence, box: RoutePathBox())
 
         viewModel.dismissExhausted()
 
-        #expect(box.routes == [])
+        #expect(viewModel.state == .idle)
     }
 
 }
