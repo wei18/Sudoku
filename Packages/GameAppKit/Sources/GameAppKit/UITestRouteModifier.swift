@@ -8,8 +8,14 @@
 //
 // Applied at the app's root view, ALONGSIDE the per-app near-win modifiers, with
 // the app supplying a `resolve` closure that maps the screen key → its own
-// `Route` enum (so this stays game-agnostic). Mirrors the near-win modifier
-// pattern: iOS-only, `#if DEBUG`, a transparent no-op on every non-uitest launch.
+// `Route` enum (so this stays game-agnostic). `#if DEBUG`, a transparent no-op
+// on every non-uitest launch, and effective on all platforms — macOS's detail
+// column binds the SAME `path` array (see `GameShellUI.NavigationStackHost`),
+// so pushing onto it lands on the production screen there too. Note the board
+// routes still take each platform's normal presentation path from there: on
+// iOS `GameRoot`'s `onPresentBoard` redirect lifts them into the
+// `fullScreenCover`; on macOS (`onPresentBoard == nil`) they stay a plain push
+// into the detail column — identical to what the hub's Start button produces.
 
 #if DEBUG
 
@@ -33,16 +39,12 @@ public struct UITestRouteModifier<Route: Hashable & Sendable>: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        #if os(iOS)
         content.onAppear {
             guard let key = UITestLaunchArg.routeValue(),
                   let route = resolve(key) else { return }
             // Replace (not append) so a re-fired onAppear can't stack duplicates.
             rootViewModel.path = [route]
         }
-        #else
-        content
-        #endif
     }
 }
 
