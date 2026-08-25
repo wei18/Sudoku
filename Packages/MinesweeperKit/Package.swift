@@ -94,7 +94,9 @@ let productionTargets: [Target] = [
         // `Color(name, bundle: .module)`, so this target needs its own
         // `Bundle.module` (SwiftPM synthesizes it once a target has `resources:`).
         resources: [.process("Resources")],
-        swiftSettings: swiftSettings
+        swiftSettings: swiftSettings,
+        // #1032: actool for `swift test` (no-op under Xcode) — mirrors SudokuUI.
+        plugins: [.plugin(name: "AssetCatalogCompiler", package: "GameShellKit")]
     ),
     .target(
         name: "MinesweeperAppComposition",
