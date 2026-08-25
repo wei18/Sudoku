@@ -9,8 +9,9 @@
 // calls `GameRootViewModel.presentGame(route:)`) then removes the route from the
 // navigation path, producing a seamless transition from push to modal.
 //
-// The `path` binding passed by `NavigationStackHost` is the root path; clearing
-// the last entry returns the stack to Home while the fullScreenCover appears on top.
+// The `path` binding handed to the destination is the path of the TAB the route
+// was pushed into (#1020); clearing the last entry returns that tab to its root
+// while the fullScreenCover appears on top.
 
 public import SwiftUI
 

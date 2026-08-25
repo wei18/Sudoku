@@ -3,6 +3,8 @@
 // Split out of `MakeGameApp.swift` to keep that file under the 400-line gate.
 
 internal import Foundation
+internal import SwiftUI
+internal import GameShellUI
 internal import Telemetry
 internal import MonetizationCore
 internal import MonetizationUI
@@ -10,6 +12,41 @@ internal import AdsAdMob
 internal import IAPStoreKit2
 internal import GameAudio
 internal import SettingsUI
+
+// MARK: - Tab-root memoization (#1020)
+
+/// Build each tab's root view ONCE and hand back a closure that only looks the
+/// result up.
+///
+/// `RootShellView` calls its `tabRoot(_:)` closure on every body evaluation of
+/// the shell — several times per navigation, per tab. Without this, each call
+/// would re-run `GameConfig.makeTabRoot`, and since a game builds its hub view
+/// models inside that closure (DailyHub / PracticeHub / Stats), every render
+/// would mint fresh models and wipe their state.
+///
+/// This is the #918 bug shape exactly: `ReminderSettingsEntry` used to be a
+/// per-render factory, and because the `.settings` destination builder is
+/// re-invoked on any ancestor re-render, a freshly-minted model replaced the one
+/// the user had just interacted with — the primer sheet read `false` and
+/// dismissed itself. A stable, eagerly-built value was the fix there and is the
+/// fix here.
+///
+/// **Contract for `GameConfig.makeTabRoot`: it is invoked exactly once per tab
+/// per app launch and MUST be treated as a factory whose products have stable
+/// object identity.** All three tabs are built at launch, including ones the
+/// player never opens — the cost of a hub view model's construction is the price
+/// of that stability, and the alternative (lazy + memoized) would only move the
+/// same allocation to first visit while adding a mutable cache.
+@MainActor
+func memoizedTabRoots(_ build: (AppTab) -> AnyView) -> (AppTab) -> AnyView {
+    let roots = Dictionary(
+        uniqueKeysWithValues: AppTab.allCases.map { ($0, build($0)) }
+    )
+    // `AppTab.allCases` makes `roots` total, so the fallback is unreachable —
+    // it exists so a future case added without rebuilding renders empty rather
+    // than trapping in a shipped app.
+    return { tab in roots[tab] ?? AnyView(EmptyView()) }
+}
 
 // MARK: - bootMonetization
 

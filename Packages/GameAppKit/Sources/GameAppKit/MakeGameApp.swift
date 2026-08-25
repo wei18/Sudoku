@@ -2,7 +2,8 @@
 //
 // `makeGameApp(config:)` wires the entire game-agnostic live stack and returns
 // a ready-to-mount SwiftUI `View`. The per-game details (Route, routeFactory,
-// Home, savedGameStore, copy) arrive as closures on the `GameConfig`.
+// per-tab root content, savedGameStore, copy) arrive as closures on the
+// `GameConfig`.
 //
 // Wires (in order):
 //   1. Telemetry (OSLog + NoOpTracking) + MetricKit retainer
@@ -307,7 +308,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     completionSink.setDownstream(config.makeCompletionSinks?(deps, rootViewModel) ?? [])
 
     // Install the reminder delegate after rootVM exists (tap routing mutates
-    // rootVM.path). The `onTap` closure captures rootVM by reference (stable
+    // rootVM navigation state). The `onTap` closure captures rootVM by reference (stable
     // @Observable identity) and forwards to the per-game `reminderTapRoute`
     // closure. The delegate stays alive for the process lifetime via the
     // retainer's static storage. `nil` reminderTapRoute → no-op (games with no
@@ -321,47 +322,40 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let routeFactory = config.makeRouteFactory(deps, rootViewModel)
 
-    // #557 SDD-005 Pillar C: build the universal GameHomeView when homeModes is
-    // configured. The homeVM holds a weak ref to rootViewModel for path/auth/alert
-    // forwarding. Sidebar items are derived from the same modeItems so home cards
-    // and the sidebar stay in sync from one source (per spec §sidebarItems).
-    let sidebarItems: [SidebarItem<Route>]
-    let rootContent: () -> AnyView
-    if !config.homeModes.isEmpty {
-        let homeViewModel = GameHomeViewModel(
-            rootViewModel: rootViewModel, homeModes: config.homeModes,
-            presentLeaderboard: config.presentLeaderboard, statsRoute: config.statsRoute,
-            statsSubtitleKey: config.statsSubtitleKey
-        )
-        sidebarItems = HomeModeItem.sidebarItems(from: homeViewModel.modeItems)
-        rootContent = {
-            AnyView(
-                GameHomeView(
-                    viewModel: homeViewModel,
-                    rootViewModel: rootViewModel,
-                    title: config.title,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    attPrimer: attPrimer,
-                    homeAvatarImage: config.homeAvatarImage
-                )
+    // #1020: per-tab root content. The game builds each tab's screen; the Today
+    // tab is additionally wrapped in the shared `TodayTabHost`, which carries
+    // the resume pill, the themed banner slot, and — riding that slot's first
+    // load — the ATT primer anchor (C-33, re-anchored from the retired
+    // HOME view's banner slot). The other two tabs get the game's content
+    // unwrapped.
+    //
+    // `memoizedTabRoots` runs this builder exactly ONCE per tab, at composition
+    // time. `RootShellView` calls the returned closure on every body evaluation,
+    // so building lazily here would re-run `config.makeTabRoot` per render and
+    // rebuild the game's hub view models under the player — the #918 bug shape.
+    // See the helper's doc for the full contract.
+    let tabRoot = memoizedTabRoots { tab in
+        let content = config.makeTabRoot(tab, deps, rootViewModel)
+        guard tab == .today else { return content }
+        return AnyView(
+            TodayTabHost(
+                rootViewModel: rootViewModel,
+                adProvider: adProvider,
+                adGate: adGate,
+                attPrimer: attPrimer,
+                content: { content }
             )
-        }
-    } else {
-        sidebarItems = config.sidebarItems
-        rootContent = { config.makeHome(deps, rootViewModel) }
+        )
     }
 
     let gameRoot = GameRoot(
         viewModel: rootViewModel,
-        title: config.title,
-        sidebarItems: sidebarItems,
         routeFactory: routeFactory,
         toastController: toastController,
         successTint: config.successTint,
         failureTint: config.failureTint,
         infoTint: config.infoTint,
-        rootContent: rootContent
+        tabRoot: tabRoot
     )
     .environment(\.theme, config.theme)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with

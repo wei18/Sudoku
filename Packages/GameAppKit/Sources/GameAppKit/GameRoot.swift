@@ -1,16 +1,24 @@
 // GameRoot — shared game-agnostic app-root container (#448 step 3).
 //
 // Owns the common Root shape every game shares:
-//   - the generic `GameShellUI.RootShellView` (NavigationStackHost + sidebar)
+//   - the generic `GameShellUI.RootShellView` (#1020: a 3-tab `sidebarAdaptable`
+//     TabView with one navigation path per tab)
 //   - launch-time `bootstrap()` via `.onAppear { Task { … } }`
 //   - the bottom toast overlay
 //   - SDD-003 Epic 1: fullScreenCover modal for board routes
 //   - (retired #674: the modal no longer carries its own top-chrome elapsed
 //     timer — see the SDD-003 OQ-001 note below and GameModalContent's doc)
 //
-// Game-specific bits stay app-side and are layered on by each app's Root:
-// Sudoku adds `.attPrimerSheet(...)` and threads a `ResumePill` into its
-// `rootContent`; Minesweeper supplies its own Home as `rootContent`.
+// Game-specific bits stay app-side: each game supplies the root content for the
+// three tabs through `tabRoot(_:)` (wired from `GameConfig.makeTabRoot`), and
+// `makeGameApp` layers the shared `.attPrimerSheet(...)` on top.
+//
+// #1020 note on the fullScreenCover: it is attached HERE, to the result of
+// `RootShellView`, so its content sits OUTSIDE the shell's TabView. That is why
+// an iOS board inherits no `\.boardModalOverlayCoordinator` and keeps rendering
+// its Pause/Completion overlay in place, while a pushed (macOS / iPad) board
+// hoists its overlay out of the disabled TabView instead. See
+// `GameShellUI.BoardModalOverlayHoist`.
 //
 // SDD-003 Epic 1 — Modal game presentation:
 // Board routes are presented as fullScreenCover modals (R1.1).
@@ -40,20 +48,18 @@ public import SwiftUI
 public import GameShellUI
 public import MonetizationUI
 
-public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
+public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     // The app-side Root owns the VM as `@State`; GameRoot holds the same
     // `@Observable` reference. Property access in `body` registers observation,
     // so a plain stored reference (not a second `@State`) is correct here and
     // keeps single ownership.
     private let viewModel: GameRootViewModel<Route>
-    private let title: LocalizedStringKey
-    private let sidebarItems: [SidebarItem<Route>]
     private let routeFactory: any RouteFactory<Route>
     private let toastController: ToastController?
     private let successTint: Color
     private let failureTint: Color
     private let infoTint: Color
-    private let rootContent: () -> RootContent
+    private let tabRoot: (AppTab) -> TabRoot
 
     // SDD-003 OQ-001: single chrome state instance, owned here so it outlives
     // individual modal presentations. Reset on dismiss so a stale label from a
@@ -73,24 +79,20 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
 
     public init(
         viewModel: GameRootViewModel<Route>,
-        title: LocalizedStringKey,
-        sidebarItems: [SidebarItem<Route>],
         routeFactory: any RouteFactory<Route>,
         toastController: ToastController?,
         successTint: Color,
         failureTint: Color,
         infoTint: Color,
-        @ViewBuilder rootContent: @escaping () -> RootContent
+        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
     ) {
         self.viewModel = viewModel
-        self.title = title
-        self.sidebarItems = sidebarItems
         self.routeFactory = routeFactory
         self.toastController = toastController
         self.successTint = successTint
         self.failureTint = failureTint
         self.infoTint = infoTint
-        self.rootContent = rootContent
+        self.tabRoot = tabRoot
     }
 
     public var body: some View {
@@ -166,38 +168,38 @@ public struct GameRoot<Route: Hashable & Sendable, RootContent: View>: View {
 
     private var shellContent: some View {
         RootShellView(
-            path: Binding(
-                get: { viewModel.path },
-                set: { newPath in
-                    // #675: on macOS, board routes are a `NavigationStack`
-                    // push (no `fullScreenCover`/`dismissGame()` involved —
-                    // see `GameBoardRedirect`), so a board's Leave / completion
-                    // Close pops `path` directly (`BoardView+Completion.exitToHub`)
-                    // instead of going through `dismissGame()`. Any shrink of
-                    // `path` is treated as "a route just went away" and
-                    // refreshes the resume pill the same way `dismissGame()`
-                    // does on iOS — cheap (one CK query), and harmless to run
-                    // for non-board pops too. #761: also bumps the teardown
-                    // counter so environment-observing views (e.g. the Daily
-                    // hubs) refresh, mirroring `dismissGame()`'s iOS wiring.
-                    // #912: delegated to `handlePathShrink` — on iOS this
-                    // branch ALSO fires once at board OPEN (`GameBoardRedirect`
-                    // popping its synthetic push entry), which used to trigger
-                    // a spurious refresh/teardown at open time, not just at a
-                    // genuine close; `handlePathShrink` filters that case out
-                    // via `isGamePresented`. #823: same join as the iOS
-                    // fullScreenCover branch above — macOS boards pop `path`
-                    // instead of dismissing a cover, but the race is identical.
-                    if newPath.count < viewModel.path.count {
-                        viewModel.handlePathShrink(persistJoin: persistJoin)
-                    }
-                    viewModel.path = newPath
-                }
+            // A tab switch is a plain state write with no side effects —
+            // design.md §3.6.2 / N-AB: switching tabs is not a pop, so it must
+            // not refresh the resume pill.
+            selectedTab: Binding(
+                get: { viewModel.selectedTab },
+                set: { viewModel.selectedTab = $0 }
             ),
-            title: title,
-            sidebarItems: sidebarItems,
+            // #1020: one binding per tab. The shrink detection that used to
+            // live in this setter now lives in `setPath(_:for:_:)` so it is
+            // unit-testable without SwiftUI — and, crucially, so it fires for
+            // ANY tab's path shortening rather than only the visible one
+            // (§3.6.2 ①; completing a Practice game and switching back to Today
+            // used to leave a stale pill).
+            //
+            // #675: on macOS a board is a `NavigationStack` push, so its Leave /
+            // completion Close pops the path directly instead of going through
+            // `dismissGame()`. #761: the shrink also bumps the teardown counter
+            // the hubs observe. #912: `handlePathShrink` filters the iOS
+            // board-OPEN false positive (`GameBoardRedirect` popping its
+            // synthetic entry) via `isGamePresented`. #823: the join lets that
+            // bump wait (bounded) for an in-flight terminal CloudKit save —
+            // same race as the `fullScreenCover` branch above.
+            path: { tab in
+                Binding(
+                    get: { viewModel.path(for: tab) },
+                    set: { newPath in
+                        viewModel.setPath(newPath, for: tab, persistJoin: persistJoin)
+                    }
+                )
+            },
             routeFactory: routeFactory,
-            rootContent: rootContent
+            tabRoot: tabRoot
         )
     }
 }

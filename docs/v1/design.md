@@ -714,6 +714,8 @@ App 端只支援**單一**最新 `GeneratorVersion`；舊 build 的玩家若已�
 
 #### §How.5.1 View map（v1 全螢幕清單）
 
+> ⚠️ **3.0 起已被取代（#1020, 2026-08-24）**：`HomeView` 與 `home`/`daily`/`practice`/`stats` route 已退役；根層改為 `sidebarAdaptable` TabView（Today / Practice / Progress,每 tab 一條 path）。現行 route table 與導航模型以 `docs/designs/v3/design.md` §2.1–§2.2 為準;本節與下方的 `AppRoute` 列舉保留為 v1 歷史紀錄。
+
 **決策**：v1 共 7 個 top-level View（Root + Home + Daily + Practice + Board + Completion + Settings）；UI 層只持有 protocol，**不** import `CloudKit`；`GameKit` 僅 `GameCenterDashboard.swift` 一處例外（issue #49, 2026-05-20 — Apple 原生 dashboard 入口別無 protocol seam，見 §How.5.2 footnote）。
 
 `PuzzleProviderProtocol.fetchDailyTrio(date:)` / `fetchPracticePool(difficulty:)` API 名稱不變；**backing implementation in v1 is local deterministic generation, not CloudKit Public DB fetch**（見 §How.4）。`PuzzleStore` live impl 內部委派給 `SudokuEngine.PuzzleGenerator`。

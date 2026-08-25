@@ -6,7 +6,7 @@
 // closures to produce the root view.
 //
 // `GameDeps` is the wired bag handed to per-game closures so they can build
-// their specific route factory, home view, and resume mapping without knowing
+// their specific route factory, tab roots, and resume mapping without knowing
 // the internals of any live seam.
 //
 // `GameConfig<Route>` carries only the per-game *content* (subsystem, ckConfig,
@@ -156,27 +156,6 @@ public struct ReminderContentConfig {
     }
 }
 
-// MARK: - HomeModeContent
-
-/// Per-game content for one `HomeMode` card in `GameHomeView`.
-///
-/// `subtitleKey` resolves from `Bundle.main` (the app's own catalog), exactly
-/// as the prior per-game `HomeViewModel.subtitleKey` private extensions did.
-/// `route` is the navigation push for Daily / Practice / Settings; `nil` means
-/// the mode produces a side-effect rather than a push (Leaderboard → GC
-/// dashboard), so `GameHomeViewModel.select(_:)` handles it specially.
-public struct HomeModeContent<Route: Hashable & Sendable> {
-    /// App-specific subtitle shown below the mode title on the Home card.
-    public let subtitleKey: LocalizedStringKey
-    /// Navigation push for this mode, or `nil` for the leaderboard side-effect.
-    public let route: Route?
-
-    public init(subtitleKey: LocalizedStringKey, route: Route? = nil) {
-        self.subtitleKey = subtitleKey
-        self.route = route
-    }
-}
-
 // MARK: - GameConfig
 
 /// Per-game content bag + builder closures for `makeGameApp(config:)`.
@@ -200,10 +179,6 @@ public struct GameConfig<Route: Hashable & Sendable> {
     public let puzzleLoader: LivePersistence.PuzzleLoader
     /// Game-specific `Theme` value injected via `\.theme` environment key.
     public let theme: any Theme
-    /// Navigation bar / window title.
-    public let title: LocalizedStringKey
-    /// Sidebar / tab items for `RootShellView`.
-    public let sidebarItems: [SidebarItem<Route>]
     /// Success tint forwarded to `GameRoot`'s `.toastOverlay`.
     public let successTint: Color
     /// Failure tint forwarded to `GameRoot`'s `.toastOverlay`.
@@ -216,35 +191,23 @@ public struct GameConfig<Route: Hashable & Sendable> {
     public let audio: AudioConfig
     /// Reminder content: subsystem + notification copy for this game.
     public let reminders: ReminderContentConfig
-    /// Per-mode home card content: subtitle copy + navigation route (or nil for
-    /// leaderboard side-effect). `GameHomeView` builds its `HomeModeItem` array
-    /// from this map. Missing modes fall back to an empty subtitle and no route.
-    public let homeModes: [HomeMode: HomeModeContent<Route>]
-    /// Presents the game's native Game Center leaderboard UI. Called by
-    /// `GameHomeViewModel.select(.leaderboard)` when GC is authenticated. Each
-    /// game supplies its own `GameCenterDashboard.present()` implementation since
-    /// the GK controller is not shared. `nil` → no-op (games without a leaderboard
-    /// surface, or during migration).
-    public let presentLeaderboard: (@MainActor () -> Void)?
-    /// #773: navigation target for the Home "Statistics" entry (rendered
-    /// below the four mode cards, not a `HomeMode`). `nil` (default) → the
-    /// entry is not shown, matching every other optional content slot in
-    /// this config.
-    public let statsRoute: Route?
-    /// #844: subtitle copy for the Statistics entry — it renders as a
-    /// `HomeModeCard` (same format as the four modes), so it needs a
-    /// subtitle like theirs. Ignored when `statsRoute` is `nil`.
-    public let statsSubtitleKey: LocalizedStringKey
-    /// Home avatar chip image (approved design variant A: trailing nav-bar
-    /// chip showing the game's own app icon, App Store / Apple Music
-    /// pattern). `nil` (default) → `GameHomeView` renders no chip, so
-    /// fixtures/previews that don't set this are unaffected. Each app
-    /// supplies its own icon art via `Image(_:bundle:)` against its own
-    /// bundle's asset catalog (mirrors how `theme` is a per-game concrete
-    /// value injected here rather than shared).
-    public let homeAvatarImage: Image?
 
     // MARK: Builder closures
+
+    /// #1020: the per-game root content for each of the three tabs
+    /// (`Today` / `Practice` / `Progress`), erased to `AnyView`. Called once per
+    /// tab per root mount with the wired deps + root VM, so each game can build
+    /// its own daily hub / practice hub / statistics screen without GameAppKit
+    /// naming any of them.
+    ///
+    /// `.today`'s content is additionally wrapped by `TodayTabHost` (resume pill
+    /// + banner slot + the C-33 ATT anchor), so a game supplies only the middle
+    /// of that sandwich.
+    ///
+    /// Replaces the retired home-modes / make-home / sidebar-items trio: with
+    /// `sidebarAdaptable` generating its own chrome from `AppTab`, there is no
+    /// mode-card list or sidebar array left to configure.
+    public let makeTabRoot: @MainActor (AppTab, GameDeps, GameRootViewModel<Route>) -> AnyView
 
     /// Maps from the game's persisted state into a `ResumeCandidate` for the
     /// resume pill. `nil` if the game has no resume surface.
@@ -254,16 +217,12 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// `GameDeps` bag so the factory can capture live seams without knowing them.
     public let makeRouteFactory: @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>
 
-    /// Builds the per-game home view, wrapped as `AnyView` for type erasure.
-    /// Called once per root mount; captures the wired deps + rootVM.
-    /// Superseded by the universal `GameHomeView` built from `homeModes` in
-    /// `makeGameApp` (#557). Retained for API compatibility during migration of
-    /// MS and 2048; `makeGameApp` ignores this once `homeModes` is non-empty.
-    public let makeHome: @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView
-
     /// Deep-link a tapped reminder. The param is the notification identifier
-    /// (equals `ReminderKind.rawValue`); the closure routes it on the root VM
-    /// (e.g. Sudoku pushes `.daily`). `nil` → no tap routing (default).
+    /// (equals `ReminderKind.rawValue`); the closure routes it on the root VM.
+    /// #1020: the daily-ready reminder's landing surface is now a tab identity,
+    /// so a game routes it by setting `selectedTab` (and, if needed, that tab's
+    /// path) rather than pushing a `.daily` route. `nil` → no tap routing
+    /// (default).
     public let reminderTapRoute: (@MainActor (String, GameRootViewModel<Route>) -> Void)?
 
     /// #579 phase 2: late-bound completion sinks (e.g. GameCenterSink) injected
@@ -278,21 +237,14 @@ public struct GameConfig<Route: Hashable & Sendable> {
         removeAdsProductId: String,
         puzzleLoader: @escaping LivePersistence.PuzzleLoader,
         theme: any Theme,
-        title: LocalizedStringKey,
-        sidebarItems: [SidebarItem<Route>],
         successTint: Color,
         failureTint: Color,
         infoTint: Color,
         audio: AudioConfig,
         reminders: ReminderContentConfig,
-        homeModes: [HomeMode: HomeModeContent<Route>] = [:],
-        presentLeaderboard: (@MainActor () -> Void)? = nil,
-        statsRoute: Route? = nil,
-        statsSubtitleKey: LocalizedStringKey = "",
-        homeAvatarImage: Image? = nil,
+        makeTabRoot: @escaping @MainActor (AppTab, GameDeps, GameRootViewModel<Route>) -> AnyView,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
-        makeHome: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> AnyView,
         reminderTapRoute: (@MainActor (String, GameRootViewModel<Route>) -> Void)? = nil,
         makeCompletionSinks: (@MainActor @Sendable (GameDeps, GameRootViewModel<Route>) -> [any TelemetrySink])? = nil
     ) {
@@ -301,21 +253,14 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.removeAdsProductId = removeAdsProductId
         self.puzzleLoader = puzzleLoader
         self.theme = theme
-        self.title = title
-        self.sidebarItems = sidebarItems
         self.successTint = successTint
         self.failureTint = failureTint
         self.infoTint = infoTint
         self.audio = audio
         self.reminders = reminders
-        self.homeModes = homeModes
-        self.presentLeaderboard = presentLeaderboard
-        self.statsRoute = statsRoute
-        self.statsSubtitleKey = statsSubtitleKey
-        self.homeAvatarImage = homeAvatarImage
+        self.makeTabRoot = makeTabRoot
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory
-        self.makeHome = makeHome
         self.reminderTapRoute = reminderTapRoute
         self.makeCompletionSinks = makeCompletionSinks
     }

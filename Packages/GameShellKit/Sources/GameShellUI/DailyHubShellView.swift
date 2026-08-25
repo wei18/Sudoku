@@ -25,8 +25,8 @@
 //     instead of layering a system `.alert` on top of a blank shell.
 //   - the per-item tap action
 //   - the `header` slot (#840): rendered ABOVE the content in every state —
-//     idle/loading/loaded/empty/failed — mirroring `HomeScreen.header`'s
-//     injected-slot shape. Defaults to `EmptyView` so existing callers
+//     idle/loading/loaded/empty/failed — the same injected-slot shape the
+//     retired HOME scaffold used. Defaults to `EmptyView` so existing callers
 //     compile unchanged. Sudoku/MS inject their `DailyStripView` /
 //     `MinesweeperDailyStripView` week strip here so it SCROLLS WITH the
 //     card grid in `.loaded` (it now lives inside the same `ScrollView`,

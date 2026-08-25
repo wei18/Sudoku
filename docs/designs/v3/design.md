@@ -777,7 +777,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | **U-9** | `GlassEffectContainer` × 系統 button style | ⚠️ **擋 G4 實作細節** | B-7 |
 | **U-10** | `tabViewBottomAccessory` × AdMob | ❌ **不擋**(有降級備案) | B-6 |
 | **U-11** | MS `status.warning` 的實際使用位置 | ❌ 不擋 | 查清後決定是否另開 issue |
-| **U-12** | SwiftUI `.badge()` 能否呈現**無數字**形態 | ⚠️ **擋 badge 定案** | 做不到就整個放棄 badge(§2.3) |
+| ~~U-12~~ | SwiftUI `.badge()` 能否呈現**無數字**形態 | — | ✅ 已解(#1020 spike,2026-08-24):**做不到** —— tab bar 上的圓點來自未文件化的空白字串行為且各表面不一致(iPhone `""` 可、iPad tab bar 只有 `" "` 可),sidebar 展開態一律渲染為文字附註、無圓點形態 → 依 §2.3 **整個放棄 badge**,不自繪 |
 | **U-13** | macOS 沒有 `tabViewBottomAccessory`,banner 的 macOS 落點 | ⚠️ 擋 macOS 變現版面 | §2.4.1,推薦方案 A |
 
 ### 10.2 驗證步驟
