@@ -329,12 +329,17 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     // HOME view's banner slot). The other two tabs get the game's content
     // unwrapped.
     //
-    // `memoizedTabRoots` runs this builder exactly ONCE per tab, at composition
-    // time. `RootShellView` calls the returned closure on every body evaluation,
-    // so building lazily here would re-run `config.makeTabRoot` per render and
+    // `chromedTabRoots` runs this builder exactly ONCE per tab, at composition
+    // time, then attaches the shared Settings gear to every tab root (§2.1 /
+    // §3.7 — with HOME retired this is the app's only Settings entry point).
+    // `RootShellView` calls the returned closure on every body evaluation, so
+    // building lazily here would re-run `config.makeTabRoot` per render and
     // rebuild the game's hub view models under the player — the #918 bug shape.
-    // See the helper's doc for the full contract.
-    let tabRoot = memoizedTabRoots { tab in
+    // See the helpers' docs for the full contract.
+    let tabRoot = chromedTabRoots(
+        rootViewModel: rootViewModel,
+        settingsRoute: config.settingsRoute
+    ) { tab in
         let content = config.makeTabRoot(tab, deps, rootViewModel)
         guard tab == .today else { return content }
         return AnyView(

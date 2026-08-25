@@ -107,6 +107,9 @@ extension SudokuAppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
+            // #1020: pushed by the shared trailing gear on every tab root
+            // (`TabRootChrome`) — Settings lands inside the initiating tab.
+            settingsRoute: .settings,
             // #1020: per-tab root content — Today / Practice / Progress
             // replace the retired HOME mode-card config entirely
             // (`sidebarAdaptable` generates its own chrome from `AppTab`, so

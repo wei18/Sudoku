@@ -191,6 +191,14 @@ public struct GameConfig<Route: Hashable & Sendable> {
     public let audio: AudioConfig
     /// Reminder content: subsystem + notification copy for this game.
     public let reminders: ReminderContentConfig
+    /// #1020: the route each tab's trailing toolbar gear pushes.
+    ///
+    /// design.md §2.1 / §3.7 put a Settings gear at the top-right of EVERY tab
+    /// ("每 tab 右上齒輪") — with HOME retired, its Settings card was the app's
+    /// only entry point, so this is now the sole one on iPhone. Required (no
+    /// default): every game has a Settings screen, and a game that silently
+    /// shipped without the gear would be unreachable, not merely degraded.
+    public let settingsRoute: Route
 
     // MARK: Builder closures
 
@@ -242,6 +250,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         infoTint: Color,
         audio: AudioConfig,
         reminders: ReminderContentConfig,
+        settingsRoute: Route,
         makeTabRoot: @escaping @MainActor (AppTab, GameDeps, GameRootViewModel<Route>) -> AnyView,
         fetchResume: (@MainActor (GameDeps) -> (() async throws -> ResumeCandidate<Route>?)?)? = nil,
         makeRouteFactory: @escaping @MainActor (GameDeps, GameRootViewModel<Route>) -> any RouteFactory<Route>,
@@ -258,6 +267,7 @@ public struct GameConfig<Route: Hashable & Sendable> {
         self.infoTint = infoTint
         self.audio = audio
         self.reminders = reminders
+        self.settingsRoute = settingsRoute
         self.makeTabRoot = makeTabRoot
         self.fetchResume = fetchResume
         self.makeRouteFactory = makeRouteFactory

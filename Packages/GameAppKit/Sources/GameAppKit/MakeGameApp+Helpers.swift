@@ -38,14 +38,39 @@ internal import SettingsUI
 /// of that stability, and the alternative (lazy + memoized) would only move the
 /// same allocation to first visit while adding a mutable cache.
 @MainActor
-func memoizedTabRoots(_ build: (AppTab) -> AnyView) -> (AppTab) -> AnyView {
+func memoizedTabRoots<TabRoot: View>(
+    _ build: @escaping (AppTab) -> TabRoot
+) -> (AppTab) -> TabRoot {
     let roots = Dictionary(
         uniqueKeysWithValues: AppTab.allCases.map { ($0, build($0)) }
     )
-    // `AppTab.allCases` makes `roots` total, so the fallback is unreachable —
-    // it exists so a future case added without rebuilding renders empty rather
-    // than trapping in a shipped app.
-    return { tab in roots[tab] ?? AnyView(EmptyView()) }
+    // `AppTab.allCases` makes `roots` total, so the fallback is unreachable. It
+    // rebuilds rather than force-unwrapping so a future case added without
+    // rebuilding degrades to the old per-render behavior instead of trapping in
+    // a shipped app.
+    return { tab in roots[tab] ?? build(tab) }
+}
+
+/// The tab-root pipeline `makeGameApp` uses: memoize the per-game content, then
+/// attach the shared Settings gear to every tab (#1020, design.md §2.1 / §3.7).
+///
+/// The return type is deliberately NOT erased to `AnyView`: it names
+/// `TabRootChrome` explicitly, so "every tab root carries the gear" is enforced
+/// by the type checker rather than by a test that has to go looking for it.
+/// One closure serves all three tabs, so there is no per-tab path that could
+/// skip the chrome.
+@MainActor
+func chromedTabRoots<Route: Hashable & Sendable>(
+    rootViewModel: GameRootViewModel<Route>,
+    settingsRoute: Route,
+    build: @escaping (AppTab) -> AnyView
+) -> (AppTab) -> ModifiedContent<AnyView, TabRootChrome<Route>> {
+    memoizedTabRoots { tab in
+        build(tab).tabRootChrome(
+            rootViewModel: rootViewModel,
+            settingsRoute: settingsRoute
+        )
+    }
 }
 
 // MARK: - bootMonetization
