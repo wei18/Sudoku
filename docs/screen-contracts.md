@@ -1132,12 +1132,13 @@ GC row entry point: `App/SudokuE2ETests/SudokuE2ETests.swift`
 
 ## ATT-PRIMER
 
-**Entry points:** first ad-relevant moment — `GameHomeView`'s banner slot
-`.task` calls `attPrimer.maybePresentOnAdContext()` (i.e., the **first Home
-banner load**, not app launch). One-offer-per-launch latch
-(`hasOffered`). **Does not block Home interaction** — Home is already
-rendered and tappable when this sheet appears (CODE CONTRADICTED vs. a
-"boot-time gate" assumption).
+**Entry points (3.0, C-33 BREAK — #1020):** first ad-relevant moment — the
+**Today tab's** banner slot (`GameAppKit/TodayTabHost.swift`, `onAdContext`)
+calls `attPrimer.maybePresentOnAdContext()` (i.e., the **first Today banner
+load**, not app launch). Pre-3.0 this was `GameHomeView`'s banner slot; HOME
+is retired. One-offer-per-launch latch (`hasOffered`) unchanged. **Does not
+block Today interaction** — the tab is already rendered and tappable when
+this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).
 
 **Code:** `AppMonetizationKit/Sources/MonetizationUI/ATTPrimerSheet.swift`,
 `ATTPrimerCoordinator.swift`.
