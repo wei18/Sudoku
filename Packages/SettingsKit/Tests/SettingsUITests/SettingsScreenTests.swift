@@ -12,7 +12,7 @@ import Reminders
 //      `purchases` @ViewBuilder slot and plain config, with NO MonetizationUI /
 //      MonetizationCore / GameCenter / IAP / AdMob types in scope here, so it
 //      can be mounted by either game (compile-only sentinel, mirrors the sibling
-//      CompletionScreen + NavigationStackHost sentinels). If a future change
+//      CompletionScreen + RootShellView sentinels). If a future change
 //      re-couples the body to MonetizationUI, this target stops compiling
 //      (GameShellUITests does NOT link MonetizationUI).
 //   2. both divergences both apps need build — Sudoku's About `aboutExtraRows`
