@@ -4,26 +4,30 @@
 //
 // Why this exists (issue #1019's spike verdict, do not relitigate):
 // `sidebarAdaptable` generates the sidebar / tab-bar chrome itself, so there is
-// no user-authored sidebar `List` left to scope `.disabled()` to — it has to go
-// on the whole `TabView`. Porting the old shape verbatim (overlay mounted
-// `.overlay {}` deep inside the pushed route) then puts the overlay's OWN
-// Resume / Close CTA inside the disabled subtree: the player is deadlocked in
-// an undismissable modal (spike evidence 01–04). Rendering the overlay as a
-// `ZStack` sibling OUTSIDE the disabled `TabView` restores #763's guarantee —
-// sidebar and tab rows leave the a11y tree via `.isModal`, are physically
-// un-tappable behind the overlay's own scrim, and the CTA stays live
-// (evidence 06–10).
+// no user-authored sidebar `List` left for a naive fix to scope `.disabled()`
+// to. Porting the old shape verbatim (overlay mounted `.overlay {}` deep inside
+// the pushed route, with `.disabled()` toggled on the whole `TabView`) then puts
+// the overlay's OWN Resume / Close CTA inside that disabled subtree: the player
+// is deadlocked in an undismissable modal (spike evidence 01–04). Rendering the
+// overlay as a `ZStack` sibling OUTSIDE the `TabView` — with NO `.disabled()`
+// anywhere — restores #763's guarantee instead: sidebar and tab rows leave the
+// a11y tree via `.isModal`, are physically un-tappable behind the overlay's own
+// full-screen scrim, and the CTA stays live (evidence 06–10).
 //
 // The board keeps owning pause / terminal state; only PRESENTATION moves up.
 // Down-flow dismissal rides the board's own state through the closures its
 // overlay already captures (`onResume` / `dismiss()`), so no extra seam is
 // needed for the buttons themselves.
 //
-// #763 invariant, now true BY CONSTRUCTION: the board used to hand-maintain an
-// `isModalOverlayActive` predicate that "MUST track the EXACT same condition"
-// as its `.overlay { … }`, with nothing enforcing it. `boardModalOverlay(
-// presentation:content:)` takes that ONE value and drives both the in-place and
-// the hoisted rendering, so the two cannot drift.
+// #763 invariant: the board used to hand-maintain an `isModalOverlayActive`
+// predicate that "MUST track the EXACT same condition" as its `.overlay { … }`,
+// with nothing enforcing it. `boardModalOverlay(presentation:content:)` takes
+// that ONE value and drives both the in-place and the hoisted rendering, so the
+// two renderings cannot drift — but that only keeps the RENDERINGS consistent
+// with each other. The #763 shell-lock itself is NOT "by construction": there
+// is no `.disabled()` anywhere. It is the overlay's own full-screen scrim
+// geometry plus `.accessibilityAddTraits(.isModal)` pruning the shell chrome
+// from the a11y tree — see `RootShellView`'s header.
 //
 // #1020: the shell does NOT observe a preference to learn an overlay is up — it
 // reads this coordinator. Observing `BoardModalOverlayActivePreferenceKey` from

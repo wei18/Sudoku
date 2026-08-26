@@ -19,11 +19,12 @@
 // #763 / #1019 / #1020 — pause & completion must lock the whole shell, and the
 // way they do it is load-bearing. Two rules, both paid for in bisection:
 //
-// 1. The overlay renders as a ZStack SIBLING of the TabView, never inside it
-//    (#1019 evidence 01-04): `sidebarAdaptable` generates its own chrome, so
-//    any lock has to cover the whole TabView — and an overlay mounted inside
-//    that subtree would have its OWN Resume / Close locked too, leaving the
-//    player in an undismissable modal.
+// 1. The overlay renders as a ZStack SIBLING of the TabView, never inside it —
+//    the sibling-hoisted rendering is what #1019 evidence 06-10 verifies.
+//    `sidebarAdaptable` generates its own chrome, so any lock has to cover the
+//    whole TabView — and an overlay mounted inside that subtree would have its
+//    OWN Resume / Close locked too, leaving the player in an undismissable
+//    modal (the naive shape #1019 evidence 01-04 captured failing).
 //
 // 2. NOTHING in this body may change while a board is pushed. On macOS,
 //    re-running the body that builds a `sidebarAdaptable` TabView UNMOUNTS

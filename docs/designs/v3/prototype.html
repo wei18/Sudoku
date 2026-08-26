@@ -1563,7 +1563,7 @@ ul.tick li.q:before{background:var(--c-warn-line);} ul.tick li.x:before{backgrou
         <tr><td class="num">B-1</td><td>MS 盤面留白成因</td><td>Beginner &gt;32pt 且 Expert ≈0 → 成因確認</td><td class="pass">✅</td></tr>
         <tr><td class="num">B-2</td><td>Dynamic Type AX5</td><td>不截斷且不減內容量。<strong>⚠️ 不可用注入 env 快照</strong></td><td class="pass">✅</td></tr>
         <tr><td class="num">B-3</td><td>GC 六語系實機用詞</td><td>我方譯法與系統一致</td><td class="pass">✅</td></tr>
-        <tr><td class="num">B-4</td><td><code>sidebarAdaptable</code> vs #763</td><td>pause/completion 期間 sidebar 與 tab 皆不可互動</td><td class="pass">✅ #1019 spike(hoisted overlay)</td></tr>
+        <tr><td class="num">B-4</td><td><code>sidebarAdaptable</code> vs #763</td><td>pause/completion 期間 sidebar 與 tab 皆不可互動</td><td class="warnv">⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039</td></tr>
         <tr><td class="num">B-5</td><td>八種開關組合</td><td>格全可見可點 · IC 下 pip 可辨 · RT 下不位移 · RM 走 fade</td><td class="pass">✅</td></tr>
         <tr><td class="num">B-6</td><td>accessory × AdMob</td><td>banner 不塌、impression 正常</td><td class="pass">✅ 樣板</td></tr>
         <tr><td class="num">B-7</td><td>容器 × button style</td><td>正確合併為單一玻璃形狀</td><td class="pass">✅ 樣板</td></tr>

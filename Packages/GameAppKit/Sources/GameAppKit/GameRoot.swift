@@ -17,8 +17,9 @@
 // `RootShellView`, so its content sits OUTSIDE the shell's TabView. That is why
 // an iOS board inherits no `\.boardModalOverlayCoordinator` and keeps rendering
 // its Pause/Completion overlay in place, while a pushed (macOS / iPad) board
-// hoists its overlay out of the disabled TabView instead. See
-// `GameShellUI.BoardModalOverlayHoist`.
+// hoists its overlay out to a ZStack sibling of the TabView instead — locked by
+// the overlay's own scrim geometry + `.isModal` AX pruning, not by disabling
+// the TabView. See `GameShellUI.BoardModalOverlayHoist`.
 //
 // SDD-003 Epic 1 — Modal game presentation:
 // Board routes are presented as fullScreenCover modals (R1.1).

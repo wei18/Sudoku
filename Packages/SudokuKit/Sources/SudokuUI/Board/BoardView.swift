@@ -341,6 +341,9 @@ public struct BoardView: View {
     // MARK: - Keyboard
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
+        // #763: a paused/completed board must not eat key presses meant for
+        // its overlay's own controls (e.g. Space re-toggling pause underneath).
+        guard modalOverlayPresentation == nil else { return .ignored }
         // Arrow keys: move focus.
         switch keyPress.key {
         case .leftArrow:

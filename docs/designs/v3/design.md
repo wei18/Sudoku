@@ -787,7 +787,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | B-1 | MS 盤面留白成因 | sim agent | Beginner >32pt 且 Expert ≈0 → 成因確認 | ✅ |
 | B-2 | Dynamic Type AX5 | sim agent | 不截斷且不減內容量。**⚠️ 不可用注入 env 快照(假通過)** | ✅ |
 | B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ |
-| B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ❌ **需實作原型** |
+| B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039 |
 | B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ |
 | B-6 | accessory × AdMob | dev | banner 不塌、impression 正常 | ✅(最小樣板) |
 | B-7 | `GlassEffectContainer` × button style | dev | 正確合併為單一玻璃形狀 | ✅(最小樣板) |

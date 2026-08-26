@@ -84,7 +84,10 @@ check_plist_resolved() {
   fi
 }
 
-# (screen-key, launch-arg) pairs — empty arg = default launch (home).
+# (screen-key, launch-arg) pairs — empty arg = default launch (the Today tab).
+# `-uitest-route <key>` selects that tab (#1020: daily/practice are tab
+# identities now, not pushed routes — see UITestRouteModifier.swift; settings
+# still pushes onto the Today tab's stack).
 SCREENS=(
   "01-home:"
   "02-daily:-uitest-route daily"

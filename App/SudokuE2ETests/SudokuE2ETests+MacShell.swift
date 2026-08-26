@@ -24,12 +24,16 @@ import AppKit
 //       board stays.
 //   (c) Leave pops back to the tab root (Practice hub).
 //
-// Reaching a pushed board on macOS: the iOS-only DEBUG launch hooks
-// (`-uitest-near-win-modal`, `-uitest-route`) are inert no-ops on macOS
-// (`UITestRouteModifier.body` is `#if os(iOS)`; the near-win modifiers gate
-// the same way — see SudokuAppComposition.swift). So this test navigates for
-// real: launch → click the Practice tab/sidebar row → click the Practice
-// hub's "New Game" CTA (`sudoku.practiceHub.start`) → wait for the board
+// Reaching a pushed board on macOS: the DEBUG near-win launch hook
+// (`-uitest-near-win-modal`) is still an iOS-only inert no-op on macOS —
+// `SudokuNearWinModalModifier`'s body is wrapped in `#if os(iOS)` (see
+// SudokuNearWinModalModifier.swift). `-uitest-route` is NOT inert here any
+// more (#1037): `UITestRouteModifier` carries no `os` guard, so it drives the
+// shell on macOS too (see UITestRouteModifier.swift / SudokuAppComposition.swift)
+// — but this test still navigates by real clicks deliberately, since it is
+// testing the shell's own click-driven lock, not the deep-link hook. So: launch
+// → click the Practice tab/sidebar row → click the Practice hub's "New Game"
+// CTA (`sudoku.practiceHub.start`) → wait for the board
 // (`sudoku.board.pauseToggle`) → click pause.
 //
 // Coordinate-click pattern (repo memory `macos-xcuitest-coordinate-clicks`,
