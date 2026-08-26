@@ -10,6 +10,8 @@
 
 import Testing
 @testable import MinesweeperAppComposition
+import MinesweeperEngine
+import MinesweeperUI
 import MonetizationCore
 import MonetizationTesting
 import Telemetry
@@ -131,4 +133,35 @@ import Telemetry
         await bag.monetizationController.bootstrap()
         #expect(bag.monetizationController.removeAdsDisplayPrice == "$4.99")
     }
+
+    #if DEBUG
+    // #1026 B-1: `uitestRoute(for:)` is the DEBUG-only `-uitest-route` key
+    // resolver — zero-click macOS access to a sized practice board.
+
+    @Test(arguments: Difficulty.allCases)
+    func uitestRouteBoardResolvesToFixedSeedPracticeBoard(_ difficulty: Difficulty) {
+        #expect(
+            MinesweeperAppComposition.uitestRoute(for: "board:\(difficulty.rawValue)")
+                == .push(
+                    .board(
+                        difficulty: difficulty,
+                        seed: MinesweeperAppComposition.uitestBoardSeed,
+                        mode: .practice
+                    ),
+                    tab: .practice
+                )
+        )
+    }
+
+    @Test(arguments: ["board:bogus", "board:", "board", "board:BEGINNER", "board:expert "])
+    func uitestRouteBoardRejectsUnknownOrMalformedKeys(_ key: String) {
+        #expect(MinesweeperAppComposition.uitestRoute(for: key) == nil)
+    }
+
+    @Test func uitestRoutePracticeStillResolves() {
+        // Regression: the new `board:` prefix branch must not shadow the
+        // pre-existing exact-match keys.
+        #expect(MinesweeperAppComposition.uitestRoute(for: "practice") == .tab(.practice))
+    }
+    #endif
 }

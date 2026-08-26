@@ -19,6 +19,11 @@ public import SwiftUI
 public import GameCenterClient
 public import GameShellUI
 public import MinesweeperUI
+#if DEBUG
+// Internal-only: `Difficulty` is named directly by `uitestRoute(for:)` below
+// (an internal, DEBUG-only func), so this doesn't need public exposure.
+internal import MinesweeperEngine
+#endif
 public import Telemetry
 public import Persistence
 public import MonetizationCore
@@ -86,10 +91,19 @@ public struct MinesweeperAppComposition {
     }
 
     #if DEBUG
+    /// Fixed seed for the `board:<difficulty>` deep-link key below — pins the
+    /// generated board so macOS zero-click measurement runs (#1026 B-1) and
+    /// any E2E assertions against it stay reproducible across launches.
+    static let uitestBoardSeed: UInt64 = 0x5EED_B1
+
     /// #510: map a `-uitest-route` screen key to Minesweeper's launch target.
     /// #1020: `daily` / `practice` used to be push routes; they are tab
     /// identities now, so both just select their tab — `settings` still
-    /// pushes onto the Today tab's stack. Unknown keys stay at the root.
+    /// pushes onto the Today tab's stack. Unknown keys stay at the root. Keys:
+    /// `daily` / `practice` / `settings` / `resumeFail` /
+    /// `board:<beginner|intermediate|expert>` (#1026 B-1: zero-click straight
+    /// into a practice board at that difficulty, fixed seed above, pushed on
+    /// the Practice tab so the runner sees it where a Start tap would land it).
     static func uitestRoute(for key: String) -> UITestLaunchTarget<AppRoute>? {
         switch key {
         case "daily": return .tab(.today)
@@ -103,7 +117,14 @@ public struct MinesweeperAppComposition {
         // read when `-uitest-loader-fail` is also passed — the hook short-
         // circuits `load()` before `store.loadInProgress` is called.
         case "resumeFail": return .push(.resumeBoard(recordName: "uitest-loader-fail", mode: .practice))
-        default: return nil
+        default:
+            // #1026 B-1: `board:<difficulty>` — macOS has no synthetic tap
+            // path to the practice hub's Start button, so this is the only
+            // zero-click route to a sized board on that platform.
+            guard key.hasPrefix("board:") else { return nil }
+            let difficultyKey = key.dropFirst("board:".count)
+            guard let difficulty = Difficulty(rawValue: String(difficultyKey)) else { return nil }
+            return .push(.board(difficulty: difficulty, seed: uitestBoardSeed, mode: .practice), tab: .practice)
         }
     }
     #endif

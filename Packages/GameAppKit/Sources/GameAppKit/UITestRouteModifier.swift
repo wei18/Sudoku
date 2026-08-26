@@ -15,8 +15,14 @@
 //
 // Applied at the app's root view, ALONGSIDE the per-app near-win modifiers, with
 // the app supplying the `resolve` closure that maps a key → its own target (so
-// this stays game-agnostic). Mirrors the near-win modifier pattern: iOS-only,
-// `#if DEBUG`, a transparent no-op on every non-uitest launch.
+// this stays game-agnostic). Mirrors the near-win modifier pattern: `#if DEBUG`,
+// a transparent no-op on every non-uitest launch — and effective on ALL
+// platforms (#1037): it drives the live root VM's selected tab + per-tab path,
+// which is the same state the production shell renders on iOS and macOS alike.
+// Board routes still take each platform's normal presentation from there: on
+// iOS `GameRoot`'s `onPresentBoard` redirect lifts them into the
+// `fullScreenCover`; on macOS they stay a plain push inside the tab's stack —
+// identical to what the hub's Start button produces.
 
 #if DEBUG
 
@@ -29,7 +35,7 @@ public import GameShellUI
 ///
 /// Both cases carry a tab because every screen now lives inside one: a push
 /// with no tab selected would land on a stack the runner cannot see.
-public enum UITestLaunchTarget<Route: Hashable & Sendable>: Sendable {
+public enum UITestLaunchTarget<Route: Hashable & Sendable>: Sendable, Equatable {
     /// Select a tab and stop there — the landing for keys that used to be
     /// root-level routes (`daily` → `.today`, `practice` → `.practice`).
     case tab(AppTab)
@@ -61,15 +67,11 @@ public struct UITestRouteModifier<Route: Hashable & Sendable>: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        #if os(iOS)
         content.onAppear {
             guard let key = UITestLaunchArg.routeValue(),
                   let target = resolve(key) else { return }
             apply(target)
         }
-        #else
-        content
-        #endif
     }
 
     /// The deep-link's effect, factored out of `body` so it is unit-testable

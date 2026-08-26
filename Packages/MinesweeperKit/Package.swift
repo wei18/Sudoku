@@ -194,6 +194,11 @@ let testTargets: [Target] = [
             // factory is a thin RouteFactory conformance, not enough surface
             // to justify separate scoping.
             "MinesweeperAppComposition",
+            // #1026: `MinesweeperAppCompositionTests` names `Difficulty`
+            // directly (`-uitest-route board:<difficulty>` resolver tests) —
+            // declared explicitly rather than riding the transitive module
+            // visibility through MinesweeperUI / MinesweeperAppComposition.
+            .product(name: "MinesweeperEngine", package: "MinesweeperCoreKit"),
             // 2026-06-02 telemetry-wire tests construct `.preview()` +
             // `.live()` factories and exercise `observe(_:)` / `report(_:)`
             // smoke calls — direct `import Telemetry` needed.
