@@ -247,16 +247,24 @@ public struct MinesweeperBoardView: View {
         ))
     }
 
-    // MARK: - Overlay-active predicate (#763)
+    // MARK: - Overlay presentation key (#763 / #1020)
 
-    /// True whenever this board's own Pause/idle-leave or Completion overlay
-    /// is up. Passed as the single `isActive` argument to
-    /// `.boardModalOverlay(isActive:content:)` in `body`, which drives BOTH
-    /// that overlay's rendering and the published
-    /// `BoardModalOverlayActivePreferenceKey` `RootShellView` reads to mask +
-    /// disable the shell — the two cannot drift by construction now (#1020).
-    var isModalOverlayActive: Bool {
-        (viewModel.isTerminal && completionViewModel != nil) || viewModel.isPaused || showIdleLeaveOverlay
+    /// Which full-screen-intent overlay this board is showing, or `nil` for
+    /// none. Passed as the single `presentation` argument to
+    /// `.boardModalOverlay(presentation:content:)`, which drives BOTH the
+    /// rendering and — when the board is pushed inside a tab — the hoisted copy
+    /// the shell shows outside its `TabView`. One value, so the two cannot
+    /// drift (#763's hand-maintained invariant is now structural).
+    ///
+    /// The branch ORDER matters and mirrors the `content` closure's: completion
+    /// wins once the session is terminal. Because the key changes on a
+    /// branch-to-branch switch (not just on appear/disappear), the hoisted copy
+    /// re-registers instead of stranding the previous branch's snapshot.
+    var modalOverlayPresentation: BoardModalPresentation? {
+        if viewModel.isTerminal, completionViewModel != nil { return .completion }
+        if viewModel.isPaused { return .pause }
+        if showIdleLeaveOverlay { return .leaveConfirmation }
+        return nil
     }
 
     public var body: some View {
@@ -306,11 +314,10 @@ public struct MinesweeperBoardView: View {
         // area; content remains within it). This keeps the hero icon below the
         // Dynamic Island / status bar safe area while the background colour still
         // fills behind the status bar and home indicator.
-        // #763/#1019/#1020: `boardModalOverlay(isActive:content:)` renders this
-        // AND publishes `BoardModalOverlayActivePreferenceKey` from the same
-        // `isModalOverlayActive` condition by construction — see
+        // #763/#1019/#1020: one key drives both this rendering and the hoisted
+        // copy the shell shows when the board is pushed inside a tab — see
         // `BoardModalOverlayHoist.swift` for the in-place vs. hoisted split.
-        .boardModalOverlay(isActive: isModalOverlayActive) {
+        .boardModalOverlay(presentation: modalOverlayPresentation) {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
             }

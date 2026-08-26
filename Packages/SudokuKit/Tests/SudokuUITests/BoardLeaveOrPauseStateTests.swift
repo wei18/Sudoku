@@ -8,7 +8,7 @@
 // window is real but narrow: only while BOTH `elapsedSeconds == 0` (no
 // wall-clock time has ticked past yet) AND `!canUndo` (no digit
 // placed/erased) is pausing genuinely meaningless. `BoardModalOverlayActiveTests`
-// covers the sibling `isModalOverlayActive` predicate; this suite covers the
+// covers the sibling `modalOverlayPresentation` key; this suite covers the
 // toggle's own state selection (`BoardView.leaveOrPauseState`).
 
 import Testing

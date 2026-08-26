@@ -3,7 +3,7 @@
 // `.idle` board (mines not yet placed) resolves to `.leaveReady`, exactly
 // like it did via the pre-#849 hand-written `showIdleLeaveOverlay` branch.
 // `MinesweeperBoardModalOverlayActiveTests` covers the sibling
-// `isModalOverlayActive` predicate; this suite covers the toggle's own
+// `modalOverlayPresentation` key; this suite covers the toggle's own
 // state selection (`MinesweeperBoardView.leaveOrPauseState`).
 
 import Testing

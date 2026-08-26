@@ -1,15 +1,17 @@
-// BoardModalOverlayHoistTests — pins the #1019-adopted overlay-hoisting seam.
+// BoardModalOverlayHoistTests — pins the #1019/#1020 overlay-hoisting seam.
 //
-// What is unit-testable here is the seam's STATE contract: the coordinator's
-// present/dismiss transitions, the per-presentation identity that keeps the
-// hoisted view's own `@State` alive, and the environment key's `nil` default
-// (which is what makes iOS `fullScreenCover` boards keep rendering in place).
+// Covered here: the coordinator's present/dismiss transitions, the
+// identity-scoped dismiss that stops a torn-down board from wiping a newer
+// presentation, the environment key's `nil` default (which is what routes iOS
+// `fullScreenCover` boards back to in-place rendering), and the routing the
+// modifier performs in each mode — asserted through a real `NSHostingView`, the
+// same AppKit-hosted path `ScaledSpacingTests` uses.
 //
-// What is NOT unit-testable here is the rendered outcome — that a paused board
-// leaves the sidebar/tab rows un-tappable while its own CTA stays live. That is
-// exactly the property #1019's spike had to drive interactively (idb on iPad,
-// XCUITest coordinate-clicks on macOS), and #1020 carries the same
-// before-merge verification. See the issue's acceptance list.
+// NOT covered here, deliberately: that a paused board leaves the shell's
+// sidebar / tab rows un-tappable while its own CTA stays live. A bare hosting
+// view mounts none of the real `sidebarAdaptable` machinery, so a unit test of
+// that property passes for the wrong reason. It is verified natively by
+// `SudokuE2ETests.test_pauseOverlayLocksShellOnMac_1019`.
 
 import SwiftUI
 import Testing
@@ -24,13 +26,13 @@ struct BoardModalOverlayCoordinatorTests {
         #expect(BoardModalOverlayCoordinator().content == nil)
     }
 
-    @Test("present registers the built view")
+    @Test("present registers the built view and returns its identity")
     func presentRegistersContent() {
         let coordinator = BoardModalOverlayCoordinator()
 
-        coordinator.present { AnyView(Text("pause")) }
+        let id = coordinator.present { AnyView(Text("pause")) }
 
-        #expect(coordinator.content != nil)
+        #expect(coordinator.content?.id == id)
     }
 
     @Test("dismiss clears the hoisted overlay")
@@ -52,29 +54,22 @@ struct BoardModalOverlayCoordinatorTests {
         #expect(coordinator.content == nil)
     }
 
-    /// Each presentation mints a fresh id. `RootShellView` pins the hoisted
-    /// view's SwiftUI identity with `.id(hoisted.id)`, so a NEW presentation
-    /// must be a new identity (fresh local `@State`) while a single
-    /// presentation keeps one — the reason the modifier registers only on the
-    /// `false → true` edge instead of on every render.
+    /// Each presentation mints a fresh id — `RootShellView` pins the rendered
+    /// view's identity with `.id(hoisted.id)`, so a NEW presentation must be a
+    /// new identity (fresh local `@State`).
     @Test("each presentation gets a distinct identity")
     func presentationsHaveDistinctIdentities() {
         let coordinator = BoardModalOverlayCoordinator()
 
-        coordinator.present { AnyView(Text("pause")) }
-        let first = coordinator.content?.id
-        coordinator.dismiss()
-        coordinator.present { AnyView(Text("completion")) }
-        let second = coordinator.content?.id
+        let first = coordinator.present { AnyView(Text("pause")) }
+        let second = coordinator.present { AnyView(Text("completion")) }
 
-        #expect(first != nil)
-        #expect(second != nil)
         #expect(first != second)
+        #expect(coordinator.content?.id == second)
     }
 
-    /// The overlay body must not be built while nothing is being presented —
-    /// building it eagerly would read board state (and register observation)
-    /// for an overlay that is not on screen.
+    /// The overlay body must not be built while nothing is presented — building
+    /// it eagerly would read board state for an overlay that is not on screen.
     @Test("the content builder runs only when presenting")
     func contentBuilderIsNotRunEagerly() {
         let coordinator = BoardModalOverlayCoordinator()
@@ -90,6 +85,43 @@ struct BoardModalOverlayCoordinatorTests {
 
         #expect(buildCount == 1)
     }
+
+    // MARK: - Identity-scoped dismissal
+
+    /// A board being torn down must clear only ITS presentation. During a
+    /// transition the outgoing and incoming boards briefly coexist, so an
+    /// unscoped dismiss from the outgoing one would blank the incoming one's
+    /// overlay.
+    @Test("scoped dismiss ignores a stale identity")
+    func scopedDismissIgnoresStaleIdentity() {
+        let coordinator = BoardModalOverlayCoordinator()
+        let stale = coordinator.present { AnyView(Text("outgoing")) }
+        let current = coordinator.present { AnyView(Text("incoming")) }
+
+        coordinator.dismiss(id: stale)
+
+        #expect(coordinator.content?.id == current, "the newer presentation must survive")
+    }
+
+    @Test("scoped dismiss clears the presentation it owns")
+    func scopedDismissClearsOwnIdentity() {
+        let coordinator = BoardModalOverlayCoordinator()
+        let id = coordinator.present { AnyView(Text("pause")) }
+
+        coordinator.dismiss(id: id)
+
+        #expect(coordinator.content == nil)
+    }
+
+    @Test("scoped dismiss with no identity is a no-op")
+    func scopedDismissWithNilIsNoOp() {
+        let coordinator = BoardModalOverlayCoordinator()
+        coordinator.present { AnyView(Text("pause")) }
+
+        coordinator.dismiss(id: nil)
+
+        #expect(coordinator.content != nil)
+    }
 }
 
 @Suite("GameShellUI — boardModalOverlayCoordinator environment key")
@@ -97,8 +129,8 @@ struct BoardModalOverlayCoordinatorTests {
 struct BoardModalOverlayCoordinatorEnvironmentTests {
 
     /// The default MUST be `nil`: that is what routes an iOS `fullScreenCover`
-    /// board (presented outside the shell's TabView, so it never inherits the
-    /// injected coordinator) back to in-place `.overlay` rendering.
+    /// board — presented outside the shell's TabView, so it never inherits the
+    /// injected coordinator — back to in-place `.overlay` rendering.
     @Test("defaults to nil so unhosted boards render in place")
     func defaultsToNil() {
         #expect(EnvironmentValues().boardModalOverlayCoordinator == nil)
@@ -115,24 +147,78 @@ struct BoardModalOverlayCoordinatorEnvironmentTests {
     }
 }
 
-@Suite("GameShellUI — boardModalOverlay modifier")
-@MainActor
-struct BoardModalOverlayModifierTests {
+#if canImport(AppKit)
+import AppKit
 
-    /// Compile-time sentinel: the modifier must stay applicable to ANY view with
-    /// ANY overlay content, in both states. Both boards call it with their own
-    /// `isModalOverlayActive` predicate, which is what makes the #763 "the
-    /// preference must track the exact same condition as the overlay" invariant
-    /// true by construction instead of by hand-maintained convention.
-    @Test("applies to any view with any overlay content")
-    func appliesToAnyView() {
-        let active = Text("board").boardModalOverlay(isActive: true) {
-            VStack { Text("paused") }
+@Suite("GameShellUI — boardModalOverlay routing")
+@MainActor
+struct BoardModalOverlayModifierRoutingTests {
+
+    /// Renders a probe board through a real hosting view.
+    private func host(
+        presentation: BoardModalPresentation?,
+        coordinator: BoardModalOverlayCoordinator?,
+        onOverlayBuild: @escaping () -> Void = {}
+    ) -> NSHostingView<some View> {
+        var probe = AnyView(
+            Color.clear.boardModalOverlay(presentation: presentation) {
+                Color.red.onAppear(perform: onOverlayBuild)
+            }
+        )
+        if let coordinator {
+            probe = AnyView(probe.environment(\.boardModalOverlayCoordinator, coordinator))
         }
-        let inactive = Color.clear.boardModalOverlay(isActive: false) {
-            Text("paused")
-        }
-        _ = active
-        _ = inactive
+        let view = NSHostingView(rootView: probe)
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 400)
+        view.layoutSubtreeIfNeeded()
+        return view
+    }
+
+    /// With a coordinator in the environment the overlay is HANDED UP rather
+    /// than drawn in place — that hand-off is the whole point of the hoist.
+    @Test("hoisted mode registers the overlay with the coordinator")
+    func hoistedModeRegisters() {
+        let coordinator = BoardModalOverlayCoordinator()
+
+        _ = host(presentation: .pause, coordinator: coordinator)
+
+        #expect(coordinator.content != nil)
+    }
+
+    /// No coordinator (iOS cover, previews, snapshot hosts) → nothing to hand
+    /// up, and the in-place `.overlay` branch does the rendering.
+    @Test("in-place mode leaves the coordinator untouched")
+    func inPlaceModeDoesNotRegister() {
+        let coordinator = BoardModalOverlayCoordinator()
+
+        _ = host(presentation: .pause, coordinator: nil)
+
+        #expect(coordinator.content == nil)
+    }
+
+    @Test("a nil presentation registers nothing")
+    func nilPresentationRegistersNothing() {
+        let coordinator = BoardModalOverlayCoordinator()
+
+        _ = host(presentation: nil, coordinator: coordinator)
+
+        #expect(coordinator.content == nil)
+    }
+
+    /// The MAJOR review finding this API exists for: a branch-to-branch switch
+    /// (pause → completion) keeps "an overlay is up" true throughout, so a Bool
+    /// would never re-register and the FIRST branch's snapshot would stay on
+    /// screen. A changed key must mint a new presentation.
+    @Test("changing branch while active re-registers with a new identity")
+    func branchChangeReRegisters() {
+        let coordinator = BoardModalOverlayCoordinator()
+        _ = host(presentation: .pause, coordinator: coordinator)
+        let pauseID = coordinator.content?.id
+
+        _ = host(presentation: .completion, coordinator: coordinator)
+
+        #expect(pauseID != nil)
+        #expect(coordinator.content?.id != pauseID, "completion must replace the pause snapshot")
     }
 }
+#endif

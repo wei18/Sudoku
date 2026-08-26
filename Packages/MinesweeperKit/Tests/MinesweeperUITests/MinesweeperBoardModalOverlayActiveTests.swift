@@ -1,11 +1,10 @@
-// MinesweeperBoardModalOverlayActiveTests — #763: pins
-// `MinesweeperBoardView.isModalOverlayActive`, the predicate that feeds the
-// `BoardModalOverlayActivePreferenceKey` published right after
-// `MinesweeperBoardView`'s Pause/Completion `.overlay { … }`. The macOS
-// split-view shell (`RootShellView`) masks + disables the sidebar while this
-// is true, so the predicate MUST exactly track the overlay's own visibility
-// condition: `(viewModel.isTerminal && completionViewModel != nil) ||
-// viewModel.isPaused || showIdleLeaveOverlay`.
+// MinesweeperBoardModalOverlayActiveTests — #763 / #1020: pins
+// `MinesweeperBoardView.modalOverlayPresentation`, the single key handed to
+// `.boardModalOverlay(presentation:content:)`. That one value drives BOTH the
+// in-place overlay and the hoisted copy `RootShellView` renders outside its
+// `TabView` on macOS, so the branch order here MUST mirror the overlay
+// content's: completion (terminal + completionViewModel mounted) wins, then
+// pause, then the idle-leave confirmation, else `nil`.
 //
 // Unlike Sudoku's `BoardView`, the `completionViewModelForSnapshot` init seam
 // (#388/#315) lets tests pre-seed `completionViewModel` directly, so the
@@ -21,7 +20,7 @@ import Testing
 import MinesweeperEngine
 import MinesweeperGameState
 
-@Suite("MinesweeperBoardView.isModalOverlayActive (#763)")
+@Suite("MinesweeperBoardView.modalOverlayPresentation (#763)")
 @MainActor
 struct MinesweeperBoardModalOverlayActiveTests {
 
@@ -47,8 +46,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
             suppressTickerForSnapshot: true,
             tapModeDefaults: BoardTestDefaults.store
         )
-        #expect(boardView.isModalOverlayActive,
-                "isModalOverlayActive must be true while viewModel.isPaused, mirroring the .overlay condition")
+        #expect(boardView.modalOverlayPresentation == .pause,
+                "presentation must be .pause while viewModel.isPaused, mirroring the overlay branch")
     }
 
     @Test("true when terminal with a mounted completionViewModel")
@@ -72,8 +71,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
             completionViewModelForSnapshot: completionVM,
             tapModeDefaults: BoardTestDefaults.store
         )
-        #expect(boardView.isModalOverlayActive,
-                "isModalOverlayActive must be true when terminal + completionViewModel is mounted")
+        #expect(boardView.modalOverlayPresentation == .completion,
+                "presentation must be .completion when terminal + completionViewModel is mounted")
     }
 
     @Test("false while actively playing with no overlay state")
@@ -91,8 +90,8 @@ struct MinesweeperBoardModalOverlayActiveTests {
             suppressTickerForSnapshot: true,
             tapModeDefaults: BoardTestDefaults.store
         )
-        #expect(!boardView.isModalOverlayActive,
-                "isModalOverlayActive must be false while playing with no pause/completion/idle-leave state")
+        #expect(boardView.modalOverlayPresentation == nil,
+                "modalOverlayPresentation must be nil while playing with no pause/completion/idle-leave state")
     }
 
     @Test("false when terminal but no completionViewModel is mounted yet")
@@ -110,7 +109,7 @@ struct MinesweeperBoardModalOverlayActiveTests {
             suppressTickerForSnapshot: true,
             tapModeDefaults: BoardTestDefaults.store
         )
-        #expect(!boardView.isModalOverlayActive,
-                "isModalOverlayActive must stay false until completionViewModel is actually seeded")
+        #expect(boardView.modalOverlayPresentation == nil,
+                "modalOverlayPresentation must stay nil until completionViewModel is actually seeded")
     }
 }

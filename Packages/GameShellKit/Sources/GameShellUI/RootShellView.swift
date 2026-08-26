@@ -16,15 +16,30 @@
 // the shared `RouteFactory`, handing that tab's own binding down so a
 // destination's further pushes land on the same stack.
 //
-// #763 / #1019 — pause & completion must lock the whole shell:
-// `.disabled(isBoardModalOverlayActive)` covers the ENTIRE TabView (sidebar rows
-// + tab-switch chrome + tab content) because `sidebarAdaptable` generates that
-// chrome itself and leaves nothing narrower to scope to. The overlay therefore
-// cannot render inside that subtree — its own Resume / Close button would be
-// disabled too, deadlocking the player (#1019 spike evidence 01–04). Instead the
-// overlay is rendered as a ZStack SIBLING of the TabView via
-// `BoardModalOverlayCoordinator`, outside the `.disabled()` scope
-// (evidence 06–10). See `BoardModalOverlayHoist.swift`.
+// #763 / #1019 / #1020 — pause & completion must lock the whole shell, and the
+// way they do it is load-bearing. Two rules, both paid for in bisection:
+//
+// 1. The overlay renders as a ZStack SIBLING of the TabView, never inside it
+//    (#1019 evidence 01-04): `sidebarAdaptable` generates its own chrome, so
+//    any lock has to cover the whole TabView — and an overlay mounted inside
+//    that subtree would have its OWN Resume / Close locked too, leaving the
+//    player in an undismissable modal.
+//
+// 2. NOTHING in this body may change while a board is pushed. On macOS,
+//    re-running the body that builds a `sidebarAdaptable` TabView UNMOUNTS
+//    whatever is pushed in the selected tab's `NavigationStack` — the path
+//    binding survives intact, but the destination view is destroyed, so the
+//    stack silently falls back to its root. #1020 hit this three ways, each
+//    confirmed and then removed by bisection against the macOS XCUITest:
+//      - `.onPreferenceChange(BoardModalOverlayActivePreferenceKey)` here
+//        (fired -> board gone, even when its closure wrote nothing),
+//      - `.disabled(...)` toggling on the TabView,
+//      - reading `coordinator.content` directly in this body.
+//    So there is no `.disabled()` and no preference observer left. The lock is
+//    the overlay's own full-screen scrim plus `.accessibilityAddTraits(.isModal)`,
+//    which is what actually pruned the sidebar rows from the a11y tree in the
+//    #1019 spike (evidence 06-10) and what `test_pauseOverlayLocksShellOnMac_1019`
+//    verifies. See `BoardModalOverlayHoist.swift`.
 
 public import SwiftUI
 
@@ -33,10 +48,6 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
     private let path: (AppTab) -> Binding<[Route]>
     private let routeFactory: any RouteFactory<Route>
     private let tabRoot: (AppTab) -> TabRoot
-
-    // #763: true while a board's Pause/Completion overlay is up. Purely a mirror
-    // of the child-published preference — never written anywhere else.
-    @State private var isBoardModalOverlayActive = false
 
     // #1019: owns the hoisted overlay. `@State` so its identity survives body
     // re-evaluations; injected into the TabView subtree so a pushed board can
@@ -76,21 +87,12 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
-            // A board pushed into a tab's stack publishes this preference; it
-            // propagates up here regardless of which tab or route is showing.
-            .onPreferenceChange(BoardModalOverlayActivePreferenceKey.self) { isActive in
-                isBoardModalOverlayActive = isActive
-            }
-            .disabled(isBoardModalOverlayActive)
             .environment(\.boardModalOverlayCoordinator, coordinator)
 
-            // #1019: rendered OUTSIDE the `.disabled(…)` above so the overlay's
-            // own CTA stays live. `.id` pins the presentation's identity so its
-            // local `@State` survives for as long as it is up.
-            if let hoisted = coordinator.content {
-                hoisted.view
-                    .id(hoisted.id)
-            }
+            // The overlay renders OUTSIDE the TabView so its own Resume / Close
+            // stays live (#1019). `HoistedOverlayHost` — not this body — is what
+            // observes the coordinator; see its doc for why that matters.
+            HoistedOverlayHost(coordinator: coordinator)
         }
     }
 
@@ -105,6 +107,28 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
                 .navigationDestination(for: Route.self) { route in
                     routeFactory.view(for: route, path: tabPath)
                 }
+        }
+    }
+}
+
+// MARK: - HoistedOverlayHost
+
+/// Renders the hoisted overlay, and is the ONLY view that observes the
+/// coordinator.
+///
+/// SwiftUI's Observation registers a dependency against the body that actually
+/// READS a property. Reading `coordinator.content` inside `RootShellView.body`
+/// therefore re-ran that body — and on macOS `sidebarAdaptable`, re-running the
+/// body that builds the `TabView` unmounts whatever is pushed in the selected
+/// tab's `NavigationStack` (verified by bisection, #1020). Confining the read to
+/// this leaf keeps the TabView subtree untouched when an overlay comes and goes.
+private struct HoistedOverlayHost: View {
+    let coordinator: BoardModalOverlayCoordinator
+
+    var body: some View {
+        if let hoisted = coordinator.content {
+            hoisted.view
+                .id(hoisted.id)
         }
     }
 }

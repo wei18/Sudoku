@@ -100,10 +100,14 @@ private func makeViewModel(
     )
 }
 
-/// `setPath`'s refresh runs in an unstructured `Task`; yield until it lands.
+/// `setPath`'s refresh runs in an unstructured `Task`; give it real time to
+/// land. Bare `Task.yield()` loops are not enough under the parallel test
+/// runner (the refresh Task can stay unscheduled for all 20 yields, ~1 in 3
+/// runs), so each turn also sleeps a millisecond.
 private func settle() async {
     for _ in 0..<20 {
         await Task.yield()
+        try? await Task.sleep(for: .milliseconds(1))
     }
 }
 

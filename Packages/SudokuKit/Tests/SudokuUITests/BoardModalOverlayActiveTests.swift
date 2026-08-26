@@ -1,9 +1,9 @@
-// BoardModalOverlayActiveTests — #763: pins `BoardView.isModalOverlayActive`,
-// the predicate that feeds the `BoardModalOverlayActivePreferenceKey`
-// published right after `BoardView`'s Pause/Completion `.overlay { … }`. The
-// macOS split-view shell (`RootShellView`) masks + disables the sidebar while
-// this is true, so the predicate MUST exactly track the overlay's own
-// visibility condition (`completionViewModel != nil || viewModel.isPaused`).
+// BoardModalOverlayActiveTests — #763 / #1020: pins `BoardView.modalOverlayPresentation`,
+// the single key handed to `.boardModalOverlay(presentation:content:)`. That
+// one value drives BOTH the in-place overlay and the hoisted copy
+// `RootShellView` renders outside its `TabView` on macOS, so the branch order
+// here MUST mirror the overlay content's: completion (completionViewModel
+// mounted) wins, then pause, else `nil`.
 //
 // The `completionViewModel`-driven half of the predicate is exercised
 // structurally by `BoardCompletionOverlayTests.shouldPresentCompletionOverlay`
@@ -20,7 +20,7 @@ import SudokuEngine
 import SudokuGameState
 import SudokuPersistence
 
-@Suite("BoardView.isModalOverlayActive (#763)")
+@Suite("BoardView.modalOverlayPresentation (#763)")
 @MainActor
 struct BoardModalOverlayActiveTests {
 
@@ -52,8 +52,8 @@ struct BoardModalOverlayActiveTests {
             mistakeCount: 0
         )
         let boardView = BoardView(viewModel: viewModel, path: nil)
-        #expect(boardView.isModalOverlayActive,
-                "isModalOverlayActive must be true while viewModel.isPaused, mirroring the .overlay condition")
+        #expect(boardView.modalOverlayPresentation == .pause,
+                "presentation must be .pause while viewModel.isPaused, mirroring the overlay branch")
     }
 
     @Test("false while actively playing")
@@ -67,7 +67,7 @@ struct BoardModalOverlayActiveTests {
             mistakeCount: 0
         )
         let boardView = BoardView(viewModel: viewModel, path: nil)
-        #expect(!boardView.isModalOverlayActive,
-                "isModalOverlayActive must be false while playing and no completionViewModel is mounted")
+        #expect(boardView.modalOverlayPresentation == nil,
+                "presentation must be nil while playing with no completionViewModel mounted")
     }
 }

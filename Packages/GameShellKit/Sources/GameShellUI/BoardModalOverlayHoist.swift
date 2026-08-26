@@ -22,10 +22,36 @@
 // #763 invariant, now true BY CONSTRUCTION: the board used to hand-maintain an
 // `isModalOverlayActive` predicate that "MUST track the EXACT same condition"
 // as its `.overlay { … }`, with nothing enforcing it. `boardModalOverlay(
-// isActive:content:)` takes that condition ONCE and drives both the rendering
-// and `BoardModalOverlayActivePreferenceKey`, so the two cannot drift.
+// presentation:content:)` takes that ONE value and drives both the in-place and
+// the hoisted rendering, so the two cannot drift.
+//
+// #1020: the shell does NOT observe a preference to learn an overlay is up — it
+// reads this coordinator. Observing `BoardModalOverlayActivePreferenceKey` from
+// the shell root unmounted the pushed board on macOS; see `RootShellView`'s
+// header. That key is gone.
 
 public import SwiftUI
+internal import Foundation
+
+// MARK: - BoardModalPresentation
+
+/// Which full-screen-intent overlay a board is showing.
+///
+/// Shared by both games (mirror principle): the branches are the same, only the
+/// per-game copy inside them differs. Used as the `presentation` key of
+/// `boardModalOverlay(presentation:content:)`, so switching between branches —
+/// e.g. a solve landing while the pause menu is up — re-registers the hoisted
+/// overlay instead of leaving the previous branch's snapshot on screen.
+public enum BoardModalPresentation: Hashable, Sendable {
+    /// Post-game Completion surface. Takes precedence over the others: once a
+    /// session is terminal, that is what the player must see.
+    case completion
+    /// The pause menu over a live session.
+    case pause
+    /// The pre-first-move "leave?" confirmation, which is not a real pause —
+    /// resuming just drops the prompt instead of restarting a stopped clock.
+    case leaveConfirmation
+}
 
 // MARK: - HoistedOverlay
 
@@ -53,7 +79,7 @@ public struct HoistedOverlay: Identifiable {
 /// Only boards hosted INSIDE a tab's `NavigationStack` (macOS today, iPad
 /// regular later) see a non-`nil` coordinator. On iOS a board is presented as a
 /// `fullScreenCover` attached OUTSIDE the `TabView`, so it inherits the
-/// environment default (`nil`) and `boardModalOverlay(isActive:content:)`
+/// environment default (`nil`) and `boardModalOverlay(presentation:content:)`
 /// renders in place — the behavior iOS already got for free from the cover.
 @MainActor
 @Observable
@@ -64,17 +90,31 @@ public final class BoardModalOverlayCoordinator {
 
     public init() {}
 
-    /// Register an overlay for hoisted rendering, replacing any current one.
+    /// Register an overlay for hoisted rendering, replacing any current one, and
+    /// return the identity minted for it.
     ///
-    /// Called on the board's `false → true` transition only — see
-    /// `boardModalOverlay(isActive:content:)` for why re-registering on every
-    /// render would be wrong.
-    public func present(_ makeView: () -> AnyView) {
-        content = HoistedOverlay(view: makeView())
+    /// Called on a PRESENTATION CHANGE only (nil→key, or key→different key), not
+    /// on every render — see `boardModalOverlay(presentation:content:)`.
+    @discardableResult
+    public func present(_ makeView: () -> AnyView) -> UUID {
+        let overlay = HoistedOverlay(view: makeView())
+        content = overlay
+        return overlay.id
     }
 
     /// Clear the hoisted overlay. Safe to call when nothing is presented.
     public func dismiss() {
+        content = nil
+    }
+
+    /// Clear the hoisted overlay only if `id` is the presentation currently up.
+    ///
+    /// A board that is torn down must not wipe an overlay some LATER
+    /// presentation already installed — during a transition the outgoing and
+    /// incoming boards briefly coexist, and an unscoped dismiss from the
+    /// outgoing one would blank the incoming one's overlay.
+    public func dismiss(id: UUID?) {
+        guard let id, content?.id == id else { return }
         content = nil
     }
 }
@@ -101,95 +141,98 @@ extension EnvironmentValues {
 // MARK: - View.boardModalOverlay
 
 extension View {
-    /// Mount a board's full-screen-intent overlay (Pause / Completion) and
-    /// publish `BoardModalOverlayActivePreferenceKey` from the same condition.
+    /// Mount a board's full-screen-intent overlay (Pause / Completion).
     ///
     /// Two rendering modes, chosen by whether a `BoardModalOverlayCoordinator`
     /// is in the environment:
     ///
     /// - **No coordinator** (iOS `fullScreenCover` boards, previews, tests):
-    ///   renders `.overlay { if isActive { content() } }` — the pre-#1020
-    ///   in-place shape, which is correct there because the cover is presented
-    ///   outside the `TabView` and already covers the whole screen.
+    ///   renders in place via `.overlay { … }` — correct there, because the
+    ///   cover is presented outside the shell's `TabView` and already covers the
+    ///   whole screen.
     /// - **Coordinator present** (a board pushed inside a tab's
-    ///   `NavigationStack`): registers the overlay with the coordinator so
-    ///   `RootShellView` renders it as a `ZStack` sibling OUTSIDE the disabled
-    ///   `TabView` (#1019's adopted shape).
+    ///   `NavigationStack`): hands the overlay to the coordinator so
+    ///   `RootShellView` renders it as a ZStack sibling OUTSIDE the `TabView`
+    ///   (#1019's adopted shape), where its own CTA stays live.
     ///
-    /// **Registration happens only on the `false → true` edge** (plus
-    /// `.onAppear` when the view arrives already active). Re-registering on
-    /// every render would mint a new `HoistedOverlay.id` each time and destroy
-    /// the overlay's own SwiftUI identity — its local `@State` (animation
-    /// phases, expanded sections) would reset mid-presentation.
+    /// ## Why a KEY and not a Bool
     ///
-    /// **Why the closure-captured board state still works from up there:**
-    /// - `@Observable` values read inside the hoisted body (the board's view
-    ///   model, the completion VM) register observation against the hoisted
-    ///   view's OWN body evaluation, so they keep driving re-renders normally.
-    /// - `@Binding` / `@State` accessed through closures the overlay captured
-    ///   (`onResume`, `dismiss`) read and write the board's live storage — the
-    ///   property wrapper holds a reference to it, not a copy.
-    /// - The overlay's own local state lives in the hoisted view, whose identity
-    ///   is pinned by `.id(hoisted.id)` at the host.
+    /// The hoisted branch has to snapshot `content()` at registration time, so
+    /// it must re-register whenever the overlay's IDENTITY changes — not merely
+    /// when one goes up or comes down. A `Bool` cannot express that: completion
+    /// replacing pause, or a leave-confirmation becoming a real pause, keeps the
+    /// flag `true` the whole way through and would leave the FIRST branch's
+    /// snapshot on screen. Passing a key makes every such switch observable, and
+    /// each change mints a fresh `HoistedOverlay.id`.
     ///
-    /// The one thing that IS snapshotted is a value read *eagerly* while
-    /// building `content()` (e.g. an `if let` on the board's `@State`). That is
-    /// safe because `isActive` is by construction the disjunction of exactly the
-    /// branches inside `content()`, so the branch taken at registration is the
-    /// branch that made it active.
+    /// Equal keys mean "the same presentation", so a re-render with an unchanged
+    /// key does NOT re-register — which is what keeps the overlay's own `@State`
+    /// (animation phases, expanded sections) alive for as long as it is up.
+    ///
+    /// ## What the snapshot does and does not track
+    ///
+    /// Live, because they are read inside the hoisted view's OWN body or through
+    /// a reference the closure captured:
+    /// - `@Observable` values (the board's view model, the completion VM),
+    /// - `@Binding` / `@State` reached through captured closures (`onResume`,
+    ///   `dismiss`) — the wrapper points at the board's live storage.
+    ///
+    /// Frozen at registration: anything read EAGERLY while building `content()`,
+    /// e.g. `if let completionViewModel` on the board's own `@State`. That is
+    /// precisely what the key exists to handle — change the key whenever a
+    /// different eager branch should be taken.
     ///
     /// - Parameters:
-    ///   - isActive: the single condition driving BOTH the overlay's visibility
-    ///     and the published preference. Passing the board's own
-    ///     `isModalOverlayActive` predicate here is what makes #763's
-    ///     "must track the exact same condition" invariant unbreakable.
-    ///   - content: the overlay view. Not evaluated while `isActive` is `false`.
-    public func boardModalOverlay(
-        isActive: Bool,
+    ///   - key: identity of the presentation to show, or `nil` for "no overlay".
+    ///   - content: the overlay view. Not evaluated while `key` is `nil`.
+    public func boardModalOverlay<Key: Hashable>(
+        presentation key: Key?,
         @ViewBuilder content: @escaping () -> some View
     ) -> some View {
-        modifier(BoardModalOverlayModifier(isActive: isActive, overlayContent: content))
+        modifier(BoardModalOverlayModifier(presentation: key, overlayContent: content))
     }
 }
 
 // MARK: - BoardModalOverlayModifier
 
-private struct BoardModalOverlayModifier<OverlayContent: View>: ViewModifier {
-    let isActive: Bool
+private struct BoardModalOverlayModifier<Key: Hashable, OverlayContent: View>: ViewModifier {
+    let presentation: Key?
     let overlayContent: () -> OverlayContent
 
     @Environment(\.boardModalOverlayCoordinator) private var coordinator
+    /// Identity of the presentation THIS board installed, so teardown can clear
+    /// only its own — see `BoardModalOverlayCoordinator.dismiss(id:)`.
+    @State private var presentedID: UUID?
 
     func body(content: Content) -> some View {
         content
             .overlay {
-                // In-place branch only. When a coordinator is present the
-                // overlay must NOT also render here, or it would be drawn twice
-                // (once inside the disabled TabView, once hoisted) and the
-                // disabled copy would swallow the taps meant for the live one.
-                if coordinator == nil, isActive {
+                // In-place branch only. With a coordinator present the overlay
+                // must NOT also render here, or it would be drawn twice — once
+                // buried in the tab content and once hoisted — and the buried
+                // copy would swallow taps meant for the live one.
+                if coordinator == nil, presentation != nil {
                     overlayContent()
                 }
             }
-            // #763: published unconditionally, from the same `isActive` the
-            // rendering above uses. `RootShellView` reads it to disable the
-            // whole TabView while any board overlay is up.
-            .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isActive)
-            .onAppear { if isActive { syncHoist(active: true) } }
-            .onChange(of: isActive) { _, active in syncHoist(active: active) }
-            // A board torn down (popped, or its tab unloaded) while its overlay
-            // is up would otherwise strand the hoisted view on screen with no
-            // board behind it to dismiss it.
-            .onDisappear { coordinator?.dismiss() }
+            .onAppear { syncHoist(to: presentation) }
+            .onChange(of: presentation) { _, key in syncHoist(to: key) }
+            // A board popped (or its tab unloaded) while its overlay is up would
+            // otherwise strand that overlay on screen with no board behind it.
+            .onDisappear {
+                coordinator?.dismiss(id: presentedID)
+                presentedID = nil
+            }
     }
 
     @MainActor
-    private func syncHoist(active: Bool) {
+    private func syncHoist(to key: Key?) {
         guard let coordinator else { return }
-        if active {
-            coordinator.present { AnyView(overlayContent()) }
-        } else {
-            coordinator.dismiss()
+        guard key != nil else {
+            coordinator.dismiss(id: presentedID)
+            presentedID = nil
+            return
         }
+        presentedID = coordinator.present { AnyView(overlayContent()) }
     }
 }

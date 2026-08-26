@@ -98,11 +98,10 @@ public struct BoardView: View {
         .background(theme.surface.background.resolved)
         // #610: full-cover Completion overlay (MS #292/#518 mirror).
         // fix *2: pass dismiss so Close returns the user to the hub.
-        // #763/#1019/#1020: `boardModalOverlay(isActive:content:)` renders this
-        // AND publishes `BoardModalOverlayActivePreferenceKey` from the same
-        // `isModalOverlayActive` condition by construction — see
+        // #763/#1019/#1020: one key drives both this rendering and the hoisted
+        // copy the shell shows when the board is pushed inside a tab — see
         // `BoardModalOverlayHoist.swift` for the in-place vs. hoisted split.
-        .boardModalOverlay(isActive: isModalOverlayActive) {
+        .boardModalOverlay(presentation: modalOverlayPresentation) {
             if let completionViewModel {
                 completionSurface(completionViewModel, dismiss: dismiss, persistJoin: persistJoin)
             }
