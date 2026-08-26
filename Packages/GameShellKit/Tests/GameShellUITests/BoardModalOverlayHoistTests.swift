@@ -150,6 +150,52 @@ struct BoardModalOverlayCoordinatorEnvironmentTests {
 #if canImport(AppKit)
 import AppKit
 
+/// Drives `BoardModalOverlayModifierRoutingTests.inPlaceBranchChangeReRegistersViaOnChange`:
+/// an `@Observable` stand-in for a board's own presentation state, mutated in
+/// place while a single hosting view stays mounted. Declared at file scope
+/// (not nested in the test function) because the `@Observable` macro's
+/// synthesized `Observable` conformance is an extension, and extensions
+/// cannot attach to a type local to a function body.
+@Observable
+@MainActor
+private final class BoardModalPresentationProbe {
+    var presentation: BoardModalPresentation?
+    init(presentation: BoardModalPresentation?) {
+        self.presentation = presentation
+    }
+}
+
+/// Hosts a board-shaped `boardModalOverlay` whose `presentation` key reads
+/// from a `BoardModalPresentationProbe`, so mutating the probe changes the
+/// key without remounting this view — the identity SwiftUI needs preserved
+/// for `.onChange(of: presentation)` to be the seam that fires.
+///
+/// `onOverlayBuild` fires from INSIDE the `content` builder closure itself
+/// (matching `BoardModalOverlayCoordinatorTests.contentBuilderIsNotRunEagerly`'s
+/// approach), not via a `.onAppear` on the produced view: the coordinator only
+/// captures the built `AnyView`, it never mounts it in a real hosting view, so
+/// an `.onAppear` on that content would never fire here.
+private struct BoardModalPresentationProbeHost: View {
+    let probe: BoardModalPresentationProbe
+    let coordinator: BoardModalOverlayCoordinator
+    let onOverlayBuild: () -> Void
+
+    var body: some View {
+        Color.clear
+            .boardModalOverlay(presentation: probe.presentation) {
+                // The `let` below is load-bearing: a bare expression statement
+                // is fed through `ViewBuilder.buildExpression`, and a Void
+                // result fails to conform to `View`. Only a `let`/`var`
+                // DECLARATION bypasses the builder transform — the same reason
+                // SwiftUI's `let _ = print(...)` debug idiom exists.
+                // swiftlint:disable:next redundant_discardable_let
+                let _ = onOverlayBuild()
+                Color.red
+            }
+            .environment(\.boardModalOverlayCoordinator, coordinator)
+    }
+}
+
 @Suite("GameShellUI — boardModalOverlay routing")
 @MainActor
 struct BoardModalOverlayModifierRoutingTests {
@@ -219,6 +265,49 @@ struct BoardModalOverlayModifierRoutingTests {
 
         #expect(pauseID != nil)
         #expect(coordinator.content?.id != pauseID, "completion must replace the pause snapshot")
+    }
+
+    /// `branchChangeReRegisters` above mounts TWO separate `NSHostingView`s —
+    /// two cold starts — so it only ever exercises `.onAppear` → `syncHoist`.
+    /// The production case this modifier exists for is a LIVE board whose
+    /// `modalOverlayPresentation` flips `.pause` → `.completion` while its own
+    /// view identity stays put; a real board never remounts to switch
+    /// overlays. That path only reaches `.onChange(of: presentation)`, which
+    /// no prior test drove. Here ONE hosting view stays up the whole time,
+    /// and an `@Observable` probe's `presentation` is mutated in place to
+    /// prove the `.onChange` branch re-registers on its own.
+    @Test("an in-place branch change re-registers via onChange, not onAppear")
+    func inPlaceBranchChangeReRegistersViaOnChange() {
+        let coordinator = BoardModalOverlayCoordinator()
+        var buildCount = 0
+        let probe = BoardModalPresentationProbe(presentation: .pause)
+
+        let view = NSHostingView(
+            rootView: BoardModalPresentationProbeHost(probe: probe, coordinator: coordinator) {
+                buildCount += 1
+            }
+        )
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 400)
+        view.layoutSubtreeIfNeeded()
+
+        let firstID = coordinator.content?.id
+        #expect(firstID != nil)
+        #expect(buildCount == 1)
+
+        probe.presentation = .completion
+        view.layoutSubtreeIfNeeded()
+
+        #expect(coordinator.content != nil)
+        #expect(
+            coordinator.content?.id != firstID,
+            "completion must mint a new identity even though the SAME view stayed mounted"
+        )
+        #expect(buildCount == 2, "the onChange branch must rebuild the overlay content exactly once more")
+
+        probe.presentation = nil
+        view.layoutSubtreeIfNeeded()
+
+        #expect(coordinator.content == nil)
     }
 }
 #endif
