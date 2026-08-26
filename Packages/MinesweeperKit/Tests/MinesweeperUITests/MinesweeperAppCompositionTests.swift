@@ -142,10 +142,13 @@ import Telemetry
     func uitestRouteBoardResolvesToFixedSeedPracticeBoard(_ difficulty: Difficulty) {
         #expect(
             MinesweeperAppComposition.uitestRoute(for: "board:\(difficulty.rawValue)")
-                == .board(
-                    difficulty: difficulty,
-                    seed: MinesweeperAppComposition.uitestBoardSeed,
-                    mode: .practice
+                == .push(
+                    .board(
+                        difficulty: difficulty,
+                        seed: MinesweeperAppComposition.uitestBoardSeed,
+                        mode: .practice
+                    ),
+                    tab: .practice
                 )
         )
     }
@@ -158,7 +161,7 @@ import Telemetry
     @Test func uitestRoutePracticeStillResolves() {
         // Regression: the new `board:` prefix branch must not shadow the
         // pre-existing exact-match keys.
-        #expect(MinesweeperAppComposition.uitestRoute(for: "practice") == .practice)
+        #expect(MinesweeperAppComposition.uitestRoute(for: "practice") == .tab(.practice))
     }
     #endif
 }

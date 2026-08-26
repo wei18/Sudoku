@@ -109,9 +109,6 @@ extension MinesweeperAppComposition {
                 throw MinesweeperLivePuzzleLoaderUnavailable()
             },
             theme: MinesweeperTheme(),
-            title: "Minesweeper",
-            // sidebarItems derived by makeGameApp from homeModes.modeItems.
-            sidebarItems: [],
             successTint: MinesweeperTheme().status.success.resolved,
             failureTint: MinesweeperTheme().status.error.resolved,
             // #950: reuses the same "attention, not error" tint already used
@@ -124,41 +121,29 @@ extension MinesweeperAppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
-            // #572 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
-            // Byte-identical to the former MinesweeperHomeViewModel.subtitleKey
-            // literals so snapshot baselines do not move.
-            homeModes: [
-                .daily: HomeModeContent(subtitleKey: "3 boards today", route: .daily),
-                .practice: HomeModeContent(subtitleKey: "All difficulties", route: .practice),
-                // Leaderboard has no route — `GameHomeViewModel.select` falls
-                // back to the `presentLeaderboard` side-effect below, which
-                // presents Apple's native Game Center dashboard (its own
-                // global/friends toggle is why the subtitle reads that way,
-                // matching Sudoku's). #983 briefly routed this to an
-                // app-owned Daily Rank screen; that direction was reverted
-                // (see #983 follow-up).
-                .leaderboard: HomeModeContent(subtitleKey: "Global / friends"),
-                .settings: HomeModeContent(subtitleKey: "Purchases / about", route: .settings)
-            ],
-            // MS Game Center dashboard presenter. Injected here (not inside
-            // GameAppKit) so GameAppKit stays free of the GK dependency.
-            // `GameHomeViewModel.select` calls this for any mode with
-            // `route == nil` — Leaderboard (see `homeModes` above) is the
-            // only one, so tapping the Leaderboard card opens Apple's native
-            // Game Center dashboard directly.
-            presentLeaderboard: { GameCenterDashboard.present() },
-            // #773: Home's Statistics entry pushes this route.
-            statsRoute: .stats,
-            // #844: Statistics now renders as a mode-format card (owner
-            // override of #773's flat-row format), so it needs a subtitle
-            // like the four modes above.
-            statsSubtitleKey: "Wins / times / averages",
-            // Home avatar chip (approved design variant A): the app's own
-            // icon art, added as a dedicated `HomeAvatar` imageset (copy of
-            // the AppIcon light/dark art) in this app's own asset catalog —
-            // `Bundle.main` at runtime resolves to the running App target's
-            // bundle, which is where Assets.xcassets is copied.
-            homeAvatarImage: Image("HomeAvatar", bundle: .main),
+            // #1020: pushed by the shared trailing gear on every tab root
+            // (`TabRootChrome`) — Settings lands inside the initiating tab.
+            settingsRoute: .settings,
+            // #1020: per-tab root content — Today / Practice / Progress
+            // replace the retired HOME mode-card config entirely
+            // (`sidebarAdaptable` generates its own chrome from `AppTab`, so
+            // there is no mode-card list or sidebar array left to configure).
+            // The bulk of this lives in `Live+TabRoots.swift` (kept out of
+            // this file to stay under SwiftLint's 400-line ceiling).
+            makeTabRoot: { tab, deps, rootViewModel in
+                MinesweeperAppComposition.makeTabRoot(
+                    tab: tab,
+                    persistence: deps.persistence,
+                    errorReporter: deps.errorReporter,
+                    telemetry: deps.telemetry,
+                    adProvider: deps.adProvider,
+                    adGate: deps.adGate,
+                    savedGameStore: savedGameStore,
+                    dailyOverlayReading: dailyOverlayReading,
+                    personalRecordStore: personalRecordStore,
+                    rootViewModel: rootViewModel
+                )
+            },
             // #455 / #572: map MinesweeperSavedGameSummary into the game-agnostic
             // ResumeCandidate. Strings match the former ResumePill rendering exactly
             // so snapshot baselines do not move.
@@ -186,24 +171,22 @@ extension MinesweeperAppComposition {
                     personalRecordStore: personalRecordStore
                 )
             },
-            // makeHome superseded by the universal GameHomeView built from
-            // homeModes in makeGameApp (#572). Kept for API stability; ignored
-            // by makeGameApp when homeModes is non-empty.
-            makeHome: { _, _ in AnyView(EmptyView()) },
-            // #696: a tapped `dailyReady` reminder deep-links to the Daily hub
-            // (mirrors Sudoku's SudokuAppComposition.live() reminderTapRoute), pushing
-            // `.daily` unless already on top.
+            // A tapped `dailyReady` reminder deep-links to the Today tab
+            // (mirrors Sudoku's SudokuAppComposition.live() reminderTapRoute).
+            // #1020: Today's Daily hub is a tab identity now, not a pushed
+            // route — land on its root by selecting the tab and popping any
+            // stack on top of it back to that root.
             reminderTapRoute: { identifier, rootViewModel in
                 guard identifier == ReminderKind.dailyReady.rawValue else { return }
-                if rootViewModel.path.last != .daily {
-                    rootViewModel.path.append(.daily)
-                }
+                rootViewModel.selectedTab = .today
+                rootViewModel.popToRoot(of: .today)
             }
         )
 
         // Wire the shared live stack once. The returned wired.view is the
-        // live mount point after #572: GameRoot + shared GameHomeView + universal
-        // ResumePill (#554) + ATT sheet + GC-signed-out alert, assembled by makeGameApp.
+        // live mount point: GameRoot + the #1020 `sidebarAdaptable` 3-tab
+        // shell (Today/Practice/Progress) + universal ResumePill (#554) + ATT
+        // sheet + GC-signed-out alert, assembled by makeGameApp.
         let wired = makeGameAppWithDeps(config: config)
         let deps = wired.deps
 
@@ -224,8 +207,10 @@ extension MinesweeperAppComposition {
         )
     }
 
-    /// Builds Minesweeper's `LiveRouteFactory` from the wired `GameDeps`. Shared
-    /// by the `GameConfig.makeRouteFactory` closure.
+    /// Builds Minesweeper's `LiveRouteFactory` from the wired `GameDeps`. Called
+    /// from the `GameConfig.makeRouteFactory` closure so pushed destinations
+    /// (Board / Completion / ResumeBoard / Settings) are wired to the same live
+    /// seams as the tab roots `Live+TabRoots.swift` builds.
     @MainActor
     private static func makeRouteFactory(
         deps: GameDeps,

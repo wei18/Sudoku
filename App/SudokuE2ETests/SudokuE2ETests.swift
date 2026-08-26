@@ -55,7 +55,7 @@ final class SudokuE2ETests: XCTestCase {
         Self.driveToWin(app)
 
         app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "sudoku.board.pauseToggle"
         )
@@ -79,7 +79,7 @@ final class SudokuE2ETests: XCTestCase {
         XCTAssertTrue(leave.waitForExistence(timeout: 10), "N9: pause overlay should present Leave")
         leave.tap()
 
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "sudoku.board.pauseToggle"
         )
@@ -178,8 +178,9 @@ final class SudokuE2ETests: XCTestCase {
     }
 
     /// #935 batch 2 N4: Sudoku Daily `.exhausted` (generator defect, seeded
-    /// via `-uitest-puzzle-fault dailyExhausted`) — "Practice" swaps the last
-    /// path entry `.daily` → `.practice`, landing on the Practice hub.
+    /// via `-uitest-puzzle-fault dailyExhausted`) — "Practice" switches to
+    /// the Practice tab (#1020: Practice is a tab identity, not a route the
+    /// exhausted block used to swap `path` to).
     func test_dailyExhaustedPracticeLandsOnPracticeHub_N4() {
         let app = XCUIApplication()
         app.launchArguments += [
@@ -203,10 +204,12 @@ final class SudokuE2ETests: XCTestCase {
         )
     }
 
-    /// #935 batch 2 N4: Sudoku Daily `.exhausted` — "Cancel" pops back to
-    /// HOME rather than leaving the player on the exhausted hub's blank
-    /// backdrop (#686).
-    func test_dailyExhaustedCancelLandsOnHome_N4() {
+    /// #935 batch 2 N4: Sudoku Daily `.exhausted` — "Cancel" closes the
+    /// inline block rather than leaving the player on the exhausted hub's
+    /// blank backdrop (#686). #1020 (design.md §3.1): Today is a tab root
+    /// now — there is no HOME to pop back to, so Cancel drops the hub to an
+    /// empty `.loaded` state and stays on Today.
+    func test_dailyExhaustedCancelLandsOnTodayRoot_N4() {
         let app = XCUIApplication()
         app.launchArguments += [
             UITestLaunchArg.puzzleFault, "dailyExhausted",
@@ -222,7 +225,7 @@ final class SudokuE2ETests: XCTestCase {
 
         app.buttons["sudoku.dailyHub.exhausted.cancel"].tap()
 
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "sudoku.dailyHub.exhausted"
         )

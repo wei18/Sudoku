@@ -21,8 +21,9 @@ public import SwiftUI
 import GameShellUI
 internal import MinesweeperEngine
 
-public struct MinesweeperStatsView: View {
+public struct MinesweeperStatsView<GameCenterSection: View>: View {
     private let viewModel: MinesweeperStatsViewModel
+    private let gameCenterSection: GameCenterSection
 
     @Environment(\.theme) private var theme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -32,8 +33,16 @@ public struct MinesweeperStatsView: View {
     @ScaledSpacing(.large) private var sectionGap
     @ScaledSpacing(.small) private var headerGap
 
-    public init(viewModel: MinesweeperStatsViewModel) {
+    /// - Parameter gameCenterSection: #1020 (C-36) — the Progress tab's Game
+    ///   Center `Achievements` entry point, rendered as its own section below
+    ///   the Daily/Practice tiles. Defaults to nothing so previews / tests
+    ///   that don't wire a root VM keep working byte-identical to pre-#1020.
+    public init(
+        viewModel: MinesweeperStatsViewModel,
+        @ViewBuilder gameCenterSection: () -> GameCenterSection = { EmptyView() }
+    ) {
         self.viewModel = viewModel
+        self.gameCenterSection = gameCenterSection()
     }
 
     public var body: some View {
@@ -44,6 +53,7 @@ public struct MinesweeperStatsView: View {
                 Text("Stats sync with your iCloud account.")
                     .font(.caption2)
                     .foregroundStyle(theme.text.tertiary.resolved)
+                gameCenterSection
             }
             .padding(theme.spacing.medium)
             // Proposal §3.5: 960pt clamp-and-center in the Mac detail column
@@ -75,8 +85,8 @@ public struct MinesweeperStatsView: View {
     }
 
     // Tile-to-tile grid gap — structural (card outer gap, fixed per the
-    // two-tier contract), same 12pt named-constant convention as
-    // `HomeScreen.cardGridGap`.
+    // two-tier contract), a 12pt named-constant matching this codebase's
+    // other card-grid gaps.
     private let tileGridGap: CGFloat = 12
 
     private var columns: [GridItem] {

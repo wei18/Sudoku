@@ -247,15 +247,24 @@ public struct MinesweeperBoardView: View {
         ))
     }
 
-    // MARK: - Overlay-active predicate (#763)
+    // MARK: - Overlay presentation key (#763 / #1020)
 
-    /// True whenever this board's own Pause/idle-leave or Completion overlay
-    /// is up. MUST track the EXACT same condition as the `.overlay { … }`
-    /// mounted in `body` — it feeds the `.preference` published right after
-    /// that overlay, which `RootShellView` uses to mask + disable the macOS
-    /// sidebar (see `BoardModalOverlayActivePreferenceKey`).
-    var isModalOverlayActive: Bool {
-        (viewModel.isTerminal && completionViewModel != nil) || viewModel.isPaused || showIdleLeaveOverlay
+    /// Which full-screen-intent overlay this board is showing, or `nil` for
+    /// none. Passed as the single `presentation` argument to
+    /// `.boardModalOverlay(presentation:content:)`, which drives BOTH the
+    /// rendering and — when the board is pushed inside a tab — the hoisted copy
+    /// the shell shows outside its `TabView`. One value, so the two cannot
+    /// drift (#763's hand-maintained invariant is now structural).
+    ///
+    /// The branch ORDER matters and mirrors the `content` closure's: completion
+    /// wins once the session is terminal. Because the key changes on a
+    /// branch-to-branch switch (not just on appear/disappear), the hoisted copy
+    /// re-registers instead of stranding the previous branch's snapshot.
+    var modalOverlayPresentation: BoardModalPresentation? {
+        if viewModel.isTerminal, completionViewModel != nil { return .completion }
+        if viewModel.isPaused { return .pause }
+        if showIdleLeaveOverlay { return .leaveConfirmation }
+        return nil
     }
 
     public var body: some View {
@@ -305,7 +314,10 @@ public struct MinesweeperBoardView: View {
         // area; content remains within it). This keeps the hero icon below the
         // Dynamic Island / status bar safe area while the background colour still
         // fills behind the status bar and home indicator.
-        .overlay {
+        // #763/#1019/#1020: one key drives both this rendering and the hoisted
+        // copy the shell shows when the board is pushed inside a tab — see
+        // `BoardModalOverlayHoist.swift` for the in-place vs. hoisted split.
+        .boardModalOverlay(presentation: modalOverlayPresentation) {
             if viewModel.isTerminal, let completionViewModel {
                 completionSurface(completionViewModel)
             }
@@ -330,12 +342,6 @@ public struct MinesweeperBoardView: View {
                 )
             }
         }
-        // #763: publish whether the overlay above is up, so the macOS split-view
-        // shell (RootShellView) can also mask + disable the sidebar — this
-        // overlay's `.ignoresSafeArea()` only fills the detail column there, not
-        // the whole split view. MUST track the exact same condition as `.overlay`
-        // above; see `isModalOverlayActive` below.
-        .preference(key: BoardModalOverlayActivePreferenceKey.self, value: isModalOverlayActive)
         // Build the Completion VM once when the board crosses into a terminal
         // state (and not on every TimelineView tick). Cleared by Retry below.
         .onChange(of: viewModel.isTerminal) { _, isTerminal in
@@ -545,7 +551,7 @@ public struct MinesweeperBoardView: View {
                 // "card" placeholder tone reads as a mismatched seam against
                 // the page background (audit-ms-01, dark mode). Match the
                 // page background instead so an empty/loading slot is
-                // invisible; mirrors the same fix in `GameHomeView`.
+                // invisible; mirrors the same fix in `GameAppKit.TodayTabHost`.
                 backgroundColor: theme.surface.background.resolved,
                 progressTint: theme.accent.primary.resolved,
                 captionColor: theme.text.secondary.resolved,

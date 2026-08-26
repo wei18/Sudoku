@@ -10,6 +10,7 @@
 import Foundation
 import Testing
 import GameCenterClient
+import GameShellUI
 import SudokuGameState
 import Persistence
 import SudokuEngine
@@ -176,7 +177,11 @@ struct GameRootViewModelTests {
 
         viewModel.resumeTapped()
 
-        #expect(viewModel.path == [candidate.route])
+        // #1020: the push lands on the SELECTED tab's stack (Today at launch),
+        // and only that one.
+        #expect(viewModel.path(for: .today) == [candidate.route])
+        #expect(viewModel.path(for: .practice).isEmpty)
+        #expect(viewModel.path(for: .progress).isEmpty)
     }
 
     @Test func nilFetchResumeSkipsFetchAndNoOpsResume() async {
@@ -190,7 +195,7 @@ struct GameRootViewModelTests {
         #expect(viewModel.resumeCandidate == nil)
 
         viewModel.resumeTapped()
-        #expect(viewModel.path.isEmpty)
+        #expect(AppTab.allCases.allSatisfy { viewModel.path(for: $0).isEmpty })
     }
 
     @Test func fetchResumeThrowsLeavesNilAndFunnelsError() async {

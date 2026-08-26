@@ -6,7 +6,8 @@
 
 public import Foundation
 public import SwiftUI
-import GameShellUI
+// #1020: public — `AppTab` (the `selectTab` param type) is in the public init.
+public import GameShellUI
 public import SudokuPersistence
 public import Persistence
 public import SudokuEngine
@@ -87,6 +88,10 @@ public final class DailyHubViewModel {
     let persistence: any PersistenceProtocol
     let errorReporter: any ErrorReporter
     private let dateProvider: @Sendable () -> Date
+    /// #1020: the exhausted block's "Practice" CTA switches tabs now instead
+    /// of pushing a `.practice` route (design.md §3.1). No-op default keeps
+    /// tests/previews that don't wire a root VM working.
+    private let selectTab: @MainActor (AppTab) -> Void
     /// Idempotency latch for `.task` — once `bootstrap()` has resolved we
     /// don't re-enter the fetch path on subsequent SwiftUI lifecycle ticks.
     private var hasBootstrapped = false
@@ -107,13 +112,15 @@ public final class DailyHubViewModel {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         dateProvider: @escaping @Sendable () -> Date = { Date() },
-        path: Binding<[AppRoute]>? = nil
+        path: Binding<[AppRoute]>? = nil,
+        selectTab: @escaping @MainActor (AppTab) -> Void = { _ in }
     ) {
         self.provider = provider
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.dateProvider = dateProvider
         self.routePath = RoutePath(path)
+        self.selectTab = selectTab
     }
 
     public func bootstrap() async {
@@ -337,28 +344,20 @@ public final class DailyHubViewModel {
     /// unexpected for a card the caller already believes is completed) is
     /// treated the same as a thrown fetch error: neither has real completion
     /// data to show, so both fall back to `.board`.
-    /// #686: the `.exhausted` alert's primary CTA. The Daily hub has no
-    /// difficulty picker of its own — the Practice hub does — so "try
-    /// another difficulty" routes there. The hub was PUSHED from Home, so
-    /// swapping the last path entry (`.daily` → `.practice`) is the clean
-    /// move; it replaces the dead-end screen instead of stacking a second
-    /// push on top of it.
+    /// #686: the `.exhausted` alert's primary CTA — routes to Practice (its
+    /// difficulty picker), since the Daily hub has none of its own. #1020
+    /// (design.md §3.1): Practice is a tab now, not a `.practice` route to
+    /// swap the path to — switch tabs via the injected `selectTab` closure.
     public func tryPracticeInstead() {
-        if !path.isEmpty {
-            path[path.count - 1] = .practice
-        } else {
-            path.append(.practice)
-        }
+        selectTab(.practice)
     }
 
-    /// #686: the `.exhausted` alert's dismiss CTA. A `.exhausted` hub has
-    /// nothing to show, so staying on it after dismiss is the second half of
-    /// the trap the alert used to leave the user in — pop back to Home
-    /// instead of a blank backdrop.
+    /// #686/#1020 (design.md §3.1, exhausted row): the dismiss CTA. Today is
+    /// the tab root now, not a route pushed from Home — "Cancel" closes the
+    /// block by dropping to an empty `.loaded` state and stays on Today.
     public func dismissExhausted() {
-        if !path.isEmpty {
-            path.removeLast()
-        }
+        guard case .exhausted = state else { return }
+        state = .loaded([])
     }
 
     /// #826: widened from `(_ card: DailyCard)` to `(puzzleId:difficulty:)` —

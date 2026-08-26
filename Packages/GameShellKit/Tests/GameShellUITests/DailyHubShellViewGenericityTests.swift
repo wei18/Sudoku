@@ -13,8 +13,7 @@ import Testing
 // SudokuUI / MinesweeperUI). Compile-only — if a future refactor accidentally
 // re-couples the shell to Sudoku types, this file stops compiling.
 //
-// Mirrors X1 (NavigationStackHost) + X3 (RootShellView) + X4
-// (SettingsShellView) sentinel patterns.
+// Mirrors the X3 (RootShellView) + X4 (SettingsShellView) sentinel patterns.
 
 @Suite("GameShellUI — DailyHubShellView stays generic")
 struct DailyHubShellViewGenericityTests {

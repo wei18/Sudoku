@@ -1,6 +1,6 @@
 ---
 name: game-factory-composition
-description: The shared composition template that lets multiple games (Sudoku / Minesweeper) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (Home / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp".
+description: The shared composition template that lets multiple games (Sudoku / Minesweeper) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (3-tab root shell + tab-root chrome / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp".
 ---
 
 # Game Factory Composition
@@ -46,7 +46,7 @@ per-app-duplicated code and had to be fixed twice. The mirror principle
 
 - `GameConfig<Route>` (in `GameAppKit/GameConfig.swift`) carries **per-game
   content only** (subsystem, ckConfig, removeAdsProductId, theme, title, tints,
-  audio key prefix, reminder copy, `homeModes`) **plus builder closures**
+  audio key prefix, reminder copy, `settingsRoute`) **plus builder closures**
   (`makeRouteFactory`, `fetchResume`, `makeCompletionSinks`, …) that receive the
   wired `GameDeps` bag.
 - `makeGameApp(config:)` / `makeGameAppWithDeps(config:)` wire the **entire**
@@ -65,9 +65,14 @@ per-app-duplicated code and had to be fixed twice. The mirror principle
 
 ### C. Shared non-gameplay UI (all consume the config)
 
-- **Home** — universal `GameHomeView` + `GameHomeViewModel<Route>`, built from
-  `config.homeModes`; retired each game's bespoke `RootView`/`HomeView`/VM (#557).
-  Universal ResumePill + ATT primer mount live here (closed #554).
+- **Root shell (3.0, #1020)** — universal `sidebarAdaptable` TabView
+  (`GameShellUI/RootShellView.swift`: Today / Practice / Progress, one path per
+  tab) with per-game tab roots supplied through `config.makeTabRoot` (built
+  once per tab per launch — treat it as a factory with stable identity). The
+  Today root is wrapped in `TodayTabHost` (ResumePill + banner slot + ATT
+  primer anchor); every tab root gets the shared Settings gear
+  (`TabRootChrome`); Progress hosts the shared `AchievementsRow`. The former
+  universal HOME (`GameHomeView` / `GameHomeViewModel`, #557) is retired.
 - **DailyHub** — the two VMs are legitimately gameplay-divergent; only the
   bug-prone **two-phase-load skeleton** (`performDailyBootstrap`) is shared in
   GameShellUI (#558).
@@ -98,7 +103,7 @@ not blanket.
 ## Adding a new game (checklist)
 
 - [ ] New `<Game>Core` (engine/state, Foundation-only) + `<Game>Kit` (UI/board/tokens).
-- [ ] Build a `GameConfig<Route>`: values + `makeRouteFactory` + `homeModes` +
+- [ ] Build a `GameConfig<Route>`: values + `makeRouteFactory` + `makeTabRoot` + `settingsRoute` +
       `fetchResume` (if it has a resume surface) + `makeCompletionSinks` (if it
       uses the shared GC pipeline — see `apple-dev-skills:telemetry-facade-pattern`).
 - [ ] `AppComposition.live()` calls `makeGameAppWithDeps`, mounts `wired.view`;

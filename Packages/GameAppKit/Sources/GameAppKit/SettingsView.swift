@@ -87,8 +87,7 @@ public struct SettingsView<Banner: View>: View {
     /// debug/test if `presentGameCenter` was never injected — the exact
     /// pre-#685 bug shape (unguarded `GameCenterDashboard.present()`), so a
     /// future Live.swift refactor that drops the injection fails CI instead
-    /// of silently regressing. Mirrors `GameHomeViewModel.select`'s
-    /// `presentLeaderboard` assert. `public` (not `internal`) — #832: both
+    /// of silently regressing. `public` (not `internal`) — #832: both
     /// apps' test targets now drive this directly to prove the injected
     /// closure, not the fallback, actually fires.
     @MainActor

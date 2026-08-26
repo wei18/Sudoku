@@ -41,15 +41,24 @@ extension BoardView {
         viewModel.status == .completed
     }
 
-    // MARK: - Overlay-active predicate (#763)
+    // MARK: - Overlay presentation key (#763 / #1020)
 
-    /// True whenever this board's own Pause/ready-leave or Completion overlay
-    /// is up. MUST track the EXACT same condition as the `.overlay { … }`
-    /// mounted in `BoardView.body` — it feeds the `.preference` published
-    /// right after that overlay, which `RootShellView` uses to mask + disable
-    /// the macOS sidebar (see `BoardModalOverlayActivePreferenceKey`).
-    var isModalOverlayActive: Bool {
-        completionViewModel != nil || viewModel.isPaused || showReadyLeaveOverlay
+    /// Which full-screen-intent overlay this board is showing, or `nil` for
+    /// none. Passed as the single `presentation` argument to
+    /// `.boardModalOverlay(presentation:content:)`, which drives BOTH the
+    /// rendering and — when the board is pushed inside a tab — the hoisted copy
+    /// the shell shows outside its `TabView`. One value, so the two cannot
+    /// drift (#763's hand-maintained invariant is now structural).
+    ///
+    /// The branch ORDER matters and mirrors the `content` closure's: completion
+    /// wins once the session is terminal. Because the key changes on a
+    /// branch-to-branch switch (not just on appear/disappear), the hoisted copy
+    /// re-registers instead of stranding the previous branch's snapshot.
+    var modalOverlayPresentation: BoardModalPresentation? {
+        if completionViewModel != nil { return .completion }
+        if viewModel.isPaused { return .pause }
+        if showReadyLeaveOverlay { return .leaveConfirmation }
+        return nil
     }
 
     // MARK: - Factories (called once per .completed transition)

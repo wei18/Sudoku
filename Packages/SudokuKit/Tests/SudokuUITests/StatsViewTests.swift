@@ -165,7 +165,7 @@ struct StatsViewTests {
     /// Build the view with seeded data, bootstrapped BEFORE hosting so the
     /// snapshot renders the loaded state (the in-view `.task` does not fire
     /// reliably in a bare NSHostingView).
-    private func statsView() async -> StatsView {
+    private func statsView() async -> some View {
         let viewModel = StatsViewModel(persistence: ScriptedStatsPersistence(records: seededRecords))
         await viewModel.bootstrap()
         return StatsView(viewModel: viewModel)

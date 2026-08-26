@@ -777,7 +777,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | **U-9** | `GlassEffectContainer` × 系統 button style | ⚠️ **擋 G4 實作細節** | B-7 |
 | **U-10** | `tabViewBottomAccessory` × AdMob | ❌ **不擋**(有降級備案) | B-6 |
 | **U-11** | MS `status.warning` 的實際使用位置 | ❌ 不擋 | 查清後決定是否另開 issue |
-| **U-12** | SwiftUI `.badge()` 能否呈現**無數字**形態 | ⚠️ **擋 badge 定案** | 做不到就整個放棄 badge(§2.3) |
+| ~~U-12~~ | SwiftUI `.badge()` 能否呈現**無數字**形態 | — | ✅ 已解(#1020 spike,2026-08-24):**做不到** —— tab bar 上的圓點來自未文件化的空白字串行為且各表面不一致(iPhone `""` 可、iPad tab bar 只有 `" "` 可),sidebar 展開態一律渲染為文字附註、無圓點形態 → 依 §2.3 **整個放棄 badge**,不自繪 |
 | **U-13** | macOS 沒有 `tabViewBottomAccessory`,banner 的 macOS 落點 | ⚠️ 擋 macOS 變現版面 | §2.4.1,推薦方案 A |
 
 ### 10.2 驗證步驟
@@ -787,7 +787,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | B-1 | MS 盤面留白成因 | sim agent | Beginner >32pt 且 Expert ≈0 → 成因確認 | ✅ |
 | B-2 | Dynamic Type AX5 | sim agent | 不截斷且不減內容量。**⚠️ 不可用注入 env 快照(假通過)** | ✅ |
 | B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ |
-| B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ❌ **需實作原型** |
+| B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039 |
 | B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ |
 | B-6 | accessory × AdMob | dev | banner 不塌、impression 正常 | ✅(最小樣板) |
 | B-7 | `GlassEffectContainer` × button style | dev | 正確合併為單一玻璃形狀 | ✅(最小樣板) |

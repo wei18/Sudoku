@@ -69,8 +69,8 @@ public struct SudokuAppComposition {
     // `ATTPresenter`); `nil` in `.preview()` / `.tests()`. After #557 the
     // ATT priming sheet is applied universally by makeGameApp on wiredView.
     public let attPrimer: ATTPrimerCoordinator?
-    // #557: the fully-wired root view from makeGameApp — GameRoot + shared
-    // GameHomeView + ResumePill + ATT sheet + GC alert. Mounted by `rootView`.
+    // #557/#1020: the fully-wired root view from makeGameApp — GameRoot +
+    // the 3-tab shell + ResumePill + ATT sheet + GC alert. Mounted by `rootView`.
     private let wiredView: AnyView
 
     // MARK: - Root view accessor (#244, #557)
@@ -78,9 +78,10 @@ public struct SudokuAppComposition {
     /// Composed root view ready to mount in `@main`'s `WindowGroup`.
     ///
     /// After #557: `wiredView` (from `makeGameApp`) is the live mount point.
-    /// It carries the shared `GameHomeView` + universal ResumePill + ATT sheet
-    /// + GC-signed-out alert + monetization boot. Two Sudoku-specific layers
-    /// are still applied here (not in makeGameApp, which is game-agnostic):
+    /// It carries the #1020 3-tab `sidebarAdaptable` shell (Today/Practice/
+    /// Progress) + universal ResumePill + ATT sheet + GC-signed-out alert +
+    /// monetization boot. Two Sudoku-specific layers are still applied here
+    /// (not in makeGameApp, which is game-agnostic):
     ///   - `\.sudokuCell` environment (#278 Tier-1 Phase 2a — board cell tokens)
     ///   - `SudokuNearWinModifier` (#510 DEBUG near-win test hook)
     /// The theme injection (`.environment(\.theme, DefaultTheme())`) is now
@@ -112,13 +113,15 @@ public struct SudokuAppComposition {
     }
 
     #if DEBUG
-    /// #510: map a `-uitest-route` screen key to Sudoku's push routes. Returns
-    /// nil for `"home"` / unknown keys (stay at the root).
-    static func uitestRoute(for key: String) -> AppRoute? {
+    /// #510: map a `-uitest-route` screen key to Sudoku's launch target.
+    /// #1020: `daily` / `practice` used to be push routes; they are tab
+    /// identities now, so both just select their tab — `settings` still
+    /// pushes onto the Today tab's stack. Unknown keys stay at the root.
+    static func uitestRoute(for key: String) -> UITestLaunchTarget<AppRoute>? {
         switch key {
-        case "daily": return .daily
-        case "practice": return .practice
-        case "settings": return .settings
+        case "daily": return .tab(.today)
+        case "practice": return .tab(.practice)
+        case "settings": return .push(.settings)
         default: return nil
         }
     }

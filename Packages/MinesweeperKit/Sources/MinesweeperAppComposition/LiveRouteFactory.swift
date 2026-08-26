@@ -28,15 +28,12 @@
 public import SwiftUI
 public import GameCenterClient
 public import GameShellUI
-// SDD-003 Epic 1: `GameBoardRedirect` wraps board-route destinations when
-// `onPresentBoard` is wired, so board views are presented as fullScreenCover
-// modals instead of NavigationStack pushes. `LastSelectionStore` backs the
-// #720 G2 Practice-difficulty persistence below.
-public import GameAppKit
+// SDD-003 Epic 1: `boardDestination`/`GameBoardRedirect` wrap board-route
+// destinations when `onPresentBoard` is wired, so board views are presented
+// as fullScreenCover modals instead of NavigationStack pushes. Internal
+// only — no GameAppKit type appears in this factory's public API surface.
+internal import GameAppKit
 public import MinesweeperUI
-// #720 G2: `Difficulty` used to seed/persist the Practice hub's last-selected
-// difficulty. Internal only — not part of this factory's public API surface.
-internal import MinesweeperEngine
 public import MonetizationCore
 public import MonetizationUI
 public import MinesweeperPersistence
@@ -203,45 +200,6 @@ public struct LiveRouteFactory: RouteFactory {
     // per case would obscure the route table (8 cases post-#773 stats).
     public func view(for route: AppRoute, path: Binding<[AppRoute]>?) -> AnyView {
         switch route {
-        case .daily:
-            // #290: date-seeded daily trio + completion overlay. The hub VM
-            // pulls the three boards from `LiveMinesweeperDailyProvider`
-            // (pure, deterministic per UTC day) and marks completed/failed
-            // cards via `MinesweeperSavedGameStore.fetchCompletedDailyIds` /
-            // `fetchFailedDailyIds` (Epic 8 / SDD-003; #816 moved completed
-            // off the `puzzleId`-assuming `PersistenceProtocol` query).
-            return AnyView(
-                MinesweeperDailyHubView(
-                    viewModel: MinesweeperDailyHubViewModel(
-                        path: path ?? .constant([]),
-                        provider: LiveMinesweeperDailyProvider(),
-                        persistence: persistence,
-                        // #935 batch 3: `dailyOverlayReading` (when the composition
-                        // root wired one — the E2E fake-or-live resolution) takes
-                        // priority; otherwise fall back to the concrete
-                        // `savedGameStore`, which already conforms.
-                        savedGameStore: dailyOverlayReading ?? savedGameStore,
-                        personalRecordStore: personalRecordStore
-                    ),
-                    banner: { bannerSlot() }
-                )
-            )
-        case .practice:
-            // Was unreachable (no AppRoute case). Now reachable from Home.
-            // #720 G2: remember the player's last-picked Practice difficulty
-            // across launches instead of always resetting to Beginner.
-            let difficultyStore = LastSelectionStore(
-                key: "com.wei18.minesweeper.practice.lastDifficulty",
-                fallback: Difficulty.beginner.rawValue
-            )
-            return AnyView(
-                MinesweeperPracticeHubView(
-                    path: path ?? .constant([]),
-                    initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
-                    onDifficultyChanged: { difficultyStore.save($0.rawValue) },
-                    banner: { bannerSlot() }
-                )
-            )
         case .board(let difficulty, let seed, let mode):
             // SDD-003 Epic 1 / #491 / #559: two-context contract delegated to
             // shared `boardDestination` helper in GameAppKit. #842: the
@@ -345,8 +303,6 @@ public struct LiveRouteFactory: RouteFactory {
                     }
                 )
             )
-        case .stats: // #773: Statistics screen — see LiveRouteFactory+Stats.swift.
-            return Self.statsDestination(personalRecordStore, errorReporter, telemetry)
         case .settings:
             let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0.0"
             let appStoreID = Bundle.main.object(forInfoDictionaryKey: "AppStoreID") as? String // #744
@@ -377,12 +333,16 @@ public struct LiveRouteFactory: RouteFactory {
                     appStoreID: appStoreID,
                     presentInviteFriends: presentInviteFriends,
                     telemetryEmit: { event in Task { await telemetry?.observe(event) } },
-                    banner: { bannerSlot() }
+                    banner: { Self.bannerSlot(adProvider: adProvider, adGate: adGate) }
                 )
             )
         }
     }
 
-    // `bannerSlot()` moved to LiveRouteFactory+Helpers.swift (#814 — this file
-    // sat at the 400-line ceiling; extraction per the repo convention).
+    // `bannerSlot(adProvider:adGate:)` moved to LiveRouteFactory+Helpers.swift
+    // (#814 — this file sat at the 400-line ceiling; extraction per the repo
+    // convention). #1020: `static` so `Live+TabRoots.swift`'s Today/Practice
+    // tab-root builder — which has no `LiveRouteFactory` instance to call
+    // through, only the wired `GameDeps` bag — can reuse the exact same
+    // banner instead of re-deriving it.
 }

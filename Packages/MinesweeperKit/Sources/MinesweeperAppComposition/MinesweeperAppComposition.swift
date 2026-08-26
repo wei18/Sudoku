@@ -6,8 +6,9 @@
 //
 // The App target reads `bag.rootView` and hands it to `WindowGroup`. After #572
 // `rootView` returns `wiredView` (from `makeGameApp`) — the shared GameRoot +
-// GameHomeView + universal ResumePill (#554) + ATT sheet + GC alert, assembled
-// by makeGameApp. Two MS-specific layers are still applied here (not in
+// the #1020 `sidebarAdaptable` 3-tab shell (Today/Practice/Progress) +
+// universal ResumePill (#554) + ATT sheet + GC alert, assembled by
+// makeGameApp. Two MS-specific layers are still applied here (not in
 // makeGameApp, which is game-agnostic):
 //   - `\.minesweeperCell` environment (#278 Tier-1 Phase 2b)
 //   - `MinesweeperNearWinModifier` (#510 DEBUG near-win test hook)
@@ -53,8 +54,9 @@ public struct MinesweeperAppComposition {
     public let monetizationStateStore: any AdGateStateStore
     public let monetizationController: MonetizationStateController
     public let toastController: ToastController
-    // #572: the fully-wired root view from makeGameApp — GameRoot + shared
-    // GameHomeView + ResumePill (#554) + ATT sheet + GC alert. Mounted by `rootView`.
+    // #572/#1020: the fully-wired root view from makeGameApp — GameRoot +
+    // the 3-tab shell + ResumePill (#554) + ATT sheet + GC alert. Mounted by
+    // `rootView`.
     private let wiredView: AnyView
 
     // MARK: - Root view accessor (#572)
@@ -62,9 +64,10 @@ public struct MinesweeperAppComposition {
     /// Composed root view ready to mount in `@main`'s `WindowGroup`.
     ///
     /// After #572: `wiredView` (from `makeGameApp`) is the live mount point.
-    /// It carries the shared `GameHomeView` + universal ResumePill + ATT sheet
-    /// + GC-signed-out alert + monetization boot. Two MS-specific layers are
-    /// still applied here (not in makeGameApp, which is game-agnostic):
+    /// It carries the #1020 3-tab `sidebarAdaptable` shell (Today/Practice/
+    /// Progress) + universal ResumePill + ATT sheet + GC-signed-out alert +
+    /// monetization boot. Two MS-specific layers are still applied here (not
+    /// in makeGameApp, which is game-agnostic):
     ///   - `\.minesweeperCell` environment (#278 Tier-1 Phase 2b — board cell tokens)
     ///   - `MinesweeperNearWinModifier` (#510 DEBUG near-win test hook)
     /// The theme injection (`.environment(\.theme, MinesweeperTheme())`) is now
@@ -93,16 +96,19 @@ public struct MinesweeperAppComposition {
     /// any E2E assertions against it stay reproducible across launches.
     static let uitestBoardSeed: UInt64 = 0x5EED_B1
 
-    /// #510: map a `-uitest-route` screen key to Minesweeper's push routes.
-    /// Returns nil for `"home"` / unknown keys (stay at the root). Keys:
+    /// #510: map a `-uitest-route` screen key to Minesweeper's launch target.
+    /// #1020: `daily` / `practice` used to be push routes; they are tab
+    /// identities now, so both just select their tab — `settings` still
+    /// pushes onto the Today tab's stack. Unknown keys stay at the root. Keys:
     /// `daily` / `practice` / `settings` / `resumeFail` /
     /// `board:<beginner|intermediate|expert>` (#1026 B-1: zero-click straight
-    /// into a practice board at that difficulty, fixed seed above).
-    static func uitestRoute(for key: String) -> AppRoute? {
+    /// into a practice board at that difficulty, fixed seed above, pushed on
+    /// the Practice tab so the runner sees it where a Start tap would land it).
+    static func uitestRoute(for key: String) -> UITestLaunchTarget<AppRoute>? {
         switch key {
-        case "daily": return .daily
-        case "practice": return .practice
-        case "settings": return .settings
+        case "daily": return .tab(.today)
+        case "practice": return .tab(.practice)
+        case "settings": return .push(.settings)
         // #719: `.resumeBoard` is the ONLY route that mounts
         // `MinesweeperBoardLoaderView` — unlike Sudoku, a fresh MS board never
         // goes through the loader. Without this key there is no way to reach
@@ -110,7 +116,7 @@ public struct MinesweeperAppComposition {
         // real in-progress CloudKit save to resume. The `recordName` is never
         // read when `-uitest-loader-fail` is also passed — the hook short-
         // circuits `load()` before `store.loadInProgress` is called.
-        case "resumeFail": return .resumeBoard(recordName: "uitest-loader-fail", mode: .practice)
+        case "resumeFail": return .push(.resumeBoard(recordName: "uitest-loader-fail", mode: .practice))
         default:
             // #1026 B-1: `board:<difficulty>` — macOS has no synthetic tap
             // path to the practice hub's Start button, so this is the only
@@ -118,7 +124,7 @@ public struct MinesweeperAppComposition {
             guard key.hasPrefix("board:") else { return nil }
             let difficultyKey = key.dropFirst("board:".count)
             guard let difficulty = Difficulty(rawValue: String(difficultyKey)) else { return nil }
-            return .board(difficulty: difficulty, seed: uitestBoardSeed, mode: .practice)
+            return .push(.board(difficulty: difficulty, seed: uitestBoardSeed, mode: .practice), tab: .practice)
         }
     }
     #endif

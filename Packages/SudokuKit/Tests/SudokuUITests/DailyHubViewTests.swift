@@ -6,6 +6,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
+import GameShellUI
 import Persistence
 import SudokuPersistence
 import SudokuKitTesting
@@ -73,32 +74,41 @@ struct DailyHubViewTests {
         #expect(viewModel.state == .exhausted)
     }
 
-    // #686: the `.exhausted` alert's CTAs must actually navigate (previously
-    // "Try another difficulty" was a dead `{}` closure with no picker on this
-    // screen to route to).
-    @Test func exhaustedTryPracticeInsteadRoutesToPracticeHub() async {
-        let viewModel = await makeViewModel(
-            providerResult: .failure(.generatorFailed(underlying: "exhausted"))
+    // #686/#1020: the `.exhausted` block's CTAs must actually do something
+    // (previously "Try another difficulty" was a dead `{}` closure with no
+    // picker on this screen to route to). #1020: Practice is a tab identity
+    // now — "Try Practice" switches tabs instead of pushing a route.
+    @Test func exhaustedTryPracticeInsteadSwitchesToPracticeTab() async {
+        var selected: [AppTab] = []
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.failure(.generatorFailed(underlying: "exhausted")))
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: FakePersistence(),
+            dateProvider: { Self.fixedDate },
+            selectTab: { selected.append($0) }
         )
         await viewModel.bootstrap()
         #expect(viewModel.state == .exhausted)
 
         viewModel.tryPracticeInstead()
 
-        #expect(viewModel.path == [.practice])
+        #expect(selected == [.practice])
     }
 
-    @Test func exhaustedDismissPopsBackToHome() async {
+    // #1020 (design.md §3.1): Today is a tab root now, not a route pushed
+    // from Home — "Cancel" closes the inline block (drops to an empty
+    // `.loaded` state) and stays on Today rather than popping a path.
+    @Test func exhaustedDismissClosesBlockToEmptyLoadedState() async {
         let viewModel = await makeViewModel(
             providerResult: .failure(.generatorFailed(underlying: "exhausted"))
         )
         await viewModel.bootstrap()
-        viewModel.path = [.home, .daily]
         #expect(viewModel.state == .exhausted)
 
         viewModel.dismissExhausted()
 
-        #expect(viewModel.path == [.home])
+        #expect(viewModel.state == .loaded([]))
     }
 
     @Test func cardTapAppendsBoardRoute() async {

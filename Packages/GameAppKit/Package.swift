@@ -35,7 +35,7 @@ let productionTargets: [Target] = [
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
             // #448 step 3: shared `GameRoot` view + `ResumePill`. GameShellUI
-            // for the `RootShellView` / `SidebarItem` / `RouteFactory` shell +
+            // for the `RootShellView` / `AppTab` / `RouteFactory` shell +
             // the `Theme` environment; MonetizationUI for `ToastController` +
             // the `.toastOverlay(…)` helper. (GameShellKit stays zero-dep — the
             // deps live here, above it.)
@@ -75,6 +75,9 @@ let testTargets: [Target] = [
             .product(name: "GameCenterClient", package: "GameCenterKit"),
             .product(name: "Persistence", package: "PersistenceKit"),
             .product(name: "Telemetry", package: "TelemetryKit"),
+            // #1020: `AppTab` — the per-tab path contracts (C-34 / N-AB) and
+            // the UITest launch-target seam are all stated in terms of it.
+            .product(name: "GameShellUI", package: "GameShellKit"),
             // SudokuEngine for the `Mode` / `Difficulty` value types needed to
             // construct a `SavedGameSummary` fixture; GameState for
             // `GameSessionSnapshot` in the inline `PersistenceProtocol` stub.
@@ -83,6 +86,12 @@ let testTargets: [Target] = [
             // #935 batch 5: MonetizationCore for `IAPPurchaseResult` pattern
             // matching in `UITestScriptedIAPClientTests`.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // #1020 CR (C-33): `TodayTabHostTests` renders the real
+            // `TodayTabHost` to drive its ATT/banner wiring end to end —
+            // MonetizationUI for `ATTPrimerCoordinator`, MonetizationTesting
+            // for `FakeAdProvider` / `FakeAdGateStateStore`.
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
+            .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),

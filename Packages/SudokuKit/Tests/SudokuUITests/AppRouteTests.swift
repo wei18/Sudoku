@@ -14,10 +14,10 @@ struct AppRouteTests {
 
     @Test func allCasesHashableAndSendable() {
         // Compile-time: existential `any Hashable & Sendable` constructed.
+        // #1020: `.home` / `.daily` / `.practice` are gone — `daily` /
+        // `practice` are tab identities now (`GameShellUI.AppTab`), and
+        // `home` never pushed. Exactly 3 cases remain.
         let routes: [AppRoute] = [
-            .home,
-            .daily,
-            .practice,
             .board(puzzleId: "2026-05-19-easy"),
             .completion(puzzleId: "2026-05-19-easy", elapsedSeconds: 251, mistakeCount: 0),
             .settings

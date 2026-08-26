@@ -4,7 +4,7 @@
 // errorReporter + GameCenter + Persistence + monetization + audio + ATT +
 // reminders) now lives in `GameAppKit.makeGameApp`. `live()` builds a
 // `GameConfig<AppRoute>` carrying ONLY the Sudoku-specific values + builder
-// closures (puzzle loader, route factory, home, resume mapping, copy) and calls
+// closures (puzzle loader, route factory, tab roots, resume mapping, copy) and calls
 // `makeGameAppWithDeps`, which returns the wired `GameDeps` bag + root VM +
 // route factory. `SudokuAppComposition` is assembled from that bag so its public
 // field shape (consumed by tests + the App target) is unchanged.
@@ -95,11 +95,6 @@ extension SudokuAppComposition {
                 try await puzzleStore.puzzle(for: puzzleId)
             },
             theme: DefaultTheme(),
-            title: "Sudoku",
-            // #557: sidebarItems derived by makeGameApp from homeModes.modeItems —
-            // no longer set here. The empty literal is kept for the makeHome fallback
-            // path (MS / 2048 before their migration).
-            sidebarItems: [],
             successTint: DefaultTheme().status.success.resolved,
             failureTint: DefaultTheme().status.error.resolved,
             // #950: reuses the same "attention, not error" tint already used
@@ -112,40 +107,27 @@ extension SudokuAppComposition {
                 deniedCopy: deniedCopy,
                 settingsCopy: settingsCopy
             ),
-            // #557 SDD-005 Pillar C: per-mode subtitle copy + route mapping.
-            // Byte-identical to the former `HomeViewModel.subtitleKey` literals
-            // so snapshot baselines do not move.
-            homeModes: [
-                .daily: HomeModeContent(subtitleKey: "3 puzzles today", route: .daily),
-                .practice: HomeModeContent(subtitleKey: "Mixed difficulty pool", route: .practice),
-                // Leaderboard has no route — `GameHomeViewModel.select` falls
-                // back to the `presentLeaderboard` side-effect below, which
-                // presents Apple's native Game Center dashboard (its own
-                // global/friends toggle is why the subtitle below reads that
-                // way). #983 briefly routed this to an app-owned Daily Rank
-                // screen; that direction was reverted (see #983 follow-up).
-                .leaderboard: HomeModeContent(subtitleKey: "Global / friends"),
-                .settings: HomeModeContent(subtitleKey: "Account / language", route: .settings)
-            ],
-            // Sudoku's Game Center dashboard presenter. Injected here (not inside
-            // GameAppKit) so GameAppKit stays free of the GK dependency.
-            // `GameHomeViewModel.select` calls this for any mode with
-            // `route == nil` — Leaderboard (see `homeModes` above) is the
-            // only one, so tapping the Leaderboard card opens Apple's native
-            // Game Center dashboard directly.
-            presentLeaderboard: { GameCenterDashboard.present() },
-            // #773: Home's Statistics entry pushes this route.
-            statsRoute: .stats,
-            // #844: Statistics now renders as a mode-format card (owner
-            // override of #773's flat-row format), so it needs a subtitle
-            // like the four modes above.
-            statsSubtitleKey: "Wins / times / averages",
-            // Home avatar chip (approved design variant A): the app's own
-            // icon art, added as a dedicated `HomeAvatar` imageset (copy of
-            // the AppIcon light/dark art) in this app's own asset catalog —
-            // `Bundle.main` at runtime resolves to the running App target's
-            // bundle, which is where Assets.xcassets is copied.
-            homeAvatarImage: Image("HomeAvatar", bundle: .main),
+            // #1020: pushed by the shared trailing gear on every tab root
+            // (`TabRootChrome`) — Settings lands inside the initiating tab.
+            settingsRoute: .settings,
+            // #1020: per-tab root content — Today / Practice / Progress
+            // replace the retired HOME mode-card config entirely
+            // (`sidebarAdaptable` generates its own chrome from `AppTab`, so
+            // there is no mode-card list or sidebar array left to configure).
+            // The bulk of this lives in `Live+TabRoots.swift` (kept out of
+            // this file to stay under SwiftLint's 400-line ceiling).
+            makeTabRoot: { tab, deps, rootViewModel in
+                SudokuAppComposition.makeTabRoot(
+                    tab: tab,
+                    puzzleProvider: puzzleProvider,
+                    persistence: deps.persistence,
+                    errorReporter: deps.errorReporter,
+                    telemetry: deps.telemetry,
+                    adProvider: deps.adProvider,
+                    adGate: deps.adGate,
+                    rootViewModel: rootViewModel
+                )
+            },
             // #455: map Sudoku's `SavedGameSummary` into the game-agnostic
             // `ResumeCandidate` (the only layer that knows the Sudoku type).
             // Strings match the former `ResumePill` rendering exactly so snapshot
@@ -169,18 +151,15 @@ extension SudokuAppComposition {
                     puzzleProvider: puzzleProvider
                 )
             },
-            // makeHome is superseded by the universal GameHomeView built from
-            // homeModes in makeGameApp (#557). Kept for API stability; ignored
-            // by makeGameApp when homeModes is non-empty.
-            makeHome: { _, _ in AnyView(EmptyView()) },
-            // A tapped `dailyReady` reminder deep-links to the Daily hub
-            // (flow S07→S09), pushing `.daily` unless already on top. Mirrors
-            // the former `ReminderDelegateRetainer` tap routing exactly.
+            // A tapped `dailyReady` reminder deep-links to the Today tab
+            // (flow S07→S09). #1020: Today's Daily hub is a tab identity now,
+            // not a pushed route — land on its root by selecting the tab and
+            // popping any stack on top of it back to that root. Mirrors the
+            // former `ReminderDelegateRetainer` tap routing exactly.
             reminderTapRoute: { identifier, rootViewModel in
                 guard identifier == ReminderKind.dailyReady.rawValue else { return }
-                if rootViewModel.path.last != .daily {
-                    rootViewModel.path.append(.daily)
-                }
+                rootViewModel.selectedTab = .today
+                rootViewModel.popToRoot(of: .today)
             },
             // #579 phase 2: wire GameCenterSink as a late-bound completion sink.
             // SubmitGuards seeded empty (see impl-notes §Decisions: within-session
@@ -218,8 +197,9 @@ extension SudokuAppComposition {
         )
 
         // Wire the shared live stack once. The returned `wired.view` is the
-        // live mount point after #557: GameRoot + shared GameHomeView + universal
-        // ResumePill + ATT sheet + GC-signed-out alert, assembled by makeGameApp.
+        // live mount point: GameRoot + the #1020 `sidebarAdaptable` 3-tab
+        // shell (Today/Practice/Progress) + universal ResumePill + ATT sheet
+        // + GC-signed-out alert, assembled by makeGameApp.
         // `MonetizationStateController.startListeningForLifetimeOfApp()` runs
         // exactly once inside makeGameApp.
         let wired = makeGameAppWithDeps(config: config)
@@ -244,10 +224,12 @@ extension SudokuAppComposition {
         )
     }
 
-    /// Builds Sudoku's `LiveRouteFactory` from the wired `GameDeps`. Shared by
-    /// the `GameConfig.makeRouteFactory` + `makeHome` closures so both produce a
-    /// factory wired to the same live seams. The reminder builder closures come
-    /// straight off the deps bag (assembled once inside `makeGameApp`).
+    /// Builds Sudoku's `LiveRouteFactory` from the wired `GameDeps`. Called from
+    /// the `GameConfig.makeRouteFactory` closure so pushed destinations
+    /// (Board / Completion / Settings) are wired to the same live seams as
+    /// the tab roots `Live+TabRoots.swift` builds. The reminder builder
+    /// closures come straight off the deps bag (assembled once inside
+    /// `makeGameApp`).
     @MainActor
     private static func makeRouteFactory(
         deps: GameDeps,

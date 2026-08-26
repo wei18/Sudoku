@@ -1,6 +1,19 @@
 # Screen Contracts — Sudoku & Minesweeper (AS-BUILT)
 
 **Status:** AS-BUILT · **Date:** 2026-07-05 · **main @** `9d6bf71`
+
+> ⚠️ **Partially superseded by 3.0 (#1020, 2026-08-25).** The HOME screen
+> (`GameHomeView` / `GameHomeViewModel` / `HomeScreen`), the hand-authored
+> sidebar (`SidebarItem` / `NavigationStackHost`) and the `home` / `daily` /
+> `practice` / `stats` routes no longer exist. The root is a `sidebarAdaptable`
+> TabView (`GameShellUI/RootShellView.swift`) with one path per tab
+> (`GameAppKit/GameRootViewModel.swift`); ATT-PRIMER's entry point is the Today
+> tab's banner slot (`GameAppKit/TodayTabHost.swift`, C-33); the HOME
+> Leaderboard card is gone (C-35) and Progress gained an `Achievements` row
+> (`GameAppKit/AchievementsRow.swift`, C-36); resume-pill refresh follows
+> design.md §3.6.2 (C-34 / N-AB). Current model: `docs/designs/v3/design.md`
+> §2.1–§2.3, §3.6, §9.4. Rows below that cite the retired screens are kept as
+> the pre-3.0 as-built record until this doc is regenerated for 3.0.
 **Companion to:** `docs/navigation-flows.md` (nav model + flow chains + negative
 flows references the screen IDs defined here). This doc supersedes the flow
 claims in `docs/v1/design.md` §How.5 and `docs/designs/01-06`.
@@ -1119,12 +1132,13 @@ GC row entry point: `App/SudokuE2ETests/SudokuE2ETests.swift`
 
 ## ATT-PRIMER
 
-**Entry points:** first ad-relevant moment — `GameHomeView`'s banner slot
-`.task` calls `attPrimer.maybePresentOnAdContext()` (i.e., the **first Home
-banner load**, not app launch). One-offer-per-launch latch
-(`hasOffered`). **Does not block Home interaction** — Home is already
-rendered and tappable when this sheet appears (CODE CONTRADICTED vs. a
-"boot-time gate" assumption).
+**Entry points (3.0, C-33 BREAK — #1020):** first ad-relevant moment — the
+**Today tab's** banner slot (`GameAppKit/TodayTabHost.swift`, `onAdContext`)
+calls `attPrimer.maybePresentOnAdContext()` (i.e., the **first Today banner
+load**, not app launch). Pre-3.0 this was `GameHomeView`'s banner slot; HOME
+is retired. One-offer-per-launch latch (`hasOffered`) unchanged. **Does not
+block Today interaction** — the tab is already rendered and tappable when
+this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).
 
 **Code:** `AppMonetizationKit/Sources/MonetizationUI/ATTPrimerSheet.swift`,
 `ATTPrimerCoordinator.swift`.

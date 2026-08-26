@@ -152,7 +152,7 @@ struct MinesweeperStatsSnapshotTests {
     /// Build the view with seeded data, bootstrapped BEFORE hosting so the
     /// snapshot renders the loaded state (the in-view `.task` does not fire
     /// reliably in a bare NSHostingView).
-    private func statsView() async throws -> MinesweeperStatsView {
+    private func statsView() async throws -> some View {
         let viewModel = MinesweeperStatsViewModel(store: try await makeSeededStore())
         await viewModel.bootstrap()
         return MinesweeperStatsView(viewModel: viewModel)

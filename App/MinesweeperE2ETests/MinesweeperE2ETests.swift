@@ -51,7 +51,7 @@ final class MinesweeperE2ETests: XCTestCase {
         Self.driveToWin(app)
 
         app.buttons[NegativeNavigationE2ESupport.completionCloseID].tap()
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "minesweeper.board.pauseToggle"
         )
@@ -72,7 +72,7 @@ final class MinesweeperE2ETests: XCTestCase {
         )
         leave.tap()
 
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "minesweeper.board.pauseToggle"
         )
@@ -128,7 +128,7 @@ final class MinesweeperE2ETests: XCTestCase {
         )
 
         app.buttons["minesweeper.boardLoader.close"].tap()
-        NegativeNavigationE2ESupport.assertLandedOnHome(
+        NegativeNavigationE2ESupport.assertLandedOnTodayRoot(
             in: app,
             departedBoardAnchorID: "minesweeper.boardLoader.retry"
         )

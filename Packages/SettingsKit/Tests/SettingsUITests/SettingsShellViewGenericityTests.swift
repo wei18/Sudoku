@@ -13,7 +13,8 @@ import Testing
 // refactor accidentally re-couples the shell to Sudoku types, this file
 // stops compiling.
 //
-// Mirrors X1 (NavigationStackHost) + X3 (RootShellView) sentinels.
+// Mirrors the X3 (RootShellView) genericity sentinel (the X1 NavigationStackHost
+// sentinel retired with that type in #1020).
 
 @Suite("GameShellUI — SettingsShellView stays generic")
 struct SettingsShellViewGenericityTests {

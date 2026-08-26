@@ -19,9 +19,10 @@ let swiftSettings: [SwiftSetting] = [
 // gameplay UI (BoardView, engine-facing ViewModels) and the bits that
 // genuinely diverge.
 //
-// Extraction is incremental, in `Phase X` PRs: X1 (this) opens the package and
-// moves `NavigationStackHost` over. Each subsequent X PR extracts one more piece
-// while keeping Sudoku byte-identical.
+// Extraction was incremental, in `Phase X` PRs: X1 opened the package and moved
+// the navigation host over; each subsequent X PR extracted one more piece while
+// keeping Sudoku byte-identical. #1020 replaced that host + the hand-authored
+// sidebar with `RootShellView`'s 3-tab `sidebarAdaptable` `TabView`.
 
 let productionTargets: [Target] = [
     // #1032: build-tool plugin that runs `actool` (+ writes the bundle
@@ -43,10 +44,10 @@ let productionTargets: [Target] = [
 
 // MARK: - Test targets
 //
-// `GameShellUITests` carries the X1 sentinel: a compile-only `@Test` that
-// instantiates `NavigationStackHost` with a non-Sudoku `Route` type. If a
-// future refactor accidentally re-couples the host to a specific Route, this
-// target stops compiling.
+// `GameShellUITests` carries the genericity sentinels: compile-only `@Test`s
+// that instantiate the shell views with a non-Sudoku `Route` type. If a future
+// refactor accidentally re-couples one to a specific Route, this target stops
+// compiling.
 
 let testTargets: [Target] = [
     .testTarget(

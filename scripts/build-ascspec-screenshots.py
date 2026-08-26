@@ -441,7 +441,7 @@ class Slot:
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
-            Slot("01-home", "HomeViewTests", "HomeView-iPhone-light", "snapshotIPhoneLight"),
+            Slot("01-home", "TodayTabViewTests", "TodayTabView-iPhone-light", "snapshotIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPhone_light"),
@@ -451,7 +451,7 @@ SLOTS = {
                  "snapshot_iPhone_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPhone-light-compact", "snapshotHome_iPhone_light"),
+            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-iPhone-light", "snapshotIPhoneLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
                  "snapshotFlagged_iPhone_light"),
@@ -461,7 +461,7 @@ SLOTS = {
     },
     "ipad-13": {
         "sudoku": [
-            Slot("01-home", "HomeViewTests", "HomeView-iPad-light", "snapshotIPadLight"),
+            Slot("01-home", "TodayTabViewTests", "TodayTabView-iPad-light", "snapshotIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPad_light"),
@@ -471,7 +471,7 @@ SLOTS = {
                  "snapshot_iPad_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-iPad-light-regular", "snapshotHome_iPad_light"),
+            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-iPad-light", "snapshotIPadLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
                  "snapshotDaily_iPad_light_streak"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
@@ -494,14 +494,14 @@ SLOTS = {
     "mac": {
         "sudoku": [
             Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
-            Slot("01-home", "HomeViewTests", "HomeView-Mac-light-resume", "snapshotMacLightWithResume"),
+            Slot("01-home", "TodayTabViewTests", "TodayTabView-Mac-light", "snapshotMacLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
                  "snapshot_mac_light_purchased"),
         ],
         "minesweeper": [
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
                  "snapshotFlagged_Mac_light"),
-            Slot("01-home", "MinesweeperHomeSnapshotTests", "Home-mac-light-regular", "snapshotHome_regular_light"),
+            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-Mac-light", "snapshotMacLight"),
             Slot("06-stats", "MinesweeperStatsTests", "Stats-mac-light", "snapshotMacLight"),
         ],
     },

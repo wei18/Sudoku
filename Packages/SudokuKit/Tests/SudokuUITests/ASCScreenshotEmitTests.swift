@@ -143,28 +143,25 @@ struct ASCScreenshotEmitTests {
 
     // MARK: - Fixtures
 
-    // #557: HomeView/HomeViewModel retired; home screenshot now uses GameHomeView
-    // constructed from the same Sudoku mode content as Live.swift.
-    private static let sudokuHomeModes: [HomeMode: HomeModeContent<AppRoute>] = [
-        .daily: HomeModeContent<AppRoute>(subtitleKey: "3 puzzles today", route: .daily),
-        .practice: HomeModeContent<AppRoute>(subtitleKey: "Mixed difficulty pool", route: .practice),
-        .leaderboard: HomeModeContent<AppRoute>(subtitleKey: "Global / friends"),
-        .settings: HomeModeContent<AppRoute>(subtitleKey: "Account / language", route: .settings)
-    ]
-
-    private func homeView() -> some View {
+    // #1020: HOME is gone — the marketing "01-home" slot (name kept; ASC
+    // ordering depends on it) now renders the Today tab's real content:
+    // `TodayTabHost` (resume pill + banner + ATT anchor) wrapping the Daily
+    // hub, exactly what `Live+TabRoots.swift` wires for the `.today` tab.
+    private func todayTabView() async -> some View {
         let rootVM = RootViewModel(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
         )
-        let homeVM = GameHomeViewModel(
-            rootViewModel: rootVM,
-            homeModes: Self.sudokuHomeModes
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
+        let dailyViewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: FakePersistence(completedDailyIds: []),
+            dateProvider: { Self.fixedDate }
         )
-        return GameHomeView(
-            viewModel: homeVM,
+        await dailyViewModel.bootstrap()
+        return TodayTabHost(
             rootViewModel: rootVM,
-            title: "Sudoku",
             adProvider: FakeAdProvider(),
             adGate: AdGate(store: FakeAdGateStateStore(
                 initial: AdGateState(
@@ -176,15 +173,17 @@ struct ASCScreenshotEmitTests {
                 isNotDetermined: { false },
                 requestSystemPrompt: {}
             )
-        )
+        ) {
+            DailyHubView(viewModel: dailyViewModel)
+        }
     }
 
-    // MARK: - iPhone 6.9" (1290×2796) — Home / Daily / Board / Completion / Settings
+    // MARK: - iPhone 6.9" (1290×2796) — Today / Daily / Board / Completion / Settings
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
-    func emit_iPhone_home() throws {
+    func emit_iPhone_home() async throws {
         try emitASCScreenshot(
-            homeView(),
+            await todayTabView(),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView
@@ -231,12 +230,12 @@ struct ASCScreenshotEmitTests {
         )
     }
 
-    // MARK: - iPad 13" (2064×2752) — Home + Board (fills the #311 iPad gap)
+    // MARK: - iPad 13" (2064×2752) — Today + Board (fills the #311 iPad gap)
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
-    func emit_iPad_home() throws {
+    func emit_iPad_home() async throws {
         try emitASCScreenshot(
-            homeView(),
+            await todayTabView(),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView
@@ -253,12 +252,12 @@ struct ASCScreenshotEmitTests {
         )
     }
 
-    // MARK: - Mac (2880×1800) — Home + Board
+    // MARK: - Mac (2880×1800) — Today + Board
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
-    func emit_mac_home() throws {
+    func emit_mac_home() async throws {
         try emitASCScreenshot(
-            homeView(),
+            await todayTabView(),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
             slot: "01-home", background: Self.background,
             host: hostingView

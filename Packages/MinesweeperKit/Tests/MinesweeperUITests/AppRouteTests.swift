@@ -41,20 +41,13 @@ import MinesweeperEngine
         #expect(daily != practice)
     }
 
-    // #288 / #289: the payload-free Home routes are distinct from each other
-    // and from `.settings`.
-    @Test func homeRoutesAreDistinct() {
-        let routes: [AppRoute] = [.daily, .practice, .settings]
-        for (lhsIndex, lhs) in routes.enumerated() {
-            for (rhsIndex, rhs) in routes.enumerated() where lhsIndex != rhsIndex {
-                #expect(lhs != rhs)
-            }
-        }
-    }
-
-    @Test func sameCaseRoutesAreEqual() {
-        #expect(AppRoute.daily == .daily)
-        #expect(AppRoute.practice == .practice)
+    // #1020 (design.md §2.1–§2.2): `.daily` / `.practice` / `.stats` are gone
+    // — they are tab identities now (`GameShellUI.AppTab`), not `AppRoute`
+    // cases. `.settings` is the only payload-free route left; its
+    // distinctness from a payload-bearing route is covered by
+    // `settingsIsDistinctFromBoard` above.
+    @Test func settingsEqualsItself() {
+        #expect(AppRoute.settings == .settings)
     }
 
     // #386: the solved-daily re-view route carries difficulty + mode (no seed /
