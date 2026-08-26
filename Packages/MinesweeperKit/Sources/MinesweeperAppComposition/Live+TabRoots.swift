@@ -50,6 +50,10 @@ extension MinesweeperAppComposition {
             // cards via `MinesweeperSavedGameStore.fetchCompletedDailyIds` /
             // `fetchFailedDailyIds` (Epic 8 / SDD-003; #816 moved completed
             // off the `puzzleId`-assuming `PersistenceProtocol` query).
+            // #1020 CR: no `banner:` here — `TodayTabHost` (GameAppKit) already
+            // wraps this content with its OWN `BannerSlotView` (and is the C-33
+            // ATT anchor); passing another one too would render two banners.
+            // `MinesweeperDailyHubView`'s `banner:` param defaults to `EmptyView()`.
             return AnyView(
                 MinesweeperDailyHubView(
                     viewModel: MinesweeperDailyHubViewModel(
@@ -63,8 +67,7 @@ extension MinesweeperAppComposition {
                         savedGameStore: dailyOverlayReading ?? savedGameStore,
                         personalRecordStore: personalRecordStore,
                         errorReporter: errorReporter
-                    ),
-                    banner: { LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    )
                 )
             )
         case .practice:

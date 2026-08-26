@@ -23,6 +23,19 @@ public import MonetizationCore
 public import MonetizationUI
 internal import GameShellUI
 
+/// The banner slot's ad-context hook (C-33) — a free function (not a member
+/// of the generic `TodayTabHost`) so it takes `attPrimer` as a plain
+/// parameter without capturing `self`/`Content.Type` in `bannerSlot`'s
+/// `@Sendable` closure. Not `private` so `TodayTabHostTests` (`@testable
+/// import GameAppKit`) can invoke this EXACT call without rendering:
+/// SwiftUI's `.task`-driven cross-actor resumption does not reliably pump
+/// under `swift test`'s headless offscreen-`NSWindow` harness (see that
+/// suite's diagnostics).
+@MainActor
+func todayTabHostFireOnAdContext(attPrimer: ATTPrimerCoordinator) async {
+    await attPrimer.maybePresentOnAdContext()
+}
+
 @MainActor
 public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
     private let rootViewModel: GameRootViewModel<Route>
@@ -87,7 +100,7 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
     @ViewBuilder
     private var bannerSlot: some View {
         let onAdContext: (@Sendable () async -> Void)? = { [attPrimer] in
-            await attPrimer.maybePresentOnAdContext()
+            await todayTabHostFireOnAdContext(attPrimer: attPrimer)
         }
         BannerSlotView(
             adProvider: adProvider,

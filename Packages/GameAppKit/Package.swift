@@ -86,6 +86,12 @@ let testTargets: [Target] = [
             // #935 batch 5: MonetizationCore for `IAPPurchaseResult` pattern
             // matching in `UITestScriptedIAPClientTests`.
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
+            // #1020 CR (C-33): `TodayTabHostTests` renders the real
+            // `TodayTabHost` to drive its ATT/banner wiring end to end —
+            // MonetizationUI for `ATTPrimerCoordinator`, MonetizationTesting
+            // for `FakeAdProvider` / `FakeAdGateStateStore`.
+            .product(name: "MonetizationUI", package: "AppMonetizationKit"),
+            .product(name: "MonetizationTesting", package: "AppMonetizationKit"),
         ],
         swiftSettings: swiftSettings
     ),

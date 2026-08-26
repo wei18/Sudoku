@@ -50,7 +50,13 @@ struct MinesweeperTodayTabViewTests {
     ]
 
     /// `TodayTabHost` wrapping a seeded Daily hub — the same composition
-    /// `MinesweeperAppComposition.makeTabRoot(.today, …)` builds.
+    /// `MinesweeperAppComposition.makeTabRoot(.today, …)` builds
+    /// (`MinesweeperDailyHubView` itself takes no `banner:` here —
+    /// `TodayTabHost` is the ONE banner slot for the whole tab; see the CR
+    /// fix note on `Live+TabRoots.swift`). Seeds the ad gate CLOSED
+    /// (`hasPurchasedRemoveAds: true`), so every baseline below has the
+    /// banner region collapsed to `EmptyView` — `bannerVisible` below is the
+    /// one fixture that opens the gate to cover the banner region itself.
     private func todayTabHost() -> some View {
         let rootVM = MinesweeperRootViewModel(
             gameCenter: FakeGameCenterClient(),
@@ -75,6 +81,51 @@ struct MinesweeperTodayTabViewTests {
         ) {
             MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
+    }
+
+    /// Deterministic stand-in for the live `ProgressView` spinner (#732,
+    /// mirrors `BoardViewBannerTests`/SudokuKit's `TodayTabViewTests`) — same
+    /// static ring look, no animation-frame dependency.
+    private var deterministicBannerLoadingPreview: AnyView {
+        AnyView(
+            Circle()
+                .strokeBorder(Color.accentColor, lineWidth: 2)
+                .frame(width: 16, height: 16)
+        )
+    }
+
+    /// Same composition as `todayTabHost()` but with the ad gate OPEN
+    /// (`hasPurchasedRemoveAds: false`, 30 days post-launch) — the #723 hint
+    /// is warmed via `shouldShowBanner(now:)` BEFORE constructing the view so
+    /// the banner's 50pt rect reserves space on the very first layout
+    /// instead of racing the async gate resolution.
+    private func todayTabHostWithVisibleBanner() async -> some View {
+        let rootVM = MinesweeperRootViewModel(
+            gameCenter: FakeGameCenterClient(),
+            persistence: FakePersistence()
+        )
+        let dailyViewModel = MinesweeperDailyHubViewModel(path: .constant([]))
+        dailyViewModel.setStateForTesting(.loaded(Self.loadedTrio))
+        dailyViewModel.setPhase2PendingForTesting(false)
+        let gate = AdGate(store: FakeAdGateStateStore(
+            initial: AdGateState(
+                firstLaunchAt: Date().addingTimeInterval(-30 * 86_400),
+                hasPurchasedRemoveAds: false
+            )
+        ))
+        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        return TodayTabHost(
+            rootViewModel: rootVM,
+            adProvider: FakeAdProvider(),
+            adGate: gate,
+            attPrimer: ATTPrimerCoordinator(
+                isNotDetermined: { false },
+                requestSystemPrompt: {}
+            )
+        ) {
+            MinesweeperDailyHubView(viewModel: dailyViewModel)
+        }
+        .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() {
@@ -140,6 +191,28 @@ struct MinesweeperTodayTabViewTests {
         )
         assertViewStructure(
             of: host, named: "TodayTabView-iPhone-light-accessibility5", record: SnapshotMode.recordMode
+        )
+    }
+
+    // MARK: - Banner region coverage (CR follow-up)
+    //
+    // Every baseline above seeds the gate CLOSED, so none of them exercises
+    // `TodayTabHost`'s own banner slot — this is the marketing "01-home"
+    // source, so a banner regression there would ship unnoticed. This one
+    // fixture opens the gate (mirrors `BoardViewBannerTests`'s convention).
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLightBannerVisible() async {
+        let host = hostingView(
+            await todayTabHostWithVisibleBanner(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(
+            of: host, as: .image, named: "TodayTabView-iPhone-light-bannerVisible", record: SnapshotMode.recordMode
+        )
+        assertViewStructure(
+            of: host, named: "TodayTabView-iPhone-light-bannerVisible", record: SnapshotMode.recordMode
         )
     }
 }

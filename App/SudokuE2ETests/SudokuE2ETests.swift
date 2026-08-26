@@ -209,7 +209,7 @@ final class SudokuE2ETests: XCTestCase {
     /// blank backdrop (#686). #1020 (design.md §3.1): Today is a tab root
     /// now — there is no HOME to pop back to, so Cancel drops the hub to an
     /// empty `.loaded` state and stays on Today.
-    func test_dailyExhaustedCancelLandsOnHome_N4() {
+    func test_dailyExhaustedCancelLandsOnTodayRoot_N4() {
         let app = XCUIApplication()
         app.launchArguments += [
             UITestLaunchArg.puzzleFault, "dailyExhausted",

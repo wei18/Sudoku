@@ -82,16 +82,12 @@ let productionTargets: [Target] = [
             // in SudokuAppComposition (foundations.md §9.1).
             .product(name: "MonetizationCore", package: "AppMonetizationKit"),
             // MS monetization wire Phase 1 (2026-06-02): shared rows
-            // (`RemoveAdsRow` / `RestorePurchasesRow` / `AdsRemovedRow`)
-            // + `MonetizationStateController` + `ToastController` /
-            // `ToastView` live in MonetizationUI so Minesweeper can mount
-            // the same surfaces in Phase 3. SudokuUI consumes these from
-            // `SettingsView` + `RootView` + `RouteFactory` and resolves
-            // its theme tints at the call site via `tintColor:` params.
+            // (`RemoveAdsRow`/`RestorePurchasesRow`/`AdsRemovedRow`) +
+            // `MonetizationStateController` + `ToastController`/`ToastView`
+            // live here so Minesweeper shares the same surfaces; SudokuUI
+            // resolves its own theme tints at the call site.
             .product(name: "MonetizationUI", package: "AppMonetizationKit"),
-            // PR X1: the shared navigation-stack host lives here now. Will
-            // grow as more shell components extract (RootView, Settings
-            // shell, Daily / Practice hubs — Phase X PRs).
+            // PR X1: the shared navigation-stack host lives here now.
             .product(name: "GameShellUI", package: "GameShellKit"),
             // #448 step 1a: `RootViewModel = GameRootViewModel<AppRoute>`.
             gameAppDep,
@@ -99,9 +95,8 @@ let productionTargets: [Target] = [
             // / `NotificationAuthorizing` seams + `ReminderContent`. UI/logic only;
             // never `UserNotifications` (that stays in SudokuAppComposition's Live layer).
             remindersDep,
-            // refactor/settingskit-target: the shared Settings screen + reminders UI
-            // (primer sheet, settings/permission models) moved here. SettingsView,
-            // ReminderPrimerCoordinator, and CompletionView consume them via `import SettingsUI`.
+            // refactor/settingskit-target: shared Settings screen + reminders UI
+            // moved here; consumed via `import SettingsUI`.
             settingsUIDep,
             // #330 P2: `GameViewModel` fires gameplay cues through the
             // `SoundPlaying` seam (defaults to `NoopSoundPlaying`). No
@@ -109,9 +104,8 @@ let productionTargets: [Target] = [
             gameAudioDep,
             // #178: invariant-reporting tool. `reportIssue(_:)` surfaces
             // impossible-state / programmer-error catches (fails tests +
-            // purple-warns in #Preview, non-fatal in release). Deliberate
-            // restricted-import allowance — treated like a logger, NOT a replacement
-            // for ErrorReporter (expected runtime failures → telemetry). foundations.md §3.
+            // purple-warns in #Preview, non-fatal in release) — a logger,
+            // NOT a replacement for ErrorReporter. foundations.md §3.
             .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         ],
         resources: [.process("Resources")], // #1015: color sets — gives this target a `Bundle.module`.

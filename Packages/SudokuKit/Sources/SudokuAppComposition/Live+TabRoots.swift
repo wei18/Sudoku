@@ -42,6 +42,10 @@ extension SudokuAppComposition {
     ) -> AnyView {
         switch tab {
         case .today:
+            // #1020 CR: no `banner:` here — `TodayTabHost` (GameAppKit) already
+            // wraps this content with its OWN `BannerSlotView` (and is the C-33
+            // ATT anchor); passing another one too would render two banners.
+            // `DailyHubView`'s `banner:` param defaults to `EmptyView()`.
             return AnyView(
                 DailyHubView(
                     viewModel: DailyHubViewModel(
@@ -53,8 +57,7 @@ extension SudokuAppComposition {
                         // switches tabs now — it no longer pushes a `.practice`
                         // route (that case no longer exists).
                         selectTab: { rootViewModel.selectedTab = $0 }
-                    ),
-                    banner: { LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    )
                 )
             )
         case .practice:
