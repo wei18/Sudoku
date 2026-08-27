@@ -25,6 +25,9 @@ import Testing
 private enum SentinelRoute: Hashable {
     case first
     case second(payload: Int)
+    // #1041: exercised by the fixed sidebar Settings row tests below.
+    case settings
+    case board
 }
 
 private struct SentinelFactory: RouteFactory {
@@ -43,6 +46,7 @@ struct RootShellViewGenericityTests {
             selectedTab: .constant(.today),
             path: { _ in .constant([.first]) },
             routeFactory: SentinelFactory(),
+            settingsRoute: .settings,
             tabRoot: { tab in Text(tab.rawValue) }
         )
         _ = shell
@@ -68,6 +72,7 @@ struct RootShellViewGenericityTests {
             selectedTab: .constant(.practice),
             path: path,
             routeFactory: SentinelFactory(),
+            settingsRoute: .settings,
             tabRoot: { tab in Text(tab.rawValue) }
         )
         _ = shell
@@ -81,5 +86,98 @@ struct RootShellViewGenericityTests {
         #expect(storage[.progress] == [.first])
         #expect(storage[.today] == [.first])
         #expect(storage[.practice] == [.second(payload: 2)])
+    }
+
+    // MARK: - #1041: fixed sidebar Settings row
+
+    /// The row must push onto the SELECTED tab's stack only — mirrors
+    /// `TabRootChrome`'s per-tab gear contract, now for the fixed sidebar row.
+    @Test @MainActor func sidebarSettingsRowPushesOntoSelectedTabOnly() {
+        var storage: [AppTab: [SentinelRoute]] = [
+            .today: [],
+            .practice: [],
+            .progress: []
+        ]
+        let path: (AppTab) -> Binding<[SentinelRoute]> = { tab in
+            Binding(
+                get: { storage[tab] ?? [] },
+                set: { storage[tab] = $0 }
+            )
+        }
+
+        let shell = RootShellView<SentinelRoute, Text>(
+            selectedTab: .constant(.practice),
+            path: path,
+            routeFactory: SentinelFactory(),
+            settingsRoute: .settings,
+            tabRoot: { tab in Text(tab.rawValue) }
+        )
+
+        shell.openSettings()
+
+        #expect(storage[.practice] == [.settings])
+        #expect(storage[.today]?.isEmpty == true)
+        #expect(storage[.progress]?.isEmpty == true)
+    }
+
+    /// Pressing the row again while `.settings` is already on top must not
+    /// stack a second entry — the guard the per-tab gear doesn't need because
+    /// it only ever renders at the tab's root.
+    @Test @MainActor func sidebarSettingsRowDoesNotDuplicateWhenSettingsOnTop() {
+        var storage: [AppTab: [SentinelRoute]] = [
+            .today: [],
+            .practice: [.settings],
+            .progress: []
+        ]
+        let path: (AppTab) -> Binding<[SentinelRoute]> = { tab in
+            Binding(
+                get: { storage[tab] ?? [] },
+                set: { storage[tab] = $0 }
+            )
+        }
+
+        let shell = RootShellView<SentinelRoute, Text>(
+            selectedTab: .constant(.practice),
+            path: path,
+            routeFactory: SentinelFactory(),
+            settingsRoute: .settings,
+            tabRoot: { tab in Text(tab.rawValue) }
+        )
+
+        shell.openSettings()
+        shell.openSettings()
+
+        #expect(storage[.practice] == [.settings])
+    }
+
+    /// The fixed row is reachable at any push depth (unlike the tab-root-only
+    /// gear), so it must stack on top of an already-pushed board rather than
+    /// replacing the stack.
+    @Test @MainActor func sidebarSettingsRowStacksOnTopOfPushedBoard() {
+        var storage: [AppTab: [SentinelRoute]] = [
+            .today: [.board],
+            .practice: [],
+            .progress: []
+        ]
+        let path: (AppTab) -> Binding<[SentinelRoute]> = { tab in
+            Binding(
+                get: { storage[tab] ?? [] },
+                set: { storage[tab] = $0 }
+            )
+        }
+
+        let shell = RootShellView<SentinelRoute, Text>(
+            selectedTab: .constant(.today),
+            path: path,
+            routeFactory: SentinelFactory(),
+            settingsRoute: .settings,
+            tabRoot: { tab in Text(tab.rawValue) }
+        )
+
+        shell.openSettings()
+        #expect(storage[.today] == [.board, .settings])
+
+        shell.openSettings()
+        #expect(storage[.today] == [.board, .settings])
     }
 }

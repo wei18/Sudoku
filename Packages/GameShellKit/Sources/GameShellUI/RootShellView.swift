@@ -41,6 +41,22 @@
 //    which is what actually pruned the sidebar rows from the a11y tree in the
 //    #1019 spike (evidence 06-10) and what `test_pauseOverlayLocksShellOnMac_1019`
 //    verifies. See `BoardModalOverlayHoist.swift`.
+//
+// #1041 — fixed sidebar Settings row (design.md §3.7: iPad regular / macOS get
+// "齒輪 + sidebar 固定項", PR #1038 only shipped the gear):
+//
+//   - `.tabViewSidebarFooter { … }`, not `.tabViewSidebarBottomBar`. A spike
+//     (iPadOS 26.5, idb) found the bottom-bar variant renders but is inert —
+//     15+ taps produced no response, while the native tab row in the same
+//     overlay stayed tappable. The footer row is the one confirmed to push.
+//   - `openSettings()` guards on `binding.wrappedValue.last != settingsRoute`.
+//     The per-tab gear (`TabRootChrome`) needs no such guard because it only
+//     ever renders at the tab's root; this fixed row stays visible at ANY
+//     push depth, so pressing it again on top of `.settings` must no-op
+//     instead of stacking a duplicate.
+//   - The modifier is STATIC: it reads no state that changes while a board is
+//     pushed (no `coordinator`, no path length), so it cannot trip rule 2
+//     above and unmount a pushed destination.
 
 public import SwiftUI
 
@@ -48,6 +64,7 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
     @Binding private var selectedTab: AppTab
     private let path: (AppTab) -> Binding<[Route]>
     private let routeFactory: any RouteFactory<Route>
+    private let settingsRoute: Route
     private let tabRoot: (AppTab) -> TabRoot
 
     // #1019: owns the hoisted overlay. `@State` so its identity survives body
@@ -63,6 +80,9 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
     ///     render; the host is expected to return a binding onto stable storage
     ///     (e.g. `GameAppKit.GameRootViewModel.paths`).
     ///   - routeFactory: resolves a `Route` into its destination view.
+    ///   - settingsRoute: the route the fixed sidebar row pushes — the SAME
+    ///     value the per-tab gear pushes (`GameConfig.settingsRoute`), so Back
+    ///     lands in the same place regardless of which entry point was used.
     ///   - tabRoot: the per-app root content for a given tab (Today hub /
     ///     Practice hub / Progress). Supplied by the app so the shell stays
     ///     game-agnostic.
@@ -70,11 +90,13 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
         selectedTab: Binding<AppTab>,
         path: @escaping (AppTab) -> Binding<[Route]>,
         routeFactory: any RouteFactory<Route>,
+        settingsRoute: Route,
         @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
     ) {
         self._selectedTab = selectedTab
         self.path = path
         self.routeFactory = routeFactory
+        self.settingsRoute = settingsRoute
         self.tabRoot = tabRoot
     }
 
@@ -88,6 +110,7 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
+            .tabViewSidebarFooter { sidebarSettingsRow }
             .environment(\.boardModalOverlayCoordinator, coordinator)
 
             // The overlay renders OUTSIDE the TabView so its own Resume / Close
@@ -109,6 +132,35 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
                     routeFactory.view(for: route, path: tabPath)
                 }
         }
+    }
+
+    /// #1041: the fixed sidebar row (`.tabViewSidebarFooter`) — iPad regular /
+    /// macOS only, per design.md §3.7. Reuses the same "Settings" /
+    /// `gearshape` label the per-tab gear (`TabRootChrome`) already renders,
+    /// so the row reads as the same affordance regardless of entry point.
+    private var sidebarSettingsRow: some View {
+        Button(action: openSettings) {
+            Label("Settings", systemImage: "gearshape")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("game.sidebar.settings")
+    }
+
+    /// The fixed row's action, factored out so the push contract is
+    /// unit-testable without rendering a `TabView` (mirrors
+    /// `TabRootChrome.openSettings()`). `internal`, not `private`, so tests in
+    /// this module can call it directly.
+    ///
+    /// Guards on `last != settingsRoute`: unlike the per-tab gear — which only
+    /// ever renders at a tab's root, so any push is a fresh one — this row
+    /// stays visible at any push depth, so pressing it again while `.settings`
+    /// is already on top must no-op rather than stack a duplicate.
+    @MainActor
+    func openSettings() {
+        let binding = path(selectedTab)
+        guard binding.wrappedValue.last != settingsRoute else { return }
+        binding.wrappedValue.append(settingsRoute)
     }
 }
 

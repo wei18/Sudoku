@@ -56,6 +56,10 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     // keeps single ownership.
     private let viewModel: GameRootViewModel<Route>
     private let routeFactory: any RouteFactory<Route>
+    // #1041: threaded straight into `RootShellView`'s fixed sidebar Settings
+    // row (iPad regular / macOS) — the same route `GameConfig.settingsRoute`
+    // already supplies to the per-tab gear (`TabRootChrome`, via `MakeGameApp`).
+    private let settingsRoute: Route
     private let toastController: ToastController?
     private let successTint: Color
     private let failureTint: Color
@@ -81,6 +85,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     public init(
         viewModel: GameRootViewModel<Route>,
         routeFactory: any RouteFactory<Route>,
+        settingsRoute: Route,
         toastController: ToastController?,
         successTint: Color,
         failureTint: Color,
@@ -89,6 +94,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     ) {
         self.viewModel = viewModel
         self.routeFactory = routeFactory
+        self.settingsRoute = settingsRoute
         self.toastController = toastController
         self.successTint = successTint
         self.failureTint = failureTint
@@ -196,6 +202,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             // this contract.
             path: viewModel.pathBinding(for:),
             routeFactory: routeFactory,
+            settingsRoute: settingsRoute,
             tabRoot: tabRoot
         )
     }
