@@ -45,17 +45,29 @@ On the Mac and iPad classes, show the keyboard hint chip near the bottom: `←�
 
 Each shot has a 2-line overlay: a **headline** (≤ 5 words) and a **subhead** (≤ 12 words). Overlay is placed in the top-third on iPhone and the top quarter on iPad / Mac. Background: warm-paper `#FAF8F3` at 92% opacity with sage `#5C7A4F` headline color.
 
-### Shot 1 — Home / Entry point
+### Shot 1 — Progress tab (Stats)
+
+Repointed from the original "Home / Entry point" shot by #1040: the HOME
+route was retired in #1038 (3-tab shell), which left the old baseline
+(Today-tab empty state) identical in content to Shot 2's all-completed
+DailyHub screenshot, and its copy described a Home mode-card layout that no
+longer exists. Now shoots the Progress tab's Stats screen — a 2×3 grid of
+per-difficulty Daily/Practice tiles (Completed / Best / Average), fully
+populated via a dedicated store-only fixture so no tile shows the app's own
+"—" empty-state placeholder. Copy below is Sudoku's; Minesweeper's own
+`01-home` copy lives only in `scripts/build-ascspec-screenshots.py` (COPY →
+`"minesweeper"` → `"01-home"`), matching the same accuracy constraint (no
+ranking / Game Center / streak claim — only what the grid visibly shows).
 
 | Locale | Headline | Subhead |
 |---|---|---|
-| en | Calm logic, every day. | Two modes, one focused place to think. |
-| zh-Hant | 每天，一場安靜的推理。 | 兩種模式，一個專注思考的地方。 |
-| ja | 毎日、静かな論理を。 | ふたつのモード、ひとつの集中する場所。 |
-| zh-Hans | 每天，一场安静的推理。 | 两种模式，一个专注思考的地方。 |
-| es | Lógica tranquila, cada día. | Dos modos, un solo lugar para pensar. |
-| th | ตรรกะเงียบๆ ทุกวัน | สองโหมด หนึ่งพื้นที่สำหรับคิด |
-| ko | 매일, 조용한 논리. | 두 가지 모드, 집중할 수 있는 한 곳. |
+| en | Every solve, on the record. | Best and average times per difficulty, synced through iCloud. |
+| zh-Hant | 每次解題，都被記錄。 | 各難度的最佳與平均時間，透過 iCloud 同步。 |
+| zh-Hans | 每次解题，都被记录。 | 各难度的最佳与平均时间，通过 iCloud 同步。 |
+| ja | 解いた記録が残る。 | 難易度ごとのベストと平均タイムをiCloudと同期。 |
+| ko | 푼 기록이, 모두 남습니다. | 난이도별 최고 및 평균 시간을 iCloud와 동기화합니다. |
+| es | Cada partida resuelta, registrada. | Mejores tiempos y promedios por dificultad, sincronizados con iCloud. |
+| th | ทุกครั้งที่ไข ถูกบันทึกไว้ | เวลาที่ดีที่สุดและเฉลี่ยตามระดับ ซิงค์ผ่าน iCloud |
 
 ### Shot 2 — Daily Hub
 
@@ -486,8 +498,12 @@ predates this pass and already exceeds 1:1 on iPhone (baseline snapshots
 are captured at a smaller point size than the 1290×2796 ASC canvas); this
 pass did not push it further. Consequently `01-home`/`02-daily` stay
 under the 60% aim on **iPad** specifically — measured directly
-(`detect_content_bbox`): the iPad Home/Daily baselines' real content
-already spans ~93-97% of the baseline's own width at native resolution,
+(`detect_content_bbox`, re-measured 2026-08 against the current baselines
+after #1040 repointed `01-home` from the retired Today-tab Home to the
+Progress-tab Stats screen): the iPad `02-daily` baseline's real content
+spans ~96.9% of the baseline's own width at native resolution, and the new
+iPad `01-home` (Stats) baseline spans ~90.0% (both apps render the same
+grid layout here, so the number is identical for Sudoku and Minesweeper) —
 so there is no unused width to zoom into without upscaling past 1:1. Per
 this task's own constraint ("never upscale baseline art past 1:1 — shrink
 and report the number, don't blow it up"), those two iPad slots are

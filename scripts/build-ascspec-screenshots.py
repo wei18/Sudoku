@@ -113,17 +113,34 @@ MS_BG           = hex_to_rgb(0xF4F6F8)
 
 COPY = {
     "sudoku": {
-        # 01-home — REWRITTEN (marketing overhaul, decision P1 option B, 2026-08):
-        # replaces the "Calm logic, every day." / "Two modes..." pairing. Translated
-        # to all 7 locales (ai-translated-localization pass).
+        # 01-home — REPOINTED (#1040): the retired HOME route (#1038) left this
+        # slot's old baseline (Today-tab empty state) identical in content to
+        # 02-daily's all-completed DailyHub screenshot, and the previous copy
+        # ("Race the clock some days...") described a Home mode-card layout
+        # that no longer exists post-3-tab-shell. Repointed to the Progress
+        # tab's Stats screen instead (a screen that still exists, with its own
+        # dedicated fully-populated `storeRecords`/`makeStoreSeededStore`
+        # fixture — see StatsViewTests.swift / MinesweeperStatsTests.swift).
+        # Copy describes only what that grid visibly shows: per-difficulty
+        # Completed/Best/Average tiles synced through iCloud — no ranking, no
+        # Game Center, no streak claim. Translated to all 7 locales
+        # (ai-translated-localization pass).
         "01-home": {
-            "en":      ("A quiet place to think.", "Race the clock some days. Just think, on the others."),
-            "zh-Hant": ("一個安靜思考的地方。", "想比快就比，不想比就純粹想一想。"),
-            "zh-Hans": ("一个安静思考的地方。", "想比快就比，不想比就纯粹想一想。"),
-            "ja":      ("静かに考えられる場所。", "急ぐ日はタイムに挑み、そうでない日はただ考える。"),
-            "ko":      ("조용히 생각할 수 있는 곳.", "어떤 날은 시간과 겨룹니다. 어떤 날은 그냥 생각만 합니다."),
-            "es":      ("Un lugar tranquilo para pensar.", "Algunos días compites con el reloj. Otros, solo piensas."),
-            "th":      ("พื้นที่เงียบๆ สำหรับคิด", "บางวันแข่งกับเวลา บางวันแค่คิดเฉยๆ"),
+            "en":      ("Every solve, on the record.", "Best and average times per difficulty, synced through iCloud."),
+            # zh-Hant/zh-Hans/ja headlines shortened from a first draft that
+            # exceeded the headline text box width at this font size: the
+            # `wrap_text()` word-splitter treats an entire space-free CJK
+            # string as one "word", so once it doesn't fit it falls into the
+            # per-character wrap loop — which stranded the trailing 。 alone
+            # on its own second line (a floating dot, not a clean 2-line
+            # break). Verified single-line via `font_for(locale, ...)` +
+            # `textbbox` before landing (feat/store-screenshots-#1040 QA).
+            "zh-Hant": ("每次解題，都被記錄。", "各難度的最佳與平均時間，透過 iCloud 同步。"),
+            "zh-Hans": ("每次解题，都被记录。", "各难度的最佳与平均时间，通过 iCloud 同步。"),
+            "ja":      ("解いた記録が残る。", "難易度ごとのベストと平均タイムをiCloudと同期。"),
+            "ko":      ("푼 기록이, 모두 남습니다.", "난이도별 최고 및 평균 시간을 iCloud와 동기화합니다."),
+            "es":      ("Cada partida resuelta, registrada.", "Mejores tiempos y promedios por dificultad, sincronizados con iCloud."),
+            "th":      ("ทุกครั้งที่ไข ถูกบันทึกไว้", "เวลาที่ดีที่สุดและเฉลี่ยตามระดับ ซิงค์ผ่าน iCloud"),
         },
         # 02-daily — REWRITTEN (decision P2, 2026-08): replaces "Three puzzles.
         # Every day." Translated to all 7 locales (ai-translated-localization pass).
@@ -204,17 +221,27 @@ COPY = {
         # corrected as part of the #984 caption-accuracy sweep. MS's
         # macOS-only "06-stats" slot (below) is a different, new slot, not a
         # settings shot.
-        # 01-home — REWRITTEN (marketing overhaul, decision P1, 2026-08): replaces
-        # the "Calm logic, every day." pairing. Translated to all 7 locales
+        # 01-home — REPOINTED (#1040): mirrors Sudoku's 01-home repoint above —
+        # the retired HOME route (#1038) left the old baseline (Today-tab
+        # empty state) identical in content to 02-daily's all-completed
+        # DailyHub screenshot, and the previous copy described a Home
+        # mode-card layout that no longer exists post-3-tab-shell. Repointed
+        # to the Progress tab's Stats screen (still exists, fully-populated
+        # `makeStoreSeededStore` fixture — see MinesweeperStatsTests.swift).
+        # Copy describes only what that grid visibly shows: per-difficulty
+        # Completed/Best/Average tiles synced through iCloud — no ranking, no
+        # Game Center, no streak claim. Translated to all 7 locales
         # (ai-translated-localization pass).
         "01-home": {
-            "en":      ("First tap, always safe.", "Pure deduction. No guessing, no unlucky losses."),
-            "zh-Hant": ("第一下，永遠安全。", "純邏輯推理，不用猜，不會開局就爆。"),
-            "zh-Hans": ("第一下，永远安全。", "纯逻辑推理，不用猜，不会开局就炸。"),
-            "ja":      ("初手は、必ず安全。", "純粋な論理推理。推測不要、運で負けることもない。"),
-            "ko":      ("첫 탭은 언제나 안전합니다.", "순수한 논리 추론. 추측도, 억울한 패배도 없습니다."),
-            "es":      ("El primer toque, siempre seguro.", "Pura deducción. Sin adivinar, sin derrotas por mala suerte."),
-            "th":      ("แตะแรก ปลอดภัยเสมอ", "ใช้เหตุผลล้วนๆ ไม่ต้องเดา ไม่มีแพ้เพราะโชคร้าย"),
+            "en":      ("Every board, on the record.", "Completed, best, average — synced through iCloud."),
+            "zh-Hant": ("每一局，都被記錄下來。", "完成數、最佳、平均——透過 iCloud 同步。"),
+            "zh-Hans": ("每一局，都被记录下来。", "完成数、最佳、平均——通过 iCloud 同步。"),
+            # ja headline shortened — see the Sudoku 01-home comment above for
+            # why (same `wrap_text()` orphan-punctuation issue, verified fit).
+            "ja":      ("プレイの記録が残る。", "クリア数・ベスト・平均をiCloudと同期。"),
+            "ko":      ("플레이한 기록이, 모두 남습니다.", "완료 수, 최고, 평균 — iCloud와 동기화됩니다."),
+            "es":      ("Cada partida, registrada.", "Completadas, mejor tiempo, promedio — sincronizado con iCloud."),
+            "th":      ("ทุกกระดาน ถูกบันทึกไว้", "จำนวนที่สำเร็จ ดีที่สุด เฉลี่ย ซิงค์ผ่าน iCloud"),
         },
         # 02-daily headline — REWRITTEN (decision P2 mirror, 2026-08): "Two days
         # running, and counting." NOT "seven" — MS's daily baseline shows a
@@ -441,7 +468,7 @@ class Slot:
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
-            Slot("01-home", "TodayTabViewTests", "TodayTabView-iPhone-light", "snapshotIPhoneLight"),
+            Slot("01-home", "StatsViewTests", "StatsView-iPhone-light-store", "snapshotStoreIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPhone_light"),
@@ -451,7 +478,7 @@ SLOTS = {
                  "snapshot_iPhone_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-iPhone-light", "snapshotIPhoneLight"),
+            Slot("01-home", "MinesweeperStatsTests", "Stats-iPhone-light-store", "snapshotStoreIPhoneLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
                  "snapshotFlagged_iPhone_light"),
@@ -461,7 +488,7 @@ SLOTS = {
     },
     "ipad-13": {
         "sudoku": [
-            Slot("01-home", "TodayTabViewTests", "TodayTabView-iPad-light", "snapshotIPadLight"),
+            Slot("01-home", "StatsViewTests", "StatsView-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPad_light"),
@@ -471,7 +498,7 @@ SLOTS = {
                  "snapshot_iPad_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-iPad-light", "snapshotIPadLight"),
+            Slot("01-home", "MinesweeperStatsTests", "Stats-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
                  "snapshotDaily_iPad_light_streak"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
@@ -494,14 +521,14 @@ SLOTS = {
     "mac": {
         "sudoku": [
             Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
-            Slot("01-home", "TodayTabViewTests", "TodayTabView-Mac-light", "snapshotMacLight"),
+            Slot("01-home", "StatsViewTests", "StatsView-Mac-light-store", "snapshotMacLightStore"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
                  "snapshot_mac_light_purchased"),
         ],
         "minesweeper": [
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
                  "snapshotFlagged_Mac_light"),
-            Slot("01-home", "MinesweeperTodayTabViewTests", "TodayTabView-Mac-light", "snapshotMacLight"),
+            Slot("01-home", "MinesweeperStatsTests", "Stats-mac-light-store", "snapshotMacLightStore"),
             Slot("06-stats", "MinesweeperStatsTests", "Stats-mac-light", "snapshotMacLight"),
         ],
     },
