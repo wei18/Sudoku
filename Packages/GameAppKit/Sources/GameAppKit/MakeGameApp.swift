@@ -356,6 +356,9 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let gameRoot = GameRoot(
         viewModel: rootViewModel,
         routeFactory: routeFactory,
+        // #1041: same route already wired into `chromedTabRoots` above, now
+        // also threaded into `RootShellView`'s fixed sidebar Settings row.
+        settingsRoute: config.settingsRoute,
         toastController: toastController,
         successTint: config.successTint,
         failureTint: config.failureTint,

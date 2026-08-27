@@ -813,7 +813,9 @@ monetization surface (explicit scope exclusion, `docs/v2/stats-screen-proposal.m
 
 ## SETTINGS
 
-**Entry points:** HOME "Settings" card / sidebar row.
+**Entry points:** per-tab toolbar gear (`TabRootChrome`, a11y `game.tab.settings`,
+iPhone/iPad/macOS) + iPad-regular/macOS sidebar fixed row (`RootShellView.tabViewSidebarFooter`,
+a11y `game.sidebar.settings`, #1041).
 
 **Code:** `SudokuUI/Settings/SettingsView.swift`,
 `MinesweeperUI/SettingsView.swift`, `SettingsKit/Sources/SettingsUI/Settings/*`.

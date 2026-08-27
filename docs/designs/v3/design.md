@@ -349,6 +349,13 @@ Persistence 型別仍然不會洩進 GameShellKit。
 **⚠️ 最高實作風險(R2):** `sidebarAdaptable` 會改寫 `RootShellView`,而 #763 的 overlay 上提就掛在那裡。
 **驗收必須明文包含:pause / completion 期間 sidebar 與 tab 切換皆不可互動。** 快照測試驗不了這條,必須 idb 實機。
 
+**實作註記(#1041):** iPad regular / macOS 的 sidebar 固定項是 `RootShellView` 的
+`.tabViewSidebarFooter` 列(a11y id `game.sidebar.settings`),按下後 push 進**目前選中
+tab** 的 path,與齒輪(`TabRootChrome`)走同一條 in-tab push,並以 `last != .settings`
+防止重複 push。`.tabViewSidebarBottomBar` 在 iPadOS 26.5 spike 中畫得出但完全不可點,
+故不採用。齒輪只在 tab root 出現不需防重,固定列在任何 push 深度皆可見所以需要。macOS
+互動驗證待 #1039。
+
 ---
 
 ## 4. 玻璃系統
