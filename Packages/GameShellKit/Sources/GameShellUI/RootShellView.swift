@@ -156,6 +156,10 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
     /// ever renders at a tab's root, so any push is a fresh one — this row
     /// stays visible at any push depth, so pressing it again while `.settings`
     /// is already on top must no-op rather than stack a duplicate.
+    ///
+    /// The `last` check assumes Settings is a LEAF route (both apps' Settings
+    /// destinations take no `path` binding, so nothing can be pushed on top of
+    /// it). If Settings ever grows sub-routes, revisit this to a `contains`.
     @MainActor
     func openSettings() {
         let binding = path(selectedTab)
