@@ -80,6 +80,24 @@ private let seededRecords: [PersonalRecord] = [
     record(mode: .practice, difficulty: .hard, best: 700, total: 700, count: 1)
 ]
 
+/// Store-fixture: an all-tiles-populated player, used only to render the ASC
+/// store screenshot's "01-home" slot after it was repointed from the retired
+/// Today-tab Home to the Progress tab (#1040). Unlike `seededRecords` (which
+/// deliberately leaves a tile empty to pin the "—" placeholder state), every
+/// tile here has real Completed/Best/Average numbers — a store screenshot
+/// must not show an empty state. Daily counts outnumber practice at the same
+/// difficulty (daily is capped at one attempt/day but accumulates over many
+/// days; practice is played less often) and hard times run longer than easy
+/// ones, the way an actual long-time player's stats would look.
+private let storeRecords: [PersonalRecord] = [
+    record(mode: .daily, difficulty: .easy, best: 113, total: 6816, count: 48),
+    record(mode: .daily, difficulty: .medium, best: 221, total: 8246, count: 31),
+    record(mode: .daily, difficulty: .hard, best: 383, total: 6286, count: 14),
+    record(mode: .practice, difficulty: .easy, best: 97, total: 2596, count: 22),
+    record(mode: .practice, difficulty: .medium, best: 163, total: 2970, count: 15),
+    record(mode: .practice, difficulty: .hard, best: 332, total: 3096, count: 8)
+]
+
 // MARK: - VM tests
 
 @MainActor
@@ -171,6 +189,14 @@ struct StatsViewTests {
         return StatsView(viewModel: viewModel)
     }
 
+    /// Same construction as `statsView()`, but built from `storeRecords` — the
+    /// fully-populated fixture used only for the ASC "01-home" store slot (#1040).
+    private func storeStatsView() async -> some View {
+        let viewModel = StatsViewModel(persistence: ScriptedStatsPersistence(records: storeRecords))
+        await viewModel.bootstrap()
+        return StatsView(viewModel: viewModel)
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() async {
         let host = hostingView(
             await statsView(),
@@ -227,6 +253,52 @@ struct StatsViewTests {
             assertSnapshot(of: host, as: .image, named: "StatsView-Mac-light")
         }
         assertViewStructure(of: host, named: "StatsView-Mac-light", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - Store screenshot fixture (#1040)
+    //
+    // The ASC store screenshot generator's "01-home" slot was repointed here
+    // (from the retired Today-tab Home) because it needs a screen that still
+    // exists and looks populated — see `storeRecords` above for why a
+    // dedicated fixture, not `seededRecords`, backs these three.
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStoreIPhoneLight() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "StatsView-iPhone-light-store")
+        }
+        assertViewStructure(of: host, named: "StatsView-iPhone-light-store", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStoreIPadLight() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "StatsView-iPad-light-store")
+        }
+        assertViewStructure(of: host, named: "StatsView-iPad-light-store", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLightStore() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "StatsView-Mac-light-store")
+        }
+        assertViewStructure(of: host, named: "StatsView-Mac-light-store", record: SnapshotMode.recordMode)
     }
 }
 #endif

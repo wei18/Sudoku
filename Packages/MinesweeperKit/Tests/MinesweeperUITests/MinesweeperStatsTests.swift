@@ -15,7 +15,7 @@
 
 import Foundation
 import MinesweeperEngine
-import MinesweeperPersistence
+@testable import MinesweeperPersistence
 import Persistence
 import PersistenceTesting
 import SnapshotTesting
@@ -61,6 +61,48 @@ private func msRecord(
         bestTimeSeconds: best, totalTimeSeconds: total, completedCount: count,
         lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: []
     )
+}
+
+/// Store-fixture: mirrors SudokuKit's `storeRecords` — an all-tiles-populated
+/// player, used only to render the ASC store screenshot's "01-home" slot
+/// after it was repointed from the retired Today-tab Home to the Progress
+/// tab (#1040). `msRecord(...)` above is daily-only (used by the VM unit
+/// tests) and doesn't let us pick an exact average; this variant is
+/// mode-aware and seeds the fake gateway directly via
+/// `MinesweeperPersonalRecordMapper` (hence `@testable import
+/// MinesweeperPersistence` at the top of this file) so every
+/// Completed/Best/Average number below is chosen exactly — never derived
+/// from a formula — the way a real player's numbers would look: average
+/// strictly above best (never equal, since every tile here has more than
+/// one completion), no round multiples of 30/60 seconds, daily completions
+/// outnumbering practice at the same difficulty (daily is capped at one
+/// attempt/day but accumulates over many days; practice is played less
+/// often), and expert times running longer than beginner ones.
+private func storeRecord(
+    mode: String, difficulty: Difficulty, best: Int, total: Int, count: Int
+) -> MinesweeperPersonalRecord {
+    MinesweeperPersonalRecord(
+        recordName: "\(mode)-\(difficulty.rawValue)",
+        modeRaw: mode, difficulty: difficulty,
+        bestTimeSeconds: best, totalTimeSeconds: total, completedCount: count,
+        lastUpdatedAt: Date(timeIntervalSince1970: 0), completedPuzzleIds: []
+    )
+}
+
+private func makeStoreSeededStore() async -> MinesweeperPersonalRecordStore {
+    let gateway = FakePrivateCKGateway()
+    let records: [MinesweeperPersonalRecord] = [
+        storeRecord(mode: "daily", difficulty: .beginner, best: 54, total: 1632, count: 24),      // avg 1:08
+        storeRecord(mode: "daily", difficulty: .intermediate, best: 141, total: 2816, count: 16),  // avg 2:56
+        storeRecord(mode: "daily", difficulty: .expert, best: 308, total: 3321, count: 9),         // avg 6:09
+        storeRecord(mode: "practice", difficulty: .beginner, best: 49, total: 744, count: 12),     // avg 1:02
+        storeRecord(mode: "practice", difficulty: .intermediate, best: 129, total: 1134, count: 7), // avg 2:42
+        storeRecord(mode: "practice", difficulty: .expert, best: 281, total: 1312, count: 4)        // avg 5:28
+    ]
+    for record in records {
+        await gateway.seed(MinesweeperPersonalRecordMapper.payload(from: record))
+    }
+    return MinesweeperPersonalRecordStore(gateway: gateway, clock: { Date(timeIntervalSince1970: 0) })
 }
 
 // MARK: - VM tests
@@ -158,6 +200,15 @@ struct MinesweeperStatsSnapshotTests {
         return MinesweeperStatsView(viewModel: viewModel)
     }
 
+    /// Same construction as `statsView()`, but built from
+    /// `makeStoreSeededStore()` — the fully-populated fixture used only for
+    /// the ASC "01-home" store slot (#1040).
+    private func storeStatsView() async -> some View {
+        let viewModel = MinesweeperStatsViewModel(store: await makeStoreSeededStore())
+        await viewModel.bootstrap()
+        return MinesweeperStatsView(viewModel: viewModel)
+    }
+
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() async throws {
         let host = hostingView(
             try await statsView(),
@@ -207,6 +258,46 @@ struct MinesweeperStatsSnapshotTests {
         )
         assertUISnapshot(of: host, as: .image, named: "Stats-mac-light", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Stats-mac-light", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - Store screenshot fixture (#1040)
+    //
+    // The ASC store screenshot generator's "01-home" slot was repointed here
+    // (from the retired Today-tab Home) because it needs a screen that still
+    // exists and looks populated — see `makeStoreSeededStore()` above for
+    // why a dedicated fixture, not `makeSeededStore()`, backs these three.
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStoreIPhoneLight() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Stats-iPhone-light-store", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Stats-iPhone-light-store", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStoreIPadLight() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Stats-iPad-light-store", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Stats-iPad-light-store", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotMacLightStore() async {
+        let host = hostingView(
+            await storeStatsView(),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Stats-mac-light-store", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Stats-mac-light-store", record: SnapshotMode.recordMode)
     }
 }
 #endif
