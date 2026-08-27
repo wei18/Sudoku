@@ -99,16 +99,25 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     private let errorReporter: any ErrorReporter
     private let fetchResume: (() async throws -> ResumeCandidate<Route>?)?
 
+    /// #823 / #1042: one join per root VM, shared by every path write. `GameRoot`
+    /// injects this same instance into the environment (`\.terminalPersistJoin`)
+    /// so a board's terminal-persist Task registers with the VM's own join, and
+    /// `pathBinding(for:)` threads it into every `setPath` call it makes — the
+    /// single place a per-tab path binding is built.
+    public let persistJoin: TerminalPersistJoin
+
     public init(
         gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        fetchResume: (() async throws -> ResumeCandidate<Route>?)? = nil
+        fetchResume: (() async throws -> ResumeCandidate<Route>?)? = nil,
+        persistJoin: TerminalPersistJoin = TerminalPersistJoin()
     ) {
         self.gameCenter = gameCenter
         self.persistence = persistence
         self.errorReporter = errorReporter
         self.fetchResume = fetchResume
+        self.persistJoin = persistJoin
     }
 
     /// Idempotent: only the first call performs IO; subsequent calls return

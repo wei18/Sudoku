@@ -52,7 +52,7 @@ extension SudokuAppComposition {
                         provider: puzzleProvider,
                         persistence: persistence,
                         errorReporter: errorReporter,
-                        path: pathBinding(rootViewModel, tab: .today),
+                        path: rootViewModel.pathBinding(for: .today),
                         // design.md §3.1: the exhausted block's "Practice" CTA
                         // switches tabs now — it no longer pushes a `.practice`
                         // route (that case no longer exists).
@@ -73,7 +73,7 @@ extension SudokuAppComposition {
                         provider: puzzleProvider,
                         initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .medium,
                         persistDifficulty: { difficultyStore.save($0.rawValue) },
-                        path: pathBinding(rootViewModel, tab: .practice)
+                        path: rootViewModel.pathBinding(for: .practice)
                     ),
                     banner: { LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate) }
                 )
@@ -97,18 +97,5 @@ extension SudokuAppComposition {
                 )
             )
         }
-    }
-
-    /// Binding from a tab identity onto the root VM's per-tab path storage —
-    /// the shape `RootShellView` expects from `path(_:)`.
-    @MainActor
-    private static func pathBinding(
-        _ rootViewModel: GameRootViewModel<AppRoute>,
-        tab: AppTab
-    ) -> Binding<[AppRoute]> {
-        Binding(
-            get: { rootViewModel.path(for: tab) },
-            set: { rootViewModel.setPath($0, for: tab) }
-        )
     }
 }

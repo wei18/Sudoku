@@ -12,6 +12,7 @@ internal import AdsAdMob
 internal import IAPStoreKit2
 internal import GameAudio
 internal import SettingsUI
+internal import os
 
 // MARK: - Tab-root memoization (#1020)
 
@@ -41,9 +42,24 @@ internal import SettingsUI
 func memoizedTabRoots<TabRoot: View>(
     _ build: @escaping (AppTab) -> TabRoot
 ) -> (AppTab) -> TabRoot {
+    // #1042 item 3: DEBUG-only cold-launch cost visibility for the eager
+    // 3-tab build this function commits to (see the doc above).
+    #if DEBUG
+    let signposter = OSSignposter(subsystem: "com.wei18.GameAppKit", category: "launch")
+    let signpostID = signposter.makeSignpostID()
+    let signpostState = signposter.beginInterval("memoizedTabRoots", id: signpostID)
+    let start = ContinuousClock.now
+    #endif
     let roots = Dictionary(
         uniqueKeysWithValues: AppTab.allCases.map { ($0, build($0)) }
     )
+    #if DEBUG
+    signposter.endInterval("memoizedTabRoots", signpostState)
+    let elapsed = start.duration(to: .now).components
+    let elapsedMS = Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15
+    Logger(subsystem: "com.wei18.GameAppKit", category: "launch")
+        .info("memoizedTabRoots built \(roots.count) tab roots in \(elapsedMS, format: .fixed(precision: 2)) ms")
+    #endif
     // `AppTab.allCases` makes `roots` total, so the fallback is unreachable. It
     // rebuilds rather than force-unwrapping so a future case added without
     // rebuilding degrades to the old per-render behavior instead of trapping in

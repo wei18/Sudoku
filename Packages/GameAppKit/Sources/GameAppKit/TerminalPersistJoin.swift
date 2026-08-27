@@ -24,12 +24,13 @@
 // chance, as documented in the issue's "mitigating factors") instead of
 // blocking the hub refresh forever.
 //
-// Owned by `GameRoot` as `@State` (one instance per Root, mirrors
-// `GameChromeState`'s lifetime) and injected downward via
-// `\.terminalPersistJoin` so board views (`SudokuUI.BoardView`,
+// Owned by `GameRootViewModel` as `persistJoin` (#1042 — one instance per
+// root VM; previously a `GameRoot` `@State`) and injected downward by
+// `GameRoot` via `\.terminalPersistJoin` so board views (`SudokuUI.BoardView`,
 // `MinesweeperUI.MinesweeperBoardView`) can reach it without a direct
-// reference. `GameRoot` also holds the same instance directly, so it can pass
-// it straight into `dismissGame(persistJoin:)` / `gameSessionDidTearDown(persistJoin:)`
+// reference. The VM's `pathBinding(for:)` threads the same instance into
+// every per-tab path write, and `GameRoot` passes it straight into
+// `dismissGame(persistJoin:)` / `gameSessionDidTearDown(persistJoin:)`
 // without a round-trip through `@Environment` on the (non-View) view model.
 
 public import SwiftUI

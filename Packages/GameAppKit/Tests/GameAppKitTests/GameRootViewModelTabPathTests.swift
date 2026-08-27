@@ -89,14 +89,35 @@ private actor FetchCounter {
     }
 }
 
+/// Continuation-based gate (mirrors `TerminalPersistJoinTests.Gate`, which is
+/// file-private there) — deterministic "still blocked" assertions with no
+/// `Task.sleep` timing race, for the #1042 join test below.
+private actor Gate {
+    private var isOpen = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func open() {
+        isOpen = true
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 @MainActor
 private func makeViewModel(
-    counter: FetchCounter
+    counter: FetchCounter,
+    persistJoin: TerminalPersistJoin = TerminalPersistJoin()
 ) -> GameRootViewModel<TabRoute> {
     GameRootViewModel<TabRoute>(
         gameCenter: TabStubGameCenter(),
         persistence: TabStubPersistence(),
-        fetchResume: { await counter.fetch() }
+        fetchResume: { await counter.fetch() },
+        persistJoin: persistJoin
     )
 }
 
@@ -269,5 +290,41 @@ struct GameRootViewModelTabPathTests {
 
         #expect(await counter.count == baseline + 1)
         #expect(viewModel.path(for: .practice).isEmpty)
+    }
+
+    // MARK: - #1042: pathBinding(for:) is the one factory, join included
+
+    /// The factory `GameRoot` and both apps' tab roots now all consume
+    /// (`GameRootViewModel.pathBinding(for:)`) must thread the VM's own
+    /// `persistJoin` into every write it makes — proving a hub-originated
+    /// pop (a hub VM writing its own tab's path, not `GameRoot`'s binding) still
+    /// goes through the #823 race guard.
+    @Test("#1042: pathBinding(for:) routes a hub-originated pop through the persist join")
+    func pathBindingRoutesThroughPersistJoin() async {
+        let gate = Gate()
+        let join = TerminalPersistJoin(timeout: .seconds(5))
+        let viewModel = makeViewModel(counter: FetchCounter(), persistJoin: join)
+        let binding = viewModel.pathBinding(for: .today)
+
+        binding.wrappedValue = [.board(puzzleId: "p1")]
+        #expect(binding.wrappedValue == [.board(puzzleId: "p1")])
+        #expect(viewModel.path(for: .today) == [.board(puzzleId: "p1")])
+
+        join.register(Task { await gate.wait() })
+        binding.wrappedValue = []
+
+        // The bump defers into an unstructured Task gated on the join — must
+        // NOT have landed yet while the gate stays closed.
+        for _ in 0..<20 { await Task.yield() }
+        #expect(viewModel.sessionTeardownCount == 0)
+
+        await gate.open()
+
+        for _ in 0..<50 where viewModel.sessionTeardownCount == 0 {
+            await Task.yield()
+        }
+        #expect(viewModel.sessionTeardownCount == 1)
+        #expect(binding.wrappedValue == [])
+        #expect(viewModel.path(for: .today) == [])
     }
 }
