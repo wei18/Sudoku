@@ -57,7 +57,7 @@ extension MinesweeperAppComposition {
             return AnyView(
                 MinesweeperDailyHubView(
                     viewModel: MinesweeperDailyHubViewModel(
-                        path: pathBinding(rootViewModel, tab: .today),
+                        path: rootViewModel.pathBinding(for: .today),
                         provider: LiveMinesweeperDailyProvider(),
                         persistence: persistence,
                         // #935 batch 3: `dailyOverlayReading` (when the composition
@@ -79,7 +79,7 @@ extension MinesweeperAppComposition {
             )
             return AnyView(
                 MinesweeperPracticeHubView(
-                    path: pathBinding(rootViewModel, tab: .practice),
+                    path: rootViewModel.pathBinding(for: .practice),
                     initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
                     onDifficultyChanged: { difficultyStore.save($0.rawValue) },
                     banner: { LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate) }
@@ -104,18 +104,5 @@ extension MinesweeperAppComposition {
                 )
             )
         }
-    }
-
-    /// Binding from a tab identity onto the root VM's per-tab path storage —
-    /// the shape `RootShellView` expects from `path(_:)`.
-    @MainActor
-    private static func pathBinding(
-        _ rootViewModel: GameRootViewModel<AppRoute>,
-        tab: AppTab
-    ) -> Binding<[AppRoute]> {
-        Binding(
-            get: { rootViewModel.path(for: tab) },
-            set: { rootViewModel.setPath($0, for: tab) }
-        )
     }
 }

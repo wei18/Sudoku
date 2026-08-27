@@ -71,12 +71,12 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     @State private var chromeState = GameChromeState()
     #endif
 
-    // #823: shared join point between a board's terminal-persist Task and
-    // the teardown-triggered hub refresh. Not `#if os(iOS)`-gated like
-    // `chromeState` — the macOS path-shrink branch in `shellContent` below
-    // needs it too (mac boards are a NavigationStack push, not a
-    // fullScreenCover). See `TerminalPersistJoin`'s doc for the full race.
-    @State private var persistJoin = TerminalPersistJoin()
+    // #823 / #1042: the join point between a board's terminal-persist Task
+    // and the teardown-triggered hub refresh now lives on
+    // `GameRootViewModel.persistJoin` (one join per root VM), not as a
+    // separate `@State` here — `pathBinding(for:)` threads it through for
+    // every tab, mac and iOS alike. See `TerminalPersistJoin`'s doc for the
+    // full race.
 
     public init(
         viewModel: GameRootViewModel<Route>,
@@ -104,7 +104,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             .environment(\.gameSessionTeardownCount, viewModel.sessionTeardownCount)
             // #823: board views register their in-flight terminal-persist
             // Task here before dismissing — see `TerminalPersistJoin`.
-            .environment(\.terminalPersistJoin, persistJoin)
+            .environment(\.terminalPersistJoin, viewModel.persistJoin)
             // #685: moved here from the former `universalRootModifiers` helper
             // (called once from the plain `makeGameApp` function, outside any
             // View's own `body`). That outer attachment point never got
@@ -147,7 +147,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
                         // #823: pass the join so the teardown counter bump
                         // waits (bounded) for any in-flight terminal-persist
                         // save the dismissing board registered.
-                        viewModel.dismissGame(persistJoin: persistJoin)
+                        viewModel.dismissGame(persistJoin: viewModel.persistJoin)
                         chromeState.reset()
                     }
                 }
@@ -191,14 +191,10 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             // synthetic entry) via `isGamePresented`. #823: the join lets that
             // bump wait (bounded) for an in-flight terminal CloudKit save —
             // same race as the `fullScreenCover` branch above.
-            path: { tab in
-                Binding(
-                    get: { viewModel.path(for: tab) },
-                    set: { newPath in
-                        viewModel.setPath(newPath, for: tab, persistJoin: persistJoin)
-                    }
-                )
-            },
+            // #1042: built by `GameRootViewModel.pathBinding(for:)` — the same
+            // factory the apps' tab roots use, so hub-originated writes share
+            // this contract.
+            path: viewModel.pathBinding(for:),
             routeFactory: routeFactory,
             tabRoot: tabRoot
         )
