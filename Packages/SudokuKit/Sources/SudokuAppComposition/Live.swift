@@ -132,15 +132,24 @@ extension SudokuAppComposition {
             // `ResumeCandidate` (the only layer that knows the Sudoku type).
             // Strings match the former `ResumePill` rendering exactly so snapshot
             // baselines do not move ("Resume Easy", "3:21" for 201s).
+            // #1017: also build a `BoardPreview` from the already-fetched
+            // `boardState` + the puzzle's `givenMask` (local regeneration via
+            // `puzzleProvider`, not a new CloudKit fetch). Either lookup
+            // failing degrades to `boardPreview == nil` — never blocks resume.
             fetchResume: { deps in
-                { [persistence = deps.persistence] in
+                { [persistence = deps.persistence, puzzleProvider] in
                     guard let summary = try await persistence.latestInProgress() else { return nil }
+                    let puzzle = try? await puzzleProvider.puzzle(for: summary.puzzleId)
                     return ResumeCandidate(
                         title: ResumeTitle.make(
                             difficultyKey: summary.difficulty.rawValue.capitalized
                         ),
                         subtitle: ResumeTitle.elapsed(summary.elapsedSeconds),
-                        route: .board(puzzleId: summary.puzzleId)
+                        route: .board(puzzleId: summary.puzzleId),
+                        boardPreview: SudokuBoardPreviewMapper.make(
+                            boardState: summary.boardState,
+                            givenMask: puzzle?.clues.givenMask ?? []
+                        )
                     )
                 }
             },

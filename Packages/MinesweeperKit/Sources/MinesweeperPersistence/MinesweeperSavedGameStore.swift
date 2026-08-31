@@ -369,6 +369,15 @@ public actor MinesweeperSavedGameStore {
             case .string(let status) = payload.fields[Field.status],
             case .date(let lastModifiedAt) = payload.fields[Field.lastModifiedAt]
         else { return nil }
+        // #1017: surface the already-fetched state blob rather than
+        // discarding it. Missing/wrong-type field degrades to `nil` — same
+        // tolerant posture as the other fields on this summary.
+        let stateBlob: Data?
+        if case .data(let blob) = payload.fields[Field.stateBlob] {
+            stateBlob = blob
+        } else {
+            stateBlob = nil
+        }
         return MinesweeperSavedGameSummary(
             recordName: payload.recordName,
             difficulty: difficulty,
@@ -376,7 +385,8 @@ public actor MinesweeperSavedGameStore {
             modeRaw: modeRaw,
             elapsedSeconds: elapsed,
             lastModifiedAt: lastModifiedAt,
-            status: status
+            status: status,
+            stateBlob: stateBlob
         )
     }
 }

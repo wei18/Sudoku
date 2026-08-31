@@ -12,6 +12,12 @@
 // raw `String` (`.rawValue`) — see `SavedGameMapper`. `status` stays a
 // String here because its 2-state wire shape ("inProgress" / "completed")
 // is intentionally narrower than the 5-state `GameSessionStatus` enum.
+//
+// `boardState` (#1017): the raw 81-char encoded board string, already
+// fetched as part of the `SavedGame` record `latestInProgress()` reads —
+// surfaced here (rather than discarded) so a `fetchResume` closure can build
+// a `BoardPreview` without a second CloudKit round-trip. `nil` when the
+// record is missing/malformed; callers must degrade gracefully, never crash.
 
 public import Foundation
 public import SudokuEngine
@@ -31,6 +37,8 @@ public struct SavedGameSummary: Sendable, Equatable, Hashable, Codable, Identifi
     public let status: String
     /// `GeneratorVersion.v1 → 1`. See §How.2 row + §How.4.5 (split rule).
     public let generatorVersion: Int
+    /// 81-char encoded board ('.' for blank, digit otherwise). See #1017 note above.
+    public let boardState: String?
 
     public init(
         recordName: String,
@@ -40,7 +48,8 @@ public struct SavedGameSummary: Sendable, Equatable, Hashable, Codable, Identifi
         lastModifiedAt: Date,
         elapsedSeconds: Int,
         status: String,
-        generatorVersion: Int
+        generatorVersion: Int,
+        boardState: String? = nil
     ) {
         self.recordName = recordName
         self.puzzleId = puzzleId
@@ -50,5 +59,6 @@ public struct SavedGameSummary: Sendable, Equatable, Hashable, Codable, Identifi
         self.elapsedSeconds = elapsedSeconds
         self.status = status
         self.generatorVersion = generatorVersion
+        self.boardState = boardState
     }
 }

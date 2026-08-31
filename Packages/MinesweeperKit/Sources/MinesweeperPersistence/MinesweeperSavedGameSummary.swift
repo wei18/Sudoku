@@ -12,6 +12,16 @@
 // not import MinesweeperUI, where the `GameMode` enum lives — the composition
 // root maps `GameMode ↔ String` at the seam (mirrors how Sudoku's store wires
 // `mode.rawValue` onto the CK record).
+//
+// `stateBlob` (#1017): the raw JSON-encoded `MinesweeperSessionSnapshot`
+// bytes, already fetched as part of the `SavedGame` record `latestInProgress()`
+// reads — surfaced here (rather than discarded) so a `fetchResume` closure can
+// decode it into a `BoardPreview` without a second CloudKit round-trip. Kept
+// as raw `Data` (not decoded here) because decoding needs `MinesweeperEngine`
+// / `MinesweeperGameState` types this module already imports for other
+// fields, but the *decode* belongs in the composition root's pure mapper
+// (`MinesweeperBoardPreviewMapper`), not this store. `nil` when the record is
+// missing/malformed; callers must degrade gracefully, never crash.
 
 public import Foundation
 public import MinesweeperEngine
@@ -40,6 +50,8 @@ public struct MinesweeperSavedGameSummary: Sendable, Equatable, Hashable, Codabl
     /// `"failed"` is Epic 8 (SDD-003): a daily board where the player hit a mine
     /// (`.lost`) — distinct from completed (won) and from not-yet-played.
     public let status: String
+    /// JSON-encoded `MinesweeperSessionSnapshot`. See #1017 note above.
+    public let stateBlob: Data?
 
     public init(
         recordName: String,
@@ -48,7 +60,8 @@ public struct MinesweeperSavedGameSummary: Sendable, Equatable, Hashable, Codabl
         modeRaw: String,
         elapsedSeconds: Int,
         lastModifiedAt: Date,
-        status: String
+        status: String,
+        stateBlob: Data? = nil
     ) {
         self.recordName = recordName
         self.difficulty = difficulty
@@ -57,5 +70,6 @@ public struct MinesweeperSavedGameSummary: Sendable, Equatable, Hashable, Codabl
         self.elapsedSeconds = elapsedSeconds
         self.lastModifiedAt = lastModifiedAt
         self.status = status
+        self.stateBlob = stateBlob
     }
 }
