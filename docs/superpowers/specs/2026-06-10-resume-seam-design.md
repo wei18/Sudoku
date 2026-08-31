@@ -25,9 +25,14 @@ public struct ResumeCandidate<Route: Hashable & Sendable>: Sendable, Equatable {
     public let title: String      // game-mapped, e.g. "Resume Beginner" / "Resume Easy"
     public let subtitle: String   // e.g. "3:42"
     public let route: Route       // where tapping navigates
-    public init(title: String, subtitle: String, route: Route)
+    public let boardPreview: BoardPreview?  // #1017: nil unless the per-app mapper built one
+    public init(title: String, subtitle: String, route: Route, boardPreview: BoardPreview? = nil)
 }
 ```
+
+(#1017: `boardPreview` was added later — a game-agnostic `GameShellUI.BoardPreview?` built by
+each app's own `fetchResume` closure from its already-fetched saved payload. Defaults to `nil`
+so it never blocks resume when the payload is missing/malformed. See design.md §3.6.)
 (`Route: Hashable & Sendable` so the unconditional `Sendable` conformance compiles; both apps' `AppRoute` are value-type enums and already satisfy it.)
 
 **2. `GameAppKit/GameRootViewModel<Route>` — replace the Sudoku-typed resume with a closure**

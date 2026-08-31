@@ -166,6 +166,15 @@ internal enum SavedGameMapper {
               let difficulty = Difficulty(rawValue: difficultyRaw) else {
             return nil
         }
+        // #1017: surface the already-fetched board string rather than
+        // discarding it. Missing/wrong-type field degrades to `nil` — same
+        // tolerant posture as the other fields on this summary.
+        let boardState: String?
+        if case .string(let value) = payload.fields[SavedGameStore.Field.boardState] {
+            boardState = value
+        } else {
+            boardState = nil
+        }
         return SavedGameSummary(
             recordName: payload.recordName,
             puzzleId: puzzleId,
@@ -174,7 +183,8 @@ internal enum SavedGameMapper {
             lastModifiedAt: lastModifiedAt,
             elapsedSeconds: elapsed,
             status: status,
-            generatorVersion: genVersion
+            generatorVersion: genVersion,
+            boardState: boardState
         )
     }
 

@@ -147,6 +147,9 @@ extension MinesweeperAppComposition {
             // #455 / #572: map MinesweeperSavedGameSummary into the game-agnostic
             // ResumeCandidate. Strings match the former ResumePill rendering exactly
             // so snapshot baselines do not move.
+            // #1017: also build a `BoardPreview` from the already-fetched
+            // `stateBlob` (no new CloudKit fetch). A malformed/missing blob
+            // degrades to `boardPreview == nil` — never blocks resume.
             fetchResume: { _ in
                 { [savedGameStore] in
                     guard let summary = try await savedGameStore.latestInProgress() else { return nil }
@@ -158,7 +161,8 @@ extension MinesweeperAppComposition {
                         route: .resumeBoard(
                             recordName: summary.recordName,
                             mode: GameMode(rawValue: summary.modeRaw) ?? .practice
-                        )
+                        ),
+                        boardPreview: MinesweeperBoardPreviewMapper.make(stateBlob: summary.stateBlob)
                     )
                 }
             },
