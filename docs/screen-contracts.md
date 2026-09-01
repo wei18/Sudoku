@@ -411,18 +411,20 @@ surface.
 `.completedRedirect(CompletionViewModel, ReminderPrimerCoordinator?)`, or
 `.failed(UserFacingError)` (this block).
 
-**AS-BUILT NOTE (2026-07-21, #842):** `.completedRedirect` was undocumented
-until now. It is a race guard: when the daily open-time precheck in `load()`
-finds the store's `SavedGame` already `.completed` (stale phase-1 view-model
-data, e.g. a fast tap on a card that was just finished elsewhere), the loader
-renders the Completion surface **inline** via `CompletionOverlayScaffold`
-(`:178-196`, set at `:285`) instead of ever building a playable
-`GameViewModel`. Rendering is byte-identical to the `.completion` route's, so
-it introduces no new visual state to snapshot. Close on this surface uses the
-same `exitToHub()` shape (`:201`) as the live completion overlay — correct
-behavior that simply never reached the contract. MS reaches the equivalent
-outcome through a separate tier instead (`MinesweeperDailyOpenGuardView`'s
-`.completed` state — see `MS-BOARD-LOAD-FAILED` Tier 2), so the two apps are
+**AS-BUILT NOTE (2026-07-21, #842; updated 2026-09-01, #1023):** `.completedRedirect`
+was undocumented until now. It is a race guard: when the daily open-time
+precheck in `load()` finds the store's `SavedGame` already `.completed`
+(stale phase-1 view-model data, e.g. a fast tap on a card that was just
+finished elsewhere), the loader renders the Completion surface **inline** via
+`CompletedRedirectSurface` (`BoardLoaderView.swift:196-208`, wrapping the
+shared `CompletionOverlayScaffold`; state set at `:303`) instead of ever
+building a playable `GameViewModel`. Rendering is byte-identical to the
+`.completion` route's, so it introduces no new visual state to snapshot.
+Close on this surface uses the same `exitToHub()` shape (`:215`) as the live
+completion overlay — correct behavior that simply never reached the
+contract. MS reaches the equivalent outcome through a separate tier instead
+(`MinesweeperDailyOpenGuardView`'s `.completed` state — see
+`MS-BOARD-LOAD-FAILED` Tier 2), so the two apps are
 behaviorally mirrored via different structures, which is itself worth knowing
 before "unifying" them.
 
@@ -708,11 +710,14 @@ without `onPlayAgain`) and the reminder primer is re-derived fresh
 |---|---|---|---|
 | Close tap | `path?.wrappedValue.removeLast()` | pop | `SUD-DAILY-HUB` |
 
-**Covering behavior:** same `CompletionOverlayScaffold` shape as the overlay
-(centred card, warm-paper background) — visually indistinguishable from
-`SUD-COMPLETION-OVERLAY` even though this is a genuine stack push, not an
-in-board overlay. **State variants:** none; frozen snapshot values passed at
-construction (no live VM).
+**Covering behavior (updated 2026-09-01, #1023):** same `CompletionOverlayScaffold`
+shape as the overlay — full-height Liquid-Glass panel (`.ignoresSafeArea()`),
+NOT the pre-#1023 opaque warm-paper background — visually indistinguishable
+from `SUD-COMPLETION-OVERLAY` even though this is a genuine stack push, not
+an in-board overlay (there is no board behind a pushed route to show through,
+so the glass sits over the plain page background here). `variant: .review`
+— no ritual/panel-rise, no streak section (design.md §3.5). **State
+variants:** none; frozen snapshot values passed at construction (no live VM).
 
 **E2E coverage (#935 batch 3):** N12 (`docs/navigation-flows.md`) anchors
 `App/SudokuE2ETests/SudokuE2ETests.swift`'s

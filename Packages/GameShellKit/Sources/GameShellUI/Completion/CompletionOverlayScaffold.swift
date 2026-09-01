@@ -42,6 +42,12 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     private let outcomeKind: CompletionOutcome.Kind
     private let context: CompletionContext
     private let onClose: () -> Void
+    /// #1023 Phase B: resolved streak state for the M3/M4 ritual. `nil` for
+    /// every review path and every non-Daily live solve — see
+    /// `showsStreakSection` for the full gate (variant/outcome/context all
+    /// enforced HERE, not left to the caller, so a mistakenly-wired provider
+    /// on a review path still can't leak the ritual).
+    private let streakAdvance: CompletionStreakAdvance?
     @ViewBuilder private let card: () -> Card
 
     /// Panel-rise (M10) reveal latch — starts `false`, flips true on appear
@@ -54,12 +60,14 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         outcomeKind: CompletionOutcome.Kind,
         context: CompletionContext,
         onClose: @escaping () -> Void,
+        streakAdvance: CompletionStreakAdvance? = nil,
         @ViewBuilder card: @escaping () -> Card
     ) {
         self.variant = variant
         self.outcomeKind = outcomeKind
         self.context = context
         self.onClose = onClose
+        self.streakAdvance = streakAdvance
         self.card = card
     }
 
@@ -105,6 +113,9 @@ public struct CompletionOverlayScaffold<Card: View>: View {
             VStack(spacing: theme.spacing.large) {
                 card()
                     .environment(\.completionVariant, variant)
+                if showsStreakSection, let streakAdvance {
+                    CompletionStreakView(advance: streakAdvance, motionPlan: motionPlan)
+                }
                 ctas
             }
             .frame(maxWidth: 480)
@@ -177,6 +188,23 @@ public struct CompletionOverlayScaffold<Card: View>: View {
 
     private var glowTint: Color {
         outcomeKind == .success ? theme.accent.celebratory.resolved : theme.status.error.resolved
+    }
+
+    // MARK: - Streak section (M3/M4, #1023 Phase B)
+
+    /// The ritual's own gate (design.md §3.5: `liveSolve` plays "滲透波 +
+    /// streak 推進", `review` plays neither) — enforced independently of
+    /// whether the call site remembered to withhold a provider, so a
+    /// mistakenly-wired `streakAdvance` on a review/practice/loss call site
+    /// still renders nothing. Forwards to the static, independently
+    /// unit-testable `Self.showsStreakSection(...)`.
+    private var showsStreakSection: Bool {
+        CompletionStreakAdvance.showsStreakSection(
+            variant: variant,
+            outcomeKind: outcomeKind,
+            context: context,
+            advance: streakAdvance
+        )
     }
 
     // MARK: - CTA hierarchy (§3.5's 4-row table)

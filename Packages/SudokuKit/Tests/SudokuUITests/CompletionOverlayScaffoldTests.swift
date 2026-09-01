@@ -37,7 +37,11 @@ struct CompletionOverlayScaffoldTests {
         .padding(.horizontal, 24)
     }
 
-    private func host(_ context: CompletionContext, outcomeKind: CompletionOutcome.Kind = .success) -> NSView {
+    private func host(
+        _ context: CompletionContext,
+        outcomeKind: CompletionOutcome.Kind = .success,
+        streakAdvance: CompletionStreakAdvance? = nil
+    ) -> NSView {
         hostingView(
             // #1023: the panel-rise (M10) reveal is `.onAppear`-driven, same
             // limitation `CompletionScreen`'s hero reveal has — never fires on
@@ -45,11 +49,15 @@ struct CompletionOverlayScaffoldTests {
             // doc comment). Without this the panel renders fully transparent
             // (opacity 0, the pre-reveal state) — a blank snapshot that looks
             // like the AssetCatalogCompiler plugin isn't attached, but isn't.
+            // #1023 Phase B: the same escape hatch settles `CompletionStreakView`'s
+            // M3/M4 reveal latch to its POST state, so a streak baseline
+            // renders the ADVANCED pip/count deterministically.
             CompletionOverlayScaffold(
                 variant: .liveSolve,
                 outcomeKind: outcomeKind,
                 context: context,
                 onClose: {},
+                streakAdvance: streakAdvance,
                 card: { sampleCard }
             )
             .environment(\.completionHeroSkipsReveal, true),
@@ -94,6 +102,26 @@ struct CompletionOverlayScaffoldTests {
                 of: host(.dailyAllDone),
                 as: .image,
                 named: "CompletionOverlayScaffold-iPhone-light-dailyAllDone"
+            )
+        }
+    }
+
+    // MARK: - Snapshot: Daily, more today + streak ritual (M3/M4 pip + count advance)
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshot_dailyMoreToday_withStreak_iPhoneLight() {
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: host(
+                    .dailyMoreToday(nextDifficultyLabel: "Medium", onNext: {}),
+                    streakAdvance: CompletionStreakAdvance(
+                        pipStates: [false, true, true, true, true, true, true],
+                        preCount: 5,
+                        postCount: 6
+                    )
+                ),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPhone-light-dailyMoreToday-streak"
             )
         }
     }

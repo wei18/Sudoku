@@ -227,7 +227,18 @@ public struct LiveRouteFactory: RouteFactory {
                             { (nextPuzzleId: String) in
                                 presenter(.board(puzzleId: nextPuzzleId))
                             }
-                        }
+                        },
+                        // #1023 Phase B: streak ritual — live overlay ONLY,
+                        // this is the ONE `.liveSolve` daily-win path; the
+                        // pushed `.completion` review route below never gets
+                        // this provider (design.md §3.5: `review` plays no
+                        // ritual).
+                        fetchStreakAdvance: SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId)
+                            ? Self.makeFetchStreakAdvance(
+                                currentPuzzleId: puzzleId,
+                                persistence: persistence
+                            )
+                            : nil
                     )
                 )
             }

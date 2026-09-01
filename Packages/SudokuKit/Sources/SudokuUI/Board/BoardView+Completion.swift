@@ -133,6 +133,16 @@ extension BoardView {
         }
     }
 
+    /// #1023 Phase B: resolve the M3/M4 streak-ritual pre/post state on a
+    /// Daily solve. `nil` on failure (or when unwired) — no streak section
+    /// renders, mirroring `fetchDailyProgress`'s all-or-nothing degrade.
+    func kickOffStreakAdvanceFetch() {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: viewModel.identity.puzzleId), let fetchStreakAdvance else { return }
+        Task { @MainActor in
+            streakAdvance = await fetchStreakAdvance()
+        }
+    }
+
     @ViewBuilder
     func completionSurface(
         _ cvm: CompletionViewModel,
@@ -160,6 +170,7 @@ extension BoardView {
             outcomeKind: .success,
             context: completionContext(closeAction: closeAction, difficulty: difficulty),
             onClose: closeAction,
+            streakAdvance: streakAdvance,
             card: {
                 CompletionView(
                     viewModel: cvm,

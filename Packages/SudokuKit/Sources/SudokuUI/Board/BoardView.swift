@@ -8,7 +8,9 @@ public import MonetizationCore
 public import SwiftUI
 public import GameCenterClient
 internal import GameAppKit
-import GameShellUI
+// #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
+// GameShellUI's `CompletionStreakAdvance` in this view's public API.
+public import GameShellUI
 import MonetizationUI
 public import SudokuEngine
 public import SettingsUI
@@ -41,6 +43,9 @@ public struct BoardView: View {
     // #1023: resolves the post-Daily-solve CTA row (§3.5); see BoardView+Completion.
     let fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?
     let onDailyNext: ((String) -> Void)?
+    // #1023 Phase B: resolves the M3/M4 streak-ritual pre/post state on a
+    // Daily solve; see BoardView+Completion.kickOffDailyProgressFetch.
+    let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -59,6 +64,9 @@ public struct BoardView: View {
     @State var completionReminderPrimer: ReminderPrimerCoordinator?
     // #1023: `.allDone` default — never claims a "Next" mid-fetch.
     @State var dailyCompletionProgress: DailyCompletionProgress = .allDone
+    // #1023 Phase B: `nil` default — no streak section renders until (and
+    // unless) `fetchStreakAdvance` resolves a value.
+    @State var streakAdvance: CompletionStreakAdvance?
     // #849: mirrors MinesweeperBoardView's `showIdleLeaveOverlay`. Sudoku has
     // no `.idle` board render, so the Ready signal is "no move made yet on a
     // live session" (`leaveOrPauseState` in BoardView+AccessibilityHeader.swift)
@@ -79,6 +87,7 @@ public struct BoardView: View {
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)? = nil,
         onDailyNext: ((String) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
@@ -89,6 +98,7 @@ public struct BoardView: View {
         self.onPlayAgain = onPlayAgain
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.path = path
     }
 
@@ -138,10 +148,12 @@ public struct BoardView: View {
                 completionViewModel = makeCompletionViewModel()
                 completionReminderPrimer = makeReminderPrimer()
                 kickOffDailyProgressFetch()
+                kickOffStreakAdvanceFetch()
             } else if !isCompleted {
                 completionViewModel = nil
                 completionReminderPrimer = nil
                 dailyCompletionProgress = .allDone
+                streakAdvance = nil
             }
         }
         .focusable()

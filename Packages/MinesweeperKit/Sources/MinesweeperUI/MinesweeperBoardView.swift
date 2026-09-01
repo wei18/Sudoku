@@ -23,7 +23,9 @@
 public import SwiftUI
 public import GameAudio
 public import GameCenterClient
-import GameShellUI
+// #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
+// GameShellUI's `CompletionStreakAdvance` in this view's public API.
+public import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
 import MonetizationUI
@@ -101,6 +103,9 @@ public struct MinesweeperBoardView: View {
     // #1023: `.allDone` default — never claims a "Next" that doesn't exist
     // while `fetchDailyProgress` is still resolving.
     @State var dailyCompletionProgress: MinesweeperDailyCompletionProgress = .allDone
+    // #1023 Phase B: `nil` default — no streak section renders until (and
+    // unless) `fetchStreakAdvance` resolves a value.
+    @State var streakAdvance: CompletionStreakAdvance?
     // #681: the pre-first-tap `.idle` board has no exit — `PauseOverlayView` is
     // only mounted while `viewModel.isPaused` (== session `.paused`), and
     // `MinesweeperSession.pause()` deliberately no-ops unless `.playing` (mine
@@ -175,6 +180,9 @@ public struct MinesweeperBoardView: View {
     private let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
     // Presents the next daily entry returned by `fetchDailyProgress`.
     let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
+    // #1023 Phase B: resolves the M3/M4 streak-ritual pre/post state on a
+    // Daily WIN. Mirrors `fetchDailyProgress`'s injection shape.
+    private let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     // #796: the store backing the tap-mode toggle's seed/persist round trip
     // (#720 G3). Defaults `.standard` so every production call site compiles
     // and behaves unchanged; snapshot/ASC-screenshot tests MUST pass an
@@ -193,6 +201,7 @@ public struct MinesweeperBoardView: View {
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
         onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil,
         tapModeDefaults: UserDefaults = .standard
@@ -206,6 +215,7 @@ public struct MinesweeperBoardView: View {
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
         // seeded terminal board renders WITH the overlay mounted (the in-body
@@ -234,6 +244,7 @@ public struct MinesweeperBoardView: View {
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
         onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
@@ -258,6 +269,7 @@ public struct MinesweeperBoardView: View {
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.suppressTickerForSnapshot = false
         self.mode = mode
         self.tapModeDefaults = tapModeDefaults
@@ -377,10 +389,20 @@ public struct MinesweeperBoardView: View {
                         dailyCompletionProgress = await fetchDailyProgress()
                     }
                 }
+                // #1023 Phase B: same Daily-WIN-only gate as the daily
+                // progress fetch above — a loss never qualifies for the
+                // streak ritual (design.md §3.5's `loss` row plays no
+                // ritual regardless of mode).
+                if mode == .daily, viewModel.status == .won, let fetchStreakAdvance {
+                    Task { @MainActor in
+                        streakAdvance = await fetchStreakAdvance()
+                    }
+                }
             } else if !isTerminal {
                 completionViewModel = nil
                 completionReminderPrimer = nil
                 dailyCompletionProgress = .allDone
+                streakAdvance = nil
             }
         }
         // #815: zoom resets per board session — a new VM identity means a new
@@ -1195,6 +1217,7 @@ public struct MinesweeperBoardView: View {
             outcomeKind: completionViewModel.didWin ? .success : .failure,
             context: completionContext(closeAction: closeAction, difficulty: difficulty, didWin: completionViewModel.didWin),
             onClose: closeAction,
+            streakAdvance: streakAdvance,
             card: {
                 MinesweeperCompletionView(
                     viewModel: completionViewModel,

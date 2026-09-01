@@ -57,7 +57,9 @@ public import MinesweeperPersistence
 public import MonetizationCore
 public import Telemetry
 public import SettingsUI
-internal import GameShellUI
+// #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
+// GameShellUI's `CompletionStreakAdvance` in this view's public API.
+public import GameShellUI
 
 public struct MinesweeperDailyOpenGuardView: View {
 
@@ -93,6 +95,9 @@ public struct MinesweeperDailyOpenGuardView: View {
     // today?" resolution.
     private let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
     private let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
+    // #1023 Phase B: forwarded ONLY to `.resolved(.playable)` below — the
+    // `.resolved(.completed)` review surface never plays the streak ritual.
+    private let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     private let personalRecordStore: MinesweeperPersonalRecordStore?
     /// #842 round 2 (low finding): threaded through so the `.completed`
     /// outcome's Close can pop the board's own stack entry in a push context
@@ -120,6 +125,7 @@ public struct MinesweeperDailyOpenGuardView: View {
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
         onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
@@ -135,6 +141,7 @@ public struct MinesweeperDailyOpenGuardView: View {
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.personalRecordStore = personalRecordStore
         self.path = path
     }
@@ -172,6 +179,7 @@ public struct MinesweeperDailyOpenGuardView: View {
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
                 fetchDailyProgress: fetchDailyProgress,
                 onDailyNext: onDailyNext,
+                fetchStreakAdvance: fetchStreakAdvance,
                 store: store,
                 recordName: recordName,
                 personalRecordStore: personalRecordStore
