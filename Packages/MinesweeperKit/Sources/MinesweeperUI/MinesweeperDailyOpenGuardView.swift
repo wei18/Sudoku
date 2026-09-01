@@ -88,6 +88,11 @@ public struct MinesweeperDailyOpenGuardView: View {
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #1023: forwarded to both the `.resolved(.playable)` live board AND the
+    // `.resolved(.completed)` review surface — both need the SAME "more
+    // today?" resolution.
+    private let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
+    private let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
     private let personalRecordStore: MinesweeperPersonalRecordStore?
     /// #842 round 2 (low finding): threaded through so the `.completed`
     /// outcome's Close can pop the board's own stack entry in a push context
@@ -113,6 +118,8 @@ public struct MinesweeperDailyOpenGuardView: View {
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
+        onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
@@ -126,6 +133,8 @@ public struct MinesweeperDailyOpenGuardView: View {
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
         self.personalRecordStore = personalRecordStore
         self.path = path
     }
@@ -161,6 +170,8 @@ public struct MinesweeperDailyOpenGuardView: View {
                 // `LiveRouteFactory`'s direct `.board` construction documents.
                 onPlayAgain: nil,
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
                 store: store,
                 recordName: recordName,
                 personalRecordStore: personalRecordStore
@@ -169,21 +180,21 @@ public struct MinesweeperDailyOpenGuardView: View {
             // #842: same scaffold + card `LiveRouteFactory`'s `.completion`
             // route builds (#386) — byte-identical rendering, just reached
             // from a different (pre-mount) seam, so this introduces no new
-            // visual state to snapshot.
-            CompletionOverlayScaffold(
+            // visual state to snapshot. #1023: `.review` — re-showing an
+            // already-completed daily, no ritual/haptic. Same CTA-row
+            // resolution as the live overlay, via the SAME injected
+            // `fetchDailyProgress`.
+            MinesweeperCompletedRedirectSurface(
+                completionViewModel: MinesweeperCompletionViewModel(
+                    didWin: true,
+                    elapsedSeconds: 0,
+                    leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
+                ),
+                reminderPrimer: makeDailyReminderPrimer?(),
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
                 onClose: { exitToHub() },
-                card: {
-                    MinesweeperCompletionView(
-                        viewModel: MinesweeperCompletionViewModel(
-                            didWin: true,
-                            elapsedSeconds: 0,
-                            leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
-                        ),
-                        reminderPrimer: makeDailyReminderPrimer?(),
-                        onClose: nil,
-                        showsElapsedTime: false
-                    )
-                }
+                showsElapsedTime: false
             )
         case .resolved(.failed):
             // #841's fixed-layout replay — NOT a fresh scored board.

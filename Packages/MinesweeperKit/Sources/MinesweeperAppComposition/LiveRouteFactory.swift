@@ -286,21 +286,28 @@ public struct LiveRouteFactory: RouteFactory {
             // route is a solved-daily re-view (didWin: true by definition), so
             // the mode gate alone is the WIN gate here.
             let reminderPrimer = mode == .daily ? makeDailyReminderPrimer?() : nil
+            // #1023: `.review` — this route is ONLY ever pushed for re-viewing
+            // an already-completed Daily; no ritual, no haptic. Same CTA-row
+            // resolution as the live overlay / the `.resolved(.completed)`
+            // guard state, via the shared `MinesweeperCompletedRedirectSurface`.
             return AnyView(
-                CompletionOverlayScaffold(
+                MinesweeperCompletedRedirectSurface(
+                    completionViewModel: MinesweeperCompletionViewModel(
+                        didWin: true,
+                        elapsedSeconds: 0,
+                        leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
+                    ),
+                    reminderPrimer: reminderPrimer,
+                    fetchDailyProgress: mode == .daily
+                        ? Self.makeFetchDailyProgress(currentDifficulty: difficulty, savedGameStore: savedGameStore)
+                        : nil,
+                    onDailyNext: onPresentBoard.map { presenter in
+                        { (entry: MinesweeperDailyEntry) in
+                            presenter(.board(difficulty: entry.difficulty, seed: entry.seed, mode: .daily))
+                        }
+                    },
                     onClose: { closePath?.wrappedValue.removeLast() },
-                    card: {
-                        MinesweeperCompletionView(
-                            viewModel: MinesweeperCompletionViewModel(
-                                didWin: true,
-                                elapsedSeconds: 0,
-                                leaderboardId: MinesweeperLeaderboardID.daily(for: difficulty)
-                            ),
-                            reminderPrimer: reminderPrimer,
-                            onClose: nil,
-                            showsElapsedTime: false
-                        )
-                    }
+                    showsElapsedTime: false
                 )
             )
         case .settings:

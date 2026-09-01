@@ -99,4 +99,10 @@ public struct MinesweeperTheme: Theme {
     )
 
     public let spacing = SpacingTokens()
+
+    // #1023 R5: streak pip-off fill (design.md §5.3). ON state reuses
+    // `accent.celebratory` — no separate "pipOn" token.
+    public let streak = StreakTokens(
+        pipOff: ThemeColor(name: "streak.pipOff", light: 0x5B8FB6, dark: 0x3A739A, bundle: .module)
+    )
 }

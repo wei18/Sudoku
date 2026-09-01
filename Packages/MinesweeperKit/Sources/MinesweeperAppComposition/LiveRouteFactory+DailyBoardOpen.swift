@@ -37,6 +37,33 @@ internal import Telemetry
 internal import SettingsUI
 
 extension LiveRouteFactory {
+    // MARK: - Daily "more today?" resolution (#1023)
+
+    /// Shared by the `.board` (live overlay, via `boardOpenDestination` below)
+    /// and `.completion` (pushed review) cases — both need the SAME "is
+    /// another difficulty still open today" answer. `LiveMinesweeperDailyProvider`
+    /// is pure/synchronous (no injection needed); `savedGameStore` is the only
+    /// real dependency. Picks the first trio entry that is neither today's
+    /// puzzle just finished nor already completed, in trio order.
+    @MainActor
+    static func makeFetchDailyProgress(
+        currentDifficulty: Difficulty,
+        savedGameStore: MinesweeperSavedGameStore?
+    ) -> @MainActor () async -> MinesweeperDailyCompletionProgress {
+        {
+            guard let savedGameStore else { return .allDone }
+            let today = Date()
+            let trio = LiveMinesweeperDailyProvider().dailyTrio(date: today)
+            let completedIds = (try? await savedGameStore.fetchCompletedDailyIds(for: today)) ?? []
+            guard let next = trio.first(where: {
+                $0.difficulty != currentDifficulty && !completedIds.contains($0.puzzleId)
+            }) else {
+                return .allDone
+            }
+            return .moreToday(entry: next)
+        }
+    }
+
     // Unlabeled leading params mirror `replayDailyBoardDestination`'s /
     // `statsDestination`'s convention — keeps the switch case's call to a
     // handful of lines under the caller file's 400-line ceiling.
@@ -74,6 +101,15 @@ extension LiveRouteFactory {
                         errorReporter: errorReporter,
                         soundPlayer: soundPlayer ?? NoopSoundPlaying(),
                         makeDailyReminderPrimer: makeDailyReminderPrimer,
+                        fetchDailyProgress: Self.makeFetchDailyProgress(
+                            currentDifficulty: difficulty,
+                            savedGameStore: savedGameStore
+                        ),
+                        onDailyNext: onPresentBoard.map { presenter in
+                            { (entry: MinesweeperDailyEntry) in
+                                presenter(.board(difficulty: entry.difficulty, seed: entry.seed, mode: .daily))
+                            }
+                        },
                         personalRecordStore: personalRecordStore,
                         // #842 round 2 (low finding): dual-context Close —
                         // see MinesweeperDailyOpenGuardView.exitToHub's doc.

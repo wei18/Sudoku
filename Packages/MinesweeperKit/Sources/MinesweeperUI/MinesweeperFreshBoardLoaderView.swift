@@ -99,6 +99,9 @@ public struct MinesweeperFreshBoardLoaderView: View {
     private let soundPlayer: any SoundPlaying
     private let onPlayAgain: ((Difficulty) -> Void)?
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #1023: forwarded straight through to `MinesweeperBoardView`.
+    private let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
+    private let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
     private let store: MinesweeperSavedGameStore?
     private let recordName: String?
     private let personalRecordStore: MinesweeperPersonalRecordStore?
@@ -117,6 +120,8 @@ public struct MinesweeperFreshBoardLoaderView: View {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
+        onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil
@@ -131,6 +136,8 @@ public struct MinesweeperFreshBoardLoaderView: View {
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
         self.store = store
         self.recordName = recordName
         self.personalRecordStore = personalRecordStore
@@ -172,7 +179,9 @@ public struct MinesweeperFreshBoardLoaderView: View {
             gameCenter: gameCenter,
             soundPlayer: soundPlayer,
             onPlayAgain: onPlayAgain,
-            makeDailyReminderPrimer: makeDailyReminderPrimer
+            makeDailyReminderPrimer: makeDailyReminderPrimer,
+            fetchDailyProgress: fetchDailyProgress,
+            onDailyNext: onDailyNext
         )
         .id(BoardKey(difficulty: difficulty, seed: seed))
     }

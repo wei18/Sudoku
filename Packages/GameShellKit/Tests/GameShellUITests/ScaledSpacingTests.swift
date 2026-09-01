@@ -55,6 +55,7 @@ struct ScaledSpacingTests {
         var accent: AccentTokens { base.accent }
         var status: StatusTokens { base.status }
         var difficulty: DifficultyTokens { base.difficulty }
+        var streak: StreakTokens { base.streak }
     }
 
     private func resolve(theme: any Theme, dynamicTypeSize: DynamicTypeSize? = nil) -> CGFloat? {

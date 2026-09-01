@@ -38,6 +38,9 @@ public struct BoardView: View {
     // start a fresh game at the same level. `nil` → Close-only (existing behavior).
     // `internal` so BoardView+Completion can read it.
     let onPlayAgain: ((Difficulty) -> Void)?
+    // #1023: resolves the post-Daily-solve CTA row (§3.5); see BoardView+Completion.
+    let fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?
+    let onDailyNext: ((String) -> Void)?
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -54,6 +57,8 @@ public struct BoardView: View {
     // survive body recomputes without resetting fetch / auth-check state.
     @State var completionViewModel: CompletionViewModel?
     @State var completionReminderPrimer: ReminderPrimerCoordinator?
+    // #1023: `.allDone` default — never claims a "Next" mid-fetch.
+    @State var dailyCompletionProgress: DailyCompletionProgress = .allDone
     // #849: mirrors MinesweeperBoardView's `showIdleLeaveOverlay`. Sudoku has
     // no `.idle` board render, so the Ready signal is "no move made yet on a
     // live session" (`leaveOrPauseState` in BoardView+AccessibilityHeader.swift)
@@ -72,6 +77,8 @@ public struct BoardView: View {
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
+        fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)? = nil,
+        onDailyNext: ((String) -> Void)? = nil,
         path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
@@ -80,6 +87,8 @@ public struct BoardView: View {
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
         self.path = path
     }
 
@@ -128,9 +137,11 @@ public struct BoardView: View {
             if isCompleted, completionViewModel == nil, shouldPresentCompletionOverlay {
                 completionViewModel = makeCompletionViewModel()
                 completionReminderPrimer = makeReminderPrimer()
+                kickOffDailyProgressFetch()
             } else if !isCompleted {
                 completionViewModel = nil
                 completionReminderPrimer = nil
+                dailyCompletionProgress = .allDone
             }
         }
         .focusable()
@@ -338,63 +349,9 @@ public struct BoardView: View {
         .aspectRatio(1, contentMode: .fit)
     }
 
-    // MARK: - Keyboard
-
-    private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        // #763: a paused/completed board must not eat key presses meant for
-        // its overlay's own controls (e.g. Space re-toggling pause underneath).
-        guard modalOverlayPresentation == nil else { return .ignored }
-        // Arrow keys: move focus.
-        switch keyPress.key {
-        case .leftArrow:
-            viewModel.moveSelection(rowDelta: 0, columnDelta: -1); return .handled
-        case .rightArrow:
-            viewModel.moveSelection(rowDelta: 0, columnDelta: 1); return .handled
-        case .upArrow:
-            viewModel.moveSelection(rowDelta: -1, columnDelta: 0); return .handled
-        case .downArrow:
-            viewModel.moveSelection(rowDelta: 1, columnDelta: 0); return .handled
-        case .delete:
-            Task { await viewModel.placeDigit(nil) }; return .handled
-        default:
-            break
-        }
-        // Character keys.
-        let chars = keyPress.characters
-        if chars == "p" || chars == "P" {
-            viewModel.togglePencil()
-            return .handled
-        }
-        if chars == "0" {
-            Task { await viewModel.placeDigit(nil) }
-            return .handled
-        }
-        if let scalar = chars.unicodeScalars.first,
-           let digit = Int(String(scalar)),
-           (1...9).contains(digit) {
-            Task { await dispatchKeyboardDigit(digit) }
-            return .handled
-        }
-        return .ignored
-    }
-
-    /// #790 fix 1: keyboard digits now share the SAME `keypadDigit` arm/place/
-    /// pencil-note dispatch as the pointer-driven digit pad (`digitPad`'s
-    /// `onDigit:` closure above) — previously this called `placeDigit(_:)`
-    /// directly, which silently no-ops when nothing is selected (no way to
-    /// arm a digit from the keyboard at all). `internal` (not `private`) so
-    /// `BoardViewKeyboardDigitTests` can exercise it directly: SwiftUI's
-    /// `KeyPress` has no public initializer (confirmed against Apple's
-    /// Accessibility/SwiftUI sample code, which only ever receives one from
-    /// `onKeyPress`'s closure, never constructs one), so the full
-    /// `onKeyPress` → `handleKeyPress` chain isn't unit-testable — this is
-    /// the closest testable proxy for "what a digit key does."
-    func dispatchKeyboardDigit(_ digit: Int) async {
-        await viewModel.keypadDigit(digit)
-    }
-
     // #823: `elapsedLabel` + `armedAnnouncementMessage` moved to
     // BoardView+AccessibilityHeader.swift (same file-split rationale as that
-    // file's header extraction) to keep this file under the 400-line lint
-    // ceiling after the terminal-persist join wiring landed.
+    // file's header extraction); keyboard handling (`handleKeyPress` /
+    // `dispatchKeyboardDigit`) moved to BoardView+Keyboard.swift (#1023) —
+    // both to keep this file under the 400-line lint ceiling.
 }

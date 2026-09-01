@@ -82,4 +82,10 @@ public struct DefaultTheme: Theme {
     )
 
     public let spacing = SpacingTokens()
+
+    // #1023 R5: streak pip-off fill (design.md §5.2). ON state reuses
+    // `accent.celebratory` — no separate "pipOn" token.
+    public let streak = StreakTokens(
+        pipOff: ThemeColor(name: "streak.pipOff", light: 0x719561, dark: 0x5C7641, bundle: .module)
+    )
 }

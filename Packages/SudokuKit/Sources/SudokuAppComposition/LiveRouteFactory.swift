@@ -211,7 +211,23 @@ public struct LiveRouteFactory: RouteFactory {
                                         presenter(.board(puzzleId: envelope.identity.puzzleId))
                                     }
                                 }
+                            },
+                        // #1023: resolve the Daily "more today?" CTA row —
+                        // Daily-only (mirrors the `onPlayAgain` gate above, which
+                        // excludes Daily for the opposite reason: Daily never
+                        // gets "Play Again", only "Next"/"See you tomorrow").
+                        fetchDailyProgress: SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId)
+                            ? Self.makeFetchDailyProgress(
+                                currentPuzzleId: puzzleId,
+                                puzzleProvider: puzzleProvider,
+                                persistence: persistence
+                            )
+                            : nil,
+                        onDailyNext: onPresentBoard.map { presenter in
+                            { (nextPuzzleId: String) in
+                                presenter(.board(puzzleId: nextPuzzleId))
                             }
+                        }
                     )
                 )
             }
@@ -224,24 +240,34 @@ public struct LiveRouteFactory: RouteFactory {
             // SDD-003 Epic 4: Close pops the last route entry so the player
             // returns to the board (which is already dismissed) or the Hub.
             let closePath = path
-            // Wrap in the shared scaffold so the pushed-route completion (macOS)
-            // matches the centred-card + CTAs-below layout of the iPhone overlay.
-            // The card itself is intrinsic; the scaffold owns bg / centring / Close.
+            // #1023: `.review` — this route is ONLY ever pushed by
+            // `DailyHubViewModel.openCompleted` (re-viewing an already-
+            // completed Daily), so it's always Daily-context; no ritual, no
+            // haptic. Same CTA-row resolution as the live overlay / the
+            // `.completedRedirect` loader state, via the shared
+            // `CompletedRedirectSurface`.
             return AnyView(
-                CompletionOverlayScaffold(
-                    onClose: { closePath?.wrappedValue.removeLast() },
-                    card: {
-                        CompletionView(
-                            viewModel: CompletionViewModel(
-                                puzzleId: puzzleId,
-                                elapsedSeconds: elapsedSeconds,
-                                mistakeCount: mistakeCount,
-                                leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId)
-                            ),
-                            reminderPrimer: reminderPrimer,
-                            onClose: nil
+                CompletedRedirectSurface(
+                    completionViewModel: CompletionViewModel(
+                        puzzleId: puzzleId,
+                        elapsedSeconds: elapsedSeconds,
+                        mistakeCount: mistakeCount,
+                        leaderboardId: SudokuLeaderboardRouting.leaderboardId(forPuzzleId: puzzleId)
+                    ),
+                    reminderPrimer: reminderPrimer,
+                    fetchDailyProgress: SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId)
+                        ? Self.makeFetchDailyProgress(
+                            currentPuzzleId: puzzleId,
+                            puzzleProvider: puzzleProvider,
+                            persistence: persistence
                         )
-                    }
+                        : nil,
+                    onDailyNext: onPresentBoard.map { presenter in
+                        { (nextPuzzleId: String) in
+                            presenter(.board(puzzleId: nextPuzzleId))
+                        }
+                    },
+                    onClose: { closePath?.wrappedValue.removeLast() }
                 )
             )
         case .settings:
@@ -277,6 +303,34 @@ public struct LiveRouteFactory: RouteFactory {
                     banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate) }
                 )
             )
+        }
+    }
+
+    // MARK: - Daily "more today?" resolution (#1023)
+
+    /// Shared by the `.board` (live overlay) and `.completion` (pushed
+    /// review) cases — both need the SAME "is another difficulty still open
+    /// today" answer. `puzzleProvider.fetchDailyTrio` is in-memory-cached
+    /// (`PuzzleStore` doc), so this is a cheap cache hit in the common case
+    /// (the player just came from the Daily hub, which already fetched the
+    /// trio to render the cards). Picks the first trio entry that is neither
+    /// the puzzle just finished nor already completed, in trio order.
+    @MainActor
+    static func makeFetchDailyProgress(
+        currentPuzzleId: String,
+        puzzleProvider: any PuzzleProviderProtocol,
+        persistence: any PersistenceProtocol
+    ) -> @MainActor () async -> DailyCompletionProgress {
+        {
+            let today = Date()
+            guard let trio = try? await puzzleProvider.fetchDailyTrio(date: today) else { return .allDone }
+            let completedIds = (try? await persistence.fetchCompletedDailyIds(for: today)) ?? []
+            guard let next = trio.first(where: {
+                $0.identity.puzzleId != currentPuzzleId && !completedIds.contains($0.identity.puzzleId)
+            }) else {
+                return .allDone
+            }
+            return .moreToday(difficulty: next.identity.difficulty, puzzleId: next.identity.puzzleId)
         }
     }
 

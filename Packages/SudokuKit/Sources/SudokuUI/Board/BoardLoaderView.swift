@@ -107,6 +107,9 @@ public struct BoardLoaderView: View {
     // #652: Play Again CTA. Forwarded into `BoardView` → `BoardView+Completion`.
     // `nil` (default) → Close-only completion (existing callsites unchanged).
     private let onPlayAgain: ((Difficulty) -> Void)?
+    // #1023: forwarded into `BoardView` AND used below for `.completedRedirect`.
+    private let fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?
+    private let onDailyNext: ((String) -> Void)?
     // #719: snapshot/test-only seam — when non-nil, `state` is pre-seeded to
     // `.failed(_)` and the `.task`-driven `load()` is skipped, so a
     // deterministic test can render `failedBlock` without a live (or fake)
@@ -131,6 +134,8 @@ public struct BoardLoaderView: View {
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
+        fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)? = nil,
+        onDailyNext: ((String) -> Void)? = nil,
         failedForSnapshot: UserFacingError? = nil
     ) {
         self.puzzleId = puzzleId
@@ -145,6 +150,8 @@ public struct BoardLoaderView: View {
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
         self.failedForSnapshot = failedForSnapshot
         self._state = State(initialValue: failedForSnapshot.map { .failed($0) } ?? .loading)
     }
@@ -173,22 +180,20 @@ public struct BoardLoaderView: View {
                 gameCenter: gameCenter,
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
                 onPlayAgain: onPlayAgain,
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
                 path: path
             )
         case .completedRedirect(let completionViewModel, let reminderPrimer):
             // #842: same scaffold + card `LiveRouteFactory`'s `.completion`
-            // route builds for `openCompleted`'s redirect — byte-identical
-            // rendering, just reached from a different (pre-mount) seam, so
-            // this introduces no new visual state to snapshot.
-            CompletionOverlayScaffold(
-                onClose: { exitToHub() },
-                card: {
-                    CompletionView(
-                        viewModel: completionViewModel,
-                        reminderPrimer: reminderPrimer,
-                        onClose: nil
-                    )
-                }
+            // route builds for `openCompleted`'s redirect. #1023: `.review` —
+            // resolved via `CompletedRedirectSurface`, see its own doc comment.
+            CompletedRedirectSurface(
+                completionViewModel: completionViewModel,
+                reminderPrimer: reminderPrimer,
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
+                onClose: { exitToHub() }
             )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
