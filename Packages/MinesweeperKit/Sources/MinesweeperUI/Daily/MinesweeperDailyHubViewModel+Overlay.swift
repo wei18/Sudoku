@@ -14,6 +14,7 @@
 // `internal` on the main class for the same cross-file-access reason.
 
 import Foundation
+import GameShellUI
 import MinesweeperEngine
 import MinesweeperGameState
 import Telemetry
@@ -95,6 +96,16 @@ extension MinesweeperDailyHubViewModel {
         let completedPuzzleIds: Set<String>
     }
 
+    /// #1021 Phase B: widened (additive) to also carry the FULL day-bucketed
+    /// dictionary the 7 `slots` were sliced out of — mirrors
+    /// `SudokuUI.DailyHubViewModel+WeekWindow.WeekWindowResult`'s doc. Not a
+    /// second fetch: `savedGameStore.fetchCompletedDailyIdsByDay()` already
+    /// returns every day, unscoped to the window.
+    struct WeekWindowResult: Sendable {
+        let slots: [WeekWindowSlot]
+        let completedByDay: [String: Set<String>]
+    }
+
     /// #774: the rolling window size — also the streak display's cap (see
     /// the "7+" caption branch in `MinesweeperDailyStripView`).
     static let weekStripWindowSize = 7
@@ -114,12 +125,12 @@ extension MinesweeperDailyHubViewModel {
     /// Slots are built directly in oldest (`offsetFromToday: 6`) to newest
     /// (`offsetFromToday: 0` == today) order — callers (the week strip,
     /// `MinesweeperDailyStripView`) depend on that ordering.
-    func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
+    func fetchWeekWindow(referenceDate: Date) async -> WeekWindowResult? {
         guard let savedGameStore else { return nil }
         let offsets = stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1)
         do {
             let completedByDay = try await savedGameStore.fetchCompletedDailyIdsByDay()
-            return offsets.map { offset in
+            let slots = offsets.map { offset in
                 let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
                 let dayKey = UTCDay.string(from: dayDate)
                 return WeekWindowSlot(
@@ -128,6 +139,7 @@ extension MinesweeperDailyHubViewModel {
                     completedPuzzleIds: completedByDay[dayKey] ?? []
                 )
             }
+            return WeekWindowResult(slots: slots, completedByDay: completedByDay)
         } catch {
             await errorReporter.report(
                 UserFacingError.classify(error),
@@ -136,5 +148,23 @@ extension MinesweeperDailyHubViewModel {
             )
             return nil
         }
+    }
+
+    // MARK: - #1021 Phase B: TodayMapper data seams
+
+    /// Derives the all-time completed-day set from the SAME day-bucketed
+    /// dictionary `fetchWeekWindow` already fetched — not a second read.
+    static func completedDays(from completedByDay: [String: Set<String>]) -> Set<DayKey> {
+        Set(completedByDay.keys.compactMap(DayKey.key))
+    }
+
+    /// `true` once phase-2's week-window fetch has resolved
+    /// (`!isPhase2Pending`) and come back empty-handed
+    /// (`weekStrip.days.isEmpty`) — mirrors
+    /// `SudokuUI.DailyHubViewModel.isPhase2Degraded`'s doc (not repeated
+    /// here). `MinesweeperTodayMapper` reads this to force every card to
+    /// "not started" without a second CK read.
+    var isPhase2Degraded: Bool {
+        !isPhase2Pending && weekStrip.days.isEmpty
     }
 }

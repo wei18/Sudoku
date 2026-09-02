@@ -53,25 +53,17 @@ public final class DailyHubViewModel {
     /// #826: non-nil while the confirmationDialog picker is showing (a
     /// tapped past day had more than one completed difficulty). `DailyHubView`
     /// binds its `.confirmationDialog(isPresented:)` to `!= nil` and calls
-    /// `reviewChoiceSelected(_:)` / `dismissReviewPicker()`.
-    public private(set) var reviewPickerChoices: [DailyReviewChoice]?
+    /// `reviewChoiceSelected(_:)` / `dismissReviewPicker()`. #1021 Phase B:
+    /// `internal(set)` (was `private(set)`) so `DailyHubViewModel+Review.swift`
+    /// (split out to keep this file under the 400-line `file_length` ceiling)
+    /// can write it.
+    public internal(set) var reviewPickerChoices: [DailyReviewChoice]?
 
-    /// #1021 Phase B: every calendar day with ≥1 completed daily puzzle,
-    /// ever (not just the 7-day `weekStrip` window) — sourced from the SAME
-    /// `fetchCompletedDailyIdsByDay()` read `fetchWeekWindow` already
-    /// performs (see `WeekWindowResult`), so this is data reuse, not a new
-    /// fetch. `TodayMapper`'s streak header uses this to compute the
-    /// ALL-TIME longest streak (design.md §3.1 "Best 31"), which the
-    /// window-capped `weekStrip.streak` can't represent past 7.
+    /// #1021 Phase B: all-time completed days, feeding `TodayMapper`'s
+    /// `longest` streak. See `DailyHubViewModel+Today.swift`.
     private(set) var allCompletedDays: Set<DayKey> = []
-
-    /// #1021 Phase B: the most-recently-touched in-progress save, best-effort
-    /// (a fetch failure or absence just means "no in-progress card" — never
-    /// promotes to `.degraded`). Reuses the ONE existing `latestInProgress()`
-    /// read design.md §3.1 already budgets for the resume pill; this is the
-    /// SAME call, re-read here because the Daily hub has no other seam onto
-    /// it. `TodayMapper` matches this against each card's `puzzleId` to
-    /// decide whether that specific card is "in progress".
+    /// #1021 Phase B: best-effort in-progress save for `TodayMapper`. See
+    /// `DailyHubViewModel+Today.swift`.
     private(set) var inProgressSummary: SavedGameSummary?
 
     /// #842: `true` from `.loaded`'s first render until `fillCompletionOverlay`
@@ -122,8 +114,9 @@ public final class DailyHubViewModel {
     /// the MainActor, so no second tap can slip a route in during the load.
     /// Unlike BoardView's completion-overlay presentation (a one-shot
     /// `.completed` transition, #667), this RESETS so a re-tap after
-    /// returning to the hub works again.
-    private var isOpeningCompleted = false
+    /// returning to the hub works again. #1021 Phase B: not `private` —
+    /// `DailyHubViewModel+Review.swift` writes it too.
+    var isOpeningCompleted = false
 
     public init(
         provider: any PuzzleProviderProtocol,
@@ -243,9 +236,7 @@ public final class DailyHubViewModel {
         // never blocks or degrades the window/strip below.
         async let windowTask = fetchWeekWindow(referenceDate: date)
         async let bestTimesTask = fetchBestTimes(trio: trio)
-        // #1021 Phase B: best-effort, independent of both lanes above — a
-        // failure here degrades only "no in-progress card" (see
-        // `fetchInProgressSummary`'s doc), never the week window or trio.
+        // #1021 Phase B: independent best-effort lane — see `fetchInProgressSummary`.
         async let inProgressTask = fetchInProgressSummary()
         let window = await windowTask
         let bestTimes = await bestTimesTask
@@ -282,39 +273,8 @@ public final class DailyHubViewModel {
         }
         let rawStreak = DailyStripLogic.computeStreak(days: days)
         weekStrip = DailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
-        // #1021 Phase B: reuses the SAME fetched dictionary `window` was
-        // sliced from — see `WeekWindowResult`'s doc. Not a second fetch.
-        allCompletedDays = Set(window.completedByDay.keys.compactMap(DayKey.key))
-    }
-
-    /// #1021 Phase B: fetches `latestInProgress()` for the Today hub's
-    /// in-progress card status text/thumbnail. Best-effort — an absence
-    /// (`nil`) or a thrown fetch both degrade to "no in-progress card", never
-    /// to `.degraded` (unlike the week-window fetch above): not knowing about
-    /// an in-progress save is not the same as not knowing completion status.
-    private func fetchInProgressSummary() async -> SavedGameSummary? {
-        do {
-            return try await persistence.latestInProgress()
-        } catch {
-            await errorReporter.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "DailyHubViewModel.fetchInProgressSummary"
-            )
-            return nil
-        }
-    }
-
-    /// #1021 Phase B: `true` once phase-2's week-window fetch has resolved
-    /// (`!isPhase2Pending`) and come back empty-handed (`weekStrip.days.isEmpty`)
-    /// — the all-or-nothing degrade `fillCompletionOverlay` applies above.
-    /// Distinct from "phase 2 hasn't run yet" (still `isPhase2Pending`,
-    /// `weekStrip` at its initial `.unknown`): only the SETTLED-but-empty
-    /// combination means the fetch genuinely failed. `TodayMapper` reads this
-    /// to force every card to "not started" per design.md §3.1's `degraded`
-    /// row, without inventing a second CK read to detect it.
-    var isPhase2Degraded: Bool {
-        !isPhase2Pending && weekStrip.days.isEmpty
+        // #1021 Phase B: reuses the SAME fetched dictionary, not a second fetch.
+        allCompletedDays = Self.completedDays(from: window.completedByDay)
     }
 
     /// Synchronous tap entry point (the DailyHubView shell closure is sync).
@@ -340,67 +300,6 @@ public final class DailyHubViewModel {
         Task { await openCompleted(puzzleId: card.envelope.identity.puzzleId, difficulty: card.difficulty) }
     }
 
-    /// #826: tap entry point for a dot in the #774 week strip. Only a
-    /// REVIEWABLE (≥1 parseable completed id — see
-    /// `DailyStripDay.isReviewable`), PAST day reacts. The view's tappable
-    /// gate (`DailyStripView.isTappable`) and this guard are built on the
-    /// SAME `DailyStripLogic.reviewChoices` parse, so a dot can never render
-    /// as a button whose tap would no-op here (CR round 2). Owner
-    /// adjudication 2026-07-16: exactly one completed difficulty opens its
-    /// Completion directly (reusing `openCompleted`'s async fetch path, same
-    /// as `cardTapped`'s completed branch); more than one presents
-    /// `reviewPickerChoices`, a confirmationDialog hosted by `DailyHubView`.
-    /// #882 F-5 (audit #874): NOT gated on `isPhase2Pending`, unlike
-    /// `cardTapped` (trusts a phase-1 placeholder, routes to `.board`
-    /// unchecked — the race #842 closes). No equivalent risk: `weekStrip`
-    /// stays `.unknown` until phase 2 first lands; `refresh()` keeps the
-    /// last IMMUTABLE snapshot (completion is monotonic, staleness only
-    /// under-reports); every completed open re-fetches fresh via
-    /// `openCompleted`'s `loadIfExists` anyway. Documented, not gated.
-    public func dayTapped(_ day: DailyStripDay) {
-        guard !day.isToday else { return }
-        let choices = DailyStripLogic.reviewChoices(from: day.completedPuzzleIds)
-        guard !choices.isEmpty else { return }
-        if choices.count == 1 {
-            openReview(choices[0])
-        } else {
-            reviewPickerChoices = choices
-        }
-    }
-
-    /// The confirmationDialog picker's row selection (#826).
-    public func reviewChoiceSelected(_ choice: DailyReviewChoice) {
-        reviewPickerChoices = nil
-        openReview(choice)
-    }
-
-    /// The confirmationDialog picker's Cancel / dismiss (#826).
-    public func dismissReviewPicker() {
-        reviewPickerChoices = nil
-    }
-
-    private func openReview(_ choice: DailyReviewChoice) {
-        // Same in-flight latch as `cardTapped`'s completed branch (#385) —
-        // a picker row tap and a direct single-difficulty open both fan out
-        // through the same async `openCompleted`.
-        guard !isOpeningCompleted else { return }
-        isOpeningCompleted = true
-        Task { await openCompleted(puzzleId: choice.puzzleId, difficulty: choice.difficulty) }
-    }
-
-    /// Loads the completed daily's saved snapshot to recover its frozen
-    /// `elapsedSeconds`, then routes to the Completion screen. On a load
-    /// failure we report through the funnel and fall back to `.board` — never
-    /// worse than the pre-#379 behavior, and never silently stuck.
-    ///
-    /// #830: uses `loadIfExists`, not `loadOrCreate` — the latter swallows a
-    /// fetch failure into "treat as absent" and would synthesize a virgin
-    /// `.completion(elapsedSeconds: 0, mistakeCount: 0)` for a
-    /// legitimately-completed game whose record simply failed to fetch
-    /// (transient CK error, cold cache). A `nil` result (confirmed absence —
-    /// unexpected for a card the caller already believes is completed) is
-    /// treated the same as a thrown fetch error: neither has real completion
-    /// data to show, so both fall back to `.board`.
     /// #686: the `.exhausted` alert's primary CTA — routes to Practice (its
     /// difficulty picker), since the Daily hub has none of its own. #1020
     /// (design.md §3.1): Practice is a tab now, not a `.practice` route to
@@ -417,39 +316,8 @@ public final class DailyHubViewModel {
         state = .loaded([])
     }
 
-    /// #826: widened from `(_ card: DailyCard)` to `(puzzleId:difficulty:)` —
-    /// the only two fields the body ever read — so a past-day tap
-    /// (`dayTapped`/`openReview`, which has no `DailyCard`/`PuzzleEnvelope`
-    /// for a day outside today's trio) can reuse this exact fetch path
-    /// instead of duplicating it.
-    func openCompleted(puzzleId: String, difficulty: Difficulty) async {
-        // Reset on both success and the error/fallback path so a later tap
-        // (#385) re-enters cleanly. `@MainActor` guarantees this runs without
-        // an interleaved `cardTapped` between the route append and the clear.
-        defer { isOpeningCompleted = false }
-        do {
-            guard let snapshot = try await persistence.loadIfExists(
-                puzzleId: puzzleId,
-                mode: .daily,
-                difficulty: difficulty
-            ) else {
-                // Confirmed absence: no record to review. Never worse than a
-                // fetch failure — fall back to `.board` the same way.
-                path.append(.board(puzzleId: puzzleId))
-                return
-            }
-            path.append(.completion(
-                puzzleId: puzzleId,
-                elapsedSeconds: snapshot.elapsedSeconds,
-                mistakeCount: snapshot.mistakeCount
-            ))
-        } catch {
-            await errorReporter.report(
-                UserFacingError.classify(error),
-                underlying: error,
-                source: "DailyHubViewModel.openCompleted"
-            )
-            path.append(.board(puzzleId: puzzleId))
-        }
-    }
+    // `dayTapped` / `reviewChoiceSelected` / `dismissReviewPicker` /
+    // `openReview` / `openCompleted` — the past-day review flow (#826/#830) —
+    // moved to `DailyHubViewModel+Review.swift` (#1021 Phase B, purely to
+    // keep this file under the 400-line `file_length` ceiling).
 }

@@ -1,10 +1,14 @@
-// MinesweeperDailyHubSnapshotTests — Daily-hub themed card baselines (#308).
+// MinesweeperDailyHubSnapshotTests — Daily-hub themed card baselines (#308,
+// redesigned #1021 Phase B).
 //
-// From #290 CR (peer of #303): the wired Daily hub ships real themed cards
-// (difficulty dot, completion checkmark, glass cards, MS palette) with only
-// pure-data + VM tests — the rendered layout was unverified. These baselines
-// guard the 1-vs-3-column grid, the difficulty tint per row, and the
-// completed-vs-uncompleted card states across light + dark.
+// #1021 Phase B: the glass `MinesweeperDailyCardView` + `MinesweeperDailyStripView`
+// header card are retired in favor of the shared `GameShellUI.DailyCardContent`
+// + `StreakHeaderView` (design.md §3.1/§4.2) — every baseline below is a
+// wholesale replacement, not an incremental re-record, of the pre-Phase-B
+// suite (their old `__Snapshots__/MinesweeperDailyHubSnapshotTests` baselines
+// were deleted; see the Phase B report). One baseline per `TodayPresentation`
+// state MS can reach — `loading`/`loaded`/`allDone`/`degraded` — names
+// deliberately contain the state word (MS has no `exhausted`/`failed`, D21).
 //
 // Seam (#308): `MinesweeperDailyHubViewModel.setStateForTesting(.loaded(...))`
 // installs a fixed loaded trio whose `bootstrap()` is latched to a no-op, so
@@ -23,278 +27,31 @@ import Testing
 import MinesweeperEngine
 
 @MainActor
-@Suite("MinesweeperDailyHubView — themed snapshots")
+@Suite("MinesweeperDailyHubView — themed snapshots (#1021 Phase B)")
 struct MinesweeperDailyHubSnapshotTests {
 
-    /// A fixed daily trio — all three card states exercised in the same frame:
-    /// Beginner = not-played (em-dash), Intermediate = completed (checkmark),
-    /// Expert = failed (xmark, Epic 8 / SDD-003). Hand-built (not date-derived)
-    /// so the fixture is fully deterministic.
+    /// A fixed daily trio — mixed states in one frame: Beginner = not-played,
+    /// Intermediate = completed (checkmark), Expert = failed (Epic 8 /
+    /// SDD-003). Hand-built (not date-derived) so the fixture is fully
+    /// deterministic.
     private static let loadedTrio: [MinesweeperDailyCard] = [
         MinesweeperDailyCard(
-            entry: MinesweeperDailyEntry(
-                puzzleId: "fixture-beginner",
-                difficulty: .beginner,
-                seed: 1
-            ),
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-beginner", difficulty: .beginner, seed: 1),
             isCompleted: false,
             isFailed: false
         ),
         MinesweeperDailyCard(
-            entry: MinesweeperDailyEntry(
-                puzzleId: "fixture-intermediate",
-                difficulty: .intermediate,
-                seed: 2
-            ),
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-intermediate", difficulty: .intermediate, seed: 2),
             isCompleted: true,
-            isFailed: false
+            bestTimeSeconds: 118
         ),
         MinesweeperDailyCard(
-            entry: MinesweeperDailyEntry(
-                puzzleId: "fixture-expert",
-                difficulty: .expert,
-                seed: 3
-            ),
+            entry: MinesweeperDailyEntry(puzzleId: "fixture-expert", difficulty: .expert, seed: 3),
             isCompleted: false,
             isFailed: true
-        ),
+        )
     ]
 
-    /// The Daily hub seeded to its loaded trio, wrapped in a NavigationStack so
-    /// the shell's `.navigationTitle` chrome renders.
-    ///
-    /// #878/#941: `setStateForTesting` bypasses `bootstrap()` entirely, which
-    /// leaves `isPhase2Pending` at its default `true` — every baseline below
-    /// explicitly pins `isPhase2Pending: false` for hygiene, though #941
-    /// removed the last visual/behavioral difference `isPhase2Pending` ever
-    /// made (cards render full-opacity + tappable regardless now).
-    private func dailyHubView(isPhase2Pending: Bool = false) -> some View {
-        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
-        viewModel.setStateForTesting(.loaded(Self.loadedTrio))
-        viewModel.setPhase2PendingForTesting(isPhase2Pending)
-        return NavigationStack {
-            MinesweeperDailyHubView(viewModel: viewModel)
-        }
-    }
-
-    // MARK: - Compact (iPhone, 1-column)
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_light() {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-compact",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPhone-light-compact", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_dark() {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .dark,
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-dark-compact",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPhone-dark-compact", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - iPad 13" (regular, 1032×1376 pt)
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPad_light() {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            sizeClass: .regular
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPad-light-regular",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPad-light-regular", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - Regular (Mac width, 3-column)
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_regular_light() {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.mac,
-            colorScheme: .light,
-            sizeClass: .regular
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-mac-light-regular",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-mac-light-regular", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_regular_dark() {
-        let host = hostingView(
-            dailyHubView(),
-            size: SnapshotLayouts.mac,
-            colorScheme: .dark,
-            sizeClass: .regular
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-mac-dark-regular",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-mac-dark-regular", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - #774 week-strip states
-    //
-    // The base fixtures above leave `weekStrip == .unknown` (skeleton dots) —
-    // that IS the degraded baseline. The two below pin the with-streak state
-    // and the AX3 layout. Fixed dates (relative to a deterministic anchor)
-    // keep the VoiceOver weekday labels — and hence the structure snapshot —
-    // stable.
-
-    nonisolated private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
-
-    /// Mixed strip: today + yesterday completed, earlier days missed →
-    /// last two dots filled, "2 day streak" caption. Completed days carry a
-    /// production-shaped puzzleId (#826 CR round 2: the tappable gate is
-    /// `isReviewable`, derived from the ids in init — an id-less completed
-    /// day would render inert and silently drop yesterday's dot-button from
-    /// the structure baseline).
-    private static func partialStreakStrip() -> MinesweeperDailyStripSnapshot {
-        let days = (0...6).reversed().map { offset in
-            MinesweeperDailyStripDay(
-                offsetFromToday: offset,
-                date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
-                isCompleted: offset <= 1,
-                completedPuzzleIds: offset <= 1 ? ["daily-2024-05-06-beginner"] : []
-            )
-        }
-        return MinesweeperDailyStripSnapshot(days: days, streak: 2)
-    }
-
-    private func dailyHubViewWithStreak() -> some View {
-        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
-        viewModel.setStateForTesting(.loaded(Self.loadedTrio))
-        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
-        // doc above for why this is needed alongside `setStateForTesting`.
-        viewModel.setPhase2PendingForTesting(false)
-        viewModel.setWeekStripForTesting(Self.partialStreakStrip())
-        return NavigationStack {
-            MinesweeperDailyHubView(viewModel: viewModel)
-        }
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_light_streak() {
-        let host = hostingView(
-            dailyHubViewWithStreak(),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-streak2",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPhone-light-streak2", record: SnapshotMode.recordMode)
-    }
-
-    /// #882 (audit #875 coverage caveat): the EMPTY state — a fresh account
-    /// where the week-window fetch SUCCEEDED but every day has zero
-    /// completions. Distinct from the base fixtures above (`weekStrip` left
-    /// at its default `.unknown` — fetch never ran / failed, card omitted
-    /// entirely): here `days` is fully populated (7 slots) and every dot
-    /// renders not-completed (today dashed, the other 6 missed with the
-    /// #882 F-3 xmark), with no streak header (0-day streak captions
-    /// identically to unknown — see `MinesweeperDailyStripSnapshot.streak`'s
-    /// doc). MS has no incidental equivalent of Sudoku's real-bootstrap path
-    /// producing this for free (every MS snapshot fixture seeds state via
-    /// `setStateForTesting`), so this is scripted explicitly via
-    /// `setWeekStripForTesting`.
-    private static func emptyStrip() -> MinesweeperDailyStripSnapshot {
-        let days = (0...6).reversed().map { offset in
-            MinesweeperDailyStripDay(
-                offsetFromToday: offset,
-                date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
-                isCompleted: false,
-                completedPuzzleIds: []
-            )
-        }
-        return MinesweeperDailyStripSnapshot(days: days, streak: nil)
-    }
-
-    private func dailyHubViewWithEmptyStrip() -> some View {
-        let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
-        viewModel.setStateForTesting(.loaded(Self.loadedTrio))
-        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
-        // doc above for why this is needed alongside `setStateForTesting`.
-        viewModel.setPhase2PendingForTesting(false)
-        viewModel.setWeekStripForTesting(Self.emptyStrip())
-        return NavigationStack {
-            MinesweeperDailyHubView(viewModel: viewModel)
-        }
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_light_stripEmpty() {
-        let host = hostingView(
-            dailyHubViewWithEmptyStrip(),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-stripEmpty",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPhone-light-stripEmpty", record: SnapshotMode.recordMode)
-    }
-
-    /// AX3 Dynamic Type layout pin — dots are structural (fixed 16pt, never
-    /// wrap); caption + card text scale. Env-injected Dynamic Type snapshots
-    /// are a layout pin only (memory: dynamic-type-sim-verify-and-cap); sim
-    /// verification is the authority for AX bugs.
-    /// Marketing-fixture gap (feat/store-screenshots-cb round 3): the iPad
-    /// Daily slot's only existing baseline (`Daily-iPad-light-regular`, above)
-    /// has `weekStrip == .unknown` (skeleton dots, no streak) AND Expert
-    /// badged Failed — once this PR's `detect_content_bottom()` crop is
-    /// correctly sizing the panel to its real content, that combination
-    /// renders as the worst-emptiness frame in the whole 126-PNG ASC set (a
-    /// ~7%-tall panel sliver over ~75% flat gradient), and a failure badge
-    /// has no business in a store screenshot regardless. All three
-    /// difficulties completed, no `isFailed` anywhere — same approach as
-    /// #979's macOS Home/Daily additions and this PR's own
-    /// `pencilNotesWithError` Board fixture: record the fuller baseline
-    /// directly instead of shipping the empty one. Same week-strip shape as
-    /// `snapshotDaily_iPhone_light_streak` above (2-day streak), iPad size.
     private static let completedTrio: [MinesweeperDailyCard] = [
         MinesweeperDailyCard(
             entry: MinesweeperDailyEntry(puzzleId: "fixture-beginner", difficulty: .beginner, seed: 1),
@@ -310,53 +67,158 @@ struct MinesweeperDailyHubSnapshotTests {
             entry: MinesweeperDailyEntry(puzzleId: "fixture-expert", difficulty: .expert, seed: 3),
             isCompleted: true,
             bestTimeSeconds: 341
-        ),
+        )
     ]
 
-    private func dailyHubViewAllCompletedWithStreak() -> some View {
+    private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
+
+    /// A settled (non-`.unknown`) 7-day window with a 2-day streak — feeds a
+    /// real (non-skeleton) `StreakHeaderView` render. Mirrors the pre-Phase-B
+    /// suite's `partialStreakStrip()` fixture.
+    private static func streakSnapshot() -> MinesweeperDailyStripSnapshot {
+        let days = (0...6).reversed().map { offset in
+            MinesweeperDailyStripDay(
+                offsetFromToday: offset,
+                date: fixedDate.addingTimeInterval(-Double(offset) * 86_400),
+                isCompleted: offset <= 1,
+                completedPuzzleIds: offset <= 1 ? ["daily-2024-05-06-beginner"] : []
+            )
+        }
+        return MinesweeperDailyStripSnapshot(days: days, streak: 2)
+    }
+
+    /// - Parameter degraded: when `true`, leaves `weekStrip` at its default
+    ///   `.unknown` and marks phase 2 SETTLED (`isPhase2Pending: false`) —
+    ///   `MinesweeperDailyHubViewModel.isPhase2Degraded`'s exact trigger.
+    ///   When `false` (default), seeds a real, settled `streakSnapshot()` so
+    ///   the header renders its ordinary (non-skeleton, non-degraded) state
+    ///   and the fixture trio's own completed/failed flags render as-is.
+    private func dailyHubView(state: MinesweeperDailyHubState?, degraded: Bool = false) -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
-        viewModel.setStateForTesting(.loaded(Self.completedTrio))
-        // #878: pin the settled (non-pending) treatment — see `dailyHubView`'s
-        // doc above for why this is needed alongside `setStateForTesting`.
-        viewModel.setPhase2PendingForTesting(false)
-        viewModel.setWeekStripForTesting(Self.partialStreakStrip())
+        if let state {
+            viewModel.setStateForTesting(state)
+        }
+        if degraded {
+            viewModel.setPhase2PendingForTesting(false)
+        } else if state != nil {
+            viewModel.setWeekStripForTesting(Self.streakSnapshot())
+            viewModel.setPhase2PendingForTesting(false)
+        }
+        // `state == nil` (the `loading` fixture) leaves `isPhase2Pending` at
+        // its default `true` — phase 2 genuinely hasn't run yet.
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)
         }
     }
 
+    /// `loading`: never seeded/bootstrapped — the shell's `.idle` branch
+    /// renders the same spinner as `.loading` (mirrors Sudoku's
+    /// `snapshotLoadingIPhoneLight`), header still rendering (skeleton).
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPad_light_streak() {
+    func snapshotLoading_iPhone_light() {
         let host = hostingView(
-            dailyHubViewAllCompletedWithStreak(),
-            size: SnapshotLayouts.iPad,
-            colorScheme: .light,
-            sizeClass: .regular
-        )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPad-light-streak2",
-            record: SnapshotMode.recordMode
-        )
-        assertViewStructure(of: host, named: "Daily-iPad-light-streak2", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotDaily_iPhone_light_streak_ax3() {
-        let host = hostingView(
-            dailyHubViewWithStreak().dynamicTypeSize(.accessibility3),
+            dailyHubView(state: nil),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
         )
-        assertUISnapshot(
-            of: host,
-            as: .image,
-            named: "Daily-iPhone-light-streak-AX3",
-            record: SnapshotMode.recordMode
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-loading", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPhone-light-loading", record: SnapshotMode.recordMode)
+    }
+
+    /// `loaded`: mixed not-played / completed / failed trio.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoaded_iPhone_light() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio)),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
         )
-        assertViewStructure(of: host, named: "Daily-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-loaded", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPhone-light-loaded", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoaded_regular_light() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio)),
+            size: SnapshotLayouts.mac,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-mac-light-loaded", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-mac-light-loaded", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoaded_regular_dark() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio)),
+            size: SnapshotLayouts.mac,
+            colorScheme: .dark,
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-mac-dark-loaded", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-mac-dark-loaded", record: SnapshotMode.recordMode)
+    }
+
+    /// `allDone`: every difficulty completed — `TodayAllDoneBlock` renders
+    /// above the (still tappable) 3 solved cards.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAllDone_iPhone_light() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.completedTrio)),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-allDone", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPhone-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotAllDone_iPad_light() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.completedTrio)),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPad-light-allDone", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPad-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    /// `degraded`: phase-2 (week-window) fetch settled with nothing (default
+    /// `weekStrip == .unknown`, `isPhase2Pending == false`) — every card
+    /// forced to "not started", streak header renders as a skeleton.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotDegraded_iPhone_light() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio), degraded: true),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-degraded", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPhone-light-degraded", record: SnapshotMode.recordMode)
+    }
+
+    /// AX3 Dynamic Type layout pin — a card title must not hyphenate/truncate
+    /// at AX3 (Leader adjudication, row-card layout). Env-injected Dynamic
+    /// Type snapshots are a layout pin only (memory:
+    /// dynamic-type-sim-verify-and-cap); sim verification is the authority
+    /// for AX bugs.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoaded_iPhone_light_AX3() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio)).dynamicTypeSize(.accessibility3),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
     }
 }
 #endif

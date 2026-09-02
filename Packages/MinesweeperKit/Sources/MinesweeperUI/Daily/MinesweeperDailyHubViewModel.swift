@@ -11,12 +11,10 @@
 // there is no `.exhausted` / generator-failure path; the only async work is
 // the optional completed/failed-ids fetch.
 //
-// #816: the completed-ids fetch used to go through the Sudoku-shaped
-// `PersistenceProtocol.fetchCompletedDailyIds` — a CK predicate that assumes
-// a `puzzleId` field MS's `SavedGame` schema doesn't have, so it always threw
-// and the green check never appeared. It now reads from
-// `MinesweeperSavedGameStore.fetchCompletedDailyIds`, mirroring the
-// already-working failed-ids path below.
+// #816: the completed-ids fetch now reads from
+// `MinesweeperSavedGameStore.fetchCompletedDailyIds` (not the Sudoku-shaped
+// `PersistenceProtocol.fetchCompletedDailyIds`, whose `puzzleId` predicate MS's
+// schema doesn't satisfy), mirroring the already-working failed-ids path below.
 
 public import Foundation
 public import SwiftUI
@@ -74,6 +72,8 @@ public final class MinesweeperDailyHubViewModel {
     /// #826: non-nil while the confirmationDialog picker is showing. Mirrors
     /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`.
     public private(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
+    /// #1021 Phase B: all-time completed days, feeding `longest`. See `+Overlay.swift`.
+    private(set) var allCompletedDays: Set<DayKey> = []
 
     /// #842: `true` from `.loaded`'s first render until
     /// `fillCompletionAndFailureOverlay` (phase 2) resolves at least once, for
@@ -252,11 +252,11 @@ public final class MinesweeperDailyHubViewModel {
         let window = await windowTask
         let failed = await failedTask
         let bestTimes = await bestTimesTask
-        let completed: Set<String> = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
+        let completed: Set<String> = window?.slots.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
 
         guard case .loaded(let latestCards) = state else { return }
         if let window {
-            let days = window.map { slot in
+            let days = window.slots.map { slot in
                 MinesweeperDailyStripDay(
                     offsetFromToday: slot.offsetFromToday,
                     date: slot.date,
@@ -266,11 +266,14 @@ public final class MinesweeperDailyHubViewModel {
             }
             let rawStreak = MinesweeperDailyStripLogic.computeStreak(days: days)
             weekStrip = MinesweeperDailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
+            // #1021 Phase B: reuses the SAME fetched dictionary, not a second fetch.
+            allCompletedDays = Self.completedDays(from: window.completedByDay)
         } else {
             // #774: any single day's fetch failing (or no `savedGameStore`
             // injected at all — preview/test callsites) degrades the WHOLE
             // window rather than risk a false "missed" dot.
             weekStrip = .unknown
+            allCompletedDays = []
         }
         // #886: best times always merge in, independent of whether this
         // round's completed/failed sets carried any new information — an
