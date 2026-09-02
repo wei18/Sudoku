@@ -23,7 +23,9 @@
 public import SwiftUI
 public import GameAudio
 public import GameCenterClient
-import GameShellUI
+// #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
+// GameShellUI's `CompletionStreakAdvance` in this view's public API.
+public import GameShellUI
 public import MinesweeperEngine
 public import MonetizationCore
 import MonetizationUI
@@ -98,6 +100,12 @@ public struct MinesweeperBoardView: View {
     // on the terminal transition and cleared with it. Held in `@State` so it
     // survives body recomputes without resetting its auth-check state.
     @State private var completionReminderPrimer: ReminderPrimerCoordinator?
+    // #1023: `.allDone` default — never claims a "Next" that doesn't exist
+    // while `fetchDailyProgress` is still resolving.
+    @State var dailyCompletionProgress: MinesweeperDailyCompletionProgress = .allDone
+    // #1023 Phase B: `nil` default — no streak section renders until (and
+    // unless) `fetchStreakAdvance` resolves a value.
+    @State var streakAdvance: CompletionStreakAdvance?
     // #681: the pre-first-tap `.idle` board has no exit — `PauseOverlayView` is
     // only mounted while `viewModel.isPaused` (== session `.paused`), and
     // `MinesweeperSession.pause()` deliberately no-ops unless `.playing` (mine
@@ -143,7 +151,8 @@ public struct MinesweeperBoardView: View {
     // `viewModel:` init path takes the VM's mode as already-decided (Retry uses
     // `viewModel.mode`); the `difficulty:seed:` init path threads it explicitly.
     // Defaults `.practice` — the most cautious (no daily submit) value.
-    private let mode: GameMode
+    // `internal` (not `private`) — `MinesweeperBoardView+Completion` reads it.
+    let mode: GameMode
     // #330 P2: gameplay-audio seam, held at the board so it can (a) start the
     // looping BGM when the board appears and (b) be re-threaded into the VM that
     // Retry rebuilds in place. Defaults `NoopSoundPlaying` so preview / snapshot /
@@ -156,7 +165,8 @@ public struct MinesweeperBoardView: View {
     // above Close. The closure receives the current difficulty so the caller can
     // dismiss and start a fresh board at the same level. `nil` → Close-only
     // (existing behavior; snapshot tests are unaffected).
-    private let onPlayAgain: ((Difficulty) -> Void)?
+    // `internal` (not `private`) — `MinesweeperBoardView+Completion` reads it.
+    let onPlayAgain: ((Difficulty) -> Void)?
     // #814 (mirrors Sudoku BoardView's `makeDailyReminderPrimer`, #610): builds
     // a fresh daily-ready primer coordinator per Daily-WIN completion mount.
     // Injected as a closure so ALL reminder wiring stays in composition
@@ -164,6 +174,15 @@ public struct MinesweeperBoardView: View {
     // (Daily win — see `makeReminderPrimer()` below). `nil` in previews /
     // tests → no primer, byte-identical Completion overlay.
     private let makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)?
+    // #1023: resolves the post-Daily-WIN CTA row (§3.5) — "is there another
+    // difficulty left today, and if so, which + its puzzleId/seed". Mirrors
+    // `makeDailyReminderPrimer`'s injection shape.
+    private let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
+    // Presents the next daily entry returned by `fetchDailyProgress`.
+    let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
+    // #1023 Phase B: resolves the M3/M4 streak-ritual pre/post state on a
+    // Daily WIN. Mirrors `fetchDailyProgress`'s injection shape.
+    private let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     // #796: the store backing the tap-mode toggle's seed/persist round trip
     // (#720 G3). Defaults `.standard` so every production call site compiles
     // and behaves unchanged; snapshot/ASC-screenshot tests MUST pass an
@@ -180,6 +199,9 @@ public struct MinesweeperBoardView: View {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
+        onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         suppressTickerForSnapshot: Bool = false,
         completionViewModelForSnapshot: MinesweeperCompletionViewModel? = nil,
         tapModeDefaults: UserDefaults = .standard
@@ -191,6 +213,9 @@ public struct MinesweeperBoardView: View {
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.suppressTickerForSnapshot = suppressTickerForSnapshot
         // #388 / #315 snapshot seam: pre-seed the Completion overlay's VM so a
         // seeded terminal board renders WITH the overlay mounted (the in-body
@@ -217,6 +242,9 @@ public struct MinesweeperBoardView: View {
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
+        fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)? = nil,
+        onDailyNext: ((MinesweeperDailyEntry) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
@@ -239,6 +267,9 @@ public struct MinesweeperBoardView: View {
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.suppressTickerForSnapshot = false
         self.mode = mode
         self.tapModeDefaults = tapModeDefaults
@@ -350,9 +381,28 @@ public struct MinesweeperBoardView: View {
                 // #814: build the Daily-win reminder primer alongside the VM
                 // (mirrors Sudoku BoardView's onChange seed, #610).
                 completionReminderPrimer = makeReminderPrimer()
+                // #1023: resolve the Daily "more today?" CTA row on a WIN
+                // only — a loss never offers "Next" (design.md §3.5's loss
+                // row is Try Again / Close, not a daily-progress row).
+                if mode == .daily, viewModel.status == .won, let fetchDailyProgress {
+                    Task { @MainActor in
+                        dailyCompletionProgress = await fetchDailyProgress()
+                    }
+                }
+                // #1023 Phase B: same Daily-WIN-only gate as the daily
+                // progress fetch above — a loss never qualifies for the
+                // streak ritual (design.md §3.5's `loss` row plays no
+                // ritual regardless of mode).
+                if mode == .daily, viewModel.status == .won, let fetchStreakAdvance {
+                    Task { @MainActor in
+                        streakAdvance = await fetchStreakAdvance()
+                    }
+                }
             } else if !isTerminal {
                 completionViewModel = nil
                 completionReminderPrimer = nil
+                dailyCompletionProgress = .allDone
+                streakAdvance = nil
             }
         }
         // #815: zoom resets per board session — a new VM identity means a new
@@ -1147,33 +1197,27 @@ public struct MinesweeperBoardView: View {
     @ViewBuilder
     private func completionSurface(_ completionViewModel: MinesweeperCompletionViewModel) -> some View {
         // #615: now uses the shared `CompletionOverlayScaffold` (GameShellUI) so MS
-        // matches Sudoku — centred card, warm-paper background extended behind the
-        // safe area, bottom-pinned accent Close. Close clears the overlay VM then
-        // dismisses the presenting fullScreenCover so the player returns to the hub
-        // (mirrors Sudoku's close-to-hub). Previously MS only cleared the VM and
-        // revealed the boomed board, leaving the player trapped in the modal — the
-        // divergence #615 surfaced. Retry / New Game / Leaderboard CTAs stay removed
-        // at this injection site (SDD-003 Epic 4 spec note: "移除發生在各 app 的注入點").
-        // #652: Play Again — dismiss current board then present a fresh game at the
-        // same difficulty. Only rendered when `onPlayAgain` is wired by the factory.
+        // matches Sudoku — full-height glass panel, board visible behind. Close
+        // clears the overlay VM then dismisses the presenting fullScreenCover so
+        // the player returns to the hub (mirrors Sudoku's close-to-hub).
+        // #1023: the live overlay is ALWAYS `.liveSolve` (this is the one path
+        // that fires right after the win/loss that just happened); outcome kind
+        // follows `didWin`.
         let difficulty = viewModel.session.difficulty
+        let closeAction: () -> Void = {
+            self.completionViewModel = nil
+            // #823: register before dismissing — synchronous, adds no
+            // latency to Close — so the teardown-triggered hub refresh
+            // waits (bounded) for this save to land.
+            persistJoin?.register(viewModel.pendingTerminalPersistTask)
+            dismiss()
+        }
         CompletionOverlayScaffold(
-            onClose: {
-                self.completionViewModel = nil
-                // #823: register before dismissing — synchronous, adds no
-                // latency to Close — so the teardown-triggered hub refresh
-                // waits (bounded) for this save to land.
-                persistJoin?.register(viewModel.pendingTerminalPersistTask)
-                dismiss()
-            },
-            onPlayAgain: onPlayAgain.map { playAgain in
-                {
-                    self.completionViewModel = nil
-                    persistJoin?.register(viewModel.pendingTerminalPersistTask)
-                    dismiss()
-                    playAgain(difficulty)
-                }
-            },
+            variant: .liveSolve,
+            outcomeKind: completionViewModel.didWin ? .success : .failure,
+            context: completionContext(closeAction: closeAction, difficulty: difficulty, didWin: completionViewModel.didWin),
+            onClose: closeAction,
+            streakAdvance: streakAdvance,
             card: {
                 MinesweeperCompletionView(
                     viewModel: completionViewModel,

@@ -26,6 +26,7 @@ public protocol Theme: Sendable {
     var status: StatusTokens { get }
     var difficulty: DifficultyTokens { get }
     var spacing: SpacingTokens { get }
+    var streak: StreakTokens { get }
 }
 
 // MARK: - Color pair
@@ -374,6 +375,12 @@ public struct NeutralTheme: Theme {
     )
 
     public let spacing = SpacingTokens()
+
+    // Grayscale placeholder — never an app's brand streak color (see the
+    // type doc above); no un-injected subtree renders real streak UI.
+    public let streak = StreakTokens(
+        pipOff: ThemeColor(light: 0xD1D1D6, dark: 0x48484A)
+    )
 }
 
 // MARK: - Environment key

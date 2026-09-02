@@ -58,7 +58,9 @@ public import SudokuEngine
 // #719: `UITestLaunchArg.loaderFail` DEBUG hook.
 import GameAppKit
 // #842: `CompletionOverlayScaffold` for the inline completed-daily redirect.
-import GameShellUI
+// #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
+// GameShellUI's `CompletionStreakAdvance` in this view's public API.
+public import GameShellUI
 
 @MainActor
 public struct BoardLoaderView: View {
@@ -107,6 +109,13 @@ public struct BoardLoaderView: View {
     // #652: Play Again CTA. Forwarded into `BoardView` → `BoardView+Completion`.
     // `nil` (default) → Close-only completion (existing callsites unchanged).
     private let onPlayAgain: ((Difficulty) -> Void)?
+    // #1023: forwarded into `BoardView` AND used below for `.completedRedirect`.
+    private let fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?
+    private let onDailyNext: ((String) -> Void)?
+    // #1023 Phase B: forwarded ONLY into `BoardView` — `.completedRedirect` is
+    // a `.review` re-view (design.md §3.5), which never plays the streak
+    // ritual, so it never needs this provider.
+    private let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     // #719: snapshot/test-only seam — when non-nil, `state` is pre-seeded to
     // `.failed(_)` and the `.task`-driven `load()` is skipped, so a
     // deterministic test can render `failedBlock` without a live (or fake)
@@ -131,6 +140,9 @@ public struct BoardLoaderView: View {
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
+        fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)? = nil,
+        onDailyNext: ((String) -> Void)? = nil,
+        fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)? = nil,
         failedForSnapshot: UserFacingError? = nil
     ) {
         self.puzzleId = puzzleId
@@ -145,6 +157,9 @@ public struct BoardLoaderView: View {
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain
+        self.fetchDailyProgress = fetchDailyProgress
+        self.onDailyNext = onDailyNext
+        self.fetchStreakAdvance = fetchStreakAdvance
         self.failedForSnapshot = failedForSnapshot
         self._state = State(initialValue: failedForSnapshot.map { .failed($0) } ?? .loading)
     }
@@ -173,22 +188,21 @@ public struct BoardLoaderView: View {
                 gameCenter: gameCenter,
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
                 onPlayAgain: onPlayAgain,
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
+                fetchStreakAdvance: fetchStreakAdvance,
                 path: path
             )
         case .completedRedirect(let completionViewModel, let reminderPrimer):
             // #842: same scaffold + card `LiveRouteFactory`'s `.completion`
-            // route builds for `openCompleted`'s redirect — byte-identical
-            // rendering, just reached from a different (pre-mount) seam, so
-            // this introduces no new visual state to snapshot.
-            CompletionOverlayScaffold(
-                onClose: { exitToHub() },
-                card: {
-                    CompletionView(
-                        viewModel: completionViewModel,
-                        reminderPrimer: reminderPrimer,
-                        onClose: nil
-                    )
-                }
+            // route builds for `openCompleted`'s redirect. #1023: `.review` —
+            // resolved via `CompletedRedirectSurface`, see its own doc comment.
+            CompletedRedirectSurface(
+                completionViewModel: completionViewModel,
+                reminderPrimer: reminderPrimer,
+                fetchDailyProgress: fetchDailyProgress,
+                onDailyNext: onDailyNext,
+                onClose: { exitToHub() }
             )
         case .failed(let userFacing):
             failedBlock(userFacing: userFacing)
@@ -364,32 +378,4 @@ public struct BoardLoaderView: View {
         await viewModel.startOrResume()
     }
 
-    #if DEBUG
-    /// #719 testable core — extracted from `load()` so a unit test can drive
-    /// the `-uitest-loader-fail` hook without needing a live process launch
-    /// argument. `load()` calls the no-arg overload (real
-    /// `ProcessInfo.processInfo.arguments`).
-    static func isLoaderFailLaunch(
-        arguments: [String] = ProcessInfo.processInfo.arguments
-    ) -> Bool {
-        arguments.contains(UITestLaunchArg.loaderFail)
-    }
-    #endif
-
-    /// Derive `PuzzleIdentity` from `puzzleId` string.
-    ///
-    /// Two formats per `PuzzleIdentity` static factories:
-    ///   - daily:    "YYYY-MM-DD-{difficulty}"
-    ///   - practice: "practice-{base32}-{difficulty}"
-    ///
-    /// Difficulty is the suffix after the last `-`. If parsing fails the
-    /// difficulty falls back to `.easy` so the load path still progresses;
-    /// the snapshot's `puzzle.difficulty` is the authoritative value used
-    /// by `BoardView` (this identity only feeds the header label).
-    private static func identity(from puzzleId: String) -> PuzzleIdentity {
-        let kind: Mode = puzzleId.hasPrefix("practice-") ? .practice : .daily
-        let difficultyRaw = puzzleId.split(separator: "-").last.map(String.init) ?? Difficulty.easy.rawValue
-        let difficulty = Difficulty(rawValue: difficultyRaw) ?? .easy
-        return PuzzleIdentity(puzzleId: puzzleId, kind: kind, difficulty: difficulty)
-    }
 }

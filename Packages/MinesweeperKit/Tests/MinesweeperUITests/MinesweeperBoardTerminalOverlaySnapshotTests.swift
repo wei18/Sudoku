@@ -42,6 +42,7 @@ import Foundation
 import SnapshotTesting
 import SwiftUI
 import Testing
+import GameShellUI
 @testable import MinesweeperUI
 
 import MinesweeperEngine
@@ -86,12 +87,21 @@ struct MinesweeperBoardTerminalOverlaySnapshotTests {
             elapsedSeconds: 65,
             leaderboardId: MinesweeperLeaderboardID.easyDaily
         )
+        // #1023: the Completion overlay is now a full-height glass panel whose
+        // M10 rise (like `CompletionScreen`'s own hero reveal, pre-#1023) is
+        // driven by `.onAppear` — which never fires on an offscreen
+        // `NSHostingView` in this CLI test harness (see
+        // `completionHeroSkipsReveal`'s doc comment). Without this, BOTH the
+        // panel and the hero render at their pre-reveal (opacity 0) state —
+        // this suite's own prior "baselines regenerated but tests still
+        // report failures" history (2026-06-25) is the same root cause.
         return MinesweeperBoardView(
             viewModel: MinesweeperGameViewModel(seeded: snapshot),
             suppressTickerForSnapshot: true,
             completionViewModelForSnapshot: completionVM,
             tapModeDefaults: BoardTestDefaults.store
         )
+        .environment(\.completionHeroSkipsReveal, true)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

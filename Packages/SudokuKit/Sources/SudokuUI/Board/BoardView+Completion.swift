@@ -20,7 +20,20 @@ import SwiftUI
 import GameAppKit
 import GameShellUI
 public import SettingsUI
-import SudokuEngine
+public import SudokuEngine
+
+// MARK: - Daily "more today?" resolution (#1023)
+
+/// Resolved once per Daily solve via `BoardView.fetchDailyProgress`, mirrors
+/// `MinesweeperKit`'s equivalent MS-side type. Not `Difficulty`-generic across
+/// apps because `CompletionContext` (GameShellUI) only ever sees the already-
+/// formatted label + presenter closure — see `completionSurface` below.
+public enum DailyCompletionProgress: Sendable, Equatable {
+    /// Another difficulty is still open today.
+    case moreToday(difficulty: Difficulty, puzzleId: String)
+    /// Nothing left to play today.
+    case allDone
+}
 
 // MARK: - BoardView extension
 
@@ -109,6 +122,27 @@ extension BoardView {
     /// #652: when `onPlayAgain` is wired, Play Again appears above Close. The
     /// exit-then-play action captures the current difficulty so the new game
     /// matches the just-finished one.
+    /// #1023: resolve the Daily "more today?" CTA row. Fire-and-await into
+    /// `dailyCompletionProgress` (`@State`, starts `.allDone` — never
+    /// overclaims a "Next" mid-fetch) — called from BoardView's `.onChange`
+    /// on the `.completed` transition.
+    func kickOffDailyProgressFetch() {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: viewModel.identity.puzzleId), let fetchDailyProgress else { return }
+        Task { @MainActor in
+            dailyCompletionProgress = await fetchDailyProgress()
+        }
+    }
+
+    /// #1023 Phase B: resolve the M3/M4 streak-ritual pre/post state on a
+    /// Daily solve. `nil` on failure (or when unwired) — no streak section
+    /// renders, mirroring `fetchDailyProgress`'s all-or-nothing degrade.
+    func kickOffStreakAdvanceFetch() {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: viewModel.identity.puzzleId), let fetchStreakAdvance else { return }
+        Task { @MainActor in
+            streakAdvance = await fetchStreakAdvance()
+        }
+    }
+
     @ViewBuilder
     func completionSurface(
         _ cvm: CompletionViewModel,
@@ -118,28 +152,25 @@ extension BoardView {
         // #615: the centred-card + bottom-pinned accent-Close layout now lives in
         // the shared `CompletionOverlayScaffold` (GameShellUI) so Minesweeper and
         // future games share it instead of re-deriving it per app.
+        // #1023: full-height glass panel + variant/context — the live overlay is
+        // ALWAYS `.liveSolve` (this is the one path that fires right after the
+        // solve that just happened); Sudoku is solve-only, so the outcome is
+        // always `.success`.
         let difficulty = viewModel.identity.difficulty
+        let closeAction: () -> Void = {
+            self.completionViewModel = nil
+            // #823: register before tearing down — synchronous, adds no
+            // latency to Close — so the teardown-triggered hub refresh
+            // waits (bounded) for this save to land.
+            persistJoin?.register(viewModel.pendingTerminalPersistTask)
+            exitToHub(dismiss: dismiss)
+        }
         CompletionOverlayScaffold(
-            onClose: {
-                self.completionViewModel = nil
-                // #823: register before tearing down — synchronous, adds no
-                // latency to Close — so the teardown-triggered hub refresh
-                // waits (bounded) for this save to land.
-                persistJoin?.register(viewModel.pendingTerminalPersistTask)
-                exitToHub(dismiss: dismiss)
-            },
-            onPlayAgain: onPlayAgain.map { playAgain in
-                // #652: exit the current board then start a fresh game at the
-                // same difficulty. `exitToHub` tears down the presentation (cover
-                // dismiss on iOS, stack pop on macOS) so the hub is visible
-                // before the new board modal is presented.
-                {
-                    self.completionViewModel = nil
-                    persistJoin?.register(viewModel.pendingTerminalPersistTask)
-                    exitToHub(dismiss: dismiss)
-                    playAgain(difficulty)
-                }
-            },
+            variant: .liveSolve,
+            outcomeKind: .success,
+            context: completionContext(closeAction: closeAction, difficulty: difficulty),
+            onClose: closeAction,
+            streakAdvance: streakAdvance,
             card: {
                 CompletionView(
                     viewModel: cvm,
@@ -148,6 +179,39 @@ extension BoardView {
                 )
             }
         )
+    }
+
+    /// §3.5's 4-row CTA table, minus the MS-only `.loss` row (Sudoku is
+    /// solve-only). Daily picks `.dailyMoreToday`/`.dailyAllDone` from the
+    /// `dailyCompletionProgress` resolved by `fetchDailyProgress`; Practice
+    /// picks `.practice`, forwarding `onPlayAgain` unchanged (nil when no
+    /// presenter is wired, same fallback as before #1023).
+    private func completionContext(closeAction: @escaping () -> Void, difficulty: Difficulty) -> CompletionContext {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: viewModel.identity.puzzleId) else {
+            return .practice(onPlayAgain: onPlayAgain.map { playAgain in
+                // #652: exit the current board then start a fresh game at the
+                // same difficulty. `exitToHub` tears down the presentation (cover
+                // dismiss on iOS, stack pop on macOS) so the hub is visible
+                // before the new board modal is presented.
+                {
+                    closeAction()
+                    playAgain(difficulty)
+                }
+            })
+        }
+        switch dailyCompletionProgress {
+        case .moreToday(let nextDifficulty, let nextPuzzleId):
+            guard let onDailyNext else { return .dailyAllDone }
+            return .dailyMoreToday(
+                nextDifficultyLabel: LocalizedStringKey(nextDifficulty.rawValue.capitalized),
+                onNext: {
+                    closeAction()
+                    onDailyNext(nextPuzzleId)
+                }
+            )
+        case .allDone:
+            return .dailyAllDone
+        }
     }
 
     /// #667 (SDD-003 2B): unified "return to hub" for the completion overlay's

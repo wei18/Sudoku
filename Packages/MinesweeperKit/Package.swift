@@ -106,6 +106,12 @@ let productionTargets: [Target] = [
             // the public gateway factory; the route factory threads it into
             // boards + the `.resumeBoard` loader.
             "MinesweeperPersistence",
+            // #1023 Phase B: `LiveRouteFactory+DailyBoardOpen.makeFetchStreakAdvance`
+            // reads `UTCDay.string(from:)` directly (re-exported by
+            // `MinesweeperGameState`'s `MonotonicClockReexport.swift`) to build
+            // the streak-window day keys — same re-export path
+            // `MinesweeperPersistence`/`MinesweeperUI` already rely on.
+            .product(name: "MinesweeperGameState", package: "MinesweeperCoreKit"),
             // #455 step 4: `.live()`'s fetchResume closure names
             // `ResumeCandidate<AppRoute>` (the #460 game-agnostic resume DTO).
             .product(name: "GameAppKit", package: "GameAppKit"),

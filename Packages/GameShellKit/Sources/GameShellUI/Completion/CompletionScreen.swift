@@ -58,6 +58,11 @@ public struct CompletionScreen: View {
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.completionHeroSkipsReveal) private var skipsReveal
+    // #1023: set by `CompletionOverlayScaffold` on the card subtree. Defaults
+    // to `.liveSolve` so a caller that hasn't been migrated to the scaffold
+    // yet (previews, ad-hoc hosting in tests) keeps the pre-#1023 reveal
+    // behavior rather than silently downgrading to the no-ritual variant.
+    @Environment(\.completionVariant) private var variant
 
     /// design-system.md §Motion "CompletionView hero stat reveal" (350 ms
     /// fade + 8 pt rise, stagger 60 ms / reduced motion: instant fade).
@@ -134,6 +139,13 @@ public struct CompletionScreen: View {
     /// `completionHeroSkipsReveal`.
     private var isHeroRevealed: Bool { heroRevealed || skipsReveal }
 
+    /// #1023: M2's form (rise-and-fade vs fade-only under Reduce Motion),
+    /// derived from the same pure `CompletionMotionPlan` the scaffold uses
+    /// for M1/M3/M4/M10 — one source of truth, no drift between the two.
+    private var heroRevealForm: CompletionMotionPlan.HeroRevealForm {
+        CompletionMotionPlan.plan(variant: variant, outcomeKind: outcome.kind, reduceMotion: reduceMotion).heroReveal
+    }
+
     private var hero: some View {
         // spacing-exempt: 10pt (icon/title/time/mistakes stack gap)
         // predates the 5-tier `SpacingTokens` scale — no matching tier to
@@ -144,11 +156,11 @@ public struct CompletionScreen: View {
             Image(systemName: outcome.systemImage)
                 .font(.system(size: 56))
                 .foregroundStyle(heroTint)
-                .heroReveal(isHeroRevealed, index: 0, reduceMotion: reduceMotion)
+                .heroReveal(isHeroRevealed, index: 0, form: heroRevealForm)
             Text(outcome.title)
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(theme.text.primary.resolved)
-                .heroReveal(isHeroRevealed, index: 1, reduceMotion: reduceMotion)
+                .heroReveal(isHeroRevealed, index: 1, form: heroRevealForm)
             // Omit the time row entirely when there's no elapsed (MS re-opened
             // solved-daily, #386) — no placeholder/empty row. Has-time callers
             // render the identical `Text` as before, so snapshots are unchanged.
@@ -157,7 +169,7 @@ public struct CompletionScreen: View {
                     .font(.title3)
                     .foregroundStyle(theme.text.secondary.resolved)
                     .monospacedDigit()
-                    .heroReveal(isHeroRevealed, index: 2, reduceMotion: reduceMotion)
+                    .heroReveal(isHeroRevealed, index: 2, form: heroRevealForm)
             }
             // Mistakes row — only shown when the game tracks mistakes (Sudoku).
             // Minesweeper passes `nil` and the row is fully absent (no height,
@@ -176,7 +188,7 @@ public struct CompletionScreen: View {
                         .foregroundStyle(theme.text.secondary.resolved)
                         .monospacedDigit()
                 }
-                .heroReveal(isHeroRevealed, index: 3, reduceMotion: reduceMotion)
+                .heroReveal(isHeroRevealed, index: 3, form: heroRevealForm)
             }
         }
         .frame(maxWidth: .infinity)
@@ -230,19 +242,22 @@ public struct CompletionScreen: View {
 // MARK: - Hero reveal
 
 private extension View {
-    /// design-system.md §Motion "CompletionView hero stat reveal": 350 ms
-    /// fade + 8 pt rise, staggered 60 ms per element by `index`; reduced
-    /// motion drops straight to the revealed state (instant fade, no rise).
-    func heroReveal(_ revealed: Bool, index: Int, reduceMotion: Bool) -> some View {
-        opacity(revealed ? 1 : 0)
-            .offset(y: revealed ? 0 : 8)
-            .animation(
-                MotionGate.animation(
-                    .easeOut(duration: 0.35).delay(Double(index) * 0.06),
-                    reduceMotion: reduceMotion
-                ),
-                value: revealed
-            )
+    /// docs/designs/v3/design.md §6 row M2: 350 ms fade + 8 pt rise, staggered
+    /// 60 ms per element by `index`. #1023: Reduce Motion no longer snaps to
+    /// the end state with no animation at all — it plays the SAME fade,
+    /// minus the rise, per §6's Reduce Motion column (a deliberate behavior
+    /// change from the pre-#1023 `MotionGate`-off snap).
+    @ViewBuilder
+    func heroReveal(_ revealed: Bool, index: Int, form: CompletionMotionPlan.HeroRevealForm) -> some View {
+        switch form {
+        case .riseAndFade(let duration, let rise, let stagger):
+            opacity(revealed ? 1 : 0)
+                .offset(y: revealed ? 0 : rise)
+                .animation(.easeOut(duration: duration).delay(Double(index) * stagger), value: revealed)
+        case .fadeOnly(let duration, let stagger):
+            opacity(revealed ? 1 : 0)
+                .animation(.easeOut(duration: duration).delay(Double(index) * stagger), value: revealed)
+        }
     }
 }
 
@@ -269,5 +284,24 @@ public extension EnvironmentValues {
     var completionHeroSkipsReveal: Bool {
         get { self[CompletionHeroSkipsRevealKey.self] }
         set { self[CompletionHeroSkipsRevealKey.self] = newValue }
+    }
+}
+
+// MARK: - Variant propagation (#1023)
+
+private struct CompletionVariantKey: EnvironmentKey {
+    static let defaultValue = CompletionVariant.liveSolve
+}
+
+public extension EnvironmentValues {
+    /// Set by `CompletionOverlayScaffold` on its `card()` subtree so
+    /// `CompletionScreen` (nested inside each app's own Completion view) can
+    /// derive the SAME `CompletionMotionPlan` the scaffold uses for M1/M3/M4/M10,
+    /// without threading `CompletionVariant` through every app's Completion
+    /// view initializer. Defaults to `.liveSolve` (the pre-#1023 behavior) for
+    /// any host that renders `CompletionScreen` outside the scaffold.
+    var completionVariant: CompletionVariant {
+        get { self[CompletionVariantKey.self] }
+        set { self[CompletionVariantKey.self] = newValue }
     }
 }
