@@ -1,4 +1,14 @@
 // PracticeHubView — shimmer threshold + 3-state snapshots.
+//
+// #1021 Phase C: `snapshotIdleIPhoneLight`/`snapshotShimmerIPhoneLight`/
+// `snapshotDrawnIPhoneLight` below are LEFT UNCHANGED (still exercising the
+// pre-redesign layout's committed baselines) rather than re-recorded —
+// design.md §3.2 replaces the segmented difficulty Picker with 3 density-
+// preview cards, so those 3 PNGs now intentionally diff (`.missing` record
+// mode compares, doesn't overwrite). Re-recording those baselines is a
+// Leader/CR decision, not this dispatch's call. The NEW layout gets its own
+// freshly-named snapshots below instead (`-default`/`-selectedHard`/
+// `-accessibility3`), which record clean on first run.
 
 import Foundation
 import SnapshotTesting
@@ -130,6 +140,48 @@ struct PracticeHubViewTests {
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-drawn")
+        }
+    }
+
+    // MARK: - #1021 Phase C: density-preview card layout
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotDefaultIPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-default")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotSelectedHardIPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider(), initialDifficulty: .hard)
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-selectedHard")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility3IPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-accessibility3")
         }
     }
     #endif

@@ -6155,6 +6155,54 @@
         }
       }
     },
+    "~%lld givens" : {
+      "comment" : "#1021 Phase C — Practice hub difficulty card detail line: approximate clue count for the representative density-sample thumbnail (never the real next puzzle's actual count).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld givens"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld fijos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "問題の数字 約%lld個"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주어진 숫자 약 %lld개"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตัวเลขโจทย์ประมาณ %lld ตัว"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "约%lld个题目数字"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "約%lld個題目數字"
+          }
+        }
+      }
+    },
     "value %lld" : {
       "comment" : "#771 board cell — VoiceOver state suffix for a user-filled cell. Was plain string interpolation bypassing the catalog.",
       "extractionState" : "manual",

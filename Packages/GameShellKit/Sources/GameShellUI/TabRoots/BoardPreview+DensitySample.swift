@@ -1,6 +1,6 @@
 // BoardPreview+DensitySample — deterministic representative-sample thumbnails
 // for PRACTICE (#1021 Phase A, design.md §3.2: "縮圖用代表性樣本不是真實下一局
-// (避免把抽題時機前移、踩到既有狣態機)").
+// (避免把抽題時機前移、踩到既有狀態機)").
 //
 // `BoardPreview.swift` stays untouched (forbidden list) — this is a purely
 // additive extension file. `GameShellKit` is zero-dependency (Package.swift
