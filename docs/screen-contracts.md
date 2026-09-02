@@ -609,9 +609,9 @@ wires it (both boards always wire it — no host omits it in production).
 | Element | Copy | a11y id |
 |---|---|---|
 | Hero | "Solved!" + elapsed `m:ss` + mistake count | `game.completion.hero` |
+| Streak section (#1023 — `liveSolve` daily win with a resolved `CompletionStreakAdvance` only) | 7-pip week row (`theme.streak.pipOff` → filled) + `"%lld day streak"` caption; plays M3 pip-advance + M4 count slide-replace | none |
 | Reminder affordance (Daily only, pre-#287-grant) | `"Remind me when tomorrow's puzzle is ready"` + subcopy | none |
-| Play Again (practice only, iOS only — `onPresentBoard` wired) | "Play Again" `.borderedProminent` | none |
-| Close | "Close" — `.borderedProminent` if alone, `.bordered` if Play Again present | `game.completion.close` (#936) |
+| CTA rows (#1023 — `CompletionContext`, design.md §3.5's 4-row hierarchy) | Daily-more-today: primary `"Next: <difficulty>"` + secondary `"Done"` · Daily-all-done: single `"See you tomorrow"` (the flow's ONE value-toned CTA) · Practice: primary `"Play Again"` + secondary `"Close"` (Close-only when no presenter wired) | the closing button always carries `game.completion.close` (#936), whichever context renders it |
 
 There is no leaderboard slice UI — #698 deleted the dead leaderboard-fetch
 state machine (both apps hardcoded `state: .hidden` since v2.6 and it never
@@ -623,16 +623,25 @@ leaderboard" section is **CODE CONTRADICTED** — none of that renders today.
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
 | Reminder affordance tap | `presentPrimer()` | `sheet(detent)` → `REMINDER-PRIMER` | dismiss → same overlay |
+| `"Next: <difficulty>"` tap (#1023, Daily-more-today) | `onDailyNext` — clears overlay and presents the next still-open daily difficulty | modal-full (new board instance) | new `SUD-BOARD` instance |
 | Play Again tap | clears overlay, `exitToHub()`, then `playAgain(difficulty)` draws a fresh practice puzzle and re-presents | modal-full (new board instance) | new `SUD-BOARD` instance |
-| Close tap | clears overlay, `exitToHub()` | iOS: `dismiss()` (cover collapses) · macOS: pop 1 path entry | HOME/hub that pushed the board (never the solved board — #667 fix) |
+| Close / `"Done"` / `"See you tomorrow"` tap | clears overlay, `exitToHub()` | iOS: `dismiss()` (cover collapses) · macOS: pop 1 path entry | HOME/hub that pushed the board (never the solved board — #667 fix) |
 
-**Covering behavior:** in-board `.overlay` — background `.ignoresSafeArea()`,
-card + CTAs stay within the safe area (so the hero icon clears the Dynamic
-Island, #518). Board underneath is torn down on Close, not merely hidden.
+**Covering behavior (updated 2026-09-01, #1023):** full-height Liquid-Glass
+panel (G6 — design.md §4.4's D-3.3 explicit exception, never a system sheet)
+rising over the board; the solved BOARD STAYS VISIBLE behind the glass
+(§3.5 — nothing left to peek at, unlike pause), accent glow painted BEHIND
+the glass, not on it. Mounted through `BoardModalPresentation.completion` →
+`HoistedOverlayHost` (#1038) — this presentation key is also the seam
+#1022's G4 control cluster must observe to unmount (§4.3 scene-exclusivity).
+Board underneath is still torn down on Close, not merely hidden.
 
-**State variants:** single visible state — #698 deleted the VM's dead
-loading/authenticated/unauthenticated/fetchFailed leaderboard states along
-with the rendering machinery, so there is nothing left to vary.
+**State variants (updated 2026-09-01, #1023):** `CompletionVariant` —
+`liveSolve` (fresh terminal event: M10 panel rise + M1 accent seep + M2 hero
+reveal + M3/M4 streak ritual; the `.success` haptic fires from the VM
+terminal edge, never from the panel) vs `review` (static presentation, no
+ritual, no haptic). CTA layout varies by `CompletionContext` (table above).
+Reduce Motion swaps each animation for its §6 fade fallback, not off.
 
 ---
 
@@ -648,10 +657,10 @@ with the rendering machinery, so there is nothing left to vary.
 | Element | Copy | a11y id |
 |---|---|---|
 | Hero (win) | "You won" + elapsed | `game.completion.hero` |
-| Hero (loss) | "Boom" (no elapsed shown in the loss hero per `CompletionOutcome`) | `game.completion.hero` |
+| Hero (loss) | "Boom" (no elapsed shown in the loss hero per `CompletionOutcome`; tinted `theme.status.error`) | `game.completion.hero` |
+| Streak section (#1023 — `liveSolve` daily WIN with a resolved `CompletionStreakAdvance` only; never on loss) | 7-pip week row + `"%lld day streak"` caption, mirrors Sudoku | none |
 | Reminder affordance (Daily win only, pre-authorization — #814, mirrors Sudoku) | `"Remind me when tomorrow's boards are ready"` + subcopy | none |
-| Play Again (practice only, iOS only — `onPlayAgain` wired) | "Play Again" | none |
-| Close | "Close" | `game.completion.close` (#936) |
+| CTA rows (#1023 — `CompletionContext`, same shared scaffold as Sudoku) | win: Daily-more-today / Daily-all-done / Practice rows as in `SUD-COMPLETION-OVERLAY` · loss: primary `"Try Again"` + secondary `"Close"` (Close-only when no presenter wired) | the closing button always carries `game.completion.close` (#936) |
 
 Same "no leaderboard zone" note as Sudoku — #698 deleted the dead fetch state
 machine on this VM too.
@@ -682,8 +691,13 @@ is the win gate because a solved-daily re-view is `didWin: true` by definition.
 | Play Again tap | clears overlay VM, `dismiss()`, then `playAgain(difficulty)` with a fresh random seed, mounted via `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4; still `modal-full`, just with a brief `.loading` frame first, not the direct construction the row previously implied) | modal-full (new board instance) | new `MS-BOARD` instance |
 | Close tap | clears overlay VM, `dismiss()` | iOS: cover collapses · macOS: pops the push (same `dismiss()` call both contexts — MS never branches on `path`) | HOME/hub that pushed the board |
 
-**Covering behavior:** identical ZStack background/content split as Sudoku
-(#518). Loss state: `"burst.fill"` icon, `status.failure` outcome kind.
+**Covering behavior (updated 2026-09-01, #1023):** identical full-height
+Liquid-Glass panel as `SUD-COMPLETION-OVERLAY` (same shared scaffold — the
+mined/solved board stays visible behind the glass; mounted through
+`BoardModalPresentation.completion` → `HoistedOverlayHost`, #1038). Loss
+state: `"burst.fill"` icon, `status.failure` outcome kind — loss is still
+`liveSolve` (a fresh terminal event: the `.error` haptic fires from the VM
+edge) but plays NO ritual and NO streak section (§3.5 / §6.1).
 
 **State variants:** win / loss (`didWin`); no mistake-count row (MS has no
 mistakes concept, `mistakeCount: nil`).
