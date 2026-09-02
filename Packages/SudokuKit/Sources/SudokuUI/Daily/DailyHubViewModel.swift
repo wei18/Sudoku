@@ -56,6 +56,24 @@ public final class DailyHubViewModel {
     /// `reviewChoiceSelected(_:)` / `dismissReviewPicker()`.
     public private(set) var reviewPickerChoices: [DailyReviewChoice]?
 
+    /// #1021 Phase B: every calendar day with ≥1 completed daily puzzle,
+    /// ever (not just the 7-day `weekStrip` window) — sourced from the SAME
+    /// `fetchCompletedDailyIdsByDay()` read `fetchWeekWindow` already
+    /// performs (see `WeekWindowResult`), so this is data reuse, not a new
+    /// fetch. `TodayMapper`'s streak header uses this to compute the
+    /// ALL-TIME longest streak (design.md §3.1 "Best 31"), which the
+    /// window-capped `weekStrip.streak` can't represent past 7.
+    private(set) var allCompletedDays: Set<DayKey> = []
+
+    /// #1021 Phase B: the most-recently-touched in-progress save, best-effort
+    /// (a fetch failure or absence just means "no in-progress card" — never
+    /// promotes to `.degraded`). Reuses the ONE existing `latestInProgress()`
+    /// read design.md §3.1 already budgets for the resume pill; this is the
+    /// SAME call, re-read here because the Daily hub has no other seam onto
+    /// it. `TodayMapper` matches this against each card's `puzzleId` to
+    /// decide whether that specific card is "in progress".
+    private(set) var inProgressSummary: SavedGameSummary?
+
     /// #842: `true` from `.loaded`'s first render until `fillCompletionOverlay`
     /// (phase 2 — the completion overlay fetch) resolves at least once, for
     /// EITHER `bootstrap()`'s initial run or a later `refresh()` re-entry.
@@ -225,14 +243,19 @@ public final class DailyHubViewModel {
         // never blocks or degrades the window/strip below.
         async let windowTask = fetchWeekWindow(referenceDate: date)
         async let bestTimesTask = fetchBestTimes(trio: trio)
+        // #1021 Phase B: best-effort, independent of both lanes above — a
+        // failure here degrades only "no in-progress card" (see
+        // `fetchInProgressSummary`'s doc), never the week window or trio.
+        async let inProgressTask = fetchInProgressSummary()
         let window = await windowTask
         let bestTimes = await bestTimesTask
+        inProgressSummary = await inProgressTask
         guard case .loaded(let latestCards) = state else { return }
         // Best times always merge in, even on a week-window degrade (no
         // false-claim risk — see above). `isCompleted` falls back to the
         // card's current value on a window-fetch failure, matching the
         // pre-#886 degrade behavior below.
-        let todayCompleted = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds
+        let todayCompleted = window?.slots.first { $0.offsetFromToday == 0 }?.completedPuzzleIds
         state = .loaded(latestCards.map { card in
             DailyCard(
                 envelope: card.envelope,
@@ -245,10 +268,11 @@ public final class DailyHubViewModel {
             // rather than risk showing a wrong "missed" dot for a day whose
             // fetch actually failed — see `fetchWeekWindow`.
             weekStrip = .unknown
+            allCompletedDays = []
             return // degrade: strip unknown; cards keep prior completion + fresh best times (above)
         }
         // No re-check of `.loaded` here — no `await` separates the write above from this point.
-        let days = window.map { slot in
+        let days = window.slots.map { slot in
             DailyStripDay(
                 offsetFromToday: slot.offsetFromToday,
                 date: slot.date,
@@ -258,6 +282,39 @@ public final class DailyHubViewModel {
         }
         let rawStreak = DailyStripLogic.computeStreak(days: days)
         weekStrip = DailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
+        // #1021 Phase B: reuses the SAME fetched dictionary `window` was
+        // sliced from — see `WeekWindowResult`'s doc. Not a second fetch.
+        allCompletedDays = Set(window.completedByDay.keys.compactMap(DayKey.key))
+    }
+
+    /// #1021 Phase B: fetches `latestInProgress()` for the Today hub's
+    /// in-progress card status text/thumbnail. Best-effort — an absence
+    /// (`nil`) or a thrown fetch both degrade to "no in-progress card", never
+    /// to `.degraded` (unlike the week-window fetch above): not knowing about
+    /// an in-progress save is not the same as not knowing completion status.
+    private func fetchInProgressSummary() async -> SavedGameSummary? {
+        do {
+            return try await persistence.latestInProgress()
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "DailyHubViewModel.fetchInProgressSummary"
+            )
+            return nil
+        }
+    }
+
+    /// #1021 Phase B: `true` once phase-2's week-window fetch has resolved
+    /// (`!isPhase2Pending`) and come back empty-handed (`weekStrip.days.isEmpty`)
+    /// — the all-or-nothing degrade `fillCompletionOverlay` applies above.
+    /// Distinct from "phase 2 hasn't run yet" (still `isPhase2Pending`,
+    /// `weekStrip` at its initial `.unknown`): only the SETTLED-but-empty
+    /// combination means the fetch genuinely failed. `TodayMapper` reads this
+    /// to force every card to "not started" per design.md §3.1's `degraded`
+    /// row, without inventing a second CK read to detect it.
+    var isPhase2Degraded: Bool {
+        !isPhase2Pending && weekStrip.days.isEmpty
     }
 
     /// Synchronous tap entry point (the DailyHubView shell closure is sync).

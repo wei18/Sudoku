@@ -14,12 +14,37 @@ public struct StreakHeaderModel: Sendable, Equatable {
     /// with a shorter history pass a shorter array.
     public let last7: [Bool]
     public let isSkeleton: Bool
+    /// #1021 Phase B (additive): indices into `last7` whose pip is a
+    /// completed, reviewable PAST day — mirrors the per-app `DailyStripView.
+    /// isTappable` gate (`isReviewable && !isToday`) the retired week-strip
+    /// card used to apply per-dot. Empty by default so every existing Phase A
+    /// call site keeps compiling unchanged; a caller that wants tap-to-review
+    /// pips computes this set itself (this view has no notion of "day" beyond
+    /// a plain `Bool`, so it can't derive tappability on its own).
+    public let tappablePipIndices: Set<Int>
+    /// #1021 Phase B (additive): per-pip VoiceOver label, read only for an
+    /// index also present in `tappablePipIndices` (mirrors the retired
+    /// `DailyStripView.accessibilityLabel(for:)` — e.g. "Monday, completed").
+    /// A tappable index with no entry here (index out of bounds) falls back
+    /// to an empty label rather than trapping. Non-tappable pips stay
+    /// `.accessibilityHidden` — the header's own combined label above already
+    /// speaks `current`/`longest`.
+    public let pipAccessibilityLabels: [String]
 
-    public init(current: Int, longest: Int?, last7: [Bool], isSkeleton: Bool) {
+    public init(
+        current: Int,
+        longest: Int?,
+        last7: [Bool],
+        isSkeleton: Bool,
+        tappablePipIndices: Set<Int> = [],
+        pipAccessibilityLabels: [String] = []
+    ) {
         self.current = current
         self.longest = longest
         self.last7 = last7
         self.isSkeleton = isSkeleton
+        self.tappablePipIndices = tappablePipIndices
+        self.pipAccessibilityLabels = pipAccessibilityLabels
     }
 }
 
@@ -28,12 +53,17 @@ public struct StreakHeaderView: View {
     @ScaledSpacing(.small) private var contentGap
 
     private let model: StreakHeaderModel
+    /// #1021 Phase B (additive): fired with the tapped pip's `last7` index
+    /// when that index is in `model.tappablePipIndices`. `nil` (default)
+    /// keeps every pip inert, matching Phase A's original behavior.
+    private let onPipTap: ((Int) -> Void)?
 
     private static let pipDiameter: CGFloat = 10
     private static let pipGap: CGFloat = 6
 
-    public init(model: StreakHeaderModel) {
+    public init(model: StreakHeaderModel, onPipTap: ((Int) -> Void)? = nil) {
         self.model = model
+        self.onPipTap = onPipTap
     }
 
     public var body: some View {
@@ -52,7 +82,14 @@ public struct StreakHeaderView: View {
             }
         }
         .redacted(reason: model.isSkeleton ? .placeholder : [])
-        .accessibilityElement(children: .ignore)
+        // #1021 Phase B: `.contain` (was `.ignore`) so a tappable pip's own
+        // Button surfaces to VoiceOver as a real, navigable element — `.ignore`
+        // would silently swallow every descendant, including the pip buttons
+        // added below, making the streak's completed-past-day review
+        // unreachable without sight. With no tappable pips (every pip
+        // `.accessibilityHidden`, see `pipRow`) this behaves identically to
+        // the old `.ignore`: no descendants surface either way.
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(Self.accessibilityLabel(current: model.current, longest: model.longest))
     }
 
@@ -60,11 +97,32 @@ public struct StreakHeaderView: View {
         HStack(spacing: Self.pipGap) {
             ForEach(Array(model.last7.enumerated()), id: \.offset) { index, filled in
                 let isToday = index == model.last7.count - 1
-                pip(filled: filled, isToday: isToday)
+                if let onPipTap, model.tappablePipIndices.contains(index) {
+                    Button {
+                        onPipTap(index)
+                    } label: {
+                        pip(filled: filled, isToday: isToday)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(pipAccessibilityLabel(at: index))
+                    .accessibilityHint(Self.reviewHint)
+                    .accessibilityAddTraits(.isButton)
+                } else {
+                    // Decorative — the header's own combined label above
+                    // already speaks `current`/`longest`; an inert pip has no
+                    // additional per-day fact worth a VoiceOver stop.
+                    pip(filled: filled, isToday: isToday)
+                        .accessibilityHidden(true)
+                }
             }
         }
-        .accessibilityHidden(true)
     }
+
+    private func pipAccessibilityLabel(at index: Int) -> String {
+        model.pipAccessibilityLabels.indices.contains(index) ? model.pipAccessibilityLabels[index] : ""
+    }
+
+    private static let reviewHint = String(localized: "View this day's result", bundle: .main)
 
     private func pip(filled: Bool, isToday: Bool) -> some View {
         Circle()

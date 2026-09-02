@@ -1,8 +1,9 @@
 // DailyHubView — 3 puzzle cards per day, checkmark on completion.
 //
-// Per docs/designs/03-daily-hub.md. Failure path `exhausted` renders as an
-// inline icon+message+action block (#768) — matches the `.failed` visual
-// language instead of a system `.alert` over a blank backdrop.
+// Per docs/designs/v3/design.md §3.1 (#1021 Phase B). Failure path
+// `exhausted` renders as an inline icon+message+action block (#768) — matches
+// the `.failed` visual language instead of a system `.alert` over a blank
+// backdrop.
 //
 // PR U12: chrome + responsive grid + state-switch scaffold extracted into
 // `GameShellUI.DailyHubShellView`. This view now produces the
@@ -10,6 +11,25 @@
 // colors and hands them to the generic shell. `.task` stays on the caller
 // (matches X4 / SettingsShellView precedent: shells own no side-effect
 // modifiers).
+//
+// #1021 Phase B: the old per-app `DailyStripView` week-strip CARD (with its
+// own glass-adjacent elevated-surface chrome) is retired from the header slot
+// in favor of the shared, content-layer `GameShellUI.StreakHeaderView`
+// (design.md §4.2 — a streak row is plain text, not a card). `DailyPuzzleCard`
+// (this file's old glass-effect card) is retired in favor of the shared
+// `GameShellUI.DailyCardContent`, fed by the pure `TodayMapper`. `DailyStripView`
+// ITSELF stays in the package (unused by this view now) because
+// `DailyHubViewModelDayTapTests.swift` still instantiates it directly to pin
+// `isTappable` — see that file, and the Phase B report's deviations section.
+//
+// KNOWN LOADING-STATE DEVIATION: design.md §3.1's `loading` row asks for
+// skeleton CARDS (grid-preserving thumbnails) during the initial fetch, not
+// just a spinner. `DailyHubShellView`'s `.idle`/`.loading` branch renders a
+// bare `ProgressView` (the header — hence the streak — still renders per its
+// own "every state" contract); switching that branch to a skeleton card grid
+// would require widening `DailyHubShellView`'s generic `Item` shape to carry
+// presentation data it doesn't otherwise need. Deferred — see the Phase B
+// report.
 
 public import MonetizationCore
 public import SwiftUI
@@ -37,6 +57,7 @@ public struct DailyHubView<Banner: View>: View {
     // content tier, wraps the icon/message/action-button stack, scales
     // with Dynamic Type.
     @ScaledSpacing(.large) private var exhaustedCardPadding
+    @ScaledSpacing(.medium) private var headerGap
 
     public init(
         viewModel: DailyHubViewModel,
@@ -47,16 +68,12 @@ public struct DailyHubView<Banner: View>: View {
     }
 
     public var body: some View {
-        // #840: the week strip is injected into `DailyHubShellView`'s
-        // `header` slot (GameShellKit stays untouched — see
-        // `DailyStripView`'s header comment on the "no shared widget"
-        // scope note) instead of sitting as a fixed sibling above the
-        // shell (#774's original placement, which made the trio scroll
-        // UNDER a pinned strip — owner-reported regression). The shell
-        // renders `header` in every state — idle/loading/loaded/empty/
-        // failed — so the strip still can't disappear just because the
-        // trio failed to generate, and in `.loaded` it now scrolls WITH
-        // the card grid.
+        // #1021 Phase B: the week strip / trio cards below are now built via
+        // `TodayMapper` from `viewModel`'s existing published state — no new
+        // reads. The shell's `header` slot still renders in every state
+        // (idle/loading/loaded/empty/failed), so the streak line can never
+        // disappear just because the trio failed to generate (#774's
+        // original guarantee, preserved).
         dailyHubShell
             .task { await viewModel.bootstrap() }
             // #761: driven by `GameRoot`'s explicit teardown counter (not
@@ -88,12 +105,35 @@ public struct DailyHubView<Banner: View>: View {
             }
     }
 
+    /// #1021 Phase B: the pure state → presentation mapping, recomputed every
+    /// render from `viewModel`'s already-published, already-fetched state —
+    /// see `TodayMapper`'s file header.
+    private var todayPresentation: TodayPresentation<DailyCardModel> {
+        TodayMapper.present(
+            state: viewModel.state,
+            inProgress: viewModel.inProgressSummary,
+            isPhase2Degraded: viewModel.isPhase2Degraded
+        )
+    }
+
+    private var headerModel: StreakHeaderModel {
+        TodayMapper.headerModel(
+            weekStrip: viewModel.weekStrip,
+            allCompletedDays: viewModel.allCompletedDays,
+            today: DayKey(Date(), calendar: .current)
+        )
+    }
+
     private var dailyHubShell: some View {
         DailyHubShellView(
             title: "Daily",
             backgroundColor: theme.surface.background.resolved,
             state: liftedState,
-            card: { card in DailyPuzzleCard(card: card) },
+            card: { card in
+                if let model = todayPresentation.cards.first(where: { $0.id == card.id }) {
+                    DailyCardContent(model: model)
+                }
+            },
             failure: { reason in
                 // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
                 // scale — no matching tier without snapping and changing
@@ -115,89 +155,109 @@ public struct DailyHubView<Banner: View>: View {
             // `failure` above, plus the #686 action pair as inline buttons.
             // Text reuses the exact strings the alert used to show (no new
             // L10n keys). Both actions are wired unchanged from #686.
+            // #1021 Phase B (design.md §3.1): now wrapped in a `HubCard`
+            // (standard material, no glass) instead of a bare backdrop.
             empty: {
-                // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
-                // scale — same rationale as `failure` above (#762 PR2).
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(theme.status.warning.resolved)
-                        .accessibilityHidden(true)
-                    Text("Couldn't generate today's puzzle")
-                        .foregroundStyle(theme.text.primary.resolved)
-                        // #935 N4: stable, non-localized anchor for the
-                        // exhausted-block message (host-driven XCUITest E2E —
-                        // see `DailyHubViewModel.bootstrap()`'s
-                        // `.generatorFailed` branch). Deliberately placed on
-                        // this leaf `Text`, not the enclosing `VStack` — an
-                        // identifier set on a container cascades down and
-                        // clobbers its accessibility-element descendants'
-                        // OWN identifiers (verified: the Practice/Cancel
-                        // buttons below both reported the container's id
-                        // instead of their own until this was moved off the
-                        // VStack).
-                        .accessibilityIdentifier("sudoku.dailyHub.exhausted")
-                    Text("Try a different difficulty, or come back tomorrow.")
-                        .font(.caption)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                        .multilineTextAlignment(.center)
-                    // spacing-exempt: 12pt predates the 5-tier
-                    // `SpacingTokens` scale — same rationale as above (#762 PR2).
-                    HStack(spacing: 12) {
-                        // #686: the label promised a difficulty picker this
-                        // hub doesn't have — route to the Practice hub that
-                        // actually has one (reuses the existing "Practice"
-                        // key, same string the Home card/PracticeHubView
-                        // title already surface).
-                        Button {
-                            viewModel.tryPracticeInstead()
-                        } label: {
-                            Text("Practice")
-                                .frame(maxWidth: .infinity)
+                HubCard {
+                    // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
+                    // scale — same rationale as `failure` above (#762 PR2).
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(theme.status.warning.resolved)
+                            .accessibilityHidden(true)
+                        Text("Couldn't generate today's puzzle")
+                            .foregroundStyle(theme.text.primary.resolved)
+                            // #935 N4: stable, non-localized anchor for the
+                            // exhausted-block message (host-driven XCUITest E2E —
+                            // see `DailyHubViewModel.bootstrap()`'s
+                            // `.generatorFailed` branch). Deliberately placed on
+                            // this leaf `Text`, not the enclosing `VStack` — an
+                            // identifier set on a container cascades down and
+                            // clobbers its accessibility-element descendants'
+                            // OWN identifiers (verified: the Practice/Cancel
+                            // buttons below both reported the container's id
+                            // instead of their own until this was moved off the
+                            // VStack).
+                            .accessibilityIdentifier("sudoku.dailyHub.exhausted")
+                        Text("Try a different difficulty, or come back tomorrow.")
+                            .font(.caption)
+                            .foregroundStyle(theme.text.secondary.resolved)
+                            .multilineTextAlignment(.center)
+                        // spacing-exempt: 12pt predates the 5-tier
+                        // `SpacingTokens` scale — same rationale as above (#762 PR2).
+                        HStack(spacing: 12) {
+                            // #686: the label promised a difficulty picker this
+                            // hub doesn't have — route to the Practice tab that
+                            // actually has one (reuses the existing "Practice"
+                            // key, same string the Progress/PracticeHubView
+                            // title already surface).
+                            Button {
+                                viewModel.tryPracticeInstead()
+                            } label: {
+                                Text("Practice")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(theme.accent.primary.resolved)
+                            .controlSize(.large)
+                            // #935 N4: stable, non-localized anchor for the
+                            // exhausted block's "Practice" CTA (host-driven
+                            // XCUITest E2E).
+                            .accessibilityIdentifier("sudoku.dailyHub.exhausted.practice")
+                            // Closes the block by dropping to an empty
+                            // `.loaded` state and stays on Today (#1020: Today
+                            // is a tab root now, not a route to pop from).
+                            Button {
+                                viewModel.dismissExhausted()
+                            } label: {
+                                Text("Cancel")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
+                            // #935 N4: stable, non-localized anchor for the
+                            // exhausted block's "Cancel" CTA (host-driven
+                            // XCUITest E2E).
+                            .accessibilityIdentifier("sudoku.dailyHub.exhausted.cancel")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(theme.accent.primary.resolved)
-                        .controlSize(.large)
-                        // #935 N4: stable, non-localized anchor for the
-                        // exhausted block's "Practice" CTA (host-driven
-                        // XCUITest E2E).
-                        .accessibilityIdentifier("sudoku.dailyHub.exhausted.practice")
-                        // Pops back to Home rather than leaving the user on
-                        // the `.exhausted` hub's blank backdrop with no
-                        // recovery — same navigation #686 wired into the
-                        // alert's Cancel button.
-                        Button {
-                            viewModel.dismissExhausted()
-                        } label: {
-                            Text("Cancel")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        // #935 N4: stable, non-localized anchor for the
-                        // exhausted block's "Cancel" CTA (host-driven
-                        // XCUITest E2E).
-                        .accessibilityIdentifier("sudoku.dailyHub.exhausted.cancel")
                     }
+                    .padding(exhaustedCardPadding)
                 }
-                .padding(exhaustedCardPadding)
             },
             onItemTap: { card in viewModel.cardTapped(card) },
             header: {
-                DailyStripView(snapshot: viewModel.weekStrip, onDayTap: { day in viewModel.dayTapped(day) })
-                    .padding(.horizontal, theme.spacing.medium)
-                    .padding(.top, theme.spacing.medium)
-                    // #935 batch 3: stable, loaded-hub root anchor (host-driven
-                    // XCUITest E2E, N12) — a ZERO-SIZE marker composed via
-                    // `.background` (a SIBLING layer, not an ancestor of
-                    // `DailyStripView`'s own day-dot elements) so it cannot
-                    // cascade an id onto them (#937's "container id clobbers
-                    // descendant ids" lesson — see the `empty:` builder below).
-                    .background(alignment: .topLeading) {
-                        Color.clear
-                            .frame(width: 1, height: 1)
-                            .accessibilityIdentifier("sudoku.dailyHub.root")
+                // spacing-exempt: the streak header + optional all-done block
+                // gap uses the same tier as the header's own horizontal/top
+                // insets below — not a new spacing decision.
+                VStack(alignment: .leading, spacing: headerGap) {
+                    StreakHeaderView(
+                        model: headerModel,
+                        onPipTap: { index in
+                            guard viewModel.weekStrip.days.indices.contains(index) else { return }
+                            viewModel.dayTapped(viewModel.weekStrip.days[index])
+                        }
+                    )
+                    if case .allDone = todayPresentation {
+                        TodayAllDoneBlock(
+                            title: String(localized: "All done for today", bundle: .main),
+                            subtitle: String(localized: "Come back tomorrow for 3 new puzzles.", bundle: .main)
+                        )
                     }
+                }
+                .padding(.horizontal, theme.spacing.medium)
+                .padding(.top, theme.spacing.medium)
+                // #935 batch 3: stable, loaded-hub root anchor (host-driven
+                // XCUITest E2E, N12) — a ZERO-SIZE marker composed via
+                // `.background` (a SIBLING layer, not an ancestor of
+                // `StreakHeaderView`'s own pip elements) so it cannot
+                // cascade an id onto them (#937's "container id clobbers
+                // descendant ids" lesson).
+                .background(alignment: .topLeading) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .accessibilityIdentifier("sudoku.dailyHub.root")
+                }
             },
             banner: { banner }
         )
@@ -215,130 +275,5 @@ public struct DailyHubView<Banner: View>: View {
         case .exhausted: return .empty
         case .failed(let reason): return .failed(reason)
         }
-    }
-}
-
-struct DailyPuzzleCard: View {
-    let card: DailyCard
-    @Environment(\.theme) private var theme
-    // Card content rhythm (#762 PR2 two-tier spacing contract) — content
-    // tier, wraps the difficulty/checkmark row + best-time caption, scales
-    // with Dynamic Type.
-    @ScaledSpacing(.small) private var cardContentGap
-    // Card internal padding (#762 PR2 two-tier spacing contract) — content
-    // tier, scales with Dynamic Type.
-    @ScaledSpacing(.medium) private var cardPadding
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: cardContentGap) {
-            HStack(spacing: cardContentGap) {
-                Circle()
-                    .fill(difficultyTint)
-                    .frame(width: 10, height: 10)
-                    .accessibilityHidden(true)
-                Text(LocalizedStringKey(card.difficulty.rawValue.capitalized))
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(difficultyTint)
-                Spacer()
-                if card.isCompleted {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(theme.status.success.resolved)
-                        .font(.callout)
-                } else {
-                    // #516: a "tap to play" chevron reads clearer than the bare
-                    // em-dash, which looked like a placeholder rather than an
-                    // unplayed state. Decorative — the card's explicit a11y
-                    // label already conveys the difficulty + button trait.
-                    Image(systemName: "chevron.right")
-                        .font(.callout)
-                        .foregroundStyle(theme.text.tertiary.resolved)
-                }
-            }
-            // #886 (2026-07-19 owner adjudication, citing #875 D3): this
-            // second line and MS's board-spec caption used to diverge
-            // (Sudoku: decorative `MiniBoardStrip`, zero data binding; MS:
-            // real "16 × 16 · 40 mines" text) — now unified to the same
-            // real per-difficulty stat on both cards, replacing MS's board
-            // spec too (see `MinesweeperDailyHubView.swift`'s matching note).
-            Text("Best \(StatsTileView.timeLabel(card.bestTimeSeconds))")
-                .font(.caption)
-                .foregroundStyle(theme.text.secondary.resolved)
-        }
-        .padding(cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // `.buttonStyle(.plain)` on macOS shrinks the hit area to the
-        // opaque rendered content (Text + Circle + Best-time caption), so
-        // taps on the padding / glass-effect surround silently miss.
-        // `.contentShape(Rectangle())` makes the entire card frame
-        // tap-hittable. Must come BEFORE `.glassEffect(...)` so the glass
-        // material's own hit-test doesn't override us — mirrors HomeView's
-        // working ModeCard ordering (issue #15 / #197; the RemoveAds card itself
-        // left Home in SDD-003 Epic 7).
-        .contentShape(Rectangle())
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        // #886: switched from `.combine` to an explicit composed label
-        // (mirrors `StatsTileView`'s identical "dot + difficulty name +
-        // stat" shape) — `.combine`'s implicit child concatenation is why
-        // the best-time line was never announced before; the checkmark's own
-        // `.accessibilityLabel("Completed")` moved into `accessibilityDescription`
-        // below instead of being combine-concatenated.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityDescription)
-        // #935 batch 3: stable, non-localized anchor for a COMPLETED card
-        // (host-driven XCUITest E2E, N12 re-view route) — applied on the same
-        // element as the combined label above, not a wrapping container, so
-        // it can't cascade onto anything (this element has no accessibility
-        // descendants of its own — `.accessibilityElement(children: .ignore)`).
-        // Un-completed cards get no identifier (unneeded, keeps the id
-        // meaningful).
-        .accessibilityIdentifier(card.isCompleted ? "sudoku.dailyHub.card.completed" : "")
-        // #941 (reverses #878): the card is optimistically tappable the
-        // whole time now — `.isButton` no longer conditions on phase-2
-        // pending state.
-        .accessibilityAddTraits(.isButton)
-    }
-
-    /// Map the typed `Difficulty` enum to the matching `difficulty.*`
-    /// theme token. M5 (issue #65): switch is exhaustive — adding a new
-    /// difficulty case forces this map to update.
-    private var difficultyTint: Color {
-        switch card.difficulty {
-        case .easy: return theme.difficulty.easy.resolved
-        case .medium: return theme.difficulty.medium.resolved
-        case .hard: return theme.difficulty.hard.resolved
-        }
-    }
-
-    private var accessibilityDescription: String {
-        Self.accessibilityDescription(
-            difficulty: card.difficulty,
-            isCompleted: card.isCompleted,
-            bestTimeSeconds: card.bestTimeSeconds
-        )
-    }
-
-    /// #886: combined VoiceOver label — "Easy, Completed, best time 3
-    /// minutes 12 seconds" / "Hard, best time 5 minutes 3 seconds" / "Medium,
-    /// no best time yet". Mirrors `StatsTileView.accessibilityDescription`
-    /// exactly, including reusing its existing "best time %@" / "no best
-    /// time yet" keys — no new a11y keys. The completed clause is OMITTED
-    /// (not a new "not completed" key) when `isCompleted` is false, matching
-    /// today's actual behavior (the chevron contributed nothing to VoiceOver
-    /// either). A `static func` (not a `private var`), mirroring
-    /// `StatsTileView.timeLabel`/`spokenTime`, so tests can pin the composed
-    /// string directly without standing up a `View`'s `@Environment` context.
-    static func accessibilityDescription(difficulty: Difficulty, isCompleted: Bool, bestTimeSeconds: Int?) -> String {
-        let key = difficulty.rawValue.capitalized
-        let name = Bundle.main.localizedString(forKey: key, value: key, table: nil)
-        var parts = [name]
-        if isCompleted {
-            parts.append(String(localized: "Completed", bundle: .main))
-        }
-        if let best = bestTimeSeconds {
-            parts.append(String(localized: "best time \(StatsTileView.spokenTime(best))", bundle: .main))
-        } else {
-            parts.append(String(localized: "no best time yet", bundle: .main))
-        }
-        return parts.joined(separator: ", ")
     }
 }

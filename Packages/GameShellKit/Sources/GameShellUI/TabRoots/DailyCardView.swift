@@ -5,8 +5,17 @@
 // ONE combined a11y element whose label is "{title}, {statusText}" (design.md
 // §3.1 official-quote callout: "縮圖不得是進度的唯一通道").
 //
-// NOTE for whoever wires this into `DailyHubShellView` (Phase B): that shell
-// already wraps its `card:` builder output in its own `Button { onItemTap }`
+// #1021 Phase B: split into `DailyCardContent` (all the visuals + combined
+// a11y, no `Button`) + `DailyCardView` (`Button { DailyCardContent }`) per
+// Phase A's own flagged integration note below — `DailyHubShellView.cardList`
+// already wraps its `card:` builder output in its own
+// `Button { onItemTap }`, so a caller wiring this into the shell uses
+// `DailyCardContent` directly inside that builder instead of double-nesting
+// two buttons. `DailyCardView` stays as a standalone, directly-tappable card
+// for any other call site (previews, non-shell hosts).
+//
+// ORIGINAL Phase A NOTE (kept for history): that shell already wraps its
+// `card:` builder output in its own `Button { onItemTap }`
 // (`DailyHubShellView.swift` `cardList`). This view is ALSO a `Button` (per
 // this phase's dispatch spec, `DailyCardView(model:action:)`) so it is usable
 // standalone. Nesting it inside the shell's per-item `Button` would nest two
@@ -47,35 +56,34 @@ public struct DailyCardModel: Sendable, Equatable, Identifiable {
     }
 }
 
-public struct DailyCardView: View {
+/// Content-only rendering of a `DailyCardModel` — no `Button` wrapper. Use
+/// this directly inside a host that already supplies its own tap handling
+/// (e.g. `DailyHubShellView.cardList`'s per-item `Button`); use
+/// `DailyCardView` below for a standalone, directly-tappable card.
+public struct DailyCardContent: View {
     @Environment(\.theme) private var theme
     @ScaledSpacing(.small) private var contentGap
 
     private let model: DailyCardModel
-    private let action: () -> Void
 
-    public init(model: DailyCardModel, action: @escaping () -> Void) {
+    public init(model: DailyCardModel) {
         self.model = model
-        self.action = action
     }
 
     public var body: some View {
-        Button(action: action) {
-            HubCard {
-                VStack(alignment: .leading, spacing: contentGap) {
-                    thumbnail
-                    Text(model.title)
-                        .font(.headline)
-                        .foregroundStyle(theme.text.primary.resolved)
-                    DifficultyPips(level: model.pipLevel)
-                    statusRow
-                }
+        HubCard {
+            VStack(alignment: .leading, spacing: contentGap) {
+                thumbnail
+                Text(model.title)
+                    .font(.headline)
+                    .foregroundStyle(theme.text.primary.resolved)
+                DifficultyPips(level: model.pipLevel)
+                statusRow
             }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.accessibilityLabel(title: model.title, statusText: model.statusText))
+        .accessibilityLabel(DailyCardView.accessibilityLabel(title: model.title, statusText: model.statusText))
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier(model.accessibilityIdentifier ?? "")
     }
@@ -103,6 +111,23 @@ public struct DailyCardView: View {
                     .font(.caption)
             }
         }
+    }
+}
+
+public struct DailyCardView: View {
+    private let model: DailyCardModel
+    private let action: () -> Void
+
+    public init(model: DailyCardModel, action: @escaping () -> Void) {
+        self.model = model
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            DailyCardContent(model: model)
+        }
+        .buttonStyle(.plain)
     }
 
     public static func accessibilityLabel(title: String, statusText: String) -> String {
