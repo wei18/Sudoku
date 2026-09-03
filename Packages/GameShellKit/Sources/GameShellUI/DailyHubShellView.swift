@@ -37,6 +37,14 @@
 //     the centered content, preserving the #774 "never disappears" property.
 //   - the `banner` slot (injected by each app; EmptyView default for
 //     previews/tests; the actual BannerSlotView is never imported here)
+//   - the `loading` slot (#1021 Phase B, additive): rendered in the content
+//     area for `.idle`/`.loading`, in place of the default `ProgressView`.
+//     design.md §3.1's `loading` row requires grid-preserving skeleton
+//     CARDS ("保留格線結構,不是空白方塊"), not a bare spinner — the shell
+//     stays agnostic to what a "card" looks like, so this slot lets each
+//     caller supply its own skeleton grid (e.g. 3 `DailyCardContent(model:
+//     .skeleton)` rows) while every OTHER existing caller that doesn't pass
+//     one keeps the original spinner via the default.
 //
 // `.task { bootstrap() }` is NOT owned by the shell — same precedent as X4
 // (SettingsShellView owns no side-effect modifiers). The caller applies
@@ -44,8 +52,8 @@
 
 public import SwiftUI
 
-public struct DailyHubShellView<Item, Card, Failure, Empty, Header, Banner>: View
-where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Header: View, Banner: View {
+public struct DailyHubShellView<Item, Card, Failure, Empty, Header, Banner, Loading>: View
+where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Header: View, Banner: View, Loading: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let state: HubLoadState<Item>
@@ -55,6 +63,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     private let onItemTap: (Item) -> Void
     private let header: Header
     private let banner: Banner
+    private let loading: () -> Loading
 
     // Structural spacing (#762 PR1 two-tier spacing contract). This shell
     // deliberately does not read `@Environment(\.theme)` for colors (DI via
@@ -75,7 +84,8 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         @ViewBuilder empty: @escaping () -> Empty = { Color.clear },
         onItemTap: @escaping (Item) -> Void,
         @ViewBuilder header: () -> Header = { EmptyView() },
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
+        @ViewBuilder banner: () -> Banner = { EmptyView() },
+        @ViewBuilder loading: @escaping () -> Loading = { ProgressView().controlSize(.large) }
     ) {
         self.title = title
         self.backgroundColor = backgroundColor
@@ -86,6 +96,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         self.onItemTap = onItemTap
         self.header = header()
         self.banner = banner()
+        self.loading = loading
     }
 
     public var body: some View {
@@ -109,7 +120,7 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
             // case, where it scrolls WITH the grid instead).
             VStack(spacing: 0) {
                 header
-                ProgressView().controlSize(.large)
+                loading()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         case .loaded(let items):
