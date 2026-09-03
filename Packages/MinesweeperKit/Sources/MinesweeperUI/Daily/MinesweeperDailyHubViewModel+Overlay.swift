@@ -63,7 +63,7 @@ extension MinesweeperDailyHubViewModel {
 
     /// #886: per-difficulty best DAILY time (`fetch(modeRaw: "daily", difficulty:)`
     /// — the existing Stats-screen seam, zero new Persistence surface). Mirrors
-    /// `MinesweeperStatsViewModel.fetchTiles`'s per-tile independent try/catch,
+    /// `MinesweeperProgressViewModel.fetchBests`'s per-record independent try/catch,
     /// NOT `fetchWeekWindow`'s all-or-nothing degrade: a fetch failure on one
     /// difficulty degrades only that difficulty's entry to "no value" (renders
     /// as "—" via `MinesweeperStatsTileView.timeLabel(nil)`), the other two

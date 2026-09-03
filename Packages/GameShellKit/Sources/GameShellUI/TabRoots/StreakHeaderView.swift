@@ -74,6 +74,10 @@ public struct StreakHeaderView: View {
 
     private static let pipDiameter: CGFloat = 10
     private static let pipGap: CGFloat = 6
+    /// HIG minimum tap target for the tappable (completed-past-day) pips,
+    /// applied as a `.contentShape` inset so the 10pt visual never grows —
+    /// the same approach the retired `DailyStripView` used (#826).
+    private static let tapTargetDiameter: CGFloat = 44
 
     public init(model: StreakHeaderModel, onPipTap: ((Int) -> Void)? = nil) {
         self.model = model
@@ -118,6 +122,7 @@ public struct StreakHeaderView: View {
                         pip(filled: filled, isToday: isToday)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle().inset(by: -(Self.tapTargetDiameter - Self.pipDiameter) / 2))
                     .accessibilityLabel(pipAccessibilityLabel(at: index))
                     .accessibilityHint(Self.reviewHint)
                     .accessibilityAddTraits(.isButton)

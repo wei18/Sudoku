@@ -17,7 +17,7 @@ extension DailyHubViewModel {
 
     /// #886: per-difficulty best DAILY time (`fetchPersonalRecord(mode: .daily, difficulty:)`
     /// — the existing Stats-screen seam, zero new Persistence surface). Mirrors
-    /// `StatsViewModel.fetchTiles`'s per-tile independent try/catch, NOT
+    /// `ProgressViewModel.fetchBests`'s per-record independent try/catch, NOT
     /// `fetchWeekWindow`'s all-or-nothing degrade: a fetch failure on one
     /// difficulty degrades only that difficulty's entry to "no value" (renders
     /// as "—" via `StatsTileView.timeLabel(nil)`), the other two still show

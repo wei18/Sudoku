@@ -124,7 +124,7 @@ public final class MinesweeperDailyHubViewModel {
     let savedGameStore: (any MinesweeperDailyOverlayReading)?
     /// #886: per-difficulty best-DAILY-time reads
     /// (`fetch(modeRaw: "daily", difficulty:)`) — the same store
-    /// `MinesweeperStatsViewModel` already reads for the Stats screen's Daily
+    /// `MinesweeperProgressViewModel` already reads for the Progress tab's bests
     /// section, zero new Persistence surface. Optional so preview / test
     /// callsites that don't thread a store keep compiling — when nil, every
     /// card's `bestTimeSeconds` stays `nil` (renders "—", never blocks).
