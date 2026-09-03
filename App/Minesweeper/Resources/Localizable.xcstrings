@@ -8513,7 +8513,55 @@
         }
       }
     },
-    "Streak history unavailable" : {
+    "Streak unavailable" : {
+      "comment" : "#1021 Phase F — StreakHeaderView combined a11y label while the streak hero is a skeleton (loading / degraded).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streak unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Racha no disponible"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連続記録を利用できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연속 기록을 사용할 수 없습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อมูลต่อเนื่องไม่พร้อมใช้งาน"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连续记录暂时无法显示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連續記錄暫時無法顯示"
+          }
+        }
+      }
+    },
+  "Streak history unavailable" : {
       "comment" : "#1021 Phase D — ProgressScreen footnote shown when fetchCompletedDailyIdsByDay() fails (calendar falls back to an empty grid).",
       "extractionState" : "manual",
       "localizations" : {
