@@ -125,7 +125,10 @@ public struct DailyHubView<Banner: View>: View {
 
     private var dailyHubShell: some View {
         DailyHubShellView(
-            title: "Daily",
+            // #1021 Phase F2 (design.md §2.1/§3.1): the tab is "Today" in
+            // 3.0 — reuses the existing "Today" L10n key (already localized
+            // for the `AppTab` title) rather than adding a new one.
+            title: "Today",
             backgroundColor: theme.surface.background.resolved,
             state: liftedState,
             card: { card in

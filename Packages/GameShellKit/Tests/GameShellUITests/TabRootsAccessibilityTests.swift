@@ -53,6 +53,15 @@ struct TabRootsAccessibilityTests {
         #expect(!label.contains("best"))
     }
 
+    // #1021 Phase F1: a degraded/loading streak header must never read out
+    // "0 day streak" — that claims a real (if minimal) streak the fetch
+    // never confirmed.
+    @Test("StreakHeaderView label reads 'Streak unavailable' when skeleton")
+    func streakHeaderViewLabelSkeleton() {
+        let label = StreakHeaderView.accessibilityLabel(current: 0, longest: nil, isSkeleton: true)
+        #expect(label == "Streak unavailable")
+    }
+
     @Test("StreakCalendarView day label includes today when applicable")
     func streakCalendarViewDayLabelToday() {
         let label = StreakCalendarView.dayAccessibilityLabel(day: 15, isCompleted: true, isToday: true)

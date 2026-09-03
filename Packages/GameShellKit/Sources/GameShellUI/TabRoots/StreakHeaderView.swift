@@ -46,6 +46,20 @@ public struct StreakHeaderModel: Sendable, Equatable {
         self.tappablePipIndices = tappablePipIndices
         self.pipAccessibilityLabels = pipAccessibilityLabels
     }
+
+    /// #1021 Phase F: the shared skeleton fixture both `SudokuUI.TodayMapper`
+    /// and `MinesweeperUI.MinesweeperTodayMapper` build by hand for their
+    /// "week window unknown" branch — hoisted here so callers reuse one
+    /// literal instead of duplicating it. `last7` stays all-`false`/7-count
+    /// only for geometry (pip count); `StreakHeaderView` itself now decides
+    /// the skeleton pip RENDERING purely from `isSkeleton`, never from these
+    /// placeholder `Bool`s.
+    public static let skeleton = StreakHeaderModel(
+        current: 0,
+        longest: nil,
+        last7: Array(repeating: false, count: 7),
+        isSkeleton: true
+    )
 }
 
 public struct StreakHeaderView: View {
@@ -90,7 +104,7 @@ public struct StreakHeaderView: View {
         // `.accessibilityHidden`, see `pipRow`) this behaves identically to
         // the old `.ignore`: no descendants surface either way.
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Self.accessibilityLabel(current: model.current, longest: model.longest))
+        .accessibilityLabel(Self.accessibilityLabel(current: model.current, longest: model.longest, isSkeleton: model.isSkeleton))
     }
 
     private var pipRow: some View {
@@ -124,11 +138,23 @@ public struct StreakHeaderView: View {
 
     private static let reviewHint = String(localized: "View this day's result", bundle: .main)
 
+    /// #1021 Phase F1 (design.md §3.1): a skeleton header must never claim a
+    /// real streak — `filled`/`isToday` are ignored entirely while
+    /// `model.isSkeleton` is `true`, so a degraded/loading fetch can't render
+    /// seven accent-lit pips (or today's ring) under a redacted count. The
+    /// neutral fill also runs at reduced opacity so an unknown streak is
+    /// visually distinct from a genuine 0-day streak (both would otherwise
+    /// paint the identical solid `pipOff` circle).
     private func pip(filled: Bool, isToday: Bool) -> some View {
-        Circle()
-            .fill(filled ? theme.accent.primary.resolved : theme.streak.pipOff.resolved)
+        let isLit = !model.isSkeleton && filled
+        let showsTodayRing = !model.isSkeleton && isToday
+        let fillColor = model.isSkeleton
+            ? theme.streak.pipOff.resolved.opacity(0.4)
+            : (isLit ? theme.accent.primary.resolved : theme.streak.pipOff.resolved)
+        return Circle()
+            .fill(fillColor)
             .overlay(
-                Circle().strokeBorder(isToday ? theme.accent.primary.resolved : Color.clear, lineWidth: 1.5)
+                Circle().strokeBorder(showsTodayRing ? theme.accent.primary.resolved : Color.clear, lineWidth: 1.5)
             )
             .frame(width: Self.pipDiameter, height: Self.pipDiameter)
     }
@@ -141,7 +167,16 @@ public struct StreakHeaderView: View {
         String(localized: "Best \(longest)", bundle: .main)
     }
 
-    public static func accessibilityLabel(current: Int, longest: Int?) -> String {
+    /// #1021 Phase F1: `isSkeleton` short-circuits to a dedicated
+    /// "unavailable" label — a degraded/loading fetch must never read out
+    /// "0 day streak", which claims a real (if minimal) streak the fetch
+    /// never actually confirmed. Defaults to `false` so every pre-Phase-F
+    /// call site (including this file's own a11y tests) keeps compiling
+    /// unchanged.
+    public static func accessibilityLabel(current: Int, longest: Int?, isSkeleton: Bool = false) -> String {
+        if isSkeleton {
+            return String(localized: "Streak unavailable", bundle: .main)
+        }
         guard let longest else {
             return streakTitle(current: current)
         }

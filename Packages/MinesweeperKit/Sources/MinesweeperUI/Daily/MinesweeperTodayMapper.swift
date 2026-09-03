@@ -94,7 +94,7 @@ enum MinesweeperTodayMapper {
         allCompletedDays: Set<DayKey>
     ) -> StreakHeaderModel {
         guard !weekStrip.days.isEmpty else {
-            return StreakHeaderModel(current: 0, longest: nil, last7: Array(repeating: false, count: 7), isSkeleton: true)
+            return .skeleton
         }
         let longest = StreakHistory(completedDays: allCompletedDays, today: DayKey(Date(), calendar: .current)).longest
         let tappableIndices = Set(weekStrip.days.enumerated().compactMap { index, day in
