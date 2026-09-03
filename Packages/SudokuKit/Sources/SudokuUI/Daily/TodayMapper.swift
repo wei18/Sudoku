@@ -43,6 +43,19 @@ enum TodayMapper {
     /// grid geometry identical to a normal `.loaded`/`.degraded` render.
     private static let skeletonCardCount = 3
 
+    /// #1021 Phase B (Leader ruling): design.md §3.1's `loading` row needs
+    /// grid-preserving skeleton CARDS, not a bare spinner. `DailyHubView`
+    /// calls this directly for `DailyHubShellView`'s `loading:` slot (the
+    /// `.idle`/`.loading` render); `present(state:...)`'s own `.failed`
+    /// branch reuses the same 3 cards for its `.degraded` skeleton output.
+    /// All 9×9 (Sudoku's only board shape) — `preview` carries the real
+    /// dims (not `nil`) so `DailyCardContent`'s skeleton fallback sizes the
+    /// grid correctly even though `isSkeleton` is what actually selects the
+    /// skeleton render path.
+    static func skeletonCards() -> [DailyCardModel] {
+        (0..<skeletonCardCount).map(skeletonCard(index:))
+    }
+
     static func present(
         state: DailyHubState,
         inProgress: SavedGameSummary?,
@@ -54,7 +67,7 @@ enum TodayMapper {
         case .exhausted:
             return .exhausted
         case .failed:
-            return .degraded((0..<skeletonCardCount).map(skeletonCard(index:)))
+            return .degraded(skeletonCards())
         case .loaded(let cards):
             let mapped = cards.map { cardModel(card: $0, inProgress: inProgress, forceNotStarted: isPhase2Degraded) }
             if isPhase2Degraded {
@@ -131,7 +144,11 @@ enum TodayMapper {
             title: "",
             pipLevel: 0,
             statusText: "",
-            preview: nil,
+            preview: BoardPreview(
+                columns: Board.dimension,
+                rows: Board.dimension,
+                cells: Array(repeating: .empty, count: Board.dimension * Board.dimension)
+            ),
             isSkeleton: true,
             isCompleted: false,
             accessibilityIdentifier: nil

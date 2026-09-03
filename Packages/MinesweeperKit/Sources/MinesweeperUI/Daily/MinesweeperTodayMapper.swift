@@ -10,22 +10,18 @@
 // combination structurally can never produce `.exhausted`.
 //
 // Card status text (spec B): completed → "Solved · m:ss"/"Solved"; failed →
-// "Failed"; not started → "Not started · R × C · M mines". MS's
-// `MinesweeperDailyCard` has no "in progress" concept at all (unlike
-// Sudoku's `DailyCard`) — see the KNOWN DEVIATION note below — so this
-// mapper only ever distinguishes completed / failed / not-started.
+// "Failed"; in progress (matches `inProgress`'s record name, not completed) →
+// "In progress · m:ss"/"In progress"; not started → "Not started · R × C ·
+// M mines".
 //
-// KNOWN DEVIATION (in-progress card, spec B): Sudoku's in-progress card
-// reads `PersistenceProtocol.latestInProgress()` directly off the VM's
-// existing `persistence` dependency. MS's daily VM instead depends on the
-// narrow `MinesweeperDailyOverlayReading` protocol (`MinesweeperPersistence`
-// target), which exposes only `fetchFailedDailyIds`/`fetchCompletedDailyIdsByDay`
-// — it does NOT expose `latestInProgress()`. Widening that protocol is
-// exactly the "adding a NEW protocol requirement" the dispatch's forbidden
-// list rules out (Persistence protocols) — so this phase does NOT add it.
-// MS's Today hub therefore has no in-progress card/status at all; every
-// non-completed, non-failed card renders as "not started". Flagged in the
-// Phase B report as an unconfirmed/blocked item for the Leader.
+// #1021 Phase B (Leader ruling — supersedes the original in-progress
+// deviation): `MinesweeperDailyOverlayReading` was widened (additively) to
+// expose `latestInProgress()` — `MinesweeperSavedGameStore` already
+// implemented it for the resume-pill seam, so this is pure exposure, not a
+// new capability. `inProgress`'s record name IS the daily puzzleId
+// (`MinesweeperSavedGameStore.latestInProgress()`'s daily branch uses
+// `daily-<day>-<difficulty>`, byte-identical to `MinesweeperDaily.puzzleId`),
+// so matching against `card.id` needs no extra parsing.
 //
 // KNOWN DEVIATION (solved/failed thumbnails, spec C): `MinesweeperEngine`
 // defers mine placement until the FIRST reveal, salted by that reveal's
@@ -46,18 +42,43 @@
 import Foundation
 internal import GameShellUI
 import MinesweeperEngine
+import MinesweeperGameState
+import MinesweeperPersistence
 
 enum MinesweeperTodayMapper {
 
+    /// design.md §3.1 "保留格線結構,不是空白方塊" — 3 skeleton cards, one per
+    /// daily difficulty, so the `loading:` grid never reflows once real data
+    /// lands (dims matter here, unlike Sudoku's uniform 9×9).
+    static func skeletonCards() -> [DailyCardModel] {
+        MinesweeperDaily.dailyDifficulties.enumerated().map { index, difficulty in
+            DailyCardModel(
+                id: "today-skeleton-\(index)",
+                title: "",
+                pipLevel: 0,
+                statusText: "",
+                preview: BoardPreview(
+                    columns: difficulty.columns,
+                    rows: difficulty.rows,
+                    cells: Array(repeating: .empty, count: difficulty.columns * difficulty.rows)
+                ),
+                isSkeleton: true,
+                isCompleted: false,
+                accessibilityIdentifier: nil
+            )
+        }
+    }
+
     static func present(
         state: MinesweeperDailyHubState,
+        inProgress: MinesweeperSavedGameSummary?,
         isPhase2Degraded: Bool
     ) -> TodayPresentation<DailyCardModel> {
         switch state {
         case .idle, .loading:
             return .loading
         case .loaded(let cards):
-            let mapped = cards.map { cardModel(card: $0, forceNotStarted: isPhase2Degraded) }
+            let mapped = cards.map { cardModel(card: $0, inProgress: inProgress, forceNotStarted: isPhase2Degraded) }
             if isPhase2Degraded {
                 return .degraded(mapped)
             }
@@ -99,15 +120,21 @@ enum MinesweeperTodayMapper {
 
     // MARK: - Card mapping
 
-    private static func cardModel(card: MinesweeperDailyCard, forceNotStarted: Bool) -> DailyCardModel {
+    private static func cardModel(
+        card: MinesweeperDailyCard,
+        inProgress: MinesweeperSavedGameSummary?,
+        forceNotStarted: Bool
+    ) -> DailyCardModel {
         let isCompleted = !forceNotStarted && card.isCompleted
         let isFailed = !forceNotStarted && !isCompleted && card.isFailed
+        let matchesInProgress = inProgress?.recordName == card.id
+        let isInProgress = !forceNotStarted && !isCompleted && !isFailed && matchesInProgress
         return DailyCardModel(
             id: card.id,
             title: title(for: card.difficulty),
             pipLevel: pipLevel(for: card.difficulty),
-            statusText: statusText(card: card, isCompleted: isCompleted, isFailed: isFailed),
-            preview: thumbnail(card: card, isCompleted: isCompleted, isFailed: isFailed),
+            statusText: statusText(card: card, isCompleted: isCompleted, isFailed: isFailed, isInProgress: isInProgress, inProgress: inProgress),
+            preview: thumbnail(card: card, isCompleted: isCompleted, isFailed: isFailed, isInProgress: isInProgress, inProgress: inProgress),
             isSkeleton: false,
             isCompleted: isCompleted,
             accessibilityIdentifier: isCompleted ? "minesweeper.dailyHub.card.completed" : nil
@@ -135,7 +162,13 @@ enum MinesweeperTodayMapper {
         }
     }
 
-    private static func statusText(card: MinesweeperDailyCard, isCompleted: Bool, isFailed: Bool) -> String {
+    private static func statusText(
+        card: MinesweeperDailyCard,
+        isCompleted: Bool,
+        isFailed: Bool,
+        isInProgress: Bool,
+        inProgress: MinesweeperSavedGameSummary?
+    ) -> String {
         if isCompleted {
             guard let best = card.bestTimeSeconds else {
                 return String(localized: "Solved", bundle: .main)
@@ -144,6 +177,9 @@ enum MinesweeperTodayMapper {
         }
         if isFailed {
             return String(localized: "Failed", bundle: .main)
+        }
+        if isInProgress, let inProgress {
+            return String(localized: "In progress · \(timeLabel(inProgress.elapsedSeconds))", bundle: .main)
         }
         let difficulty = card.difficulty
         return String(
@@ -158,13 +194,44 @@ enum MinesweeperTodayMapper {
 
     // MARK: - Thumbnails (see the file header's "solved/failed" deviation note)
 
-    private static func thumbnail(card: MinesweeperDailyCard, isCompleted: Bool, isFailed: Bool) -> BoardPreview? {
+    private static func thumbnail(
+        card: MinesweeperDailyCard,
+        isCompleted: Bool,
+        isFailed: Bool,
+        isInProgress: Bool,
+        inProgress: MinesweeperSavedGameSummary?
+    ) -> BoardPreview? {
         let difficulty = card.difficulty
+        if isInProgress, let inProgress, let preview = inProgressPreview(stateBlob: inProgress.stateBlob) {
+            return preview
+        }
         if isCompleted || isFailed {
             let marks = Array(repeating: CellMark.filled, count: difficulty.rows * difficulty.columns)
             return BoardPreview(columns: difficulty.columns, rows: difficulty.rows, cells: marks)
         }
         let marks = Array(repeating: CellMark.empty, count: difficulty.rows * difficulty.columns)
         return BoardPreview(columns: difficulty.columns, rows: difficulty.rows, cells: marks)
+    }
+
+    /// Decodes the in-progress summary's `stateBlob` into a `BoardPreview` —
+    /// same mapping `MinesweeperAppComposition.MinesweeperBoardPreviewMapper.
+    /// make(stateBlob:)` uses for the resume pill (hidden→empty,
+    /// revealed→filled, flagged→marked), but inlined here rather than
+    /// imported: `MinesweeperAppComposition` depends on `MinesweeperUI`, not
+    /// the reverse, so that mapper can't cross into this target. `nil` on
+    /// any decode failure — never blocks the card, just falls back to the
+    /// not-started render above.
+    private static func inProgressPreview(stateBlob: Data?) -> BoardPreview? {
+        guard let stateBlob,
+              let snapshot = try? JSONDecoder().decode(MinesweeperSessionSnapshot.self, from: stateBlob)
+        else { return nil }
+        let marks = snapshot.cells.map { cell -> CellMark in
+            switch cell.state {
+            case .hidden: return .empty
+            case .revealed: return .filled
+            case .flagged: return .marked
+            }
+        }
+        return BoardPreview(columns: snapshot.columns, rows: snapshot.rows, cells: marks)
     }
 }

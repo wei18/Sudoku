@@ -188,4 +188,13 @@ struct TodayMapperTests {
         // index 0 = yesterday (reviewable, past) → tappable; index 1 = today → never tappable.
         #expect(model.tappablePipIndices == Set([0]))
     }
+
+    // MARK: - Loading skeleton (Leader ruling 1)
+
+    @Test func skeletonCardsAre9x9AndMarkedSkeleton() {
+        let skeletons = TodayMapper.skeletonCards()
+        #expect(skeletons.count == 3)
+        #expect(skeletons.allSatisfy { $0.isSkeleton })
+        #expect(skeletons.allSatisfy { $0.preview?.columns == 9 && $0.preview?.rows == 9 })
+    }
 }

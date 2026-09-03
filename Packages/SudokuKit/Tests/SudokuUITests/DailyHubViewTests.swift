@@ -135,11 +135,19 @@ struct DailyHubViewTests {
 
     #if canImport(AppKit)
     /// `loading`: a freshly-constructed, never-bootstrapped view model —
-    /// `DailyHubShellView`'s `.idle` branch renders the same spinner as
-    /// `.loading` (see `DailyHubView.liftedState`), with the header still
-    /// rendering (skeleton) above it per the shell's "every state" contract.
+    /// `DailyHubShellView`'s `.idle` branch renders the same `loading:`
+    /// skeleton-card grid as `.loading` (Leader ruling: design.md §3.1
+    /// "保留格線結構,不是空白方塊" — 3 grid-lined skeleton rows, not a spinner),
+    /// with the streak header still rendering (also skeleton) above it per
+    /// the shell's "every state" contract. An artificial fetch delay makes
+    /// this deterministic — without one, `DailyHubView`'s own
+    /// `.task { bootstrap() }` can race the `NSHostingView` capture and
+    /// resolve to `.loaded` before the snapshot is taken (verified: MS's
+    /// sibling test hit exactly this race, since MS's `bootstrap()` has no
+    /// `await` suspension point at all to lose the race against).
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadingIPhoneLight() async {
         let provider = FakePuzzleProvider()
+        await provider.setArtificialDelay(nanos: 60_000_000_000)
         let viewModel = DailyHubViewModel(
             provider: provider,
             persistence: FakePersistence(),

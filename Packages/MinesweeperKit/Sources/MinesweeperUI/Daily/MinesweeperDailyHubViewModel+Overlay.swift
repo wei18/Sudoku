@@ -17,9 +17,30 @@ import Foundation
 import GameShellUI
 import MinesweeperEngine
 import MinesweeperGameState
+import MinesweeperPersistence
 import Telemetry
 
 extension MinesweeperDailyHubViewModel {
+
+    /// #1021 Phase B (Leader-approved): fetches `latestInProgress()` off the
+    /// SAME `savedGameStore` seam (widened additively on
+    /// `MinesweeperDailyOverlayReading`) for the Today hub's in-progress
+    /// card. Best-effort — absence or a thrown fetch both degrade to "no
+    /// in-progress card", never to `.degraded`. Mirrors
+    /// `SudokuUI.DailyHubViewModel.fetchInProgressSummary`.
+    func fetchInProgressSummary() async -> MinesweeperSavedGameSummary? {
+        guard let savedGameStore else { return nil }
+        do {
+            return try await savedGameStore.latestInProgress()
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "MinesweeperDailyHubViewModel.fetchInProgressSummary"
+            )
+            return nil
+        }
+    }
 
     /// #886: extracted from the inline do/catch purely for readability
     /// (`fillCompletionAndFailureOverlay` calls this alongside the

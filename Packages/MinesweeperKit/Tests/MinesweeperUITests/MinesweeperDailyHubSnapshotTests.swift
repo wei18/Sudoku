@@ -90,34 +90,43 @@ struct MinesweeperDailyHubSnapshotTests {
     /// - Parameter degraded: when `true`, leaves `weekStrip` at its default
     ///   `.unknown` and marks phase 2 SETTLED (`isPhase2Pending: false`) —
     ///   `MinesweeperDailyHubViewModel.isPhase2Degraded`'s exact trigger.
-    ///   When `false` (default), seeds a real, settled `streakSnapshot()` so
-    ///   the header renders its ordinary (non-skeleton, non-degraded) state
-    ///   and the fixture trio's own completed/failed flags render as-is.
+    ///   When `false` (default) AND `state` is `.loaded`, seeds a real,
+    ///   settled `streakSnapshot()` so the header renders its ordinary
+    ///   (non-skeleton, non-degraded) state and the fixture trio's own
+    ///   completed/failed flags render as-is. `.idle`/`.loading` never seed
+    ///   the streak — phase 2 genuinely hasn't run for either.
     private func dailyHubView(state: MinesweeperDailyHubState?, degraded: Bool = false) -> some View {
         let viewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         if let state {
             viewModel.setStateForTesting(state)
         }
+        var isLoaded = false
+        if case .loaded = state { isLoaded = true }
         if degraded {
             viewModel.setPhase2PendingForTesting(false)
-        } else if state != nil {
+        } else if isLoaded {
             viewModel.setWeekStripForTesting(Self.streakSnapshot())
             viewModel.setPhase2PendingForTesting(false)
         }
-        // `state == nil` (the `loading` fixture) leaves `isPhase2Pending` at
-        // its default `true` — phase 2 genuinely hasn't run yet.
         return NavigationStack {
             MinesweeperDailyHubView(viewModel: viewModel)
         }
     }
 
-    /// `loading`: never seeded/bootstrapped — the shell's `.idle` branch
-    /// renders the same spinner as `.loading` (mirrors Sudoku's
-    /// `snapshotLoadingIPhoneLight`), header still rendering (skeleton).
+    /// `loading`: `setStateForTesting(.loading)` PINS the state (and latches
+    /// `hasBootstrapped`) so the view's own `.task { bootstrap() }` can't race
+    /// past it before the snapshot captures — MS's `bootstrap()` is
+    /// synchronous-to-phase-1 (pure `dailyTrio`), so an un-pinned `.idle`
+    /// state resolves to `.loaded` before `NSHostingView` ever renders it
+    /// (verified: an earlier version of this test used `state: nil` and
+    /// silently captured the LOADED not-started render instead). The shell's
+    /// `loading:` skeleton-card grid renders under the (also skeleton)
+    /// streak header — `dailyHubView`'s `degraded`/streak-seeding branches
+    /// are skipped for a non-`.loaded` state, so both stay genuinely unknown.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotLoading_iPhone_light() {
         let host = hostingView(
-            dailyHubView(state: nil),
+            dailyHubView(state: .loading),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact

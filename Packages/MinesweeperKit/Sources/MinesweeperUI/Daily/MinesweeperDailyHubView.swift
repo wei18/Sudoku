@@ -19,12 +19,12 @@
 // `GameShellUI.StreakHeaderView` (design.md §4.2). `MinesweeperDailyCardView`
 // (this file's old glass-effect card) is retired in favor of the shared
 // `GameShellUI.DailyCardContent`, fed by `MinesweeperTodayMapper`.
-// `MinesweeperDailyStripView` ITSELF stays in the package (unused by this
-// view now) because `MinesweeperDailyHubViewModelDayTapTests.swift` still
-// instantiates it directly to pin `isTappable` — see that file, and the
-// Phase B report's deviations section. Same known LOADING-STATE deviation as
-// Sudoku's `DailyHubView` (skeleton cards, not just a spinner) — see that
-// file's header comment for the full rationale.
+//
+// LOADING STATE (design.md §3.1 "保留格線結構,不是空白方塊"): `DailyHubShellView`'s
+// additive `loading:` slot (Leader ruling) renders 3 skeleton
+// `DailyCardContent` rows, one per daily difficulty (`MinesweeperTodayMapper.
+// skeletonCards()` carries each difficulty's real board dims), in the same
+// 1-/3-column grid the loaded state uses.
 
 public import SwiftUI
 internal import GameAppKit
@@ -47,6 +47,10 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
     private let banner: Banner
     @ScaledSpacing(.medium) private var headerGap
+    // #1021 Phase B: mirrors `DailyHubShellView`'s own (private) column-count
+    // rule so the `loading:` skeleton grid doesn't visibly reflow once real
+    // data replaces it.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     public init(
         viewModel: MinesweeperDailyHubViewModel,
@@ -99,7 +103,11 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     /// #1021 Phase B: the pure state → presentation mapping, recomputed every
     /// render from `viewModel`'s already-published, already-fetched state.
     private var todayPresentation: TodayPresentation<DailyCardModel> {
-        MinesweeperTodayMapper.present(state: viewModel.state, isPhase2Degraded: viewModel.isPhase2Degraded)
+        MinesweeperTodayMapper.present(
+            state: viewModel.state,
+            inProgress: viewModel.inProgressSummary,
+            isPhase2Degraded: viewModel.isPhase2Degraded
+        )
     }
 
     private var headerModel: StreakHeaderModel {
@@ -162,8 +170,27 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
                         .accessibilityIdentifier("minesweeper.dailyHub.root")
                 }
             },
-            banner: { banner }
+            banner: { banner },
+            loading: {
+                ScrollView {
+                    // spacing-exempt: 12pt matches `DailyHubShellView.cardGridGap`
+                    // (predates the 5-tier scale) — kept identical so the
+                    // skeleton grid's geometry is byte-for-byte the real grid's.
+                    LazyVGrid(columns: skeletonColumns, spacing: 12) {
+                        ForEach(MinesweeperTodayMapper.skeletonCards()) { model in
+                            DailyCardContent(model: model)
+                        }
+                    }
+                    .padding(theme.spacing.medium)
+                }
+            }
         )
+    }
+
+    private var skeletonColumns: [GridItem] {
+        sizeClass == .regular
+            ? [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+            : [GridItem(.flexible())]
     }
 
     /// Translates the MS daily state into the generic shell input. MS has no

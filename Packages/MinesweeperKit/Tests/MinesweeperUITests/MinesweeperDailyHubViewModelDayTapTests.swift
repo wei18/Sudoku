@@ -166,15 +166,16 @@ struct MinesweeperDailyHubViewModelDayTapTests {
     }
 }
 
-// MARK: - #826: strip-dot interactivity gate (view-level, headless)
+// MARK: - #826: pip interactivity gate (mapper-level, headless)
+//
+// #1021 Phase B (Leader ruling 3): `MinesweeperDailyStripView` (the old,
+// now-deleted week-strip card) used to own `isTappable(_:)`; the rule — a
+// completed, REVIEWABLE, PAST day is tappable — now lives in
+// `MinesweeperTodayMapper.headerModel`'s `tappablePipIndices`. Mirrors
+// Sudoku's `TodayMapperPipInteractivityTests`.
 
-/// Mirrors Sudoku's `DailyStripViewInteractivityTests`:
-/// `MinesweeperDailyStripView.isTappable` drives BOTH the Button wrapping and
-/// the `.isButton` a11y trait, so pinning it pins "button trait only on
-/// completed past dots" without a render harness.
-@MainActor
-@Suite("MinesweeperDailyStripView — dot interactivity (#826)")
-struct MinesweeperDailyStripViewInteractivityTests {
+@Suite("MinesweeperTodayMapper — pip interactivity (#826)")
+struct MinesweeperTodayMapperPipInteractivityTests {
 
     private static let referenceDate = Date(timeIntervalSince1970: 1_715_000_000)
 
@@ -187,26 +188,30 @@ struct MinesweeperDailyStripViewInteractivityTests {
         )
     }
 
+    private func isTappable(_ day: MinesweeperDailyStripDay) -> Bool {
+        let snapshot = MinesweeperDailyStripSnapshot(days: [day], streak: nil)
+        let model = MinesweeperTodayMapper.headerModel(weekStrip: snapshot, allCompletedDays: [])
+        return model.tappablePipIndices.contains(0)
+    }
+
     @Test func onlyCompletedPastDotsAreTappable() {
-        let view = MinesweeperDailyStripView(snapshot: .unknown)
-        #expect(view.isTappable(day(offset: 2, isCompleted: true)) == true)
-        #expect(view.isTappable(day(offset: 0, isCompleted: true)) == false, "today stays inert even when completed")
-        #expect(view.isTappable(day(offset: 2, isCompleted: false)) == false, "missed past days stay inert")
-        #expect(view.isTappable(day(offset: 0, isCompleted: false)) == false)
+        #expect(isTappable(day(offset: 2, isCompleted: true)) == true)
+        #expect(isTappable(day(offset: 0, isCompleted: true)) == false, "today stays inert even when completed")
+        #expect(isTappable(day(offset: 2, isCompleted: false)) == false, "missed past days stay inert")
+        #expect(isTappable(day(offset: 0, isCompleted: false)) == false)
     }
 
     /// CR round 2: a past COMPLETED day whose ids are all malformed gets no
-    /// button (and therefore no `.isButton` trait / hint — `isTappable` is
-    /// the single gate for all three). Mirrors Sudoku's
+    /// pip button (and therefore no `.isButton` trait / hint) — `isReviewable`
+    /// is the single gate for all three. Mirrors Sudoku's
     /// `completedPastDotWithOnlyMalformedIdsIsNotTappable`.
     @Test func completedPastDotWithOnlyMalformedIdsIsNotTappable() {
-        let view = MinesweeperDailyStripView(snapshot: .unknown)
         let malformed = MinesweeperDailyStripDay(
             offsetFromToday: 2,
             date: Self.referenceDate.addingTimeInterval(-2 * 86_400),
             isCompleted: true,
             completedPuzzleIds: ["garbage", "daily-2026-07-14-legendary"]
         )
-        #expect(view.isTappable(malformed) == false)
+        #expect(isTappable(malformed) == false)
     }
 }

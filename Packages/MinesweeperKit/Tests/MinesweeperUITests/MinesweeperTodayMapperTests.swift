@@ -6,6 +6,7 @@ import Testing
 @testable import MinesweeperUI
 
 import MinesweeperEngine
+import MinesweeperPersistence
 internal import GameShellUI
 
 @Suite("MinesweeperTodayMapper (#1021 Phase B)")
@@ -26,15 +27,33 @@ struct MinesweeperTodayMapperTests {
         )
     }
 
+    private static func summary(
+        recordName: String,
+        difficulty: Difficulty = .beginner,
+        elapsedSeconds: Int = 0,
+        stateBlob: Data? = nil
+    ) -> MinesweeperSavedGameSummary {
+        MinesweeperSavedGameSummary(
+            recordName: recordName,
+            difficulty: difficulty,
+            seed: 1,
+            modeRaw: "daily",
+            elapsedSeconds: elapsedSeconds,
+            lastModifiedAt: Date(),
+            status: "inProgress",
+            stateBlob: stateBlob
+        )
+    }
+
     // MARK: - `present` — the 3 reachable `MinesweeperDailyHubState` outputs
 
     @Test func idleMapsToLoading() {
-        let result = MinesweeperTodayMapper.present(state: .idle, isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(state: .idle, inProgress: nil, isPhase2Degraded: false)
         guard case .loading = result else { Issue.record("expected .loading, got \(result)"); return }
     }
 
     @Test func loadingMapsToLoading() {
-        let result = MinesweeperTodayMapper.present(state: .loading, isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(state: .loading, inProgress: nil, isPhase2Degraded: false)
         guard case .loading = result else { Issue.record("expected .loading, got \(result)"); return }
     }
 
@@ -44,7 +63,7 @@ struct MinesweeperTodayMapperTests {
             Self.card(id: "b", isCompleted: true, bestTimeSeconds: 24),
             Self.card(id: "c", isFailed: true)
         ]
-        let result = MinesweeperTodayMapper.present(state: .loaded(cards), isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: nil, isPhase2Degraded: false)
         guard case .loaded(let models) = result else { Issue.record("expected .loaded, got \(result)"); return }
         #expect(models.count == 3)
         #expect(models[1].isCompleted)
@@ -53,7 +72,7 @@ struct MinesweeperTodayMapperTests {
 
     @Test func loadedWithAllCompletedBecomesAllDone() {
         let cards = (0..<3).map { Self.card(id: "\($0)", isCompleted: true, bestTimeSeconds: 60) }
-        let result = MinesweeperTodayMapper.present(state: .loaded(cards), isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: nil, isPhase2Degraded: false)
         guard case .allDone(let models) = result else { Issue.record("expected .allDone, got \(result)"); return }
         #expect(models.allSatisfy { $0.isCompleted })
     }
@@ -64,7 +83,7 @@ struct MinesweeperTodayMapperTests {
             Self.card(id: "b", isFailed: true),
             Self.card(id: "c")
         ]
-        let result = MinesweeperTodayMapper.present(state: .loaded(cards), isPhase2Degraded: true)
+        let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: nil, isPhase2Degraded: true)
         guard case .degraded(let models) = result else { Issue.record("expected .degraded, got \(result)"); return }
         #expect(models.allSatisfy { !$0.isCompleted })
         #expect(models.allSatisfy { !$0.isSkeleton && $0.preview != nil })
@@ -89,7 +108,7 @@ struct MinesweeperTodayMapperTests {
         ]
         for state in states {
             for isDegraded in [false, true] {
-                let result = MinesweeperTodayMapper.present(state: state, isPhase2Degraded: isDegraded)
+                let result = MinesweeperTodayMapper.present(state: state, inProgress: nil, isPhase2Degraded: isDegraded)
                 if case .exhausted = result {
                     Issue.record("MinesweeperTodayMapper.present produced .exhausted for \(state)/\(isDegraded)")
                 }
@@ -102,19 +121,60 @@ struct MinesweeperTodayMapperTests {
     @Test func completedWithBestTimeShowsSolvedAndTime() {
         let result = MinesweeperTodayMapper.present(
             state: .loaded([Self.card(isCompleted: true, bestTimeSeconds: 192)]),
+            inProgress: nil,
             isPhase2Degraded: false
         )
         #expect(result.cards[0].statusText == "Solved · 3:12")
     }
 
     @Test func failedShowsFailedStatus() {
-        let result = MinesweeperTodayMapper.present(state: .loaded([Self.card(isFailed: true)]), isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(
+            state: .loaded([Self.card(isFailed: true)]),
+            inProgress: nil,
+            isPhase2Degraded: false
+        )
         #expect(result.cards[0].statusText == "Failed")
     }
 
     @Test func notStartedShowsDimensionsAndMineCount() {
-        let result = MinesweeperTodayMapper.present(state: .loaded([Self.card(difficulty: .expert)]), isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(
+            state: .loaded([Self.card(difficulty: .expert)]),
+            inProgress: nil,
+            isPhase2Degraded: false
+        )
         #expect(result.cards[0].statusText == "Not started · 16 × 30 · 99 mines")
+    }
+
+    // MARK: - In-progress card (#1021 Phase B ruling 2)
+
+    @Test func inProgressMatchingRecordNameShowsElapsedTime() {
+        let cards = [Self.card(id: "daily-2026-01-01-beginner")]
+        let inProgress = Self.summary(recordName: "daily-2026-01-01-beginner", elapsedSeconds: 65)
+        let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: inProgress, isPhase2Degraded: false)
+        #expect(result.cards[0].statusText == "In progress · 1:05")
+        // No decodable stateBlob → falls back to the not-started (empty) render, not nil.
+        #expect(result.cards[0].preview != nil)
+    }
+
+    @Test func inProgressNotMatchingAnyCardIsIgnored() {
+        let cards = [Self.card(id: "daily-2026-01-01-beginner")]
+        let inProgress = Self.summary(recordName: "daily-2026-01-01-intermediate", elapsedSeconds: 65)
+        let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: inProgress, isPhase2Degraded: false)
+        #expect(!result.cards[0].statusText.contains("In progress"))
+    }
+
+    @Test func inProgressNeverShowsOnACompletedOrFailedCard() {
+        let cards = [
+            Self.card(id: "a", isCompleted: true, bestTimeSeconds: 10),
+            Self.card(id: "b", isFailed: true)
+        ]
+        let result = MinesweeperTodayMapper.present(
+            state: .loaded(cards),
+            inProgress: Self.summary(recordName: "a"),
+            isPhase2Degraded: false
+        )
+        #expect(!result.cards[0].statusText.contains("In progress"))
+        #expect(!result.cards[1].statusText.contains("In progress"))
     }
 
     /// Deviation coverage: solved/failed thumbnails are a UNIFORM `.filled`
@@ -124,27 +184,45 @@ struct MinesweeperTodayMapperTests {
     @Test func solvedThumbnailIsUniformFilledAtTrueDimensions() {
         let result = MinesweeperTodayMapper.present(
             state: .loaded([Self.card(difficulty: .intermediate, isCompleted: true, bestTimeSeconds: 1)]),
+            inProgress: nil,
             isPhase2Degraded: false
         )
         let preview = result.cards[0].preview
         #expect(preview?.columns == Difficulty.intermediate.columns)
         #expect(preview?.rows == Difficulty.intermediate.rows)
-        #expect(preview?.cells.allSatisfy { $0 == .filled } == true)
+        #expect(preview?.cells.allSatisfy { $0 == CellMark.filled } == true)
     }
 
     @Test func notStartedThumbnailIsUniformEmptyAtTrueDimensions() {
-        let result = MinesweeperTodayMapper.present(state: .loaded([Self.card(difficulty: .beginner)]), isPhase2Degraded: false)
+        let result = MinesweeperTodayMapper.present(
+            state: .loaded([Self.card(difficulty: .beginner)]),
+            inProgress: nil,
+            isPhase2Degraded: false
+        )
         let preview = result.cards[0].preview
         #expect(preview?.columns == Difficulty.beginner.columns)
-        #expect(preview?.cells.allSatisfy { $0 == .empty } == true)
+        #expect(preview?.cells.allSatisfy { $0 == CellMark.empty } == true)
     }
 
     @Test func completedCardCarriesTheCompletedAccessibilityIdentifier() {
         let result = MinesweeperTodayMapper.present(
             state: .loaded([Self.card(isCompleted: true), Self.card(id: "b")]),
+            inProgress: nil,
             isPhase2Degraded: false
         )
         #expect(result.cards[0].accessibilityIdentifier == "minesweeper.dailyHub.card.completed")
         #expect(result.cards[1].accessibilityIdentifier == nil)
+    }
+
+    // MARK: - Loading skeleton (Leader ruling 1)
+
+    @Test func skeletonCardsCarryPerDifficultyDimensions() {
+        let skeletons = MinesweeperTodayMapper.skeletonCards()
+        #expect(skeletons.count == 3)
+        #expect(skeletons.allSatisfy { $0.isSkeleton })
+        let dims = zip(skeletons, MinesweeperDaily.dailyDifficulties).allSatisfy { model, difficulty in
+            model.preview?.columns == difficulty.columns && model.preview?.rows == difficulty.rows
+        }
+        #expect(dims)
     }
 }

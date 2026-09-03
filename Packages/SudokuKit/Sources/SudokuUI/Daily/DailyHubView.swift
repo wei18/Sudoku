@@ -17,19 +17,14 @@
 // in favor of the shared, content-layer `GameShellUI.StreakHeaderView`
 // (design.md §4.2 — a streak row is plain text, not a card). `DailyPuzzleCard`
 // (this file's old glass-effect card) is retired in favor of the shared
-// `GameShellUI.DailyCardContent`, fed by the pure `TodayMapper`. `DailyStripView`
-// ITSELF stays in the package (unused by this view now) because
-// `DailyHubViewModelDayTapTests.swift` still instantiates it directly to pin
-// `isTappable` — see that file, and the Phase B report's deviations section.
+// `GameShellUI.DailyCardContent`, fed by the pure `TodayMapper`.
 //
-// KNOWN LOADING-STATE DEVIATION: design.md §3.1's `loading` row asks for
-// skeleton CARDS (grid-preserving thumbnails) during the initial fetch, not
-// just a spinner. `DailyHubShellView`'s `.idle`/`.loading` branch renders a
-// bare `ProgressView` (the header — hence the streak — still renders per its
-// own "every state" contract); switching that branch to a skeleton card grid
-// would require widening `DailyHubShellView`'s generic `Item` shape to carry
-// presentation data it doesn't otherwise need. Deferred — see the Phase B
-// report.
+// LOADING STATE (design.md §3.1 "保留格線結構,不是空白方塊"): `DailyHubShellView`'s
+// additive `loading:` slot (Leader ruling) renders 3 skeleton
+// `DailyCardContent` rows in the same 1-/3-column grid the loaded state uses
+// — `TodayMapper.skeletonCards()` supplies the models, `skeletonColumns`
+// below mirrors the shell's own (private) column-count rule so the grid
+// doesn't visibly reflow once real data lands.
 
 public import MonetizationCore
 public import SwiftUI
@@ -58,6 +53,10 @@ public struct DailyHubView<Banner: View>: View {
     // with Dynamic Type.
     @ScaledSpacing(.large) private var exhaustedCardPadding
     @ScaledSpacing(.medium) private var headerGap
+    // #1021 Phase B: mirrors `DailyHubShellView`'s own (private) column-count
+    // rule so the `loading:` skeleton grid doesn't visibly reflow once real
+    // data replaces it.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     public init(
         viewModel: DailyHubViewModel,
@@ -259,8 +258,27 @@ public struct DailyHubView<Banner: View>: View {
                         .accessibilityIdentifier("sudoku.dailyHub.root")
                 }
             },
-            banner: { banner }
+            banner: { banner },
+            loading: {
+                ScrollView {
+                    // spacing-exempt: 12pt matches `DailyHubShellView.cardGridGap`
+                    // (predates the 5-tier scale) — kept identical so the
+                    // skeleton grid's geometry is byte-for-byte the real grid's.
+                    LazyVGrid(columns: skeletonColumns, spacing: 12) {
+                        ForEach(TodayMapper.skeletonCards()) { model in
+                            DailyCardContent(model: model)
+                        }
+                    }
+                    .padding(theme.spacing.medium)
+                }
+            }
         )
+    }
+
+    private var skeletonColumns: [GridItem] {
+        sizeClass == .regular
+            ? [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+            : [GridItem(.flexible())]
     }
 
     /// Translates Sudoku's `DailyHubState` (with `.exhausted`) into the
