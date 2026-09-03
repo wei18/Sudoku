@@ -107,192 +107,223 @@ through to the alert path.
 
 ## SUD-DAILY-HUB
 
-**Entry points:** HOME "Daily" card; reminder-tap deep link
-(`reminderTapRoute` → `.daily` — mirrored on MS by #696, see
-`navigation-flows.md` M7/N18).
+> **Re-anchored to the as-built 3.0 shape (2026-09-03, #1021 Phase A/B).**
+> The pre-3.0 record below (the retired per-app week-strip card and puzzle
+> card view, HOME "Daily"
+> card entry) is superseded — HOME is retired (#1020), the week-strip is now
+> the shared `StreakHeaderView`, and the trio is the shared `DailyCardContent`.
+> Routes/destinations are unchanged; visuals and the state machine are not.
+
+**Entry points:** Today tab root (`AppTab.today` — no HOME); reminder-tap
+deep link (`reminderTapRoute` → resets to the Today tab, mirrored on MS by
+#696, see `navigation-flows.md` M7/N18).
 
 **Code:** `SudokuUI/Daily/DailyHubView.swift`, `DailyHubViewModel.swift`,
-`GameShellUI/DailyHubShellView.swift`.
+`SudokuUI/Daily/TodayMapper.swift`, `GameShellUI/DailyHubShellView.swift`,
+`GameShellUI/TabRoots/StreakHeaderView.swift`,
+`GameShellUI/TabRoots/DailyCardView.swift`,
+`GameShellUI/TabRoots/TodayAllDoneBlock.swift`,
+`GameShellUI/TabRoots/TodayPresentation.swift`.
 
-**Element inventory:** a week-strip header card (`DailyStripView`,
-`SudokuUI/Daily/DailyStripView.swift`) — a 7-dot rolling
-completion/streak strip, injected into `DailyHubShellView`'s `header` slot
-and rendered in **every** load state (idle/loading/loaded/empty/failed —
-`DailyHubView.swift:56,162-165`) — PLUS the documented 3 `DailyPuzzleCard`s
-(Easy/Medium/Hard), each combined a11y element `"{difficulty}"` + completed
-checkmark or chevron. #935 batch 3: a stable, non-localized root anchor
-`sudoku.dailyHub.root` (host-driven XCUITest E2E) sits on a zero-size marker
-composed via `.background` alongside the header — a SIBLING layer, not an
-ancestor of `DailyStripView`'s own day-dot elements, so it cannot cascade an
-id onto them (the same "container id clobbers descendant ids" lesson as the
-`.exhausted` block below). A COMPLETED card additionally carries a11y id
-`sudoku.dailyHub.card.completed` (all three cards share it when all are
-completed — E2E queries `.firstMatch`); un-completed cards carry none.
+**Element inventory:**
 
-**Per-interaction outcome:**
+| Element | Copy (en) | a11y id |
+|---|---|---|
+| Streak header row (`StreakHeaderView`, plain content-layer text, NOT a card — injected into the shell's `header` slot at `DailyHubView.swift:228-239`, rendered in every load state) | `"{current} day streak"` + conditional `"Best {longest}"`; combined a11y label `"{current} day streak, best {longest}"` (`StreakHeaderView.swift:136-149`) | none (`.accessibilityElement(children: .contain)`) |
+| Streak pips (7, oldest→newest); completed-PAST-day pips are tappable Buttons (`StreakHeaderView.swift:96-119`) | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`TodayMapper.pipAccessibilityLabel`, `TodayMapper.swift:116-121`) + hint `"View this day's result"` | none per-pip; non-tappable pips are `.accessibilityHidden` |
+| 3 `DailyCardContent` rows (`DailyCardView.swift:71-139`, `HubCard` standard material) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"In progress · {m:ss}"` / `"Not started · {N} givens"` (`TodayMapper.statusText`, `TodayMapper.swift:171-188`); combined a11y `"{title}, {statusText}"` (`DailyCardView.swift:157-159`) | `sudoku.dailyHub.card.completed` on a completed card, else none |
+| `TodayAllDoneBlock` (`allDone` state only) | `"All done for today"` / `"Come back tomorrow for 3 new puzzles."` | none (`.accessibilityElement(children: .combine)`) |
+| Exhausted inline block (`.empty` lift of `.exhausted`, `DailyHubView.swift:159-226`) | `"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come back tomorrow."` + buttons `"Practice"` / `"Cancel"` | message: `sudoku.dailyHub.exhausted`; buttons: `sudoku.dailyHub.exhausted.practice` / `.exhausted.cancel` (id on the leaf `Text`, not the container — an id on the enclosing `VStack` cascades down and clobbers the buttons' own ids) |
+| Root anchor (zero-size marker, sibling to the header, `DailyHubView.swift:255-259`) | — | `sudoku.dailyHub.root` |
+
+**Per-interaction outcome:** (routes unchanged from the pre-3.0 record — the
+rebuild changed the visuals and state machine, not the destinations)
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Completed PAST day's dot tap (today/missed dots inert — `DailyStripView.isTappable`, `:110-112`) | `dayTapped(_:)` (`DailyHubViewModel.swift:297-306`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `SUD-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`DailyHubView.swift:73-88`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `SUD-DAILY-HUB`. Review: Close pops → `SUD-DAILY-HUB` |
-| Un-completed card tap | `.board(puzzleId:)` | `GameBoardRedirect` → `modal-full` (iOS) / push (macOS) | Close/Leave → `SUD-DAILY-HUB` (modal dismiss or 1-entry pop) |
+| Completed PAST day's pip tap (today/missed pips inert — `tappablePipIndices`, `StreakHeaderView.swift:100`) | `dayTapped(_:)` (`DailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `SUD-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`DailyHubView.swift:89-104`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `SUD-DAILY-HUB`. Review: Close pops → `SUD-DAILY-HUB` |
+| Un-completed/in-progress card tap | `.board(puzzleId:)` | `GameBoardRedirect` → `modal-full` (iOS) / push (macOS) | Close/Leave → `SUD-DAILY-HUB` (modal dismiss or 1-entry pop) |
 | Completed card tap | async `openCompleted` → `.completion(puzzleId:elapsedSeconds:mistakeCount:)` | push → `SUD-COMPLETION-REVIEW` | Close pops → `SUD-DAILY-HUB` |
 | Completed card tap, snapshot load fails | falls back to `.board(puzzleId:)` (funneled error) | modal-full/push | as above |
+| Exhausted block "Practice" tap | `tryPracticeInstead()` swaps the last path entry `.daily` → `.practice` (#686 — the label promised a difficulty picker this hub doesn't have) | push (in place) → `SUD-PRACTICE-HUB` | — |
+| Exhausted block "Cancel" tap | `dismissExhausted()` drops to an empty `.loaded` state | side-effect | stays on `SUD-DAILY-HUB` (Today is a tab root now, not a route to pop from — #1020) |
 
-**AS-BUILT NOTE (2026-07-21, #826):** the week-strip row above (day-dot →
-direct review or a confirmationDialog picker → `SUD-COMPLETION-REVIEW`) was
-entirely undocumented until now — added 2026-07-16, ~2 weeks before this
-pass. This is a second, independent entry point into `SUD-COMPLETION-REVIEW`
-alongside the Daily hub's own completed-card tap (see that contract's
-updated Entry points line).
+**Covering behavior:** none — plain tab-root content, no HOME to cover. The
+`.confirmationDialog` picker is the only transient presentation this screen
+owns.
 
-**Covering behavior:** none — plain hub content. The `.empty` (exhausted)
-state renders an inline icon+message+action block (#768 replaced the prior
-floating `.alert` — see the corrected State variants entry below).
+**State variants** (`TodayMapper.present(state:inProgress:isPhase2Degraded:)`,
+`TodayMapper.swift:59-81`; `TodayPresentation<Card>`, `TodayPresentation.swift`):
 
-**State variants:** `idle`/`loading` → `ProgressView`; `loaded` → 3-card grid
-(1-col iPhone / 3-col regular); `.exhausted` → inline empty-state block (#768;
-NOT a system `.alert` — this entry previously said `.alert` and was stale)
-`"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come
-back tomorrow."` (a11y id `sudoku.dailyHub.exhausted`, #935 batch 2, on the
-message text — an id on the enclosing container instead cascades down and
-clobbers the two buttons' own ids, see those ids' anchors below), buttons
-**"Practice"** (`tryPracticeInstead()` swaps the last path entry `.daily` →
-`.practice`, landing on `SUD-PRACTICE-HUB` which actually has the difficulty
-picker the old label promised — #686; a11y id
-`sudoku.dailyHub.exhausted.practice`, #935 batch 2) and **"Cancel"**
-(`role: .cancel`, `dismissExhausted()` pops back to HOME rather than leaving a
-blank backdrop with no recovery; a11y id `sudoku.dailyHub.exhausted.cancel`,
-#935 batch 2); `.failed(reason)` → inline warning icon + `reason` text (no
-alert; a11y id `sudoku.dailyHub.failure` on the block, #935 batch 2). Both
-N3–N5 negative-flow ids anchor `App/SudokuE2ETests/SudokuE2ETests.swift`'s
-host-driven E2E coverage — `DailyHubView.swift`'s `empty:`/`failure:`
-builders. CK-degraded: phase-2 completion-overlay fetch fails silently → all
-3 cards render un-completed (never blocks phase-1 render); the SAME degrade
-drops the week-strip header to `.unknown` (`weekStrip = .unknown`,
-`DailyHubViewModel.swift:237-243`) — the whole header card is omitted from
-layout rather than showing a subdued skeleton (#843's all-or-nothing rule).
-**AS-BUILT NOTE (2026-07-22, #941, reverses #842/#878):** cards are tappable
-at full opacity from the first `.loaded` render, not just once phase-2 lands —
-`isPhase2Pending` no longer gates `cardTapped` or dims `DailyPuzzleCard`;
-correctness (never showing a stale board for an already-completed daily)
-stays `BoardLoaderView`'s precheck job regardless of phase-2 timing.
+| Variant | Trigger | Render |
+|---|---|---|
+| `loading` | `.idle`/`.loading` | 3 grid-preserving skeleton `DailyCardContent` rows (shell's `loading:` slot, `DailyHubView.swift:262-274`) — NOT a bare spinner (design.md §3.1 "保留格線結構,不是空白方塊") |
+| `loaded` | `.loaded`, not all completed, not phase-2-degraded | 3 `DailyCardContent` rows, 1-/3-column grid |
+| `allDone` | `.loaded`, every card `isCompleted` | `TodayAllDoneBlock` replaces the 3 cards, below the streak header |
+| `degraded` | phase-2 completion-overlay fetch fails (`isPhase2Degraded`), or phase-1 `.failed` | thumbnails still render (seed-derived, no CK dependency) but every card is forced to "not started" (`TodayMapper.swift:19-26`); a phase-1 `.failed` renders `skeletonCards()` in place of real cards |
+| `exhausted` | `.exhausted` — Sudoku only, generator can run out | inline icon+message+action block, see Element inventory above |
+
+MS structurally has no `exhausted` case (`TodayPresentation.swift:8-10`) — see
+`MS-DAILY-HUB`.
+
+**Glass status:** content-layer glass retired — `HubCard`
+(`GameShellUI/TabRoots/HubCard.swift:23-27`) renders on `theme.surface.primary`,
+a standard material, never `glassEffect` (design.md §4.2: content-layer cards
+are not eligible for the Slider/Toggle transient-interaction glass exception).
+The streak header row is plain content-layer text with no container at all
+(`StreakHeaderView.swift:1-6`).
 
 ---
 
 ## MS-DAILY-HUB
 
-**Entry points:** HOME "Daily" card; reminder-tap deep link (`reminderTapRoute`
-→ `.daily`, fixed by #696 — now mirrors Sudoku; see `navigation-flows.md`
-M7/N18).
+> **Re-anchored to the as-built 3.0 shape (2026-09-03, #1021 Phase A/B).**
+> The pre-3.0 record below (the retired per-app week-strip card and board
+> card view, HOME "Daily" card entry) is superseded — see
+> `SUD-DAILY-HUB`'s callout for the shared rationale. Routes/destinations are
+> unchanged; visuals and the state machine are not.
+
+**Entry points:** Today tab root (`AppTab.today` — no HOME); reminder-tap
+deep link (`reminderTapRoute` → resets to the Today tab, mirrors Sudoku; see
+`navigation-flows.md` M7/N18).
 
 **Code:** `MinesweeperUI/Daily/MinesweeperDailyHubView.swift`,
-`MinesweeperDailyHubViewModel.swift`.
+`MinesweeperDailyHubViewModel.swift`,
+`MinesweeperUI/Daily/MinesweeperTodayMapper.swift`,
+`GameShellUI/DailyHubShellView.swift`,
+`GameShellUI/TabRoots/StreakHeaderView.swift`,
+`GameShellUI/TabRoots/DailyCardView.swift`,
+`GameShellUI/TabRoots/TodayAllDoneBlock.swift`.
 
-**Element inventory:** week-strip header card (`MinesweeperDailyStripView`,
-`MinesweeperUI/Daily/MinesweeperDailyStripView.swift`) — a 7-dot
-rolling completion/streak strip, rendered in the hub's `header` slot in
-**every** load state (mirrors Sudoku's `DailyStripView`, see
-`SUD-DAILY-HUB`'s own element inventory for the shared #826 design note) —
-PLUS the 3 `MinesweeperDailyCardView`s, each combined a11y element; trailing
-indicator is checkmark (completed) / `"Failed"` badge (mine hit) / chevron
-(unplayed). #935 batch 3: mirrors Sudoku's root anchor exactly — a stable
-`minesweeper.dailyHub.root` id on a zero-size `.background` marker sibling to
-`MinesweeperDailyStripView` (host-driven XCUITest E2E). A COMPLETED card
-additionally carries a11y id `minesweeper.dailyHub.card.completed` (E2E
-queries `.firstMatch` when more than one card is completed); unplayed/failed
-cards carry none.
+**Element inventory:**
+
+| Element | Copy (en) | a11y id |
+|---|---|---|
+| Streak header row (shared `StreakHeaderView`, `MinesweeperDailyHubView.swift:144-151`) | same shape as Sudoku's — see `SUD-DAILY-HUB` | none (combined element) |
+| Streak pips | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`MinesweeperTodayMapper.pipAccessibilityLabel`, `MinesweeperTodayMapper.swift:114-119`) | none per-pip |
+| 3 `DailyCardContent` rows (shared component; `MinesweeperTodayMapper.statusText`, `MinesweeperTodayMapper.swift:165-189`) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"Failed"` / `"In progress · {m:ss}"` / `"Not started · {R} × {C} · {M} mines"` | `minesweeper.dailyHub.card.completed` on a completed card, else none |
+| `TodayAllDoneBlock` (`allDone` state only) | `"All done for today"` / `"Come back tomorrow for 3 new boards."` | none |
+| Root anchor (`MinesweeperDailyHubView.swift:167-171`) | — | `minesweeper.dailyHub.root` |
+
+MS has **no exhausted/empty block** — `dailyTrio(date:)` is synchronous and
+non-throwing (`TodayPresentation.swift:8-10`,
+`MinesweeperTodayMapper.swift:6-10`).
 
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Completed PAST day's dot tap (today/uncompleted dots inert — `MinesweeperDailyStripView.isTappable`, `:44-46`) | `dayTapped(_:)` (`MinesweeperDailyHubViewModel.swift:333-342`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `MS-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`MinesweeperDailyHubView.swift:66-85`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `MS-DAILY-HUB`. Review: Close → `path?.wrappedValue.removeLast()` → `MS-DAILY-HUB` |
-| Unplayed card tap | `.board(difficulty:seed:mode:.daily)` → wrapped by `MinesweeperDailyOpenGuardView` since `mode == .daily` (#842 — see `MS-BOARD-LOAD-FAILED` Tier 2 for the full `.checking`/`.completed`/`.failed`/`.playable` state machine) | `.checking` spinner, then: `.playable` → modal-full (iOS)/push (macOS) `MS-BOARD`; `.completed` → inline Completion (redirect); `.failed` → hands off to `MinesweeperDailyReplayLoaderView` | Close/Leave → `MS-DAILY-HUB` (all outcomes) |
+| Completed PAST day's pip tap (`tappablePipIndices`) | `dayTapped(_:)` (`MinesweeperDailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `MS-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`MinesweeperDailyHubView.swift:81-100`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `MS-DAILY-HUB`. Review: Close → `path?.wrappedValue.removeLast()` → `MS-DAILY-HUB` |
+| Unplayed card tap | `.board(difficulty:seed:mode:.daily)` → `MinesweeperDailyOpenGuardView` (#842, see `MS-BOARD-LOAD-FAILED` Tier 2) | `.checking` spinner, then: `.playable` → modal-full (iOS)/push (macOS); `.completed` → inline Completion; `.failed` → hands off to `MinesweeperDailyReplayLoaderView` | Close/Leave → `MS-DAILY-HUB` (all outcomes) |
 | Completed card tap | `.completion(difficulty:mode:.daily)` (#386 re-view) | push → `MS-COMPLETION-REVIEW` | Close → `path?.wrappedValue.removeLast()` → back to `MS-DAILY-HUB` (fixed by #697) |
-| Failed card tap | `.replayDailyBoard(difficulty:seed:)` → `MinesweeperDailyReplayLoaderView` (#841 — unscored free replay, no persistence, no GC submit; see `MS-BOARD-LOAD-FAILED` Tier 3 for its own `.loading`/`.loaded`/`.failed` states) | `.loading` → modal-full/push `MS-BOARD` on `.loaded`, or Close+Retry block on `.failed` | Close/Leave → `MS-DAILY-HUB` |
+| Failed card tap | `.replayDailyBoard(difficulty:seed:)` (#841 — unscored free replay, no persistence, no GC submit; see `MS-BOARD-LOAD-FAILED` Tier 3) | `.loading` → modal-full/push on `.loaded`, or Close+Retry block on `.failed` | Close/Leave → `MS-DAILY-HUB` |
 
-**AS-BUILT NOTE (2026-07-21, #841/#842):** the prior text here ("Unplayed
-card tap → `.board(…)`, modal-full/push") described a direct, synchronous
-mount with no loader in front of it. That was true pre-#842 and is corrected
-above — see `MS-BOARD-LOAD-FAILED` for the full three-tier loader/guard
-breakdown this hub's opens now funnel through.
+**Covering behavior:** none — plain tab-root content.
 
-**Covering behavior:** none. MS has **no `.empty`/`.exhausted` state** —
-`dailyTrio(date:)` is synchronous and non-throwing (unlike Sudoku's
-generator, which can exhaust).
+**State variants** (`MinesweeperTodayMapper.present`,
+`MinesweeperTodayMapper.swift:72-90`): `loading` (skeleton grid, one card per
+daily difficulty at its real board dims — `MinesweeperTodayMapper.
+skeletonCards()`, `:53-70`) / `loaded` / `allDone` / `degraded` (phase-2 fetch
+failure — cards forced to unplayed) — **no `exhausted`**, structurally
+unreachable (`TodayPresentation.swift:8-10`).
 
-**State variants:** `idle`/`loading` → `ProgressView`; `loaded` → 3-card grid
-(`MinesweeperDailyHubState` truly has only these three cases — no
-`.exhausted`/`.failed`, confirmed 2026-07-21). No `.failed`/`.empty` case
-exists on `MinesweeperDailyHubState`. CK-degraded: phase-2 completed/failed-id
-fetch errors silently → cards render unplayed; the same degrade drops the
-week-strip header to `.unknown` (card omitted from layout entirely, mirrors
-Sudoku's `weekStrip` degrade). **AS-BUILT NOTE (2026-07-22, #941, reverses
-#842/#878):** cards are tappable at full opacity from the first `.loaded`
-render, not just once phase-2 lands — `isPhase2Pending` no longer gates
-`cardTapped` or dims `MinesweeperDailyCardView`; correctness stays
-`MinesweeperDailyOpenGuardView`'s job regardless of phase-2 timing.
+**Glass status:** same as Sudoku — `HubCard` standard material, streak header
+plain content-layer text.
 
 ---
 
 ## SUD-PRACTICE-HUB
 
-**Entry points:** HOME "Practice" card.
+> **Re-anchored to the as-built 3.0 shape (2026-09-03, #1021 Phase A/C).** The
+> pre-3.0 "Difficulty picker" row below is superseded — replaced by
+> 3 `PracticeDifficultyCardView` rows (density-preview thumbnails, design.md
+> §3.2). HOME "Practice" card entry is retired (#1020).
 
-**Code:** `SudokuUI/Practice/PracticeHubView.swift`, `PracticeHubViewModel.swift`.
+**Entry points:** Practice tab root (`AppTab.practice` — no HOME).
+
+**Code:** `SudokuUI/Practice/PracticeHubView.swift`,
+`PracticeHubViewModel.swift`,
+`SudokuUI/Practice/SudokuPracticeCardsMapper.swift`,
+`GameShellUI/PracticeHubShellView.swift`,
+`GameShellUI/TabRoots/PracticeDifficultyCardView.swift`.
 
 **Element inventory:**
 
-| Element | Copy | a11y id |
+| Element | Copy (en) | a11y id |
 |---|---|---|
-| Difficulty segmented picker | Easy / Medium / Hard | none |
-| "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Draw new puzzle") | `Label("New Game", systemImage: "play.fill")` | `sudoku.practiceHub.start` (#936, mirrors MS) |
-| Hint row (state-dependent) | `"{difficulty} · ready"` / redacted shimmer / `"{difficulty} · {puzzleId}"` / failure `reason` | none (idle/drawn/shimmer); `sudoku.practiceHub.failure` on `.failed` (#935 batch 2) |
+| 3 `PracticeDifficultyCardView` rows (filter slot, `PracticeHubView.swift:57-70`, replaces the retired difficulty `Picker`) | title = Easy/Medium/Hard; detail `"~{N} givens"` (`SudokuPracticeCardsMapper.detail`, `SudokuPracticeCardsMapper.swift:61-64`); combined a11y `"{title}, {detail}"` (`PracticeDifficultyCardView.swift:92-94`); selected card shows a trailing checkmark | none; `isSelected` adds `.isSelected` trait |
+| Draw/CTA card (`HubCard`, `PracticeHubView.swift:72-142`) | title `"Ready to play"`; hint row (state-dependent, see State variants); button `Label("New Game", systemImage: "play.fill")` | button `sudoku.practiceHub.start`; failure hint `sudoku.practiceHub.failure` |
 
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Difficulty picker change | `selectDifficulty(_:)` — resets `loadingState` to `.idle` | side-effect (same screen) | — |
+| Difficulty card tap | `viewModel.selectDifficulty(_:)` — SELECTS only, does not draw (Phase C — the old difficulty `Picker` also reset `loadingState`; that reset behavior is now folded into `selectDifficulty` itself, not a picker-change side effect) | side-effect (same screen) | — |
 | "New Game" tap | ONE tap runs `drawPuzzle()` then `playTapped()` in the same `Task` — **not** a separate draw-then-play step; a `.failed` draw leaves the user on the hub (guarded by `.drawn` check) | on success: `.board(puzzleId:)` → modal-full (iOS) / push (macOS) | Close/Leave → `SUD-PRACTICE-HUB` |
 
 **Covering behavior:** none.
 
-**State variants:** `idle` (picker only) / `drawingQuiet` (<100ms, no
-indicator) / `drawingShimmer` (>100ms, `.redacted` placeholder) / `drawn` /
-`failed(reason)` (inline caption, button re-enabled, no navigation — a11y id
-`sudoku.practiceHub.failure`, #935 batch 2 N3; anchors
-`App/SudokuE2ETests/SudokuE2ETests.swift`'s host-driven E2E coverage).
+**State variants (5-state draw machine, unchanged from pre-3.0 —
+`PracticeHubView.swift:144-176`):** `idle` (hint `"{difficulty} · ready"`) /
+`drawingQuiet` (<100ms, no indicator) / `drawingShimmer` (>100ms, `.redacted`
+placeholder, a11y label `"Loading"`, `.updatesFrequently`) / `drawn` (hint
+`"{difficulty} · {puzzleId}"`) / `failed(reason)` (inline caption, button
+re-enabled, no navigation — a11y id `sudoku.practiceHub.failure`; anchors
+`App/SudokuE2ETests/SudokuE2ETests.swift`'s host-driven E2E coverage). The
+difficulty CARDS above are a separate, always-visible selection UI (Phase C)
+layered on top of this same 5-state CTA machine.
 
-Anchors: CTA copy — `SudokuUI/Practice/PracticeHubView.swift:130-138` (both
-`idle`/`drawn` branches render `Label("New Game", …)`).
+**Glass status:** content-layer glass retired — both the difficulty cards and
+the draw CTA card render on `HubCard` (`theme.surface.primary`, standard
+material), replacing the pre-3.0 custom glass surface (design.md §4.2:
+content-layer cards don't get the Slider/Toggle glass exception).
+
+Anchors: CTA copy — `PracticeHubView.swift:120-127` (both `idle`/`drawn`
+branches render `Label("New Game", …)`).
 
 ---
 
 ## MS-PRACTICE-HUB
 
-**Entry points:** HOME "Practice" card.
+> **Re-anchored to the as-built 3.0 shape (2026-09-03, #1021 Phase A/C).** The
+> pre-3.0 "Difficulty picker" row below is superseded — replaced by
+> 3 `PracticeDifficultyCardView` rows, mirroring Sudoku. HOME "Practice" card
+> entry is retired (#1020).
 
-**Code:** `MinesweeperUI/Practice/MinesweeperPracticeHubView.swift`.
+**Entry points:** Practice tab root (`AppTab.practice` — no HOME).
+
+**Code:** `MinesweeperUI/Practice/MinesweeperPracticeHubView.swift`,
+`MinesweeperUI/Practice/MinesweeperPracticeCardsMapper.swift`,
+`GameShellUI/PracticeHubShellView.swift`,
+`GameShellUI/TabRoots/PracticeDifficultyCardView.swift`.
 
 **Element inventory:**
 
-| Element | Copy | a11y id |
+| Element | Copy (en) | a11y id |
 |---|---|---|
-| Difficulty segmented picker | Beginner / Intermediate / Expert | none |
-| "New Game" button (#885, 2026-07-18 — unified CTA copy; was "Start") | `Label("New Game", systemImage: "play.fill")` + board-summary caption `"{rows} × {cols} · {mines} mines"` | `minesweeper.practiceHub.start` |
+| 3 `PracticeDifficultyCardView` rows (filter slot, `MinesweeperPracticeHubView.swift:77-90`, replaces the retired difficulty `Picker`) | title = Beginner/Intermediate/Expert; detail `"{R} × {C} · {M} mines"` (`MinesweeperPracticeCardsMapper.detail`, `MinesweeperPracticeCardsMapper.swift:46-48`); combined a11y `"{title}, {detail}"`; selected card shows a trailing checkmark | none |
+| Start card (`HubCard`, `MinesweeperPracticeHubView.swift:92-138`) | title `"Ready to play"`; board-summary caption `"{R} × {C} · {M} mines"` (`boardSummary`, `MinesweeperPracticeHubView.swift:165-167`); button `Label("New Game", systemImage: "play.fill")` | button `minesweeper.practiceHub.start` |
 
 **Per-interaction outcome:**
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| "New Game" tap | synchronous — no draw/shimmer step at all (CODE CONTRADICTED vs. a Sudoku-mirrored assumption): mints a random seed and appends `.board(difficulty:seed:mode:.practice)` directly, wrapped by `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4) | `.loading` (brief) → modal-full (iOS) / push (macOS) | Close/Leave → `MS-PRACTICE-HUB` |
+| Difficulty card tap | `difficultyBinding.wrappedValue = level` — SELECTS only; also fires `onDifficultyChanged` for persistence | side-effect (same screen) | — |
+| "New Game" tap | synchronous — no draw/shimmer step at all: mints a random seed and appends `.board(difficulty:seed:mode:.practice)` directly, wrapped by `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4) | `.loading` (brief) → modal-full (iOS) / push (macOS) | Close/Leave → `MS-PRACTICE-HUB` |
 
-Anchors: CTA copy — `MinesweeperUI/Practice/MinesweeperPracticeHubView.swift:122-129`
+**Covering behavior:** none.
+
+**State variants:** single state — no loading/shimmer machinery exists (MS
+board generation is synchronous, a real gameplay difference from Sudoku's
+async generator, not strong-armed into parity — design.md §3.2). The
+difficulty cards above are a separate, always-visible selection UI (Phase C)
+with no state of their own.
+
+**Glass status:** content-layer glass retired — both the difficulty cards and
+the start CTA card render on `HubCard` (standard material), mirrors Sudoku.
+
+Anchors: CTA copy — `MinesweeperPracticeHubView.swift:125-127`
 (renders `Label("New Game", …)`).
-
-**Covering behavior:** none. **State variants:** single state (no
-loading/shimmer machinery exists — MS generation is synchronous).
 
 ---
 
