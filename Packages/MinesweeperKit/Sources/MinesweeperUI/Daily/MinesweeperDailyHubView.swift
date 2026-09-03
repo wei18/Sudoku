@@ -47,10 +47,11 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
     private let banner: Banner
     @ScaledSpacing(.medium) private var headerGap
-    // #1021 Phase B: mirrors `DailyHubShellView`'s own (private) column-count
-    // rule so the `loading:` skeleton grid doesn't visibly reflow once real
-    // data replaces it.
+    // #1021 Phase G: calls the shared `DailyHubGridLayout.columnCount(...)`
+    // so the `loading:` skeleton grid doesn't visibly reflow once real data
+    // replaces it, and follows the same AX-size single-column rule.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(
         viewModel: MinesweeperDailyHubViewModel,
@@ -191,9 +192,10 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     }
 
     private var skeletonColumns: [GridItem] {
-        sizeClass == .regular
-            ? [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-            : [GridItem(.flexible())]
+        Array(
+            repeating: GridItem(.flexible()),
+            count: DailyHubGridLayout.columnCount(sizeClass: sizeClass, dynamicTypeSize: dynamicTypeSize)
+        )
     }
 
     /// Translates the MS daily state into the generic shell input. MS has no

@@ -23,8 +23,8 @@
 // additive `loading:` slot (Leader ruling) renders 3 skeleton
 // `DailyCardContent` rows in the same 1-/3-column grid the loaded state uses
 // — `TodayMapper.skeletonCards()` supplies the models, `skeletonColumns`
-// below mirrors the shell's own (private) column-count rule so the grid
-// doesn't visibly reflow once real data lands.
+// below calls the shared `DailyHubGridLayout.columnCount(...)` (#1021 Phase
+// G) so the grid doesn't visibly reflow once real data lands.
 
 public import MonetizationCore
 public import SwiftUI
@@ -57,6 +57,7 @@ public struct DailyHubView<Banner: View>: View {
     // rule so the `loading:` skeleton grid doesn't visibly reflow once real
     // data replaces it.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(
         viewModel: DailyHubViewModel,
@@ -279,9 +280,10 @@ public struct DailyHubView<Banner: View>: View {
     }
 
     private var skeletonColumns: [GridItem] {
-        sizeClass == .regular
-            ? [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-            : [GridItem(.flexible())]
+        Array(
+            repeating: GridItem(.flexible()),
+            count: DailyHubGridLayout.columnCount(sizeClass: sizeClass, dynamicTypeSize: dynamicTypeSize)
+        )
     }
 
     /// Translates Sudoku's `DailyHubState` (with `.exhausted`) into the

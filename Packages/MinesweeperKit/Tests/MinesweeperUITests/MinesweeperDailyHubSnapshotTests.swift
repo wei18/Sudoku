@@ -229,5 +229,26 @@ struct MinesweeperDailyHubSnapshotTests {
         assertUISnapshot(of: host, as: .image, named: "Daily-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
         assertViewStructure(of: host, named: "Daily-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
     }
+
+    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
+    /// Phase G, mirrors Sudoku's `DailyHubViewTests.
+    /// snapshotLoadedAX3IPadLight`. Before the fix, `DailyHubShellView`'s
+    /// grid kept 3 columns whenever `sizeClass == .regular`, so at AX3 each
+    /// ~262pt column wrapped every status word onto its own line and
+    /// hyphenated. `DailyHubGridLayout.columnCount(...)` now forces a
+    /// single column at any accessibility Dynamic Type size regardless of
+    /// size class — confirms the grid collapses to one column here.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotLoaded_iPad_light_AX3() {
+        let host = hostingView(
+            dailyHubView(state: .loaded(Self.loadedTrio)),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        assertUISnapshot(of: host, as: .image, named: "Daily-iPad-light-loaded-AX3", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "Daily-iPad-light-loaded-AX3", record: SnapshotMode.recordMode)
+    }
 }
 #endif

@@ -184,5 +184,26 @@ struct PracticeHubViewTests {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-accessibility3")
         }
     }
+
+    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
+    /// Phase G. Reproduces the Leader's iPad Pro 11 finding: the shell's
+    /// fixed, screen-filling `VStack` under the large "Practice" title
+    /// overlapped the "Difficulty" section label once the title needed
+    /// more vertical space at AX3. `PracticeHubShellView` now wraps that
+    /// content in a `ScrollView` so it flows below the title instead —
+    /// confirms no overlap on an iPad-width regular layout.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility3IPadLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPad-light-accessibility3")
+        }
+    }
     #endif
 }

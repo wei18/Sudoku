@@ -206,6 +206,32 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
     }
 
+    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
+    /// Phase G. Distinct from `snapshotLoadedAX3IPhoneLight` above (compact
+    /// size class): before the fix, `DailyHubShellView`'s grid kept 3
+    /// columns whenever `sizeClass == .regular`, so at AX3 each ~262pt
+    /// column wrapped every status word onto its own line and hyphenated.
+    /// `DailyHubGridLayout.columnCount(...)` now forces a single column at
+    /// any accessibility Dynamic Type size regardless of size class —
+    /// confirms the grid collapses to one column here.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedAX3IPadLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let easyId = envelopes[0].identity.puzzleId
+        let viewModel = await makeViewModel(completedDailyIds: [easyId])
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-loaded-AX3")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPad-light-loaded-AX3", record: SnapshotMode.recordMode)
+    }
+
     /// `allDone`: all three difficulties completed — `TodayAllDoneBlock`
     /// renders above the (still tappable) 3 solved cards.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllDoneIPhoneLight() async {

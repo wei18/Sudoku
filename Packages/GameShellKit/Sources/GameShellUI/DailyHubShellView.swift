@@ -167,15 +167,29 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     }
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var columns: [GridItem] {
-        if sizeClass == .regular {
-            return [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ]
-        }
-        return [GridItem(.flexible())]
+        Array(
+            repeating: GridItem(.flexible()),
+            count: DailyHubGridLayout.columnCount(sizeClass: sizeClass, dynamicTypeSize: dynamicTypeSize)
+        )
+    }
+}
+
+/// Shared column-count rule for the Daily grid AND its per-app loading
+/// skeleton (which must reflow identically so the grid doesn't visibly jump
+/// once real data lands — see `DailyHubView`/`MinesweeperDailyHubView`
+/// `skeletonColumns`). Hoisted out of the generic `DailyHubShellView` so
+/// callers don't have to spell its full generic signature just to reuse the
+/// rule. #1021 Phase G: an accessibility Dynamic Type size (AX1–AX5) forces
+/// a single column REGARDLESS of size class — at AX3 on a 834pt-wide iPad,
+/// three ~262pt columns wrap every status word onto its own line (and
+/// hyphenate), which design.md §5.6/§7 forbids even though nothing is
+/// clipped.
+public enum DailyHubGridLayout {
+    public static func columnCount(sizeClass: UserInterfaceSizeClass?, dynamicTypeSize: DynamicTypeSize) -> Int {
+        guard !dynamicTypeSize.isAccessibilitySize else { return 1 }
+        return sizeClass == .regular ? 3 : 1
     }
 }

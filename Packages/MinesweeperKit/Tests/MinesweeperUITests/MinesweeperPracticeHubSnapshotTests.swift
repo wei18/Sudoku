@@ -56,6 +56,24 @@ struct MinesweeperPracticeHubSnapshotTests {
         assertUISnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-accessibility3", record: SnapshotMode.recordMode)
     }
 
+    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
+    /// Phase G, mirrors Sudoku's `PracticeHubViewTests.
+    /// snapshotAccessibility3IPadLight`. Reproduces the Leader's iPad Pro 11
+    /// finding: the shell's fixed, screen-filling `VStack` under the large
+    /// "Practice" title overlapped the "Difficulty" section label at AX3.
+    /// `PracticeHubShellView` now wraps that content in a `ScrollView` so it
+    /// flows below the title instead — confirms no overlap here.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility3IPadLight() {
+        let host = hostingView(
+            MinesweeperPracticeHubView(path: .constant([])),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        assertUISnapshot(of: host, as: .image, named: "PracticeHub-iPad-light-accessibility3", record: SnapshotMode.recordMode)
+    }
+
     // MARK: - Shared TabRoots component snapshots
 
     private static let expertModel = MinesweeperPracticeCardsMapper.card(for: .expert)

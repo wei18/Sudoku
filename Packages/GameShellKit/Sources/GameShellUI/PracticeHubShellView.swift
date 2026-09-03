@@ -2,8 +2,10 @@
 //
 // Owns the parts of a "pick a difficulty, draw a puzzle" hub that don't
 // change across games:
-//   - the outer `VStack(alignment: .leading, spacing: 24)` with
-//     `.padding(16)` + `.frame(maxWidth/Height: .infinity, alignment: .top)`
+//   - a `ScrollView` wrapping the `VStack(alignment: .leading, spacing: 24)`
+//     with `.padding(16)` (#1021 Phase G: was a fixed, non-scrolling VStack —
+//     see the body's doc comment for why that overlapped the navigation
+//     title at accessibility Dynamic Type sizes)
 //   - the chrome triple (`.background(Color)` + `.navigationTitle`)
 //   - the inline section header `Text` for the filter slot, with caller-
 //     supplied foreground color (`headerForeground`)
@@ -70,19 +72,30 @@ where Filter: View, CTA: View, Banner: View {
         // spacing-exempt: zero-gap chrome seam between the scrollable content
         // and the banner slot — not a spacing decision.
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: contentGap) {
-                Text(filterHeader)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(headerForeground)
+            // #1021 Phase G: the filter/CTA content flows in a `ScrollView`
+            // below the navigation title instead of a fixed, screen-filling
+            // `VStack`. A bare `VStack` under a large title only reserves a
+            // single-line title's worth of top space; at an accessibility
+            // Dynamic Type size the title wraps to 2+ lines and the fixed
+            // content overlapped it (the "Difficulty" label drawn under
+            // "Practice"'s second line). A `ScrollView` lets the system
+            // report the title's actual (multi-line) height as a top
+            // safe-area inset the content flows below, with no magic offset,
+            // and also satisfies G3 (content stays reachable if it ever
+            // grows taller than the screen at large text sizes).
+            ScrollView {
+                VStack(alignment: .leading, spacing: contentGap) {
+                    Text(filterHeader)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(headerForeground)
 
-                filter()
+                    filter()
 
-                cta()
-
-                Spacer()
+                    cta()
+                }
+                .padding(screenEdgeInset)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
-            .padding(screenEdgeInset)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             banner
         }
