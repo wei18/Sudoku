@@ -113,19 +113,19 @@ MAP=(
   # Progress tab's ProgressScreen, #1021), backed by the dedicated
   # fully-populated `storeBests`/`storeHistory` fixture.
   "minesweeper|iphone-6.9|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPhoneLight.ProgressScreen-iPhone-light-store.png"
-  "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"
+  "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotLoaded_iPhone_light.Daily-iPhone-light-loaded.png"
   "minesweeper|iphone-6.9|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"
   "minesweeper|iphone-6.9|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"
   # ── Minesweeper · iPad 13" (#506) ─────────────────────────────────────────────
   # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
   "minesweeper|ipad-13|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPadLight.ProgressScreen-iPad-light-store.png"
-  "minesweeper|ipad-13|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPad_light.Daily-iPad-light-regular.png"
+  "minesweeper|ipad-13|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotAllDone_iPad_light.Daily-iPad-light-allDone.png"
   "minesweeper|ipad-13|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPad_light.Board-iPad-light-beginner-covered.png"
   "minesweeper|ipad-13|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPad_light.Completion-iPad-light-win-loaded.png"
   # ── Minesweeper · Mac ───────────────────────────────────────────────────────
   # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
   "minesweeper|mac|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreMacLight.ProgressScreen-Mac-light-store.png"
-  "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_regular_light.Daily-mac-light-regular.png"
+  "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotLoaded_regular_light.Daily-mac-light-loaded.png"
 )
 
 # ── Arg parsing ───────────────────────────────────────────────────────────────

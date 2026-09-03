@@ -489,7 +489,7 @@ SLOTS = {
         ],
         "minesweeper": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-loaded", "snapshotLoaded_iPhone_light"),
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
                  "snapshotFlagged_iPhone_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
@@ -509,8 +509,8 @@ SLOTS = {
         ],
         "minesweeper": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
-                 "snapshotDaily_iPad_light_streak"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-allDone",
+                 "snapshotAllDone_iPad_light"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
