@@ -1,10 +1,12 @@
-// ProgressViewModelTests — #1021 Phase D. Pins the record→row mapping
-// (average computed as total/count, nil best-time and zero-count cases,
-// PRACTICE mode backing the personal-bests hero — see `ProgressViewModel`'s
-// header for why), the month streak-history construction from a fake
-// by-day dictionary, and the graceful-degrade contract on fetch failure
-// (`history == nil`, one difficulty's row degrades to empty, both funnel
-// through `errorReporter`).
+// ProgressViewModelTests — #1021 Phase D/E2. Pins the record→row mapping
+// (both DAILY and PRACTICE merged per difficulty — see `ProgressViewModel`'s
+// header for why a "personal best" must not silently drop daily records:
+// best = the smaller of the two modes' bests, completedCount/average = the
+// two modes' counts/totals summed), the month streak-history construction
+// from a fake by-day dictionary, and the graceful-degrade contract on fetch
+// failure (`history == nil`, a failing (mode, difficulty) pair degrades to
+// `.empty` before merging rather than wiping out the other mode's data,
+// every failure funnels through `errorReporter`).
 
 import Foundation
 import GameShellUI
@@ -83,13 +85,38 @@ private let fixedToday = Date(timeIntervalSince1970: 1_756_512_000) // 2025-08-3
 @Suite("ProgressViewModel — record → row mapping, month history")
 struct ProgressViewModelTests {
 
-    @Test func bestModelComputesAverageFromTotalOverCount() {
+    @Test func bestModelSumsCountsAndAveragesAcrossBothModes() {
         let best = ProgressViewModel.bestModel(
             difficulty: .easy,
-            record: record(mode: .practice, difficulty: .easy, best: 100, total: 1000, count: 4)
+            daily: record(mode: .daily, difficulty: .easy, best: 300, total: 300, count: 1),
+            practice: record(mode: .practice, difficulty: .easy, best: 700, total: 700, count: 1)
         )
-        #expect(best.bestTimeText == "1:40")
-        #expect(best.footnote == "4 solved · avg 4:10")
+        #expect(best.bestTimeText == "5:00") // min(300, 700) == 300
+        #expect(best.footnote == "2 solved · avg 8:20") // (300+700)/2 == 500
+    }
+
+    /// #1021 Phase E2 CR: a "personal best per difficulty" must not silently
+    /// drop daily records — when DAILY'S best time is the smaller (faster)
+    /// one, it must win over practice, not be shadowed by it.
+    @Test func bestModelDailyBestWinsWhenFasterThanPractice() {
+        let best = ProgressViewModel.bestModel(
+            difficulty: .medium,
+            daily: record(mode: .daily, difficulty: .medium, best: 60, total: 60, count: 1),
+            practice: record(mode: .practice, difficulty: .medium, best: 200, total: 200, count: 1)
+        )
+        #expect(best.bestTimeText == "1:00")
+    }
+
+    /// A difficulty with ONLY daily data (never played in practice) must
+    /// still surface daily's numbers, not fall back to the empty placeholder.
+    @Test func bestModelWithOnlyDailyDataSurfacesDailyNumbers() {
+        let best = ProgressViewModel.bestModel(
+            difficulty: .hard,
+            daily: record(mode: .daily, difficulty: .hard, best: 900, total: 1800, count: 2),
+            practice: .empty(mode: .practice, difficulty: .hard, at: Date(timeIntervalSince1970: 0))
+        )
+        #expect(best.bestTimeText == "15:00")
+        #expect(best.footnote == "2 solved · avg 15:00")
     }
 
     @Test func emptyBestOmitsAverageAndBestTime() {
@@ -98,13 +125,15 @@ struct ProgressViewModelTests {
         #expect(best.footnote == "0 solved")
     }
 
-    @Test func bootstrapPopulatesBestsFromPracticeModeOnly() async {
+    @Test func bootstrapMergesBestTimePerDifficultyAcrossBothModes() async {
         let viewModel = ProgressViewModel(
             persistence: ScriptedProgressPersistence(records: [
-                record(mode: .daily, difficulty: .easy, best: 1, total: 1, count: 1),
+                // easy: daily is faster (100) than practice (200) → best 100, count 1+5=6.
+                record(mode: .daily, difficulty: .easy, best: 100, total: 100, count: 1),
                 record(mode: .practice, difficulty: .easy, best: 200, total: 1250, count: 5),
+                // medium: practice-only (no daily record seeded) → practice numbers alone.
                 record(mode: .practice, difficulty: .medium, best: 61, total: 61, count: 1)
-                // practice-hard omitted → empty record → "—" placeholder.
+                // hard: neither mode seeded → empty record on both → "—" placeholder.
             ]),
             calendar: fixedCalendar,
             now: { fixedToday }
@@ -112,8 +141,10 @@ struct ProgressViewModelTests {
         await viewModel.bootstrap()
         #expect(viewModel.model.isLoading == false)
         #expect(viewModel.model.bests.map(\.id) == [Difficulty.easy.rawValue, Difficulty.medium.rawValue, Difficulty.hard.rawValue])
-        #expect(viewModel.model.bests[0].bestTimeText == "3:20")
-        #expect(viewModel.model.bests[0].footnote == "5 solved · avg 4:10")
+        #expect(viewModel.model.bests[0].bestTimeText == "1:40") // min(100, 200)
+        #expect(viewModel.model.bests[0].footnote == "6 solved · avg 3:45") // (100+1250)/6 == 225
+        #expect(viewModel.model.bests[1].bestTimeText == "1:01")
+        #expect(viewModel.model.bests[1].footnote == "1 solved · avg 1:01")
         #expect(viewModel.model.bests[2].bestTimeText == nil)
         #expect(viewModel.model.bests[2].footnote == "0 solved")
     }
@@ -142,8 +173,8 @@ struct ProgressViewModelTests {
         )
         await viewModel.bootstrap()
         #expect(viewModel.model.bests == Difficulty.allCases.map(ProgressViewModel.emptyBest))
-        // 3 difficulties, each failure funneled.
-        #expect(await reporter.received.count == 3)
+        // 2 modes × 3 difficulties, each failure funneled independently.
+        #expect(await reporter.received.count == 6)
     }
 
     @Test func bootstrapDegradesHistoryToNilOnFetchFailure() async {
@@ -160,7 +191,7 @@ struct ProgressViewModelTests {
         #expect(await reporter.received.count == 1)
     }
 
-    @Test func bootstrapFiresStatsViewedExactlyOnce() async {
+    @Test func bootstrapFiresScreenViewedTelemetryExactlyOnce() async {
         let sink = ProgressRecordingSink()
         let telemetry = Telemetry(sinks: [sink])
         let viewModel = ProgressViewModel(

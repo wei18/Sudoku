@@ -68,7 +68,7 @@ extension DigitPadView {
     /// audit confirmed `"Off"` never made it into the xcstrings catalog).
     /// `String(localized:)` is the established pattern for computed
     /// accessibility strings in this module (see `BoardCellView.swift`,
-    /// `StatsView.swift`).
+    /// `PersonalBestRow.swift`).
     static func pencilModeAccessibilityValue(_ pencilMode: Bool) -> String {
         pencilMode
             ? String(localized: "On", bundle: .main)

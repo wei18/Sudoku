@@ -816,48 +816,96 @@ save/resume/replay, `MinesweeperDailyOpenGuardView`'s today-only re-check).
 
 ---
 
-## STATS
+## PROGRESS
 
-**Added 2026-07-21 (#773/#844) — closes F-HOME-1: this screen shipped in both
-apps with no contract until now.**
+**Added 2026-07-21 (#773/#844) as STATS, closes F-HOME-1. Superseded
+2026-09 (#1021 Phases D/E2): STATS is retired for real — deleted, not
+merely unwired — and replaced by this contract. The screen it names is now
+`AppTab.progress`'s permanent tab root (design.md §3.3), not a pushed route
+off a HOME card: HOME itself was retired by #1020's 3-tab shell, so there is
+no HOME card to entry-point from any more.**
 
-**Entry points:** HOME Statistics card only (see `HOME`'s element inventory
-footnote ² — not a `HomeMode`, injected via `GameHomeView`'s `secondaryLink`
-slot). No other entry point exists (not reachable from Settings, Daily, or
-Practice).
+**Entry points:** the `Progress` tab itself (`AppTab.progress`, one of the
+three permanent sidebarAdaptable tabs alongside `Today`/`Practice` — #1020).
+No other entry point exists (not reachable from Settings, Daily, or
+Practice) — same non-reachability posture the retired STATS contract had,
+just off a tab instead of a HOME card.
 
-**Code:** `SudokuUI/Stats/StatsView.swift`, `SudokuUI/Stats/StatsViewModel.swift`;
-`MinesweeperUI/Stats/MinesweeperStatsView.swift`,
-`MinesweeperUI/Stats/MinesweeperStatsViewModel.swift`; route wiring
-`SudokuAppComposition/LiveRouteFactory.swift:275-286` (`.stats` case) /
-`MinesweeperAppComposition/LiveRouteFactory.swift:326-327` +
-`LiveRouteFactory+Stats.swift`.
+**Code:**
+- `GameAppKit/Sources/GameAppKit/ProgressScreen.swift:27` — the shared
+  screen, `public struct ProgressScreen<Route: Hashable & Sendable>: View`,
+  composed from a `ProgressModel` value + the per-app `GameRootViewModel`.
+- `GameAppKit/Sources/GameAppKit/GameCenterEntryRow.swift:23` — the shared
+  `Achievements`/`Leaderboards` row, with `.achievements(rootViewModel:)`
+  (line 87) and `.leaderboards(rootViewModel:)` (line 98) factories.
+- `GameShellKit/Sources/GameShellUI/TabRoots/ProgressModel.swift:9` — the
+  pure `ProgressModel` value (`bests`/`history`/`month`/`monthTitle`/`isLoading`).
+- `GameShellKit/Sources/GameShellUI/TabRoots/PersonalBestRow.swift:7,23` —
+  `PersonalBestModel` + the row view (Phase A scaffold, first consumed here
+  in Phase D).
+- `GameShellKit/Sources/GameShellUI/TabRoots/StreakCalendarView.swift:8` +
+  `StreakHistory.swift:19,91` — the month calendar view + its `DayKey`/
+  `StreakHistory` backing values (Phase A scaffold).
+- Per-app data + host, Sudoku: `SudokuUI/Progress/ProgressViewModel.swift:38`
+  (`bootstrap()` line 74, the daily+practice merge in `bestModel(difficulty:daily:practice:)`
+  line 142) and `ProgressHostView.swift:15`; wired at
+  `SudokuAppComposition/Live+TabRoots.swift:81` (`.progress` case).
+- Per-app data + host, Minesweeper: `MinesweeperUI/Progress/MinesweeperProgressViewModel.swift:33`
+  (`bootstrap()` line 71, the merge in `bestModel(difficulty:daily:practice:)`
+  line 140) and `MinesweeperProgressHostView.swift:17`; wired at
+  `MinesweeperAppComposition/Live+TabRoots.swift:88` (`.progress` case).
 
 **Element inventory:**
 
 | Element | Copy | a11y id |
 |---|---|---|
-| "Daily" section header + 3 tiles (Easy/Medium/Hard, or MS Beginner/Intermediate/Expert) | section title "Daily"; each tile: difficulty-tinted dot + name, completed count, best time (`m:ss` or `—`), average time | none (each tile is one combined a11y element, e.g. "Easy, 14 completed, best time 3 minutes 12 seconds, average time 4 minutes 2 seconds") |
-| "Practice" section header + 3 tiles | same shape, section title "Practice" | same pattern |
-| Footer caption | `"Stats sync with your iCloud account."` | none |
+| "Personal bests" section header + 3 `PersonalBestRow`s (Easy/Medium/Hard, or MS Beginner/Intermediate/Expert) | difficulty name + `DifficultyPips`; hero best time (`m:ss`, `.title2.monospacedDigit()`, or `—` — `PersonalBestRow.swift:50-52`) is the LARGEST element on the row, matching design.md §3.3's "best time as the hero"; footnote below the name (`"%lld solved · avg %@"` Sudoku / `"%lld cleared · avg %@"` MS, avg omitted when nil). Best/count/average MERGE both Daily and Practice records per difficulty (#1021 Phase E2 CR — a "personal best" must not silently drop daily records): best = the smaller of the two modes' times, count/average = the two modes' sums. | none (each row is one combined a11y element via `PersonalBestRow.accessibilityLabel(title:bestTimeText:footnote:)`, e.g. "Easy, best 3:12, 14 solved · avg 4:02") |
+| Month streak calendar (current month, `StreakCalendarView`) | month/year header + "Current N · Best N" summary; a completed day renders a filled circle with a checkmark GLYPH (`StreakCalendarView.swift:76`) — color is not the only channel; today gets an accent ring | none on the grid itself; each day cell is its own combined a11y element via `StreakCalendarView.dayAccessibilityLabel(day:isCompleted:isToday:)` (`StreakCalendarView.swift:99`), e.g. "21, completed, today" |
+| `Achievements` row | `Label` + leading `trophy` icon + trailing `arrow.up.forward` (`GameCenterEntryRow.swift:52,61`) — HIG-mandated term, never "Trophies"/"Awards"/"Medals" | `game.progress.achievements` (`GameCenterEntryRow.swift:91`, kept from #1020's retired `AchievementsRow`) |
+| `Leaderboards` row | same shape, leading `list.number` icon | `game.progress.leaderboards` (`GameCenterEntryRow.swift:102`) |
 
-**Per-interaction outcome:** **none — this screen has no forward
-navigation.** Every tile (`StatsTileView`) is a static, non-interactive
-`VStack` (no `Button`/tap gesture in either app's tile view). The only
-navigation is the system back (push pop → `HOME`).
+**Explicit non-goal (design.md §3.3):** no in-app achievement gallery / card
+list of any kind — Apple's own achievement-card format (collectible-card
+images, per-achievement progress) is NOT reproduced here; the two rows exist
+solely to hand off to Apple's native dashboard.
 
-**Covering behavior:** none — plain push content, no sheet/overlay of its own.
+**Per-interaction outcome:**
 
-**State variants:** seeded EMPTY on first render (`Difficulty.allCases.map(StatsTile.empty)`,
-`StatsViewModel.swift:74-76`) so the screen never blocks, then filled
-tile-by-tile as the async CloudKit reads land (`bootstrap()`,
-`StatsViewModel.swift:96-102`). CK-degraded: a per-difficulty fetch failure
-(offline / iCloud signed-out) reports through `errorReporter` and that one
-tile stays at its empty placeholder (`0` completed, `—` best/average) — the
-screen never surfaces a blocking error state of its own, mirroring the Daily
-hubs' phase-2 graceful-degrade posture (`StatsViewModel.swift:107-123`). No
-monetization surface (explicit scope exclusion, `docs/v2/stats-screen-proposal.md`
-§7).
+| Element → action | Destination | Presentation | Back/Close lands on |
+|---|---|---|---|
+| `Achievements` tap, authenticated | native Game Center dashboard, `.achievements` state (`GameCenterDashboard.presentAchievements()`, `GameCenterDashboard.swift:62,64` → `GKAccessPoint.shared.trigger(state: .achievements)`) | external, fully modal Apple UI (same covering behavior as `GC-DASHBOARD`) | dismiss → `Progress` tab, unchanged |
+| `Leaderboards` tap, authenticated | native Game Center dashboard, `.leaderboards` state (`GameCenterDashboard.present()`, same file line 44/49) — see `GC-DASHBOARD` for the full leaderboards-dashboard contract | same as above | same as above |
+| Either row tap, signed out | the shared `GC-SIGNED-OUT-ALERT` (routed through `GameRootViewModel.presentGameCenterOrAlert`, `GameRootViewModel.swift:372` — the same #685 auth gate `GC-DASHBOARD`'s other entry points use) | system `.alert` | OK → dismiss, no route change |
+
+Neither row is a navigation push — a tap is a side effect (present Apple's
+UI or raise the alert), never a route change of its own; the tab's own
+`path` stays empty either way (mirrors #1020 C-35's retired HOME
+leaderboard card).
+
+**Covering behavior:** none of its own — plain tab-root content, no
+sheet/overlay; the two GC rows' presentations are covered above.
+
+**State variants:**
+- **Loading** — `ProgressModel.isLoading == true` (seeded on VM init before
+  `bootstrap()` lands): both the bests section and the calendar section
+  render `.redacted(reason: .placeholder)` (`ProgressScreen.swift:72,92`) —
+  the screen never blocks on the fetch.
+- **Loaded** — both `fetchPersonalRecord(mode:difficulty:)` (×6: both modes
+  × 3 difficulties) and `fetchCompletedDailyIdsByDay()` have landed; a
+  per-(mode, difficulty) fetch failure degrades JUST that pair to
+  `PersonalRecord.empty(...)` before the merge (the other mode's real data
+  for that difficulty still counts), funneled through `errorReporter` —
+  never a blocking error state, mirroring the Daily hubs' phase-2
+  graceful-degrade posture.
+- **History-unavailable** — `fetchCompletedDailyIdsByDay()` failed outright:
+  `ProgressModel.history == nil`. The calendar still renders (an empty
+  `StreakHistory` — zero days marked, `ProgressScreen.swift`'s
+  `emptyHistory(today:)` fallback) plus a `"Streak history unavailable"`
+  footnote (`ProgressScreen.swift:87`) — never a blank calendar with no
+  explanation.
+
+No monetization surface (explicit scope exclusion carried over from the
+retired STATS contract's `docs/v2/stats-screen-proposal.md` §7).
 
 ---
 

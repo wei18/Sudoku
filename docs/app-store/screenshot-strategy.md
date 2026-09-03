@@ -360,13 +360,15 @@ Reviewed and rejected (evaluated, not just skipped):
 - **Sudoku**, `BoardViewBannerTests`: ad-banner-reservation states, not a
   fuller version of anything in the current 5-shot storyline.
 - Suites with no state relevant to any of the 5 slots (Sudoku:
-  `PracticeHubViewTests`, `StatsViewTests`, `ToastTests`,
+  `PracticeHubViewTests`, `ProgressScreenTests`, `ToastTests`,
   `AudioSettingsSectionTests`, `ReminderSettingsSectionTests`,
   `SettingsIAPRowTests`, `BannerSlotDarkBandRegressionTests`,
-  `BoardLoaderViewFailedExitTests`; Minesweeper: `MinesweeperStatsTests`,
+  `BoardLoaderViewFailedExitTests`; Minesweeper: `ProgressScreenTests`,
   `MinesweeperBoardLoaderViewFailedExitTests`) — different screens
   entirely, or failure/edge states, not alternate happy-states of a slot
-  already in use.
+  already in use. (#1021 Phase E2: the retired Statistics screen's own test
+  suites were renamed to `ProgressScreenTests` when it was superseded by the
+  Progress tab.)
 
 Escalated, then ruled on:
 

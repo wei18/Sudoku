@@ -11,12 +11,13 @@
 // entry point into Apple's own dashboard, which is exactly what the two
 // `GameCenterEntryRow`s are.
 //
-// One screen, shared by both apps — replaces the per-app `StatsView` /
-// `MinesweeperStatsView` at the `.progress` tab root. Each app supplies its
-// own `ProgressModel` (built from `PersonalRecord` + day-bucketed completion
-// reads its own `ProgressViewModel` performs) and re-renders this screen
-// whenever that model changes (the screen itself holds no state / does no
-// I/O — same "dumb view over a value" shape as `PersonalBestRow`).
+// One screen, shared by both apps — replaces each app's now-retired
+// per-app Statistics screen at the `.progress` tab root (#1021 Phase E2).
+// Each app supplies its own `ProgressModel` (built from `PersonalRecord` +
+// day-bucketed completion reads its own `ProgressViewModel` performs) and
+// re-renders this screen whenever that model changes (the screen itself
+// holds no state / does no I/O — same "dumb view over a value" shape as
+// `PersonalBestRow`).
 
 public import SwiftUI
 // `public` — `ProgressModel` appears in this file's own public init.
@@ -45,8 +46,8 @@ public struct ProgressScreen<Route: Hashable & Sendable>: View {
                 gameCenterSection
             }
             .padding(theme.spacing.medium)
-            // Same 960pt clamp-and-center treatment as the retired
-            // `StatsView` / `BoardView.macLayout` Mac detail column.
+            // Same 960pt clamp-and-center treatment as `BoardView.macLayout`'s
+            // Mac detail column (the retired Statistics screen used it too).
             .frame(maxWidth: 960, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
         }

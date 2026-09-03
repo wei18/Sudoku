@@ -89,11 +89,10 @@ extension MinesweeperAppComposition {
             // #1021 Phase D: the shared `ProgressScreen` (GameAppKit) —
             // personal bests + a month streak calendar + the native
             // `Achievements`/`Leaderboards` Game Center entry points.
-            // Replaces the retired `MinesweeperStatsView` tab-root wiring
-            // (`MinesweeperStatsView` itself stays — see
-            // `MinesweeperProgressViewModel.swift`'s header — it still backs
-            // the "01-home" ASC store-screenshot fixture
-            // `mise-tasks/store/screenshots` names by exact file path).
+            // #1021 Phase E2: the retired Statistics screen this replaced is
+            // now fully deleted (its "01-home" ASC store-screenshot slot in
+            // `mise-tasks/store/screenshots` was repointed at `ProgressScreen`'s
+            // own store fixture — see `ProgressScreenTests.swift`).
             //
             // #935 batch 3: `dailyOverlayReading` (when the composition root
             // wired one — the E2E fake-or-live resolution) takes priority;

@@ -1,21 +1,26 @@
-// MinesweeperProgressViewModel — PROGRESS screen data (#1021 Phase D; mirrors
-// Sudoku's `ProgressViewModel`, subsuming #773's `MinesweeperStatsViewModel`
-// for the live tab-root wiring — see `Live+TabRoots.swift`).
+// MinesweeperProgressViewModel — PROGRESS screen data (#1021 Phase D/E2;
+// mirrors Sudoku's `ProgressViewModel`, subsuming #773's retired Statistics
+// screen view model for the live tab-root wiring — see `Live+TabRoots.swift`).
 //
 // Reuses the exact two data reads the issue's motivation line names, zero
 // CloudKit reads added:
-//   - `store.fetch(modeRaw: "practice", difficulty:)` → the 3
-//     `PersonalBestModel` rows. PRACTICE (not Daily) backs the "best time"
-//     hero — same rationale as Sudoku's `ProgressViewModel`: Daily is one
-//     board per day and is already covered by the streak calendar below.
+//   - `store.fetch(modeRaw:difficulty:)` for BOTH `"daily"` and `"practice"`
+//     (6 reads total, same as the retired view model's own daily-tiles+
+//     practice-tiles reads) → the 3 `PersonalBestModel` rows. A
+//     "personal best per difficulty" must not silently drop daily records
+//     (#1021 Phase E2 CR): best = the smaller of the two modes' best times
+//     (nil only when BOTH are nil), completedCount = the two counts summed,
+//     average = the two total-times summed over the two counts summed.
 //   - `completionSource.fetchCompletedDailyIdsByDay()` → the month streak
 //     calendar (`StreakHistory`), one read (mirrors
 //     `MinesweeperDailyHubViewModel+Overlay`'s single-fetch contract).
 //
 // Fetch contract mirrors the daily hub / retired Stats screen's
 // graceful-degrade posture: renders immediately with an `isLoading` model,
-// fills once both fetches land. Failures funnel through `errorReporter` and
-// degrade to an empty row / `history == nil` — never a blocking error state.
+// fills once every fetch lands. A `store.fetch` failure degrades JUST that
+// (mode, difficulty) pair to `.empty(...)` before merging — the other
+// mode's real record for that difficulty still counts. Every failure
+// funnels through `errorReporter`; nothing blocks the screen.
 
 public import Foundation
 public import GameShellUI
@@ -84,19 +89,31 @@ public final class MinesweeperProgressViewModel {
         guard let store else { return Difficulty.allCases.map(Self.emptyBest) }
         var bests: [PersonalBestModel] = []
         for difficulty in Difficulty.allCases {
-            do {
-                let record = try await store.fetch(modeRaw: GameMode.practice.rawValue, difficulty: difficulty)
-                bests.append(Self.bestModel(difficulty: difficulty, record: record))
-            } catch {
-                await errorReporter?.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "MinesweeperProgressViewModel.fetchPersonalRecord"
-                )
-                bests.append(Self.emptyBest(difficulty: difficulty))
-            }
+            async let dailyTask = fetchRecord(store: store, modeRaw: GameMode.daily.rawValue, difficulty: difficulty)
+            async let practiceTask = fetchRecord(store: store, modeRaw: GameMode.practice.rawValue, difficulty: difficulty)
+            let daily = await dailyTask
+            let practice = await practiceTask
+            bests.append(Self.bestModel(difficulty: difficulty, daily: daily, practice: practice))
         }
         return bests
+    }
+
+    /// One (mode, difficulty) read. A failure reports through
+    /// `errorReporter` and degrades to `.empty(...)` for JUST this mode —
+    /// the caller merges it with the other mode's (possibly real) record.
+    private func fetchRecord(
+        store: MinesweeperPersonalRecordStore, modeRaw: String, difficulty: Difficulty
+    ) async -> MinesweeperPersonalRecord {
+        do {
+            return try await store.fetch(modeRaw: modeRaw, difficulty: difficulty)
+        } catch {
+            await errorReporter?.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "MinesweeperProgressViewModel.fetchPersonalRecord"
+            )
+            return .empty(modeRaw: modeRaw, difficulty: difficulty, at: now())
+        }
     }
 
     private func fetchHistory() async -> StreakHistory? {
@@ -116,14 +133,29 @@ public final class MinesweeperProgressViewModel {
 
     // MARK: - Record → row mapping
 
-    static func bestModel(difficulty: Difficulty, record: MinesweeperPersonalRecord) -> PersonalBestModel {
-        let average = record.completedCount > 0 ? record.totalTimeSeconds / record.completedCount : nil
+    /// Merges the daily and practice records for one difficulty into a
+    /// single row: best = the smaller of the two best times (nil only when
+    /// BOTH are nil), completedCount/average = the two modes' counts/totals
+    /// summed.
+    static func bestModel(
+        difficulty: Difficulty, daily: MinesweeperPersonalRecord, practice: MinesweeperPersonalRecord
+    ) -> PersonalBestModel {
+        let combinedBest: Int?
+        switch (daily.bestTimeSeconds, practice.bestTimeSeconds) {
+        case let (dailyBest?, practiceBest?): combinedBest = min(dailyBest, practiceBest)
+        case let (dailyBest?, nil): combinedBest = dailyBest
+        case let (nil, practiceBest?): combinedBest = practiceBest
+        case (nil, nil): combinedBest = nil
+        }
+        let completedCount = daily.completedCount + practice.completedCount
+        let totalTimeSeconds = daily.totalTimeSeconds + practice.totalTimeSeconds
+        let average = completedCount > 0 ? totalTimeSeconds / completedCount : nil
         return PersonalBestModel(
             id: difficulty.rawValue,
             title: title(for: difficulty),
             pipLevel: pipLevel(for: difficulty),
-            bestTimeText: record.bestTimeSeconds.map(timeLabel),
-            footnote: footnote(completedCount: record.completedCount, averageTimeSeconds: average)
+            bestTimeText: combinedBest.map(timeLabel),
+            footnote: footnote(completedCount: completedCount, averageTimeSeconds: average)
         )
     }
 
@@ -146,7 +178,7 @@ public final class MinesweeperProgressViewModel {
         return String(localized: "\(completedCount) cleared · avg \(timeLabel(averageTimeSeconds))", bundle: .main)
     }
 
-    /// `m:ss` display label — same format the retired `MinesweeperStatsView` used.
+    /// `m:ss` display label — same format the retired Statistics screen used.
     static func timeLabel(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
     }

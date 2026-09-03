@@ -1,25 +1,31 @@
-// ProgressViewModel — PROGRESS screen data (#1021 Phase D; subsumes #773's
-// `StatsViewModel` for the live tab-root wiring — see `Live+TabRoots.swift`).
+// ProgressViewModel — PROGRESS screen data (#1021 Phase D/E2; subsumes #773's
+// retired Statistics screen view model for the live tab-root wiring — see
+// `Live+TabRoots.swift`).
 //
 // Reuses the exact two data reads the issue's motivation line names, zero
 // CloudKit reads added:
-//   - `fetchPersonalRecord(mode: .practice, difficulty:)` → the 3
-//     `PersonalBestModel` rows. PRACTICE (not Daily) backs the "best time"
-//     hero: Practice is replayed at will per difficulty, so "beat your best"
-//     is a meaningful, ongoing signal there; Daily is one puzzle per day and
-//     is already covered by the streak calendar below.
+//   - `fetchPersonalRecord(mode:difficulty:)` for BOTH `.daily` and
+//     `.practice` (6 reads total, same as the retired view model's own
+//     daily-tiles+practice-tiles reads) → the 3 `PersonalBestModel` rows. A
+//     "personal best per difficulty" must not silently drop daily records
+//     (#1021 Phase E2 CR): best = the smaller of the two modes' best times
+//     (nil only when BOTH are nil), completedCount = the two counts summed,
+//     average = the two total-times summed over the two counts summed.
 //   - `fetchCompletedDailyIdsByDay()` → the month streak calendar
 //     (`StreakHistory`, mirrors `DailyHubViewModel+WeekWindow`'s single-fetch
 //     contract — one call, not one per day).
 //
 // Fetch contract mirrors the daily hub / retired Stats screen's
 // graceful-degrade posture: the screen renders IMMEDIATELY with an
-// `isLoading` model (empty bests, no history), then fills once both fetches
-// land. A `fetchPersonalRecord` failure degrades that ONE difficulty's row to
-// empty (best time `nil`); a `fetchCompletedDailyIdsByDay` failure degrades
-// `history` to `nil` (the screen falls back to an empty calendar + an
-// "unavailable" footnote — see `ProgressScreen`). Both funnel through
-// `errorReporter`, neither blocks the screen.
+// `isLoading` model (empty bests, no history), then fills once every fetch
+// lands. A `fetchPersonalRecord` failure degrades JUST that (mode,
+// difficulty) pair to `PersonalRecord.empty(...)` before merging — the
+// OTHER mode's real record for that difficulty still counts, so one mode's
+// CK hiccup never blanks a row that has real data in the other mode. A
+// `fetchCompletedDailyIdsByDay` failure degrades `history` to `nil` (the
+// screen falls back to an empty calendar + an "unavailable" footnote — see
+// `ProgressScreen`). Every failure funnels through `errorReporter`; nothing
+// blocks the screen.
 
 public import Foundation
 public import GameShellUI
@@ -40,7 +46,7 @@ public final class ProgressViewModel {
     private let calendar: Calendar
     private let now: () -> Date
     /// Idempotency latch for `.task` — same pattern as the retired
-    /// `StatsViewModel`.
+    /// Statistics screen's view model.
     private var hasBootstrapped = false
 
     public init(
@@ -85,19 +91,30 @@ public final class ProgressViewModel {
     private func fetchBests() async -> [PersonalBestModel] {
         var bests: [PersonalBestModel] = []
         for difficulty in Difficulty.allCases {
-            do {
-                let record = try await persistence.fetchPersonalRecord(mode: .practice, difficulty: difficulty)
-                bests.append(Self.bestModel(difficulty: difficulty, record: record))
-            } catch {
-                await errorReporter.report(
-                    UserFacingError.classify(error),
-                    underlying: error,
-                    source: "ProgressViewModel.fetchPersonalRecord"
-                )
-                bests.append(Self.emptyBest(difficulty: difficulty))
-            }
+            async let dailyTask = fetchRecord(mode: .daily, difficulty: difficulty)
+            async let practiceTask = fetchRecord(mode: .practice, difficulty: difficulty)
+            let daily = await dailyTask
+            let practice = await practiceTask
+            bests.append(Self.bestModel(difficulty: difficulty, daily: daily, practice: practice))
         }
         return bests
+    }
+
+    /// One (mode, difficulty) read. A failure reports through
+    /// `errorReporter` and degrades to `.empty(...)` for JUST this mode —
+    /// the caller merges it with the other mode's (possibly real) record,
+    /// so a single mode's CK hiccup never wipes out the other mode's data.
+    private func fetchRecord(mode: Mode, difficulty: Difficulty) async -> PersonalRecord {
+        do {
+            return try await persistence.fetchPersonalRecord(mode: mode, difficulty: difficulty)
+        } catch {
+            await errorReporter.report(
+                UserFacingError.classify(error),
+                underlying: error,
+                source: "ProgressViewModel.fetchPersonalRecord"
+            )
+            return .empty(mode: mode, difficulty: difficulty, at: now())
+        }
     }
 
     private func fetchHistory() async -> StreakHistory? {
@@ -117,14 +134,28 @@ public final class ProgressViewModel {
 
     // MARK: - Record → row mapping
 
-    static func bestModel(difficulty: Difficulty, record: PersonalRecord) -> PersonalBestModel {
-        let average = record.completedCount > 0 ? record.totalTimeSeconds / record.completedCount : nil
+    /// Merges the daily and practice records for one difficulty into a
+    /// single row: best = the smaller of the two best times (nil only when
+    /// BOTH are nil — a mode with no completions never overrides a real
+    /// best from the other mode), completedCount/average = the two modes'
+    /// counts/totals summed.
+    static func bestModel(difficulty: Difficulty, daily: PersonalRecord, practice: PersonalRecord) -> PersonalBestModel {
+        let combinedBest: Int?
+        switch (daily.bestTimeSeconds, practice.bestTimeSeconds) {
+        case let (dailyBest?, practiceBest?): combinedBest = min(dailyBest, practiceBest)
+        case let (dailyBest?, nil): combinedBest = dailyBest
+        case let (nil, practiceBest?): combinedBest = practiceBest
+        case (nil, nil): combinedBest = nil
+        }
+        let completedCount = daily.completedCount + practice.completedCount
+        let totalTimeSeconds = daily.totalTimeSeconds + practice.totalTimeSeconds
+        let average = completedCount > 0 ? totalTimeSeconds / completedCount : nil
         return PersonalBestModel(
             id: difficulty.rawValue,
             title: title(for: difficulty),
             pipLevel: pipLevel(for: difficulty),
-            bestTimeText: record.bestTimeSeconds.map(timeLabel),
-            footnote: footnote(completedCount: record.completedCount, averageTimeSeconds: average)
+            bestTimeText: combinedBest.map(timeLabel),
+            footnote: footnote(completedCount: completedCount, averageTimeSeconds: average)
         )
     }
 

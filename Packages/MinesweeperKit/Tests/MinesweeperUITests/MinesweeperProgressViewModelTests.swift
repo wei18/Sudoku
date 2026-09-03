@@ -1,10 +1,12 @@
-// MinesweeperProgressViewModelTests — #1021 Phase D (mirrors Sudoku's
-// `ProgressViewModelTests`). Pins the record→row mapping (average computed
-// as total/count, nil best-time and zero-count cases, PRACTICE mode backing
-// the personal-bests hero), the month streak-history construction from a
-// fake by-day dictionary, and the graceful-degrade contract on fetch
-// failure (`history == nil`, a nil store degrades every row to empty, both
-// funnel through `errorReporter`).
+// MinesweeperProgressViewModelTests — #1021 Phase D/E2 (mirrors Sudoku's
+// `ProgressViewModelTests`). Pins the record→row mapping (both DAILY and
+// PRACTICE merged per difficulty: best = the smaller of the two modes'
+// bests, completedCount/average = the two modes' counts/totals summed — a
+// "personal best" must not silently drop daily records), the month
+// streak-history construction from a fake by-day dictionary, and the
+// graceful-degrade contract on fetch failure (`history == nil`, a nil store
+// degrades every row to empty, every failure funnels through
+// `errorReporter`).
 //
 // Bests: seeded through the REAL `MinesweeperPersonalRecordStore` over the
 // in-memory `FakePrivateCKGateway` (`MinesweeperStatsTests`'s established
@@ -56,17 +58,20 @@ private func msRecord(
 }
 
 /// Store over the in-memory fake gateway, seeded via real `recordCompletion`
-/// calls — practice-only (daily is intentionally left unseeded: this VM
-/// never reads daily records).
+/// calls — BOTH modes, so the merge (daily ∪ practice per difficulty) has
+/// real data on each side to combine.
 private func makeSeededStore() async throws -> MinesweeperPersonalRecordStore {
     let store = MinesweeperPersonalRecordStore(
         gateway: FakePrivateCKGateway(),
         clock: { Date(timeIntervalSince1970: 0) }
     )
+    // beginner: daily is faster (100) than practice (200/300) → best 100, count 1+2=3.
+    try await store.recordCompletion(puzzleId: "d-b-1", modeRaw: "daily", difficulty: .beginner, elapsedSeconds: 100)
     try await store.recordCompletion(puzzleId: "p-b-1", modeRaw: "practice", difficulty: .beginner, elapsedSeconds: 200)
     try await store.recordCompletion(puzzleId: "p-b-2", modeRaw: "practice", difficulty: .beginner, elapsedSeconds: 300)
+    // intermediate: practice-only (no daily record seeded) → practice numbers alone.
     try await store.recordCompletion(puzzleId: "p-i-1", modeRaw: "practice", difficulty: .intermediate, elapsedSeconds: 61)
-    // practice-expert: none → "—" placeholder.
+    // expert: neither mode seeded → "—" placeholder.
     return store
 }
 
@@ -90,13 +95,38 @@ private let fixedCalendar: Calendar = {
 @Suite("MinesweeperProgressViewModel — record → row mapping, month history")
 struct MinesweeperProgressViewModelTests {
 
-    @Test func bestModelComputesAverageFromTotalOverCount() {
+    @Test func bestModelSumsCountsAndAveragesAcrossBothModes() {
         let best = MinesweeperProgressViewModel.bestModel(
             difficulty: .beginner,
-            record: msRecord(mode: "practice", difficulty: .beginner, best: 100, total: 1000, count: 4)
+            daily: msRecord(mode: "daily", difficulty: .beginner, best: 300, total: 300, count: 1),
+            practice: msRecord(mode: "practice", difficulty: .beginner, best: 700, total: 700, count: 1)
         )
-        #expect(best.bestTimeText == "1:40")
-        #expect(best.footnote == "4 cleared · avg 4:10")
+        #expect(best.bestTimeText == "5:00") // min(300, 700) == 300
+        #expect(best.footnote == "2 cleared · avg 8:20") // (300+700)/2 == 500
+    }
+
+    /// #1021 Phase E2 CR: a "personal best per difficulty" must not silently
+    /// drop daily records — when DAILY'S best time is the smaller (faster)
+    /// one, it must win over practice, not be shadowed by it.
+    @Test func bestModelDailyBestWinsWhenFasterThanPractice() {
+        let best = MinesweeperProgressViewModel.bestModel(
+            difficulty: .intermediate,
+            daily: msRecord(mode: "daily", difficulty: .intermediate, best: 60, total: 60, count: 1),
+            practice: msRecord(mode: "practice", difficulty: .intermediate, best: 200, total: 200, count: 1)
+        )
+        #expect(best.bestTimeText == "1:00")
+    }
+
+    /// A difficulty with ONLY daily data (never cleared in practice) must
+    /// still surface daily's numbers, not fall back to the empty placeholder.
+    @Test func bestModelWithOnlyDailyDataSurfacesDailyNumbers() {
+        let best = MinesweeperProgressViewModel.bestModel(
+            difficulty: .expert,
+            daily: msRecord(mode: "daily", difficulty: .expert, best: 900, total: 1800, count: 2),
+            practice: .empty(modeRaw: "practice", difficulty: .expert, at: Date(timeIntervalSince1970: 0))
+        )
+        #expect(best.bestTimeText == "15:00")
+        #expect(best.footnote == "2 cleared · avg 15:00")
     }
 
     @Test func emptyBestOmitsAverageAndBestTime() {
@@ -105,7 +135,7 @@ struct MinesweeperProgressViewModelTests {
         #expect(best.footnote == "0 cleared")
     }
 
-    @Test func bootstrapPopulatesBestsFromPracticeModeOnly() async throws {
+    @Test func bootstrapMergesBestTimePerDifficultyAcrossBothModes() async throws {
         let viewModel = MinesweeperProgressViewModel(
             store: try await makeSeededStore(),
             completionSource: ScriptedCompletionSource()
@@ -113,8 +143,10 @@ struct MinesweeperProgressViewModelTests {
         await viewModel.bootstrap()
         #expect(viewModel.model.isLoading == false)
         #expect(viewModel.model.bests.map(\.id) == [Difficulty.beginner.rawValue, Difficulty.intermediate.rawValue, Difficulty.expert.rawValue])
-        #expect(viewModel.model.bests[0].bestTimeText == "3:20")
-        #expect(viewModel.model.bests[0].footnote == "2 cleared · avg 4:10")
+        #expect(viewModel.model.bests[0].bestTimeText == "1:40") // min(100, 200) == 100
+        #expect(viewModel.model.bests[0].footnote == "3 cleared · avg 3:20") // (100+200+300)/3 == 200
+        #expect(viewModel.model.bests[1].bestTimeText == "1:01")
+        #expect(viewModel.model.bests[1].footnote == "1 cleared · avg 1:01")
         #expect(viewModel.model.bests[2].bestTimeText == nil)
         #expect(viewModel.model.bests[2].footnote == "0 cleared")
     }
@@ -156,7 +188,7 @@ struct MinesweeperProgressViewModelTests {
         #expect(await reporter.received.count == 1)
     }
 
-    @Test func bootstrapFiresStatsViewedExactlyOnce() async {
+    @Test func bootstrapFiresScreenViewedTelemetryExactlyOnce() async {
         let sink = ProgressRecordingSink()
         let telemetry = Telemetry(sinks: [sink])
         let viewModel = MinesweeperProgressViewModel(
