@@ -86,21 +86,28 @@ extension MinesweeperAppComposition {
                 )
             )
         case .progress:
-            // #773: Statistics screen — MinesweeperPersonalRecord readout. No
-            // banner: the proposal's scope note (§7) explicitly introduces no
-            // monetization surface here. #1020 C-36: the Game Center
-            // `Achievements` entry point rides the shared `gameCenterSection`
-            // slot instead of a bespoke Home leaderboard card.
+            // #1021 Phase D: the shared `ProgressScreen` (GameAppKit) —
+            // personal bests + a month streak calendar + the native
+            // `Achievements`/`Leaderboards` Game Center entry points.
+            // Replaces the retired `MinesweeperStatsView` tab-root wiring
+            // (`MinesweeperStatsView` itself stays — see
+            // `MinesweeperProgressViewModel.swift`'s header — it still backs
+            // the "01-home" ASC store-screenshot fixture
+            // `mise-tasks/store/screenshots` names by exact file path).
+            //
+            // #935 batch 3: `dailyOverlayReading` (when the composition root
+            // wired one — the E2E fake-or-live resolution) takes priority;
+            // otherwise fall back to the concrete `savedGameStore` — same
+            // precedent as the `.today` case above.
             return AnyView(
-                MinesweeperStatsView(
-                    viewModel: MinesweeperStatsViewModel(
+                MinesweeperProgressHostView(
+                    viewModel: MinesweeperProgressViewModel(
                         store: personalRecordStore,
+                        completionSource: dailyOverlayReading ?? savedGameStore,
                         errorReporter: errorReporter,
                         telemetry: telemetry
                     ),
-                    gameCenterSection: {
-                        AchievementsRow(rootViewModel: rootViewModel)
-                    }
+                    rootViewModel: rootViewModel
                 )
             )
         }

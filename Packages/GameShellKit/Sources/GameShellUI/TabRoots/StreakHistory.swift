@@ -84,7 +84,11 @@ public struct MonthCell: Sendable, Equatable {
     }
 }
 
-public struct StreakHistory: Sendable {
+// `Equatable` (#1021 Phase D, additive): PROGRESS's `ProgressModel` needs to
+// compare two `StreakHistory` values (SwiftUI's re-render diffing), and both
+// stored properties (`Set<DayKey>`, `DayKey`) are already `Equatable` on
+// their own — synthesis costs nothing here.
+public struct StreakHistory: Sendable, Equatable {
     private let completedDays: Set<DayKey>
     public let today: DayKey
 

@@ -79,21 +79,21 @@ extension SudokuAppComposition {
                 )
             )
         case .progress:
-            // #773: Statistics screen — PersonalRecord readout. No banner:
-            // the proposal's scope note (§7) explicitly introduces no
-            // monetization surface here. #1020 C-36: the Game Center
-            // `Achievements` entry point rides the shared `gameCenterSection`
-            // slot instead of a bespoke Home leaderboard card.
+            // #1021 Phase D: the shared `ProgressScreen` (GameAppKit) —
+            // personal bests + a month streak calendar + the native
+            // `Achievements`/`Leaderboards` Game Center entry points.
+            // Replaces the retired `StatsView` tab-root wiring (StatsView
+            // itself stays — see `ProgressViewModel.swift`'s header — it
+            // still backs the "01-home" ASC store-screenshot fixture
+            // `mise-tasks/store/screenshots` names by exact file path).
             return AnyView(
-                StatsView(
-                    viewModel: StatsViewModel(
+                ProgressHostView(
+                    viewModel: ProgressViewModel(
                         persistence: persistence,
                         errorReporter: errorReporter,
                         telemetry: telemetry
                     ),
-                    gameCenterSection: {
-                        AchievementsRow(rootViewModel: rootViewModel)
-                    }
+                    rootViewModel: rootViewModel
                 )
             )
         }
