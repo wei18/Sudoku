@@ -4,12 +4,6 @@
       [   AF    ! wLU ] h=--- v=--- NSClipView f=(0,0,393,852) b=(-) => <NSViewBackingLayer>
         [   AF    ! wLU ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
           [   AF    ! W U ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,43,10,10) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(32,43,10,10) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(48,43,10,10) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(64,43,10,10) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(80,43,10,10) b=(-) => <NSViewBackingLayer>
-            [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(96,43,10,10) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,161,361,96) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,269,361,96) b=(-) => <NSViewBackingLayer>
             [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(16,377,361,96) b=(-) => <NSViewBackingLayer>

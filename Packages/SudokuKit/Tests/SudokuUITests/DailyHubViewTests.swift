@@ -8,6 +8,7 @@ import Testing
 
 import GameShellUI
 import Persistence
+import SudokuEngine
 import SudokuPersistence
 import SudokuKitTesting
 
@@ -15,7 +16,8 @@ import SudokuKitTesting
 @Suite("DailyHubView — bootstrap + snapshots")
 struct DailyHubViewTests {
 
-    nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
+    // internal (not `private`): `DailyHubStoreFrameSnapshotTests.swift` reads it too.
+    nonisolated(unsafe) static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
     private func makeViewModel(
         completedDailyIds: Set<String> = [],
@@ -298,6 +300,100 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-exhausted")
         }
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-exhausted", record: SnapshotMode.recordMode)
+    }
+
+    // MARK: - Store marketing-frame fixtures (#1021 Phase H)
+    // Fixture helpers live in `DailyHubStoreFrameSnapshotTests.swift` (split
+    // out for `file_length`; see its header); `@Test`s stay HERE so
+    // `#filePath`-derived baseline lookup matches `build-ascspec-screenshots.py`'s
+    // literal `Slot(...)` path (`__Snapshots__/DailyHubViewTests/`).
+
+    /// iPhone `02-daily` store frame: all 3 difficulties solved today.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedIPhoneLight() async {
+        let trio = Self.storeDailyTrio(date: Self.fixedDate)
+        let allIds = Set(trio.map(\.identity.puzzleId))
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(trio))
+        let persistence = FakePersistence()
+        await Self.seedStoreStreak(persistence: persistence, todayCompletedIds: allIds)
+        let bestTimes: [Difficulty: Int] = [.easy: 192, .medium: 401, .hard: 860]  // 3:12 / 6:41 / 14:20
+        for (difficulty, seconds) in bestTimes {
+            await persistence.setPersonalRecordResult(
+                .success(PersonalRecord(
+                    recordName: "daily-\(difficulty.rawValue)-store",
+                    mode: .daily,
+                    difficulty: difficulty,
+                    bestTimeSeconds: seconds,
+                    totalTimeSeconds: seconds * 5,
+                    completedCount: 5,
+                    lastUpdatedAt: Self.fixedDate,
+                    completedPuzzleIds: [PuzzleIdentity.daily(date: Self.fixedDate, difficulty: difficulty).puzzleId]
+                )),
+                mode: .daily,
+                difficulty: difficulty
+            )
+        }
+        let viewModel = DailyHubViewModel(provider: provider, persistence: persistence, dateProvider: { Self.fixedDate })
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    /// iPad `02-daily` store frame: Easy solved, Medium in progress, Hard not started.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPadLight() async {
+        let trio = Self.storeDailyTrio(date: Self.fixedDate)
+        let easyId = trio[0].identity.puzzleId
+        let mediumId = trio[1].identity.puzzleId
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(trio))
+        let persistence = FakePersistence()
+        await Self.seedStoreStreak(persistence: persistence, todayCompletedIds: [easyId])
+        await persistence.setPersonalRecordResult(
+            .success(PersonalRecord(
+                recordName: "daily-easy-store",
+                mode: .daily,
+                difficulty: .easy,
+                bestTimeSeconds: 192,  // 3:12
+                totalTimeSeconds: 192 * 5,
+                completedCount: 5,
+                lastUpdatedAt: Self.fixedDate,
+                completedPuzzleIds: [easyId]
+            )),
+            mode: .daily,
+            difficulty: .easy
+        )
+        let mediumBoardState = Self.storePartialBoardState(givenMask: trio[1].puzzle.clues.givenMask)
+        await persistence.setResumeCandidate(SavedGameSummary(
+            recordName: "in-progress-medium-store",
+            puzzleId: mediumId,
+            mode: .daily,
+            difficulty: .medium,
+            lastModifiedAt: Self.fixedDate,
+            elapsedSeconds: 245,  // 4:05
+            status: "inProgress",
+            generatorVersion: 1,
+            boardState: mediumBoardState
+        ))
+        let viewModel = DailyHubViewModel(provider: provider, persistence: persistence, dateProvider: { Self.fixedDate })
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
     }
     #endif
 }
