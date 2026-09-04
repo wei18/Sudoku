@@ -37,12 +37,20 @@ struct TodayMapperTests {
         guard case .exhausted = result else { Issue.record("expected .exhausted, got \(result)"); return }
     }
 
+    /// #1021 CR2 M7: this mapping used to be dead — `DailyHubView` lifted
+    /// `.failed` straight to the shell's failure overlay, so `.present`'s
+    /// `.degraded` output here never actually rendered. Now
+    /// `DailyHubView.loadingCards` reads `TodayMapper.degradedSkeletonCards()`
+    /// (the same fixture this asserts) for real, so this pins BOTH the
+    /// mapping AND the "Not started" caption that fixture must carry.
     @Test func failedMapsToDegradedWithSkeletonCards() {
         let result = TodayMapper.present(state: .failed("boom"), inProgress: nil, isPhase2Degraded: false)
         guard case .degraded(let cards) = result else { Issue.record("expected .degraded, got \(result)"); return }
         #expect(cards.count == 3)
         #expect(cards.allSatisfy { $0.isSkeleton })
         #expect(cards.allSatisfy { !$0.isCompleted })
+        #expect(cards.allSatisfy { $0.statusText == "Not started" })
+        #expect(cards == TodayMapper.degradedSkeletonCards())
     }
 
     @Test func loadedWithMixedCompletionStaysLoaded() {

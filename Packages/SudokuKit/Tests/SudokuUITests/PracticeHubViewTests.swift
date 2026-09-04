@@ -171,7 +171,12 @@ struct PracticeHubViewTests {
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility3IPhoneLight() async {
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotAccessibility3IPhoneLight`
+    /// — injected `.dynamicTypeSize` in an `NSHostingView` snapshot only
+    /// scales `@ScaledSpacing`, it does NOT scale fonts (repo memory:
+    /// dynamic-type-sim-verify-and-cap). Real Dynamic Type evidence is a
+    /// simulator pass, not this baseline.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotScaledSpacingAX3IPhoneLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         let host = hostingView(
             PracticeHubView(viewModel: viewModel),
@@ -185,14 +190,17 @@ struct PracticeHubViewTests {
         }
     }
 
-    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
-    /// Phase G. Reproduces the Leader's iPad Pro 11 finding: the shell's
-    /// fixed, screen-filling `VStack` under the large "Practice" title
-    /// overlapped the "Difficulty" section label once the title needed
-    /// more vertical space at AX3. `PracticeHubShellView` now wraps that
-    /// content in a `ScrollView` so it flows below the title instead —
-    /// confirms no overlap on an iPad-width regular layout.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAccessibility3IPadLight() async {
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotAccessibility3IPadLight`
+    /// — see `snapshotScaledSpacingAX3IPhoneLight`'s doc for why. AX3
+    /// Dynamic Type pin on an iPad-width REGULAR size class — #1021 Phase G.
+    /// Reproduces the Leader's iPad Pro 11 finding: the shell's fixed,
+    /// screen-filling `VStack` under the large "Practice" title overlapped
+    /// the "Difficulty" section label. `PracticeHubShellView` now wraps that
+    /// content in a `ScrollView` so it flows below the title instead — this
+    /// baseline confirms the SCROLLVIEW LAYOUT no longer overlaps here; it
+    /// is NOT proof against real-font overlap at true AX3 (fonts aren't
+    /// actually scaled in this harness — simulator pass only).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotScaledSpacingAX3IPadLight() async {
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
         let host = hostingView(
             PracticeHubView(viewModel: viewModel),

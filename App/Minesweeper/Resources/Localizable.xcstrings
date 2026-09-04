@@ -1,6 +1,102 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@, loading" : {
+      "comment" : "#1021 CR2 M2 - PersonalBestRow's loading-state combined a11y label: \"{title}, loading\" replaces the redacted placeholder zeros so VoiceOver doesn't read them as fact.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, loading"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, cargando"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@、読み込み中"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, 로딩 중"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, กำลังโหลด"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@,加载中"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@,載入中"
+          }
+        }
+      }
+    },
+    "Streak history loading" : {
+      "comment" : "#1021 CR2 M2 - StreakCalendarView header/footnote shown while the PROGRESS screen's initial history fetch is still in flight (distinct from the settled \"Streak history unavailable\" fetch-failure wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streak history loading"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando el historial de rachas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連続記録の履歴を読み込み中"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연속 기록 내역을 불러오는 중입니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังโหลดประวัติการเล่นต่อเนื่อง"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连续记录正在加载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連續記錄載入中"
+          }
+        }
+      }
+    },
     "Achievements" : {
       "comment" : "#1020 Progress tab — Game Center Achievements entry point (C-36). Apple's own Game Center term; never Trophies / Awards / Medals.",
       "extractionState" : "manual",

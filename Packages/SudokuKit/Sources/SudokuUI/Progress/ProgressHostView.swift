@@ -15,6 +15,11 @@ public import GameAppKit
 public struct ProgressHostView: View {
     @State private var viewModel: ProgressViewModel
     private let rootViewModel: GameRootViewModel<AppRoute>
+    // #1021 CR2 M1: mirrors `DailyHubView`'s `sessionTeardownCount` — without
+    // this, Progress's bests/history stayed frozen at their first bootstrap
+    // for the rest of the app session (`makeTabRoot` builds this host once;
+    // no other trigger re-reads Persistence). See `ProgressViewModel.refresh()`.
+    @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
 
     public init(viewModel: ProgressViewModel, rootViewModel: GameRootViewModel<AppRoute>) {
         _viewModel = State(initialValue: viewModel)
@@ -27,5 +32,6 @@ public struct ProgressHostView: View {
             // here (#607: leaf `.task` links clean; only the app-root
             // bootstrap is restricted to `.onAppear { Task }`).
             .task { await viewModel.bootstrap() }
+            .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
     }
 }

@@ -1,13 +1,16 @@
 // DailyHubView — 3 puzzle cards per day, checkmark on completion.
 //
-// Per docs/designs/v3/design.md §3.1 (#1021 Phase B). Failure path
-// `exhausted` renders as an inline icon+message+action block (#768) — matches
-// the `.failed` visual language instead of a system `.alert` over a blank
-// backdrop.
+// Per docs/designs/v3/design.md §3.1 (#1021 Phase B). `exhausted` renders as
+// an inline icon+message+action block (#768) instead of a system `.alert`
+// over a blank backdrop. #1021 CR2 M7: a phase-1 fetch failure (`.failed`)
+// no longer gets its own overlay either — it renders the SAME
+// skeleton-dimension card grid as idle/loading, captioned "Not started"
+// (see `loadingCards`/`liftedState` below) — so the shell's `failure:` slot
+// is unreachable here and this view no longer passes one.
 //
 // PR U12: chrome + responsive grid + state-switch scaffold extracted into
 // `GameShellUI.DailyHubShellView`. This view now produces the
-// game-specific `DailyCard` items + failure/empty overlays + Sudoku theme
+// game-specific `DailyCard` items + empty overlay + Sudoku theme
 // colors and hands them to the generic shell. `.task` stays on the caller
 // (matches X4 / SettingsShellView precedent: shells own no side-effect
 // modifiers).
@@ -137,22 +140,14 @@ public struct DailyHubView<Banner: View>: View {
                     DailyCardContent(model: model)
                 }
             },
-            failure: { reason in
-                // spacing-exempt: 12pt predates the 5-tier `SpacingTokens`
-                // scale — no matching tier without snapping and changing
-                // this block's existing layout/snapshot (#762 PR2).
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(theme.status.warning.resolved)
-                    Text(reason)
-                        .font(.caption)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                }
-                // #935 N5: stable, non-localized anchor for the inline
-                // fetch-failure surface (host-driven XCUITest E2E — see
-                // `DailyHubViewModel.bootstrap()`'s non-exhausted catch branch).
-                .accessibilityIdentifier("sudoku.dailyHub.failure")
-            },
+            // #1021 CR2 M7: no `failure:` argument — `liftedState` never
+            // produces `.failed` anymore (a phase-1 fetch failure now renders
+            // degraded skeleton cards via `.loading`, see below), so the
+            // shell's default `Color.clear` failure overlay is correctly
+            // unreachable. The old inline warning block (and its
+            // `"sudoku.dailyHub.failure"` XCUITest anchor) is gone —
+            // `SudokuE2ETests.test_dailyLoadFailureShowsDegradedCardsNotAlert_N5`
+            // was re-pointed to assert the new degraded-cards render instead.
             // #768: `.exhausted` renders inline instead of a system `.alert`
             // over a blank backdrop — same icon+message language as
             // `failure` above, plus the #686 action pair as inline buttons.
@@ -269,7 +264,7 @@ public struct DailyHubView<Banner: View>: View {
                     // (predates the 5-tier scale) — kept identical so the
                     // skeleton grid's geometry is byte-for-byte the real grid's.
                     LazyVGrid(columns: skeletonColumns, spacing: 12) {
-                        ForEach(TodayMapper.skeletonCards()) { model in
+                        ForEach(loadingCards) { model in
                             DailyCardContent(model: model)
                         }
                     }
@@ -279,6 +274,21 @@ public struct DailyHubView<Banner: View>: View {
         )
     }
 
+    /// #1021 CR2 M7: this slot now renders TWO distinct fixtures depending on
+    /// WHY there's nothing real to show yet — blank skeleton cards for a
+    /// genuine `.idle`/`.loading` fetch in flight, or `TodayMapper`'s
+    /// "Not started" degraded cards once phase-1 has actually FAILED (no
+    /// puzzle data will ever arrive for this session). Either way the shell
+    /// state is `.loading` (see `liftedState`) — a placeholder card with no
+    /// real `puzzleId` behind it must not be wrapped in the shell's per-item
+    /// tappable `Button`.
+    private var loadingCards: [DailyCardModel] {
+        if case .failed = viewModel.state {
+            return TodayMapper.degradedSkeletonCards()
+        }
+        return TodayMapper.skeletonCards()
+    }
+
     private var skeletonColumns: [GridItem] {
         Array(
             repeating: GridItem(.flexible()),
@@ -286,17 +296,23 @@ public struct DailyHubView<Banner: View>: View {
         )
     }
 
-    /// Translates Sudoku's `DailyHubState` (with `.exhausted`) into the
-    /// generic `HubLoadState<DailyCard>` shell input. `.exhausted` maps to
-    /// `.empty`, rendered inline via the `empty:` builder passed to
-    /// `DailyHubShellView` above (#768).
+    /// Translates Sudoku's `DailyHubState` (with `.exhausted`/`.failed`) into
+    /// the generic `HubLoadState<DailyCard>` shell input. `.exhausted` maps
+    /// to `.empty`, rendered inline via the `empty:` builder passed to
+    /// `DailyHubShellView` above (#768). #1021 CR2 M7: `.failed` maps to
+    /// `.loading` — a phase-1 fetch failure has no real `[DailyCard]` to
+    /// hand the shell's per-item, tappable `.loaded` path, so it rides the
+    /// same inert `loading:` slot idle/loading already use; `loadingCards`
+    /// above picks the "Not started" degraded fixture over the blank one by
+    /// re-checking `viewModel.state` (this shell-level type has already
+    /// erased the distinction by the time `body` reads it, so this switch
+    /// alone can't smuggle the degraded/blank choice through — see
+    /// `loadingCards`).
     private var liftedState: HubLoadState<DailyCard> {
         switch viewModel.state {
-        case .idle: return .idle
-        case .loading: return .loading
+        case .idle, .loading, .failed: return .loading
         case .loaded(let cards): return .loaded(cards)
         case .exhausted: return .empty
-        case .failed(let reason): return .failed(reason)
         }
     }
 }

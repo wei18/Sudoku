@@ -213,13 +213,14 @@ struct MinesweeperDailyHubSnapshotTests {
         assertViewStructure(of: host, named: "Daily-iPhone-light-degraded", record: SnapshotMode.recordMode)
     }
 
-    /// AX3 Dynamic Type layout pin — a card title must not hyphenate/truncate
-    /// at AX3 (Leader adjudication, row-card layout). Env-injected Dynamic
-    /// Type snapshots are a layout pin only (memory:
-    /// dynamic-type-sim-verify-and-cap); sim verification is the authority
-    /// for AX bugs.
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoaded_iPhone_light_AX3`
+    /// — injected `.dynamicTypeSize` in an `NSHostingView` snapshot only
+    /// scales `@ScaledSpacing`, it does NOT scale fonts (repo memory:
+    /// dynamic-type-sim-verify-and-cap). This baseline proves the row-card
+    /// layout's SPACING scales at AX3; it is NOT evidence that a card title
+    /// doesn't hyphenate/truncate at real AX3 — that needs a simulator pass.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotLoaded_iPhone_light_AX3() {
+    func snapshotLoaded_iPhone_light_scaledSpacingAX3() {
         let host = hostingView(
             dailyHubView(state: .loaded(Self.loadedTrio)).dynamicTypeSize(.accessibility3),
             size: SnapshotLayouts.iPhone,
@@ -230,16 +231,20 @@ struct MinesweeperDailyHubSnapshotTests {
         assertViewStructure(of: host, named: "Daily-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
     }
 
-    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
-    /// Phase G, mirrors Sudoku's `DailyHubViewTests.
-    /// snapshotLoadedAX3IPadLight`. Before the fix, `DailyHubShellView`'s
-    /// grid kept 3 columns whenever `sizeClass == .regular`, so at AX3 each
-    /// ~262pt column wrapped every status word onto its own line and
-    /// hyphenated. `DailyHubGridLayout.columnCount(...)` now forces a
-    /// single column at any accessibility Dynamic Type size regardless of
-    /// size class — confirms the grid collapses to one column here.
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoaded_iPad_light_AX3`
+    /// — see `snapshotLoaded_iPhone_light_scaledSpacingAX3`'s doc for why. AX3
+    /// Dynamic Type pin on an iPad-width REGULAR size class — #1021 Phase G,
+    /// mirrors Sudoku's `DailyHubViewTests.
+    /// snapshotLoadedScaledSpacingAX3IPadLight`. Before the fix,
+    /// `DailyHubShellView`'s grid kept 3 columns whenever
+    /// `sizeClass == .regular`. `DailyHubGridLayout.columnCount(...)` now
+    /// forces a single column at any accessibility Dynamic Type size
+    /// regardless of size class — this baseline confirms the grid COLUMN
+    /// COUNT collapses to one here (a real layout fact); it is NOT evidence
+    /// that status text doesn't hyphenate at real AX3 (fonts aren't actually
+    /// scaled here — simulator pass only).
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func snapshotLoaded_iPad_light_AX3() {
+    func snapshotLoaded_iPad_light_scaledSpacingAX3() {
         let host = hostingView(
             dailyHubView(state: .loaded(Self.loadedTrio)),
             size: SnapshotLayouts.iPad,

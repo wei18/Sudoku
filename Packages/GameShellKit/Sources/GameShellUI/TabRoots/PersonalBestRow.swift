@@ -25,9 +25,18 @@ public struct PersonalBestRow: View {
     @ScaledSpacing(.small) private var contentGap
 
     private let model: PersonalBestModel
+    /// #1021 CR2 M2: while the screen's initial fetch is still in flight,
+    /// `model` holds `ProgressViewModel.emptyBest`'s placeholder zeros
+    /// ("best none", "0 solved") — `.redacted` at the call site hides those
+    /// visually, but VoiceOver reads the UNDERLYING text regardless of
+    /// `.redacted`, so without this flag it announces the placeholder as a
+    /// real fact ("Easy, best none, 0 solved"). `true` swaps the WHOLE
+    /// combined label to a non-fact "loading" announcement instead.
+    private let isLoading: Bool
 
-    public init(model: PersonalBestModel) {
+    public init(model: PersonalBestModel, isLoading: Bool = false) {
         self.model = model
+        self.isLoading = isLoading
     }
 
     public var body: some View {
@@ -53,11 +62,21 @@ public struct PersonalBestRow: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.accessibilityLabel(title: model.title, bestTimeText: model.bestTimeText, footnote: model.footnote))
+        .accessibilityLabel(
+            isLoading
+                ? Self.loadingAccessibilityLabel(title: model.title)
+                : Self.accessibilityLabel(title: model.title, bestTimeText: model.bestTimeText, footnote: model.footnote)
+        )
     }
 
     public static func accessibilityLabel(title: String, bestTimeText: String?, footnote: String) -> String {
         let best = bestTimeText ?? String(localized: "none", bundle: .main)
         return String(localized: "\(title), best \(best), \(footnote)", bundle: .main)
+    }
+
+    /// #1021 CR2 M2: ONE shared key (`"%@, loading"`) for all three
+    /// difficulty rows' loading announcement — not a per-difficulty key.
+    public static func loadingAccessibilityLabel(title: String) -> String {
+        String(localized: "\(title), loading", bundle: .main)
     }
 }

@@ -65,7 +65,12 @@ public struct ProgressScreen<Route: Hashable & Sendable>: View {
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: rowGap) {
                 ForEach(model.bests) { best in
-                    PersonalBestRow(model: best)
+                    // #1021 CR2 M2: `isLoading` swaps the row's WHOLE
+                    // combined VoiceOver label to a non-fact "loading"
+                    // announcement — `.redacted` below only hides the
+                    // placeholder zeros visually, it does not change what
+                    // VoiceOver reads.
+                    PersonalBestRow(model: best, isLoading: model.isLoading)
                 }
             }
         }
@@ -77,26 +82,22 @@ public struct ProgressScreen<Route: Hashable & Sendable>: View {
     private var calendarSection: some View {
         VStack(alignment: .leading, spacing: headerGap) {
             HubCard {
+                // #1021 CR2 M2: `model.history` is passed straight through
+                // (no more `?? emptyHistory` substitution here) — the fake
+                // all-zero fallback used to make the header read "Current 0
+                // · Best 0" as if that were a real, fetched streak while
+                // loading OR on a fetch failure. `StreakCalendarView` now
+                // owns that layout-only fallback internally and keeps the
+                // header/footnote TEXT honest via `isLoading`.
                 StreakCalendarView(
-                    history: model.history ?? Self.emptyHistory(today: model.month),
+                    history: model.history,
                     month: model.month,
-                    monthTitle: model.monthTitle
+                    monthTitle: model.monthTitle,
+                    isLoading: model.isLoading
                 )
-            }
-            if !model.isLoading, model.history == nil {
-                Text("Streak history unavailable", bundle: .main)
-                    .font(.footnote)
-                    .foregroundStyle(theme.text.tertiary.resolved)
             }
         }
         .redacted(reason: model.isLoading ? .placeholder : [])
-    }
-
-    /// The read-failure fallback: an empty history renders the calendar grid
-    /// with zero marks (never a blank screen) — the "unavailable" footnote
-    /// above carries the actual signal.
-    private static func emptyHistory(today: DayKey) -> StreakHistory {
-        StreakHistory(completedDays: [], today: today)
     }
 
     // MARK: - Game Center entry points

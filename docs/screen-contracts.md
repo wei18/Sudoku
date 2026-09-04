@@ -129,19 +129,19 @@ deep link (`reminderTapRoute` → resets to the Today tab, mirrored on MS by
 
 | Element | Copy (en) | a11y id |
 |---|---|---|
-| Streak header row (`StreakHeaderView`, plain content-layer text, NOT a card — injected into the shell's `header` slot at `DailyHubView.swift:228-239`, rendered in every load state) | `"{current} day streak"` + conditional `"Best {longest}"`; combined a11y label `"{current} day streak, best {longest}"` (`StreakHeaderView.swift:136-149`) | none (`.accessibilityElement(children: .contain)`) |
-| Streak pips (7, oldest→newest); completed-PAST-day pips are tappable Buttons (`StreakHeaderView.swift:96-119`) | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`TodayMapper.pipAccessibilityLabel`, `TodayMapper.swift:116-121`) + hint `"View this day's result"` | none per-pip; non-tappable pips are `.accessibilityHidden` |
-| 3 `DailyCardContent` rows (`DailyCardView.swift:71-139`, `HubCard` standard material) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"In progress · {m:ss}"` / `"Not started · {N} givens"` (`TodayMapper.statusText`, `TodayMapper.swift:171-188`); combined a11y `"{title}, {statusText}"` (`DailyCardView.swift:157-159`) | `sudoku.dailyHub.card.completed` on a completed card, else none |
+| Streak header row (`StreakHeaderView`, plain content-layer text, NOT a card — injected into the shell's `header` slot at `DailyHubView.swift:231-245`, rendered in every load state) | `"{current} day streak"` + conditional `"Best {longest}"`; combined a11y label `"{current} day streak, best {longest}"` (`StreakHeaderView.swift:181-189`) | none (`.accessibilityElement(children: .contain)`) |
+| Streak pips (7, oldest→newest); completed-PAST-day pips are tappable Buttons (`StreakHeaderView.swift:114-138`) | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`TodayMapper.pipAccessibilityLabel`, `TodayMapper.swift:134-138`) + hint `"View this day's result"` | none per-pip; non-tappable pips are `.accessibilityHidden` |
+| 3 `DailyCardContent` rows (`DailyCardView.swift:71-150`, `HubCard` standard material) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"In progress · {m:ss}"` / `"Not started · {N} givens"` (`TodayMapper.statusText`, `TodayMapper.swift:206-222`); combined a11y `"{title}, {statusText}"` (`DailyCardView.swift:174-176`) | `sudoku.dailyHub.card.completed` on a completed card, else none |
 | `TodayAllDoneBlock` (`allDone` state only) | `"All done for today"` / `"Come back tomorrow for 3 new puzzles."` | none (`.accessibilityElement(children: .combine)`) |
-| Exhausted inline block (`.empty` lift of `.exhausted`, `DailyHubView.swift:159-226`) | `"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come back tomorrow."` + buttons `"Practice"` / `"Cancel"` | message: `sudoku.dailyHub.exhausted`; buttons: `sudoku.dailyHub.exhausted.practice` / `.exhausted.cancel` (id on the leaf `Text`, not the container — an id on the enclosing `VStack` cascades down and clobbers the buttons' own ids) |
-| Root anchor (zero-size marker, sibling to the header, `DailyHubView.swift:255-259`) | — | `sudoku.dailyHub.root` |
+| Exhausted inline block (`.empty` lift of `.exhausted`, `DailyHubView.swift:158-225`) | `"Couldn't generate today's puzzle"` / `"Try a different difficulty, or come back tomorrow."` + buttons `"Practice"` / `"Cancel"` | message: `sudoku.dailyHub.exhausted`; buttons: `sudoku.dailyHub.exhausted.practice` / `.exhausted.cancel` (id on the leaf `Text`, not the container — an id on the enclosing `VStack` cascades down and clobbers the buttons' own ids) |
+| Root anchor (zero-size marker, sibling to the header, `DailyHubView.swift:254-258`) | — | `sudoku.dailyHub.root` |
 
 **Per-interaction outcome:** (routes unchanged from the pre-3.0 record — the
 rebuild changed the visuals and state machine, not the destinations)
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Completed PAST day's pip tap (today/missed pips inert — `tappablePipIndices`, `StreakHeaderView.swift:100`) | `dayTapped(_:)` (`DailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `SUD-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`DailyHubView.swift:89-104`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `SUD-DAILY-HUB`. Review: Close pops → `SUD-DAILY-HUB` |
+| Completed PAST day's pip tap (today/missed pips inert — `tappablePipIndices`, `StreakHeaderView.swift:118`) | `dayTapped(_:)` (`DailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `SUD-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`DailyHubView.swift:93-108`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `SUD-DAILY-HUB`. Review: Close pops → `SUD-DAILY-HUB` |
 | Un-completed/in-progress card tap | `.board(puzzleId:)` | `GameBoardRedirect` → `modal-full` (iOS) / push (macOS) | Close/Leave → `SUD-DAILY-HUB` (modal dismiss or 1-entry pop) |
 | Completed card tap | async `openCompleted` → `.completion(puzzleId:elapsedSeconds:mistakeCount:)` | push → `SUD-COMPLETION-REVIEW` | Close pops → `SUD-DAILY-HUB` |
 | Completed card tap, snapshot load fails | falls back to `.board(puzzleId:)` (funneled error) | modal-full/push | as above |
@@ -153,18 +153,25 @@ rebuild changed the visuals and state machine, not the destinations)
 owns.
 
 **State variants** (`TodayMapper.present(state:inProgress:isPhase2Degraded:)`,
-`TodayMapper.swift:59-81`; `TodayPresentation<Card>`, `TodayPresentation.swift`):
+`TodayMapper.swift:77-99`; `TodayPresentation<Card>`, `TodayPresentation.swift`):
 
 | Variant | Trigger | Render |
 |---|---|---|
-| `loading` | `.idle`/`.loading` | 3 grid-preserving skeleton `DailyCardContent` rows (shell's `loading:` slot, `DailyHubView.swift:262-274`) — NOT a bare spinner (design.md §3.1 "保留格線結構,不是空白方塊") |
+| `loading` | `.idle`/`.loading` | 3 grid-preserving skeleton `DailyCardContent` rows (shell's `loading:` slot, `DailyHubView.swift:261-273`) — NOT a bare spinner (design.md §3.1 "保留格線結構,不是空白方塊") |
 | `loaded` | `.loaded`, not all completed, not phase-2-degraded | 3 `DailyCardContent` rows, 1-/3-column grid |
-| `allDone` | `.loaded`, every card `isCompleted` | `TodayAllDoneBlock` replaces the 3 cards, below the streak header |
+| `allDone` | `.loaded`, every card `isCompleted` | `TodayAllDoneBlock` renders ADDITIONALLY, below the streak header (approved decision) — the 3 cards stay in the grid below, still tappable, NOT replaced |
 | `degraded` | phase-2 completion-overlay fetch fails (`isPhase2Degraded`), or phase-1 `.failed` | thumbnails still render (seed-derived, no CK dependency) but every card is forced to "not started" (`TodayMapper.swift:19-26`); a phase-1 `.failed` renders `skeletonCards()` in place of real cards |
 | `exhausted` | `.exhausted` — Sudoku only, generator can run out | inline icon+message+action block, see Element inventory above |
 
 MS structurally has no `exhausted` case (`TodayPresentation.swift:8-10`) — see
 `MS-DAILY-HUB`.
+
+**Dynamic Type note (#1021 CR2 M4):** `DailyHubViewTests.
+snapshotLoadedScaledSpacingAX3IPhoneLight`/`...AX3IPadLight`'s env-injected
+`.dynamicTypeSize(.accessibility3)` only scales `@ScaledSpacing`-driven
+layout in the `NSHostingView` test harness — it does NOT scale fonts. They
+are evidence the SPACING/grid-column-count scales at AX3, not that text
+never truncates at real AX3; that requires a simulator pass.
 
 **Glass status:** content-layer glass retired — `HubCard`
 (`GameShellUI/TabRoots/HubCard.swift:23-27`) renders on `theme.surface.primary`,
@@ -199,11 +206,11 @@ deep link (`reminderTapRoute` → resets to the Today tab, mirrors Sudoku; see
 
 | Element | Copy (en) | a11y id |
 |---|---|---|
-| Streak header row (shared `StreakHeaderView`, `MinesweeperDailyHubView.swift:144-151`) | same shape as Sudoku's — see `SUD-DAILY-HUB` | none (combined element) |
-| Streak pips | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`MinesweeperTodayMapper.pipAccessibilityLabel`, `MinesweeperTodayMapper.swift:114-119`) | none per-pip |
-| 3 `DailyCardContent` rows (shared component; `MinesweeperTodayMapper.statusText`, `MinesweeperTodayMapper.swift:165-189`) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"Failed"` / `"In progress · {m:ss}"` / `"Not started · {R} × {C} · {M} mines"` | `minesweeper.dailyHub.card.completed` on a completed card, else none |
+| Streak header row (shared `StreakHeaderView`, `MinesweeperDailyHubView.swift:145-158`) | same shape as Sudoku's — see `SUD-DAILY-HUB` | none (combined element) |
+| Streak pips | per-pip a11y `"{weekday}, completed"` / `"{weekday}, missed"` (`MinesweeperTodayMapper.pipAccessibilityLabel`, `MinesweeperTodayMapper.swift:125-130`) | none per-pip |
+| 3 `DailyCardContent` rows (shared component; `MinesweeperTodayMapper.statusText`, `MinesweeperTodayMapper.swift:176-200`) | title = difficulty name; status `"Solved"` / `"Solved · {m:ss}"` / `"Failed"` / `"In progress · {m:ss}"` / `"Not started · {R} × {C} · {M} mines"` | `minesweeper.dailyHub.card.completed` on a completed card, else none |
 | `TodayAllDoneBlock` (`allDone` state only) | `"All done for today"` / `"Come back tomorrow for 3 new boards."` | none |
-| Root anchor (`MinesweeperDailyHubView.swift:167-171`) | — | `minesweeper.dailyHub.root` |
+| Root anchor (`MinesweeperDailyHubView.swift:168-172`) | — | `minesweeper.dailyHub.root` |
 
 MS has **no exhausted/empty block** — `dailyTrio(date:)` is synchronous and
 non-throwing (`TodayPresentation.swift:8-10`,
@@ -213,7 +220,7 @@ non-throwing (`TodayPresentation.swift:8-10`,
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Completed PAST day's pip tap (`tappablePipIndices`) | `dayTapped(_:)` (`MinesweeperDailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `MS-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`MinesweeperDailyHubView.swift:81-100`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `MS-DAILY-HUB`. Review: Close → `path?.wrappedValue.removeLast()` → `MS-DAILY-HUB` |
+| Completed PAST day's pip tap (`tappablePipIndices`) | `dayTapped(_:)` (`MinesweeperDailyHubViewModel.swift`) — exactly 1 completed difficulty → opens review directly; >1 → `reviewPickerChoices` | 1 choice: push → `MS-COMPLETION-REVIEW`. >1: `.confirmationDialog("Difficulty", …)` (`MinesweeperDailyHubView.swift:82-101`) → row tap → same push | picker: Cancel/scrim-tap → `dismissReviewPicker()`, stays on `MS-DAILY-HUB`. Review: Close → `path?.wrappedValue.removeLast()` → `MS-DAILY-HUB` |
 | Unplayed card tap | `.board(difficulty:seed:mode:.daily)` → `MinesweeperDailyOpenGuardView` (#842, see `MS-BOARD-LOAD-FAILED` Tier 2) | `.checking` spinner, then: `.playable` → modal-full (iOS)/push (macOS); `.completed` → inline Completion; `.failed` → hands off to `MinesweeperDailyReplayLoaderView` | Close/Leave → `MS-DAILY-HUB` (all outcomes) |
 | Completed card tap | `.completion(difficulty:mode:.daily)` (#386 re-view) | push → `MS-COMPLETION-REVIEW` | Close → `path?.wrappedValue.removeLast()` → back to `MS-DAILY-HUB` (fixed by #697) |
 | Failed card tap | `.replayDailyBoard(difficulty:seed:)` (#841 — unscored free replay, no persistence, no GC submit; see `MS-BOARD-LOAD-FAILED` Tier 3) | `.loading` → modal-full/push on `.loaded`, or Close+Retry block on `.failed` | Close/Leave → `MS-DAILY-HUB` |
@@ -221,11 +228,17 @@ non-throwing (`TodayPresentation.swift:8-10`,
 **Covering behavior:** none — plain tab-root content.
 
 **State variants** (`MinesweeperTodayMapper.present`,
-`MinesweeperTodayMapper.swift:72-90`): `loading` (skeleton grid, one card per
+`MinesweeperTodayMapper.swift:78-95`): `loading` (skeleton grid, one card per
 daily difficulty at its real board dims — `MinesweeperTodayMapper.
-skeletonCards()`, `:53-70`) / `loaded` / `allDone` / `degraded` (phase-2 fetch
+skeletonCards()`, `:59-76`) / `loaded` / `allDone` / `degraded` (phase-2 fetch
 failure — cards forced to unplayed) — **no `exhausted`**, structurally
 unreachable (`TodayPresentation.swift:8-10`).
+
+**Dynamic Type note (#1021 CR2 M4):** `MinesweeperDailyHubSnapshotTests.
+snapshotLoaded_iPhone_light_scaledSpacingAX3`/`..._iPad_light_scaledSpacingAX3`'s
+env-injected `.dynamicTypeSize(.accessibility3)` only scales
+`@ScaledSpacing`-driven layout in this harness — it does NOT scale fonts.
+Real Dynamic Type evidence is a simulator pass, not these baselines.
 
 **Glass status:** same as Sudoku — `HubCard` standard material, streak header
 plain content-layer text.
@@ -251,7 +264,7 @@ plain content-layer text.
 
 | Element | Copy (en) | a11y id |
 |---|---|---|
-| 3 `PracticeDifficultyCardView` rows (filter slot, `PracticeHubView.swift:57-70`, replaces the retired difficulty `Picker`) | title = Easy/Medium/Hard; detail `"~{N} givens"` (`SudokuPracticeCardsMapper.detail`, `SudokuPracticeCardsMapper.swift:61-64`); combined a11y `"{title}, {detail}"` (`PracticeDifficultyCardView.swift:92-94`); selected card shows a trailing checkmark | none; `isSelected` adds `.isSelected` trait |
+| 3 `PracticeDifficultyCardView` rows (filter slot, `PracticeHubView.swift:57-70`, replaces the retired difficulty `Picker`) | title = Easy/Medium/Hard; detail `"~{N} givens"` (`SudokuPracticeCardsMapper.detail`, `SudokuPracticeCardsMapper.swift:61-64`); combined a11y `"{title}, {detail}"` (`PracticeDifficultyCardView.swift:99-101`); selected card shows a trailing checkmark | none; `isSelected` adds `.isSelected` trait |
 | Draw/CTA card (`HubCard`, `PracticeHubView.swift:72-142`) | title `"Ready to play"`; hint row (state-dependent, see State variants); button `Label("New Game", systemImage: "play.fill")` | button `sudoku.practiceHub.start`; failure hint `sudoku.practiceHub.failure` |
 
 **Per-interaction outcome:**
@@ -272,6 +285,13 @@ re-enabled, no navigation — a11y id `sudoku.practiceHub.failure`; anchors
 `App/SudokuE2ETests/SudokuE2ETests.swift`'s host-driven E2E coverage). The
 difficulty CARDS above are a separate, always-visible selection UI (Phase C)
 layered on top of this same 5-state CTA machine.
+
+**Dynamic Type note (#1021 CR2 M4):** `PracticeHubViewTests.
+snapshotScaledSpacingAX3IPhoneLight`/`...AX3IPadLight`'s env-injected
+`.dynamicTypeSize(.accessibility3)` only scales `@ScaledSpacing`-driven
+layout in this harness — it does NOT scale fonts. The iPad case is evidence
+the `ScrollView` layout no longer overlaps at AX3, not that text never
+truncates at real AX3; that requires a simulator pass.
 
 **Glass status:** content-layer glass retired — both the difficulty cards and
 the draw CTA card render on `HubCard` (`theme.surface.primary`, standard
@@ -318,6 +338,12 @@ board generation is synchronous, a real gameplay difference from Sudoku's
 async generator, not strong-armed into parity — design.md §3.2). The
 difficulty cards above are a separate, always-visible selection UI (Phase C)
 with no state of their own.
+
+**Dynamic Type note (#1021 CR2 M4):** `MinesweeperPracticeHubSnapshotTests.
+snapshotScaledSpacingAX3IPhoneLight`/`...AX3IPadLight`'s env-injected
+`.dynamicTypeSize(.accessibility3)` only scales `@ScaledSpacing`-driven
+layout in this harness — it does NOT scale fonts. Real Dynamic Type evidence
+is a simulator pass, not these baselines.
 
 **Glass status:** content-layer glass retired — both the difficulty cards and
 the start CTA card render on `HubCard` (standard material), mirrors Sudoku.
@@ -846,21 +872,33 @@ just off a tab instead of a HOME card.
 - `GameShellKit/Sources/GameShellUI/TabRoots/StreakCalendarView.swift:8` +
   `StreakHistory.swift:19,91` — the month calendar view + its `DayKey`/
   `StreakHistory` backing values (Phase A scaffold).
+- `GameShellKit/Sources/GameShellUI/TabRoots/PersonalBestMath.swift` — the
+  `PersonalBestMerge` value (min-best / summed-count / summed-average) +
+  `PersonalBestFormatting.timeLabel`/`StreakMonthFormatting.monthTitle`
+  formatters, hoisted out of both apps' view models (#1021 CR2 M6 — the two
+  used to duplicate this ~verbatim). Per-app `bestModel`/`emptyBest`/
+  `footnote`/`title`/`pipLevel` stay per-app (wording + difficulty enum
+  differ per game).
 - Per-app data + host, Sudoku: `SudokuUI/Progress/ProgressViewModel.swift:38`
-  (`bootstrap()` line 74, the daily+practice merge in `bestModel(difficulty:daily:practice:)`
-  line 142) and `ProgressHostView.swift:15`; wired at
-  `SudokuAppComposition/Live+TabRoots.swift:81` (`.progress` case).
+  (`bootstrap()` line 74, the re-fetch also reachable via `refresh()` line 88
+  — #1021 CR2 M1, outside `bootstrap()`'s one-shot gate — the daily+practice
+  merge in `bestModel(difficulty:daily:practice:)` line 158) and
+  `ProgressHostView.swift:15` (`.onChange(of: sessionTeardownCount)` line 35
+  calls `refresh()` — mirrors `DailyHubView`'s teardown-driven refresh, #761);
+  wired at `SudokuAppComposition/Live+TabRoots.swift:81` (`.progress` case).
 - Per-app data + host, Minesweeper: `MinesweeperUI/Progress/MinesweeperProgressViewModel.swift:33`
-  (`bootstrap()` line 71, the merge in `bestModel(difficulty:daily:practice:)`
-  line 140) and `MinesweeperProgressHostView.swift:17`; wired at
-  `MinesweeperAppComposition/Live+TabRoots.swift:88` (`.progress` case).
+  (`bootstrap()` line 71, `refresh()` line 84, the merge in
+  `bestModel(difficulty:daily:practice:)` line 155) and
+  `MinesweeperProgressHostView.swift:17` (`.onChange(of: sessionTeardownCount)`
+  line 36); wired at `MinesweeperAppComposition/Live+TabRoots.swift:88`
+  (`.progress` case).
 
 **Element inventory:**
 
 | Element | Copy | a11y id |
 |---|---|---|
-| "Personal bests" section header + 3 `PersonalBestRow`s (Easy/Medium/Hard, or MS Beginner/Intermediate/Expert) | difficulty name + `DifficultyPips`; hero best time (`m:ss`, `.title2.monospacedDigit()`, or `—` — `PersonalBestRow.swift:50-52`) is the LARGEST element on the row, matching design.md §3.3's "best time as the hero"; footnote below the name (`"%lld solved · avg %@"` Sudoku / `"%lld cleared · avg %@"` MS, avg omitted when nil). Best/count/average MERGE both Daily and Practice records per difficulty (#1021 Phase E2 CR — a "personal best" must not silently drop daily records): best = the smaller of the two modes' times, count/average = the two modes' sums. | none (each row is one combined a11y element via `PersonalBestRow.accessibilityLabel(title:bestTimeText:footnote:)`, e.g. "Easy, best 3:12, 14 solved · avg 4:02") |
-| Month streak calendar (current month, `StreakCalendarView`) | month/year header + "Current N · Best N" summary; a completed day renders a filled circle with a checkmark GLYPH (`StreakCalendarView.swift:76`) — color is not the only channel; today gets an accent ring | none on the grid itself; each day cell is its own combined a11y element via `StreakCalendarView.dayAccessibilityLabel(day:isCompleted:isToday:)` (`StreakCalendarView.swift:99`), e.g. "21, completed, today" |
+| "Personal bests" section header + 3 `PersonalBestRow`s (Easy/Medium/Hard, or MS Beginner/Intermediate/Expert) | difficulty name + `DifficultyPips`; hero best time (`m:ss`, `.title2.monospacedDigit()`, or `—` — `PersonalBestRow.swift:59-61`) is the LARGEST element on the row, matching design.md §3.3's "best time as the hero"; footnote below the name (`"%lld solved · avg %@"` Sudoku / `"%lld cleared · avg %@"` MS, avg omitted when nil). Best/count/average MERGE both Daily and Practice records per difficulty (#1021 Phase E2 CR — a "personal best" must not silently drop daily records): best = the smaller of the two modes' times, count/average = the two modes' sums (`PersonalBestMath.swift`'s `PersonalBestMerge`, #1021 CR2 M6). | none (each row is one combined a11y element via `PersonalBestRow.accessibilityLabel(title:bestTimeText:footnote:)`, e.g. "Easy, best 3:12, 14 solved · avg 4:02" — or, while `isLoading`, `loadingAccessibilityLabel(title:)` (`PersonalBestRow.swift:79`) reads "Easy, loading" instead of the redacted placeholder zeros as fact, #1021 CR2 M2) |
+| Month streak calendar (current month, `StreakCalendarView`) | month/year header + "Current N · Best N" summary (or, while loading/unavailable, "Streak history loading"/"Streak history unavailable" — `headerTrailingText(isLoading:history:)`, `StreakCalendarView.swift:108`, #1021 CR2 M2: the header used to always show a real-looking "Current 0 · Best 0" even before any fetch landed); a completed day renders a filled circle with a checkmark GLYPH (`StreakCalendarView.swift:155`) — color is not the only channel; today gets an accent ring; the day grid is `.accessibilityHidden` while loading (no real per-day facts to read yet) | none on the grid itself; each day cell is its own combined a11y element via `StreakCalendarView.dayAccessibilityLabel(day:isCompleted:isToday:)` (`StreakCalendarView.swift:178`), e.g. "21, completed, today" |
 | `Achievements` row | `Label` + leading `trophy` icon + trailing `arrow.up.forward` (`GameCenterEntryRow.swift:52,61`) — HIG-mandated term, never "Trophies"/"Awards"/"Medals" | `game.progress.achievements` (`GameCenterEntryRow.swift:91`, kept from #1020's retired `AchievementsRow`) |
 | `Leaderboards` row | same shape, leading `list.number` icon | `game.progress.leaderboards` (`GameCenterEntryRow.swift:102`) |
 
@@ -887,9 +925,15 @@ sheet/overlay; the two GC rows' presentations are covered above.
 
 **State variants:**
 - **Loading** — `ProgressModel.isLoading == true` (seeded on VM init before
-  `bootstrap()` lands): both the bests section and the calendar section
-  render `.redacted(reason: .placeholder)` (`ProgressScreen.swift:72,92`) —
-  the screen never blocks on the fetch.
+  `bootstrap()` lands, AND re-entered on every `refresh()` re-fetch — #1021
+  CR2 M1): both the bests section and the calendar section render
+  `.redacted(reason: .placeholder)` (`ProgressScreen.swift:77,100`) —
+  the screen never blocks on the fetch. #1021 CR2 M2 (VoiceOver honesty —
+  `.redacted` hides placeholder text visually but does NOT change what
+  VoiceOver reads): each `PersonalBestRow` swaps its WHOLE combined label to
+  `"{title}, loading"` instead of reading the placeholder `emptyBest` zeros
+  as fact, and `StreakCalendarView`'s header/footnote read "Streak history
+  loading" instead of a fake "Current 0 · Best 0" (see Element inventory).
 - **Loaded** — both `fetchPersonalRecord(mode:difficulty:)` (×6: both modes
   × 3 difficulties) and `fetchCompletedDailyIdsByDay()` have landed; a
   per-(mode, difficulty) fetch failure degrades JUST that pair to
@@ -898,11 +942,28 @@ sheet/overlay; the two GC rows' presentations are covered above.
   never a blocking error state, mirroring the Daily hubs' phase-2
   graceful-degrade posture.
 - **History-unavailable** — `fetchCompletedDailyIdsByDay()` failed outright:
-  `ProgressModel.history == nil`. The calendar still renders (an empty
-  `StreakHistory` — zero days marked, `ProgressScreen.swift`'s
-  `emptyHistory(today:)` fallback) plus a `"Streak history unavailable"`
-  footnote (`ProgressScreen.swift:87`) — never a blank calendar with no
-  explanation.
+  `ProgressModel.history == nil`, NOT loading. The calendar still renders (an
+  empty `StreakHistory` — zero days marked, `StreakCalendarView`'s own
+  `effectiveHistory` layout-only fallback, `StreakCalendarView.swift:47-49`)
+  plus a `"Streak history unavailable"` header/footnote (`StreakCalendarView.
+  swift:108,121` — #1021 CR2 M2 moved this out of `ProgressScreen.swift`,
+  which used to substitute a fake all-zero `StreakHistory` before handing it
+  down, making the header lie "Current 0 · Best 0" on this exact path) —
+  never a blank calendar with no explanation.
+- **Stale-until-teardown (fixed, #1021 CR2 M1)** — `ProgressHostView`/
+  `MinesweeperProgressHostView` used to build their view model ONCE
+  (`makeTabRoot`'s invoked-once contract) with no observer on
+  `GameRootViewModel.sessionTeardownCount`, so bests/history froze at
+  whatever `bootstrap()` first fetched for the rest of the app session. Both
+  hosts now `.onChange(of: sessionTeardownCount)` → `viewModel.refresh()`
+  (mirrors `DailyHubView`'s #761 fix) — `screenViewed` telemetry still fires
+  from `bootstrap()` only, exactly once per screen lifetime.
+
+**Dynamic Type note (#1021 CR2 M4):** `ProgressScreenTests.
+snapshotAccessibility3IPhoneLight`'s env-injected `.dynamicTypeSize(.accessibility3)`
+only scales `@ScaledSpacing`-driven layout in this `NSHostingView` harness —
+it does NOT scale fonts. It is evidence the SPACING scales at AX3, not that
+text never truncates at real AX3; that requires a simulator pass.
 
 No monetization surface (explicit scope exclusion carried over from the
 retired STATS contract's `docs/v2/stats-screen-proposal.md` §7).

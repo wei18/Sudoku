@@ -9,6 +9,12 @@
 // map at all; `MinesweeperTodayMapperTests` asserts every state × degraded
 // combination structurally can never produce `.exhausted`.
 //
+// #1021 CR2 M7: Sudoku's `TodayMapper` gained a `.failed → .degraded`
+// "Not started" skeleton-card render for its phase-1 fetch failure this
+// pass. There is NO equivalent here — see the D21 paragraph above: MS's
+// phase-1 (`dailyTrio(date:)`) cannot throw, so there is no MS state this
+// would ever apply to. Deliberately not inventing one just for parity.
+//
 // Card status text (spec B): completed → "Solved · m:ss"/"Solved"; failed →
 // "Failed"; in progress (matches `inProgress`'s record name, not completed) →
 // "In progress · m:ss"/"In progress"; not started → "Not started · R × C ·
@@ -89,14 +95,19 @@ enum MinesweeperTodayMapper {
         }
     }
 
+    // #1021 CR2 MINOR: `today` is now injected (mirrors Sudoku's
+    // `TodayMapper.headerModel(weekStrip:allCompletedDays:today:)`) instead
+    // of this mapper calling `Date()` itself — keeps it a pure function of
+    // its arguments, testable without a wall-clock dependency.
     static func headerModel(
         weekStrip: MinesweeperDailyStripSnapshot,
-        allCompletedDays: Set<DayKey>
+        allCompletedDays: Set<DayKey>,
+        today: DayKey
     ) -> StreakHeaderModel {
         guard !weekStrip.days.isEmpty else {
             return .skeleton
         }
-        let longest = StreakHistory(completedDays: allCompletedDays, today: DayKey(Date(), calendar: .current)).longest
+        let longest = StreakHistory(completedDays: allCompletedDays, today: today).longest
         let tappableIndices = Set(weekStrip.days.enumerated().compactMap { index, day in
             (day.isReviewable && !day.isToday) ? index : nil
         })

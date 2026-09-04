@@ -84,6 +84,19 @@ public struct DailyCardContent: View {
     private static let thumbnailHeight: CGFloat = 64
 
     public var body: some View {
+        // #1021 CR2 MINOR: only apply `.accessibilityIdentifier` when the
+        // model actually carries one — an empty-string id (the old `?? ""`
+        // fallback) is still a REAL identifier to XCUITest/AX-inspector
+        // queries, so an unset card could accidentally match a `""` lookup
+        // instead of genuinely having none.
+        if let id = model.accessibilityIdentifier {
+            cardBody.accessibilityIdentifier(id)
+        } else {
+            cardBody
+        }
+    }
+
+    private var cardBody: some View {
         HubCard {
             HStack(alignment: .center, spacing: contentGap) {
                 thumbnail
@@ -111,7 +124,6 @@ public struct DailyCardContent: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(DailyCardView.accessibilityLabel(title: model.title, statusText: model.statusText))
         .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier(model.accessibilityIdentifier ?? "")
     }
 
     /// Width follows the board's own `columns/rows` aspect ratio at a fixed
@@ -154,6 +166,11 @@ public struct DailyCardView: View {
         .buttonStyle(.plain)
     }
 
+    // #1021 CR2 MINOR: this interpolated `"%@, %@"` key is INTENTIONALLY
+    // shared with `PracticeDifficultyCardView.accessibilityLabel(title:detail:)`
+    // — the spoken result is identical, and the xcstrings catalog can't
+    // attach two distinct translator comments to one key. See that func's
+    // doc for the reciprocal note.
     public static func accessibilityLabel(title: String, statusText: String) -> String {
         String(localized: "\(title), \(statusText)", bundle: .main)
     }

@@ -72,6 +72,21 @@ public final class MinesweeperProgressViewModel {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
         await telemetry?.observe(.statsViewed)
+        await load()
+    }
+
+    /// #1021 CR2 M1: re-reads bests + history OUTSIDE `bootstrap()`'s
+    /// one-shot gate — mirrors Sudoku's `ProgressViewModel.refresh()` /
+    /// `DailyHubViewModel.refresh()`. Called from
+    /// `MinesweeperProgressHostView`'s `.onChange(of: sessionTeardownCount)`
+    /// so this tab doesn't keep showing stale bests/history for the rest of
+    /// the app session. Telemetry stays `bootstrap()`-only.
+    public func refresh() async {
+        guard hasBootstrapped else { return }
+        await load()
+    }
+
+    private func load() async {
         async let bestsResult = fetchBests()
         async let historyResult = fetchHistory()
         let bests = await bestsResult
@@ -140,22 +155,20 @@ public final class MinesweeperProgressViewModel {
     static func bestModel(
         difficulty: Difficulty, daily: MinesweeperPersonalRecord, practice: MinesweeperPersonalRecord
     ) -> PersonalBestModel {
-        let combinedBest: Int?
-        switch (daily.bestTimeSeconds, practice.bestTimeSeconds) {
-        case let (dailyBest?, practiceBest?): combinedBest = min(dailyBest, practiceBest)
-        case let (dailyBest?, nil): combinedBest = dailyBest
-        case let (nil, practiceBest?): combinedBest = practiceBest
-        case (nil, nil): combinedBest = nil
-        }
-        let completedCount = daily.completedCount + practice.completedCount
-        let totalTimeSeconds = daily.totalTimeSeconds + practice.totalTimeSeconds
-        let average = completedCount > 0 ? totalTimeSeconds / completedCount : nil
+        let merged = PersonalBestMerge(
+            dailyBestTimeSeconds: daily.bestTimeSeconds,
+            dailyCompletedCount: daily.completedCount,
+            dailyTotalTimeSeconds: daily.totalTimeSeconds,
+            practiceBestTimeSeconds: practice.bestTimeSeconds,
+            practiceCompletedCount: practice.completedCount,
+            practiceTotalTimeSeconds: practice.totalTimeSeconds
+        )
         return PersonalBestModel(
             id: difficulty.rawValue,
             title: title(for: difficulty),
             pipLevel: pipLevel(for: difficulty),
-            bestTimeText: combinedBest.map(timeLabel),
-            footnote: footnote(completedCount: completedCount, averageTimeSeconds: average)
+            bestTimeText: merged.bestTimeSeconds.map(timeLabel),
+            footnote: footnote(completedCount: merged.completedCount, averageTimeSeconds: merged.averageTimeSeconds)
         )
     }
 
@@ -179,8 +192,10 @@ public final class MinesweeperProgressViewModel {
     }
 
     /// `m:ss` display label — same format the retired Statistics screen used.
+    /// #1021 CR2 M6: delegates to the shared `PersonalBestFormatting`
+    /// formatter (was duplicated verbatim in Sudoku's `ProgressViewModel`).
     static func timeLabel(_ seconds: Int) -> String {
-        String(format: "%d:%02d", seconds / 60, seconds % 60)
+        PersonalBestFormatting.timeLabel(seconds)
     }
 
     private static func title(for difficulty: Difficulty) -> String {
@@ -204,17 +219,9 @@ public final class MinesweeperProgressViewModel {
         }
     }
 
+    /// #1021 CR2 M6: delegates to the shared `StreakMonthFormatting`
+    /// formatter (was duplicated verbatim in Sudoku's `ProgressViewModel`).
     static func monthTitle(for month: DayKey, calendar: Calendar) -> String {
-        var components = DateComponents()
-        components.year = month.year
-        components.month = month.month
-        components.day = 1
-        components.hour = 12
-        guard let date = calendar.date(from: components) else { return "" }
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("MMMM y")
-        return formatter.string(from: date)
+        StreakMonthFormatting.monthTitle(for: month, calendar: calendar)
     }
 }

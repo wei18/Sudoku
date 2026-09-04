@@ -89,6 +89,13 @@ public struct PracticeDifficultyCardView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
+    // #1021 CR2 MINOR: this interpolated `"%@, %@"` key is INTENTIONALLY
+    // shared with `DailyCardView.accessibilityLabel(title:statusText:)` —
+    // the spoken result is identical, and the xcstrings catalog can't attach
+    // two distinct translator comments to one key. See that func's doc for
+    // the reciprocal note (both cataloged under the same string, catalog
+    // comment: "combined a11y label: DailyCardView ... and
+    // PracticeDifficultyCardView ... share this shape").
     public static func accessibilityLabel(title: String, detail: String) -> String {
         String(localized: "\(title), \(detail)", bundle: .main)
     }

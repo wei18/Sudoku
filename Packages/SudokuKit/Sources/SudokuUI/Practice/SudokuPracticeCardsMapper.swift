@@ -52,31 +52,37 @@ enum SudokuPracticeCardsMapper {
     /// "Medium" / "Hard").
     private static func title(for difficulty: Difficulty) -> String {
         switch difficulty {
-        case .easy: return String(localized: "Easy")
-        case .medium: return String(localized: "Medium")
-        case .hard: return String(localized: "Hard")
+        case .easy: return String(localized: "Easy", bundle: .main)
+        case .medium: return String(localized: "Medium", bundle: .main)
+        case .hard: return String(localized: "Hard", bundle: .main)
         }
     }
 
     private static func detail(for difficulty: Difficulty) -> String {
         let givens = representativeGivens(for: difficulty)
-        return String(localized: "~\(givens) givens")
+        return String(localized: "~\(givens) givens", bundle: .main)
     }
 
     static func card(for difficulty: Difficulty) -> PracticeCardModel {
         let givens = representativeGivens(for: difficulty)
         let fillRatio = Double(givens) / Double(boardSize * boardSize)
-        let preview = BoardPreview.densitySample(
+        // #1021 CR2 MINOR: `densitySample` only returns `nil` for
+        // non-positive `columns`/`rows` (see its own doc) — `boardSize` (9)
+        // is a fixed positive constant, so this branch is structurally
+        // unreachable. `guard let ... else { preconditionFailure }` documents
+        // that invariant with a clear crash message instead of the previous
+        // `?? BoardPreview(...)!` — a force-unwrapped SECOND fallback
+        // construction that duplicated the "empty board" shape for no
+        // reachable case.
+        guard let preview = BoardPreview.densitySample(
             columns: boardSize,
             rows: boardSize,
             fillRatio: fillRatio,
             mark: .given,
             seed: seed(for: difficulty)
-        ) ?? BoardPreview(
-            columns: boardSize,
-            rows: boardSize,
-            cells: Array(repeating: .empty, count: boardSize * boardSize)
-        )!
+        ) else {
+            preconditionFailure("BoardPreview.densitySample only fails for non-positive dims; boardSize is fixed positive")
+        }
 
         return PracticeCardModel(
             id: difficulty.rawValue,

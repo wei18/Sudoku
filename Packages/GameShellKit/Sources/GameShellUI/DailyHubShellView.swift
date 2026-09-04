@@ -80,7 +80,14 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         backgroundColor: Color,
         state: HubLoadState<Item>,
         @ViewBuilder card: @escaping (Item) -> Card,
-        @ViewBuilder failure: @escaping (String) -> Failure,
+        // #1021 CR2 M7: defaults to `Color.clear` (mirrors `empty:`'s own
+        // default below) — since BOTH apps route every reachable state
+        // through `.idle`/`.loading`/`.loaded`/`.empty` now (a phase-1 fetch
+        // failure renders degraded skeleton CARDS via `.loading` instead of
+        // this overlay), `.failed` is unreachable in either app's
+        // `HubLoadState` lift and neither caller needs to supply this
+        // closure anymore.
+        @ViewBuilder failure: @escaping (String) -> Failure = { _ in Color.clear },
         @ViewBuilder empty: @escaping () -> Empty = { Color.clear },
         onItemTap: @escaping (Item) -> Void,
         @ViewBuilder header: () -> Header = { EmptyView() },

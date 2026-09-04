@@ -25,6 +25,17 @@
 // placeholders instead — still `.degraded`, per the dispatch's "Phase-1
 // failure → `.degraded` with skeleton thumbnails" rule.
 //
+// #1021 CR2 M7: `DailyHubView` now actually RENDERS this `.degraded` output
+// for `.failed` (it used to lift `.failed` straight to the shell's failure
+// overlay, making this branch dead code) — via the same inert `loading:`
+// shell slot idle/loading already use (no per-item Button/tap plumbing is
+// wanted for a placeholder card with no real `puzzleId` behind it).
+// `degradedSkeletonCards()` below is a SEPARATE fixture from the plain
+// `skeletonCards()` idle/loading render: same dimensions, but a real
+// "Not started" caption (bare — no given-clue count is knowable) instead of
+// blank text, so a phase-1 failure reads as "this puzzle hasn't been
+// started" rather than a still-loading shimmer.
+//
 // Thumbnail-building note: the in-progress `boardState`-decode below
 // duplicates `SudokuAppComposition.SudokuBoardPreviewMapper.make(boardState:
 // givenMask:)`'s ~15-line body verbatim rather than importing it —
@@ -56,6 +67,13 @@ enum TodayMapper {
         (0..<skeletonCardCount).map(skeletonCard(index:))
     }
 
+    /// #1021 CR2 M7: the phase-1-failure degraded fixture — same skeleton
+    /// dimensions/ids as `skeletonCards()`, but a real "Not started" caption
+    /// instead of blank text (see the file header's M7 note).
+    static func degradedSkeletonCards() -> [DailyCardModel] {
+        (0..<skeletonCardCount).map(degradedSkeletonCard(index:))
+    }
+
     static func present(
         state: DailyHubState,
         inProgress: SavedGameSummary?,
@@ -67,7 +85,7 @@ enum TodayMapper {
         case .exhausted:
             return .exhausted
         case .failed:
-            return .degraded(skeletonCards())
+            return .degraded(degradedSkeletonCards())
         case .loaded(let cards):
             let mapped = cards.map { cardModel(card: $0, inProgress: inProgress, forceNotStarted: isPhase2Degraded) }
             if isPhase2Degraded {
@@ -152,6 +170,23 @@ enum TodayMapper {
             isSkeleton: true,
             isCompleted: false,
             accessibilityIdentifier: nil
+        )
+    }
+
+    /// #1021 CR2 M7: identical shape to `skeletonCard(index:)` (same id,
+    /// dimensions, `isSkeleton: true`) but a real "Not started" caption — see
+    /// `degradedSkeletonCards()`'s doc.
+    private static func degradedSkeletonCard(index: Int) -> DailyCardModel {
+        let base = skeletonCard(index: index)
+        return DailyCardModel(
+            id: base.id,
+            title: base.title,
+            pipLevel: base.pipLevel,
+            statusText: String(localized: "Not started", bundle: .main),
+            preview: base.preview,
+            isSkeleton: base.isSkeleton,
+            isCompleted: base.isCompleted,
+            accessibilityIdentifier: base.accessibilityIdentifier
         )
     }
 

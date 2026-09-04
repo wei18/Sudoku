@@ -17,6 +17,11 @@ public import GameAppKit
 public struct MinesweeperProgressHostView: View {
     @State private var viewModel: MinesweeperProgressViewModel
     private let rootViewModel: GameRootViewModel<AppRoute>
+    // #1021 CR2 M1: mirrors Sudoku's `ProgressHostView` /
+    // `MinesweeperDailyHubView`'s `sessionTeardownCount` — without this,
+    // Progress's bests/history stayed frozen at their first bootstrap for
+    // the rest of the app session. See `MinesweeperProgressViewModel.refresh()`.
+    @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
 
     public init(viewModel: MinesweeperProgressViewModel, rootViewModel: GameRootViewModel<AppRoute>) {
         _viewModel = State(initialValue: viewModel)
@@ -28,5 +33,6 @@ public struct MinesweeperProgressHostView: View {
             // Leaf-view one-shot bootstrap — `.task` is the idiomatic choice
             // here (mirrors every other MS hub's leaf bootstrap).
             .task { await viewModel.bootstrap() }
+            .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
     }
 }

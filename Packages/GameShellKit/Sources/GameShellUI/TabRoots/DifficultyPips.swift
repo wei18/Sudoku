@@ -1,11 +1,15 @@
 // DifficultyPips — pip-count redundant difficulty encoding (#1021 Phase A,
 // design.md §7 "顏色非唯一通道: 難度用 pip 數量冗餘編碼").
 //
-// Filled pips all share ONE tint per `level` (`difficulty.easy/medium/hard`
-// — a single-hue lightness ramp, design-system.md §Difficulty), never a
-// rainbow across pips: the COUNT of filled pips is the primary signal, the
-// tint is a secondary reinforcement of the same level, not a second
-// independent code.
+// Filled pips all share ONE tint per `level` (`theme.difficulty.easy/medium/
+// hard`) — #1021 CR2 MINOR: NOT a single-hue lightness ramp, despite this
+// file's earlier wording; each app resolves 3 genuinely distinct hues per
+// tier (Sudoku: green/orange/amber, `DefaultTheme.swift`; Minesweeper:
+// blue/orange/red, `MinesweeperTheme.swift`) — only the base `Theme.swift`
+// fallback is a greyscale ramp. Either way, pips never paint a rainbow
+// ACROSS the 3 dots of one card: the COUNT of filled pips is the primary
+// signal, the tint is a secondary reinforcement of the same level, not a
+// second independent code.
 
 public import SwiftUI
 

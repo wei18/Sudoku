@@ -9,19 +9,47 @@ public struct StreakCalendarView: View {
     @Environment(\.theme) private var theme
     @ScaledSpacing(.small) private var contentGap
 
-    private let history: StreakHistory
+    /// #1021 CR2 M2: `nil` covers BOTH "still loading" (`isLoading == true`)
+    /// AND "fetch failed, genuinely unavailable" (`isLoading == false`) — the
+    /// caller (`ProgressScreen`) no longer substitutes a fake all-zero
+    /// `StreakHistory` before handing this down (that substitution is what
+    /// produced the "Current 0 · Best 0" VoiceOver lie on an unfetched or
+    /// failed month). This view owns its own empty-grid fallback for LAYOUT
+    /// only (`effectiveHistory`) and keeps the two `nil` causes distinguished
+    /// in the header/footnote text via `isLoading`.
+    private let history: StreakHistory?
     private let month: DayKey
     private let monthTitle: String
     private let calendar: Calendar
+    private let isLoading: Bool
 
     private static let columns = Array(repeating: GridItem(.flexible()), count: 7)
     private static let dayCellHeight: CGFloat = 28
 
-    public init(history: StreakHistory, month: DayKey, monthTitle: String, calendar: Calendar = .current) {
+    public init(
+        history: StreakHistory?,
+        month: DayKey,
+        monthTitle: String,
+        calendar: Calendar = .current,
+        isLoading: Bool = false
+    ) {
         self.history = history
         self.month = month
         self.monthTitle = monthTitle
         self.calendar = calendar
+        self.isLoading = isLoading
+    }
+
+    /// Layout-only fallback — an empty grid (zero marks) when there is no
+    /// real history yet/ever. Never read for the header/footnote TEXT, which
+    /// branch on `history == nil` / `isLoading` directly so they never quote
+    /// this placeholder's `current`/`longest` as real numbers.
+    private var effectiveHistory: StreakHistory {
+        history ?? Self.emptyHistory(today: month)
+    }
+
+    private static func emptyHistory(today: DayKey) -> StreakHistory {
+        StreakHistory(completedDays: [], today: today)
     }
 
     public var body: some View {
@@ -29,9 +57,23 @@ public struct StreakCalendarView: View {
             header
             weekdayRow
             LazyVGrid(columns: Self.columns, spacing: contentGap) {
-                ForEach(Array(history.monthCells(for: month, calendar: calendar).enumerated()), id: \.offset) { _, cell in
+                ForEach(Array(effectiveHistory.monthCells(for: month, calendar: calendar).enumerated()), id: \.offset) { _, cell in
                     dayCell(cell)
                 }
+            }
+            // #1021 CR2 M2: cells read out real per-day facts ("12,
+            // completed" / "12, not completed") — while loading there is no
+            // real data behind them yet, so the whole grid is hidden from
+            // VoiceOver rather than reading placeholder "not completed" for
+            // every day as if it were known. (A genuinely UNAVAILABLE,
+            // settled fetch failure leaves the grid visible/accessible: an
+            // empty grid there is a true statement — no completions are
+            // KNOWN — not a lie.)
+            .accessibilityHidden(isLoading)
+            if let statusFootnote {
+                Text(statusFootnote)
+                    .font(.footnote)
+                    .foregroundStyle(theme.text.tertiary.resolved)
             }
         }
     }
@@ -42,11 +84,48 @@ public struct StreakCalendarView: View {
                 .font(.headline)
                 .foregroundStyle(theme.text.primary.resolved)
             Spacer()
-            Text(Self.summaryText(current: history.current, longest: history.longest))
+            Text(headerTrailingText)
                 .font(.subheadline)
                 .foregroundStyle(theme.text.secondary.resolved)
         }
     }
+
+    private var headerTrailingText: String {
+        Self.headerTrailingText(isLoading: isLoading, history: history)
+    }
+
+    /// The footnote line below the grid — `nil` (nothing rendered) once real
+    /// history has landed.
+    private var statusFootnote: String? {
+        Self.statusFootnote(isLoading: isLoading, history: history)
+    }
+
+    /// #1021 CR2 M2: never quotes a placeholder `current`/`longest` (both 0)
+    /// as fact — loading and unavailable each get their own non-numeric
+    /// wording instead of "Current 0 · Best 0". A plain `static func` over
+    /// values (mirrors `summaryText`/`dayAccessibilityLabel` below) so
+    /// `TabRootsAccessibilityTests` can pin it without rendering.
+    public static func headerTrailingText(isLoading: Bool, history: StreakHistory?) -> String {
+        if isLoading {
+            return loadingText
+        }
+        guard let history else {
+            return unavailableText
+        }
+        return summaryText(current: history.current, longest: history.longest)
+    }
+
+    /// Reuses the exact same wording as `headerTrailingText` for the same
+    /// two non-ready states (no new keys beyond `loadingText`, which the
+    /// header already needs) — `nil` once real history has landed.
+    public static func statusFootnote(isLoading: Bool, history: StreakHistory?) -> String? {
+        if isLoading { return loadingText }
+        if history == nil { return unavailableText }
+        return nil
+    }
+
+    public static let loadingText = String(localized: "Streak history loading", bundle: .main)
+    public static let unavailableText = String(localized: "Streak history unavailable", bundle: .main)
 
     private var weekdayInitials: [String] {
         let symbols = calendar.veryShortWeekdaySymbols

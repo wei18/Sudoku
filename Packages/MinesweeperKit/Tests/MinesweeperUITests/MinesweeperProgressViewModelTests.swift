@@ -201,6 +201,44 @@ struct MinesweeperProgressViewModelTests {
         #expect(await sink.received == [.statsViewed])
     }
 
+    /// #1021 CR2 M1: `refresh()` must actually re-read the store, not just
+    /// replay `bootstrap()`'s snapshot — records a FASTER completion AFTER
+    /// bootstrap, then asserts `refresh()` picks it up.
+    @Test func refreshReReadsBestsAfterBootstrap() async throws {
+        let store = try await makeSeededStore()
+        let viewModel = MinesweeperProgressViewModel(store: store, completionSource: ScriptedCompletionSource())
+        await viewModel.bootstrap()
+        #expect(viewModel.model.bests[0].bestTimeText == "1:40") // min(100, 200) == 100
+        try await store.recordCompletion(puzzleId: "d-b-2", modeRaw: "daily", difficulty: .beginner, elapsedSeconds: 10)
+        await viewModel.refresh()
+        #expect(viewModel.model.bests[0].bestTimeText == "0:10")
+    }
+
+    /// `refresh()` called before `bootstrap()` has ever landed must no-op —
+    /// mirrors Sudoku's `ProgressViewModelTests.refreshNoOpsBeforeBootstrap`.
+    @Test func refreshNoOpsBeforeBootstrap() async {
+        let viewModel = MinesweeperProgressViewModel(store: nil, completionSource: ScriptedCompletionSource())
+        await viewModel.refresh()
+        #expect(viewModel.model.isLoading == true)
+    }
+
+    /// #1021 CR2 M1: `refresh()` must NOT re-fire `screenViewed` — pinned to
+    /// `bootstrap()` only, even though the underlying data now refreshes
+    /// repeatedly.
+    @Test func refreshDoesNotRefireScreenViewedTelemetry() async {
+        let sink = ProgressRecordingSink()
+        let telemetry = Telemetry(sinks: [sink])
+        let viewModel = MinesweeperProgressViewModel(
+            store: nil,
+            completionSource: ScriptedCompletionSource(),
+            telemetry: telemetry
+        )
+        await viewModel.bootstrap()
+        await viewModel.refresh()
+        await viewModel.refresh()
+        #expect(await sink.received == [.statsViewed])
+    }
+
     @Test func timeLabelFormatsMinutesSecondsWithoutPlaceholder() {
         #expect(MinesweeperProgressViewModel.timeLabel(192) == "3:12")
         #expect(MinesweeperProgressViewModel.timeLabel(59) == "0:59")

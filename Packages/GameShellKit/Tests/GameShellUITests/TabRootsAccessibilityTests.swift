@@ -78,4 +78,40 @@ struct TabRootsAccessibilityTests {
     func streakCalendarViewSummary() {
         #expect(StreakCalendarView.summaryText(current: 5, longest: 12) == "Current 5 · Best 12")
     }
+
+    // #1021 CR2 M2: loading must never let VoiceOver read a redacted
+    // placeholder ("Easy, best none, 0 solved") as fact.
+
+    @Test("PersonalBestRow loading label reads '<title>, loading', not the placeholder zeros")
+    func personalBestRowLoadingLabel() {
+        let label = PersonalBestRow.loadingAccessibilityLabel(title: "Easy")
+        #expect(label == "Easy, loading")
+    }
+
+    @Test("StreakCalendarView header reads 'Streak history loading' while loading, not 'Current 0 · Best 0'")
+    func streakCalendarViewHeaderLoading() {
+        let text = StreakCalendarView.headerTrailingText(isLoading: true, history: nil)
+        #expect(text == "Streak history loading")
+    }
+
+    @Test("StreakCalendarView header reads the unavailable footnote text on a settled fetch failure")
+    func streakCalendarViewHeaderUnavailable() {
+        let text = StreakCalendarView.headerTrailingText(isLoading: false, history: nil)
+        #expect(text == "Streak history unavailable")
+    }
+
+    @Test("StreakCalendarView header reads the real summary once history has landed")
+    func streakCalendarViewHeaderReady() {
+        let history = StreakHistory(completedDays: [], today: DayKey(year: 2025, month: 8, day: 30))
+        let text = StreakCalendarView.headerTrailingText(isLoading: false, history: history)
+        #expect(text == "Current 0 · Best 0")
+    }
+
+    @Test("StreakCalendarView footnote renders while loading too, not only on unavailable")
+    func streakCalendarViewFootnoteLoading() {
+        #expect(StreakCalendarView.statusFootnote(isLoading: true, history: nil) == "Streak history loading")
+        #expect(StreakCalendarView.statusFootnote(isLoading: false, history: nil) == "Streak history unavailable")
+        let history = StreakHistory(completedDays: [], today: DayKey(year: 2025, month: 8, day: 30))
+        #expect(StreakCalendarView.statusFootnote(isLoading: false, history: history) == nil)
+    }
 }

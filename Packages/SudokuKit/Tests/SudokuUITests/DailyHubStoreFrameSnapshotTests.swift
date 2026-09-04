@@ -21,7 +21,7 @@
 // "marketing assets inherit empty-state fixtures" trap). These fixtures
 // replace that stale content with a populated, realistic Today.
 //
-// Distinct from `snapshotAllDoneIPhoneLight`/`snapshotLoadedAX3IPadLight` in
+// Distinct from `snapshotAllDoneIPhoneLight`/`snapshotLoadedScaledSpacingAX3IPadLight` in
 // `DailyHubViewTests.swift` (the ordinary Phase B state-coverage suite,
 // driven by the shared 80-given `makeViewModel` fixture) — those stay
 // untouched; only the two store-fed baselines get the richer fixture below.
@@ -70,16 +70,20 @@ extension DailyHubViewTests {
         }
     }
 
-    /// A believable 6-day streak ending today (`offset 0`) — `offset 6` is
-    /// left un-scripted so the chain actually breaks there (`current` reads
-    /// 6, not the window-capped "7+"), and since `allCompletedDays` only ever
-    /// sees these 6 days, `longest` also lands at 6 — non-nil, so the header's
-    /// "Best 6" caption renders (design.md §3.1/§4.2, `StreakHeaderView`).
-    /// `todayCompletedIds` scripts ONLY today (`offset 0`); the other 5 days
-    /// just need any non-empty set to read as completed for the pip/streak
-    /// math, so they use throwaway placeholder ids.
+    /// #1021 CR2 EXTRA MINOR: a full 7-day streak ending today (`offset 0`)
+    /// — the English ASC headline promises "Seven days running, and
+    /// counting.", so the fixture must actually show 7, not 6 (a bumped-down
+    /// marketing number is its own "marketing assets inherit empty-state
+    /// fixtures"-shaped trap). All 7 window offsets (0...6) are scripted, so
+    /// every pip in the 7-pip strip is lit and `current` reads 7; since
+    /// `allCompletedDays` sees the same 7 days, `longest` also lands at 7 —
+    /// the header's "Best 7" caption renders (design.md §3.1/§4.2,
+    /// `StreakHeaderView`). `todayCompletedIds` scripts ONLY today
+    /// (`offset 0`); the other 6 days just need any non-empty set to read as
+    /// completed for the pip/streak math, so they use throwaway placeholder
+    /// ids.
     static func seedStoreStreak(persistence: FakePersistence, todayCompletedIds: Set<String>) async {
-        for offset in 0...5 {
+        for offset in 0...6 {
             let date = Self.fixedDate.addingTimeInterval(-Double(offset) * 86_400)
             let ids = offset == 0 ? todayCompletedIds : ["store-streak-day-\(offset)"]
             await persistence.setCompletedDailyIds(ids, for: date)

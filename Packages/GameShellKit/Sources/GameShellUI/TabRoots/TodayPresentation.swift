@@ -12,9 +12,12 @@
 public enum TodayPresentation<Card: Identifiable & Sendable>: Sendable {
     case loading
     case loaded([Card])
-    /// Today's puzzles are all complete — render `TodayAllDoneBlock` instead
-    /// of the three cards. Carries the (now-irrelevant-to-render, but
-    /// available) completed cards for callers that still want them.
+    /// Today's puzzles are all complete — render `TodayAllDoneBlock`
+    /// ADDITIONALLY, above the header (approved decision, #1021 CR2 M3: an
+    /// earlier doc pass said this REPLACES the three cards; it does not).
+    /// The 3 cards stay in the shell's normal card grid below, still
+    /// tappable — completed cards route to the review flow like any other
+    /// completed card. `cards` here is what the caller actually renders.
     case allDone([Card])
     /// CloudKit completion status is unknown; thumbnails still render
     /// (seed-derived, no CK dependency) but every card must be drawn as

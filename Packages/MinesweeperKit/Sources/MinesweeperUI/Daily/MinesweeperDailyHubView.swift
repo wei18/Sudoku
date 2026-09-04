@@ -112,7 +112,11 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     }
 
     private var headerModel: StreakHeaderModel {
-        MinesweeperTodayMapper.headerModel(weekStrip: viewModel.weekStrip, allCompletedDays: viewModel.allCompletedDays)
+        MinesweeperTodayMapper.headerModel(
+            weekStrip: viewModel.weekStrip,
+            allCompletedDays: viewModel.allCompletedDays,
+            today: DayKey(Date(), calendar: .current)
+        )
     }
 
     private var dailyHubShell: some View {
@@ -128,19 +132,12 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
                     DailyCardContent(model: model)
                 }
             },
-            failure: { reason in
-                // spacing-exempt: 12pt (icon/text stack gap) predates the
-                // 5-tier `SpacingTokens` scale — no matching tier without
-                // snapping and changing this screen's existing
-                // layout/snapshot (#762 PR3).
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(theme.status.warning.resolved)
-                    Text(reason)
-                        .font(.caption)
-                        .foregroundStyle(theme.text.secondary.resolved)
-                }
-            },
+            // #1021 CR2 M7 (MINOR sweep): no `failure:` argument — MS's
+            // `MinesweeperDailyHubState` has no `.failed` case at all
+            // (`liftedState` below only ever produces `.idle`/`.loading`/
+            // `.loaded`), so this closure was ALREADY dead code before this
+            // pass. The shell's default `Color.clear` failure overlay is
+            // correctly unreachable here, same as Sudoku's `DailyHubView`.
             onItemTap: { card in viewModel.cardTapped(card) },
             header: {
                 // spacing-exempt: gap uses the same tier as the header's own

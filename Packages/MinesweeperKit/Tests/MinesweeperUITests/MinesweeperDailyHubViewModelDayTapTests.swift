@@ -10,6 +10,7 @@
 // here; the route assertions are immediate.
 
 import Foundation
+import GameShellUI
 import SwiftUI
 import Testing
 import MinesweeperEngine
@@ -190,7 +191,11 @@ struct MinesweeperTodayMapperPipInteractivityTests {
 
     private func isTappable(_ day: MinesweeperDailyStripDay) -> Bool {
         let snapshot = MinesweeperDailyStripSnapshot(days: [day], streak: nil)
-        let model = MinesweeperTodayMapper.headerModel(weekStrip: snapshot, allCompletedDays: [])
+        let model = MinesweeperTodayMapper.headerModel(
+            weekStrip: snapshot,
+            allCompletedDays: [],
+            today: DayKey(Self.referenceDate, calendar: .current)
+        )
         return model.tappablePipIndices.contains(0)
     }
 

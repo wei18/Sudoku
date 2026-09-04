@@ -1,4 +1,16 @@
 // DailyHubView — bootstrap, exhausted inline block, and 4-state snapshots.
+//
+// #1021 CR2 M7: crossed the 400-line file-length ceiling adding
+// `snapshotFailedIPhoneLight` (a genuinely NEW baseline, not something to
+// trim). Can't split further the way `DailyHubStoreFrameSnapshotTests.swift`
+// already did (that file's own header explains why: every `@Test` here MUST
+// stay physically in THIS file — swift-snapshot-testing resolves each
+// baseline's `__Snapshots__/<file>/` directory from the calling test's own
+// `#filePath`, so moving a `@Test` to another file would silently start
+// writing/reading a different snapshot directory). The lint disable below
+// mirrors the existing repo precedent for this exact snapshot-pinned-to-file
+// constraint (`ASCClientURLProtocolTests.swift`).
+// swiftlint:disable file_length
 
 import Foundation
 import SnapshotTesting
@@ -186,12 +198,14 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-loaded", record: SnapshotMode.recordMode)
     }
 
-    /// AX3 Dynamic Type pin of the same `loaded` fixture — env-injected
-    /// Dynamic Type snapshots are a layout pin only, not proof of runtime
-    /// behavior (memory: dynamic-type-sim-verify-and-cap); sim verification
-    /// is the authority for AX bugs. Confirms the card title doesn't
-    /// hyphenate/truncate at AX3 (Leader adjudication, row-card layout).
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedAX3IPhoneLight() async {
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoadedAX3IPhoneLight`
+    /// — injected `.dynamicTypeSize` in an `NSHostingView` snapshot only
+    /// scales `@ScaledSpacing`, it does NOT scale fonts (repo memory:
+    /// dynamic-type-sim-verify-and-cap). This baseline proves the row-card
+    /// layout's SPACING scales at AX3; it is NOT evidence that the card
+    /// title doesn't hyphenate/truncate at real AX3 — that claim needs a
+    /// simulator pass (idb-verify), not this harness.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedScaledSpacingAX3IPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId
         let viewModel = await makeViewModel(completedDailyIds: [easyId])
@@ -208,15 +222,18 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
     }
 
-    /// AX3 Dynamic Type pin on an iPad-width REGULAR size class — #1021
-    /// Phase G. Distinct from `snapshotLoadedAX3IPhoneLight` above (compact
-    /// size class): before the fix, `DailyHubShellView`'s grid kept 3
-    /// columns whenever `sizeClass == .regular`, so at AX3 each ~262pt
-    /// column wrapped every status word onto its own line and hyphenated.
-    /// `DailyHubGridLayout.columnCount(...)` now forces a single column at
-    /// any accessibility Dynamic Type size regardless of size class —
-    /// confirms the grid collapses to one column here.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedAX3IPadLight() async {
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoadedAX3IPadLight`
+    /// — see `snapshotLoadedScaledSpacingAX3IPhoneLight`'s doc for why. AX3
+    /// Dynamic Type pin on an iPad-width REGULAR size class — #1021 Phase G.
+    /// Distinct from that iPhone case above (compact size class): before the
+    /// fix, `DailyHubShellView`'s grid kept 3 columns whenever
+    /// `sizeClass == .regular`. `DailyHubGridLayout.columnCount(...)` now
+    /// forces a single column at any accessibility Dynamic Type size
+    /// regardless of size class — this baseline confirms the grid COLUMN
+    /// COUNT collapses to one here (a real layout/spacing fact this harness
+    /// can prove); it is NOT evidence that status text doesn't hyphenate at
+    /// real AX3 (fonts aren't actually scaled here — simulator pass only).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedScaledSpacingAX3IPadLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId
         let viewModel = await makeViewModel(completedDailyIds: [easyId])
@@ -279,6 +296,35 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-degraded")
         }
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-degraded", record: SnapshotMode.recordMode)
+    }
+
+    /// #1021 CR2 M7: a phase-1 fetch failure (`.failed` — NOT `.exhausted`;
+    /// `generatorFailed` maps to `.exhausted`, tested above) now renders the
+    /// SAME skeleton-dimension card grid `.idle`/`.loading` use, captioned
+    /// "Not started", instead of the old inline warning block — design.md
+    /// §3.1's state table has no "failed with nothing renderable" row, only
+    /// `degraded`. NEW baseline (this render path was previously
+    /// unreachable — see `TodayMapper`'s file header and `DailyHubView.
+    /// loadingCards`).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailedIPhoneLight() async {
+        let viewModel = await makeViewModel(
+            providerResult: .failure(.unknownDifficulty("boom"))
+        )
+        await viewModel.bootstrap()
+        guard case .failed = viewModel.state else {
+            Issue.record("expected .failed, got \(viewModel.state)")
+            return
+        }
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-failed")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-failed", record: SnapshotMode.recordMode)
     }
 
     /// `exhausted` (Sudoku only): the generator failed for today — the

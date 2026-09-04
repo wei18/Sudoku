@@ -22,7 +22,7 @@ import Testing
 // MARK: - Scripted fakes
 
 private actor ScriptedProgressPersistence: PersistenceProtocol {
-    private let records: [String: PersonalRecord]
+    private var records: [String: PersonalRecord]
     private let completedByDay: [String: Set<String>]
     private let recordFetchError: PersistenceError?
     private let historyFetchError: PersistenceError?
@@ -37,6 +37,13 @@ private actor ScriptedProgressPersistence: PersistenceProtocol {
         self.completedByDay = completedByDay
         self.recordFetchError = recordFetchError
         self.historyFetchError = historyFetchError
+    }
+
+    /// #1021 CR2 M1: lets `refreshReReadsBestsAfterBootstrap` mutate the
+    /// fake store BETWEEN `bootstrap()` and `refresh()` — proving `refresh()`
+    /// actually re-reads Persistence instead of replaying the bootstrap snapshot.
+    func setRecords(_ newRecords: [PersonalRecord]) {
+        records = Dictionary(uniqueKeysWithValues: newRecords.map { ($0.recordName, $0) })
     }
 
     func bootstrap() async throws {}
@@ -202,6 +209,51 @@ struct ProgressViewModelTests {
         )
         await viewModel.bootstrap()
         await viewModel.bootstrap() // re-entry no-ops (`.task` re-fire guard)
+        #expect(await sink.received == [.statsViewed])
+    }
+
+    /// #1021 CR2 M1: `refresh()` must actually re-read Persistence, not just
+    /// replay `bootstrap()`'s snapshot — mutates the fake store's records
+    /// AFTER bootstrap, then asserts `refresh()` picks up the new best.
+    @Test func refreshReReadsBestsAfterBootstrap() async {
+        let persistence = ScriptedProgressPersistence(records: [
+            record(mode: .daily, difficulty: .easy, best: 100, total: 100, count: 1)
+        ])
+        let viewModel = ProgressViewModel(persistence: persistence, calendar: fixedCalendar, now: { fixedToday })
+        await viewModel.bootstrap()
+        #expect(viewModel.model.bests[0].bestTimeText == "1:40")
+        await persistence.setRecords([
+            record(mode: .daily, difficulty: .easy, best: 50, total: 100, count: 2)
+        ])
+        await viewModel.refresh()
+        #expect(viewModel.model.bests[0].bestTimeText == "0:50")
+        #expect(viewModel.model.bests[0].footnote == "2 solved · avg 0:50")
+    }
+
+    /// `refresh()` called before `bootstrap()` has ever landed must no-op
+    /// (mirrors `DailyHubViewModel.refresh()`'s `hasBootstrapped` guard) —
+    /// nothing to re-read yet, and it must not race the first bootstrap.
+    @Test func refreshNoOpsBeforeBootstrap() async {
+        let viewModel = ProgressViewModel(persistence: ScriptedProgressPersistence())
+        await viewModel.refresh()
+        #expect(viewModel.model.isLoading == true)
+    }
+
+    /// #1021 CR2 M1: `refresh()` must NOT re-fire `screenViewed` — that
+    /// telemetry event is pinned to `bootstrap()` only (once per screen
+    /// lifetime), even though the underlying data now refreshes repeatedly.
+    @Test func refreshDoesNotRefireScreenViewedTelemetry() async {
+        let sink = ProgressRecordingSink()
+        let telemetry = Telemetry(sinks: [sink])
+        let viewModel = ProgressViewModel(
+            persistence: ScriptedProgressPersistence(),
+            telemetry: telemetry,
+            calendar: fixedCalendar,
+            now: { fixedToday }
+        )
+        await viewModel.bootstrap()
+        await viewModel.refresh()
+        await viewModel.refresh()
         #expect(await sink.received == [.statsViewed])
     }
 
