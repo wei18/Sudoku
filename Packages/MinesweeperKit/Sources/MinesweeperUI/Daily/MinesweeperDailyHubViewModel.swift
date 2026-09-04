@@ -11,12 +11,10 @@
 // there is no `.exhausted` / generator-failure path; the only async work is
 // the optional completed/failed-ids fetch.
 //
-// #816: the completed-ids fetch used to go through the Sudoku-shaped
-// `PersistenceProtocol.fetchCompletedDailyIds` — a CK predicate that assumes
-// a `puzzleId` field MS's `SavedGame` schema doesn't have, so it always threw
-// and the green check never appeared. It now reads from
-// `MinesweeperSavedGameStore.fetchCompletedDailyIds`, mirroring the
-// already-working failed-ids path below.
+// #816: the completed-ids fetch now reads from
+// `MinesweeperSavedGameStore.fetchCompletedDailyIds` (not the Sudoku-shaped
+// `PersistenceProtocol.fetchCompletedDailyIds`, whose `puzzleId` predicate MS's
+// schema doesn't satisfy), mirroring the already-working failed-ids path below.
 
 public import Foundation
 public import SwiftUI
@@ -72,8 +70,13 @@ public final class MinesweeperDailyHubViewModel {
     /// #905: `internal(set)` (was `private(set)`) so `+Testing.swift` can seed it.
     public internal(set) var weekStrip: MinesweeperDailyStripSnapshot = .unknown
     /// #826: non-nil while the confirmationDialog picker is showing. Mirrors
-    /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`.
-    public private(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
+    /// `SudokuUI.DailyHubViewModel.reviewPickerChoices`. #1021 Phase B:
+    /// `internal(set)` (was `private(set)`) so `+Review.swift` can write it.
+    public internal(set) var reviewPickerChoices: [MinesweeperDailyReviewChoice]?
+    /// #1021 Phase B: all-time completed days, feeding `longest`. See `+Overlay.swift`.
+    private(set) var allCompletedDays: Set<DayKey> = []
+    /// #1021 Phase B: best-effort in-progress save for `MinesweeperTodayMapper`. See `+Overlay.swift`.
+    private(set) var inProgressSummary: MinesweeperSavedGameSummary?
 
     /// #842: `true` from `.loaded`'s first render until
     /// `fillCompletionAndFailureOverlay` (phase 2) resolves at least once, for
@@ -92,7 +95,8 @@ public final class MinesweeperDailyHubViewModel {
     /// targets read/write it.
     var isPhase2Pending = true
 
-    private var path: Binding<[AppRoute]>
+    // #1021 Phase B: not `private` — `+Review.swift` reads it too.
+    var path: Binding<[AppRoute]>
 
     private let provider: any MinesweeperDailyProviding
     /// #816: retained for source compatibility with existing call sites, but
@@ -120,7 +124,7 @@ public final class MinesweeperDailyHubViewModel {
     let savedGameStore: (any MinesweeperDailyOverlayReading)?
     /// #886: per-difficulty best-DAILY-time reads
     /// (`fetch(modeRaw: "daily", difficulty:)`) — the same store
-    /// `MinesweeperStatsViewModel` already reads for the Stats screen's Daily
+    /// `MinesweeperProgressViewModel` already reads for the Progress tab's bests
     /// section, zero new Persistence surface. Optional so preview / test
     /// callsites that don't thread a store keep compiling — when nil, every
     /// card's `bestTimeSeconds` stays `nil` (renders "—", never blocks).
@@ -249,14 +253,17 @@ public final class MinesweeperDailyHubViewModel {
         async let bestTimesTask = fetchBestTimes(trio: trio)
         async let windowTask = fetchWeekWindow(referenceDate: date)
         async let failedTask = fetchFailedIds(date: date)
+        // #1021 Phase B: independent best-effort lane — see `fetchInProgressSummary`.
+        async let inProgressTask = fetchInProgressSummary()
         let window = await windowTask
         let failed = await failedTask
         let bestTimes = await bestTimesTask
-        let completed: Set<String> = window?.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
+        inProgressSummary = await inProgressTask
+        let completed: Set<String> = window?.slots.first { $0.offsetFromToday == 0 }?.completedPuzzleIds ?? []
 
         guard case .loaded(let latestCards) = state else { return }
         if let window {
-            let days = window.map { slot in
+            let days = window.slots.map { slot in
                 MinesweeperDailyStripDay(
                     offsetFromToday: slot.offsetFromToday,
                     date: slot.date,
@@ -266,11 +273,14 @@ public final class MinesweeperDailyHubViewModel {
             }
             let rawStreak = MinesweeperDailyStripLogic.computeStreak(days: days)
             weekStrip = MinesweeperDailyStripSnapshot(days: days, streak: rawStreak > 0 ? rawStreak : nil)
+            // #1021 Phase B: reuses the SAME fetched dictionary, not a second fetch.
+            allCompletedDays = Self.completedDays(from: window.completedByDay)
         } else {
             // #774: any single day's fetch failing (or no `savedGameStore`
             // injected at all — preview/test callsites) degrades the WHOLE
             // window rather than risk a false "missed" dot.
             weekStrip = .unknown
+            allCompletedDays = []
         }
         // #886: best times always merge in, independent of whether this
         // round's completed/failed sets carried any new information — an
@@ -319,58 +329,10 @@ public final class MinesweeperDailyHubViewModel {
         }
     }
 
-    /// #826: tap entry point for a dot in the #774 week strip. Mirrors
-    /// `SudokuUI.DailyHubViewModel.dayTapped` — only a REVIEWABLE (≥1
-    /// parseable completed id, `MinesweeperDailyStripDay.isReviewable`),
-    /// PAST day reacts. The view's tappable gate and this guard are built on
-    /// the SAME `MinesweeperDailyStripLogic.reviewChoices` parse, so a dot
-    /// can never render as a button whose tap would no-op here (CR round 2).
-    /// Owner adjudication 2026-07-16: exactly one completed difficulty opens
-    /// its Completion directly; more than one presents `reviewPickerChoices`.
-    /// Unlike Sudoku, MS's `.completion` push needs no async fetch (no
-    /// stored elapsed, #284) — fully synchronous, no in-flight latch needed.
-    /// #882 F-5 (audit #874): deliberately NOT gated on `isPhase2Pending`,
-    /// unlike `cardTapped`. Mirrors `SudokuUI.DailyHubViewModel.dayTapped`'s
-    /// reasoning (not repeated in full here) — `weekStrip` stays `.unknown`
-    /// (card hidden entirely) until phase 2 first resolves, and on a later
-    /// `refresh()` re-entry it keeps showing the last successful, immutable
-    /// snapshot (completion is monotonic, so staleness can only under-report,
-    /// never mis-route). MS's `openReview` is even more immune than Sudoku's:
-    /// it does no fetch at all — `.completion(difficulty:mode:day:)` is built
-    /// purely from `choice.puzzleId`/`choice.difficulty`, both already frozen
-    /// identifiers baked into the tapped `MinesweeperDailyStripDay` at render
-    /// time, so there is no live-data re-read for a race to land in.
-    /// Documented rather than gated per the #882 dispatch.
-    public func dayTapped(_ day: MinesweeperDailyStripDay) {
-        guard !day.isToday else { return }
-        let choices = MinesweeperDailyStripLogic.reviewChoices(from: day.completedPuzzleIds)
-        guard !choices.isEmpty else { return }
-        if choices.count == 1 {
-            openReview(choices[0])
-        } else {
-            reviewPickerChoices = choices
-        }
-    }
-
-    /// The confirmationDialog picker's row selection (#826).
-    public func reviewChoiceSelected(_ choice: MinesweeperDailyReviewChoice) {
-        reviewPickerChoices = nil
-        openReview(choice)
-    }
-
-    /// The confirmationDialog picker's Cancel / dismiss (#826).
-    public func dismissReviewPicker() {
-        reviewPickerChoices = nil
-    }
-
-    private func openReview(_ choice: MinesweeperDailyReviewChoice) {
-        // `MinesweeperSavedGameStore.dailyDay(fromRecordName:)` reuses the
-        // exact same day-parse #700's achievement streak already relies on
-        // (puzzleId == recordName for daily records) rather than
-        // re-deriving the day substring here.
-        let day = MinesweeperSavedGameStore.dailyDay(fromRecordName: choice.puzzleId)
-        path.wrappedValue.append(.completion(difficulty: choice.difficulty, mode: .daily, day: day))
-    }
+    // `dayTapped` / `reviewChoiceSelected` / `dismissReviewPicker` /
+    // `openReview` — the past-day review flow (#826) — moved to
+    // `MinesweeperDailyHubViewModel+Review.swift` (#1021 Phase B, purely to
+    // keep this file under the 400-line `file_length` ceiling).
 
     /// Merge the daily trio with the sets of completed and failed daily ids into
     /// cards. A card is completed iff its `puzzleId` is in `completed`; failed

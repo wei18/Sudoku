@@ -86,21 +86,27 @@ extension MinesweeperAppComposition {
                 )
             )
         case .progress:
-            // #773: Statistics screen — MinesweeperPersonalRecord readout. No
-            // banner: the proposal's scope note (§7) explicitly introduces no
-            // monetization surface here. #1020 C-36: the Game Center
-            // `Achievements` entry point rides the shared `gameCenterSection`
-            // slot instead of a bespoke Home leaderboard card.
+            // #1021 Phase D: the shared `ProgressScreen` (GameAppKit) —
+            // personal bests + a month streak calendar + the native
+            // `Achievements`/`Leaderboards` Game Center entry points.
+            // #1021 Phase E2: the retired Statistics screen this replaced is
+            // now fully deleted (its "01-home" ASC store-screenshot slot in
+            // `mise-tasks/store/screenshots` was repointed at `ProgressScreen`'s
+            // own store fixture — see `ProgressScreenTests.swift`).
+            //
+            // #935 batch 3: `dailyOverlayReading` (when the composition root
+            // wired one — the E2E fake-or-live resolution) takes priority;
+            // otherwise fall back to the concrete `savedGameStore` — same
+            // precedent as the `.today` case above.
             return AnyView(
-                MinesweeperStatsView(
-                    viewModel: MinesweeperStatsViewModel(
+                MinesweeperProgressHostView(
+                    viewModel: MinesweeperProgressViewModel(
                         store: personalRecordStore,
+                        completionSource: dailyOverlayReading ?? savedGameStore,
                         errorReporter: errorReporter,
                         telemetry: telemetry
                     ),
-                    gameCenterSection: {
-                        AchievementsRow(rootViewModel: rootViewModel)
-                    }
+                    rootViewModel: rootViewModel
                 )
             )
         }

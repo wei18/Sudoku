@@ -84,9 +84,10 @@ public enum TelemetryEvent: Sendable, Equatable, Hashable, Codable {
     /// The Settings Game Center "Invite Friends" row was tapped (iOS 26+/macOS 26+).
     case inviteFriendsTapped
 
-    /// The Statistics screen (#773) was mounted. Fired once per screen
-    /// appearance from each game's `StatsViewModel`/`MinesweeperStatsViewModel`
-    /// bootstrap — no payload, mirroring how this event surface has no other
-    /// "screen viewed" precedent to carry extra fields from.
+    /// The Progress tab (#773, superseded by #1021's `ProgressScreen`) was
+    /// mounted. Fired once per screen appearance from each game's
+    /// per-app Progress view model bootstrap — no payload, mirroring how
+    /// this event surface has no other "screen viewed" precedent to carry
+    /// extra fields from.
     case statsViewed
 }

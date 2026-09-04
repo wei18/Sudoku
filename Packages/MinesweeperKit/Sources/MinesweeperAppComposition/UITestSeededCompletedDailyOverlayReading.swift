@@ -44,6 +44,13 @@ struct UITestSeededCompletedDailyOverlayReading: MinesweeperDailyOverlayReading 
         (try? await wrapped?.fetchFailedDailyIds(for: date)) ?? []
     }
 
+    /// #1021 Phase B: unchanged pass-through — this fake only fabricates
+    /// completed-daily state (see the file header); in-progress detection
+    /// isn't part of the N13 seeding scenario, so it delegates verbatim.
+    func latestInProgress() async throws -> MinesweeperSavedGameSummary? {
+        try await wrapped?.latestInProgress()
+    }
+
     /// Reports today's three daily record names as completed, unioned with
     /// whatever the wrapped live store genuinely has (best-effort — a
     /// signed-out/offline live store throwing here degrades to "nothing

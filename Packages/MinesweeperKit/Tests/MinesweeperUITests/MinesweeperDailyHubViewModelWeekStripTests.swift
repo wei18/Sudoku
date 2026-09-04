@@ -164,7 +164,8 @@ struct MinesweeperDailyHubViewModelWeekStripTests {
         await viewModel.bootstrap()
 
         let queryCount = await gateway.operations.filter { $0 == .query }.count
-        #expect(queryCount == 2)
+        // #1021 Phase B: +1 for the Today in-progress card's `latestInProgress()`.
+        #expect(queryCount == 3)
     }
 
     /// `refresh()` re-runs the window fetch and picks up a newly-completed

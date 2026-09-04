@@ -113,18 +113,23 @@ MS_BG           = hex_to_rgb(0xF4F6F8)
 
 COPY = {
     "sudoku": {
-        # 01-home — REPOINTED (#1040): the retired HOME route (#1038) left this
-        # slot's old baseline (Today-tab empty state) identical in content to
-        # 02-daily's all-completed DailyHub screenshot, and the previous copy
-        # ("Race the clock some days...") described a Home mode-card layout
-        # that no longer exists post-3-tab-shell. Repointed to the Progress
-        # tab's Stats screen instead (a screen that still exists, with its own
-        # dedicated fully-populated `storeRecords`/`makeStoreSeededStore`
-        # fixture — see StatsViewTests.swift / MinesweeperStatsTests.swift).
-        # Copy describes only what that grid visibly shows: per-difficulty
-        # Completed/Best/Average tiles synced through iCloud — no ranking, no
-        # Game Center, no streak claim. Translated to all 7 locales
-        # (ai-translated-localization pass).
+        # 01-home — REPOINTED (#1040), then REPOINTED AGAIN (#1021 Phase E2):
+        # the retired HOME route (#1038) left this slot's old baseline
+        # (Today-tab empty state) identical in content to 02-daily's
+        # all-completed DailyHub screenshot, and the previous copy ("Race the
+        # clock some days...") described a Home mode-card layout that no
+        # longer exists post-3-tab-shell. First repointed to the Progress
+        # tab's old Statistics screen (#1040); that screen is now retired for
+        # real, and this slot points at its successor, the same Progress tab
+        # rendered as `ProgressScreen` — its own dedicated fully-populated
+        # `storeBests`/`storeHistory` fixture, see `ProgressScreenTests.swift`
+        # in both apps' test targets. Copy still describes only what that
+        # screen visibly shows: per-difficulty Completed/Best/Average rows
+        # synced through iCloud — no ranking, no Game Center claim (the
+        # screen's own Achievements/Leaderboards rows are native entry
+        # points, not a claim about what's IN this frame), no streak NUMBER
+        # claim beyond what the calendar itself shows. Translated to all 7
+        # locales (ai-translated-localization pass).
         "01-home": {
             "en":      ("Every solve, on the record.", "Best and average times per difficulty, synced through iCloud."),
             # zh-Hant/zh-Hans/ja headlines shortened from a first draft that
@@ -219,18 +224,23 @@ COPY = {
         # 01-04). An earlier version of this comment claimed shot 5 existed
         # for MS "since it's the shared SettingsUI" — that never shipped;
         # corrected as part of the #984 caption-accuracy sweep. MS's
-        # macOS-only "06-stats" slot (below) is a different, new slot, not a
-        # settings shot.
-        # 01-home — REPOINTED (#1040): mirrors Sudoku's 01-home repoint above —
-        # the retired HOME route (#1038) left the old baseline (Today-tab
-        # empty state) identical in content to 02-daily's all-completed
-        # DailyHub screenshot, and the previous copy described a Home
-        # mode-card layout that no longer exists post-3-tab-shell. Repointed
-        # to the Progress tab's Stats screen (still exists, fully-populated
-        # `makeStoreSeededStore` fixture — see MinesweeperStatsTests.swift).
-        # Copy describes only what that grid visibly shows: per-difficulty
-        # Completed/Best/Average tiles synced through iCloud — no ranking, no
-        # Game Center, no streak claim. Translated to all 7 locales
+        # macOS-only "06-stats" slot (below) is a different slot — its NAME
+        # is legacy (kept so this COPY key doesn't need to move; #1021 Phase
+        # E2 repointed its baseline to the Progress tab, same as 01-home).
+        # 01-home — REPOINTED (#1040), then REPOINTED AGAIN (#1021 Phase E2):
+        # mirrors Sudoku's 01-home repoint above — the retired HOME route
+        # (#1038) left the old baseline (Today-tab empty state) identical in
+        # content to 02-daily's all-completed DailyHub screenshot, and the
+        # previous copy described a Home mode-card layout that no longer
+        # exists post-3-tab-shell. First repointed to the Progress tab's old
+        # Statistics screen (#1040); that screen is now retired for real, and
+        # this slot points at its successor, the same Progress tab rendered
+        # as `ProgressScreen` — its own dedicated fully-populated
+        # `storeBests`/`storeHistory` fixture, see `ProgressScreenTests.swift`.
+        # Copy still describes only what that screen visibly shows:
+        # per-difficulty Completed/Best/Average rows synced through iCloud —
+        # no ranking, no Game Center claim, no streak NUMBER claim beyond
+        # what the calendar itself shows. Translated to all 7 locales
         # (ai-translated-localization pass).
         "01-home": {
             "en":      ("Every board, on the record.", "Completed, best, average — synced through iCloud."),
@@ -468,7 +478,7 @@ class Slot:
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
-            Slot("01-home", "StatsViewTests", "StatsView-iPhone-light-store", "snapshotStoreIPhoneLight"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPhone_light"),
@@ -478,8 +488,8 @@ SLOTS = {
                  "snapshot_iPhone_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperStatsTests", "Stats-iPhone-light-store", "snapshotStoreIPhoneLight"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-streak2", "snapshotDaily_iPhone_light_streak"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-loaded", "snapshotLoaded_iPhone_light"),
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
                  "snapshotFlagged_iPhone_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
@@ -488,7 +498,7 @@ SLOTS = {
     },
     "ipad-13": {
         "sudoku": [
-            Slot("01-home", "StatsViewTests", "StatsView-iPad-light-store", "snapshotStoreIPadLight"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPad_light"),
@@ -498,9 +508,9 @@ SLOTS = {
                  "snapshot_iPad_light_purchased"),
         ],
         "minesweeper": [
-            Slot("01-home", "MinesweeperStatsTests", "Stats-iPad-light-store", "snapshotStoreIPadLight"),
-            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-streak2",
-                 "snapshotDaily_iPad_light_streak"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
+            Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-allDone",
+                 "snapshotAllDone_iPad_light"),
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
@@ -521,15 +531,15 @@ SLOTS = {
     "mac": {
         "sudoku": [
             Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
-            Slot("01-home", "StatsViewTests", "StatsView-Mac-light-store", "snapshotMacLightStore"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-Mac-light-store", "snapshotStoreMacLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
                  "snapshot_mac_light_purchased"),
         ],
         "minesweeper": [
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
                  "snapshotFlagged_Mac_light"),
-            Slot("01-home", "MinesweeperStatsTests", "Stats-mac-light-store", "snapshotMacLightStore"),
-            Slot("06-stats", "MinesweeperStatsTests", "Stats-mac-light", "snapshotMacLight"),
+            Slot("01-home", "ProgressScreenTests", "ProgressScreen-Mac-light-store", "snapshotStoreMacLight"),
+            Slot("06-stats", "ProgressScreenTests", "ProgressScreen-Mac-light-loaded", "snapshotLoadedMacLight"),
         ],
     },
 }

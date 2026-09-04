@@ -1,4 +1,14 @@
 // PracticeHubView — shimmer threshold + 3-state snapshots.
+//
+// #1021 Phase C: `snapshotIdleIPhoneLight`/`snapshotShimmerIPhoneLight`/
+// `snapshotDrawnIPhoneLight` below are LEFT UNCHANGED (still exercising the
+// pre-redesign layout's committed baselines) rather than re-recorded —
+// design.md §3.2 replaces the segmented difficulty Picker with 3 density-
+// preview cards, so those 3 PNGs now intentionally diff (`.missing` record
+// mode compares, doesn't overwrite). Re-recording those baselines is a
+// Leader/CR decision, not this dispatch's call. The NEW layout gets its own
+// freshly-named snapshots below instead (`-default`/`-selectedHard`/
+// `-accessibility3`), which record clean on first run.
 
 import Foundation
 import SnapshotTesting
@@ -130,6 +140,77 @@ struct PracticeHubViewTests {
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-drawn")
+        }
+    }
+
+    // MARK: - #1021 Phase C: density-preview card layout
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotDefaultIPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-default")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotSelectedHardIPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider(), initialDifficulty: .hard)
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-selectedHard")
+        }
+    }
+
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotAccessibility3IPhoneLight`
+    /// — injected `.dynamicTypeSize` in an `NSHostingView` snapshot only
+    /// scales `@ScaledSpacing`, it does NOT scale fonts (repo memory:
+    /// dynamic-type-sim-verify-and-cap). Real Dynamic Type evidence is a
+    /// simulator pass, not this baseline.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotScaledSpacingAX3IPhoneLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPhone-light-accessibility3")
+        }
+    }
+
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotAccessibility3IPadLight`
+    /// — see `snapshotScaledSpacingAX3IPhoneLight`'s doc for why. AX3
+    /// Dynamic Type pin on an iPad-width REGULAR size class — #1021 Phase G.
+    /// Reproduces the Leader's iPad Pro 11 finding: the shell's fixed,
+    /// screen-filling `VStack` under the large "Practice" title overlapped
+    /// the "Difficulty" section label. `PracticeHubShellView` now wraps that
+    /// content in a `ScrollView` so it flows below the title instead — this
+    /// baseline confirms the SCROLLVIEW LAYOUT no longer overlaps here; it
+    /// is NOT proof against real-font overlap at true AX3 (fonts aren't
+    /// actually scaled in this harness — simulator pass only).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotScaledSpacingAX3IPadLight() async {
+        let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider())
+        let host = hostingView(
+            PracticeHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "PracticeHub-iPad-light-accessibility3")
         }
     }
     #endif

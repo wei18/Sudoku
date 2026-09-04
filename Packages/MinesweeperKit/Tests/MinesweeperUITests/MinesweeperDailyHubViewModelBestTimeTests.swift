@@ -5,7 +5,7 @@
 // Pins `MinesweeperDailyHubViewModel.fetchBestTimes`'s contract: rides the
 // existing phase-2 `fillCompletionAndFailureOverlay` window, reads
 // `personalRecordStore.fetch(modeRaw: "daily", difficulty:)` — the same seam
-// `MinesweeperStatsViewModel.fetchTiles` already uses — and degrades PER
+// `MinesweeperProgressViewModel.fetchBests` already uses — and degrades PER
 // DIFFICULTY independently (unlike the week-strip's all-or-nothing degrade):
 // one difficulty's fetch failing must not blank out the other two. Uses the
 // real `MinesweeperPersonalRecordStore` over an in-memory

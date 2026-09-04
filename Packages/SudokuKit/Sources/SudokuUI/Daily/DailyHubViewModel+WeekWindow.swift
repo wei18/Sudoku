@@ -22,6 +22,19 @@ extension DailyHubViewModel {
         let completedPuzzleIds: Set<String>
     }
 
+    /// #1021 Phase B: `fetchWeekWindow`'s result, widened (additive) to also
+    /// carry the FULL day-bucketed dictionary the 7 `slots` were sliced out
+    /// of — `TodayMapper`'s streak header needs the all-time `longest` run,
+    /// not just the 7-day window's, and `fetchCompletedDailyIdsByDay()` has
+    /// already fetched every day by construction (it is not itself scoped to
+    /// a window). Reusing it here keeps the "×7 total, not ×7 in addition
+    /// to" fetch budget the original #921 refactor established — no second
+    /// call to `persistence.fetchCompletedDailyIdsByDay()`.
+    struct WeekWindowResult: Sendable {
+        let slots: [WeekWindowSlot]
+        let completedByDay: [String: Set<String>]
+    }
+
     /// #774: the rolling window size — also the streak display's cap (see
     /// the "7+" caption branch in `DailyStripView`). 7 matches the strip's own 7
     /// dots; changing this changes both simultaneously by construction.
@@ -44,11 +57,11 @@ extension DailyHubViewModel {
     /// that order, so (unlike the old task-group fan-out, whose completion
     /// order was NOT submission order) no explicit re-sort is needed. Callers
     /// (the week strip, `DailyStripView`) depend on this ordering.
-    func fetchWeekWindow(referenceDate: Date) async -> [WeekWindowSlot]? {
+    func fetchWeekWindow(referenceDate: Date) async -> WeekWindowResult? {
         let offsets = stride(from: Self.weekStripWindowSize - 1, through: 0, by: -1)
         do {
             let completedByDay = try await persistence.fetchCompletedDailyIdsByDay()
-            return offsets.map { offset in
+            let slots = offsets.map { offset in
                 let dayDate = referenceDate.addingTimeInterval(-Double(offset) * 86_400)
                 let dayKey = UTCDay.string(from: dayDate)
                 return WeekWindowSlot(
@@ -57,6 +70,7 @@ extension DailyHubViewModel {
                     completedPuzzleIds: completedByDay[dayKey] ?? []
                 )
             }
+            return WeekWindowResult(slots: slots, completedByDay: completedByDay)
         } catch {
             await errorReporter.report(
                 UserFacingError.classify(error),
