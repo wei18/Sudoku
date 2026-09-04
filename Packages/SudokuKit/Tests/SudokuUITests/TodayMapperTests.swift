@@ -43,9 +43,13 @@ struct TodayMapperTests {
     /// `DailyHubView.loadingCards` reads `TodayMapper.degradedSkeletonCards()`
     /// (the same fixture this asserts) for real, so this pins BOTH the
     /// mapping AND the "Not started" caption that fixture must carry.
+    /// #1021 CR3: also pins the reason — a phase-1 failure must map to
+    /// `.loadFailed` (the one `DailyHubView` captions), never
+    /// `.completionStatusUnknown` (which stays silent).
     @Test func failedMapsToDegradedWithSkeletonCards() {
         let result = TodayMapper.present(state: .failed("boom"), inProgress: nil, isPhase2Degraded: false)
-        guard case .degraded(let cards) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        guard case .degraded(let cards, let reason) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        #expect(reason == .loadFailed)
         #expect(cards.count == 3)
         #expect(cards.allSatisfy { $0.isSkeleton })
         #expect(cards.allSatisfy { !$0.isCompleted })
@@ -71,11 +75,16 @@ struct TodayMapperTests {
         #expect(models.allSatisfy { $0.isCompleted })
     }
 
+    /// #1021 CR3: the phase-2 degrade must map to `.completionStatusUnknown`
+    /// (silent — `DailyHubView` renders no caption for it), never
+    /// `.loadFailed` (which pins the OPPOSITE — see
+    /// `failedMapsToDegradedWithSkeletonCards`).
     @Test func loadedWithPhase2DegradedForcesEveryCardNotStartedWithRealThumbnails() {
         var cards = Self.trio()
         cards[0] = DailyCard(envelope: cards[0].envelope, isCompleted: true, bestTimeSeconds: 60)
         let result = TodayMapper.present(state: .loaded(cards), inProgress: nil, isPhase2Degraded: true)
-        guard case .degraded(let models) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        guard case .degraded(let models, let reason) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        #expect(reason == .completionStatusUnknown)
         #expect(models.allSatisfy { !$0.isCompleted })
         // Real thumbnails (not skeleton) — seed-derived, no CK dependency.
         #expect(models.allSatisfy { !$0.isSkeleton && $0.preview != nil })

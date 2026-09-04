@@ -114,4 +114,17 @@ struct TabRootsAccessibilityTests {
         let history = StreakHistory(completedDays: [], today: DayKey(year: 2025, month: 8, day: 30))
         #expect(StreakCalendarView.statusFootnote(isLoading: false, history: history) == nil)
     }
+
+    // #1021 CR3: `TodayLoadFailureCaption` reads the caller-supplied,
+    // already-localized text verbatim as ONE combined VoiceOver element
+    // (`.accessibilityElement(children: .ignore)` + this explicit label) —
+    // the decorative warning glyph is `.accessibilityHidden` and contributes
+    // nothing, so a parent's combined element can never swallow this row's
+    // own text into a DIFFERENT label; it always reads exactly what was
+    // passed in.
+    @Test("TodayLoadFailureCaption label reads the caption text verbatim")
+    func todayLoadFailureCaptionLabel() {
+        let label = TodayLoadFailureCaption.accessibilityLabel(text: "Couldn't load today's puzzles")
+        #expect(label == "Couldn't load today's puzzles")
+    }
 }

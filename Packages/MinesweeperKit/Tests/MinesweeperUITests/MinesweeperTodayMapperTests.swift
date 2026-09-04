@@ -77,6 +77,9 @@ struct MinesweeperTodayMapperTests {
         #expect(models.allSatisfy { $0.isCompleted })
     }
 
+    /// #1021 CR3: MS's only reachable degrade is the phase-2 overlay fetch —
+    /// must map to `.completionStatusUnknown` (silent), never `.loadFailed`
+    /// (unreachable here — see `neverProducesLoadFailed` below).
     @Test func loadedWithPhase2DegradedForcesEveryCardNotStartedWithRealThumbnails() {
         let cards = [
             Self.card(id: "a", isCompleted: true, bestTimeSeconds: 60),
@@ -84,10 +87,38 @@ struct MinesweeperTodayMapperTests {
             Self.card(id: "c")
         ]
         let result = MinesweeperTodayMapper.present(state: .loaded(cards), inProgress: nil, isPhase2Degraded: true)
-        guard case .degraded(let models) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        guard case .degraded(let models, let reason) = result else { Issue.record("expected .degraded, got \(result)"); return }
+        #expect(reason == .completionStatusUnknown)
         #expect(models.allSatisfy { !$0.isCompleted })
         #expect(models.allSatisfy { !$0.isSkeleton && $0.preview != nil })
         #expect(models.allSatisfy { $0.statusText.contains("Not started") })
+    }
+
+    /// #1021 CR3: `TodayPresentation.DegradedReason.loadFailed` is
+    /// CONSTRUCTIBLE (it's a shared GameShellKit type — `Sudoku.TodayMapper`
+    /// builds one for its own phase-1 failure), but structurally unreachable
+    /// FROM THIS MAPPER: `present`'s only `.degraded` branch above is the
+    /// phase-2 overlay fetch, which always passes `.completionStatusUnknown`
+    /// — there is no MS state/flag combination that reaches `.loadFailed`
+    /// (D21 — `dailyTrio(date:)` is synchronous and non-throwing, so MS has
+    /// no phase-1 failure to represent). Mirrors `neverProducesExhausted`'s
+    /// shape as a runtime double-check of that structural fact.
+    @Test func neverProducesLoadFailed() {
+        let states: [MinesweeperDailyHubState] = [
+            .idle,
+            .loading,
+            .loaded([]),
+            .loaded([Self.card(isCompleted: true)]),
+            .loaded([Self.card(isFailed: true)])
+        ]
+        for state in states {
+            for isDegraded in [false, true] {
+                let result = MinesweeperTodayMapper.present(state: state, inProgress: nil, isPhase2Degraded: isDegraded)
+                if case .degraded(_, let reason) = result {
+                    #expect(reason == .completionStatusUnknown, "unexpected .loadFailed for \(state)/\(isDegraded)")
+                }
+            }
+        }
     }
 
     /// D21 (design.md §3.1): MS's daily generation is pure and non-throwing,

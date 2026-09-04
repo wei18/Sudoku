@@ -306,6 +306,12 @@ struct DailyHubViewTests {
     /// `degraded`. NEW baseline (this render path was previously
     /// unreachable — see `TodayMapper`'s file header and `DailyHubView.
     /// loadingCards`).
+    ///
+    /// #1021 CR3: RE-RECORDED — CR2's card-only render silently dropped
+    /// #768's "visible, recoverable inline failure" guarantee, so this
+    /// baseline now also shows a `TodayLoadFailureCaption` row above the
+    /// skeleton grid, below the streak header (`.degraded(_, reason:
+    /// .loadFailed)` — see `TodayMapper.present`).
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailedIPhoneLight() async {
         let viewModel = await makeViewModel(
             providerResult: .failure(.unknownDifficulty("boom"))

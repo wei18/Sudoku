@@ -1315,6 +1315,54 @@
         }
       }
     },
+    "Couldn't load today's puzzles" : {
+      "comment" : "#1021 CR3 - TodayLoadFailureCaption, the visible caption above the degraded card grid when the phase-1 daily-load fetch fails (no puzzle data at all, distinct from the silent phase-2 completion-overlay degrade).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load today's puzzles"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron cargar los puzles de hoy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日のパズルを読み込めませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘의 퍼즐을 불러오지 못했습니다"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่สามารถโหลดปริศนาประจำวันนี้ได้"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日题目暂无法加载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日題目暫無法載入"
+          }
+        }
+      }
+    },
     "Couldn't generate today's puzzle" : {
       "extractionState" : "stale",
       "localizations" : {

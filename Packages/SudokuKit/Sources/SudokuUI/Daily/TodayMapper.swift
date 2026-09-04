@@ -36,6 +36,13 @@
 // blank text, so a phase-1 failure reads as "this puzzle hasn't been
 // started" rather than a still-loading shimmer.
 //
+// #1021 CR3: CR2's card-only render silently dropped #768's "visible,
+// recoverable inline failure" guarantee — a phase-1 `.failed` and a phase-2
+// completion-overlay degrade both rendered identically, with no error signal
+// at all. `TodayPresentation.DegradedReason` now distinguishes the two IN THE
+// TYPE (`.loadFailed` here vs `.completionStatusUnknown` below); `DailyHubView`
+// renders a `TodayLoadFailureCaption` above the grid only for `.loadFailed`.
+//
 // Thumbnail-building note: the in-progress `boardState`-decode below
 // duplicates `SudokuAppComposition.SudokuBoardPreviewMapper.make(boardState:
 // givenMask:)`'s ~15-line body verbatim rather than importing it —
@@ -85,11 +92,11 @@ enum TodayMapper {
         case .exhausted:
             return .exhausted
         case .failed:
-            return .degraded(degradedSkeletonCards())
+            return .degraded(degradedSkeletonCards(), reason: .loadFailed)
         case .loaded(let cards):
             let mapped = cards.map { cardModel(card: $0, inProgress: inProgress, forceNotStarted: isPhase2Degraded) }
             if isPhase2Degraded {
-                return .degraded(mapped)
+                return .degraded(mapped, reason: .completionStatusUnknown)
             }
             if !mapped.isEmpty, mapped.allSatisfy(\.isCompleted) {
                 return .allDone(mapped)

@@ -86,7 +86,13 @@ enum MinesweeperTodayMapper {
         case .loaded(let cards):
             let mapped = cards.map { cardModel(card: $0, inProgress: inProgress, forceNotStarted: isPhase2Degraded) }
             if isPhase2Degraded {
-                return .degraded(mapped)
+                // #1021 CR3: MS only ever produces `.completionStatusUnknown`
+                // — `dailyTrio(date:)` is synchronous and non-throwing (D21
+                // above), so there is no MS phase-1 failure this mapper could
+                // ever map to `.loadFailed`. Not inventing one just for parity
+                // with `TodayLoadFailureCaption`; see `TodayPresentation.
+                // DegradedReason`'s doc.
+                return .degraded(mapped, reason: .completionStatusUnknown)
             }
             if !mapped.isEmpty, mapped.allSatisfy(\.isCompleted) {
                 return .allDone(mapped)

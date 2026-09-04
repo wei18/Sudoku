@@ -6,7 +6,12 @@
 // no longer gets its own overlay either — it renders the SAME
 // skeleton-dimension card grid as idle/loading, captioned "Not started"
 // (see `loadingCards`/`liftedState` below) — so the shell's `failure:` slot
-// is unreachable here and this view no longer passes one.
+// is unreachable here and this view no longer passes one. #1021 CR3: that
+// silent card-only render dropped #768's "visible, recoverable inline
+// failure" guarantee — a `TodayLoadFailureCaption` now renders in `header`
+// (above the grid, below the streak row) whenever `todayPresentation` is
+// `.degraded(_, reason: .loadFailed)`; the phase-2 `.completionStatusUnknown`
+// degrade stays silent exactly as before.
 //
 // PR U12: chrome + responsive grid + state-switch scaffold extracted into
 // `GameShellUI.DailyHubShellView`. This view now produces the
@@ -240,6 +245,17 @@ public struct DailyHubView<Banner: View>: View {
                         TodayAllDoneBlock(
                             title: String(localized: "All done for today", bundle: .main),
                             subtitle: String(localized: "Come back tomorrow for 3 new puzzles.", bundle: .main)
+                        )
+                    }
+                    // #1021 CR3: a phase-1 fetch failure must stay visibly
+                    // honest (#768's guarantee, dropped silently by CR2's
+                    // card-only render) — `.completionStatusUnknown` (phase-2
+                    // degrade) stays silent exactly as before; only
+                    // `.loadFailed` gets this caption.
+                    if case .degraded(_, let reason) = todayPresentation, reason == .loadFailed {
+                        TodayLoadFailureCaption(
+                            text: String(localized: "Couldn't load today's puzzles", bundle: .main),
+                            accessibilityIdentifier: "sudoku.dailyHub.loadFailure"
                         )
                     }
                 }
