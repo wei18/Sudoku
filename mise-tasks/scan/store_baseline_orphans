@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#MISE description="Store-baseline orphan gate (#1021): every snapshot baseline mapped by mise-tasks/store/screenshots or a Slot() in scripts/build-ascspec-screenshots.py must (a) exist on disk and (b) still have a live test function that records it. Pure python3 stdlib — no Pillow, no fonts, runs on ubuntu-latest."
+#
+# Why this exists:
+#   #1021 rewrote the Sudoku Today hub. Test methods were renamed/deleted, but
+#   their committed PNGs stayed on disk as ORPHANS. `swift test` was green (no
+#   test referenced them), the ASC frame-drift gate stayed quiet (no mapped
+#   baseline *changed*), and the store pipelines kept compositing pre-rewrite
+#   pixels into shipping frames — a "0 day streak" hero with seven LIT pips
+#   survived three review rounds inside a committed asset.
+#   The same PR also had the mirror failure: three Minesweeper slots naming
+#   baselines that no longer existed at all.
+#
+# Both directions are checked here, for both pipelines:
+#   MISSING  — the mapped path does not exist
+#   ORPHANED — the path exists but no `func <recorder>` remains in the test packages
+#
+# Deliberately NOT checked: whether the baseline's *content* suits the slot's
+# marketing copy. That is a human eyeball job — see the "marketing assets
+# inherit empty-state fixtures" lesson and docs/app-store/screenshot-strategy.md.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+python3 - <<'PY'
+import re, pathlib, sys
+
+root = pathlib.Path('.')
+SUDOKU_TESTS = 'Packages/SudokuKit/Tests/SudokuUITests'
+MS_TESTS = 'Packages/MinesweeperKit/Tests/MinesweeperUITests'
+rows = []
+
+# Pipeline 1 — the preview symlink map: "app|device|locale|slot|path"
+map_path = pathlib.Path('mise-tasks/store/screenshots')
+for line in map_path.read_text().splitlines():
+    m = re.search(r'"([^"|]+)\|([^"|]+)\|([^"|]+)\|([^"|]+)\|([^"]+)"', line)
+    if m and m.group(5).startswith('Packages/'):
+        app, dev, _loc, slot, path = m.groups()
+        rows.append(('store:screenshots', f'{app}/{dev}/{slot}', path,
+                     pathlib.Path(path).name.split('.')[0]))
+
+# Pipeline 2 — the ASC-spec generator's Slot() table. Resolve the owning package
+# from the enclosing device/app block: BOTH apps have a suite named
+# `ProgressScreenTests`, so guessing the package from the suite name is wrong.
+gen = pathlib.Path('scripts/build-ascspec-screenshots.py').read_text()
+for dev_block in re.finditer(r'"(iphone-6\.9|ipad-13|mac)":\s*\{(.*?)\n    \},', gen, re.S):
+    dev, body = dev_block.groups()
+    for app_block in re.finditer(r'"(sudoku|minesweeper)":\s*\[(.*?)\n        \],', body, re.S):
+        app, slots = app_block.groups()
+        pkg = MS_TESTS if app == 'minesweeper' else SUDOKU_TESTS
+        for m in re.finditer(r'Slot\(\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*\n?\s*"([^"]+)"', slots):
+            slot, suite, base, fn = m.groups()
+            rows.append(('build-ascspec', f'{dev}/{app}/{slot}',
+                         f'{pkg}/__Snapshots__/{suite}/{fn}.{base}.png', fn))
+
+if not rows:
+    print('FAIL [store_baseline_orphans]: parsed 0 mapped baselines — the map or Slot() format changed; fix this gate.')
+    sys.exit(1)
+
+recorders = set()
+for d in ('Packages/SudokuKit/Tests', 'Packages/MinesweeperKit/Tests'):
+    for f in pathlib.Path(d).rglob('*.swift'):
+        recorders.update(re.findall(r'func\s+(\w+)', f.read_text(errors='ignore')))
+
+failures = []
+for pipeline, key, path, fn in rows:
+    if not (root / path).exists():
+        failures.append(f'  MISSING  [{pipeline}] {key}\n             path: {path}')
+    elif fn not in recorders:
+        failures.append(f'  ORPHANED [{pipeline}] {key}\n             baseline exists but no `func {fn}` remains in the test packages\n             path: {path}')
+
+if failures:
+    print('FAIL [store_baseline_orphans]: mapped store baseline(s) are missing or orphaned\n')
+    print('\n'.join(failures))
+    print('\nFix: repoint the slot at a baseline recorded by a LIVE test (check the')
+    print('suite directory for fuller states), or restore the test that records it,')
+    print('then delete the orphan .png/.txt. Never leave a slot pointing at a file')
+    print('no test regenerates — the frames silently freeze at the last recording.')
+    sys.exit(1)
+
+print(f'PASS [store_baseline_orphans]: {len(rows)} mapped baselines, all present with a live recording test.')
+PY

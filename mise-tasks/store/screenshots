@@ -91,7 +91,7 @@ MAP=(
   # `storeHistory` fixture (mirrors the ASC-spec generator's SLOTS repoint
   # in build-ascspec-screenshots.py).
   "sudoku|iphone-6.9|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPhoneLight.ProgressScreen-iPhone-light-store.png"
-  "sudoku|iphone-6.9|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"
+  "sudoku|iphone-6.9|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotAllCompletedIPhoneLight.DailyHub-iPhone-light-allDone.png"
   "sudoku|iphone-6.9|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"
   "sudoku|iphone-6.9|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"
   "sudoku|iphone-6.9|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"

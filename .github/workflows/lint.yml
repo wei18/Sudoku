@@ -218,3 +218,12 @@ jobs:
           # task (no env var needed for that path).
           FRAME_DRIFT_LABEL_OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'frame-drift-verified') && '1' || '0' }}
         run: mise run scan:store_frame_drift --base "origin/${{ github.event.pull_request.base.ref }}"
+
+      # Sibling gate (#1021): the drift gate above only fires when a MAPPED
+      # baseline CHANGES. It is blind to a baseline whose recording test was
+      # renamed or deleted — the PNG stays on disk, `swift test` stays green,
+      # and both store pipelines keep compositing frozen pre-rewrite pixels.
+      # It is equally blind to a slot naming a file that no longer exists.
+      # This check is state-based (no base ref, no history needed).
+      - name: Run store-baseline orphan gate
+        run: mise run scan:store_baseline_orphans
