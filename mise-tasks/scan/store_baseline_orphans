@@ -41,9 +41,16 @@ for line in map_path.read_text().splitlines():
         rows.append(('store:screenshots', f'{app}/{dev}/{slot}', path,
                      pathlib.Path(path).name.split('.')[0]))
 
-# Pipeline 2 — the ASC-spec generator's Slot() table. Resolve the owning package
-# from the enclosing device/app block: BOTH apps have a suite named
-# `ProgressScreenTests`, so guessing the package from the suite name is wrong.
+# Pipeline 2 — the ASC-spec generator's Slot() table.
+#
+# ⚠️ SUITE-NAME COLLISION — do not "simplify" this to a suite-name check.
+# A Slot() names only its suite (e.g. "ProgressScreenTests"), and BOTH packages
+# ship a suite with that exact name. Deriving the package from the suite string
+# ("does it contain 'Minesweeper'?") sends every Minesweeper ProgressScreenTests
+# slot to the Sudoku package and reports a FALSE MISSING — that false positive
+# was hit while writing this gate. The owning app is only knowable from the
+# enclosing device → app block in the generator, so parse that nesting and pass
+# the package down.
 gen = pathlib.Path('scripts/build-ascspec-screenshots.py').read_text()
 for dev_block in re.finditer(r'"(iphone-6\.9|ipad-13|mac)":\s*\{(.*?)\n    \},', gen, re.S):
     dev, body = dev_block.groups()
