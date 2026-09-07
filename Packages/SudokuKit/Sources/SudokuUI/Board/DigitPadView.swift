@@ -1,18 +1,53 @@
-// DigitPadView — 1–9 + erase, plus undo / redo / pencil toggle.
+// DigitPadView — Sudoku's board control cluster ("G4"): 1–9 + erase, plus
+// undo / redo / pencil toggle.
 //
-// Per docs/designs/05-board.md. Two layouts:
+// Per docs/designs/v3/design.md §3.4 / §4.6. #1022 rebuilt this as the
+// two-group floating glass cluster described there; the shape itself lives in
+// `GameShellUI.BoardControlCluster`, which Minesweeper mirrors. The grouping is
+// binding and comes straight from the official guidance quoted in §4.6 —
+// "don't mix text and icons across items that share a background":
 //
-//   • iPhone (compact size class): unified secondary-action row
-//     (Undo / Redo / Notes / Erase, icon-only, 4 × 44pt) sits BETWEEN
-//     the board and the 3×3 digit `Grid` (56pt keys) (#210, 2026-05-30).
-//   • Mac (regular size class): vertical right rail — history row, Notes
-//     toggle (button-styled), 3×3 digit `Grid`, Erase row. The board
-//     itself is laid out by BoardView; this view just owns the controls.
+//   • **edit group** (icons): Undo · Redo · Notes · Erase
+//   • **input group** (text):  the 3×3 grid of digit keys 1–9
+//
+// Each BUTTON carries its own glass (`.buttonStyle(.glass)` /
+// `.glassProminent`); the containers never get `.glassEffect` applied to
+// themselves — see `BoardControlCluster`'s header for why (design.md §12
+// error #8) and the #1029 B-7 spike verdict for the on-device confirmation
+// that the system button styles merge inside a container exactly as explicit
+// `.glassEffect()` children do.
+//
+// Two layouts, same two groups in the same order on both (design.md §4.6:
+// "maintain consistent groupings and placement across platforms"):
+//
+//   • iPhone (compact size class): the edit row sits above the 3×3 digit grid,
+//     the whole cluster floating below the full-bleed board.
+//   • Mac (regular size class): the same two groups stacked in the right-hand
+//     rail. The board itself is laid out by BoardView; this view just owns the
+//     controls.
 //
 // Buttons are ≥ 44 pt tall for touch / pointer comfort. A single "pencil"
-// icon carries the Notes-mode state via tint, matching iPad / Mac
-// keyboard-input conventions (board-mac-redesign, 2026-05-30).
+// icon carries the Notes-mode state via tint.
+//
+// #1022 coloring pass (design.md §4.7 — "Refrain from adding color to the
+// background of multiple controls", at most ONE colored control per glass
+// piece, and the glass surface itself is never tinted):
+//   • the whole-grid pencil-mode border + sage wash is GONE. It tinted the
+//     input group's entire background, which §4.7 forbids outright; Notes mode
+//     is already signalled by the pencil button's own tint in the edit group.
+//   • Erase and an enabled Undo / Redo lost their accent ink and are now
+//     neutral, leaving exactly one colored control per group: the pencil in
+//     the edit group (when Notes is on) and the armed digit in the input group
+//     (at most one digit is armed at a time).
+//   • the disabled Undo / Redo gray-out (#855 F-5) survives unchanged — the
+//     ink is still conditioned on `canUndo` / `canRedo`, just between
+//     `text.primary` and `text.tertiary` instead of accent and tertiary.
+//
+// Spacing is left at the system default throughout the cluster (design.md
+// §4.6: "Prefer to use standard spacing metrics instead of overriding them"),
+// so the stacks, the `Grid` and the glass containers pass no `spacing:`.
 
+import GameShellUI
 import SwiftUI
 
 struct DigitPadView: View {
@@ -54,27 +89,24 @@ struct DigitPadView: View {
     // MARK: - iPhone (compact) layout
 
     private var compactLayout: some View {
-        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
-        // no matching tier without snapping and changing this pad's
-        // existing layout/snapshot (#762 PR2).
-        VStack(spacing: 12) {
+        BoardControlCluster {
             compactControlRow
+        } input: {
             compactDigitGrid
         }
-        // Structural (#762 PR2 two-tier spacing contract) — horizontal
-        // margin of the digit pad's control row + grid; fixed because it
-        // bounds the available width for the fixed 44pt-minimum touch
-        // targets laid out inside.
+        // Structural (#762 PR2 two-tier spacing contract) — horizontal margin
+        // of the floating cluster against the screen edge. The BOARD above is
+        // full-bleed as of #1022; the cluster is not, because its buttons need
+        // to read as a floating group over the background rather than as a
+        // band welded to both edges.
         .padding(.horizontal, theme.spacing.medium)
     }
 
-    // Unified secondary-action row (#210): Undo · Redo · Notes · Erase,
-    // icon-only, distributed across the digit-strip width with 44pt minimum
-    // tap targets per HIG. Erase rightmost = right-thumb resting zone.
+    // Edit group (#210, reshaped by #1022): Undo · Redo · Notes · Erase,
+    // icon-only, distributed across the cluster width with 44pt minimum tap
+    // targets per HIG. Erase rightmost = right-thumb resting zone.
     private var compactControlRow: some View {
-        // spacing-exempt: zero-gap — icon buttons distributed edge-to-edge
-        // across the digit-strip width, not a spacing decision (#762 PR2).
-        HStack(spacing: 0) {
+        HStack {
             Button(action: onUndo) {
                 // #855 F-5 (sim-confirmed): an unconditional `.foregroundStyle`
                 // here made a `.disabled` Undo render IDENTICAL to the always-
@@ -85,9 +117,10 @@ struct DigitPadView: View {
                 // the documented disabled convention (docs/designs/05-board.md
                 // §d "Undo/Redo … disabled = text.tertiary").
                 Image(systemName: "arrow.uturn.backward")
-                    .foregroundStyle(canUndo ? theme.accent.primary.resolved : theme.text.tertiary.resolved)
+                    .foregroundStyle(canUndo ? theme.text.primary.resolved : theme.text.tertiary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .buttonStyle(.glass)
             .frame(minWidth: 44, minHeight: 44)
             .disabled(!canUndo)
             .accessibilityLabel("Undo")
@@ -95,13 +128,17 @@ struct DigitPadView: View {
             Button(action: onRedo) {
                 // #855 F-5: same fix as Undo above.
                 Image(systemName: "arrow.uturn.forward")
-                    .foregroundStyle(canRedo ? theme.accent.primary.resolved : theme.text.tertiary.resolved)
+                    .foregroundStyle(canRedo ? theme.text.primary.resolved : theme.text.tertiary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .buttonStyle(.glass)
             .frame(minWidth: 44, minHeight: 44)
             .disabled(!canRedo)
             .accessibilityLabel("Redo")
 
+            // The ONE colored control this glass group is allowed (§4.7), and
+            // only while Notes mode is on — off, it is neutral like its
+            // neighbours.
             Button(action: onTogglePencil) {
                 Image(systemName: "pencil")
                     .foregroundStyle(pencilMode
@@ -109,6 +146,7 @@ struct DigitPadView: View {
                         : theme.text.primary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .buttonStyle(.glass)
             .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("Notes")
             .accessibilityValue(Self.pencilModeAccessibilityValue(pencilMode))
@@ -116,21 +154,20 @@ struct DigitPadView: View {
 
             Button(action: onErase) {
                 Image(systemName: "delete.left")
-                    // Palette sweep (#610 fix *5): erase icon matches digit-pad accent.
-                    .foregroundStyle(theme.accent.primary.resolved)
+                    .foregroundStyle(theme.text.primary.resolved)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .buttonStyle(.glass)
             .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("Erase")
         }
         .font(.title2)
     }
 
-    // iPhone 3×3 digit grid — mirrors `macDigitGrid` with per-key remaining-count
-    // badges and a notes-mode visual signal (1 pt sage border + ~6 % sage wash).
-    // #540: Dynamic Type capped at `.xLarge` (same rationale as old `digitRow`).
+    // Input group — iPhone 3×3 digit grid, mirroring `macDigitGrid` with
+    // per-key remaining-count badges. #540: Dynamic Type capped at `.xLarge`.
     private var compactDigitGrid: some View {
-        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+        Grid {
             ForEach(0..<3, id: \.self) { row in
                 GridRow {
                     ForEach(1...3, id: \.self) { col in
@@ -140,19 +177,11 @@ struct DigitPadView: View {
                 }
             }
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(theme.accent.primary.resolved, lineWidth: pencilMode ? 1 : 0)
-        )
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(theme.accent.primary.resolved.opacity(pencilMode ? 0.06 : 0))
-        )
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
-    // #722: `.buttonStyle(.borderedProminent)` vs `.buttonStyle(.bordered)`
-    // are distinct concrete types, so the armed/unarmed branches need a
+    // #722: `.buttonStyle(.glassProminent)` vs `.buttonStyle(.glass)` are
+    // distinct concrete types, so the armed/unarmed branches need a
     // `Group { if/else }` split (same pattern as `macNotesToggle` below)
     // rather than a ternary passed to a single `.buttonStyle(...)` call.
     @ViewBuilder
@@ -171,33 +200,35 @@ struct DigitPadView: View {
                 } label: {
                     // #797: `.foregroundStyle` MUST be applied to the label
                     // content here (not chained after `.buttonStyle` below) —
-                    // `.borderedProminent` resolves its own white label ink
+                    // a prominent style resolves its own white label ink
                     // internally and ignores an ambient `.foregroundStyle` set
                     // on the Button itself (sim-verified: chaining it outside
-                    // rendered white, unchanged). `.borderedProminent`'s system
-                    // default label ink hard-fails AA against Sudoku's dark-mode
-                    // accent.primary (white on 0x9BB87E = 2.20:1). Same
-                    // on-accent-ink pattern as #786's mode toggle: `surface.primary`
-                    // (0xFFFFFF light / 0x1E2024 dark) resolves to 4.83:1 light /
-                    // 7.42:1 dark against accent.primary — both AA. Light mode
-                    // renders byte-identically (still white). #855 F-1: the
-                    // inner remaining-count badge now ALSO takes this ink when
-                    // armed (passed through `isArmed`) — previously it kept its
-                    // own explicit `foregroundStyle` (a more specific modifier
-                    // wins over this ancestor one), which on the solid accent
-                    // fill measured 1.45:1 light / 1.02:1 dark. Routing the
-                    // badge through the same on-accent ink brings it to the
-                    // same 4.83:1 / 7.42:1 as the digit glyph.
+                    // rendered white, unchanged). The system default label ink
+                    // hard-fails AA against Sudoku's dark-mode accent.primary
+                    // (white on 0x9BB87E = 2.20:1). Same on-accent-ink pattern
+                    // as #786's mode toggle: `surface.primary` (0xFFFFFF light
+                    // / 0x1E2024 dark) resolves to 4.83:1 light / 7.42:1 dark
+                    // against accent.primary — both AA. Light mode renders
+                    // white either way. #855 F-1: the inner remaining-count
+                    // badge now ALSO takes this ink when armed (passed through
+                    // `isArmed`) — previously it kept its own explicit
+                    // `foregroundStyle` (a more specific modifier wins over
+                    // this ancestor one), which on the solid accent fill
+                    // measured 1.45:1 light / 1.02:1 dark. Routing the badge
+                    // through the same on-accent ink brings it to the same
+                    // 4.83:1 / 7.42:1 as the digit glyph.
                     compactDigitLabel(digit: digit, remaining: remaining, isArmed: true)
                         .foregroundStyle(theme.surface.primary.resolved)
                 }
-                .buttonStyle(.borderedProminent)
+                // The ONE colored control this glass group is allowed (§4.7):
+                // at most one digit is armed at a time.
+                .buttonStyle(.glassProminent)
+                .tint(theme.accent.primary.resolved)
             } else {
                 Button { onDigit(digit) } label: { compactDigitLabel(digit: digit, remaining: remaining, isArmed: false) }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.glass)
             }
         }
-        .tint(theme.accent.primary.resolved)
         .disabled(isDisabled)
         .opacity(Self.digitButtonOpacity(remaining: remaining, isArmed: isArmed, isDisabled: isDisabled))
         .accessibilityLabel("Digit \(digit)")
@@ -241,27 +272,33 @@ struct DigitPadView: View {
     // MARK: - Mac (regular) layout
 
     private var macLayout: some View {
-        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
-        // no matching tier without snapping and changing this rail's
-        // existing layout/snapshot (#762 PR2).
-        VStack(spacing: 12) {
-            macHistoryRow
-            macNotesToggle
+        BoardControlCluster {
+            macEditGroup
+        } input: {
             macDigitGrid
-            macEraseRow
         }
         .frame(maxWidth: 260)
     }
 
+    // Edit group on the rail: history row, Notes toggle, Erase — the same four
+    // controls as the compact edit row, in the rail's vertical arrangement
+    // (design.md §4.6 keeps the GROUPING consistent across platforms, not the
+    // axis).
+    private var macEditGroup: some View {
+        VStack {
+            macHistoryRow
+            macNotesToggle
+            macEraseRow
+        }
+    }
+
     private var macHistoryRow: some View {
-        // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale —
-        // same rationale as `macLayout` above (#762 PR2).
-        HStack(spacing: 12) {
+        HStack {
             Button(action: onUndo) {
                 Label("Undo", systemImage: "arrow.uturn.backward")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .disabled(!canUndo)
             .accessibilityLabel("Undo")
 
@@ -269,7 +306,7 @@ struct DigitPadView: View {
                 Label("Redo", systemImage: "arrow.uturn.forward")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .disabled(!canRedo)
             .accessibilityLabel("Redo")
         }
@@ -278,11 +315,8 @@ struct DigitPadView: View {
 
     @ViewBuilder
     private var macNotesToggle: some View {
-        // CR fix: use native `.borderedProminent`/`.bordered` (system focus
-        // rings, hover, accent semantics) rather than a custom
-        // `ButtonStyle` that bypasses theme tokens. `Group { if/else }`
-        // wraps the two distinct ButtonStyle concrete types into one
-        // `some View` without the type-erasure cost.
+        // `Group { if/else }` wraps the two distinct ButtonStyle concrete
+        // types into one `some View` without the type-erasure cost.
         Group {
             if pencilMode {
                 Button(action: onTogglePencil) {
@@ -295,14 +329,15 @@ struct DigitPadView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .foregroundStyle(theme.surface.primary.resolved)
                 }
-                .buttonStyle(.borderedProminent)
+                // The ONE colored control the mac edit group is allowed (§4.7).
+                .buttonStyle(.glassProminent)
                 .tint(theme.accent.primary.resolved)
             } else {
                 Button(action: onTogglePencil) {
                     Label("Notes", systemImage: "pencil")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
             }
         }
         .accessibilityLabel("Notes")
@@ -314,7 +349,7 @@ struct DigitPadView: View {
         // 3×3 fixed grid — each cell ≥ 64 pt per docs/designs/05-board.md §b
         // Mac wireframe. `Grid` (not `LazyVGrid`) keeps a fixed cell template
         // so the rail width never reflows when the parent resizes.
-        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+        Grid {
             ForEach(0..<3, id: \.self) { row in
                 GridRow {
                     ForEach(1...3, id: \.self) { col in
@@ -341,14 +376,14 @@ struct DigitPadView: View {
                     macDigitLabel(digit: digit)
                         .foregroundStyle(theme.surface.primary.resolved)
                 }
-                .buttonStyle(.borderedProminent)
+                // The ONE colored control the mac input group is allowed (§4.7).
+                .buttonStyle(.glassProminent)
+                .tint(theme.accent.primary.resolved)
             } else {
                 Button { onDigit(digit) } label: { macDigitLabel(digit: digit) }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.glass)
             }
         }
-        // Palette sweep (#610 fix *5): match iPhone digit tint.
-        .tint(theme.accent.primary.resolved)
         .accessibilityLabel("Digit \(digit)")
         // #855 F-8: same digit-first arm-vs-place disambiguation as
         // `compactDigitButton` — Mac shares the same `onDigit` semantics.
@@ -368,9 +403,7 @@ struct DigitPadView: View {
             Label("Erase", systemImage: "delete.left")
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.bordered)
-        // Palette sweep (#610 fix *5): match digit-pad accent.
-        .tint(theme.accent.primary.resolved)
+        .buttonStyle(.glass)
         .accessibilityLabel("Erase")
     }
 }

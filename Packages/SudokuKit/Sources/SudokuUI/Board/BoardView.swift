@@ -110,9 +110,14 @@ public struct BoardView: View {
                 compactLayout
             }
         }
-        // Structural (#762 PR2) — screen margin; fixed because the board's
-        // `GeometryReader` sizes cells from the space this padding leaves.
-        .padding(theme.spacing.medium)
+        // #1022: the blanket screen margin is GONE from the body — design.md
+        // §3.4 puts the board edge-to-edge, and a padding here would inset it
+        // by definition. Each layout now owns its own margins: `compactLayout`
+        // pads only its chrome (header / banner / control cluster) and leaves
+        // the board full-bleed; `macLayout` re-applies the same 16pt it used
+        // to inherit, because the Mac board lives in a capped 960/640 detail
+        // column rather than against the screen edge, so full-bleed does not
+        // apply there.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.surface.background.resolved)
         // #610: full-cover Completion overlay (MS #292/#518 mirror).
@@ -232,21 +237,37 @@ public struct BoardView: View {
 
     private var compactLayout: some View {
         // Structural (#762 PR2 two-tier spacing contract) — screen rhythm
-        // between header/board/digit pad; fixed because inflating it would
-        // shrink the `GeometryReader`-sized board grid below it.
+        // between header/board/control cluster; fixed because inflating it
+        // would shrink the `GeometryReader`-sized board grid below it.
         VStack(spacing: theme.spacing.medium) {
+            // Chrome keeps its screen margin; the board below does not.
             header
+                .padding(.horizontal, theme.spacing.medium)
+            // #1022: full-bleed. No horizontal padding of any kind between
+            // this square and the screen edge, so the cell side is the offered
+            // width / 9 (design.md §3.4). `.layoutPriority(1)` gives the board
+            // first claim on the leftover vertical space, so the trailing
+            // `Spacer` — not the board — absorbs whatever the chrome below
+            // does or does not occupy. That is what keeps the board from
+            // resizing when the control cluster unmounts on pause/completion.
             boardWithOverlay
-            // v2.3.5: banner sits between the grid and the digit pad. It
+                .layoutPriority(1)
+            Spacer(minLength: 0)
+            // v2.3.5: banner sits between the grid and the control cluster. It
             // is suppressed while the game is paused — pause is a moment
             // of intentional quiet (PauseOverlayView already dims the
             // grid), and showing an ad on top of that contradicts the
             // calm contract.
             if !viewModel.isPaused, let adProvider, let adGate {
                 themedBanner(adProvider: adProvider, adGate: adGate)
+                    .padding(.horizontal, theme.spacing.medium)
             }
-            digitPad
+            controlCluster
         }
+        // #1022: vertical screen margin only — the horizontal half of the old
+        // blanket `.padding(theme.spacing.medium)` is what used to inset the
+        // board, and it is now applied per-child above.
+        .padding(.vertical, theme.spacing.medium)
     }
 
     // MARK: - Mac (regular) 2-column layout
@@ -266,7 +287,7 @@ public struct BoardView: View {
             // much width `macBoardColumn` gets, which drives its cell size.
             HStack(alignment: .top, spacing: theme.spacing.large) {
                 macBoardColumn
-                digitPad
+                controlCluster
             }
             // Pause-time banner suppression preserved on Mac too.
             if !viewModel.isPaused, let adProvider, let adGate {
@@ -276,9 +297,15 @@ public struct BoardView: View {
         .frame(maxWidth: 960)
         .frame(maxWidth: .infinity, alignment: .center)
         // Structural (#762 PR2 two-tier spacing contract) — additive to the
-        // outer screen-margin padding above (→ ≥ 32 pt combined); fixed for
-        // the same board-sizing reason as that outer padding.
+        // screen-margin padding below (→ ≥ 32 pt combined); fixed for
+        // the same board-sizing reason as that screen margin.
         .padding(.horizontal, theme.spacing.medium)
+        // #1022: this is the screen margin `body` used to apply to BOTH
+        // layouts. Full-bleed is an iPhone-board rule (design.md §3.4's cell
+        // table is three iPhone widths); the Mac board sits in a capped
+        // 960/640 detail column, so it keeps the margin it always had and its
+        // geometry is unchanged by this issue.
+        .padding(theme.spacing.medium)
     }
 
     /// Themed shared `MonetizationUI.BannerSlotView` (#441). Board never drives
@@ -305,6 +332,26 @@ public struct BoardView: View {
         boardWithOverlay
             .frame(maxWidth: 640, maxHeight: 640)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // #1022 scene exclusivity (design.md §4.3): "同一畫面同一時間,只有一個自訂
+    // 玻璃『場景』可見" — when Completion's G6 panel rises, board-scene G4 must
+    // LEAVE, "不是被蓋住,是真的 unmount". G4 must equally be gone while paused.
+    //
+    // Both come off the ONE value that already drives every board modal:
+    // `modalOverlayPresentation` (BoardView+Completion.swift). It is nil
+    // exactly when no completion / pause / leave-confirmation surface is up,
+    // so a single `nil` check covers all three cases. There is deliberately NO
+    // new observer and NO preference key here — #1020 removed
+    // `BoardModalOverlayActivePreferenceKey` because observing it from the
+    // shell root unmounted the pushed board on macOS, and #1019 proved that
+    // `.disabled()` on the shell deadlocks the overlay's own CTA. Reading the
+    // same value the overlay itself is keyed on cannot drift from it.
+    @ViewBuilder
+    private var controlCluster: some View {
+        if modalOverlayPresentation == nil {
+            digitPad
+        }
     }
 
     private var digitPad: some View {
