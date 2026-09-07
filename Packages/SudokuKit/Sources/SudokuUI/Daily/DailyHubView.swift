@@ -55,6 +55,14 @@ public struct DailyHubView<Banner: View>: View {
     // hub instead listens to `GameRoot`'s explicit teardown counter, mirroring
     // the `ResumePill` / `refreshResumeCandidate` precedent (#675).
     @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
+    /// #1021 CR3b: the shell's currently-selected tab (`GameRootViewModel.
+    /// selectedTab`, injected by `GameRoot`). A phase-1 Daily-load failure
+    /// leaves the player unable to start ANY game, so `sessionTeardownCount`
+    /// may never bump — this is the retry trigger reachable by simply
+    /// switching back to Today, verified against the same "does this
+    /// lifecycle signal actually fire" trap #761 already burned once (see
+    /// the `.onChange` below).
+    @Environment(\.gameSelectedTab) private var selectedTab
     private let banner: Banner
     // Exhausted-state card padding (#762 PR2 two-tier spacing contract) —
     // content tier, wraps the icon/message/action-button stack, scales
@@ -91,6 +99,29 @@ public struct DailyHubView<Banner: View>: View {
             // refreshes `viewModel.weekStrip` (#774) — same `refresh()` call,
             // no new trigger.
             .onChange(of: sessionTeardownCount) { _, _ in Task { await viewModel.refresh() } }
+            // #1021 CR3b (PM-approved, no new UI): recovers a phase-1 Daily
+            // load failure without a new button. `sessionTeardownCount`
+            // above cannot be the trigger here — a phase-1 failure means the
+            // player never started a game session, so that counter may
+            // never bump. `.onChange`, not `.onAppear`, is deliberate: this
+            // view stays mounted (never destroyed/remounted) across a tab
+            // switch — `MemoizedTabRootsTests` pins that `makeTabRoot` builds
+            // each tab's content exactly once — so `.onAppear` would not
+            // re-fire on a tab return at all (the same #761 trap this file
+            // already hit once for the fullScreenCover case). Reading the
+            // injected `@Observable` property directly and keying `.onChange`
+            // off it sidesteps the mount-lifecycle question entirely: SwiftUI
+            // re-evaluates this modifier whenever `selectedTab` changes,
+            // whether or not Today is the tab currently on screen (see
+            // `DailyHubViewTabReturnRetryTests` for the sim-shaped proof —
+            // an `NSHostingView` mutating an `@Observable` probe in place,
+            // mirroring `BoardModalOverlayHoistTests`). `retryIfFailed()` is
+            // a no-op in every state but `.failed`, so this is harmless on
+            // every OTHER tab-selection change too.
+            .onChange(of: selectedTab) { _, newTab in
+                guard newTab == .today else { return }
+                Task { await viewModel.retryIfFailed() }
+            }
             // #826: a past day with >1 completed difficulty presents this
             // picker instead of opening directly (owner adjudication
             // 2026-07-16). `presenting:` hands the whole array to `actions:`

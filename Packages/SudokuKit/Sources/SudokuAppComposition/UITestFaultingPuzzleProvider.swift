@@ -31,19 +31,42 @@ enum UITestPuzzleFaultMode: String {
     /// N5: `fetchDailyTrio` throws a generic (non-`generatorFailed`) error →
     /// `DailyHubViewModel` lands in `.failed(reason)` (`DailyHubViewModel.swift:142-149`).
     case dailyFail
+    /// #1021 CR3b: `fetchDailyTrio` throws the SAME `UITestPuzzleFaultError`
+    /// as `dailyFail` on its first call, then delegates to the wrapped live
+    /// provider on every call after that. `dailyFail` throws on EVERY call
+    /// (by design — the N5 E2E test depends on that), so it cannot
+    /// demonstrate `DailyHubViewModel.retryIfFailed()`'s recovery: a retry
+    /// against a provider that always fails just fails again. This mode
+    /// exists purely so a sim/E2E check can drive the phase-1 failure →
+    /// (tab away, tab back to Today) → recovered `.loaded` sequence. A
+    /// separate case, not a `dailyFail` behavior change, so `dailyFail` and
+    /// its N5 test stay exactly as they were.
+    case dailyFailOnce
 }
 
-/// Generic error thrown by the `practiceFail` / `dailyFail` modes — anything
-/// that is NOT `PuzzleStoreError.generatorFailed`, so `DailyHubViewModel`'s
-/// `onPhase1Error` branch takes the `.failed` path rather than `.exhausted`.
+/// Generic error thrown by the `practiceFail` / `dailyFail` / `dailyFailOnce`
+/// modes — anything that is NOT `PuzzleStoreError.generatorFailed`, so
+/// `DailyHubViewModel`'s `onPhase1Error` branch takes the `.failed` path
+/// rather than `.exhausted`.
 struct UITestPuzzleFaultError: Error, Sendable {}
 
 /// Wraps a live `PuzzleProviderProtocol` and overrides one call per fault
 /// mode. `puzzle(for:)` always delegates — no negative flow in this batch
 /// exercises the reverse-lookup path.
-struct UITestFaultingPuzzleProvider: PuzzleProviderProtocol {
+///
+/// An `actor` (not a `struct`, unlike the batch-2 original) because
+/// `dailyFailOnce` (#1021 CR3b) needs a mutable "has this already thrown
+/// once" counter, and `PuzzleProviderProtocol: Sendable` requires that
+/// mutation to be concurrency-safe — mirrors `SudokuKitTesting.
+/// FakePuzzleProvider`, which is already an actor for the same reason.
+actor UITestFaultingPuzzleProvider: PuzzleProviderProtocol {
     private let wrapped: any PuzzleProviderProtocol
     private let mode: UITestPuzzleFaultMode
+    /// `dailyFailOnce`-only state: flips to `true` after the first
+    /// `fetchDailyTrio` throw, so every subsequent call delegates instead.
+    /// Actor-isolated, so two racing calls (e.g. a double-fire of the retry
+    /// signal) can't both observe `false` and both throw.
+    private var hasFailedOnceDelivered = false
 
     init(wrapping wrapped: any PuzzleProviderProtocol, mode: UITestPuzzleFaultMode) {
         self.wrapped = wrapped
@@ -56,6 +79,12 @@ struct UITestFaultingPuzzleProvider: PuzzleProviderProtocol {
             throw PuzzleStoreError.generatorFailed(underlying: "uitest-forced-exhausted")
         case .dailyFail:
             throw UITestPuzzleFaultError()
+        case .dailyFailOnce:
+            guard !hasFailedOnceDelivered else {
+                return try await wrapped.fetchDailyTrio(date: date)
+            }
+            hasFailedOnceDelivered = true
+            throw UITestPuzzleFaultError()
         case .practiceFail:
             return try await wrapped.fetchDailyTrio(date: date)
         }
@@ -65,7 +94,7 @@ struct UITestFaultingPuzzleProvider: PuzzleProviderProtocol {
         switch mode {
         case .practiceFail:
             throw UITestPuzzleFaultError()
-        case .dailyExhausted, .dailyFail:
+        case .dailyExhausted, .dailyFail, .dailyFailOnce:
             return try await wrapped.fetchPracticePool(difficulty: difficulty)
         }
     }

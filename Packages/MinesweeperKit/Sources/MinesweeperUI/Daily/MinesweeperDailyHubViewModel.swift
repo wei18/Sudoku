@@ -169,6 +169,11 @@ public final class MinesweeperDailyHubViewModel {
         // Two-phase orchestration delegated to the shared skeleton (#558).
         // `dailyTrio` is synchronous and non-throwing — phase-1 wraps it in an
         // async closure that can never throw, so onPhase1Error is unreachable.
+        // #1021 CR3b: `SudokuUI.DailyHubViewModel` gained a `retryIfFailed()`
+        // to recover its phase-1 `.failed` state — no mirror here, since
+        // `MinesweeperDailyHubState` (above) has no `.failed` case to recover:
+        // this comment IS the one-line "no, and here is why" the CR round
+        // asked for.
         // Phase-2 fills completion + failure overlays asynchronously — best-effort,
         // never blocks the initial render (M10 / §How.6.1 p1).
         await performDailyBootstrap(

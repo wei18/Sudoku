@@ -134,9 +134,44 @@ public final class DailyHubViewModel {
         self.selectTab = selectTab
     }
 
+    /// Guards `retryIfFailed()` against concurrent re-entry (e.g. two
+    /// tab-return signals arriving close together) — a second call must not
+    /// kick off a second overlapping phase-1 fetch while the first is still
+    /// in flight. Unrelated to `hasBootstrapped`, which guards a completely
+    /// different concern (re-entrant `.task`).
+    private var isRetrying = false
+
     public func bootstrap() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
+        await runPhase1AndPhase2(source: "DailyHubViewModel.bootstrap")
+    }
+
+    /// #1021 CR3b (PM-approved, no new UI/no new strings): re-runs phase 1 —
+    /// the SAME fetch `bootstrap()` uses — when, and only when, the previous
+    /// attempt actually landed in `.failed`. Before this, a phase-1 failure
+    /// was terminal for the whole app session: `refresh()` only ever re-runs
+    /// phase 2 (the completion overlay) and is itself gated on `.loaded`, so
+    /// nothing ever gave phase 1 a second chance. A no-op in every other
+    /// state, and safe to call repeatedly — `isRetrying` drops a re-entrant
+    /// call while one is already in flight. Called from `DailyHubView`'s
+    /// `.onChange(of: gameSelectedTab)` — see that call site for why a tab
+    /// re-select, not `sessionTeardownCount`, is the reachable recovery
+    /// trigger here (a phase-1 failure means the player never started a
+    /// game, so the teardown count may never fire).
+    public func retryIfFailed() async {
+        guard case .failed = state else { return }
+        guard !isRetrying else { return }
+        isRetrying = true
+        defer { isRetrying = false }
+        await runPhase1AndPhase2(source: "DailyHubViewModel.retryIfFailed")
+    }
+
+    /// Shared phase-1 + phase-2 orchestration both `bootstrap()` and
+    /// `retryIfFailed()` drive — factored out so the two entry points (one
+    /// gated on "never ran yet", one gated on "the last run failed") don't
+    /// duplicate the closure wiring.
+    private func runPhase1AndPhase2(source: String) async {
         let today = dateProvider()
         // Two-phase orchestration delegated to the shared skeleton (#558).
         // Phase-1 fetches the trio and renders immediately (no CK dependency).
@@ -160,7 +195,7 @@ public final class DailyHubViewModel {
                     await self.errorReporter.report(
                         UserFacingError.classify(error),
                         underlying: error,
-                        source: "DailyHubViewModel.bootstrap"
+                        source: source
                     )
                     self.state = .failed(String(describing: error))
                 }
