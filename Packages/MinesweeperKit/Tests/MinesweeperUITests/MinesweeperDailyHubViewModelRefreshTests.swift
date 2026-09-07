@@ -68,10 +68,11 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         await viewModel.bootstrap()
         await viewModel.bootstrap()
 
-        // One phase-2 run == 2 queries (#915: the week-strip window's 7 days
-        // collapsed into 1 day-bucketed query, + 1 failed); a second
+        // One phase-2 run == 3 queries (#915: the week-strip window's 7 days
+        // collapsed into 1 day-bucketed query, + 1 failed; #1021 Phase B adds
+        // + 1 `latestInProgress()` for the Today in-progress card); a second
         // `bootstrap()` call must be a no-op (`hasBootstrapped` latch).
-        #expect(await queryOpCount(gateway) == 2)
+        #expect(await queryOpCount(gateway) == 3)
     }
 
     /// `refresh()` called before any `bootstrap()` has landed must be a
@@ -135,11 +136,12 @@ struct MinesweeperDailyHubViewModelRefreshTests {
         #expect(refreshedCard?.isCompleted == true)
         #expect(refreshedCards.filter(\.isCompleted).count == 1)
 
-        // Phase-2 (week-strip window + failed ids) must have re-run exactly
-        // twice (bootstrap + refresh) — #915's 2 queries per run == 4 total;
-        // the trio itself has no fetch counter to assert against since
-        // `dailyTrio` is a pure synchronous call, not a service seam.
-        #expect(await queryOpCount(gateway) == 4)
+        // Phase-2 (week-strip window + failed ids + #1021 Phase B's
+        // in-progress fetch) must have re-run exactly twice (bootstrap +
+        // refresh) — 3 queries per run == 6 total; the trio itself has no
+        // fetch counter to assert against since `dailyTrio` is a pure
+        // synchronous call, not a service seam.
+        #expect(await queryOpCount(gateway) == 6)
     }
 
     /// A `refresh()` with no completion changes must be a harmless re-fetch:

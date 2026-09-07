@@ -240,6 +240,11 @@ let testTargets: [Target] = [
             // #750: ASCScreenshotEmitTests draws ASCProfile / emitASCScreenshot
             // from the shared package instead of a forked local copy.
             .product(name: "GameTestSupportKit", package: "GameTestSupportKit"),
+            // #1021 Phase D: ProgressScreenTests names `ProgressScreen` /
+            // `GameRootViewModel` directly — a transitive re-export through
+            // MinesweeperUI / MinesweeperAppComposition does not satisfy
+            // Swift 6 module name resolution at this target's own boundary.
+            .product(name: "GameAppKit", package: "GameAppKit"),
         ],
         resources: [
             // App target's Info.plist, renamed to AppInfo.plist because

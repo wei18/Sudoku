@@ -85,44 +85,47 @@ OUT_ROOT="$REPO_ROOT/docs/app-store/screenshots"
 # (e.g. a WIN-state MinesweeperBoardTerminalOverlaySnapshotTests case) lands.
 MAP=(
   # ── Sudoku · iPhone ─────────────────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): retired Today-tab Home → Progress-tab Stats,
-  # backed by the dedicated fully-populated `storeRecords` fixture (mirrors
-  # the ASC-spec generator's SLOTS repoint in build-ascspec-screenshots.py).
-  "sudoku|iphone-6.9|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/StatsViewTests/snapshotStoreIPhoneLight.StatsView-iPhone-light-store.png"
-  "sudoku|iphone-6.9|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPhoneLight.DailyHub-iPhone-light-unfinished.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): the old Statistics screen is
+  # retired for real now (superseded by the Progress tab's ProgressScreen,
+  # #1021) — backed by the dedicated fully-populated `storeBests`/
+  # `storeHistory` fixture (mirrors the ASC-spec generator's SLOTS repoint
+  # in build-ascspec-screenshots.py).
+  "sudoku|iphone-6.9|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPhoneLight.ProgressScreen-iPhone-light-store.png"
+  "sudoku|iphone-6.9|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotAllCompletedIPhoneLight.DailyHub-iPhone-light-allDone.png"
   "sudoku|iphone-6.9|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPhone_light.Board-iPhone-light-inProgress.png"
   "sudoku|iphone-6.9|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPhoneLight.Completion-iPhone-light-loaded.png"
   "sudoku|iphone-6.9|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPhone_light_purchased.SettingsView-fullpage-iPhone-light-purchased.png"
   # ── Sudoku · iPad 13" (#506) ──────────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): see the iPhone row's comment above.
-  "sudoku|ipad-13|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/StatsViewTests/snapshotStoreIPadLight.StatsView-iPad-light-store.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
+  "sudoku|ipad-13|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPadLight.ProgressScreen-iPad-light-store.png"
   "sudoku|ipad-13|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPadLight.DailyHub-iPad-light-unfinished.png"
   "sudoku|ipad-13|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_iPad_light.Board-iPad-light-inProgress.png"
   "sudoku|ipad-13|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPadLight.Completion-iPad-light-loaded.png"
   "sudoku|ipad-13|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPad_light_purchased.SettingsView-fullpage-iPad-light-purchased.png"
   # ── Sudoku · Mac ────────────────────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): see the iPhone row's comment above.
-  "sudoku|mac|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/StatsViewTests/snapshotMacLightStore.StatsView-Mac-light-store.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
+  "sudoku|mac|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreMacLight.ProgressScreen-Mac-light-store.png"
   "sudoku|mac|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewTests/snapshotInProgress_Mac_light.Board-Mac-light-inProgress.png"
   "sudoku|mac|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_mac_light_purchased.SettingsView-fullpage-mac-light-purchased.png"
   # ── Minesweeper · iPhone ────────────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): mirrors Sudoku's repoint above — retired
-  # Today-tab Home → Progress-tab Stats, backed by the dedicated
-  # fully-populated `makeStoreSeededStore` fixture.
-  "minesweeper|iphone-6.9|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperStatsTests/snapshotStoreIPhoneLight.Stats-iPhone-light-store.png"
-  "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPhone_light.Daily-iPhone-light-compact.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): mirrors Sudoku's repoint above
+  # — the old Statistics screen is retired for real now (superseded by the
+  # Progress tab's ProgressScreen, #1021), backed by the dedicated
+  # fully-populated `storeBests`/`storeHistory` fixture.
+  "minesweeper|iphone-6.9|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPhoneLight.ProgressScreen-iPhone-light-store.png"
+  "minesweeper|iphone-6.9|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotLoaded_iPhone_light.Daily-iPhone-light-loaded.png"
   "minesweeper|iphone-6.9|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPhone_light.Board-iPhone-light-beginner-covered.png"
   "minesweeper|iphone-6.9|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPhone_light.Completion-iPhone-light-win-loaded.png"
   # ── Minesweeper · iPad 13" (#506) ─────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): see the iPhone row's comment above.
-  "minesweeper|ipad-13|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperStatsTests/snapshotStoreIPadLight.Stats-iPad-light-store.png"
-  "minesweeper|ipad-13|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_iPad_light.Daily-iPad-light-regular.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
+  "minesweeper|ipad-13|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPadLight.ProgressScreen-iPad-light-store.png"
+  "minesweeper|ipad-13|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotAllDone_iPad_light.Daily-iPad-light-allDone.png"
   "minesweeper|ipad-13|en|03-board|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperBoardSnapshotTests/snapshotBeginnerCovered_iPad_light.Board-iPad-light-beginner-covered.png"
   "minesweeper|ipad-13|en|04-completion|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperCompletionSnapshotTests/snapshotWinLoaded_iPad_light.Completion-iPad-light-win-loaded.png"
   # ── Minesweeper · Mac ───────────────────────────────────────────────────────
-  # 01-home REPOINTED (#1040): see the iPhone row's comment above.
-  "minesweeper|mac|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperStatsTests/snapshotMacLightStore.Stats-mac-light-store.png"
-  "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotDaily_regular_light.Daily-mac-light-regular.png"
+  # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
+  "minesweeper|mac|en|01-home|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/ProgressScreenTests/snapshotStoreMacLight.ProgressScreen-Mac-light-store.png"
+  "minesweeper|mac|en|02-daily|Packages/MinesweeperKit/Tests/MinesweeperUITests/__Snapshots__/MinesweeperDailyHubSnapshotTests/snapshotLoaded_regular_light.Daily-mac-light-loaded.png"
 )
 
 # ── Arg parsing ───────────────────────────────────────────────────────────────

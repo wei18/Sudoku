@@ -58,13 +58,19 @@ struct DailyHubViewModelInteractionTests {
         // instead of one flat array.
         let completedIdsOps = persistenceOps.filter { if case .fetchCompletedDailyIdsByDay = $0 { true } else { false } }
         let personalRecordOps = persistenceOps.filter { if case .fetchPersonalRecord = $0 { true } else { false } }
+        // #1021 Phase B: the Today hub's in-progress card also fetches
+        // `latestInProgress()` in this same phase-2 window (best-effort,
+        // `DailyHubViewModel+Today.swift`'s `fetchInProgressSummary`) — 1
+        // more call, counted alongside the other two kinds below.
+        let latestInProgressOps = persistenceOps.filter { if case .latestInProgress = $0 { true } else { false } }
         #expect(completedIdsOps == [.fetchCompletedDailyIdsByDay])
         #expect(Set(personalRecordOps) == Set([
             FakePersistence.Operation.fetchPersonalRecord(mode: .daily, difficulty: .easy),
             .fetchPersonalRecord(mode: .daily, difficulty: .medium),
             .fetchPersonalRecord(mode: .daily, difficulty: .hard)
         ]))
-        #expect(persistenceOps.count == completedIdsOps.count + personalRecordOps.count)
+        #expect(latestInProgressOps == [.latestInProgress])
+        #expect(persistenceOps.count == completedIdsOps.count + personalRecordOps.count + latestInProgressOps.count)
     }
 
     @Test func bootstrapIsIdempotent() async {

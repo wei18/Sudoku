@@ -29,7 +29,6 @@ public import Foundation
 public import GameCenterClient
 public import GameShellUI
 public import Persistence
-public import SwiftUI
 public import Telemetry
 
 @MainActor
@@ -378,19 +377,8 @@ public final class GameRootViewModel<Route: Hashable & Sendable> {
     }
 }
 
-// MARK: - EnvironmentKey (#761)
-
-private struct GameSessionTeardownCountKey: EnvironmentKey {
-    static let defaultValue: Int = 0
-}
-
-public extension EnvironmentValues {
-    /// `GameRootViewModel.sessionTeardownCount`, injected by `GameRoot` so any
-    /// route view can `.onChange` it to react to a game session ending — the
-    /// explicit signal Daily hub refresh (#761) rides instead of `.onAppear`,
-    /// which does not re-fire when a `fullScreenCover` dismisses.
-    var gameSessionTeardownCount: Int {
-        get { self[GameSessionTeardownCountKey.self] }
-        set { self[GameSessionTeardownCountKey.self] = newValue }
-    }
-}
+// `GameSessionTeardownCountKey` / `gameSessionTeardownCount` and
+// `GameSelectedTabKey` / `gameSelectedTab` — the environment keys `GameRoot`
+// injects so route views can `.onChange` this VM's state — moved to
+// `GameRootViewModel+Environment.swift` (#1021 Phase CR3b, purely to keep
+// this file under the 400-line `file_length` ceiling).

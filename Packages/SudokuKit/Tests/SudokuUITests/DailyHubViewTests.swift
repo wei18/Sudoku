@@ -1,4 +1,16 @@
 // DailyHubView — bootstrap, exhausted inline block, and 4-state snapshots.
+//
+// #1021 CR2 M7: crossed the 400-line file-length ceiling adding
+// `snapshotFailedIPhoneLight` (a genuinely NEW baseline, not something to
+// trim). Can't split further the way `DailyHubStoreFrameSnapshotTests.swift`
+// already did (that file's own header explains why: every `@Test` here MUST
+// stay physically in THIS file — swift-snapshot-testing resolves each
+// baseline's `__Snapshots__/<file>/` directory from the calling test's own
+// `#filePath`, so moving a `@Test` to another file would silently start
+// writing/reading a different snapshot directory). The lint disable below
+// mirrors the existing repo precedent for this exact snapshot-pinned-to-file
+// constraint (`ASCClientURLProtocolTests.swift`).
+// swiftlint:disable file_length
 
 import Foundation
 import SnapshotTesting
@@ -8,6 +20,7 @@ import Testing
 
 import GameShellUI
 import Persistence
+import SudokuEngine
 import SudokuPersistence
 import SudokuKitTesting
 
@@ -15,7 +28,8 @@ import SudokuKitTesting
 @Suite("DailyHubView — bootstrap + snapshots")
 struct DailyHubViewTests {
 
-    nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
+    // internal (not `private`): `DailyHubStoreFrameSnapshotTests.swift` reads it too.
+    nonisolated(unsafe) static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
     private func makeViewModel(
         completedDailyIds: Set<String> = [],
@@ -124,12 +138,35 @@ struct DailyHubViewTests {
         #expect(viewModel.path == [.board(puzzleId: cards[1].envelope.identity.puzzleId)])
     }
 
-    // MARK: - Snapshots
+    // MARK: - Snapshots (#1021 Phase B — one baseline per TodayPresentation
+    // state; names deliberately contain the state word per the dispatch
+    // spec). The pre-Phase-B suite (unfinished/easyDone/allDone/exhausted +
+    // mac/iPad/streak variants) pinned the retired glass `DailyPuzzleCard` +
+    // `DailyStripView` header card — replaced wholesale, not incrementally,
+    // since every one of those baselines necessarily diffs under the new
+    // shared `DailyCardContent`/`StreakHeaderView` composition. Their old
+    // `__Snapshots__/DailyHubViewTests` baselines were deleted (see report).
 
     #if canImport(AppKit)
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPhoneLight() async {
-        let viewModel = await makeViewModel()
-        await viewModel.bootstrap()
+    /// `loading`: a freshly-constructed, never-bootstrapped view model —
+    /// `DailyHubShellView`'s `.idle` branch renders the same `loading:`
+    /// skeleton-card grid as `.loading` (Leader ruling: design.md §3.1
+    /// "保留格線結構,不是空白方塊" — 3 grid-lined skeleton rows, not a spinner),
+    /// with the streak header still rendering (also skeleton) above it per
+    /// the shell's "every state" contract. An artificial fetch delay makes
+    /// this deterministic — without one, `DailyHubView`'s own
+    /// `.task { bootstrap() }` can race the `NSHostingView` capture and
+    /// resolve to `.loaded` before the snapshot is taken (verified: MS's
+    /// sibling test hit exactly this race, since MS's `bootstrap()` has no
+    /// `await` suspension point at all to lose the race against).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadingIPhoneLight() async {
+        let provider = FakePuzzleProvider()
+        await provider.setArtificialDelay(nanos: 60_000_000_000)
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: FakePersistence(),
+            dateProvider: { Self.fixedDate }
+        )
         let host = hostingView(
             DailyHubView(viewModel: viewModel),
             size: SnapshotLayouts.iPhone,
@@ -137,12 +174,14 @@ struct DailyHubViewTests {
             sizeClass: .compact
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-unfinished")
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-loading")
         }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-unfinished", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-loading", record: SnapshotMode.recordMode)
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEasyCompletedIPhoneLight() async {
+    /// `loaded`: one difficulty completed, the other two not — the ordinary
+    /// mixed-state render.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let easyId = envelopes[0].identity.puzzleId
         let viewModel = await makeViewModel(completedDailyIds: [easyId])
@@ -154,12 +193,67 @@ struct DailyHubViewTests {
             sizeClass: .compact
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-easyDone")
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-loaded")
         }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-easyDone", record: SnapshotMode.recordMode)
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-loaded", record: SnapshotMode.recordMode)
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedIPhoneLight() async {
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoadedAX3IPhoneLight`
+    /// — injected `.dynamicTypeSize` in an `NSHostingView` snapshot only
+    /// scales `@ScaledSpacing`, it does NOT scale fonts (repo memory:
+    /// dynamic-type-sim-verify-and-cap). This baseline proves the row-card
+    /// layout's SPACING scales at AX3; it is NOT evidence that the card
+    /// title doesn't hyphenate/truncate at real AX3 — that claim needs a
+    /// simulator pass (idb-verify), not this harness.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedScaledSpacingAX3IPhoneLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let easyId = envelopes[0].identity.puzzleId
+        let viewModel = await makeViewModel(completedDailyIds: [easyId])
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel).dynamicTypeSize(.accessibility3),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-loaded-AX3")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-loaded-AX3", record: SnapshotMode.recordMode)
+    }
+
+    /// #1021 CR2 M4: SPACING-ONLY pin, renamed from `snapshotLoadedAX3IPadLight`
+    /// — see `snapshotLoadedScaledSpacingAX3IPhoneLight`'s doc for why. AX3
+    /// Dynamic Type pin on an iPad-width REGULAR size class — #1021 Phase G.
+    /// Distinct from that iPhone case above (compact size class): before the
+    /// fix, `DailyHubShellView`'s grid kept 3 columns whenever
+    /// `sizeClass == .regular`. `DailyHubGridLayout.columnCount(...)` now
+    /// forces a single column at any accessibility Dynamic Type size
+    /// regardless of size class — this baseline confirms the grid COLUMN
+    /// COUNT collapses to one here (a real layout/spacing fact this harness
+    /// can prove); it is NOT evidence that status text doesn't hyphenate at
+    /// real AX3 (fonts aren't actually scaled here — simulator pass only).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotLoadedScaledSpacingAX3IPadLight() async {
+        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
+        let easyId = envelopes[0].identity.puzzleId
+        let viewModel = await makeViewModel(completedDailyIds: [easyId])
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular,
+            dynamicTypeSize: .accessibility3
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-loaded-AX3")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPad-light-loaded-AX3", record: SnapshotMode.recordMode)
+    }
+
+    /// `allDone`: all three difficulties completed — `TodayAllDoneBlock`
+    /// renders above the (still tappable) 3 solved cards.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllDoneIPhoneLight() async {
         let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
         let allIds = Set(envelopes.map(\.identity.puzzleId))
         let viewModel = await makeViewModel(completedDailyIds: allIds)
@@ -176,9 +270,72 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-allDone", record: SnapshotMode.recordMode)
     }
 
-    // #768: `.exhausted` now renders as an inline icon+message+action block
-    // (was a system `.alert` over `Color.clear`) — pins the new content so a
-    // regression back to a blank backdrop shows up as a snapshot diff.
+    /// `degraded`: the phase-2 completion-overlay fetch fails — real
+    /// thumbnails still render (seed-derived, no CK dependency) but every
+    /// card is forced to "not started", and the streak header renders as a
+    /// skeleton rather than disappearing.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotDegradedIPhoneLight() async {
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
+        let persistence = FakePersistence()
+        await persistence.setFetchCompletedDailyIdsError(.iCloudNotSignedIn)
+        let viewModel = DailyHubViewModel(
+            provider: provider,
+            persistence: persistence,
+            dateProvider: { Self.fixedDate }
+        )
+        await viewModel.bootstrap()
+        #expect(viewModel.isPhase2Degraded)
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-degraded")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-degraded", record: SnapshotMode.recordMode)
+    }
+
+    /// #1021 CR2 M7: a phase-1 fetch failure (`.failed` — NOT `.exhausted`;
+    /// `generatorFailed` maps to `.exhausted`, tested above) now renders the
+    /// SAME skeleton-dimension card grid `.idle`/`.loading` use, captioned
+    /// "Not started", instead of the old inline warning block — design.md
+    /// §3.1's state table has no "failed with nothing renderable" row, only
+    /// `degraded`. NEW baseline (this render path was previously
+    /// unreachable — see `TodayMapper`'s file header and `DailyHubView.
+    /// loadingCards`).
+    ///
+    /// #1021 CR3: RE-RECORDED — CR2's card-only render silently dropped
+    /// #768's "visible, recoverable inline failure" guarantee, so this
+    /// baseline now also shows a `TodayLoadFailureCaption` row above the
+    /// skeleton grid, below the streak header (`.degraded(_, reason:
+    /// .loadFailed)` — see `TodayMapper.present`).
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotFailedIPhoneLight() async {
+        let viewModel = await makeViewModel(
+            providerResult: .failure(.unknownDifficulty("boom"))
+        )
+        await viewModel.bootstrap()
+        guard case .failed = viewModel.state else {
+            Issue.record("expected .failed, got \(viewModel.state)")
+            return
+        }
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-failed")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-failed", record: SnapshotMode.recordMode)
+    }
+
+    /// `exhausted` (Sudoku only): the generator failed for today — the
+    /// inline icon+message+action block, now wrapped in a `HubCard`
+    /// (standard material, no glass) per design.md §3.1's `.exhausted` row.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotExhaustedIPhoneLight() async {
         let viewModel = await makeViewModel(
             providerResult: .failure(.generatorFailed(underlying: "exhausted"))
@@ -197,8 +354,87 @@ struct DailyHubViewTests {
         assertViewStructure(of: host, named: "DailyHub-iPhone-light-exhausted", record: SnapshotMode.recordMode)
     }
 
+    // MARK: - Store marketing-frame fixtures (#1021 Phase H)
+    // Fixture helpers live in `DailyHubStoreFrameSnapshotTests.swift` (split
+    // out for `file_length`; see its header); `@Test`s stay HERE so
+    // `#filePath`-derived baseline lookup matches `build-ascspec-screenshots.py`'s
+    // literal `Slot(...)` path (`__Snapshots__/DailyHubViewTests/`).
+
+    /// iPhone `02-daily` store frame: all 3 difficulties solved today.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedIPhoneLight() async {
+        let trio = Self.storeDailyTrio(date: Self.fixedDate)
+        let allIds = Set(trio.map(\.identity.puzzleId))
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(trio))
+        let persistence = FakePersistence()
+        await Self.seedStoreStreak(persistence: persistence, todayCompletedIds: allIds)
+        let bestTimes: [Difficulty: Int] = [.easy: 192, .medium: 401, .hard: 860]  // 3:12 / 6:41 / 14:20
+        for (difficulty, seconds) in bestTimes {
+            await persistence.setPersonalRecordResult(
+                .success(PersonalRecord(
+                    recordName: "daily-\(difficulty.rawValue)-store",
+                    mode: .daily,
+                    difficulty: difficulty,
+                    bestTimeSeconds: seconds,
+                    totalTimeSeconds: seconds * 5,
+                    completedCount: 5,
+                    lastUpdatedAt: Self.fixedDate,
+                    completedPuzzleIds: [PuzzleIdentity.daily(date: Self.fixedDate, difficulty: difficulty).puzzleId]
+                )),
+                mode: .daily,
+                difficulty: difficulty
+            )
+        }
+        let viewModel = DailyHubViewModel(provider: provider, persistence: persistence, dateProvider: { Self.fixedDate })
+        await viewModel.bootstrap()
+        let host = hostingView(
+            DailyHubView(viewModel: viewModel),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-allDone")
+        }
+        assertViewStructure(of: host, named: "DailyHub-iPhone-light-allDone", record: SnapshotMode.recordMode)
+    }
+
+    /// iPad `02-daily` store frame: Easy solved, Medium in progress, Hard not started.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotUnfinishedIPadLight() async {
-        let viewModel = await makeViewModel()
+        let trio = Self.storeDailyTrio(date: Self.fixedDate)
+        let easyId = trio[0].identity.puzzleId
+        let mediumId = trio[1].identity.puzzleId
+        let provider = FakePuzzleProvider()
+        await provider.setDailyTrioResult(.success(trio))
+        let persistence = FakePersistence()
+        await Self.seedStoreStreak(persistence: persistence, todayCompletedIds: [easyId])
+        await persistence.setPersonalRecordResult(
+            .success(PersonalRecord(
+                recordName: "daily-easy-store",
+                mode: .daily,
+                difficulty: .easy,
+                bestTimeSeconds: 192,  // 3:12
+                totalTimeSeconds: 192 * 5,
+                completedCount: 5,
+                lastUpdatedAt: Self.fixedDate,
+                completedPuzzleIds: [easyId]
+            )),
+            mode: .daily,
+            difficulty: .easy
+        )
+        let mediumBoardState = Self.storePartialBoardState(givenMask: trio[1].puzzle.clues.givenMask)
+        await persistence.setResumeCandidate(SavedGameSummary(
+            recordName: "in-progress-medium-store",
+            puzzleId: mediumId,
+            mode: .daily,
+            difficulty: .medium,
+            lastModifiedAt: Self.fixedDate,
+            elapsedSeconds: 245,  // 4:05
+            status: "inProgress",
+            generatorVersion: 1,
+            boardState: mediumBoardState
+        ))
+        let viewModel = DailyHubViewModel(provider: provider, persistence: persistence, dateProvider: { Self.fixedDate })
         await viewModel.bootstrap()
         let host = hostingView(
             DailyHubView(viewModel: viewModel),
@@ -210,167 +446,6 @@ struct DailyHubViewTests {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPad-light-unfinished")
         }
         assertViewStructure(of: host, named: "DailyHub-iPad-light-unfinished", record: SnapshotMode.recordMode)
-    }
-
-    // mac-trait baselines for the App Store macOS screenshot pipeline
-    // (Daily hub previously had no mac render at all — mirrors
-    // MinesweeperDailyHubSnapshotTests' regular_light/regular_dark mac pair).
-    // Uses the `allDone` fixture (🔥 7+ day streak, all three cards checked)
-    // — the fullest honest state, not the emptiest — since these baselines
-    // become marketing screenshots.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedMacLight() async {
-        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
-        let allIds = Set(envelopes.map(\.identity.puzzleId))
-        let viewModel = await makeViewModel(completedDailyIds: allIds)
-        await viewModel.bootstrap()
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel),
-            size: SnapshotLayouts.mac,
-            colorScheme: .light,
-            sizeClass: .regular
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-Mac-light-allDone")
-        }
-        assertViewStructure(of: host, named: "DailyHub-Mac-light-allDone", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotAllCompletedMacDark() async {
-        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
-        let allIds = Set(envelopes.map(\.identity.puzzleId))
-        let viewModel = await makeViewModel(completedDailyIds: allIds)
-        await viewModel.bootstrap()
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel),
-            size: SnapshotLayouts.mac,
-            colorScheme: .dark,
-            sizeClass: .regular
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-Mac-dark-allDone")
-        }
-        assertViewStructure(of: host, named: "DailyHub-Mac-dark-allDone", record: SnapshotMode.recordMode)
-    }
-
-    // MARK: - #774 week-strip states
-
-    /// Partial streak: today + yesterday completed via per-date scripting →
-    /// last two dots filled, "2 day streak" caption. (The `makeViewModel`
-    /// helper's `completedDailyIds:` fixtures above explicitly script ALL 7
-    /// window dates to the same non-empty set — #921 — reproducing a FULL
-    /// 7-day streak, so this is the only baseline pinning a MIXED strip.)
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripPartialStreakIPhoneLight() async {
-        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
-        let easyId = envelopes[0].identity.puzzleId
-        let provider = FakePuzzleProvider()
-        await provider.setDailyTrioResult(.success(envelopes))
-        let persistence = FakePersistence()
-        await persistence.setCompletedDailyIds([easyId], for: Self.fixedDate)
-        await persistence.setCompletedDailyIds(["yesterday-easy"], for: Self.fixedDate.addingTimeInterval(-86_400))
-        let viewModel = DailyHubViewModel(
-            provider: provider,
-            persistence: persistence,
-            dateProvider: { Self.fixedDate }
-        )
-        await viewModel.bootstrap()
-        #expect(viewModel.weekStrip.streak == 2)
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-streak2")
-        }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak2", record: SnapshotMode.recordMode)
-    }
-
-    /// #882 (audit #875 coverage caveat): the EMPTY state — a fresh account
-    /// with no completion history anywhere in the window. Distinct from
-    /// `snapshotStripDegradedIPhoneLight` below: degraded means the fetch
-    /// itself FAILED (`weekStrip == .unknown`, card omitted); empty means the
-    /// fetch SUCCEEDED and every day genuinely has zero completions
-    /// (`weekStrip.days.count == 7`, card renders with 7 not-completed dots —
-    /// today dashed, the other 6 missed — and no streak header, since a
-    /// genuine 0-day streak is captioned identically to unknown, per
-    /// `DailyStripSnapshot.streak`'s doc). `makeViewModel()`'s default empty
-    /// `completedDailyIds` already produces this via the real bootstrap path
-    /// (unlike the MS suite's seeded fixtures) — this test makes that
-    /// coverage explicit and asserted instead of leaving it an unlabeled
-    /// side effect of `snapshotUnfinishedIPhoneLight`.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripEmptyIPhoneLight() async {
-        let viewModel = await makeViewModel()
-        await viewModel.bootstrap()
-        #expect(viewModel.weekStrip.days.count == 7)
-        #expect(viewModel.weekStrip.days.allSatisfy { !$0.isCompleted })
-        #expect(viewModel.weekStrip.streak == nil)
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-stripEmpty")
-        }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-stripEmpty", record: SnapshotMode.recordMode)
-    }
-
-    /// Degraded strip: the completed-ids fetch fails (offline / signed-out) →
-    /// all-subdued skeleton dots, NO streak caption (never a false "0"), trio
-    /// still rendered un-completed.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripDegradedIPhoneLight() async {
-        let provider = FakePuzzleProvider()
-        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
-        let persistence = FakePersistence()
-        await persistence.setFetchCompletedDailyIdsError(.iCloudNotSignedIn)
-        let viewModel = DailyHubViewModel(
-            provider: provider,
-            persistence: persistence,
-            dateProvider: { Self.fixedDate }
-        )
-        await viewModel.bootstrap()
-        #expect(viewModel.weekStrip == .unknown)
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-stripDegraded")
-        }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-stripDegraded", record: SnapshotMode.recordMode)
-    }
-
-    /// AX3 Dynamic Type: the strip's dots are structural (fixed 16pt, never
-    /// wrap); the caption + trio text scale. Env-injected Dynamic Type
-    /// snapshots are a layout pin only, not proof of runtime behavior
-    /// (see memory: dynamic-type-sim-verify-and-cap) — sim verification is
-    /// the authority for AX bugs.
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotStripStreakAX3IPhoneLight() async {
-        let envelopes = FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)
-        let provider = FakePuzzleProvider()
-        await provider.setDailyTrioResult(.success(envelopes))
-        let persistence = FakePersistence()
-        await persistence.setCompletedDailyIds([envelopes[0].identity.puzzleId], for: Self.fixedDate)
-        let viewModel = DailyHubViewModel(
-            provider: provider,
-            persistence: persistence,
-            dateProvider: { Self.fixedDate }
-        )
-        await viewModel.bootstrap()
-        let host = hostingView(
-            DailyHubView(viewModel: viewModel).dynamicTypeSize(.accessibility3),
-            size: SnapshotLayouts.iPhone,
-            colorScheme: .light,
-            sizeClass: .compact
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-light-streak-AX3")
-        }
-        assertViewStructure(of: host, named: "DailyHub-iPhone-light-streak-AX3", record: SnapshotMode.recordMode)
     }
     #endif
 }

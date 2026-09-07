@@ -232,9 +232,15 @@ final class SudokuE2ETests: XCTestCase {
     }
 
     /// #935 batch 2 N5: Sudoku Daily `.failed` (fetch error, not exhaustion,
-    /// seeded via `-uitest-puzzle-fault dailyFail`) — inline warning + reason
-    /// text, NO system alert, no navigation off the hub.
-    func test_dailyLoadFailureShowsInlineWarning_N5() {
+    /// seeded via `-uitest-puzzle-fault dailyFail`). #1021 CR2 M7: this state
+    /// no longer shows a standalone inline warning block — it renders the
+    /// SAME degraded skeleton-card grid `.idle`/`.loading` use (captioned
+    /// "Not started"), per design.md §3.1's state table (no "failed with
+    /// nothing renderable" row). `"sudoku.dailyHub.failure"`'s builder was
+    /// deleted (`DailyHubShellView`'s `failure:` overlay is unreachable now)
+    /// — this test re-points to the daily-hub-root anchor (renders in every
+    /// non-empty state, including this one) + no system alert, no navigation.
+    func test_dailyLoadFailureShowsDegradedCardsNotAlert_N5() {
         let app = XCUIApplication()
         app.launchArguments += [
             UITestLaunchArg.puzzleFault, "dailyFail",
@@ -242,16 +248,16 @@ final class SudokuE2ETests: XCTestCase {
         ]
         app.launch()
 
-        let failure = app.descendants(matching: .any)["sudoku.dailyHub.failure"]
+        let hubRoot = app.descendants(matching: .any)["sudoku.dailyHub.root"]
         XCTAssertTrue(
-            failure.waitForExistence(timeout: 15),
-            "N5: inline failure surface should appear under the -uitest-puzzle-fault seam"
+            hubRoot.waitForExistence(timeout: 15),
+            "N5: should stay on the Today hub (degraded card grid) under the -uitest-puzzle-fault seam"
         )
         XCTAssertFalse(
             app.alerts.firstMatch.exists,
             "N5: a daily fetch failure must never surface a system alert"
         )
-        XCTAssertTrue(failure.exists, "N5: should remain on the daily hub's inline failure surface, no navigation")
+        XCTAssertTrue(hubRoot.exists, "N5: should remain on the daily hub, no navigation")
     }
 
     /// #935 batch 3 N12: Completion Close on the daily RE-VIEW route

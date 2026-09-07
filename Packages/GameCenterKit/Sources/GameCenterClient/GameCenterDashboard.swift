@@ -54,6 +54,17 @@ public enum GameCenterDashboard {
         #endif
     }
 
+    /// Present Apple's native Game Center achievements UI (#1021 Phase D,
+    /// PROGRESS's `Achievements` entry point). Achievements have no focused-ID
+    /// variant on any platform (unlike leaderboards) — `GKAccessPoint` is the
+    /// only entry point, so there is no hybrid split to make here.
+    @MainActor
+    public static func presentAchievements() {
+        #if canImport(GameKit)
+        GKAccessPoint.shared.trigger(state: .achievements) { /* dismissed */ }
+        #endif
+    }
+
     /// Present Apple's native "invite friends" Game Center sheet (#744).
     ///
     /// `GKAccessPoint.triggerForFriending(handler:)` is iOS 26.0+ / macOS

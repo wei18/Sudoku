@@ -3,7 +3,7 @@
 // Pins `DailyHubViewModel.fetchBestTimes`'s contract: rides the existing
 // phase-2 `fillCompletionOverlay` window, reads
 // `persistence.fetchPersonalRecord(mode: .daily, difficulty:)` — the same
-// seam `StatsViewModel.fetchTiles` already uses — and degrades PER
+// seam `ProgressViewModel.fetchBests` already uses — and degrades PER
 // DIFFICULTY independently (unlike the week-strip's all-or-nothing degrade):
 // one difficulty's fetch failing must not blank out the other two.
 //

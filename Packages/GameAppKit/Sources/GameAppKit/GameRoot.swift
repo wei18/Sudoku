@@ -108,6 +108,9 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             // #761: route views (e.g. the Daily hubs) read this to refresh
             // after a game session ends — see `GameRootViewModel.sessionTeardownCount`.
             .environment(\.gameSessionTeardownCount, viewModel.sessionTeardownCount)
+            // #1021 CR3b: route views read this to react to becoming the
+            // active tab again — see `GameRootViewModel+Environment.swift`.
+            .environment(\.gameSelectedTab, viewModel.selectedTab)
             // #823: board views register their in-flight terminal-persist
             // Task here before dismissing — see `TerminalPersistJoin`.
             .environment(\.terminalPersistJoin, viewModel.persistJoin)

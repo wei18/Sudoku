@@ -1,7 +1,8 @@
 // MinesweeperPracticeHubViewTests — compile + smoke coverage for the
-// U12 Practice hub stub. Verifies the view instantiates with a binding +
-// initial difficulty. Snapshot rendering deferred per X1-X4 precedent for
-// MS UI; the wrapped `PracticeHubShellView` is independently pinned by
+// U12 Practice hub. Verifies the view instantiates with a binding +
+// initial difficulty. Visual snapshot coverage lives in
+// `MinesweeperPracticeHubSnapshotTests.swift` (#1021 Phase C); the wrapped
+// `PracticeHubShellView` is independently pinned by
 // `PracticeHubShellViewGenericityTests` in GameShellUITests.
 //
 // #720 G2: `difficultyBinding` is exposed `internal` (not `private`) so the

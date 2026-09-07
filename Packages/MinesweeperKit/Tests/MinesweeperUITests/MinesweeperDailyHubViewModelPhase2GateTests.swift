@@ -104,8 +104,10 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
     /// concurrent-but-redundant fan-out (7 byte-identical `query()` calls,
     /// each thrown away except its own day's slice). `fetchFailedIds` (an
     /// independent `async let` lane) still issues its own single `query()`
-    /// call through the same gate, so `callCount` settles at 2 — not the
-    /// pre-fix 8 — while both are still gated.
+    /// call through the same gate; #1021 Phase B adds a THIRD independent
+    /// lane, `fetchInProgressSummary`'s `latestInProgress()`, so `callCount`
+    /// settles at 3 — not the pre-#1021 2, and nowhere near the pre-#915 8 —
+    /// while all three are still gated.
     @Test func weekWindowFetchIssuesExactlyOneQueryPlusOneFailedIdsQuery() async {
         let gated = GatedQueryGateway()
         let store = MinesweeperSavedGameStore(gateway: gated, clock: { Self.fixedDate })
@@ -122,7 +124,7 @@ struct MinesweeperDailyHubViewModelPhase2GateTests {
             await Task.yield()
         }
 
-        #expect(await gated.callCount == 2)
+        #expect(await gated.callCount == 3)
 
         await gated.resolve(.success([]))
         await bootstrapTask.value

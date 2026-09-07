@@ -90,11 +90,13 @@ public enum UITestLaunchArg {
     /// Sudoku's `PuzzleStore` is a live generator, so there is no reliable way
     /// to force `.failed`/`.exhausted` from a real fetch on demand. Takes the
     /// NEXT argument as the fault-mode key, one of `practiceFail` /
-    /// `dailyExhausted` / `dailyFail` (see `SudokuAppComposition`'s
-    /// `UITestFaultingPuzzleProvider` for the per-mode throw behavior).
-    /// Sudoku-only: MS's daily/practice fetches are synchronous and
-    /// non-throwing (N6 — structurally unreachable there). Absent from
-    /// Release builds via the `#if DEBUG` guard.
+    /// `dailyExhausted` / `dailyFail` / `dailyFailOnce` (#1021 CR3b: throws
+    /// once then recovers, so a `DailyHubViewModel.retryIfFailed()` recovery
+    /// can actually be observed — `dailyFail` throws forever) — see
+    /// `SudokuAppComposition`'s `UITestFaultingPuzzleProvider` for the
+    /// per-mode throw behavior. Sudoku-only: MS's daily/practice fetches are
+    /// synchronous and non-throwing (N6 — structurally unreachable there).
+    /// Absent from Release builds via the `#if DEBUG` guard.
     public static let puzzleFault = "-uitest-puzzle-fault"
 
     /// The fault-mode key value following `-uitest-puzzle-fault` in this
