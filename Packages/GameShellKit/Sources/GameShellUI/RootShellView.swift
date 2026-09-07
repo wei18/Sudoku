@@ -57,15 +57,39 @@
 //   - The modifier is STATIC: it reads no state that changes while a board is
 //     pushed (no `coordinator`, no path length), so it cannot trip rule 2
 //     above and unmount a pushed destination.
+//
+// #1024 — `tabViewBottomAccessory` (design.md §2.4, iOS/iPadOS 26.0+, NOT
+// available on macOS):
+//
+//   - `bottomAccessory` is a plain generic `ViewBuilder` closure, exactly
+//     like `tabRoot` — GameShellKit stays zero-dependency, so it has no idea
+//     the content is a monetization banner. GameAppKit supplies the real
+//     content; the `Accessory == EmptyView` convenience init below lets
+//     macOS (and any pre-#1024 test) keep constructing this type without
+//     naming an accessory at all.
+//   - The modifier attaches UNCONDITIONALLY inside `#if os(iOS)` — never
+//     `if someCondition { .tabViewBottomAccessory { … } }`. A conditionally
+//     ATTACHED modifier is the same shape of hazard rule 2 above already
+//     burned us on (#1020): whether or not to show the accessory must be
+//     decided INSIDE `bottomAccessory`'s own content (it can render an empty
+//     / zero-height view), never by branching whether the modifier itself is
+//     present. (PM ruling, 2026-09-08 — see `meetings/
+//     2026-09-07_1024-banner-accessory.impl-notes.md`.)
+//   - Structural macOS exclusion: the `.tabViewBottomAccessory` call site
+//     itself only exists inside `#if os(iOS)` — on macOS the string doesn't
+//     appear in the compiled binary at all, satisfying design.md §2.4.1
+//     option A (no banner, no accessory, ever) by construction rather than a
+//     runtime check.
 
 public import SwiftUI
 
-public struct RootShellView<Route: Hashable, TabRoot: View>: View {
+public struct RootShellView<Route: Hashable, TabRoot: View, Accessory: View>: View {
     @Binding private var selectedTab: AppTab
     private let path: (AppTab) -> Binding<[Route]>
     private let routeFactory: any RouteFactory<Route>
     private let settingsRoute: Route
     private let tabRoot: (AppTab) -> TabRoot
+    private let bottomAccessory: () -> Accessory
 
     // #1019: owns the hoisted overlay. `@State` so its identity survives body
     // re-evaluations; injected into the TabView subtree so a pushed board can
@@ -86,18 +110,24 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
     ///   - tabRoot: the per-app root content for a given tab (Today hub /
     ///     Practice hub / Progress). Supplied by the app so the shell stays
     ///     game-agnostic.
+    ///   - bottomAccessory: content for `tabViewBottomAccessory` (#1024,
+    ///     design.md §2.4) — iOS/iPadOS only, see the file header. Decides
+    ///     its OWN visibility (empty / zero-height when there is nothing to
+    ///     show); this shell never conditionally attaches or detaches it.
     public init(
         selectedTab: Binding<AppTab>,
         path: @escaping (AppTab) -> Binding<[Route]>,
         routeFactory: any RouteFactory<Route>,
         settingsRoute: Route,
-        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
+        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot,
+        @ViewBuilder bottomAccessory: @escaping () -> Accessory
     ) {
         self._selectedTab = selectedTab
         self.path = path
         self.routeFactory = routeFactory
         self.settingsRoute = settingsRoute
         self.tabRoot = tabRoot
+        self.bottomAccessory = bottomAccessory
     }
 
     public var body: some View {
@@ -112,6 +142,13 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
             .tabViewStyle(.sidebarAdaptable)
             .tabViewSidebarFooter { sidebarSettingsRow }
             .environment(\.boardModalOverlayCoordinator, coordinator)
+            // #1024: iOS/iPadOS only — macOS has no `tabViewBottomAccessory`
+            // API at all (design.md §2.4.1 option A). Attached UNCONDITIONALLY;
+            // see the file header for why this must never be a conditional
+            // attach.
+            #if os(iOS)
+            .tabViewBottomAccessory { bottomAccessory() }
+            #endif
 
             // The overlay renders OUTSIDE the TabView so its own Resume / Close
             // stays live (#1019). `HoistedOverlayHost` — not this body — is what
@@ -165,6 +202,31 @@ public struct RootShellView<Route: Hashable, TabRoot: View>: View {
         let binding = path(selectedTab)
         guard binding.wrappedValue.last != settingsRoute else { return }
         binding.wrappedValue.append(settingsRoute)
+    }
+}
+
+// MARK: - No-accessory convenience (macOS + pre-#1024 call sites)
+
+public extension RootShellView where Accessory == EmptyView {
+    /// Same as the designated init, minus `bottomAccessory` — macOS (no
+    /// `tabViewBottomAccessory` API) and existing tests construct the shell
+    /// this way. `bottomAccessory` resolves to `{ EmptyView() }`, which the
+    /// `#if os(iOS)` guard in `body` never even calls on macOS.
+    init(
+        selectedTab: Binding<AppTab>,
+        path: @escaping (AppTab) -> Binding<[Route]>,
+        routeFactory: any RouteFactory<Route>,
+        settingsRoute: Route,
+        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
+    ) {
+        self.init(
+            selectedTab: selectedTab,
+            path: path,
+            routeFactory: routeFactory,
+            settingsRoute: settingsRoute,
+            tabRoot: tabRoot,
+            bottomAccessory: { EmptyView() }
+        )
     }
 }
 
