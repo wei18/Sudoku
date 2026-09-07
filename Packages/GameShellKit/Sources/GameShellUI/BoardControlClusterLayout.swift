@@ -89,17 +89,22 @@ public enum BoardControlClusterLayout {
         let chrome = verticalMargin * 2 + headerHeight + clusterHeight + stackSpacing * 3
         let boardSide = max(0, min(offered.width, offered.height - chrome))
 
-        let boardTop = verticalMargin + headerHeight + stackSpacing
+        // The cluster is bottom-anchored; everything between the header and it
+        // is the board's band, and the square centres inside that band (both
+        // games do: Minesweeper's grid centres in its fitted branch, #764, and
+        // Sudoku's square centres in a `.frame(maxHeight: .infinity)`).
+        // Centring can only move the square further from the header, never
+        // past the band's bottom edge — which is what keeps the rule below
+        // true no matter how tall the band gets.
+        let clusterTop = offered.height - verticalMargin - clusterHeight
+        let bandTop = verticalMargin + headerHeight + stackSpacing
+        let bandHeight = max(0, clusterTop - stackSpacing - bandTop)
         let board = CGRect(
             x: (offered.width - boardSide) / 2,
-            y: boardTop,
+            y: bandTop + (bandHeight - boardSide) / 2,
             width: boardSide,
             height: boardSide
         )
-
-        // The cluster is bottom-anchored: the flexible gap sits between the
-        // board and it, so it hugs the lower margin.
-        let clusterTop = offered.height - verticalMargin - clusterHeight
         var cursor = clusterTop
         var edit: CGRect?
         if let editGroupHeight {

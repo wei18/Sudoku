@@ -33,9 +33,14 @@ extension BoardView {
             // claim on the leftover height, so the trailing `Spacer` — not the
             // board — absorbs whatever the chrome below occupies; that is what
             // stops the board resizing when the cluster unmounts below.
+            // `.frame(maxHeight: .infinity)` lets the square centre in
+            // whatever vertical band is left, matching Minesweeper's board
+            // (whose grid already centres in its fitted branch, #764) and
+            // §3.4's ASCII, which shows breathing room above and below the
+            // board rather than a board welded under the header.
             boardWithOverlay
+                .frame(maxHeight: .infinity)
                 .layoutPriority(1)
-            Spacer(minLength: 0)
             // v2.3.5: banner sits between the grid and the control cluster,
             // suppressed while paused — pause is a moment of intentional quiet
             // (PauseOverlayView already dims the grid) and an ad on top of that
