@@ -2,6 +2,30 @@
 
 Running log during implementation. Post-hoc meeting log is separate.
 
+## PM Task A — sentinel-accessory render test (2026-09-08, post-merge follow-up)
+
+`Packages/GameShellKit/Tests/GameShellUITests/RootShellViewBottomAccessoryRenderTests.swift`
+(new, `#if os(iOS)`). Renders the real `RootShellView` with a sentinel
+`bottomAccessory` in a `UIHostingController`/`UIWindow`, proving OUR wiring
+(not just the #1029 API spike) actually threads content through
+`.tabViewBottomAccessory`.
+
+Dead end tried first, documented in the file: accessibility-identifier
+lookup. `.accessibilityIdentifier(_:)` on plain `Text` does not surface via
+`UIAccessibilityIdentification` or the `UIAccessibilityContainer` count/index
+methods when walked in-process in a headless XCTest host — confirmed via
+`-recursiveDescription`, which showed the identifier-less content view
+(`SwiftUI.CGDrawingView`) sitting directly inside a real, populated
+`SwiftUI.UIKitTabBarBottomAccessory` container.
+
+Final proof strategy: find the container by class name (contains
+"BottomAccessory") and assert it has real content — contrasted against an
+`EmptyView` accessory (separate test) to rule out "the container always has
+stray children" as a false-positive explanation. Both tests pass on iOS
+Simulator; `@MainActor` added to the polling helpers after a Main Thread
+Checker warning surfaced on the first pass (`.subviews` off-main after
+`Task.sleep`).
+
 ## Decisions locked by dispatch / gates (not re-litigated)
 
 - **Accessory path ships** — B-6 gate (#1029) PASSED (comment: real BannerView in accessory,
@@ -61,6 +85,21 @@ Running log during implementation. Post-hoc meeting log is separate.
   screen-contracts.md HOME-note + ATT-PRIMER section re-anchored with an explicit
   before/after reachability table.
 - B-6 cosmetic fix: `LiveAdMobBridge` banner background made `.clear` (pending commit).
+
+## Leader verification round (2026-09-08 PM)
+
+- CR dual-model: haiku APPROVE; sonnet APPROVE-WITH-NITS. 2 stale comments fixed
+  inline (4fe8be2c). MEDIUM gap (no accessory-through-shell render test) escalated
+  to PM (in-PR sentinel test vs fast-follow).
+- Sim evidence (iPhone 17 Pro, iOS 26.5, both apps): **empty accessory renders a
+  visible blank capsule** above the tab bar (su-01/su-02/ms-02 screenshots) — the
+  Remove-Ads-purchaser steady state. Escalated to PM with options (zero-height
+  experiment / `isEnabled:` needs iOS 26.1 > our 26.0 floor / accept).
+- **Loaded-banner evidence structurally blocked on sims**: AdGate fail-closed on
+  store error + CloudKit-Private live store + no iCloud on sims → gate never opens
+  in-app (pre-existing environmental, not a #1024 regression). #931 seam swaps
+  provider to Noop so it can't produce a real ad. Escalated with recommendation:
+  DEBUG-only `-uitest-open-ad-gate` (store-only fake, live provider).
 
 ## PM rulings (2026-09-08, sly-bunting — binding)
 
