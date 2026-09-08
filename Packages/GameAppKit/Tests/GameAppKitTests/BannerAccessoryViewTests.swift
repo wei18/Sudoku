@@ -32,6 +32,7 @@
 import Foundation
 import SwiftUI
 import Testing
+import UIKit
 import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
@@ -91,6 +92,73 @@ struct BannerAccessoryViewTests {
 
         await bannerAccessoryFireOnAdContext(attPrimer: attPrimer)
         #expect(attPrimer.isPrimerPresented == false, "hasOffered latch must prevent a second offer this session")
+    }
+
+    // MARK: - Order-pinning (PM condition, 2026-09-08)
+    //
+    // A shared, actor-isolated log that both the ATT "is not determined" check
+    // and the ad provider's load append to, IN THE ORDER THE REAL CALLS HAPPEN
+    // — event ORDER in the array is the proof, not a timing race against a
+    // poll loop (which `TodayTabHostTests` already found unreliable in this
+    // headless harness for exactly this actor-hop-inside-`.task` shape).
+    private actor OrderLog {
+        private(set) var events: [String] = []
+        func record(_ event: String) { events.append(event) }
+    }
+
+    /// A local `AdProvider` (not `FakeAdProvider`, which has no hook) that
+    /// records into `OrderLog` the moment `resolveGateAndLoad`'s reload step
+    /// actually reaches the provider.
+    private struct RecordingAdProvider: AdProvider {
+        let log: OrderLog
+        func initialize() async throws {}
+        var bannerStatus: AdBannerStatus { get async { .notInitialized } }
+        func refreshBanner() async throws { await log.record("adLoadStarted") }
+        func dispose(handle: AdBannerHandle) async {}
+    }
+
+    /// Renders the REAL `BannerAccessoryView` (its actual `BannerSlotView`
+    /// `.task`, unlike the tests above which call the free function directly)
+    /// with the gate OPEN, and awaits (bounded) until both events land.
+    @Test("order: the primer is checked before the reload coordinator ever loads an ad")
+    func primerFiresBeforeAnyAdLoad() async {
+        let log = OrderLog()
+        let attPrimer = ATTPrimerCoordinator(
+            isNotDetermined: { await log.record("primerChecked"); return true },
+            requestSystemPrompt: {}
+        )
+        let provider = RecordingAdProvider(log: log)
+        // Gate OPEN: 30 days post-launch, not purchased, never dismissed.
+        let gate = AdGate(store: FakeAdGateStateStore(
+            initial: AdGateState(firstLaunchAt: Date().addingTimeInterval(-30 * 86_400))
+        ))
+        let view = BannerAccessoryView(adProvider: provider, adGate: gate, attPrimer: attPrimer)
+        // A local `UIHostingController` in a key `UIWindow` — not the
+        // `SnapshotConfig.hostingView` helper (macOS-only `NSHostingView`,
+        // `#if canImport(AppKit)`, unavailable to this iOS-only file). A
+        // window is required for `.task` to actually run: an unattached
+        // hosting controller's view never enters the window hierarchy, so
+        // SwiftUI never mounts its body.
+        let controller = UIHostingController(rootView: view)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 80))
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+
+        // Bounded wait for both events — an iOS Simulator XCTest host boots a
+        // real `UIApplication` run loop, so `.task` pumps here even though the
+        // equivalent macOS headless harness (`TodayTabHostTests`, 4 diagnostic
+        // rounds) never resumed an actor-hop inside `.task`. Run via
+        // `xcodebuild test -destination 'platform=iOS Simulator,...'` (see the
+        // dispatch report for the exact command) — a macOS `swift test` run
+        // never reaches this file at all (`#if os(iOS)`).
+        var iterations = 0
+        while await log.events.count < 2, iterations < 300 {
+            try? await Task.sleep(for: .milliseconds(10))
+            iterations += 1
+        }
+
+        let events = await log.events
+        #expect(events == ["primerChecked", "adLoadStarted"], "primer must be checked before any ad load starts")
     }
 }
 
