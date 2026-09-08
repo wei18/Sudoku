@@ -67,6 +67,11 @@ extension SudokuAppComposition {
                 key: "com.wei18.sudoku.practice.lastDifficulty",
                 fallback: Difficulty.medium.rawValue
             )
+            // #1024: no `banner:` here any more — the shared
+            // `tabViewBottomAccessory` (design.md §2.4) covers this tab.
+            // `PracticeHubView`'s `banner:` param stays (defaults to
+            // `EmptyView()`) as the documented §2.4 tab-content-bottom
+            // fallback mechanism, kept reachable but unused.
             return AnyView(
                 PracticeHubView(
                     viewModel: PracticeHubViewModel(
@@ -74,8 +79,7 @@ extension SudokuAppComposition {
                         initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .medium,
                         persistDifficulty: { difficultyStore.save($0.rawValue) },
                         path: rootViewModel.pathBinding(for: .practice)
-                    ),
-                    banner: { LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    )
                 )
             )
         case .progress:
