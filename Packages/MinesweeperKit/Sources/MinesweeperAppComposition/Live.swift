@@ -136,8 +136,6 @@ extension MinesweeperAppComposition {
                     persistence: deps.persistence,
                     errorReporter: deps.errorReporter,
                     telemetry: deps.telemetry,
-                    adProvider: deps.adProvider,
-                    adGate: deps.adGate,
                     savedGameStore: savedGameStore,
                     dailyOverlayReading: dailyOverlayReading,
                     personalRecordStore: personalRecordStore,

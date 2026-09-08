@@ -339,8 +339,14 @@ public struct LiveRouteFactory: RouteFactory {
                     presentGameCenter: presentGameCenter,
                     appStoreID: appStoreID,
                     presentInviteFriends: presentInviteFriends,
-                    telemetryEmit: { event in Task { await telemetry?.observe(event) } },
-                    banner: { Self.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    telemetryEmit: { event in Task { await telemetry?.observe(event) } }
+                    // #1024: no `banner:` here any more — Settings is pushed
+                    // onto a tab's stack, so it stays inside the TabView and
+                    // the shared `tabViewBottomAccessory` (design.md §2.4)
+                    // already covers it. `SettingsView`'s `banner:` param
+                    // stays (defaults to `EmptyView()`) as the documented
+                    // §2.4 fallback — `Self.bannerSlot` is its ready-made
+                    // implementation.
                 )
             )
         }

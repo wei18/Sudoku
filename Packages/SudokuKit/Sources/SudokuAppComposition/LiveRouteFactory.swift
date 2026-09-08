@@ -310,8 +310,15 @@ public struct LiveRouteFactory: RouteFactory {
                     presentInviteFriends: presentInviteFriends,
                     telemetryEmit: { event in
                         Task { await telemetry.observe(event) }
-                    },
-                    banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    }
+                    // #1024: no `banner:` here any more — Settings is pushed
+                    // onto a tab's stack, so it stays inside the TabView and
+                    // the shared `tabViewBottomAccessory` (design.md §2.4)
+                    // already covers it. `SettingsView`'s `banner:` param
+                    // stays (defaults to `EmptyView()`) as the documented
+                    // §2.4 tab-content-bottom fallback, kept reachable but
+                    // unused — `Self.themedBanner` below is that fallback's
+                    // ready-made implementation.
                 )
             )
         }
@@ -369,6 +376,12 @@ public struct LiveRouteFactory: RouteFactory {
     /// Today/Practice tab-root builder — which has no `LiveRouteFactory`
     /// instance to call through, only the wired `GameDeps` bag — can reuse
     /// the exact same banner instead of re-deriving it.
+    ///
+    /// #1024: no production call site left (the shared `tabViewBottomAccessory`,
+    /// design.md §2.4, covers Today/Practice/Settings now) — kept as the
+    /// documented §2.4 tab-content-bottom fallback implementation, ready to
+    /// wire back in if the accessory path is ever reverted (see #1029's B-6
+    /// gate for the incompatibility this fallback exists to catch).
     @MainActor
     static func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
         BannerSlotView(

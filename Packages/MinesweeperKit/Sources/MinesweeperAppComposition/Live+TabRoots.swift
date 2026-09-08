@@ -16,7 +16,6 @@
 internal import SwiftUI
 internal import GameAppKit
 internal import GameShellUI
-internal import MonetizationCore
 internal import Persistence
 internal import MinesweeperPersistence
 internal import MinesweeperUI
@@ -35,8 +34,6 @@ extension MinesweeperAppComposition {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter,
         telemetry: Telemetry,
-        adProvider: any AdProvider,
-        adGate: AdGate,
         savedGameStore: MinesweeperSavedGameStore,
         dailyOverlayReading: (any MinesweeperDailyOverlayReading)?,
         personalRecordStore: MinesweeperPersonalRecordStore,
@@ -77,12 +74,16 @@ extension MinesweeperAppComposition {
                 key: "com.wei18.minesweeper.practice.lastDifficulty",
                 fallback: Difficulty.beginner.rawValue
             )
+            // #1024: no `banner:` here any more — the shared
+            // `tabViewBottomAccessory` (design.md §2.4) covers this tab.
+            // `MinesweeperPracticeHubView`'s `banner:` param stays (defaults
+            // to `EmptyView()`) as the documented §2.4 tab-content-bottom
+            // fallback mechanism, kept reachable but unused.
             return AnyView(
                 MinesweeperPracticeHubView(
                     path: rootViewModel.pathBinding(for: .practice),
                     initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
-                    onDifficultyChanged: { difficultyStore.save($0.rawValue) },
-                    banner: { LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    onDifficultyChanged: { difficultyStore.save($0.rawValue) }
                 )
             )
         case .progress:

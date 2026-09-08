@@ -117,9 +117,6 @@ struct RouteFactoryTests {
     /// .makeTabRoot` is what `GameConfig.makeTabRoot` calls for each of the
     /// three tabs. Pins that every tab yields a real (non-empty) view.
     @Test func makeTabRootYieldsViewForEachTab() {
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
         let rootViewModel = GameRootViewModel<AppRoute>(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
@@ -131,8 +128,6 @@ struct RouteFactoryTests {
                 persistence: FakePersistence(),
                 errorReporter: NoopErrorReporter(),
                 telemetry: Telemetry(sinks: []),
-                adProvider: FakeAdProvider(),
-                adGate: AdGate(store: adGateStore),
                 rootViewModel: rootViewModel
             )
             let dump = String(describing: view)

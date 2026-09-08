@@ -31,6 +31,12 @@ extension LiveRouteFactory {
     /// (unlike Sudoku's non-optional `themedBanner`) because `.settings` still
     /// calls through an instance whose `adProvider`/`adGate` are optional for
     /// preview/test callsites.
+    ///
+    /// #1024: no production call site left (the shared `tabViewBottomAccessory`,
+    /// design.md §2.4, covers Today/Practice/Settings now) — kept as the
+    /// documented §2.4 tab-content-bottom fallback implementation, ready to
+    /// wire back in if the accessory path is ever reverted (see #1029's B-6
+    /// gate for the incompatibility this fallback exists to catch).
     @MainActor
     // #851: was relying on `BannerSlotView`'s bare default (`.clear`) — the
     // #468 Epic 5 theming note above already flagged this as unfinished

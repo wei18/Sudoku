@@ -16,7 +16,6 @@
 internal import SwiftUI
 internal import GameAppKit
 internal import GameShellUI
-internal import MonetizationCore
 internal import Persistence
 internal import SudokuPersistence
 internal import SudokuUI
@@ -36,8 +35,6 @@ extension SudokuAppComposition {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter,
         telemetry: Telemetry,
-        adProvider: any AdProvider,
-        adGate: AdGate,
         rootViewModel: GameRootViewModel<AppRoute>
     ) -> AnyView {
         switch tab {
