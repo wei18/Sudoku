@@ -105,6 +105,12 @@ internal final class LiveAdMobBridge: AdMobBridge {
             let view = BannerView(adSize: AdSizeBanner)
             view.adUnitID = bannerAdUnitID
             view.rootViewController = rootVC
+            // #1024 (B-6 bonus finding, #1029): the SDK's own opaque fill
+            // shows through as black side slivers when the accessory
+            // stretches this view past the fixed 320×50 creative's own
+            // bounds (`.expanded` capsule). Clear lets the SwiftUI-side
+            // themed background (`BannerAccessoryView`) letterbox it instead.
+            view.backgroundColor = .clear
             return view
         }
 

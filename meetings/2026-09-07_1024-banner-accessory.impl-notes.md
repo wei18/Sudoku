@@ -40,9 +40,27 @@ Running log during implementation. Post-hoc meeting log is separate.
 
 - (2026-09-07) Explorer mapping banner wiring; implementation dispatched to sonnet developer
   after map returns. Subagent write probe: PASS.
-- B-6 bonus finding to handle in feature: 320×50 creative leaves black side slivers in the
-  .expanded capsule → letterbox/background-fill or adaptive banner sizing. Decision TBD
-  after reading LiveAdMobBridge's current sizing.
+- B-6 bonus finding: 320×50 creative leaves black side slivers in the .expanded capsule.
+  DECIDED + implemented: `LiveAdMobBridge.loadBanner()` sets the native `BannerView
+  .backgroundColor = .clear` so `BannerAccessoryView`'s themed SwiftUI background
+  letterboxes the gap instead of the SDK's own opaque fill. One-line, low-risk; full visual
+  confirmation is the Leader's idb screenshot pass (sim access is PM's per the ruling below).
+
+## Final status (2026-09-08) — all phases complete, pushed
+
+- Phase 1 (b527c3d9): RootShellView generic `bottomAccessory` param, `#if os(iOS)` attach.
+- Phase 2 (637b18eb): `BannerAccessoryView` + composition wiring, `TodayTabHost` simplified.
+- Phase 3 (debad990 + 6dfaed11): both apps' Practice/Settings inline `banner:` closures
+  retired; orphaned `adProvider`/`adGate` params cleaned from both `makeTabRoot`s; every
+  broken test call site (TodayTabHost's simplified init, `makeTabRoot` signature) fixed;
+  retired banner-visible snapshot fixtures deleted (surface moved to BannerAccessoryViewTests).
+- Order-pinning test (c7028953): `BannerAccessoryViewTests.primerFiresBeforeAnyAdLoad` —
+  real render + shared event log, proves primer-before-load empirically on iOS Simulator
+  (confirmed the macOS headless `.task`-actor-hop limitation does NOT apply there).
+- Docs (fb102021): design.md §2.4/§2.4.1 AS-BUILT notes + §3.6.1 re-anchor note;
+  screen-contracts.md HOME-note + ATT-PRIMER section re-anchored with an explicit
+  before/after reachability table.
+- B-6 cosmetic fix: `LiveAdMobBridge` banner background made `.clear` (pending commit).
 
 ## PM rulings (2026-09-08, sly-bunting — binding)
 
