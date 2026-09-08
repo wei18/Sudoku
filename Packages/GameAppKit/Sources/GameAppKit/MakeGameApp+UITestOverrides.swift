@@ -19,9 +19,22 @@ internal import Persistence
 /// hook (`repollGate()`) deterministically. See `UITestFakeSeams.swift` for
 /// why a THROWING fake (rather than a plain state flip) is required to defeat
 /// `AdGate.currentState()`'s caching.
+///
+/// #1024 (PM-approved): under `-uitest-open-ad-gate` (DEBUG only, and only
+/// when `fakeAdGateRepoll` is NOT also present), swaps in
+/// `UITestAlwaysOpenAdGateStateStore` instead — a narrower fake than the
+/// repoll one above; see `UITestLaunchArg.openAdGate`'s doc for why this
+/// leaves `resolveAdProvider` (below) completely untouched.
 @MainActor
 func resolveAdGateStore(fallback: any AdGateStateStore) -> any AdGateStateStore {
     #if DEBUG
+    // #1024: checked BEFORE the repoll guard below (untouched from #931) so
+    // `-uitest-fake-ad-gate-repoll` keeps taking priority if both args are
+    // ever passed together, and so that guard's own lines stay byte-identical.
+    if ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.openAdGate),
+       !ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.fakeAdGateRepoll) {
+        return UITestAlwaysOpenAdGateStateStore()
+    }
     guard ProcessInfo.processInfo.arguments.contains(UITestLaunchArg.fakeAdGateRepoll) else {
         return fallback
     }

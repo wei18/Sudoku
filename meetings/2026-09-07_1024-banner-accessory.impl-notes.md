@@ -26,6 +26,30 @@ Simulator; `@MainActor` added to the polling helpers after a Main Thread
 Checker warning surfaced on the first pass (`.subviews` off-main after
 `Task.sleep`).
 
+## PM Task B — `-uitest-open-ad-gate` launch arg (2026-09-08, post-merge follow-up)
+
+New DEBUG-only `UITestLaunchArg.openAdGate` ("-uitest-open-ad-gate") +
+`UITestAlwaysOpenAdGateStateStore` (UITestFakeSeams.swift) + a new branch in
+`resolveAdGateStore` (MakeGameApp+UITestOverrides.swift), inserted BEFORE the
+existing `-uitest-fake-ad-gate-repoll` guard so that guard's own lines stay
+byte-identical (verified via `git diff` scoped to the function — zero changes
+to the repoll branch's text). `resolveAdProvider` is not touched at all —
+confirmed both by the diff (function doesn't appear in it) and by a runtime
+test (`resolveAdProviderStillReturnsMakeLiveResult`) proving it still returns
+whatever `makeLive()` produces.
+
+Release-unreachability proof: `swift build -c release` succeeds (a leaked
+reference to a DEBUG-only symbol from outside `#if DEBUG` would fail to
+compile), AND `strings` over every compiled `.o` in the Release
+`GameAppKit.build` directory returns ZERO hits for `uitest-` (not just this
+one arg — the whole family), confirming stripped, not just visually
+`#if DEBUG`-fenced.
+
+New tests: `UITestAlwaysOpenAdGateStateStoreTests.swift` (3 tests) — the fake
+run through a REAL `AdGate` actually opens `shouldShowBanner` (not just
+"looks open on paper"), plus the `resolveAdProvider`-untouched proof above.
+All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
+
 ## Decisions locked by dispatch / gates (not re-litigated)
 
 - **Accessory path ships** — B-6 gate (#1029) PASSED (comment: real BannerView in accessory,
