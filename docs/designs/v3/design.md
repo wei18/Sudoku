@@ -131,6 +131,19 @@ CK 失敗時**不顯示 badge**(不是顯示 0)。
 ⚠️ **AdMob banner 是 `UIViewRepresentable`,包進 accessory 的相容性未驗證**(U-10)。
 **降級備案:不相容則退回 tab 內容底部**,不阻擋任何其他設計。**變現路徑不卡在未驗證 API 上。**
 
+**【AS-BUILT,#1029 B-6 → #1024,2026-09-08】** U-10 已驗證 **PASS**(#1029 B-6
+spike:真實 `BannerView` 在 accessory 內非零尺寸渲染、`.expanded`↔`.inline`
+切換存活、impression 正常),accessory 路徑照建;降級備案**沒有啟用**,但保留
+在 `SudokuAppComposition.themedBanner` / `MinesweeperKit`'s `LiveRouteFactory
+.bannerSlot` 裡隨時可接回(#1024 doc comment 有標)。實作:
+`RootShellView`(GameShellKit)以泛型 `bottomAccessory` ViewBuilder 收內容,
+`.tabViewBottomAccessory { … }` 在 `#if os(iOS)` 內**無條件**掛上(不做條件式
+掛載/卸載——那是 #1020 macOS unmount 傷疤同一類地雷)。是否顯示由內容自己決定
+(gate 關就渲染空/零高度),不是由「掛不掛這個 modifier」決定。
+`GameAppKit.BannerAccessoryView` 是實際內容,包住既有的 `BannerSlotView`,
+一份共用 banner 覆蓋 Today/Practice/Progress/Settings(Settings 是 push 進
+tab 的 stack,還在 TabView 裡,所以也吃得到)。
+
 #### 2.4.1 ⚠️ macOS 沒有 tab accessory —— D18 在 macOS 缺承載機制
 
 `tabViewBottomAccessory` 只到 iOS / iPadOS / Mac Catalyst,**macOS 原生沒有**。
@@ -143,6 +156,14 @@ D18(banner 覆蓋範圍是 feature)在 macOS 因此沒有落點。**方案(擇�
 | C | 放在 sidebar 底部 | sidebar 是功能層,塞廣告違反 §4 的層歸屬 |
 
 **推薦 A**,理由是 B 與盤面滿版衝突、C 違反層歸屬 —— 兩者都要犧牲 3.0 的核心結構。
+
+**【AS-BUILT,#1024,2026-09-08】** U-13 裁定 **A(定案)**,B、C 沒有實作
+(連 dead code 都沒留)。結構性排除:`.tabViewBottomAccessory` 呼叫本身只存在
+`RootShellView.swift` 一處、包在 `#if os(iOS)` 裡 —— macOS binary 裡完全不會
+出現這支 API(`rg "tabViewBottomAccessory"` 驗證過,不是 runtime 判斷)。
+`MakeGameApp+Helpers.swift` 的 `makeBottomAccessory` 在 macOS 那個 `#else`
+分支只回 `EmptyView()`,連 `AdProvider`/`AdGate`/`BannerSlotView` 這些型別
+都不會在 macOS 建置裡被建構。
 
 ---
 
@@ -309,6 +330,14 @@ re-view、Sudoku loader 的 `.completedRedirect`、MS Tier2 guard 的 `.resolved
 語意等價(仍然是「第一個廣告脈絡」),且既有行為全部保留:不擋 Today 互動、
 一次性 `hasOffered` latch、decline 後不再提供、`.notDetermined` 才出現。
 → 契約總表補一條 **BREAK**(C-33)。
+
+**【AS-BUILT,#1024,2026-09-08】** C-33 再錨一次:banner 本體移進 §2.4 的
+`tabViewBottomAccessory` 後,ATT 觸發點跟著從「Today tab 自己的 banner slot」
+(`TodayTabHost`)搬到「整個 shell 共用的那一個 accessory banner slot」
+(`BannerAccessoryView`)。語意仍然等價(第一個廣告脈絡、`hasOffered` 一次性、
+不擋互動),但**可及性變寬**:accessory 是 TabView 的 chrome,不是任一 tab 的
+內容,所以不再要求「使用者曾經看過 Today」才觸發 —— 哪個 tab 在前景都算數。
+詳細 before/after 見 `docs/screen-contracts.md` ATT-PRIMER 章節。
 
 ---
 

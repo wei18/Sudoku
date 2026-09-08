@@ -2,17 +2,21 @@
 
 **Status:** AS-BUILT · **Date:** 2026-07-05 · **main @** `9d6bf71`
 
-> ⚠️ **Partially superseded by 3.0 (#1020, 2026-08-25).** The HOME screen
-> (`GameHomeView` / `GameHomeViewModel` / `HomeScreen`), the hand-authored
-> sidebar (`SidebarItem` / `NavigationStackHost`) and the `home` / `daily` /
-> `practice` / `stats` routes no longer exist. The root is a `sidebarAdaptable`
-> TabView (`GameShellUI/RootShellView.swift`) with one path per tab
-> (`GameAppKit/GameRootViewModel.swift`); ATT-PRIMER's entry point is the Today
-> tab's banner slot (`GameAppKit/TodayTabHost.swift`, C-33); the HOME
-> Leaderboard card is gone (C-35) and Progress gained an `Achievements` row
+> ⚠️ **Partially superseded by 3.0 (#1020, 2026-08-25; banner re-anchored again
+> by #1024, 2026-09-08).** The HOME screen (`GameHomeView` / `GameHomeViewModel`
+> / `HomeScreen`), the hand-authored sidebar (`SidebarItem` / `NavigationStackHost`)
+> and the `home` / `daily` / `practice` / `stats` routes no longer exist. The
+> root is a `sidebarAdaptable` TabView (`GameShellUI/RootShellView.swift`) with
+> one path per tab (`GameAppKit/GameRootViewModel.swift`); the banner (and
+> ATT-PRIMER's entry point riding on it, C-33) lives in the shared
+> `tabViewBottomAccessory` (`GameAppKit/BannerAccessoryView.swift`, design.md
+> §2.4) — covering Today/Practice/Progress/Settings from ONE instance instead
+> of `GameAppKit/TodayTabHost.swift`'s Today-only slot; macOS has no accessory
+> and shows no banner at all (§2.4.1). The HOME Leaderboard card is gone
+> (C-35) and Progress gained an `Achievements` row
 > (`GameAppKit/AchievementsRow.swift`, C-36); resume-pill refresh follows
 > design.md §3.6.2 (C-34 / N-AB). Current model: `docs/designs/v3/design.md`
-> §2.1–§2.3, §3.6, §9.4. Rows below that cite the retired screens are kept as
+> §2.1–§2.4, §3.6, §9.4. Rows below that cite the retired screens are kept as
 > the pre-3.0 as-built record until this doc is regenerated for 3.0.
 **Companion to:** `docs/navigation-flows.md` (nav model + flow chains + negative
 flows references the screen IDs defined here). This doc supersedes the flow
@@ -1293,13 +1297,33 @@ GC row entry point: `App/SudokuE2ETests/SudokuE2ETests.swift`
 
 ## ATT-PRIMER
 
-**Entry points (3.0, C-33 BREAK — #1020):** first ad-relevant moment — the
-**Today tab's** banner slot (`GameAppKit/TodayTabHost.swift`, `onAdContext`)
-calls `attPrimer.maybePresentOnAdContext()` (i.e., the **first Today banner
-load**, not app launch). Pre-3.0 this was `GameHomeView`'s banner slot; HOME
-is retired. One-offer-per-launch latch (`hasOffered`) unchanged. **Does not
-block Today interaction** — the tab is already rendered and tappable when
-this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).
+**Entry points (3.0, C-33 BREAK — #1020, re-anchored again by #1024):** first
+ad-relevant moment — the shared banner accessory's slot
+(`GameAppKit/BannerAccessoryView.swift`, `onAdContext`) calls
+`attPrimer.maybePresentOnAdContext()` (i.e., the **first accessory banner
+load**, not app launch). Pre-3.0 this was `GameHomeView`'s banner slot; #1020
+moved it to the Today tab's own slot (`GameAppKit/TodayTabHost.swift`); #1024
+moved it again, from Today-only to the ONE shared `tabViewBottomAccessory`
+banner that now covers every tab. One-offer-per-launch latch (`hasOffered`)
+unchanged — same `ATTPrimerCoordinator`, only the call site moved.
+
+**Reachability change (#1024, before vs. after):**
+
+| | Before (#1020) | After (#1024) |
+|---|---|---|
+| Trigger surface | Today tab's OWN `BannerSlotView` (`TodayTabHost`) — Practice/Settings had independent `BannerSlotView`s with no `onAdContext` wired | ONE `BannerSlotView` for the whole shell (`BannerAccessoryView`), the only one wired to `onAdContext` |
+| Gated on | Visiting/rendering the Today tab at least once | Nothing tab-specific — the accessory is part of the root `TabView` chrome, mounted once regardless of which tab is initially selected |
+| Practical effect | A user who navigated straight to Practice/Progress without visiting Today never triggered the primer until they did | Fires as soon as the shared accessory's gate resolves, independent of which tab is on screen (in practice still effectively "first frame", since Today is `AppTab`'s default selection) |
+
+Order-pinning is unchanged and still enforced by the same, untouched
+`BannerSlotView.resolveGateAndLoad` (AppMonetizationKit): `onAdContext` always
+fires before the reload coordinator's actual ad load — see
+`GameAppKitTests/BannerAccessoryViewTests.primerFiresBeforeAnyAdLoad` (iOS
+Simulator only; the equivalent macOS headless harness cannot pump an
+actor-hop inside `.task`, documented on that suite).
+
+**Does not block interaction** — the shell is already rendered and tappable
+when this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).
 
 **Code:** `AppMonetizationKit/Sources/MonetizationUI/ATTPrimerSheet.swift`,
 `ATTPrimerCoordinator.swift`.
