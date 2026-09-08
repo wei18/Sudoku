@@ -30,9 +30,10 @@ extension BoardView {
             // #1022: full-bleed — no horizontal padding between this square
             // and the screen edge, so the cell side is the offered width / 9
             // (design.md §3.4). `.layoutPriority(1)` gives the board first
-            // claim on the leftover height, so the trailing `Spacer` — not the
-            // board — absorbs whatever the chrome below occupies; that is what
-            // stops the board resizing when the cluster unmounts below.
+            // claim on the leftover height and `.frame(maxHeight: .infinity)`
+            // lets it absorb the slack, so when the cluster unmounts on
+            // pause/completion the freed space goes to the board's own band
+            // rather than resizing the square (which is already width-bound).
             // `.frame(maxHeight: .infinity)` lets the square centre in
             // whatever vertical band is left, matching Minesweeper's board
             // (whose grid already centres in its fitted branch, #764) and

@@ -509,13 +509,15 @@ public struct MinesweeperBoardView: View {
                 .padding(.horizontal, theme.spacing.medium)
             // #1022: full-bleed — no horizontal padding between the grid and
             // the screen edge (design.md §3.4). `.layoutPriority(1)` gives the
-            // board first claim on the leftover height so the trailing
-            // `Spacer` — not the board — absorbs whatever the chrome below
-            // occupies; that is what stops the board resizing when the cluster
-            // unmounts below.
+            // board first claim on the leftover height, so when the cluster
+            // unmounts on pause/completion the freed space goes to the board's
+            // own band instead of resizing the grid.
+            //
+            // No `Spacer` here: `boardGrid` already expands into the slack, so
+            // one would resolve to zero height while still costing a
+            // `compactStackGap` — dead weight that only shrinks the board.
             boardGrid
                 .layoutPriority(1)
-            Spacer(minLength: 0)
             bannerSlot
                 .padding(.horizontal, theme.spacing.medium)
             controlCluster

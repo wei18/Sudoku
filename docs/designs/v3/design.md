@@ -472,7 +472,14 @@ pause overlay 是 `ultraThinMaterial`(standard material,非 Liquid Glass),不構
   是「融合距離」而非內距)
 - **不覆寫標準間距**:「Prefer to use **standard spacing metrics** instead of overriding them」→ 叢集內距引用系統標準,不寫死
 - **分組原則用官方的**:「Group items that perform similar actions or affect the same part of the interface, and maintain consistent groupings and placement across platforms」→ **輸入組**(數字鍵 / 模式切換)與**編輯組**(undo / redo / 鉛筆),兩 app 一致、三平台一致
-- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。兩組各有自己的背景,同屬一個 `GlassEffectContainer`
+- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。
+- ⚠️ **更正(#1022 實作):每一組各自一個 `GlassEffectContainer`,不是兩組共用一個。**
+  前一版寫「兩組…同屬一個 `GlassEffectContainer`」,實作後改掉,理由是 **B-7(#1029)驗證的合併行為**:
+  容器內的形狀融合是**鄰近度驅動**的(gap 12 就開始連成一片,gap 6/2 併成一顆膠囊)。
+  兩組放同一個容器,「文字與圖示不共用背景」就變成**取決於兩組之間的間距**——
+  哪天有人調間距、或 Dynamic Type 把某一組撐高,兩組就會自己黏成一片,而且沒有任何測試會擋。
+  各自一個容器,不相黏是**結構保證**,與間距無關。#1022 spec item 3 也是這樣寫的。
+  (代價:失去跨組的形狀聯動動畫。可接受——本來就不該聯動。)
 - **【官方】每個圖示按鈕必須有 accessibility label**:「**Provide an accessibility label for every icon.** Regardless of what you show in the interface, always specify an accessibility label for each icon.」
 - **圓角同心**:官方要求「using rounded shapes that are **concentric to their containers**」【官方】;**但「內圓角 = 外圓角 − 內距」這條公式是【我方推論】**,官方沒有給公式
 - 官方**沒給**「一組最多幾項」的數字 → **不自訂上限**

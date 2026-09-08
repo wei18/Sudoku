@@ -45,6 +45,10 @@ struct BoardControlClusterLayoutTests {
             verticalMargin: 16,
             headerHeight: 44,
             stackSpacing: 16,
+            // header | board | cluster — the arrangement both compact layouts
+            // build when no banner is showing. The banner adds one more gap and
+            // only shrinks the board, which the height sweeps already cover.
+            stackGapCount: 2,
             editGroupHeight: editGroupHeight,
             inputGroupHeight: inputGroupHeight,
             groupSpacing: 8
@@ -123,6 +127,86 @@ struct BoardControlClusterLayoutTests {
         #expect(crushed.board.height == 0)
     }
 
+    // MARK: - Empirical anchor
+
+    // Without this, the suite is self-consistent algebra: `boardSide` and the
+    // board band are the same quantity restated, so `board.maxY <= clusterTop`
+    // holds for ANY inputs and cannot fail. These are real frames read off a
+    // running app — iPhone 17 Pro, Sudoku Debug build of this branch, captured
+    // with `idb ui describe-all` (#1022's PR evidence) — so the model is
+    // checked against something outside itself.
+    //
+    // It has already earned its keep once: fed the measured chrome WITHOUT
+    // safe-area terms the model predicted a 402pt board where the device
+    // renders 392.5pt. Adding `safeAreaTop`/`safeAreaBottom` brought the
+    // cluster's top to the measured 539.0 exactly and the board to within
+    // 4.5pt. That residual is real and not fudged: the header's rendered
+    // height is not exactly the 44pt nominal fed here, and the board centres
+    // inside its band, so a few points of slack land in the square rather than
+    // the gaps. The tolerance is set to 6pt — tight enough that a genuine
+    // layout regression (a re-introduced 16pt inset moves the board by 32)
+    // fails it, loose enough not to break on a 1pt metric change.
+
+    private enum Measured {
+        static let screen = CGSize(width: 402, height: 874)
+        static let board = CGRect(x: 4.75, y: 137.75, width: 392.5, height: 392.5)
+        static let editGroup = CGRect(x: 16, y: 539, width: 370, height: 58)
+        static let inputGroup = CGRect(x: 16, y: 598, width: 370, height: 226)
+        static let safeAreaTop: CGFloat = 59
+        static let safeAreaBottom: CGFloat = 34
+        static let headerHeight: CGFloat = 44
+        static let groupSpacing = inputGroup.minY - editGroup.maxY
+    }
+
+    @Test("The measured on-device frames are themselves disjoint")
+    func measuredDeviceFramesAreDisjoint() {
+        let cells = BoardControlClusterLayout.cellRects(in: Measured.board, rows: 9, columns: 9)
+        #expect(cells.count == 81)
+        for cell in cells {
+            #expect(!cell.intersects(Measured.editGroup))
+            #expect(!cell.intersects(Measured.inputGroup))
+        }
+        #expect(!Measured.editGroup.intersects(Measured.inputGroup))
+        // Cell PITCH — the board extent divided by 9 — is 43.61pt. Note this
+        // is NOT the 44.17pt that `idb ui describe-all` reports as each cell's
+        // frame width: the reported hit rects are ~0.55pt wider than the pitch
+        // and therefore overlap slightly, which is fine for touch targets but
+        // makes the AX number the wrong one to quote as "the cell size".
+        // 43.61 clears §3.4's 43.2 figure and sits just under the HIG 44pt
+        // default, exactly as §3.4's ruling anticipates.
+        #expect(abs(cells[0].width - 43.61) < 0.05)
+        // And a second honest point the measurement forces: on a real 402pt
+        // device the board spans 392.5, NOT 402 — a 4.75pt gap each side. The
+        // layout applies no horizontal inset (that is what #1022 removed), but
+        // with real safe areas the square is still bound by HEIGHT by ~9.5pt,
+        // so it stops short of the edges. "Full-bleed" describes the layout
+        // rule, not a guarantee that every device renders edge-to-edge.
+        #expect(Measured.board.minX > 0)
+        #expect(Measured.board.width < Measured.screen.width)
+    }
+
+    @Test("The model reproduces the measured device layout")
+    func modelMatchesMeasuredDeviceLayout() {
+        let bands = BoardControlClusterLayout.bands(
+            offered: Measured.screen,
+            verticalMargin: 16,
+            headerHeight: Measured.headerHeight,
+            stackSpacing: 16,
+            stackGapCount: 2,
+            safeAreaTop: Measured.safeAreaTop,
+            safeAreaBottom: Measured.safeAreaBottom,
+            editGroupHeight: Measured.editGroup.height,
+            inputGroupHeight: Measured.inputGroup.height,
+            groupSpacing: Measured.groupSpacing
+        )
+        // The cluster's top is a hard prediction — no tolerance needed.
+        #expect(bands.editGroup?.minY == Measured.editGroup.minY)
+        // The board side carries the documented residual.
+        #expect(abs(bands.board.width - Measured.board.width) <= 6)
+        // Ordering must match reality, not merely be internally consistent.
+        #expect(bands.board.maxY <= Measured.editGroup.minY)
+    }
+
     // MARK: - Two groups, never one
 
     @Test("The two glass groups are disjoint bands, never one merged surface")
@@ -146,14 +230,29 @@ struct BoardControlClusterLayoutTests {
 
     @Test("Full-bleed cell side is the screen width / 9, with no inset")
     func fullBleedCellSideMatchesTheTable() {
+        for width in Self.breakpointWidths {
+            #expect(
+                BoardControlClusterLayout.fullBleedCellSide(screenWidth: width, columns: 9) == width / 9
+            )
+        }
+    }
+
+    @Test("Where the board IS width-bound, the cell side clears §3.4's table")
+    func widthBoundCellSidesClearTheTable() {
         // §3.4's table quotes 35.1 / 43.2 / 47.3, derived as (W − 4) / 9 — it
-        // deducts a 4pt outer frame ("扣除外框", 附錄 B). This board has no such
-        // frame (only per-cell hairlines), so the real full-bleed side is W / 9,
-        // which lands at or above every figure in the table. See #1022's PR body.
-        let expected: [CGFloat] = [320.0 / 9, 393.0 / 9, 430.0 / 9]
-        for (width, side) in zip(Self.breakpointWidths, expected) {
-            #expect(BoardControlClusterLayout.fullBleedCellSide(screenWidth: width, columns: 9) == side)
-            #expect(side >= (width - 4) / 9)
+        // deducts a 4pt outer frame ("扣除外框", 附錄 B) that this board does not
+        // have (only per-cell hairlines), so the real side is W / 9 and lands
+        // above the table figure.
+        //
+        // 320 is deliberately EXCLUDED: iPhone SE's board is height-bound, not
+        // width-bound (measured 26.1pt, §3.4 as corrected in this PR), so
+        // comparing W/9 against the table there would assert something the
+        // device never renders — and `W/9 >= (W−4)/9` is arithmetically true
+        // for every W, so it would pass while proving nothing. The real SE fix
+        // is a shorter cluster variant, #1055.
+        for width in [CGFloat(393), CGFloat(430)] {
+            let side = BoardControlClusterLayout.fullBleedCellSide(screenWidth: width, columns: 9)
+            #expect(side > (width - 4) / 9)
         }
     }
 }

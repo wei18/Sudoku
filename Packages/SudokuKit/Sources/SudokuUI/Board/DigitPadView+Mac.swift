@@ -151,4 +151,5 @@ extension DigitPadView {
         }
         .buttonStyle(.glass)
         .accessibilityLabel("Erase")
-    }}
+    }
+}
