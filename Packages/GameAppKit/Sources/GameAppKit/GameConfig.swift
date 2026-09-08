@@ -208,9 +208,10 @@ public struct GameConfig<Route: Hashable & Sendable> {
     /// its own daily hub / practice hub / statistics screen without GameAppKit
     /// naming any of them.
     ///
-    /// `.today`'s content is additionally wrapped by `TodayTabHost` (resume pill
-    /// + banner slot + the C-33 ATT anchor), so a game supplies only the middle
-    /// of that sandwich.
+    /// `.today`'s content is additionally wrapped by `TodayTabHost` (resume
+    /// pill only since #1024 — banner + C-33 ATT anchor live in the shell's
+    /// `tabViewBottomAccessory`), so a game supplies only the middle of that
+    /// sandwich.
     ///
     /// Replaces the retired home-modes / make-home / sidebar-items trio: with
     /// `sidebarAdaptable` generating its own chrome from `AppTab`, there is no

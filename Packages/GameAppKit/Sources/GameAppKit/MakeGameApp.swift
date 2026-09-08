@@ -324,9 +324,9 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // #1020: per-tab root content. The game builds each tab's screen; the Today
     // tab is additionally wrapped in the shared `TodayTabHost`, which carries
-    // the resume pill, the themed banner slot, and — riding that slot's first
-    // load — the ATT primer anchor (C-33, re-anchored from the retired
-    // HOME view's banner slot). The other two tabs get the game's content
+    // the resume pill (#1024: the banner slot and the C-33 ATT anchor moved
+    // out of it, into `BannerAccessoryView` / the shell-level
+    // `tabViewBottomAccessory`). The other two tabs get the game's content
     // unwrapped.
     //
     // `chromedTabRoots` runs this builder exactly ONCE per tab, at composition
