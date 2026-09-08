@@ -175,6 +175,13 @@ struct BoardControlClusterLayoutTests {
         // 43.61 clears §3.4's 43.2 figure and sits just under the HIG 44pt
         // default, exactly as §3.4's ruling anticipates.
         #expect(abs(cells[0].width - 43.61) < 0.05)
+        // …and that measured pitch clears §3.4's figure for this device class
+        // (43.2pt). This is the comparison that carries meaning: it is the
+        // board the device actually rendered, not a restatement of W/9. Note
+        // §3.4 itself predicts this class does NOT reach the HIG 44pt default
+        // ("仍未達,差距 3.9→0.8pt"); only Pro Max does ("首次跨過").
+        #expect(cells[0].width > 43.2)
+        #expect(cells[0].width < 44)
         // And a second honest point the measurement forces: on a real 402pt
         // device the board spans 392.5, NOT 402 — a 4.75pt gap each side. The
         // layout applies no horizontal inset (that is what #1022 removed), but
@@ -228,31 +235,17 @@ struct BoardControlClusterLayoutTests {
 
     // MARK: - Full-bleed cell side (design.md §3.4's table)
 
+    /// Pins the helper's contract only — `fullBleedCellSide` is a pure function
+    /// of width, so this is an identity and is labelled as one. It CANNOT catch
+    /// a re-introduced board inset: the app's real cell size is checked against
+    /// §3.4's table in `measuredDeviceFramesAreDisjoint`, on the measured
+    /// device geometry, which is the only place that comparison means anything.
     @Test("Full-bleed cell side is the screen width / 9, with no inset")
-    func fullBleedCellSideMatchesTheTable() {
+    func fullBleedCellSideIsWidthOverColumns() {
         for width in Self.breakpointWidths {
             #expect(
                 BoardControlClusterLayout.fullBleedCellSide(screenWidth: width, columns: 9) == width / 9
             )
-        }
-    }
-
-    @Test("Where the board IS width-bound, the cell side clears §3.4's table")
-    func widthBoundCellSidesClearTheTable() {
-        // §3.4's table quotes 35.1 / 43.2 / 47.3, derived as (W − 4) / 9 — it
-        // deducts a 4pt outer frame ("扣除外框", 附錄 B) that this board does not
-        // have (only per-cell hairlines), so the real side is W / 9 and lands
-        // above the table figure.
-        //
-        // 320 is deliberately EXCLUDED: iPhone SE's board is height-bound, not
-        // width-bound (measured 26.1pt, §3.4 as corrected in this PR), so
-        // comparing W/9 against the table there would assert something the
-        // device never renders — and `W/9 >= (W−4)/9` is arithmetically true
-        // for every W, so it would pass while proving nothing. The real SE fix
-        // is a shorter cluster variant, #1055.
-        for width in [CGFloat(393), CGFloat(430)] {
-            let side = BoardControlClusterLayout.fullBleedCellSide(screenWidth: width, columns: 9)
-            #expect(side > (width - 4) / 9)
         }
     }
 }

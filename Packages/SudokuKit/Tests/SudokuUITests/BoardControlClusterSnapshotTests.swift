@@ -11,6 +11,26 @@
 // content fixture, and `strict content / tolerant board` is already the repo's
 // convention — without turning the AA-heavy board tests strict and flaky.
 //
+// Dark-mode scope, measured rather than assumed. A `_dark` variant is only
+// worth recording where the fixture actually contains theme-token ink, because
+// that is the only ink this capture path flips: `Color(light:dark:)` resolves
+// through SwiftUI's `\.colorScheme`, whereas a system default label colour
+// resolves from the AppKit drawing appearance, which `cacheDisplay` does not
+// apply. Measured on these exact fixtures:
+//
+//   compact light vs dark   5998 VISIBLE differing px, ink (20,22,25) → (239,239,242)
+//   rail    light vs dark   0 visible (only alpha ≤7 antialiasing residue)
+//   MS      light vs dark   0 visible (same)
+//
+// The compact row carries always-on theme ink (the #855 F-5 conditional
+// icon colours), so its dark variant is real coverage and is kept. The rail
+// and Minesweeper fixtures contain NO theme ink in any state this path can
+// capture — their only `foregroundStyle` uses sit in the PROMINENT branches
+// (armed digit / notes-on / flag mode), and prominent means tinted, and tinted
+// glass blanks the whole capture. So a dark variant there cannot ever differ,
+// and both were deleted rather than left advertising coverage that does not
+// exist. Dark appearance of the rail and of MS's toggle is simulator-verified.
+//
 // Scope note: these render the DEFAULT cluster state deliberately. A tinted
 // glass control blanks this entire capture path (see
 // `SnapshotBlankBaselineGuardTests`), so the armed-digit and notes-on states
@@ -61,18 +81,6 @@ struct BoardControlClusterSnapshotTests {
         }
     }
 
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func clusterRail_dark() throws {
-        let host = hostingView(
-            cluster(sizeClass: .regular),
-            size: CGSize(width: 300, height: 460),
-            colorScheme: .dark,
-            sizeClass: .regular
-        )
-        withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "Cluster-rail-dark")
-        }
-    }
-
     // MARK: - Compact — the actual bottom cluster
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func clusterCompact_light() throws {
@@ -84,6 +92,18 @@ struct BoardControlClusterSnapshotTests {
         )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Cluster-compact-light")
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func clusterCompact_dark() throws {
+        let host = hostingView(
+            cluster(sizeClass: .compact),
+            size: CGSize(width: 393, height: 320),
+            colorScheme: .dark,
+            sizeClass: .compact
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Cluster-compact-dark")
         }
     }
 

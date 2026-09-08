@@ -8,6 +8,20 @@
 // on the part that must not drift silently, without making the board tests
 // strict and flaky. Class tracked as #1057.
 //
+// Light only, and that is a measured decision rather than an oversight. A dark
+// variant was recorded and compared: it differed from the light one by ZERO
+// visible pixels (only alpha ≤7 antialiasing residue). The reason is that this
+// capture path flips theme-token ink — `Color(light:dark:)` resolves through
+// SwiftUI's `\.colorScheme` — but NOT system default label colours, which
+// resolve from the AppKit drawing appearance `cacheDisplay` does not apply.
+// This fixture's only ink is the system default: the view's single
+// `foregroundStyle` sits in the FLAG branch, and flag mode tints its glass,
+// and tinted glass blanks the entire capture. So no capturable state of this
+// view can carry a dark-mode signal. The dark test was deleted rather than
+// left advertising coverage it did not have; dark appearance is
+// simulator-verified. (Sudoku's compact cluster DOES carry always-on theme ink
+// and its dark variant differs in 5998 visible pixels — kept there.)
+//
 // Reveal mode only. Flag mode tints its glass, and tinted glass blanks this
 // entire capture path (see `SnapshotBlankBaselineGuardTests`) — flag mode is
 // simulator-verified instead. The guard suite fails loudly if that ever
@@ -36,16 +50,6 @@ struct MinesweeperControlClusterSnapshotTests {
             sizeClass: .compact
         )
         assertUISnapshot(of: host, as: .image, named: "Cluster-compact-light", record: SnapshotMode.recordMode)
-    }
-
-    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func cluster_dark() {
-        let host = hostingView(
-            cluster,
-            size: CGSize(width: 393, height: 120),
-            colorScheme: .dark,
-            sizeClass: .compact
-        )
-        assertUISnapshot(of: host, as: .image, named: "Cluster-compact-dark", record: SnapshotMode.recordMode)
     }
 }
 #endif
