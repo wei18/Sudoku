@@ -49,7 +49,7 @@ public import SwiftUI
 public import GameShellUI
 public import MonetizationUI
 
-public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
+public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: View>: View {
     // The app-side Root owns the VM as `@State`; GameRoot holds the same
     // `@Observable` reference. Property access in `body` registers observation,
     // so a plain stored reference (not a second `@State`) is correct here and
@@ -65,6 +65,11 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     private let failureTint: Color
     private let infoTint: Color
     private let tabRoot: (AppTab) -> TabRoot
+    // #1024: forwarded straight into `RootShellView`'s `tabViewBottomAccessory`
+    // content (design.md §2.4). `MakeGameApp` supplies the real (monetization)
+    // content on iOS and `{ EmptyView() }` on macOS — this type stays agnostic
+    // either way, same as `tabRoot`.
+    private let bottomAccessory: () -> Accessory
 
     // SDD-003 OQ-001: single chrome state instance, owned here so it outlives
     // individual modal presentations. Reset on dismiss so a stale label from a
@@ -90,7 +95,8 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
         successTint: Color,
         failureTint: Color,
         infoTint: Color,
-        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
+        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot,
+        @ViewBuilder bottomAccessory: @escaping () -> Accessory
     ) {
         self.viewModel = viewModel
         self.routeFactory = routeFactory
@@ -100,6 +106,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
         self.failureTint = failureTint
         self.infoTint = infoTint
         self.tabRoot = tabRoot
+        self.bottomAccessory = bottomAccessory
     }
 
     public var body: some View {
@@ -206,7 +213,8 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             path: viewModel.pathBinding(for:),
             routeFactory: routeFactory,
             settingsRoute: settingsRoute,
-            tabRoot: tabRoot
+            tabRoot: tabRoot,
+            bottomAccessory: bottomAccessory
         )
     }
 }

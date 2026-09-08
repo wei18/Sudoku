@@ -342,14 +342,10 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     ) { tab in
         let content = config.makeTabRoot(tab, deps, rootViewModel)
         guard tab == .today else { return content }
+        // #1024: TodayTabHost no longer carries a banner slot / ATT anchor —
+        // both moved into the shared `tabViewBottomAccessory` below.
         return AnyView(
-            TodayTabHost(
-                rootViewModel: rootViewModel,
-                adProvider: adProvider,
-                adGate: adGate,
-                attPrimer: attPrimer,
-                content: { content }
-            )
+            TodayTabHost(rootViewModel: rootViewModel, content: { content })
         )
     }
 
@@ -363,7 +359,13 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         successTint: config.successTint,
         failureTint: config.failureTint,
         infoTint: config.infoTint,
-        tabRoot: tabRoot
+        tabRoot: tabRoot,
+        // #1024: shared banner accessory (design.md §2.4) — iOS/iPadOS real
+        // content, `EmptyView` on macOS (no `tabViewBottomAccessory` API
+        // there at all, §2.4.1 option A). See `makeBottomAccessory`'s doc.
+        bottomAccessory: {
+            makeBottomAccessory(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
+        }
     )
     .environment(\.theme, config.theme)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with
