@@ -513,9 +513,13 @@ public struct MinesweeperBoardView: View {
             // unmounts on pause/completion the freed space goes to the board's
             // own band instead of resizing the grid.
             //
-            // No `Spacer` here: `boardGrid` already expands into the slack, so
-            // one would resolve to zero height while still costing a
-            // `compactStackGap` — dead weight that only shrinks the board.
+            // Deliberately no `Spacer` between the board and the chrome below,
+            // and never has been on this stack: `boardGrid` already expands
+            // into the slack, so one would resolve to zero height while still
+            // costing a `compactStackGap` — dead weight that only shrinks the
+            // board. (An earlier revision of #1022 added one here and then
+            // removed it; this note is why it should not come back, not a
+            // record of something main ever had.)
             boardGrid
                 .layoutPriority(1)
             bannerSlot
