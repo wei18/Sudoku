@@ -75,6 +75,13 @@ public struct LiveRouteFactory: RouteFactory {
     // line-budget extraction).
     let adProvider: (any AdProvider)?
     let adGate: AdGate?
+    // #1058: app-launch monetization boot completion latch, threaded to
+    // every `BannerSlotView` this factory (transitively) constructs so
+    // consent-before-request holds by construction — a fast resume can
+    // reach Board within moments of launch, well before `bootMonetization`
+    // finishes. Defaults to an already-fired signal for TESTS/PREVIEWS
+    // ONLY — `Live.swift` always passes the real composition-root signal.
+    let bootSignal: MonetizationBootSignal
     // #291: threaded into `MinesweeperBoardView` so its `MinesweeperGameViewModel`
     // can submit a best-time to the difficulty's leaderboard on win. Optional so
     // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
@@ -157,6 +164,7 @@ public struct LiveRouteFactory: RouteFactory {
         monetizationController: MonetizationStateController? = nil,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         persistence: (any PersistenceProtocol)? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
@@ -177,6 +185,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.monetizationController = monetizationController
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
@@ -212,6 +221,7 @@ public struct LiveRouteFactory: RouteFactory {
                 route, path, difficulty, seed, mode,
                 adProvider: adProvider,
                 adGate: adGate,
+                bootSignal: bootSignal,
                 gameCenter: gameCenter,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
@@ -237,6 +247,7 @@ public struct LiveRouteFactory: RouteFactory {
                         store: savedGameStore,
                         adProvider: self.adProvider,
                         adGate: self.adGate,
+                        bootSignal: self.bootSignal,
                         gameCenter: self.gameCenter,
                         errorReporter: self.errorReporter,
                         soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
@@ -256,6 +267,7 @@ public struct LiveRouteFactory: RouteFactory {
                 route, path, difficulty, seed,
                 adProvider: adProvider,
                 adGate: adGate,
+                bootSignal: bootSignal,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
                 savedGameStore: savedGameStore,
@@ -340,7 +352,7 @@ public struct LiveRouteFactory: RouteFactory {
                     appStoreID: appStoreID,
                     presentInviteFriends: presentInviteFriends,
                     telemetryEmit: { event in Task { await telemetry?.observe(event) } },
-                    banner: { Self.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    banner: { Self.bannerSlot(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal) }
                 )
             )
         }

@@ -42,6 +42,15 @@ public struct GameDeps {
     public let persistence: any PersistenceProtocol
     public let adProvider: any AdProvider
     public let adGate: AdGate
+    /// App-launch monetization boot completion latch (#1058). Every
+    /// production `BannerSlotView` construction must thread this through so
+    /// consent-before-request holds by construction, not by mount-timing
+    /// luck — a fast resume (resume pill / reminder deep link) can land a
+    /// player on the board moments after launch, well before
+    /// `bootMonetization` finishes. `BannerSlotView.init`'s own default
+    /// (`alreadyReady: true`) exists for tests and previews ONLY; no
+    /// production call site may rely on it.
+    public let bootSignal: MonetizationBootSignal
     public let monetizationStateStore: any AdGateStateStore
     public let iapClient: any IAPClient
     public let monetizationController: MonetizationStateController
@@ -78,6 +87,7 @@ public struct GameDeps {
         persistence: any PersistenceProtocol,
         adProvider: any AdProvider,
         adGate: AdGate,
+        bootSignal: MonetizationBootSignal,
         monetizationStateStore: any AdGateStateStore,
         iapClient: any IAPClient,
         monetizationController: MonetizationStateController,
@@ -94,6 +104,7 @@ public struct GameDeps {
         self.persistence = persistence
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.monetizationStateStore = monetizationStateStore
         self.iapClient = iapClient
         self.monetizationController = monetizationController

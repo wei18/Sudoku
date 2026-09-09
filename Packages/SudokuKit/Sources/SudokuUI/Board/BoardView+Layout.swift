@@ -47,7 +47,7 @@ extension BoardView {
             // (PauseOverlayView already dims the grid) and an ad on top of that
             // contradicts the calm contract.
             if !viewModel.isPaused, let adProvider, let adGate {
-                themedBanner(adProvider: adProvider, adGate: adGate)
+                themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
                     .padding(.horizontal, theme.spacing.medium)
             }
             controlCluster
@@ -78,7 +78,7 @@ extension BoardView {
             }
             // Pause-time banner suppression preserved on Mac too.
             if !viewModel.isPaused, let adProvider, let adGate {
-                themedBanner(adProvider: adProvider, adGate: adGate)
+                themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
             }
         }
         .frame(maxWidth: 960)
@@ -98,11 +98,16 @@ extension BoardView {
     /// ATT (Home owns the primer), so `onAdContext` stays nil. The live provider
     /// conforms to `BannerViewProviding`; fakes / macOS return nil → honest
     /// fallback. The cast keeps SudokuUI free of an AdsAdMob import (§9.1).
-    private func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
+    private func themedBanner(
+        adProvider: any AdProvider,
+        adGate: AdGate,
+        bootSignal: MonetizationBootSignal
+    ) -> some View {
         BannerSlotView(
             adProvider: adProvider,
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
+            bootSignal: bootSignal,
             // #688 item 2: was `theme.surface.placeholder.resolved` — mirrors
             // the MS fix in `MinesweeperBoardView` so both apps' banner
             // containers match their own page background instead of a

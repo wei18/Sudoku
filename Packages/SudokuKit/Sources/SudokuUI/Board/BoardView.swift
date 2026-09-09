@@ -26,6 +26,10 @@ public struct BoardView: View {
     // them across files within the same module.
     let adProvider: (any AdProvider)?
     let adGate: AdGate?
+    /// #1058: forwarded to `BoardView+Layout`'s `themedBanner`. Defaults to
+    /// an already-fired signal for tests/previews only — production always
+    /// forwards the real composition-root signal via `BoardLoaderView`.
+    let bootSignal: MonetizationBootSignal
     /// Host navigation path. Optional so previews / snapshot tests (which mount
     /// `BoardView` directly) keep working. Non-nil exactly when the board is a
     /// macOS NavigationStack push (iOS boards are fullScreenCover modals, so
@@ -86,6 +90,7 @@ public struct BoardView: View {
         viewModel: GameViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
@@ -97,6 +102,7 @@ public struct BoardView: View {
         self.viewModel = viewModel
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain

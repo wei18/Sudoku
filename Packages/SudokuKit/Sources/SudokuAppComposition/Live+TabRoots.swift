@@ -38,6 +38,7 @@ extension SudokuAppComposition {
         telemetry: Telemetry,
         adProvider: any AdProvider,
         adGate: AdGate,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         rootViewModel: GameRootViewModel<AppRoute>
     ) -> AnyView {
         switch tab {
@@ -75,7 +76,9 @@ extension SudokuAppComposition {
                         persistDifficulty: { difficultyStore.save($0.rawValue) },
                         path: rootViewModel.pathBinding(for: .practice)
                     ),
-                    banner: { LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    banner: {
+                        LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
+                    }
                 )
             )
         case .progress:

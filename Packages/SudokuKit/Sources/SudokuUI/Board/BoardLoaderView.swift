@@ -90,6 +90,11 @@ public struct BoardLoaderView: View {
     // between the grid and the digit pad once the puzzle has loaded.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    /// #1058: forwarded to `BoardView`'s banner so a fast resume (resume
+    /// pill / reminder deep link) landing on the board moments after launch
+    /// still cannot request an ad before consent resolves. Defaults to an
+    /// already-fired signal for tests/previews only.
+    private let bootSignal: MonetizationBootSignal
     // #330 P2: gameplay audio seam, forwarded into the live `GameViewModel`.
     // Defaults to `NoopSoundPlaying` so previews / tests stay silent.
     private let soundPlayer: any SoundPlaying
@@ -134,6 +139,7 @@ public struct BoardLoaderView: View {
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         path: Binding<[AppRoute]>? = nil,
         telemetry: Telemetry? = nil,
@@ -151,6 +157,7 @@ public struct BoardLoaderView: View {
         self.errorReporter = errorReporter
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.soundPlayer = soundPlayer
         self.path = path
         self.telemetry = telemetry
@@ -185,6 +192,7 @@ public struct BoardLoaderView: View {
                 viewModel: viewModel,
                 adProvider: adProvider,
                 adGate: adGate,
+                bootSignal: bootSignal,
                 gameCenter: gameCenter,
                 makeDailyReminderPrimer: makeDailyReminderPrimer,
                 onPlayAgain: onPlayAgain,

@@ -130,6 +130,7 @@ extension LiveRouteFactory {
         _ mode: GameMode,
         adProvider: (any AdProvider)?,
         adGate: AdGate?,
+        bootSignal: MonetizationBootSignal,
         gameCenter: (any GameCenterClient)?,
         errorReporter: (any ErrorReporter)?,
         soundPlayer: (any SoundPlaying)?,
@@ -151,6 +152,7 @@ extension LiveRouteFactory {
                         store: savedGameStore,
                         adProvider: adProvider,
                         adGate: adGate,
+                        bootSignal: bootSignal,
                         gameCenter: gameCenter,
                         errorReporter: errorReporter,
                         soundPlayer: soundPlayer ?? NoopSoundPlaying(),
@@ -196,6 +198,7 @@ extension LiveRouteFactory {
                     mode: mode,
                     adProvider: adProvider,
                     adGate: adGate,
+                    bootSignal: bootSignal,
                     gameCenter: gameCenter,
                     errorReporter: errorReporter,
                     // #330 P2: gameplay audio. nil (preview / test) → silent Noop.

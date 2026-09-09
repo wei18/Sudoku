@@ -115,10 +115,9 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let persistence: any PersistenceProtocol = resolvePersistence(fallback: livePersistence)
 
     // 5. Monetization stack.
-    // #1058: latch marking the UMP→ATT→AdMob boot sequence (below, step 10's
-    // `.onAppear`) complete. `TodayTabHost`'s banner slot — the one proven to
-    // mount at cold launch, racing that boot `Task` — awaits it before its
-    // first ad request.
+    // #1058: latch marking the UMP→ATT→AdMob boot sequence (step 10's
+    // `.onAppear`) complete — every `BannerSlotView` awaits it before its
+    // first ad request (threaded via `GameDeps.bootSignal`).
     let bootSignal = MonetizationBootSignal()
     let monetizationStateStore = livePersistence.monetizationStateStore()
 
@@ -287,6 +286,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         persistence: persistence,
         adProvider: adProvider,
         adGate: adGate,
+        bootSignal: bootSignal,
         monetizationStateStore: monetizationStateStore,
         iapClient: iapClient,
         monetizationController: monetizationController,

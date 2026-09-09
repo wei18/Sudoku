@@ -39,6 +39,7 @@ extension LiveRouteFactory {
         _ seed: UInt64,
         adProvider: (any AdProvider)?,
         adGate: AdGate?,
+        bootSignal: MonetizationBootSignal,
         errorReporter: (any ErrorReporter)?,
         soundPlayer: (any SoundPlaying)?,
         savedGameStore: MinesweeperSavedGameStore?,
@@ -57,6 +58,7 @@ extension LiveRouteFactory {
                         mode: .practice,
                         adProvider: adProvider,
                         adGate: adGate,
+                        bootSignal: bootSignal,
                         gameCenter: nil,
                         errorReporter: errorReporter,
                         soundPlayer: soundPlayer ?? NoopSoundPlaying()
@@ -77,6 +79,7 @@ extension LiveRouteFactory {
                     store: savedGameStore,
                     adProvider: adProvider,
                     adGate: adGate,
+                    bootSignal: bootSignal,
                     errorReporter: errorReporter,
                     soundPlayer: soundPlayer ?? NoopSoundPlaying()
                 )

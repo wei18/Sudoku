@@ -86,6 +86,9 @@ public struct MinesweeperDailyOpenGuardView: View {
     private let dateProvider: @Sendable () -> Date
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    /// #1058: forwarded to the boards this guard mounts. Defaults to an
+    /// already-fired signal for tests/previews only.
+    private let bootSignal: MonetizationBootSignal
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
@@ -119,6 +122,7 @@ public struct MinesweeperDailyOpenGuardView: View {
         dateProvider: @escaping @Sendable () -> Date = { Date() },
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -135,6 +139,7 @@ public struct MinesweeperDailyOpenGuardView: View {
         self.dateProvider = dateProvider
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -170,6 +175,7 @@ public struct MinesweeperDailyOpenGuardView: View {
                 mode: .daily,
                 adProvider: adProvider,
                 adGate: adGate,
+                bootSignal: bootSignal,
                 gameCenter: gameCenter,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
@@ -213,6 +219,7 @@ public struct MinesweeperDailyOpenGuardView: View {
                 store: store,
                 adProvider: adProvider,
                 adGate: adGate,
+                bootSignal: bootSignal,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer
             )

@@ -94,6 +94,9 @@ public struct MinesweeperFreshBoardLoaderView: View {
     private let mode: GameMode
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    /// #1058: forwarded to `MinesweeperBoardView`'s banner. Defaults to an
+    /// already-fired signal for tests/previews only.
+    private let bootSignal: MonetizationBootSignal
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
@@ -115,6 +118,7 @@ public struct MinesweeperFreshBoardLoaderView: View {
         mode: GameMode,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -131,6 +135,7 @@ public struct MinesweeperFreshBoardLoaderView: View {
         self.mode = mode
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -176,6 +181,7 @@ public struct MinesweeperFreshBoardLoaderView: View {
             viewModel: viewModel,
             adProvider: adProvider,
             adGate: adGate,
+            bootSignal: bootSignal,
             gameCenter: gameCenter,
             soundPlayer: soundPlayer,
             onPlayAgain: onPlayAgain,

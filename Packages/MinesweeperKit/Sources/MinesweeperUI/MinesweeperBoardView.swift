@@ -137,6 +137,10 @@ public struct MinesweeperBoardView: View {
     // Production callsites wire both via `LiveRouteFactory`.
     private let adProvider: (any AdProvider)?
     private let adGate: AdGate?
+    /// #1058: forwarded to the `bannerSlot` computed property below. Defaults
+    /// to an already-fired signal for tests/previews only — production
+    /// always forwards the real composition-root signal via `LiveRouteFactory`.
+    private let bootSignal: MonetizationBootSignal
     // #292: Game Center client forwarded into the Completion overlay's
     // leaderboard-slice VM. Optional so MVP / preview callsites stay no-op
     // (the slice degrades to the sign-in affordance, never blocking the win).
@@ -195,6 +199,7 @@ public struct MinesweeperBoardView: View {
         viewModel: MinesweeperGameViewModel,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
@@ -209,6 +214,7 @@ public struct MinesweeperBoardView: View {
         self._viewModel = State(initialValue: viewModel)
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
@@ -237,6 +243,7 @@ public struct MinesweeperBoardView: View {
         mode: GameMode = .practice,
         adProvider: (any AdProvider)? = nil,
         adGate: AdGate? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -263,6 +270,7 @@ public struct MinesweeperBoardView: View {
         ))
         self.adProvider = adProvider
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
@@ -643,6 +651,7 @@ public struct MinesweeperBoardView: View {
                 // return nil → honest fallback. Cast keeps MinesweeperUI free of
                 // an AdsAdMob import (§9.1).
                 bannerHost: adProvider as? any BannerViewProviding,
+                bootSignal: bootSignal,
                 // #688 item 2: was `theme.surface.placeholder.resolved` — the
                 // "card" placeholder tone reads as a mismatched seam against
                 // the page background (audit-ms-01, dark mode). Match the

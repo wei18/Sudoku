@@ -66,6 +66,12 @@ public struct LiveRouteFactory: RouteFactory {
     private let adProvider: any AdProvider
     private let iapClient: any IAPClient
     private let adGate: AdGate
+    // #1058: app-launch monetization boot completion latch, threaded to
+    // every `BannerSlotView` this factory constructs so consent-before-
+    // request holds by construction. Defaults to an already-fired signal
+    // for TESTS/PREVIEWS ONLY — `Live.swift` always passes the real
+    // composition-root signal (`deps.bootSignal`).
+    private let bootSignal: MonetizationBootSignal
     // v2.3.6: optional so existing callers (route factory tests, snapshot
     // fixtures) keep working without constructing a controller. Live wiring
     // injects one so Settings renders the Remove Ads section.
@@ -132,6 +138,7 @@ public struct LiveRouteFactory: RouteFactory {
         adProvider: any AdProvider,
         iapClient: any IAPClient,
         adGate: AdGate,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
@@ -152,6 +159,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.adProvider = adProvider
         self.iapClient = iapClient
         self.adGate = adGate
+        self.bootSignal = bootSignal
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
@@ -187,6 +195,7 @@ public struct LiveRouteFactory: RouteFactory {
                         errorReporter: errorReporter,
                         adProvider: adProvider,
                         adGate: adGate,
+                        bootSignal: bootSignal,
                         soundPlayer: soundPlayer,
                         path: path,
                         telemetry: telemetry,
@@ -311,7 +320,7 @@ public struct LiveRouteFactory: RouteFactory {
                     telemetryEmit: { event in
                         Task { await telemetry.observe(event) }
                     },
-                    banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal) }
                 )
             )
         }
@@ -370,11 +379,16 @@ public struct LiveRouteFactory: RouteFactory {
     /// instance to call through, only the wired `GameDeps` bag — can reuse
     /// the exact same banner instead of re-deriving it.
     @MainActor
-    static func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
+    static func themedBanner(
+        adProvider: any AdProvider,
+        adGate: AdGate,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true)
+    ) -> some View {
         BannerSlotView(
             adProvider: adProvider,
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
+            bootSignal: bootSignal,
             backgroundColor: DefaultTheme().surface.background.resolved,
             progressTint: .accentColor,
             captionColor: .secondary,

@@ -37,6 +37,7 @@ extension MinesweeperAppComposition {
         telemetry: Telemetry,
         adProvider: any AdProvider,
         adGate: AdGate,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         savedGameStore: MinesweeperSavedGameStore,
         dailyOverlayReading: (any MinesweeperDailyOverlayReading)?,
         personalRecordStore: MinesweeperPersonalRecordStore,
@@ -82,7 +83,9 @@ extension MinesweeperAppComposition {
                     path: rootViewModel.pathBinding(for: .practice),
                     initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
                     onDifficultyChanged: { difficultyStore.save($0.rawValue) },
-                    banner: { LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    banner: {
+                        LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
+                    }
                 )
             )
         case .progress:

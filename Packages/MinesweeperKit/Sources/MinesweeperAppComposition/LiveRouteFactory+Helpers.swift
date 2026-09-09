@@ -39,13 +39,18 @@ extension LiveRouteFactory {
     // `MinesweeperBoardView.themedBanner`'s `theme.surface.background.resolved`
     // so the Today/Practice/Settings banner slot matches the themed Board
     // banner instead of depending on an un-themed transparent default.
-    static func bannerSlot(adProvider: (any AdProvider)?, adGate: AdGate?) -> some View {
+    static func bannerSlot(
+        adProvider: (any AdProvider)?,
+        adGate: AdGate?,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true)
+    ) -> some View {
         if let adProvider, let adGate {
             AnyView(
                 BannerSlotView(
                     adProvider: adProvider,
                     adGate: adGate,
                     bannerHost: adProvider as? any BannerViewProviding,
+                    bootSignal: bootSignal,
                     backgroundColor: MinesweeperTheme().surface.background.resolved
                 )
                 .padding(.horizontal, 16)
