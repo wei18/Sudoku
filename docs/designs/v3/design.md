@@ -223,7 +223,7 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 │    從玻璃底下透出         │
 │                         │
 │ ▤ G4 控制叢集(玻璃)     │  Sudoku:數字鍵 + undo/redo/鉛筆
-│ ▤ G4(MS 版)             │  MS:揭開/旗標模式切換 + undo
+│ ▤ G4(MS 版)             │  MS:揭開/旗標模式切換(見下方 ⚠️)
 └─────────────────────────┘
 ```
 
@@ -247,6 +247,21 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 | iPhone 15/17 Pro 393pt | 40.1pt | **43.2pt** | 仍未達,差距 3.9→0.8pt |
 | iPhone Pro Max 430pt | 44.2pt | **47.3pt** | **首次跨過** |
 
+⚠️ **格徑推導更正(#1022 實作實測):** 上表的「3.0 滿版」欄是 `(W − 4) / 9` —— 附錄 B 的
+「扣除外框」扣了一個 **4pt 外框,而盤面實際上沒有這個外框**(只有每格 0.5pt 髮絲線,
+`BoardCellView.swift`)。真正的滿版格徑是 `W / 9`,**比表格數字略大**:
+
+| 裝置 | 表格 | 實測(#1022 baseline 量測) | 受限於 |
+|---|---|---|---|
+| iPhone SE 320pt | 35.1pt | **26.1pt**(盤面只有 235pt 寬) | **高度** |
+| iPhone 15/17 Pro 393pt | 43.2pt | **43.7pt**(盤面 393pt,真滿版) | 寬度 |
+| iPhone Pro Max 430pt | 47.3pt | **47.8pt**(盤面 430pt,真滿版) | 寬度 |
+
+⚠️ **SE 那一列做不到。** 568pt 高的螢幕扣掉 header + G4 叢集 + 邊距後只剩約 235pt,
+盤面是被**高度**卡住而不是寬度,拿掉左右內縮完全不會變大 —— 表格假設的「寬度受限」
+在 SE 上從來不成立(「現況 32.0pt」同樣如此)。26.1pt 低於本節自己引用的 28pt 絕對下限。
+要解只能給短螢幕一個**更矮的 G4 變體**(單列 9 鍵,或更矮的格),那是設計決策,不在 #1022 範圍 —— 追蹤於 **#1055**。
+
 **裁定(沿用並更新數字):** 盤面格預設 ~43.2pt 低於 HIG 預設 44pt、高於官方下限 28pt。
 理由:9 欄硬性擠壓,提高格徑只能靠捲動,而捲動破壞「一眼看完整盤」的玩法前提。
 緩解:選取環清晰、MS Intermediate/Expert 已在 #764 提到 44pt、#815 提供 pinch-to-zoom。
@@ -257,6 +272,13 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 
 ⚠️ 另更正:前一版把「格間無間隙」列為緩解措施 —— **移除**。
 官方把間距與尺寸視為同等重要,零間距是一個**取捨**(避免點擊掉進縫隙),不是把格子做小的緩解理由。
+
+⚠️ **MS 沒有 undo(#1022 查證,#1052 追蹤)。** 上圖原本寫「MS:揭開/旗標模式切換 + undo」,
+但 Minesweeper **任何一層都沒有 undo** —— 沒有 `canUndo`、沒有 `undo()`,
+`MinesweeperSession.swift` 與 `MinesweeperGameViewModel.swift` 的 scope 註解直接寫明
+「no undo」;engine 的 `moves: [Move]` 是只往前追加的重播記錄,restore 時就丟掉,不是 undo stack。
+所以 #1022 的 MS G4 **只有一組**(輸入組 = 模式切換),編輯組**整組不畫**,不塞 disabled 佔位鍵
+(死控制項比沒有控制項更糟)。undo 是 engine 工作,見 **#1052**;它落地後 MS 才會有第二組。
 
 **保留不碰:** Sudoku 即時錯誤高亮 + 鉛筆註記 · pause 現狀(D5/D6)· `.idle`/`.leaveReady` 逃生口。
 
@@ -370,13 +392,25 @@ tab** 的 path,與齒輪(`TabRootChrome`)走同一條 in-tab push,並以 `last !
 |---|---|---|---|
 | **G1** | Tab bar / sidebar | **系統自帶** | ✅ 保留(自動取得玻璃) |
 | **G2** | 各 tab 的 toolbar(含齒輪、board 的計時/暫停) | **系統自帶** | ✅ 保留 |
-| ~~G3~~ | ~~Board 上緣自訂膠囊~~ | ~~自訂~~ | 🗑 **刪除** → 併入 G2 標準 toolbar |
+| ~~G3~~ | ~~Board 上緣自訂膠囊~~ | ~~自訂~~ | 🗑 **刪除** → 併入 G2 標準 toolbar ⏳ **尚未執行,見 #1053** |
 | **G4** | Board 下緣控制叢集 | **自訂** | ✅ 保留 —— 盤面的主要輸入介面 |
 | ~~G5~~ | ~~Resume 面板~~ | ~~自訂~~ | 🗑 **刪除** → standard material(它是內容層卡片) |
 | **G6** | Completion 面板 | **自訂** | ✅ 保留為**明示例外**(見 §4.4) |
 | **G7** | Tab bar accessory(banner 容器) | **系統自帶** | ✅ 保留 —— 免計(系統元件自動取得玻璃)。前一版清單漏列 |
 
 **自訂玻璃只有 2 片(G4、G6),且同一時間最多一片可見。**
+
+⚠️ **快照測不到玻璃(#1054)。** 本 repo 的快照器走 `NSHostingView` + `cacheDisplay`,
+標準材質(`.ultraThinMaterial`)與 `.bordered` 都畫得出來,但 **Liquid Glass 完全不畫**
+(`.buttonStyle(.glass)` 只剩文字,`.glassEffect()` 什麼都沒有 —— #1022 兩條路徑實測)。
+所以 G4/G6 的玻璃**只能靠模擬器實機驗證**;快照能證明版面,不能證明材質。
+連帶影響:App Store 的 `03-board` 版位就是讀這些 baseline,見 **#1054**(送審前必須處理)。
+
+⏳ **G3 的刪除延後到 #1053。** #1022 只做滿版盤面 + G4,沒有動 header。原因:iPhone 的 board 是
+`fullScreenCover`,內容外面**沒有 NavigationStack**(`GameRoot.swift`),`.toolbar` 根本不會畫;
+要補一層 NavigationStack 會改變 BoardView 的 frame,而 iOS 的 pause/completion overlay 是就地
+`.overlay`,會因此蓋不住 toolbar —— 正好是 #763 保證、#1019/#1038 才修好的那條縫。所以在 #1053
+落地前,board 上緣仍然是現況那一列(非玻璃),本表的 G3 列尚未成真。
 
 ### 4.2 為什麼 streak / 卡片不用玻璃
 
@@ -438,7 +472,14 @@ pause overlay 是 `ultraThinMaterial`(standard material,非 Liquid Glass),不構
   是「融合距離」而非內距)
 - **不覆寫標準間距**:「Prefer to use **standard spacing metrics** instead of overriding them」→ 叢集內距引用系統標準,不寫死
 - **分組原則用官方的**:「Group items that perform similar actions or affect the same part of the interface, and maintain consistent groupings and placement across platforms」→ **輸入組**(數字鍵 / 模式切換)與**編輯組**(undo / redo / 鉛筆),兩 app 一致、三平台一致
-- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。兩組各有自己的背景,同屬一個 `GlassEffectContainer`
+- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。
+- ⚠️ **更正(#1022 實作):每一組各自一個 `GlassEffectContainer`,不是兩組共用一個。**
+  前一版寫「兩組…同屬一個 `GlassEffectContainer`」,實作後改掉,理由是 **B-7(#1029)驗證的合併行為**:
+  容器內的形狀融合是**鄰近度驅動**的(gap 12 就開始連成一片,gap 6/2 併成一顆膠囊)。
+  兩組放同一個容器,「文字與圖示不共用背景」就變成**取決於兩組之間的間距**——
+  哪天有人調間距、或 Dynamic Type 把某一組撐高,兩組就會自己黏成一片,而且沒有任何測試會擋。
+  各自一個容器,不相黏是**結構保證**,與間距無關。#1022 spec item 3 也是這樣寫的。
+  (代價:失去跨組的形狀聯動動畫。可接受——本來就不該聯動。)
 - **【官方】每個圖示按鈕必須有 accessibility label**:「**Provide an accessibility label for every icon.** Regardless of what you show in the interface, always specify an accessibility label for each icon.」
 - **圓角同心**:官方要求「using rounded shapes that are **concentric to their containers**」【官方】;**但「內圓角 = 外圓角 − 內距」這條公式是【我方推論】**,官方沒有給公式
 - 官方**沒給**「一組最多幾項」的數字 → **不自訂上限**

@@ -309,15 +309,10 @@ public struct MinesweeperBoardView: View {
                 compactLayout
             }
         }
-        // #298 #11: theme spacing scale. `.padding()` default is 16, identical
-        // to `theme.spacing.medium`, so this is a value-preserving migration (no
-        // snapshot churn).
-        // #762 PR3 re-tier: structural (screen edge inset for the whole board
-        // host) — stays fixed per the two-tier contract, especially since the
-        // `.frame(maxHeight: .infinity)` + overlay geometry below is written
-        // against this exact inset (see the comment there). Correctly a
-        // `theme.spacing.*` token already; no change.
-        .padding(theme.spacing.medium)
+        // #1022: the blanket screen margin is GONE from here — design.md §3.4
+        // puts the board edge-to-edge, and a padding here would inset it by
+        // definition. Each layout owns its own margins instead, mirroring
+        // Sudoku's BoardView.
         // #388: stretch the board's host frame to fill the whole screen BEFORE
         // attaching the Completion overlay. An `.overlay` is laid out within the
         // frame of the view it modifies — the root cause of the prior 16pt inset
@@ -509,11 +504,57 @@ public struct MinesweeperBoardView: View {
         // this off-scale value (12 — no matching `SpacingTokens` tier) moves
         // into `compactStackGap` unchanged; zero pixel/snapshot diff.
         VStack(spacing: Self.compactStackGap) {
+            // Chrome keeps its screen margin; the board below does not.
             statusBar
+                .padding(.horizontal, theme.spacing.medium)
+            // #1022: full-bleed — no horizontal padding between the grid and
+            // the screen edge (design.md §3.4). `.layoutPriority(1)` gives the
+            // board first claim on the leftover height, so when the cluster
+            // unmounts on pause/completion the freed space goes to the board's
+            // own band instead of resizing the grid.
+            //
+            // Deliberately no `Spacer` between the board and the chrome below,
+            // and never has been on this stack: `boardGrid` already expands
+            // into the slack, so one would resolve to zero height while still
+            // costing a `compactStackGap` — dead weight that only shrinks the
+            // board. (An earlier revision of #1022 added one here and then
+            // removed it; this note is why it should not come back, not a
+            // record of something main ever had.)
             boardGrid
-            modeToggle
+                .layoutPriority(1)
             bannerSlot
+                .padding(.horizontal, theme.spacing.medium)
+            controlCluster
+                .padding(.horizontal, theme.spacing.medium)
         }
+        // #1022: vertical screen margin only — the horizontal half of the old
+        // blanket padding is what used to inset the board; it is per-child now.
+        .padding(.vertical, theme.spacing.medium)
+    }
+
+    // #1022 scene exclusivity (design.md §4.3): when Completion's G6 panel
+    // rises, board-scene G4 must LEAVE — "不是被蓋住,是真的 unmount" — and it
+    // must equally be gone while paused. Both come off the ONE value that
+    // already drives every board modal, `modalOverlayPresentation` above, nil
+    // exactly when no completion / pause / leave-confirmation surface is up.
+    // Deliberately NO new observer and NO preference key — see Sudoku's
+    // BoardView+Layout.swift for the #1019 / #1020 history behind that.
+    @ViewBuilder
+    private var controlCluster: some View {
+        if modalOverlayPresentation == nil {
+            MinesweeperControlClusterView(
+                interactionMode: interactionMode,
+                onToggleMode: toggleInteractionMode
+            )
+        }
+    }
+
+    /// Flip reveal ↔ flag and persist the new mode. #720 G3: the next board
+    /// open reopens in it. #796: through this instance's injected store, not
+    /// the shared `.standard` domain.
+    private func toggleInteractionMode() {
+        interactionMode = interactionMode == .reveal ? .flag : .reveal
+        Self.tapModeStore(defaults: tapModeDefaults).save(Self.rawValue(for: interactionMode))
     }
 
     // spacing-exempt: 12pt predates the 5-tier `SpacingTokens` scale — see the
@@ -548,6 +589,11 @@ public struct MinesweeperBoardView: View {
         .frame(maxWidth: Self.macOuterMaxWidth)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, theme.spacing.medium)
+        // #1022: the screen margin `body` used to apply to BOTH layouts.
+        // Full-bleed is an iPhone-board rule (§3.4's cell table is three iPhone
+        // widths); the Mac board sits in a capped detail column, so it keeps
+        // the margin it had and is unchanged by #1022.
+        .padding(theme.spacing.medium)
     }
 
     private static let macOuterMaxWidth: CGFloat = 900
@@ -572,7 +618,7 @@ public struct MinesweeperBoardView: View {
         // `Spacer` absorbs), so scaling it carries no overflow risk.
         VStack(spacing: railContentGap) {
             statusBar
-            modeToggle
+            controlCluster
             Spacer(minLength: 0)
         }
         .frame(width: Self.macRailWidth)
@@ -771,101 +817,6 @@ public struct MinesweeperBoardView: View {
 
     static func rawValue(for mode: InteractionMode) -> String {
         mode == .flag ? "flag" : "reveal"
-    }
-
-    // MARK: - Mode toggle (#278 Tier-0 #3, #724, #767)
-
-    // Discoverable primary control for reveal vs flag. #724: the segmented
-    // Picker (two always-visible options) was replaced with a single icon
-    // toggle button — same role (routes which action a cell tap fires), half
-    // the footprint. #767 (audit N2): an icon-only button gave sighted users
-    // no in-context hint of which mode was active or what a tap would do —
-    // the mode name was VoiceOver-only. The label now pairs the icon with
-    // the same "Reveal"/"Flag" text already in the catalog (#742), so the
-    // active mode reads without opening the a11y tree. Tapping flips to the
-    // other mode. Long-press-to-flag (MinesweeperCellButton, unchanged)
-    // still works as the accelerator in `.reveal` mode.
-    private var modeToggle: some View {
-        Button {
-            interactionMode = interactionMode == .reveal ? .flag : .reveal
-            // #720 G3: persist the new mode so the next board open reopens
-            // in it. #796: through this instance's injected store, not the
-            // shared `.standard` domain.
-            Self.tapModeStore(defaults: tapModeDefaults).save(Self.rawValue(for: interactionMode))
-        } label: {
-            Label {
-                Text(modeToggleModeName)
-                    .font(.system(size: 13, weight: .semibold))
-            } icon: {
-                Image(systemName: interactionMode == .flag ? "flag.fill" : "hand.tap.fill")
-                    .font(.system(size: 18, weight: .semibold))
-            }
-            // #767: `accent.muted` is a background-only token (design-system.md
-            // §Color) — text/icon on top must be `text.primary` to hold
-            // contrast, mirroring the pattern already used wherever
-            // `accent.muted` backs content elsewhere in the app.
-            // #786 item 3: reveal mode was `.white` on `accent.primary`, which
-            // hard-fails AA in dark mode (white on 0x7FAFCF = 2.35:1). No
-            // `text.*` token passes there either — their dark variants are all
-            // light inks (text.primary 0xEEF1F4 → 2.07:1) because the accent
-            // ramp flips light↔dark opposite to the text ramp. The correct
-            // on-accent ink is the theme's surface color: `surface.primary`
-            // (0xFFFFFF light / 0x1C2026 dark) = 5.70:1 light / 6.96:1 dark —
-            // both AA. Light mode renders byte-identically (still white).
-            .foregroundStyle(
-                interactionMode == .flag
-                    ? theme.text.primary.resolved
-                    : theme.surface.primary.resolved
-            )
-            // #786 item 1 (#780 review): was a hard-coded `12` literal.
-            // `SpacingTokens` names no 12 step (8/16/24/32), so this snaps to
-            // `small` (8): closer to the chip's #724 "half the footprint"
-            // intent than `medium` (16), which the design-system pairing
-            // table reserves for card-level internal padding. The
-            // `.frame(minWidth: 44, minHeight: 44)` below guarantees the HIG
-            // tap-target floor independent of this padding value.
-            // #762 PR3 re-tier: content tier — wraps this chip's own
-            // icon/text label (mirrors `HomeModeCard.cardPadding`), and the
-            // `.frame(minWidth:minHeight:)` floor below only ever grows past
-            // 44pt as padding scales, never shrinks below it.
-            .padding(.horizontal, toggleChipPadding)
-            .frame(minWidth: 44, minHeight: 44)
-        }
-        .buttonStyle(.borderedProminent)
-        // swiftui-interaction-footguns: theme tint doesn't auto-propagate to
-        // system controls — apply `.tint` explicitly. #767: flag mode
-        // previously borrowed `status.warning` for its tint, which reads as
-        // "something is wrong" for a routine mode switch and isn't a
-        // status-signal use per design-system.md's token table. Flag mode
-        // now uses `accent.muted` — still color-distinct from reveal's
-        // `accent.primary`, but out of the status-token family.
-        .tint(interactionMode == .flag ? theme.accent.muted.resolved : theme.accent.primary.resolved)
-        .accessibilityLabel(Text(String(format: modeToggleLabelFormat, modeToggleModeName)))
-        .accessibilityValue(Text(modeToggleModeName))
-        .accessibilityHint(Text(modeToggleHint))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("minesweeper.board.tapModeToggle")
-    }
-
-    // #731: the mode name and the a11y strings around the toggle were bare
-    // English literals never extracted to the catalog. `modeToggleModeName`
-    // mirrors "Reveal"/"Flag" (also the label's %@ substitution and the
-    // standalone accessibility value); `modeToggleLabelFormat` mirrors
-    // `ResumeTitle`'s "Resume %@" pattern — a catalog format key resolved via
-    // `String(format:)` rather than string interpolation, so both the prefix
-    // and the mode name localize.
-    private var modeToggleModeName: String {
-        interactionMode == .flag
-            ? String(localized: "Flag", bundle: .main)
-            : String(localized: "Reveal", bundle: .main)
-    }
-
-    private var modeToggleLabelFormat: String {
-        String(localized: "Tap mode: %@", bundle: .main)
-    }
-
-    private var modeToggleHint: String {
-        String(localized: "Double tap to switch tap mode", bundle: .main)
     }
 
     // MARK: - Grid
