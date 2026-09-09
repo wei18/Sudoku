@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#MISE description="BannerSlotView bootSignal gate (#1058): every production `BannerSlotView(...)` construction under Packages/*/Sources must pass `bootSignal:` explicitly. Pure python3 stdlib — no Pillow, no fonts, runs on ubuntu-latest."
+#
+# Why this exists:
+#   `BannerSlotView.init`'s `bootSignal` parameter defaults to an
+#   already-fired `MonetizationBootSignal(alreadyReady: true)` — deliberately,
+#   so every test/preview construction keeps compiling without threading a
+#   real boot-completion signal through. That default is also the exact
+#   shape of #1058's own incident: an app-launch monetization boot sequence
+#   (UMP consent -> ATT -> AdMob init) that a banner slot's first ad request
+#   must never race ahead of. A sixth production call site added later that
+#   forgets `bootSignal:` compiles clean, tests green, and silently drops the
+#   consent-before-request guarantee with nothing to notice — the same
+#   "looks fine because nothing complains" failure mode #1058 shipped with
+#   twice (the `.task`-never-runs defect, then the padding regression this
+#   incident's own fix introduced and a code reviewer caught by luck via an
+#   unrelated snapshot). This gate makes a missing `bootSignal:` argument
+#   fail loudly and by name instead.
+#
+# Scope: `Packages/*/Sources/**/*.swift` only — test targets and
+# `Preview.swift` files intentionally construct `BannerSlotView` without a
+# real signal (there is nothing to boot in a preview or a unit test), so
+# they are excluded by path, not by a `// scan-ignore` comment convention
+# this repo doesn't otherwise use.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+python3 - <<'PY'
+import re, pathlib, sys
+
+root = pathlib.Path('.')
+failures = []
+checked = 0
+
+for pkg_sources in root.glob('Packages/*/Sources'):
+    for f in pkg_sources.rglob('*.swift'):
+        if f.name == 'Preview.swift':
+            continue
+        text = f.read_text(errors='ignore')
+        for m in re.finditer(r'BannerSlotView\(', text):
+            # Walk forward from the opening paren, tracking depth, to find
+            # this specific construction's matching close paren — calls span
+            # multiple lines in this codebase, so a per-line grep would miss
+            # (or misattribute) the `bootSignal:` argument.
+            start = m.end() - 1  # index of the opening '('
+            depth = 0
+            end = None
+            for i in range(start, len(text)):
+                if text[i] == '(':
+                    depth += 1
+                elif text[i] == ')':
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            if end is None:
+                failures.append(f'{f}: unbalanced parens scanning a BannerSlotView( construction — fix this gate or the call site')
+                continue
+            checked += 1
+            call = text[start:end]
+            if 'bootSignal:' not in call:
+                line_no = text.count('\n', 0, m.start()) + 1
+                failures.append(f'{f}:{line_no}: BannerSlotView(...) construction has no `bootSignal:` argument')
+
+if checked == 0:
+    print('FAIL [bannerslot_bootsignal]: found 0 BannerSlotView(...) constructions under Packages/*/Sources — the scan pattern broke, fix this gate.')
+    sys.exit(1)
+
+if failures:
+    print(f'FAIL [bannerslot_bootsignal]: {len(failures)} of {checked} production BannerSlotView(...) construction(s) never pass bootSignal:\n')
+    print('\n'.join(f'  {line}' for line in failures))
+    print('\nFix: thread the composition root\'s real MonetizationBootSignal through to this call')
+    print('site (see GameDeps.bootSignal / how Live.swift wires it in both apps). The')
+    print('`alreadyReady: true` default on BannerSlotView.init exists for tests and previews')
+    print('ONLY — no production call site may rely on it (#1058: a banner that races the')
+    print('UMP/ATT/AdMob boot sequence can request an ad before consent resolves).')
+    sys.exit(1)
+
+print(f'PASS [bannerslot_bootsignal]: {checked} production BannerSlotView(...) construction(s), all pass bootSignal: explicitly.')
+PY

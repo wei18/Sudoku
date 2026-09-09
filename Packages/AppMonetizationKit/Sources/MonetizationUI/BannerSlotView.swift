@@ -69,10 +69,10 @@ public struct BannerSlotView: View {
     /// before this slot's FIRST ad request, so consent (UMP) is guaranteed
     /// resolved before that request "by construction" of
     /// `MonetizationBootCoordinator.boot()`'s step order — not by timing
-    /// luck. Defaults to an already-fired signal: every call site except the
-    /// cold-launch Today-tab slot (which passes the real composition-root
-    /// signal) mounts well after boot has finished in practice, and every
-    /// test / preview construction needs no boot gating at all.
+    /// luck. Every production call site passes the composition root's real
+    /// signal via `GameDeps.bootSignal` (guarded by `mise run
+    /// scan:bannerslot_bootsignal`); the `init` default only serves tests
+    /// and previews — see that parameter's own doc.
     private let bootSignal: MonetizationBootSignal
 
     // DI'd colours (theme decoupling — see file header).
@@ -128,6 +128,10 @@ public struct BannerSlotView: View {
         adGate: AdGate,
         bannerHost: (any BannerViewProviding)? = nil,
         onAdContext: (@Sendable () async -> Void)? = nil,
+        // #1058: `alreadyReady: true` default is for TESTS/PREVIEWS ONLY —
+        // no production call site may rely on it (see `bootSignal`'s stored-
+        // property doc above for why, and `scan:bannerslot_bootsignal` for
+        // the gate that enforces it).
         bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         // #688 item 2: was `Color.secondary.opacity(0.12)` — a translucent
         // system-gray overlay that reads as a mismatched seam against a
@@ -173,13 +177,10 @@ public struct BannerSlotView: View {
         // `ZStack` is a real container with its own identity even when its
         // child is `EmptyView()`, so the `.task` here always mounts and
         // fires exactly once regardless of which branch below renders. This
-        // view's OWN reported size is unaffected — `ZStack` around a
-        // zero-sized child still reports zero. What DOES change: any
-        // external `.padding()` a caller chains onto this whole value no
-        // longer collapses to zero when hidden, because the value is no
-        // longer statically `EmptyView`-typed the way `Group`'s output was
-        // (see `horizontalPadding`/`verticalPadding`'s doc for the full
-        // mechanism and why that padding now lives INSIDE this view instead).
+        // view's OWN reported size is unaffected. What DOES change — and why
+        // `horizontalPadding`/`verticalPadding` exist below instead of a
+        // caller chaining `.padding()` onto this whole value — is documented
+        // on those properties' own doc comment.
         ZStack {
             // #968: `status == .suppressed` while `shouldShow == true` means
             // the gate said "show a banner" but the provider disagrees — the
