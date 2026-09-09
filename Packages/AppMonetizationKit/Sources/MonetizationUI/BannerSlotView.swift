@@ -81,6 +81,25 @@ public struct BannerSlotView: View {
     private let captionColor: Color
     private let dismissTint: Color
 
+    /// Outer inset applied ONLY to the visible `banner` content — never to
+    /// the collapsed states (#1058). A caller that used to chain
+    /// `.padding(...)` onto the whole `BannerSlotView` value relied on an
+    /// accidental SwiftUI optimization: a value that is STATICALLY
+    /// `EmptyView` (reachable only when this view's outer container was a
+    /// transparent `Group`) lets an external `.padding()` collapse to zero
+    /// right along with it. Any other outer container — including the
+    /// `ZStack` this file now uses to fix the cold-launch `.task` defect —
+    /// breaks that optimization: the modifier chain is on a concrete,
+    /// non-`EmptyView`-typed value, so external padding renders for real
+    /// EVEN WHEN the rendered content inside is empty, silently inserting a
+    /// dead gap where the collapsed contract promises none (confirmed via a
+    /// live snapshot-baseline diff — a 24pt gap chasing exactly
+    /// `.padding(.vertical, 12)`'s footprint). Padding here, inside the same
+    /// conditional that decides shown-vs-hidden, keeps the 0pt-when-hidden
+    /// contract self-contained and immune to the outer container's type.
+    private let horizontalPadding: CGFloat
+    private let verticalPadding: CGFloat
+
     /// Banner height contract (design.md v2 §How.3). Exactly 50pt visible,
     /// 0pt when hidden — no in-between skeleton state.
     private static let bannerHeight: CGFloat = 50
@@ -118,7 +137,9 @@ public struct BannerSlotView: View {
         backgroundColor: Color = .clear,
         progressTint: Color = .accentColor,
         captionColor: Color = .secondary,
-        dismissTint: Color = Color.secondary.opacity(0.7)
+        dismissTint: Color = Color.secondary.opacity(0.7),
+        horizontalPadding: CGFloat = 0,
+        verticalPadding: CGFloat = 0
     ) {
         self.adProvider = adProvider
         self.adGate = adGate
@@ -129,6 +150,8 @@ public struct BannerSlotView: View {
         self.progressTint = progressTint
         self.captionColor = captionColor
         self.dismissTint = dismissTint
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
         self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
         // #723: seed the show/hide decision from the gate's synchronous
         // session hint so a slot mounted after the gate has resolved once
@@ -149,9 +172,14 @@ public struct BannerSlotView: View {
         // (production incident: zero ad impressions, dormant ATT primer). A
         // `ZStack` is a real container with its own identity even when its
         // child is `EmptyView()`, so the `.task` here always mounts and
-        // fires exactly once regardless of which branch below renders.
-        // Rendered output is unaffected — a `ZStack` around a single child
-        // lays out identically to that child alone.
+        // fires exactly once regardless of which branch below renders. This
+        // view's OWN reported size is unaffected — `ZStack` around a
+        // zero-sized child still reports zero. What DOES change: any
+        // external `.padding()` a caller chains onto this whole value no
+        // longer collapses to zero when hidden, because the value is no
+        // longer statically `EmptyView`-typed the way `Group`'s output was
+        // (see `horizontalPadding`/`verticalPadding`'s doc for the full
+        // mechanism and why that padding now lives INSIDE this view instead).
         ZStack {
             // #968: `status == .suppressed` while `shouldShow == true` means
             // the gate said "show a banner" but the provider disagrees — the
@@ -169,6 +197,8 @@ public struct BannerSlotView: View {
                 EmptyView()
             } else if shouldShow == true {
                 banner
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.vertical, verticalPadding)
             } else {
                 // Gate decision pending AND no session hint (`shouldShow` is
                 // seeded from `AdGate.lastKnownShouldShowBanner` in init, so

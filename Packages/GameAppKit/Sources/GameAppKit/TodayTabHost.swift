@@ -122,9 +122,14 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
             backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
-            dismissTint: theme.accent.muted.resolved.opacity(0.7)
+            dismissTint: theme.accent.muted.resolved.opacity(0.7),
+            // #1058: moved INSIDE `BannerSlotView` (was chained here as
+            // `.padding(.horizontal, 16).padding(.vertical, 12)`) — see that
+            // type's `horizontalPadding`/`verticalPadding` doc for why an
+            // external padding chain stopped collapsing to zero when hidden
+            // once the `.task` cold-launch fix landed.
+            horizontalPadding: 16,
+            verticalPadding: 12
         )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 }

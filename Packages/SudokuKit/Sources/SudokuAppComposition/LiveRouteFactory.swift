@@ -66,11 +66,9 @@ public struct LiveRouteFactory: RouteFactory {
     private let adProvider: any AdProvider
     private let iapClient: any IAPClient
     private let adGate: AdGate
-    // #1058: app-launch monetization boot completion latch, threaded to
-    // every `BannerSlotView` this factory constructs so consent-before-
-    // request holds by construction. Defaults to an already-fired signal
-    // for TESTS/PREVIEWS ONLY — `Live.swift` always passes the real
-    // composition-root signal (`deps.bootSignal`).
+    // #1058: boot completion latch threaded to every `BannerSlotView` this
+    // factory constructs. Defaults to an already-fired signal for
+    // TESTS/PREVIEWS ONLY — `Live.swift` always passes `deps.bootSignal`.
     private let bootSignal: MonetizationBootSignal
     // v2.3.6: optional so existing callers (route factory tests, snapshot
     // fixtures) keep working without constructing a controller. Live wiring
@@ -392,9 +390,10 @@ public struct LiveRouteFactory: RouteFactory {
             backgroundColor: DefaultTheme().surface.background.resolved,
             progressTint: .accentColor,
             captionColor: .secondary,
-            dismissTint: Color.secondary.opacity(0.7)
+            dismissTint: Color.secondary.opacity(0.7),
+            // #1058: moved inside `BannerSlotView` (was chained here).
+            horizontalPadding: 16,
+            verticalPadding: 12
         )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 }

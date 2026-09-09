@@ -51,10 +51,12 @@ extension LiveRouteFactory {
                     adGate: adGate,
                     bannerHost: adProvider as? any BannerViewProviding,
                     bootSignal: bootSignal,
-                    backgroundColor: MinesweeperTheme().surface.background.resolved
+                    backgroundColor: MinesweeperTheme().surface.background.resolved,
+                    // #1058: moved INSIDE `BannerSlotView` (was chained here)
+                    // — see that type's `horizontalPadding`/`verticalPadding` doc.
+                    horizontalPadding: 16,
+                    verticalPadding: 12
                 )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
             )
         } else {
             AnyView(EmptyView())
