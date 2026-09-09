@@ -25,6 +25,13 @@
 //   - `.loaded(handle)` now renders the REAL banner from `bannerHost` (#441).
 //     When no host is wired (fakes / macOS NoopAdProvider) it shows nothing
 //     inside the rect rather than lying with a placeholder.
+//   - #1058: `.task` hangs off a `ZStack`, not the conditional content
+//     directly (see `body`'s comment) — a `Group` that resolves to
+//     `EmptyView()` never runs an attached `.task`, which is exactly the
+//     cold-launch state (`shouldShow == nil`). The slot's first ad request
+//     also awaits `bootSignal` (`MonetizationBootSignal`) so it cannot reach
+//     the provider before the app-launch UMP/ATT/AdMob boot sequence has
+//     run — see `resolveGateAndLoad`.
 //
 // Theme decoupling: this module must not depend on the apps' `Theme` protocol
 // (Package.swift — MonetizationUI → MonetizationCore only). Colours are DI'd as
@@ -57,6 +64,16 @@ public struct BannerSlotView: View {
     /// load. Injected as a closure so MonetizationUI stays free of SudokuUI's
     /// `ATTPrimerCoordinator`. Minesweeper passes `nil` (no ATT flow).
     private let onAdContext: (@Sendable () async -> Void)?
+
+    /// App-launch monetization boot completion latch (#1058). Awaited once,
+    /// before this slot's FIRST ad request, so consent (UMP) is guaranteed
+    /// resolved before that request "by construction" of
+    /// `MonetizationBootCoordinator.boot()`'s step order — not by timing
+    /// luck. Defaults to an already-fired signal: every call site except the
+    /// cold-launch Today-tab slot (which passes the real composition-root
+    /// signal) mounts well after boot has finished in practice, and every
+    /// test / preview construction needs no boot gating at all.
+    private let bootSignal: MonetizationBootSignal
 
     // DI'd colours (theme decoupling — see file header).
     private let backgroundColor: Color
@@ -92,6 +109,7 @@ public struct BannerSlotView: View {
         adGate: AdGate,
         bannerHost: (any BannerViewProviding)? = nil,
         onAdContext: (@Sendable () async -> Void)? = nil,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         // #688 item 2: was `Color.secondary.opacity(0.12)` — a translucent
         // system-gray overlay that reads as a mismatched seam against a
         // custom (non-system) page background, especially in dark mode.
@@ -106,6 +124,7 @@ public struct BannerSlotView: View {
         self.adGate = adGate
         self.bannerHost = bannerHost
         self.onAdContext = onAdContext
+        self.bootSignal = bootSignal
         self.backgroundColor = backgroundColor
         self.progressTint = progressTint
         self.captionColor = captionColor
@@ -121,7 +140,19 @@ public struct BannerSlotView: View {
     }
 
     public var body: some View {
-        Group {
+        // #1058: `.task` lives on this `ZStack`, NOT on the conditional
+        // content directly. `Group` has no identity of its own — when its
+        // sole content resolves to `EmptyView()` (the cold-launch condition:
+        // `shouldShow` starts `nil`), SwiftUI mounts nothing at all at that
+        // position, so a `.task` attached to the `Group` never runs. Gate
+        // resolution then never starts and `shouldShow` stays `nil` forever
+        // (production incident: zero ad impressions, dormant ATT primer). A
+        // `ZStack` is a real container with its own identity even when its
+        // child is `EmptyView()`, so the `.task` here always mounts and
+        // fires exactly once regardless of which branch below renders.
+        // Rendered output is unaffected — a `ZStack` around a single child
+        // lays out identically to that child alone.
+        ZStack {
             // #968: `status == .suppressed` while `shouldShow == true` means
             // the gate said "show a banner" but the provider disagrees — the
             // only production path there is `NoopAdProvider` (macOS: Google
@@ -276,6 +307,17 @@ public struct BannerSlotView: View {
         // Gate open == a personalized ad is about to load == the first moment
         // ATT actually matters (#371 / #195). Idempotent — the closure latches.
         await onAdContext?()
+        // #1058 fix B: wait for the app-launch monetization boot sequence
+        // (UMP consent → ATT → AdMob init, `bootMonetization`) to have run to
+        // completion before this slot's FIRST ad request. Without this, the
+        // reload below could reach the provider before UMP consent resolves
+        // — a compliance ordering violation — and, separately, raced
+        // `bootMonetization`'s async initialize() to reach `AdProvider`
+        // still `.notInitialized`, surfacing as `.failed("not started")`.
+        // `bootSignal` defaults to already-fired for every call site except
+        // the cold-launch Today-tab slot, so this only ever suspends there;
+        // a late-mounting slot (boot already finished) returns immediately.
+        await bootSignal.awaitReady()
         // Kick the provider via the reload seam. A failed load surfaces as the
         // visible "Ad unavailable" caption (its `.failed` status) rather than
         // being silently swallowed.

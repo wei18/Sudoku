@@ -93,8 +93,16 @@ func chromedTabRoots<Route: Hashable & Sendable>(
 
 /// App-launch monetization boot. Runs UMP consent → AdMob SDK initialize.
 /// iOS-only: AdMob / UMP are iOS xcframeworks. On macOS returns immediately.
-func bootMonetization(adProvider: any AdProvider, telemetry: Telemetry) async {
+///
+/// - Parameter bootSignal: marked ready (#1058) once every step has been
+///   ATTEMPTED (`MonetizationBootCoordinator.boot()` never skips a step, so
+///   this fires exactly once regardless of individual step outcomes) — on
+///   macOS's immediate-return path too, so nothing ever awaits it forever.
+///   `BannerSlotView`'s cold-launch Today-tab slot awaits this before its
+///   first ad request, guaranteeing UMP consent has resolved first.
+func bootMonetization(adProvider: any AdProvider, telemetry: Telemetry, bootSignal: MonetizationBootSignal) async {
     #if !os(iOS)
+    await bootSignal.markReady()
     return
     #else
     let bridges = MonetizationBootBridges.live(adProvider: adProvider)
@@ -122,6 +130,7 @@ func bootMonetization(adProvider: any AdProvider, telemetry: Telemetry) async {
         }
     )
     await coordinator.boot()
+    await bootSignal.markReady()
     #endif
 }
 

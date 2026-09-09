@@ -42,6 +42,13 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
     private let adProvider: any AdProvider
     private let adGate: AdGate
     private let attPrimer: ATTPrimerCoordinator
+    /// App-launch monetization boot signal (#1058), forwarded to this host's
+    /// `BannerSlotView` — see that type's doc. Defaults to an already-fired
+    /// signal so every existing preview/test construction is unaffected;
+    /// `makeGameApp` passes the real composition-root signal because this
+    /// host's slot is the one proven to mount at cold launch, racing
+    /// `bootMonetization`.
+    private let bootSignal: MonetizationBootSignal
     private let content: Content
 
     @Environment(\.theme) private var theme
@@ -51,12 +58,14 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
         adProvider: any AdProvider,
         adGate: AdGate,
         attPrimer: ATTPrimerCoordinator,
+        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         @ViewBuilder content: () -> Content
     ) {
         self.rootViewModel = rootViewModel
         self.adProvider = adProvider
         self.adGate = adGate
         self.attPrimer = attPrimer
+        self.bootSignal = bootSignal
         self.content = content()
     }
 
@@ -107,6 +116,7 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
             adGate: adGate,
             bannerHost: adProvider as? any BannerViewProviding,
             onAdContext: onAdContext,
+            bootSignal: bootSignal,
             // #688 item 2: match the page background so an empty/loading slot is
             // invisible instead of reading as a mismatched seam in dark mode.
             backgroundColor: theme.surface.background.resolved,
