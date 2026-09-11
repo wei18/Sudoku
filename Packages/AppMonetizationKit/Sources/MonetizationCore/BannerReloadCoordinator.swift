@@ -46,6 +46,9 @@ public actor BannerReloadCoordinator {
             try await adProvider.refreshBanner()
             return await adProvider.bannerStatus
         } catch {
+            // Known gap: a cancelled readiness wait (`CancellationError`) also
+            // lands here and surfaces as `.failed` ("Ad unavailable"). Phase 2
+            // of #1058 closes this seam (slot-model design, PM 1 seam 2).
             return .failed(reason: String(describing: error))
         }
     }
