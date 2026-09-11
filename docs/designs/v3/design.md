@@ -821,7 +821,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | ~~U-5~~ | games 專章 | — | ✅ 已結案:**官方無介面結構規範** |
 | ~~U-6~~ | `GlassEffectContainer` | — | ✅ 已解:存在,26.0+ |
 | **U-2** | 玻璃叢集官方間距數值 | ❌ 不擋 | 引用系統標準即可 |
-| **U-7** | 各語系系統 GC 用詞 | ⚠️ **擋 L10n 定案** | B-3 |
+| ~~U-7~~ | 各語系系統 GC 用詞 | — | ✅ 已解(#1030,2026-09-11,[B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)):系統用詞取自 iOS 26.4 / 26.5 sim runtime 的 `GameCenterUI.framework` 字串表,六語系齊。zh-Hant / zh-Hans / es 與我方一致;**ja Leaderboards、ko 兩詞、th 兩詞不一致** → 交 #1025 定案。截圖未取得(本機 38 個 sim 皆無 GC 登入,owner-owned) |
 | **U-9** | `GlassEffectContainer` × 系統 button style | ⚠️ **擋 G4 實作細節** | B-7 |
 | **U-10** | `tabViewBottomAccessory` × AdMob | ❌ **不擋**(有降級備案) | B-6 |
 | **U-11** | MS `status.warning` 的實際使用位置 | ❌ 不擋 | 查清後決定是否另開 issue |
@@ -834,7 +834,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 |---|---|---|---|---|
 | B-1 | MS 盤面留白成因 | sim agent | Beginner >32pt 且 Expert ≈0 → 成因確認 | ✅ |
 | B-2 | Dynamic Type AX5 | sim agent | 不截斷且不減內容量。**⚠️ 不可用注入 env 快照(假通過)** | ✅ |
-| B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ |
+| B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ 已執行(#1030,[verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)):以 runtime 字串表替代截圖(證據鏈見留言);結果 3 語系一致、ja/ko/th 不一致 → #1025 |
 | B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039 |
 | B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ |
 | B-6 | accessory × AdMob | dev | banner 不塌、impression 正常 | ✅(最小樣板) |
@@ -875,7 +875,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | 項目 | 等什麼 | 沒等到就 |
 |---|---|---|
 | Banner 改 tab accessory | B-6 | **退回 tab 內容底部**(設計已備案,不阻擋出貨) |
-| L10n 新字串定案 | B-3 / U-7 | 先只上英文,其餘語系待核對 |
+| L10n 新字串定案 | ~~B-3 / U-7~~ ✅ 已解 → #1025 | 系統用詞已知;ja/ko/th 對齊與否由 #1025 定案 |
 
 ### 階段 3 — 獨立 PR,不綁 3.0
 
@@ -907,7 +907,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 |---|---|---|---|
 | 1 | 「卡片不用玻璃」隱含現況無玻璃 | 現況**有 6 處** shipping 玻璃在內容層 | **談現況要查程式碼,不要只讀設計文件** |
 | 2 | MS 成就 13 個 | **11 個**(兩 app 各 11,合計 22) | **數量要找權威列舉,不要 grep 宣告樣式** |
-| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞** | **判定合規要看全部樣本,不能只看一個鍵** |
+| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞**。**追記(2026-09-11,#1030):**「統一リーダーボード」的裁定**與 iOS 26 runtime 不符** —— 系統 ja 全表用英文原詞 `Leaderboard`(ランキング 專指 rank);是否改採由 #1025 定案,見 [B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089) | **判定合規要看全部樣本,不能只看一個鍵** |
 | 4 | 「v3.2 有 14 片玻璃」 | 實際宣告 **6 片** —— 14 是我的腳本數 HTML class 出現次數 | **驗證腳本的計數欄位要對齊它宣稱測量的概念** |
 | 5 | 「Sudoku 側沒有等價 `allShortIds`」 | **有**,在 `SudokuEngine/GameCenterIdentifiers.swift:82-94` | **找不到時先確認找對模組;跨 app 對稱假設不是每處都成立** |
 | 6 | 契約累計 20 / 12 | **32 / 27**(r2 再更正為 **36 / 28**,見 #10) | **不同量綱不能相加**(BREAK 小計 ≠ 總列數) |
