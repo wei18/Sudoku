@@ -16,6 +16,7 @@ private func assertSendable<T: Sendable>(_ value: T) {}
 private actor _ProtocolWitnessAdProvider: AdProvider {
     var bannerStatus: AdBannerStatus { .notInitialized }
     func initialize() async throws {}
+    func awaitReady() async throws {}
     func refreshBanner() async throws {}
     func dispose(handle: AdBannerHandle) async {}
 }
@@ -43,6 +44,7 @@ struct ProtocolShapeTests {
         let status = await provider.bannerStatus
         #expect(status == .notInitialized)
         try await provider.initialize()
+        try await provider.awaitReady()
         try await provider.refreshBanner()
         await provider.dispose(handle: AdBannerHandle())
     }

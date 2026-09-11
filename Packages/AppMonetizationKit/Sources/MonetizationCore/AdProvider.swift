@@ -11,12 +11,29 @@ public protocol AdProvider: Sendable {
     /// to call repeatedly; subsequent calls after the first are no-ops.
     func initialize() async throws
 
+    /// Suspends until the provider is ready to serve `refreshBanner()` (#1058).
+    ///
+    /// Readiness is a one-way latch: it opens once and never re-closes.
+    /// - A provider that starts an SDK opens it when `initialize()` COMPLETES —
+    ///   success OR failure — so a failed start never deadlocks a waiter; the
+    ///   subsequent `refreshBanner()` reports the provider's own failure.
+    /// - A provider with nothing to start returns immediately.
+    ///
+    /// Because the boot coordinator calls `initialize()` only after the UMP
+    /// consent step, readiness also means "consent resolved".
+    ///
+    /// - Throws: `CancellationError` only if the calling task is cancelled
+    ///   while still waiting. Once ready, returns without throwing.
+    func awaitReady() async throws
+
     /// Current ready-to-display banner state. Pull-based; the UI layer queries
     /// this when rendering a `BannerSlotView`.
     var bannerStatus: AdBannerStatus { get async }
 
     /// Force a fresh banner load. Used after the user dismisses the current
-    /// banner and the gate re-opens (e.g. next calendar day).
+    /// banner and the gate re-opens (e.g. next calendar day). A provider that
+    /// starts an SDK must not reach the ad network before `awaitReady()` would
+    /// return.
     func refreshBanner() async throws
 
     /// Release the resources backing a previously loaded banner handle. The UI

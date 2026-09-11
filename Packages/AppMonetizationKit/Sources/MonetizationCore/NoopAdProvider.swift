@@ -10,6 +10,7 @@ internal import Foundation
 //
 // Behavior:
 //   - `initialize()` is a no-op and never throws.
+//   - `awaitReady()` returns immediately — there is no SDK to wait for.
 //   - `bannerStatus` always returns `.suppressed` — `BannerSlotView` already
 //     collapses to `EmptyView()` on `.suppressed`, so the banner slot
 //     disappears cleanly on macOS. This matches the design intent ("no ads
@@ -32,6 +33,10 @@ public actor NoopAdProvider: AdProvider {
 
     public func initialize() async throws {
         // no-op: nothing to start when the SDK is absent.
+    }
+
+    public func awaitReady() async throws {
+        // Always ready: nothing to start when the SDK is absent.
     }
 
     public func refreshBanner() async throws {

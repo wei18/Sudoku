@@ -50,6 +50,37 @@ struct FakeAdProviderTests {
         }
     }
 
+    @Test func readinessIsOpenByDefault() async throws {
+        let fake = FakeAdProvider()
+        try await fake.awaitReady()
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func readinessHeldSuspendsUntilMarkReady() async throws {
+        let fake = FakeAdProvider(readinessHeld: true)
+        let waiter = Task { try await fake.awaitReady() }
+        try await Task.sleep(for: .milliseconds(100))
+
+        fake.markReady()
+
+        // Bounded: cancel the waiter if it is still suspended, so a broken
+        // hold fails with CancellationError instead of hanging.
+        let timer = Task {
+            try await Task.sleep(for: .seconds(2))
+            waiter.cancel()
+        }
+        let result = await waiter.result
+        timer.cancel()
+        #expect(throws: Never.self) { try result.get() }
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func readinessHeldDoesNotGateRefresh() async throws {
+        let fake = FakeAdProvider(readinessHeld: true)
+        try await fake.refreshBanner()
+        #expect(await fake.refreshCallCount == 1)
+    }
+
     @Test func disposeRecordsHandlesInOrder() async {
         let h1 = AdBannerHandle()
         let h2 = AdBannerHandle()

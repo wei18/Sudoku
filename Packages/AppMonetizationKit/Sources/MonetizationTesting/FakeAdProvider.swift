@@ -30,9 +30,23 @@ public actor FakeAdProvider: AdProvider {
     public private(set) var refreshCallCount: Int = 0
     /// Handles passed to `dispose(handle:)`, in call order, for test assertions.
     public private(set) var disposedHandles: [AdBannerHandle] = []
+    private nonisolated let readiness: ReadinessLatch
 
-    public init(scripted: ScriptedAdProviderState = ScriptedAdProviderState()) {
+    /// - Parameter readinessHeld: `true` makes `awaitReady()` suspend until
+    ///   `markReady()` — for tests that must prove a caller waits for provider
+    ///   readiness. `refreshBanner()` deliberately does NOT wait on it, so a
+    ///   caller that skips `awaitReady()` shows up in `refreshCallCount`.
+    public init(
+        scripted: ScriptedAdProviderState = ScriptedAdProviderState(),
+        readinessHeld: Bool = false
+    ) {
         self.scripted = scripted
+        self.readiness = ReadinessLatch(isOpen: !readinessHeld)
+    }
+
+    /// Releases a `readinessHeld` fake. Idempotent; readiness never re-closes.
+    public nonisolated func markReady() {
+        readiness.open()
     }
 
     public func script(_ scripted: ScriptedAdProviderState) {
@@ -53,6 +67,10 @@ public actor FakeAdProvider: AdProvider {
     public func initialize() async throws {
         initializeCallCount += 1
         if let error = scripted.initializeThrows { throw error }
+    }
+
+    public func awaitReady() async throws {
+        try await readiness.wait()
     }
 
     public func refreshBanner() async throws {

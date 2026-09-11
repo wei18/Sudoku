@@ -95,6 +95,8 @@ final actor UITestFlipOnBackgroundAdGateStateStore: AdGateStateStore {
 actor UITestNoopAdProvider: AdProvider {
     func initialize() async throws {}
 
+    func awaitReady() async throws {}
+
     var bannerStatus: AdBannerStatus {
         .loaded(AdBannerHandle())
     }

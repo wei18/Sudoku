@@ -22,8 +22,14 @@ internal struct FakeAdMobBridgeState: Sendable {
 
 internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
     private let state = OSAllocatedUnfairLock<FakeAdMobBridgeState>(initialState: .init())
+    private let startGate: ReadinessLatch
 
-    internal init() {}
+    /// - Parameter startGate: `start()` records its call, then suspends until
+    ///   this latch opens — lets a test hold `initialize()` in flight. Open by
+    ///   default, so `start()` returns immediately.
+    internal init(startGate: ReadinessLatch = ReadinessLatch(isOpen: true)) {
+        self.startGate = startGate
+    }
 
     // MARK: Scripting API
 
@@ -59,6 +65,7 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
             s.startCallCount += 1
             return s.startError
         }
+        try await startGate.wait()
         if let err { throw err }
     }
 

@@ -52,14 +52,25 @@ struct BannerLoadTests {
         }
     }
 
-    @Test func refreshBeforeInitializeFails() async {
+    // #1058: refresh before initialize() now waits for readiness instead of
+    // failing fast. Bounded: the waiting refresh is cancelled, so a latch that
+    // never releases fails this test rather than hanging the suite.
+    @Test(.timeLimit(.minutes(1)))
+    func refreshBeforeInitializeWaitsWithoutReachingBridge() async throws {
         let bridge = FakeAdMobBridge()
         let provider = LiveAdMobAdProvider(bridge: bridge)
 
-        await #expect(throws: AdMobBridgeError.self) {
-            try await provider.refreshBanner()
-        }
+        let refresh = ObservedTask { try await provider.refreshBanner() }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(!refresh.isFinished, "refresh must wait for initialize(), not fail fast")
+
+        refresh.cancel()
+
+        let outcome = await refresh.boundedResult()
+        #expect(!outcome.timedOut)
+        #expect(throws: CancellationError.self) { try outcome.result.get() }
         #expect(bridge.loadCallCount == 0)
+        #expect(await provider.bannerStatus == .notInitialized)
     }
 
     @Test func refreshAfterFailureCanRecover() async throws {
