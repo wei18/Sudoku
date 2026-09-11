@@ -266,9 +266,12 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 理由:9 欄硬性擠壓,提高格徑只能靠捲動,而捲動破壞「一眼看完整盤」的玩法前提。
 緩解:選取環清晰、MS Intermediate/Expert 已在 #764 提到 44pt、#815 提供 pinch-to-zoom。
 
-**⚠️ MS Intermediate(24.3pt)與 Expert(13.0pt)在未縮放時低於官方 28pt 絕對下限。**
-合規路徑是 **#815 的 pinch-to-zoom** —— 玩家可放大到 2×(≈48.6 / 26pt)。
-**B-5 驗收要加一條:zoom 後格徑 ≥28pt。**
+**✅ 更正(B-5 實測,#1028 · 2026-09-11):MS Intermediate / Expert 在 1× 已是 44pt。**
+前一版寫的「未縮放 24.3 / 13.0pt、2× ≈48.6 / 26pt」是 #764 之前的數字 —— #764 起 Intermediate/Expert 盤面改為
+**44pt 下限 + 可捲動**,不再靠壓縮格徑塞進螢幕(而且前一版自己的 2× Expert 值 26pt 也低於它引用的 28pt 下限,該列本身是矛盾的)。
+iPhone 17 Pro sim 實測(`ui_describe_all` 讀回的格框):1× 兩者皆 44×44pt(pitch 46pt);#815 pinch 到 2× 後 **88×88pt**(pitch 90pt),
+第二次 pinch 仍停在 88pt(`maxZoomScale = 2.0` clamp 生效)。唯一會低於 28pt 的是玩家主動縮到 0.5×(22pt),#815 已定義為 session-only 的明示選擇。
+**B-5 驗收條「zoom 後格徑 ≥28pt」:通過(88 ≥ 28;1× 的 44 也已 ≥ 28)。**
 
 ⚠️ 另更正:前一版把「格間無間隙」列為緩解措施 —— **移除**。
 官方把間距與尺寸視為同等重要,零間距是一個**取捨**(避免點擊掉進縫隙),不是把格子做小的緩解理由。
@@ -836,7 +839,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | B-2 | Dynamic Type AX5 | sim agent | 不截斷且不減內容量。**⚠️ 不可用注入 env 快照(假通過)** | ✅ |
 | B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ 已執行(#1030,[verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)):以 runtime 字串表替代截圖(證據鏈見留言);結果 3 語系一致、ja/ko/th 不一致 → #1025 |
 | B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039 |
-| B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ |
+| B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ 已跑(2026-09-11,[#1028 verdict](https://github.com/wei18/Sudoku/issues/1028#issuecomment-5631511746)):8 組合 × 2 app,判準 1/2/3/5 全過;判準 4 除 **M1**(RM 下 accent seep 被整個關掉而非 crossfade → #1065)外全過;§6 未實作列的漂移 → #1066 |
 | B-6 | accessory × AdMob | dev | banner 不塌、impression 正常 | ✅(最小樣板) |
 | B-7 | `GlassEffectContainer` × button style | dev | 正確合併為單一玻璃形狀 | ✅(最小樣板) |
 
