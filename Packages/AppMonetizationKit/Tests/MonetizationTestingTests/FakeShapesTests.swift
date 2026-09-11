@@ -81,6 +81,20 @@ struct FakeAdProviderTests {
         #expect(await fake.refreshCallCount == 1)
     }
 
+    @Test func refreshReturnsTheScriptedLoadedHandle() async throws {
+        let handle = AdBannerHandle()
+        let fake = FakeAdProvider(scripted: ScriptedAdProviderState(statusSequence: [.loading, .loaded(handle)]))
+        let returned = try await fake.refreshBanner()
+        #expect(returned == handle)
+    }
+
+    @Test func awaitReadyCallCountIsTracked() async throws {
+        let fake = FakeAdProvider()
+        try await fake.awaitReady()
+        try await fake.awaitReady()
+        #expect(await fake.awaitReadyCallCount == 2)
+    }
+
     @Test func disposeRecordsHandlesInOrder() async {
         let h1 = AdBannerHandle()
         let h2 = AdBannerHandle()

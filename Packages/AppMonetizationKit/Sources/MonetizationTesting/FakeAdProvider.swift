@@ -28,6 +28,7 @@ public actor FakeAdProvider: AdProvider {
     private var cursor: Int = 0
     public private(set) var initializeCallCount: Int = 0
     public private(set) var refreshCallCount: Int = 0
+    public private(set) var awaitReadyCallCount: Int = 0
     /// Handles passed to `dispose(handle:)`, in call order, for test assertions.
     public private(set) var disposedHandles: [AdBannerHandle] = []
     private nonisolated let readiness: ReadinessLatch
@@ -70,16 +71,25 @@ public actor FakeAdProvider: AdProvider {
     }
 
     public func awaitReady() async throws {
+        awaitReadyCallCount += 1
         try await readiness.wait()
     }
 
-    public func refreshBanner() async throws {
+    /// Returns the handle of the scripted `.loaded` status the cursor lands on,
+    /// or a fresh handle when that status is not `.loaded`.
+    @discardableResult
+    public func refreshBanner() async throws -> AdBannerHandle {
         refreshCallCount += 1
         if let error = scripted.refreshThrows { throw error }
         // Advance status cursor on successful refresh.
         if cursor + 1 < scripted.statusSequence.count {
             cursor += 1
         }
+        if !scripted.statusSequence.isEmpty,
+           case let .loaded(handle) = scripted.statusSequence[min(cursor, scripted.statusSequence.count - 1)] {
+            return handle
+        }
+        return AdBannerHandle()
     }
 
     public func dispose(handle: AdBannerHandle) async {

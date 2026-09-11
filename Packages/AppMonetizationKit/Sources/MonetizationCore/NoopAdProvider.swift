@@ -16,7 +16,8 @@ internal import Foundation
 //     disappears cleanly on macOS. This matches the design intent ("no ads
 //     where the SDK is unavailable") without adding a new `AdBannerStatus`
 //     case (e.g. `.unsupported`) that other call sites would have to handle.
-//   - `refreshBanner()` is a no-op and never throws.
+//   - `refreshBanner()` throws `AdProviderError.unsupported` — unreachable by
+//     ordering, not by type: callers stop on `.suppressed` before any load.
 //
 // Suppression precedence note: `AdGate.shouldShowBanner` is the canonical
 // arbiter of "should this user see a banner right now". UI call sites consult
@@ -39,8 +40,9 @@ public actor NoopAdProvider: AdProvider {
         // Always ready: nothing to start when the SDK is absent.
     }
 
-    public func refreshBanner() async throws {
-        // no-op: status stays `.suppressed` regardless of refresh requests.
+    @discardableResult
+    public func refreshBanner() async throws -> AdBannerHandle {
+        throw AdProviderError.unsupported
     }
 
     public func dispose(handle: AdBannerHandle) async {

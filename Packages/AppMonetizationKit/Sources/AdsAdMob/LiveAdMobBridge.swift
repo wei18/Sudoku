@@ -157,6 +157,11 @@ internal final class LiveAdMobBridge: AdMobBridge {
         } catch {
             // Release the view we never got a successful load for.
             _ = liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+            // `onCancel` resumes with `CancellationError`: keep it a
+            // cancellation so callers never surface it as "Ad unavailable".
+            if error is CancellationError || Task.isCancelled {
+                throw CancellationError()
+            }
             let reason = String(describing: error)
             throw AdMobBridgeError.loadFailed(reason: reason)
         }

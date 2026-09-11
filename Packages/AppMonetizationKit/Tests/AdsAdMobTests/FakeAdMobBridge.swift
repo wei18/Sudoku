@@ -15,6 +15,7 @@ internal struct FakeAdMobBridgeState: Sendable {
     var startError: (any Error)?
     var loadError: (any Error)?
     var nextHandle: AdBannerHandle = .init()
+    var loadGate: ReadinessLatch?
     var startCallCount: Int = 0
     var loadCallCount: Int = 0
     var disposedHandles: [AdBannerHandle] = []
@@ -45,6 +46,13 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
         state.withLock { $0.nextHandle = handle }
     }
 
+    /// Subsequent `loadBanner()` calls record themselves, then suspend until
+    /// `gate` opens — lets a test hold a load in flight and cancel it. A
+    /// cancelled wait throws `CancellationError` out of `loadBanner()`.
+    internal func setLoadGate(_ gate: ReadinessLatch?) {
+        state.withLock { $0.loadGate = gate }
+    }
+
     internal var startCallCount: Int {
         state.withLock { $0.startCallCount }
     }
@@ -70,10 +78,11 @@ internal final class FakeAdMobBridge: AdMobBridge, @unchecked Sendable {
     }
 
     internal func loadBanner() async throws -> AdBannerHandle {
-        let (err, handle) = state.withLock { (s: inout FakeAdMobBridgeState) -> ((any Error)?, AdBannerHandle) in
+        let (err, handle, gate) = state.withLock { s in
             s.loadCallCount += 1
-            return (s.loadError, s.nextHandle)
+            return (s.loadError, s.nextHandle, s.loadGate)
         }
+        if let gate { try await gate.wait() }
         if let err { throw err }
         return handle
     }

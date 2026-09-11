@@ -109,7 +109,10 @@ struct BannerSlotColdLaunchTests {
         func initialize() async throws {}
         func awaitReady() async throws {}
         var bannerStatus: AdBannerStatus { get async { .notInitialized } }
-        func refreshBanner() async throws { await log.record("adLoadStarted") }
+        func refreshBanner() async throws -> AdBannerHandle {
+            await log.record("adLoadStarted")
+            return AdBannerHandle()
+        }
         func dispose(handle: AdBannerHandle) async {}
     }
 

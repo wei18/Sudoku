@@ -73,7 +73,8 @@ public actor LiveAdMobAdProvider: AdProvider {
         try await readiness.wait()
     }
 
-    public func refreshBanner() async throws {
+    @discardableResult
+    public func refreshBanner() async throws -> AdBannerHandle {
         try await readiness.wait()
         guard didStart else {
             // Readiness opened because `initialize()` completed by FAILING.
@@ -82,10 +83,17 @@ public actor LiveAdMobAdProvider: AdProvider {
             lastKnownStatus = .failed(reason: "refreshBanner called before initialize")
             throw AdMobBridgeError.initializationFailed(reason: "not started")
         }
+        let previousStatus = lastKnownStatus
         lastKnownStatus = .loading
         do {
             let handle = try await bridge.loadBanner()
             lastKnownStatus = .loaded(handle)
+            return handle
+        } catch let cancellation as CancellationError {
+            // A cancelled load is not a failure: restore the prior status
+            // instead of surfacing `.failed` ("Ad unavailable").
+            lastKnownStatus = previousStatus
+            throw cancellation
         } catch {
             lastKnownStatus = .failed(reason: String(describing: error))
             throw error

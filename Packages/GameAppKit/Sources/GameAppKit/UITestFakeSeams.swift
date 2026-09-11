@@ -101,7 +101,9 @@ actor UITestNoopAdProvider: AdProvider {
         .loaded(AdBannerHandle())
     }
 
-    func refreshBanner() async throws {}
+    func refreshBanner() async throws -> AdBannerHandle {
+        AdBannerHandle()
+    }
 
     func dispose(handle: AdBannerHandle) async {}
 }

@@ -351,8 +351,8 @@ public struct BannerSlotView: View {
         await bootSignal.awaitReady()
         // Kick the provider via the reload seam. A failed load surfaces as the
         // visible "Ad unavailable" caption (its `.failed` status) rather than
-        // being silently swallowed.
-        status = await reloadCoordinator.reloadIfGateOpen(now: now)
+        // being silently swallowed; a cancellation leaves `status` untouched.
+        if let reloaded = try? await reloadCoordinator.reloadIfGateOpen(now: now) { status = reloaded }
     }
 
     /// Foreground re-poll (#341). If the gate has reopened since the last
@@ -362,7 +362,8 @@ public struct BannerSlotView: View {
     /// returns `.suppressed` without touching the provider and we leave the
     /// slot hidden.
     private func repollGate() async {
-        let reloaded = await reloadCoordinator.reloadIfGateOpen(now: Date())
+        guard await adProvider.bannerStatus != .suppressed, // #968: never ask macOS Noop to load
+              let reloaded = try? await reloadCoordinator.reloadIfGateOpen(now: Date()) else { return }
         guard reloaded != .suppressed else { return }
         status = reloaded
         shouldShow = true

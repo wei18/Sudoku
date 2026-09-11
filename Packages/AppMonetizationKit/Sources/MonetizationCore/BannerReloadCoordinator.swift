@@ -34,21 +34,27 @@ public actor BannerReloadCoordinator {
     /// - Returns: the resulting `AdBannerStatus` the UI slot should render.
     ///   `.suppressed` when the gate is closed (purchased / dismissed-today /
     ///   clock-tamper) — in which case the provider is never touched.
-    ///   `.failed(...)` if the gate is open but the reload throws.
+    ///   `.loaded(handle)` carries the handle THIS call loaded, taken from
+    ///   `refreshBanner()`'s return value — never re-read from the provider's
+    ///   shared `bannerStatus`, which a concurrent reload may have overwritten.
+    ///   `.failed(...)` if the gate is open but the load fails.
+    /// - Throws: `CancellationError` only — a cancelled wait or load is not a
+    ///   failure and must never surface as "Ad unavailable" (#1058).
     @discardableResult
-    public func reloadIfGateOpen(now: Date) async -> AdBannerStatus {
+    public func reloadIfGateOpen(now: Date) async throws(CancellationError) -> AdBannerStatus {
         guard await adGate.shouldShowBanner(now: now) else {
             // Gate closed. Remove-Ads / dismissed-today / tamper — do NOT
             // touch the provider. The slot collapses on `.suppressed`.
             return .suppressed
         }
         do {
-            try await adProvider.refreshBanner()
-            return await adProvider.bannerStatus
+            let handle = try await adProvider.refreshBanner()
+            return .loaded(handle)
+        } catch let cancellation as CancellationError {
+            // #1058: cancellation is rethrown here, so `.failed` below only
+            // ever means a real load failure.
+            throw cancellation
         } catch {
-            // Known gap: a cancelled readiness wait (`CancellationError`) also
-            // lands here and surfaces as `.failed` ("Ad unavailable"). Phase 2
-            // of #1058 closes this seam (slot-model design, PM 1 seam 2).
             return .failed(reason: String(describing: error))
         }
     }

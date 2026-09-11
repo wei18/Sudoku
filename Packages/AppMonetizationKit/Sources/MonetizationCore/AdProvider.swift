@@ -34,7 +34,14 @@ public protocol AdProvider: Sendable {
     /// banner and the gate re-opens (e.g. next calendar day). A provider that
     /// starts an SDK must not reach the ad network before `awaitReady()` would
     /// return.
-    func refreshBanner() async throws
+    ///
+    /// - Returns: the handle THIS call loaded. Callers must use it rather than
+    ///   re-reading `bannerStatus`, which is shared and may already reflect a
+    ///   concurrent load (#1058).
+    /// - Throws: `CancellationError` when the calling task is cancelled before
+    ///   the load completes — a cancellation, never a load failure.
+    @discardableResult
+    func refreshBanner() async throws -> AdBannerHandle
 
     /// Release the resources backing a previously loaded banner handle. The UI
     /// layer calls this when the `BannerSlotView` disappears so the live
@@ -42,6 +49,15 @@ public protocol AdProvider: Sendable {
     /// the handle's lifetime (#221). No-op for providers that hold no per-handle
     /// state, and safe to call with an unknown / already-disposed handle.
     func dispose(handle: AdBannerHandle) async
+}
+
+// MARK: - AdProviderError
+
+public enum AdProviderError: Error, Equatable, Sendable {
+    /// This provider cannot serve ads (`NoopAdProvider`, where the AdMob SDK is
+    /// absent). Unreachable by ordering, not by type: every load path stops on
+    /// `bannerStatus == .suppressed` before calling `refreshBanner()`.
+    case unsupported
 }
 
 // MARK: - AdBannerStatus

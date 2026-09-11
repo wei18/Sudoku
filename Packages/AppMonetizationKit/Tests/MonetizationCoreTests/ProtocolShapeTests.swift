@@ -17,7 +17,7 @@ private actor _ProtocolWitnessAdProvider: AdProvider {
     var bannerStatus: AdBannerStatus { .notInitialized }
     func initialize() async throws {}
     func awaitReady() async throws {}
-    func refreshBanner() async throws {}
+    func refreshBanner() async throws -> AdBannerHandle { AdBannerHandle() }
     func dispose(handle: AdBannerHandle) async {}
 }
 
