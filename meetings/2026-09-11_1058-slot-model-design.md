@@ -35,7 +35,7 @@ A cancelled wait or load produces **no status change**.
   - `BannerSlotRegistration` is a **nonisolated** struct with a `@MainActor init`, and `nonisolated func update() { MainActor.assumeIsolated { lease.attach(to:) … } }`.
   - Why: `DynamicProperty.update()` is nonisolated in the Swift 6.3 SDK, so a `@MainActor struct` conformance fails to compile under #ConformanceIsolation.
   - Consequence: if SwiftUI ever called `update()` off the main thread, `assumeIsolated` (checked in every build configuration) would **trap loudly**. That is the acceptable failure mode, and it can never become a silent race.
-  - Not used: an isolated conformance (`@MainActor DynamicProperty`). SwiftUI installs dynamic properties through runtime metadata, and such a lookup can fail off the actor.
+  - Not used: an isolated conformance (`@MainActor DynamicProperty`). **This is reasoning only; it was not tried in S1.** SwiftUI installs dynamic properties through runtime metadata, and per SE-0470 a dynamic lookup of an isolated conformance can fail off the actor, which would silently leave the property uninstalled.
 - **Idempotent `attach(to:)` is a tested invariant, not an implementation detail.** `update()` runs more than once per mount (S1: 2 on first mount, 12 across 11 renders), so a second `attach` must never register again. Test I1 pins it.
 - **The lease's `isolated deinit`** calls `unregister(id)`, which cancels the slot's load and disposes its handle.
 - **Why this option:**
@@ -94,7 +94,10 @@ A cancelled wait or load produces **no status change**.
 ## Pause (rev 2 as approved)
 - **Hosts:** they always build the slot and pass `isSuppressed: viewModel.isPaused`; MS adds `|| viewModel.isTerminal`.
 - **Rendering:** while suppressed the slot renders zero subviews, which looks identical to shipped v2.3.5 (the calm contract). The identity, lease and handle survive, and there's no re-request on resume.
-- **`BoardViewBannerTests`:** its assertions and PNG baselines stay untouched. Only its construction lines (`BoardView(viewModel:adProvider:adGate:)`) and its `lastKnownShouldShowBanner` warm-up change, to injecting a session with `shouldShow == true` (awaiting the PM's reading of "untouched").
+- **`BoardViewBannerTests` (lead ruling):** "untouched" means **its assertions and PNG baselines are untouched**.
+  - The running/paused visual outcomes and the `Board-iPhone-{light,dark}-banner-reserved` snapshots must stay byte-identical.
+  - Only the construction lines (`BoardView(viewModel:adProvider:adGate:)`) and the `lastKnownShouldShowBanner` warm-up change, to injecting a `BannerSessionModel` with `shouldShow == true`. The approved spec deletes those parameters and that property.
+  - **If any baseline moves after that adaptation, stop and report. Do not re-record.**
 - **Considered and deferred, alternative (C):**
   - While paused, keep an empty 50pt rect instead of zero subviews. That would remove the pause/resume reflow and still honour the calm contract.
   - But it changes v2.3.5's layout contract and the paused snapshot baselines. That's a product layout decision, not something for a release blocker.
