@@ -1,5 +1,6 @@
 import Foundation
 import Synchronization
+import SwiftUI
 import MonetizationCore
 import MonetizationTesting
 @testable import MonetizationUI
@@ -100,6 +101,74 @@ actor OrderRecordingAdProvider: AdProvider {
     }
 
     func dispose(handle: AdBannerHandle) async {}
+}
+
+/// Hands out one handle per `refreshBanner()` call and holds call `n` until the
+/// test opens `release[n]`. The hold deliberately ignores cancellation: it models
+/// an SDK load whose success callback committed before `onCancel` ran, so a
+/// cancelled caller still receives a live handle. A cancellable wait here would
+/// let the cancellation through, and the late-handle branch would never run.
+actor HeldLoadAdProvider: AdProvider {
+    nonisolated let started: [ReadinessLatch]
+    nonisolated let release: [ReadinessLatch]
+    private(set) var issued: [AdBannerHandle] = []
+    private(set) var disposed: [AdBannerHandle] = []
+
+    init(loads: Int) {
+        started = (0..<loads).map { _ in ReadinessLatch() }
+        release = (0..<loads).map { _ in ReadinessLatch() }
+    }
+
+    func initialize() async throws {}
+
+    func awaitReady() async throws {}
+
+    var bannerStatus: AdBannerStatus { .notInitialized }
+
+    func refreshBanner() async throws -> AdBannerHandle {
+        let index = issued.count
+        let handle = AdBannerHandle()
+        issued.append(handle)
+        started[index].open()
+        while !release[index].isOpen {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return handle
+    }
+
+    func dispose(handle: AdBannerHandle) async {
+        disposed.append(handle)
+    }
+
+    nonisolated func releaseAll() {
+        release.forEach { $0.open() }
+    }
+}
+
+/// A provider that hosts a placeholder banner view for any handle.
+actor HostingAdProvider: AdProvider, BannerViewProviding {
+    private let status: AdBannerStatus
+
+    init(status: AdBannerStatus = .notInitialized) {
+        self.status = status
+    }
+
+    func initialize() async throws {}
+
+    func awaitReady() async throws {}
+
+    var bannerStatus: AdBannerStatus { status }
+
+    func refreshBanner() async throws -> AdBannerHandle {
+        AdBannerHandle()
+    }
+
+    func dispose(handle: AdBannerHandle) async {}
+
+    @MainActor
+    func bannerView(for handle: AdBannerHandle) -> AnyView? {
+        AnyView(Color.clear)
+    }
 }
 
 /// Polls `condition` every 10ms until it holds or `timeout` elapses.

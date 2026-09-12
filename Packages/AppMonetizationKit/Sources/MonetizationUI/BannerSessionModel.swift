@@ -1,6 +1,7 @@
 public import Foundation
 public import MonetizationCore
 public import Observation
+public import SwiftUI
 
 // MARK: - BannerSlotID
 
@@ -43,6 +44,16 @@ public final class BannerSessionModel {
         slots[id] ?? .notInitialized
     }
 
+    /// The live banner view for the slot's loaded handle, or `nil` when the
+    /// slot holds no loaded handle or the provider hosts no real view (fakes).
+    /// A suppressed provider (macOS `NoopAdProvider`) never gets a load, so a
+    /// failing `BannerViewProviding` cast is unreachable by ordering — the same
+    /// rule that makes Noop's `unsupported` throw unreachable.
+    public func bannerView(for id: BannerSlotID) -> AnyView? {
+        guard case let .loaded(handle) = slots[id] else { return nil }
+        return (services?.adProvider as? any BannerViewProviding)?.bannerView(for: handle)
+    }
+
     private struct Services {
         let adProvider: any AdProvider
         let adGate: AdGate
@@ -83,11 +94,9 @@ public final class BannerSessionModel {
         shouldShow = false
     }
 
-    /// A model that never shows a banner and holds no provider — for previews
-    /// and snapshot fixtures that render slots without ads.
-    public static var disabled: BannerSessionModel {
-        BannerSessionModel(disabled: ())
-    }
+    /// A model that never shows a banner and holds no provider — for injecting
+    /// into previews and snapshot fixtures that render slots without ads.
+    public static let disabled = BannerSessionModel(disabled: ())
 
     // MARK: - Lifecycle
 
@@ -103,7 +112,7 @@ public final class BannerSessionModel {
 
     /// Foreground re-poll (#341). Joins `start()`, then re-resolves the gate: a
     /// closed gate hides without touching the provider; an open one brings a
-    /// hidden banner back and loads the slots that have no live handle.
+    /// hidden banner back, loads slots with no handle and retries failed ones.
     public func sceneDidBecomeActive() async {
         guard let services else { return }
         await start()
@@ -114,7 +123,7 @@ public final class BannerSessionModel {
         guard await providerCanServe(services) else { return }
         if shouldShow != true { shouldShow = true }
         beginReadinessOnce()
-        ensureLoads()
+        ensureLoads(retryingFailed: registered)
     }
 
     /// The user tapped ✕: records today's dismissal, then hides every slot.
@@ -137,7 +146,7 @@ public final class BannerSessionModel {
 
     public func register(_ id: BannerSlotID) {
         guard services != nil, registered.insert(id).inserted else { return }
-        ensureLoads()
+        ensureLoads(retryingFailed: [id])
     }
 
     public func unregister(_ id: BannerSlotID) {
@@ -188,17 +197,27 @@ public final class BannerSessionModel {
         }
     }
 
-    private func ensureLoads() {
+    /// Schedules a load for every registered slot that needs one. A `.failed`
+    /// slot is retried only when the trigger names it — its own registration,
+    /// or a repoll naming every slot — so mounting one slot never re-requests
+    /// another slot's failed banner.
+    private func ensureLoads(retryingFailed retry: Set<BannerSlotID> = []) {
+        // `runStart` publishes `shouldShow` before its suppression check, so
+        // `isVisible` can be true before readiness has begun. A load scheduled
+        // in that window would only park on `sessionReady` (for good, if the
+        // provider turns out suppressed). No caller can observe the difference,
+        // so this guard is belt-and-braces and no test pins it.
         guard isVisible, readyTask != nil else { return }
-        for id in registered where loads[id] == nil && !hasLiveHandle(id) {
+        for id in registered where loads[id] == nil && needsLoad(id, retrying: retry) {
             let token = UUID()
             loads[id] = LoadEntry(token: token, task: Task { await self.load(id, token: token) })
         }
     }
 
-    private func hasLiveHandle(_ id: BannerSlotID) -> Bool {
-        if case .loaded = slots[id] { return true }
-        return false
+    private func needsLoad(_ id: BannerSlotID, retrying retry: Set<BannerSlotID>) -> Bool {
+        if case .loaded = slots[id] { return false }
+        if case .failed = slots[id] { return retry.contains(id) }
+        return true
     }
 
     private func load(_ id: BannerSlotID, token: UUID) async {
@@ -222,7 +241,10 @@ public final class BannerSessionModel {
         } catch is CancellationError {
             return
         } catch {
-            assertionFailure("banner load threw a non-cancellation error: \(error)")
+            // Unreachable: `wait()`, `checkCancellation()` and the coordinator's
+            // typed throw only ever throw `CancellationError`; this clause exists
+            // because `ReadinessLatch.wait()` is declared with untyped `throws`.
+            assertionFailure("unexpected non-cancellation error: \(error)")
         }
     }
 
