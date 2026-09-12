@@ -15,8 +15,8 @@ internal import Persistence
 /// #931: resolves the `AdGateStateStore` `AdGate` reads from. Under
 /// `-uitest-fake-ad-gate-repoll` (DEBUG only), swaps in
 /// `UITestFlipOnBackgroundAdGateStateStore` and registers its background-flip
-/// observer so the E2E suite can pin `BannerSlotView`'s scenePhase repoll
-/// hook (`repollGate()`) deterministically. See `UITestFakeSeams.swift` for
+/// observer so the E2E suite can pin `GameRoot`'s scenePhase banner repoll
+/// (`BannerSessionModel.sceneDidBecomeActive()`) deterministically. See `UITestFakeSeams.swift` for
 /// why a THROWING fake (rather than a plain state flip) is required to defeat
 /// `AdGate.currentState()`'s caching.
 @MainActor
@@ -33,7 +33,7 @@ func resolveAdGateStore(fallback: any AdGateStateStore) -> any AdGateStateStore 
     #endif
 }
 
-/// #931: resolves the `AdProvider` `BannerSlotView` renders from. Under
+/// #931: resolves the `AdProvider` the banner session loads from. Under
 /// `-uitest-fake-ad-gate-repoll` (DEBUG only), swaps in `UITestNoopAdProvider`
 /// so the paired E2E test never touches the AdMob SDK or network. `makeLive`
 /// is only invoked when the fake path is NOT taken, so the real

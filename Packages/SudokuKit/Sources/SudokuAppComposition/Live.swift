@@ -123,9 +123,6 @@ extension SudokuAppComposition {
                     persistence: deps.persistence,
                     errorReporter: deps.errorReporter,
                     telemetry: deps.telemetry,
-                    adProvider: deps.adProvider,
-                    adGate: deps.adGate,
-                    bootSignal: deps.bootSignal,
                     rootViewModel: rootViewModel
                 )
             },
@@ -272,10 +269,7 @@ extension SudokuAppComposition {
             gameCenter: deps.gameCenter,
             telemetry: deps.telemetry,
             errorReporter: deps.errorReporter,
-            adProvider: deps.adProvider,
             iapClient: deps.iapClient,
-            adGate: deps.adGate,
-            bootSignal: deps.bootSignal,
             monetizationController: settingsMonetizationController,
             toastController: deps.toastController,
             makeDailyReminderPrimer: deps.makeDailyReminderPrimer,

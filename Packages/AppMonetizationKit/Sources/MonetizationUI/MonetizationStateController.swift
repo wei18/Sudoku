@@ -138,6 +138,12 @@ public final class MonetizationStateController {
     /// MinesweeperAppComposition.Live.
     @ObservationIgnored
     private let productId: String
+    /// Runs at the end of every `markPurchased()` — a successful purchase, a
+    /// restore that returns the entitlement, and a `.purchased` event from the
+    /// `purchaseUpdates()` listener. The composition root wires it to the
+    /// banner session so every slot collapses immediately (#1058).
+    @ObservationIgnored
+    private let onEntitlementChanged: (@MainActor () async -> Void)?
 
     public init(
         iapClient: any IAPClient,
@@ -145,7 +151,8 @@ public final class MonetizationStateController {
         adGate: AdGate,
         toastController: ToastController? = nil,
         initialPurchased: Bool = false,
-        productId: String = removeAdsProductId
+        productId: String = removeAdsProductId,
+        onEntitlementChanged: (@MainActor () async -> Void)? = nil
     ) {
         self.iapClient = iapClient
         self.stateStore = stateStore
@@ -153,6 +160,7 @@ public final class MonetizationStateController {
         self.toastController = toastController
         self.hasPurchasedRemoveAds = initialPurchased
         self.productId = productId
+        self.onEntitlementChanged = onEntitlementChanged
     }
 
     deinit {
@@ -352,5 +360,6 @@ public final class MonetizationStateController {
     private func markPurchased() async {
         hasPurchasedRemoveAds = true
         await adGate.recordPurchase()
+        await onEntitlementChanged?()
     }
 }

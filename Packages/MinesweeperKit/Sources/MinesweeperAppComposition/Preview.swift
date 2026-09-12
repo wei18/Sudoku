@@ -53,8 +53,6 @@ extension MinesweeperAppComposition {
 
         let routeFactory = LiveRouteFactory(
             monetizationController: monetizationController,
-            adProvider: adProvider,
-            adGate: adGate,
             persistence: persistence,
             gameCenter: gameCenter,
             errorReporter: errorReporter,

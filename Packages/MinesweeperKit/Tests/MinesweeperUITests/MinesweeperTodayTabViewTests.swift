@@ -53,10 +53,9 @@ struct MinesweeperTodayTabViewTests {
     /// `MinesweeperAppComposition.makeTabRoot(.today, …)` builds
     /// (`MinesweeperDailyHubView` itself takes no `banner:` here —
     /// `TodayTabHost` is the ONE banner slot for the whole tab; see the CR
-    /// fix note on `Live+TabRoots.swift`). Seeds the ad gate CLOSED
-    /// (`hasPurchasedRemoveAds: true`), so every baseline below has the
-    /// banner region collapsed to `EmptyView` — `bannerVisible` below is the
-    /// one fixture that opens the gate to cover the banner region itself.
+    /// fix note on `Live+TabRoots.swift`). Injects `BannerSessionModel.disabled`,
+    /// so every baseline below has the banner region collapsed —
+    /// `bannerVisible` below is the one fixture that shows the banner region.
     private func todayTabHost() -> some View {
         let rootVM = MinesweeperRootViewModel(
             gameCenter: FakeGameCenterClient(),
@@ -65,22 +64,10 @@ struct MinesweeperTodayTabViewTests {
         let dailyViewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         dailyViewModel.setStateForTesting(.loaded(Self.loadedTrio))
         dailyViewModel.setPhase2PendingForTesting(false)
-        return TodayTabHost(
-            rootViewModel: rootVM,
-            adProvider: FakeAdProvider(),
-            adGate: AdGate(store: FakeAdGateStateStore(
-                initial: AdGateState(
-                    firstLaunchAt: Date(timeIntervalSince1970: 0),
-                    hasPurchasedRemoveAds: true
-                )
-            )),
-            attPrimer: ATTPrimerCoordinator(
-                isNotDetermined: { false },
-                requestSystemPrompt: {}
-            )
-        ) {
+        return TodayTabHost(rootViewModel: rootVM) {
             MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
+        .environment(\.bannerSession, .disabled)
     }
 
     /// Deterministic stand-in for the live `ProgressView` spinner (#732,
@@ -94,11 +81,10 @@ struct MinesweeperTodayTabViewTests {
         )
     }
 
-    /// Same composition as `todayTabHost()` but with the ad gate OPEN
-    /// (`hasPurchasedRemoveAds: false`, 30 days post-launch) — the #723 hint
-    /// is warmed via `shouldShowBanner(now:)` BEFORE constructing the view so
-    /// the banner's 50pt rect reserves space on the very first layout
-    /// instead of racing the async gate resolution.
+    /// Same composition as `todayTabHost()` but with a started session over an
+    /// OPEN gate (`hasPurchasedRemoveAds: false`, 30 days post-launch) and a
+    /// readiness-held fake provider, so the banner's 50pt rect reserves space
+    /// on the very first layout and stays in its loading state.
     private func todayTabHostWithVisibleBanner() async -> some View {
         let rootVM = MinesweeperRootViewModel(
             gameCenter: FakeGameCenterClient(),
@@ -107,25 +93,21 @@ struct MinesweeperTodayTabViewTests {
         let dailyViewModel = MinesweeperDailyHubViewModel(path: .constant([]))
         dailyViewModel.setStateForTesting(.loaded(Self.loadedTrio))
         dailyViewModel.setPhase2PendingForTesting(false)
-        let gate = AdGate(store: FakeAdGateStateStore(
-            initial: AdGateState(
-                firstLaunchAt: Date().addingTimeInterval(-30 * 86_400),
-                hasPurchasedRemoveAds: false
-            )
-        ))
-        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
-        return TodayTabHost(
-            rootViewModel: rootVM,
-            adProvider: FakeAdProvider(),
-            adGate: gate,
-            attPrimer: ATTPrimerCoordinator(
-                isNotDetermined: { false },
-                requestSystemPrompt: {}
-            )
-        ) {
+        let session = BannerSessionModel(
+            adProvider: FakeAdProvider(readinessHeld: true),
+            adGate: AdGate(store: FakeAdGateStateStore(
+                initial: AdGateState(
+                    firstLaunchAt: Date().addingTimeInterval(-30 * 86_400),
+                    hasPurchasedRemoveAds: false
+                )
+            ))
+        )
+        await session.start()
+        return TodayTabHost(rootViewModel: rootVM) {
             MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
         .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+        .environment(\.bannerSession, session)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() {

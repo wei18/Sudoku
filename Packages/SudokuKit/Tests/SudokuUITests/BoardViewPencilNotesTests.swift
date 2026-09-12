@@ -59,7 +59,7 @@ struct BoardViewPencilNotesTests {
             elapsedSeconds: 87
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
@@ -105,7 +105,7 @@ struct BoardViewPencilNotesTests {
             selection: GridCoordinate(row: 4, column: 4)
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
@@ -133,7 +133,7 @@ struct BoardViewPencilNotesTests {
             selection: GridCoordinate(row: 4, column: 4)
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.iPad,
             colorScheme: .light,
             sizeClass: .regular
@@ -168,7 +168,7 @@ struct BoardViewPencilNotesTests {
             selection: GridCoordinate(row: 4, column: 4)
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.mac,
             colorScheme: .light,
             sizeClass: .regular

@@ -94,8 +94,10 @@ public final class BannerSessionModel {
         shouldShow = false
     }
 
-    /// A model that never shows a banner and holds no provider — for injecting
-    /// into previews and snapshot fixtures that render slots without ads.
+    /// A model that never shows a banner and holds no provider. Allowed in
+    /// exactly three places: previews, snapshot fixtures that render slots
+    /// without ads, and DEBUG test hooks that bypass monetization by design
+    /// (the near-win covers). Any other use is a CR reject.
     public static let disabled = BannerSessionModel(disabled: ())
 
     // MARK: - Lifecycle

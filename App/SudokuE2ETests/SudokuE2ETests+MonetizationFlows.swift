@@ -25,6 +25,20 @@ extension SudokuE2ETests {
         NegativeNavigationE2ESupport.assertATTPrimerDeclineDismissesAndLatches(in: app)
     }
 
+    /// #1058: a board presented through `GameRoot`'s cover renders its own
+    /// banner slot (the session reaches the cover), and pausing it removes
+    /// that slot. See `BannerCoverE2ESupport`.
+    func test_boardCoverRendersBannerSlot() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.fakeAdGateRepoll]
+        app.launch()
+        BannerCoverE2ESupport.assertBoardCoverRendersBannerSlot(
+            in: app,
+            dailyCardLabelPrefix: "Easy,",
+            boardPauseToggleID: "sudoku.board.pauseToggle"
+        )
+    }
+
     /// #935 batch 5 N19: Settings Storage "Clear cache" — Cancel is a no-op;
     /// confirming under a throwing `deleteAbandoned` (`-uitest-clear-cache-fail`)
     /// raises the failure toast instead of the false "Cache cleared" success

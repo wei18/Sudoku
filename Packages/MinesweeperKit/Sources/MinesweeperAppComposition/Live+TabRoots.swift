@@ -16,7 +16,6 @@
 internal import SwiftUI
 internal import GameAppKit
 internal import GameShellUI
-internal import MonetizationCore
 internal import Persistence
 internal import MinesweeperPersistence
 internal import MinesweeperUI
@@ -35,9 +34,6 @@ extension MinesweeperAppComposition {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter,
         telemetry: Telemetry,
-        adProvider: any AdProvider,
-        adGate: AdGate,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         savedGameStore: MinesweeperSavedGameStore,
         dailyOverlayReading: (any MinesweeperDailyOverlayReading)?,
         personalRecordStore: MinesweeperPersonalRecordStore,
@@ -84,7 +80,7 @@ extension MinesweeperAppComposition {
                     initialDifficulty: Difficulty(rawValue: difficultyStore.load()) ?? .beginner,
                     onDifficultyChanged: { difficultyStore.save($0.rawValue) },
                     banner: {
-                        LiveRouteFactory.bannerSlot(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
+                        LiveRouteFactory.bannerSlot()
                     }
                 )
             )

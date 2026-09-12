@@ -63,6 +63,15 @@ struct BoardViewBannerTests {
         return AdGate(store: store)
     }
 
+    /// A started session over a readiness-held fake: the gate decides whether
+    /// the slot shows, and no load can resolve, so it stays in its reserved
+    /// loading state.
+    private func reservedBannerSession(gate: AdGate) async -> BannerSessionModel {
+        let session = BannerSessionModel(adProvider: FakeAdProvider(readinessHeld: true), adGate: gate)
+        await session.start()
+        return session
+    }
+
     @Test func running_andGateAllows_bannerMountIsActive() async throws {
         let vm = try makeViewModel(paused: false)
         #expect(vm.isPaused == false)
@@ -70,15 +79,14 @@ struct BoardViewBannerTests {
         let allowed = await gate.shouldShowBanner(now: Date())
         #expect(allowed == true)
         // Construct the view to ensure init compiles + holds the deps.
-        _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
+        _ = BoardView(viewModel: vm)
     }
 
     @Test func paused_bannerIsSuppressed() async throws {
         let vm = try makeViewModel(paused: true)
         #expect(vm.isPaused == true)
-        // Even if the gate would allow, `body` short-circuits on `isPaused`.
-        let gate = makeAdGate(allow: true)
-        _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
+        // Even with the gate open, the board suppresses its slot on `isPaused`.
+        _ = BoardView(viewModel: vm)
     }
 
     @Test func running_butGateDenies_bannerSlotCollapsesToEmpty() async throws {
@@ -86,7 +94,7 @@ struct BoardViewBannerTests {
         let gate = makeAdGate(allow: false)
         let allowed = await gate.shouldShowBanner(now: Date())
         #expect(allowed == false)
-        _ = BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
+        _ = BoardView(viewModel: vm)
     }
 
     // MARK: - #723 snapshots — ads-enabled, ad NOT loaded, slot reserved
@@ -94,9 +102,9 @@ struct BoardViewBannerTests {
     // First repo fixtures rendering the banner slot's VISIBLE (ads-enabled)
     // state — every other Home/Board snapshot seeds hasPurchasedRemoveAds:
     // true, so the slot collapses in all of them (#723 acceptance note from
-    // #725's review). The gate is resolved ONCE before the view is built so
-    // `AdGate.lastKnownShouldShowBanner == true` seeds the slot and the very
-    // first layout reserves the 50pt rect (spinner placeholder, no ad) —
+    // #725's review). The fixture injects a started session over a
+    // readiness-held fake provider, so the slot shows on the very first layout
+    // and reserves the 50pt rect (spinner placeholder, no ad) —
     // pinning both the #723 reservation and #725's page-background slot.
     // `.tolerantImage` per the board-suite policy (#586: AA-heavy boards).
     //
@@ -122,11 +130,11 @@ struct BoardViewBannerTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotAdsEnabledUnloadedSlot_iPhone_light() async throws {
         let vm = try makeViewModel(paused: false)
-        let gate = makeAdGate(allow: true)
-        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let session = await reservedBannerSession(gate: makeAdGate(allow: true))
         let host = hostingView(
-            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
-                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview),
+            BoardView(viewModel: vm)
+                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+                .environment(\.bannerSession, session),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             sizeClass: .compact
@@ -139,11 +147,11 @@ struct BoardViewBannerTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotAdsEnabledUnloadedSlot_iPhone_dark() async throws {
         let vm = try makeViewModel(paused: false)
-        let gate = makeAdGate(allow: true)
-        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let session = await reservedBannerSession(gate: makeAdGate(allow: true))
         let host = hostingView(
-            BoardView(viewModel: vm, adProvider: FakeAdProvider(), adGate: gate)
-                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview),
+            BoardView(viewModel: vm)
+                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+                .environment(\.bannerSession, session),
             size: SnapshotLayouts.iPhone,
             colorScheme: .dark,
             sizeClass: .compact

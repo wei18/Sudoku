@@ -60,16 +60,9 @@ public struct LiveRouteFactory: RouteFactory {
     // M10 (issue #67): unified error funnel passed into VMs / loader views
     // that previously `try?`-swallowed CloudKit / Persistence errors.
     private let errorReporter: any ErrorReporter
-    // v2 monetization deps. Currently consumed by destination views landing
-    // in v2.3.4-6 (HomeView banner, BoardView banner, Settings IAP rows).
-    // Stored here now so RootView's signature does not have to grow.
-    private let adProvider: any AdProvider
+    // v2 monetization dep for the Settings IAP rows. The banner slots this
+    // factory builds read the session model from the environment (#1058).
     private let iapClient: any IAPClient
-    private let adGate: AdGate
-    // #1058: boot completion latch threaded to every `BannerSlotView` this
-    // factory constructs. Defaults to an already-fired signal for
-    // TESTS/PREVIEWS ONLY — `Live.swift` always passes `deps.bootSignal`.
-    private let bootSignal: MonetizationBootSignal
     // v2.3.6: optional so existing callers (route factory tests, snapshot
     // fixtures) keep working without constructing a controller. Live wiring
     // injects one so Settings renders the Remove Ads section.
@@ -133,10 +126,7 @@ public struct LiveRouteFactory: RouteFactory {
         gameCenter: any GameCenterClient,
         telemetry: Telemetry,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        adProvider: any AdProvider,
         iapClient: any IAPClient,
-        adGate: AdGate,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         monetizationController: MonetizationStateController? = nil,
         toastController: ToastController? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
@@ -154,10 +144,7 @@ public struct LiveRouteFactory: RouteFactory {
         self.gameCenter = gameCenter
         self.telemetry = telemetry
         self.errorReporter = errorReporter
-        self.adProvider = adProvider
         self.iapClient = iapClient
-        self.adGate = adGate
-        self.bootSignal = bootSignal
         self.monetizationController = monetizationController
         self.toastController = toastController
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
@@ -191,9 +178,6 @@ public struct LiveRouteFactory: RouteFactory {
                         puzzleProvider: puzzleProvider,
                         persistence: persistence,
                         errorReporter: errorReporter,
-                        adProvider: adProvider,
-                        adGate: adGate,
-                        bootSignal: bootSignal,
                         soundPlayer: soundPlayer,
                         path: path,
                         telemetry: telemetry,
@@ -318,7 +302,7 @@ public struct LiveRouteFactory: RouteFactory {
                     telemetryEmit: { event in
                         Task { await telemetry.observe(event) }
                     },
-                    banner: { Self.themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal) }
+                    banner: { Self.themedBanner() }
                 )
             )
         }
@@ -356,9 +340,8 @@ public struct LiveRouteFactory: RouteFactory {
 
     /// Epic 5: themed `BannerSlotView` for all non-Board screens. Same theme
     /// tokens across Today/Practice/Settings — no per-screen override. Board
-    /// never calls this; it owns its own `themedBanner` method.
-    /// The cast from `AdProvider` → `BannerViewProviding` follows the same
-    /// pattern as BoardView (§9.1: keeps SudokuUI off AdsAdMob).
+    /// never calls this; it owns its own `themedBanner` method. The session
+    /// model in the environment decides whether the slot shows (#1058).
     ///
     /// #851: `backgroundColor` was `Color.secondary.opacity(0.12)` — a
     /// translucent SYSTEM-GRAY tint left over from before #688 gave
@@ -377,16 +360,9 @@ public struct LiveRouteFactory: RouteFactory {
     /// instance to call through, only the wired `GameDeps` bag — can reuse
     /// the exact same banner instead of re-deriving it.
     @MainActor
-    static func themedBanner(
-        adProvider: any AdProvider,
-        adGate: AdGate,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true)
-    ) -> some View {
+    static func themedBanner() -> some View {
         BannerSlotView(
-            adProvider: adProvider,
-            adGate: adGate,
-            bannerHost: adProvider as? any BannerViewProviding,
-            bootSignal: bootSignal,
+            isSuppressed: false,
             backgroundColor: DefaultTheme().surface.background.resolved,
             progressTint: .accentColor,
             captionColor: .secondary,

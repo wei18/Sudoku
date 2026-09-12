@@ -36,6 +36,7 @@ public struct SudokuNearWinModifier: ViewModifier {
 #if os(iOS)
 
 import GameCenterClient
+import MonetizationUI
 import SudokuEngine
 
 /// iOS-only implementation that detects the launch arg and presents the cover.
@@ -84,6 +85,9 @@ private struct SudokuNearWinCoverView: View {
         )
         .environment(\.theme, DefaultTheme())
         .environment(\.sudokuCell, DefaultTheme().cell)
+        // This cover sits outside `makeGameApp`'s injection, and the hook
+        // bypasses monetization by design.
+        .environment(\.bannerSession, .disabled)
     }
 }
 

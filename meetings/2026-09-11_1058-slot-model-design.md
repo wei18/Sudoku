@@ -11,7 +11,7 @@ PR #1062 · red base 85c65cb4 · Phase 1 latch e383fa1a · Phase 1b 553b8fcc · 
     - `BannerReloadCoordinator` is built inside `init` from the same `adProvider`/`adGate`.
     - An extra `startTask` makes `start()` idempotent, so every caller joins the first run.
     - `now: @Sendable () -> Date` is injected so day-rollover tests can drive a clock.
-  - `BannerSessionModel.disabled` is a `static let`, MainActor-isolated because the class is `@MainActor`. It is for **preview and snapshot injection only**. The `\.bannerSession` environment default stays **`nil`**, so a missing injection reaches the DEBUG `onMissingSession` assertion.
+  - `BannerSessionModel.disabled` is a `static let`, MainActor-isolated because the class is `@MainActor`. It may be injected in **exactly three places**, each for a stated reason: (1) SwiftUI previews, which have no app session; (2) snapshot fixtures that render slots without ads; (3) DEBUG test hooks that bypass monetization by design, today the three near-win covers (`SudokuNearWinCoverView`, `SudokuNearWinModalCoverView`, `MinesweeperNearWinCoverView`), which sit outside `makeGameApp`'s injection. **Any other use of `.disabled` is a CR reject.** The `\.bannerSession` environment default stays **`nil`**, so a missing injection reaches the DEBUG `onMissingSession` assertion.
 - **`BannerSlotView` is a pure renderer.** Its whole body is `if session.isVisible, !isSuppressed { banner(status: session.status(for: id)).padding(h).padding(v) }`. It shows the ad through `session.bannerView(for: id)`, and no view holds a provider.
   - It has no `ZStack`, `.task`, `.onAppear`, `.onChange`, `@State` or `scenePhase`.
   - When hidden or suppressed it produces zero subviews (B1).
@@ -50,7 +50,7 @@ A cancelled wait or load produces **no status change**.
   - Host-side registration would copy four hosts' mount conditions, which is the #448 drift class.
 - **A missing model fails loudly:**
   - `update()` with no session calls `BannerSessionModel.onMissingSession`: `assertionFailure` in DEBUG, and the slot renders nothing in Release. That assertion is the regression signal for a lost injection.
-  - Previews and snapshots inject `BannerSessionModel.disabled`.
+  - Only the three allow-listed uses inject `BannerSessionModel.disabled`: previews, snapshot fixtures, and the DEBUG near-win covers.
 
 ## Start, ordering, repoll
 - **Environment injection (P3a disposition, PM-approved):** `.environment(\.bannerSession, bannerSession)` goes on the **`GameRoot(…)` value inside `makeGameApp`, right next to `.environment(\.theme, config.theme)`** (MakeGameApp.swift:374).
@@ -127,10 +127,13 @@ These are decisions the brief left open. **Pinned** means a named mutation of th
   - But it changes v2.3.5's layout contract and the paused snapshot baselines. That's a product layout decision, not something for a release blocker.
   - Deferred; no issue filed.
 
-## #931 E2E (test code unchanged)
-- **Banner case:** at launch the fake store throws and the slot is hidden. After Home → activate, the root `scenePhase` observer runs a repoll, the gate opens, and the Today slot (registered while hidden, proven by S1 P1b) shows `monetization.banner.slot`.
+## #931 E2E
+- **Banner case:** at launch the fake store throws and the slot is hidden. After Home → activate, the root `scenePhase` observer runs a repoll, the gate opens, and the Today slot (registered while hidden, proven by S1 P1b) shows.
+  - The shared assertion finds the slot by its "Advertisement" label: `TodayTabHost`'s `game.today.root` identifier shadows `monetization.banner.slot`, already on base `7ca5d73d` (#1072).
+  - It dismisses the ATT primer when present (B2′ ordering puts the primer after the repoll) without requiring it.
+- **Cover env:** both apps open a daily board through `GameRoot`'s cover and count "Advertisement" slots: Today + 1 while the board plays, Today while it is paused (also the Pause row's E2E pin).
 - **N15:** the first `beginReadinessOnce()` presents the primer; a second cycle doesn't re-present it.
-- Only the comments naming `BannerSlotView`'s `.onChange` change.
+- **Near-win covers** (`-uitest-near-win`, `-uitest-near-win-modal`) inject `.disabled`; a missing injection there fires M1's assertion (seen as the 2c E2E crash before `SudokuNearWinModalCoverView` was covered).
 
 ## Deletions and batch items
 - **Delete in `BannerSlotView`:** the `ZStack`, `.task`, three `.onChange`s, `scenePhase`, three `@State`s, the lifecycle methods, and five init parameters.
@@ -143,9 +146,9 @@ These are decisions the brief left open. **Pinned** means a named mutation of th
     - **MinesweeperUI (5):** `MinesweeperBoardLoaderView`, `MinesweeperBoardView`, `MinesweeperDailyOpenGuardView`, `MinesweeperDailyReplayLoaderView`, `MinesweeperFreshBoardLoaderView`.
     - **SudokuAppComposition (5):** `Live`, `Live+TabRoots`, `LiveRouteFactory`, `SudokuAppComposition`, `Preview`.
     - **SudokuUI (3):** `BoardLoaderView`, `BoardView`, `BoardView+Layout`.
-    - rev 3.1 said "20"; the lead's recount of 23 added the four GameAppKit files and the two `*AppComposition` structs. The two `Preview.swift` files also build `FakeAdProvider`/`AdGate` and pass them into the composition struct's init, so they change too.
-  - `scan/bannerslot_bootsignal` plus its `lint.yml` job, header item 7 and "seven job names".
+    - Count history, 20 → 23 → 25: rev 3.1 said 20, and the lead's recount said 23. The recount's 23 is this list without the two `Preview.swift` files (25 − 2 = 23); those also build `FakeAdProvider`/`AdGate` and pass them into the composition struct's init, so they change too, giving 25. How rev 3.1 reached 20 was not recorded, so the 20 → 23 gap is not itemized; this verified list is the source of truth.
   - `BannerSlotColdLaunchTests`.
+- **Deleted in the 2c commit (PM ruling), not 2d:** `scan/bannerslot_bootsignal` plus its `lint.yml` job, header index line and "seven job names". 2c removes the `bootSignal:` parameter the gate checks. Its guarantee is now carried by the readiness latch inside the carrier (`AdProvider`) and by M1's DEBUG `onMissingSession` assertion on a lost `\.bannerSession` injection.
 - **Keep:** the in-view padding, `BannerSlotCollapsedHeightTests`, the CLAUDE.md commit, and the latch.
 - **Retarget** to an injected session, with baselines byte-identical: TodayTabHostTests, BoardViewBannerTests (construction only), BannerSlotDarkBandRegressionTests, MinesweeperBoardSnapshotTests, and HubSettingsBannerTests.
 - **Padding:** `BoardView+Layout.swift:51` and `MinesweeperBoardView.swift:534` move their external padding to `horizontalPadding:`.

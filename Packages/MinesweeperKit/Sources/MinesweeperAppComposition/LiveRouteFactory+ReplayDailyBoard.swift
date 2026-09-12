@@ -37,9 +37,6 @@ extension LiveRouteFactory {
         _ path: Binding<[AppRoute]>?,
         _ difficulty: Difficulty,
         _ seed: UInt64,
-        adProvider: (any AdProvider)?,
-        adGate: AdGate?,
-        bootSignal: MonetizationBootSignal,
         errorReporter: (any ErrorReporter)?,
         soundPlayer: (any SoundPlaying)?,
         savedGameStore: MinesweeperSavedGameStore?,
@@ -56,9 +53,6 @@ extension LiveRouteFactory {
                         difficulty: difficulty,
                         seed: seed,
                         mode: .practice,
-                        adProvider: adProvider,
-                        adGate: adGate,
-                        bootSignal: bootSignal,
                         gameCenter: nil,
                         errorReporter: errorReporter,
                         soundPlayer: soundPlayer ?? NoopSoundPlaying()
@@ -77,9 +71,6 @@ extension LiveRouteFactory {
                     // `.board(mode: .daily)` writes to on loss.
                     recordName: MinesweeperSavedGameStore.recordName(mode: .daily, difficulty: difficulty),
                     store: savedGameStore,
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    bootSignal: bootSignal,
                     errorReporter: errorReporter,
                     soundPlayer: soundPlayer ?? NoopSoundPlaying()
                 )

@@ -172,12 +172,17 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let toastController = ToastController()
 
+    // 7 (moved up for #1058). ATT primer, the banner session's ad-context hook.
+    let attPrimer = makeATTPrimerCoordinator()
+    let bannerSession = makeBannerSession(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
+
     let monetizationController = MonetizationStateController(
         iapClient: iapClient,
         stateStore: monetizationStateStore,
         adGate: adGate,
         toastController: toastController,
-        productId: config.removeAdsProductId
+        productId: config.removeAdsProductId,
+        onEntitlementChanged: makeEntitlementChangedHook(bannerSession: bannerSession)
     )
     monetizationController.startListeningForLifetimeOfApp()
 
@@ -200,10 +205,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     soundPlayer.setMuted(audioSettings.isMuted)
     soundPlayer.setMusicEnabled(audioSettings.musicEnabled)
     soundPlayer.setHapticsEnabled(audioSettings.hapticsEnabled)
-
-    // 7. ATT pre-prompt coordinator (#935 batch 5: uitest-arg-gated fake
-    //    swap, see MakeGameApp+Helpers.swift / +UITestOverrides.swift).
-    let attPrimer = makeATTPrimerCoordinator()
 
     // 8. Reminder wiring.
     let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in
@@ -350,10 +351,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         return AnyView(
             TodayTabHost(
                 rootViewModel: rootViewModel,
-                adProvider: adProvider,
-                adGate: adGate,
-                attPrimer: attPrimer,
-                bootSignal: bootSignal,
                 content: { content }
             )
         )
@@ -361,6 +358,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let gameRoot = GameRoot(
         viewModel: rootViewModel,
+        bannerSession: bannerSession,
         routeFactory: routeFactory,
         // #1041: same route already wired into `chromedTabRoots` above, now
         // also threaded into `RootShellView`'s fixed sidebar Settings row.
@@ -372,6 +370,8 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         tabRoot: tabRoot
     )
     .environment(\.theme, config.theme)
+    // #1058 P3a: `\.theme`'s level, which reaches the board cover content.
+    .environment(\.bannerSession, bannerSession)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with
     // first-frame rendering. `.onAppear { Task { … } }` not `.task { … }`: this is
     // an app-root composition bootstrap, the position where the #361 Xcode 26 `.task`

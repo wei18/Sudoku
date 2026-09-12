@@ -368,9 +368,9 @@ final class SudokuE2ETests: XCTestCase {
         ScenePhaseRepollE2ESupport.assertReminderScenePhaseRepoll(in: app)
     }
 
-    /// #931: pins `BannerSlotView`'s `.onChange(of: scenePhase)` repoll hook
-    /// (`repollGate()`, #341) — the hidden → visible slot swap only happens
-    /// after a real background→foreground cycle.
+    /// #931: pins `GameRoot`'s `.onChange(of: scenePhase)` repoll hook
+    /// (`BannerSessionModel.sceneDidBecomeActive()`, #341/#1058) — the hidden →
+    /// visible slot swap only happens after a real background→foreground cycle.
     func test_bannerSlotRepollsOnForeground() {
         let app = XCUIApplication()
         app.launchArguments += [UITestLaunchArg.fakeAdGateRepoll]

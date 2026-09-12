@@ -6,7 +6,6 @@
 // Mac keyboard: `.focusable()` + `.onKeyPress` for arrows / 1–9 / 0 / delete /
 // `p`; ⌘Z / ⌘⇧Z bound for undo / redo.
 
-public import MonetizationCore
 public import SwiftUI
 public import GameCenterClient
 internal import GameAppKit
@@ -22,14 +21,6 @@ public struct BoardView: View {
     // helpers in BoardView+AccessibilityHeader.swift read them across files
     // within the same module.
     @Bindable var viewModel: GameViewModel
-    // `internal` (not `private`) — BoardView+Layout.swift's banner slot reads
-    // them across files within the same module.
-    let adProvider: (any AdProvider)?
-    let adGate: AdGate?
-    /// #1058: forwarded to `BoardView+Layout`'s `themedBanner`. Defaults to
-    /// an already-fired signal for tests/previews only — production always
-    /// forwards the real composition-root signal via `BoardLoaderView`.
-    let bootSignal: MonetizationBootSignal
     /// Host navigation path. Optional so previews / snapshot tests (which mount
     /// `BoardView` directly) keep working. Non-nil exactly when the board is a
     /// macOS NavigationStack push (iOS boards are fullScreenCover modals, so
@@ -88,9 +79,6 @@ public struct BoardView: View {
 
     public init(
         viewModel: GameViewModel,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         makeDailyReminderPrimer: (@MainActor () -> ReminderPrimerCoordinator)? = nil,
         onPlayAgain: ((Difficulty) -> Void)? = nil,
@@ -100,9 +88,6 @@ public struct BoardView: View {
         path: Binding<[AppRoute]>? = nil
     ) {
         self.viewModel = viewModel
-        self.adProvider = adProvider
-        self.adGate = adGate
-        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.makeDailyReminderPrimer = makeDailyReminderPrimer
         self.onPlayAgain = onPlayAgain

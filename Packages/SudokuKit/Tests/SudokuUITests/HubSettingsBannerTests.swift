@@ -9,9 +9,11 @@
 //   2. Gate denies (hasPurchasedRemoveAds) → slot collapses to EmptyView,
 //      provider is never touched (Remove-Ads IAP gate preserved).
 //
-// We exercise `BannerSlotView` directly (same pattern as HomeViewBannerTests)
-// rather than the full hub trees — the gate→provider plumbing is the unit;
-// the shell pass-through is covered by the snapshot baseline.
+// We exercise `BannerSlotView` directly rather than the full hub trees. Since
+// #1058 the slot never holds the provider or gate — `BannerSessionModel` owns
+// that plumbing — so these tests pin the gate decision and that constructing a
+// slot never touches the provider; the shell pass-through is covered by the
+// snapshot baseline.
 
 import Foundation
 import SwiftUI
@@ -56,7 +58,7 @@ struct HubSettingsBannerTests {
             persistence: FakePersistence(completedDailyIds: [])
         )
         _ = DailyHubView(viewModel: viewModel) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         let refreshes = await provider.refreshCallCount
@@ -65,7 +67,6 @@ struct HubSettingsBannerTests {
 
     @Test func dailyHub_gateAllows_slotInitializes() async {
         let gate = makeAdGate(allow: true)
-        let provider = FakeAdProvider()
 
         let allowed = await gate.shouldShowBanner(now: Date())
         #expect(allowed == true)
@@ -75,11 +76,10 @@ struct HubSettingsBannerTests {
             persistence: FakePersistence(completedDailyIds: [])
         )
         _ = DailyHubView(viewModel: viewModel) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
-        // Slot was constructed; gate resolves asynchronously inside BannerSlotView.task.
-        // We validate the gate decision synchronously here; async resolution is
-        // covered by HomeViewBannerTests which exercises the full resolve path.
+        // Slot was constructed; since #1058 the session model resolves the gate
+        // (covered by MonetizationUITests' BannerSessionModel suites).
         #expect(allowed)
     }
 
@@ -94,7 +94,7 @@ struct HubSettingsBannerTests {
 
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider(), path: .constant([]))
         _ = PracticeHubView(viewModel: viewModel) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         let refreshes = await provider.refreshCallCount
@@ -103,11 +103,10 @@ struct HubSettingsBannerTests {
 
     @Test func practiceHub_gateAllows_slotInitializes() async {
         let gate = makeAdGate(allow: true)
-        let provider = FakeAdProvider()
 
         let viewModel = PracticeHubViewModel(provider: FakePuzzleProvider(), path: .constant([]))
         _ = PracticeHubView(viewModel: viewModel) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
         let allowed = await gate.shouldShowBanner(now: Date())
         #expect(allowed == true)
@@ -125,7 +124,7 @@ struct HubSettingsBannerTests {
         _ = SettingsView(
             viewModel: SettingsViewModel(persistence: FakePersistence())
         ) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         let refreshes = await provider.refreshCallCount
@@ -134,12 +133,11 @@ struct HubSettingsBannerTests {
 
     @Test func settings_gateAllows_slotInitializes() async {
         let gate = makeAdGate(allow: true)
-        let provider = FakeAdProvider()
 
         _ = SettingsView(
             viewModel: SettingsViewModel(persistence: FakePersistence())
         ) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
         let allowed = await gate.shouldShowBanner(now: Date())
         #expect(allowed == true)
@@ -161,18 +159,18 @@ struct HubSettingsBannerTests {
             persistence: FakePersistence(completedDailyIds: [])
         )
         _ = DailyHubView(viewModel: dailyVM) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         // Practice hub
         let practiceVM = PracticeHubViewModel(provider: FakePuzzleProvider(), path: .constant([]))
         _ = PracticeHubView(viewModel: practiceVM) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         // Settings
         _ = SettingsView(viewModel: SettingsViewModel(persistence: FakePersistence())) {
-            BannerSlotView(adProvider: provider, adGate: gate)
+            BannerSlotView(isSuppressed: false)
         }
 
         // None of the screens should have triggered a provider load.

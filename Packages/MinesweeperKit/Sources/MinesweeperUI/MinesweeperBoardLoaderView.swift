@@ -29,7 +29,6 @@ public import GameAudio
 public import MinesweeperEngine
 public import MinesweeperGameState
 public import MinesweeperPersistence
-public import MonetizationCore
 public import Telemetry
 // #814: `ReminderPrimerCoordinator` (SettingsUI) appears in the public init's
 // `makeDailyReminderPrimer` builder — mirrors Sudoku's BoardLoaderView (#610).
@@ -49,13 +48,6 @@ public struct MinesweeperBoardLoaderView: View {
     private let recordName: String
     private let mode: GameMode
     private let store: MinesweeperSavedGameStore
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
-    /// #1058: forwarded to `MinesweeperBoardView`'s banner so a resumed
-    /// session landing on the board moments after launch still cannot
-    /// request an ad before consent resolves. Defaults to an already-fired
-    /// signal for tests/previews only.
-    private let bootSignal: MonetizationBootSignal
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
@@ -83,9 +75,6 @@ public struct MinesweeperBoardLoaderView: View {
         recordName: String,
         mode: GameMode,
         store: MinesweeperSavedGameStore,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -96,9 +85,6 @@ public struct MinesweeperBoardLoaderView: View {
         self.recordName = recordName
         self.mode = mode
         self.store = store
-        self.adProvider = adProvider
-        self.adGate = adGate
-        self.bootSignal = bootSignal
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -127,9 +113,6 @@ public struct MinesweeperBoardLoaderView: View {
         case .loaded(let viewModel):
             MinesweeperBoardView(
                 viewModel: viewModel,
-                adProvider: adProvider,
-                adGate: adGate,
-                bootSignal: bootSignal,
                 gameCenter: gameCenter,
                 soundPlayer: soundPlayer,
                 // #814: Daily-win reminder primer for the resumed board's

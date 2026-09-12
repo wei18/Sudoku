@@ -64,7 +64,6 @@ public import GameAudio
 public import MinesweeperEngine
 internal import MinesweeperGameState
 public import MinesweeperPersistence
-public import MonetizationCore
 public import Telemetry
 internal import GameShellUI
 
@@ -80,11 +79,6 @@ public struct MinesweeperDailyReplayLoaderView: View {
     private let seed: UInt64
     private let recordName: String
     private let store: MinesweeperSavedGameStore
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
-    /// #1058: forwarded to the replay board. Defaults to an already-fired
-    /// signal for tests/previews only.
-    private let bootSignal: MonetizationBootSignal
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
 
@@ -97,9 +91,6 @@ public struct MinesweeperDailyReplayLoaderView: View {
         seed: UInt64,
         recordName: String,
         store: MinesweeperSavedGameStore,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying()
     ) {
@@ -107,9 +98,6 @@ public struct MinesweeperDailyReplayLoaderView: View {
         self.seed = seed
         self.recordName = recordName
         self.store = store
-        self.adProvider = adProvider
-        self.adGate = adGate
-        self.bootSignal = bootSignal
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
     }
@@ -133,9 +121,6 @@ public struct MinesweeperDailyReplayLoaderView: View {
             // Epic 8 / SDD-003 contract; see MinesweeperGameCenterSubmitTests).
             MinesweeperBoardView(
                 viewModel: viewModel,
-                adProvider: adProvider,
-                adGate: adGate,
-                bootSignal: bootSignal,
                 gameCenter: nil,
                 soundPlayer: soundPlayer
             )

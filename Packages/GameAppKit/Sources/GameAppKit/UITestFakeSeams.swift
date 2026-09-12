@@ -1,6 +1,6 @@
 // UITestFakeSeams — DEBUG-only, launch-arg-gated fakes proving the
 // scenePhase-driven foreground re-poll wiring (#931) for two sites:
-// `ReminderSettingsSection` (SettingsUI) and `BannerSlotView`
+// `ReminderSettingsSection` (SettingsUI) and `BannerSessionModel`
 // (MonetizationUI). Wired into the live stack by `makeGameAppCore` only when
 // the matching `UITestLaunchArg` is present; every non-uitest launch (incl.
 // every Release build, via the `#if DEBUG` guard around this whole file)
@@ -50,7 +50,7 @@ actor UITestFlipOnBackgroundNotificationAuthorizing: NotificationAuthorizing {
     }
 }
 
-// MARK: - Ad gate fake (BannerSlotView, #341/#931)
+// MARK: - Ad gate fake (BannerSessionModel, #341/#931)
 
 /// Error thrown by `UITestFlipOnBackgroundAdGateStateStore.loadState()`
 /// before the process has been observed entering the background.

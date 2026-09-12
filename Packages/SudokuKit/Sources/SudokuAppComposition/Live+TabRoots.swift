@@ -16,7 +16,6 @@
 internal import SwiftUI
 internal import GameAppKit
 internal import GameShellUI
-internal import MonetizationCore
 internal import Persistence
 internal import SudokuPersistence
 internal import SudokuUI
@@ -36,9 +35,6 @@ extension SudokuAppComposition {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter,
         telemetry: Telemetry,
-        adProvider: any AdProvider,
-        adGate: AdGate,
-        bootSignal: MonetizationBootSignal = MonetizationBootSignal(alreadyReady: true),
         rootViewModel: GameRootViewModel<AppRoute>
     ) -> AnyView {
         switch tab {
@@ -77,7 +73,7 @@ extension SudokuAppComposition {
                         path: rootViewModel.pathBinding(for: .practice)
                     ),
                     banner: {
-                        LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate, bootSignal: bootSignal)
+                        LiveRouteFactory.themedBanner()
                     }
                 )
             )
