@@ -115,6 +115,10 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let persistence: any PersistenceProtocol = resolvePersistence(fallback: livePersistence)
 
     // 5. Monetization stack.
+    // #1058: latch marking the UMP→ATT→AdMob boot sequence (step 10's
+    // `.onAppear`) complete — every `BannerSlotView` awaits it before its
+    // first ad request (threaded via `GameDeps.bootSignal`).
+    let bootSignal = MonetizationBootSignal()
     let monetizationStateStore = livePersistence.monetizationStateStore()
 
     // #931: uitest-arg-gated fake swap, see MakeGameApp+UITestOverrides.swift.
@@ -168,12 +172,17 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let toastController = ToastController()
 
+    // 7 (moved up for #1058). ATT primer, the banner session's ad-context hook.
+    let attPrimer = makeATTPrimerCoordinator()
+    let bannerSession = makeBannerSession(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer)
+
     let monetizationController = MonetizationStateController(
         iapClient: iapClient,
         stateStore: monetizationStateStore,
         adGate: adGate,
         toastController: toastController,
-        productId: config.removeAdsProductId
+        productId: config.removeAdsProductId,
+        onEntitlementChanged: makeEntitlementChangedHook(bannerSession: bannerSession)
     )
     monetizationController.startListeningForLifetimeOfApp()
 
@@ -196,10 +205,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     soundPlayer.setMuted(audioSettings.isMuted)
     soundPlayer.setMusicEnabled(audioSettings.musicEnabled)
     soundPlayer.setHapticsEnabled(audioSettings.hapticsEnabled)
-
-    // 7. ATT pre-prompt coordinator (#935 batch 5: uitest-arg-gated fake
-    //    swap, see MakeGameApp+Helpers.swift / +UITestOverrides.swift).
-    let attPrimer = makeATTPrimerCoordinator()
 
     // 8. Reminder wiring.
     let emit: @Sendable (TelemetryEvent) -> Void = { [telemetry] event in
@@ -282,6 +287,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         persistence: persistence,
         adProvider: adProvider,
         adGate: adGate,
+        bootSignal: bootSignal,
         monetizationStateStore: monetizationStateStore,
         iapClient: iapClient,
         monetizationController: monetizationController,
@@ -324,10 +330,10 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // #1020: per-tab root content. The game builds each tab's screen; the Today
     // tab is additionally wrapped in the shared `TodayTabHost`, which carries
-    // the resume pill, the themed banner slot, and — riding that slot's first
-    // load — the ATT primer anchor (C-33, re-anchored from the retired
-    // HOME view's banner slot). The other two tabs get the game's content
-    // unwrapped.
+    // the resume pill and the themed banner slot. The ATT primer (C-33) is no
+    // longer tied to that slot: the banner session requests it after provider
+    // readiness and before the first load (`onAdContext`). The other two tabs
+    // get the game's content unwrapped.
     //
     // `chromedTabRoots` runs this builder exactly ONCE per tab, at composition
     // time, then attaches the shared Settings gear to every tab root (§2.1 /
@@ -345,9 +351,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         return AnyView(
             TodayTabHost(
                 rootViewModel: rootViewModel,
-                adProvider: adProvider,
-                adGate: adGate,
-                attPrimer: attPrimer,
                 content: { content }
             )
         )
@@ -355,6 +358,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     let gameRoot = GameRoot(
         viewModel: rootViewModel,
+        bannerSession: bannerSession,
         routeFactory: routeFactory,
         // #1041: same route already wired into `chromedTabRoots` above, now
         // also threaded into `RootShellView`'s fixed sidebar Settings row.
@@ -366,6 +370,8 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         tabRoot: tabRoot
     )
     .environment(\.theme, config.theme)
+    // #1058 P3a: `\.theme`'s level, which reaches the board cover content.
+    .environment(\.bannerSession, bannerSession)
     // v2.3.7 boot sequence: UMP consent → AdMob SDK init, concurrent with
     // first-frame rendering. `.onAppear { Task { … } }` not `.task { … }`: this is
     // an app-root composition bootstrap, the position where the #361 Xcode 26 `.task`
@@ -373,7 +379,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     // archive. (Scoped to the app-root, NOT a blanket `.task` ban — leaf-view
     // one-shot `.task` verifies link-clean; see #607.) #361
     .onAppear { Task {
-        await bootMonetization(adProvider: adProvider, telemetry: telemetry)
+        await bootMonetization(adProvider: adProvider, telemetry: telemetry, bootSignal: bootSignal)
     } }
 
     // #557: universal theme-tinted ATT primer sheet applied on the returned

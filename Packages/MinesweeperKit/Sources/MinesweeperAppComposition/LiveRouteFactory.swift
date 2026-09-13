@@ -34,7 +34,6 @@ public import GameShellUI
 // only — no GameAppKit type appears in this factory's public API surface.
 internal import GameAppKit
 public import MinesweeperUI
-public import MonetizationCore
 public import MonetizationUI
 public import MinesweeperPersistence
 public import Persistence
@@ -67,14 +66,6 @@ public struct LiveRouteFactory: RouteFactory {
     // existing nil-persistence callsites (previews) keep compiling — when nil,
     // SettingsView gets an empty clear-cache closure.
     private let persistence: (any PersistenceProtocol)?
-    // U15 (2026-06-03): threaded into `MinesweeperBoardView` so it can mount
-    // a `BannerSlotView` mirror below the grid. Optional so the existing
-    // Phase 3 callsite (no monetization) keeps compiling; production wires
-    // both, previews pass nil. `internal` (not `private`): read by
-    // `bannerSlot()`, moved to LiveRouteFactory+Helpers.swift (#814
-    // line-budget extraction).
-    let adProvider: (any AdProvider)?
-    let adGate: AdGate?
     // #291: threaded into `MinesweeperBoardView` so its `MinesweeperGameViewModel`
     // can submit a best-time to the difficulty's leaderboard on win. Optional so
     // preview callsites (no GC) keep compiling — when nil, submit-on-win no-ops.
@@ -155,8 +146,6 @@ public struct LiveRouteFactory: RouteFactory {
 
     public init(
         monetizationController: MonetizationStateController? = nil,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
         persistence: (any PersistenceProtocol)? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
@@ -175,8 +164,6 @@ public struct LiveRouteFactory: RouteFactory {
         currentAuthState: (@MainActor () -> GameCenterAuthState)? = nil
     ) {
         self.monetizationController = monetizationController
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.persistence = persistence
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
@@ -210,8 +197,6 @@ public struct LiveRouteFactory: RouteFactory {
             // separate concern.
             return Self.boardOpenDestination(
                 route, path, difficulty, seed, mode,
-                adProvider: adProvider,
-                adGate: adGate,
                 gameCenter: gameCenter,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
@@ -235,8 +220,6 @@ public struct LiveRouteFactory: RouteFactory {
                         recordName: recordName,
                         mode: mode,
                         store: savedGameStore,
-                        adProvider: self.adProvider,
-                        adGate: self.adGate,
                         gameCenter: self.gameCenter,
                         errorReporter: self.errorReporter,
                         soundPlayer: self.soundPlayer ?? NoopSoundPlaying(),
@@ -254,8 +237,6 @@ public struct LiveRouteFactory: RouteFactory {
             // persisted mine layout so every retry reproduces the same board.
             return Self.replayDailyBoardDestination(
                 route, path, difficulty, seed,
-                adProvider: adProvider,
-                adGate: adGate,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
                 savedGameStore: savedGameStore,
@@ -340,13 +321,13 @@ public struct LiveRouteFactory: RouteFactory {
                     appStoreID: appStoreID,
                     presentInviteFriends: presentInviteFriends,
                     telemetryEmit: { event in Task { await telemetry?.observe(event) } },
-                    banner: { Self.bannerSlot(adProvider: adProvider, adGate: adGate) }
+                    banner: { Self.bannerSlot() }
                 )
             )
         }
     }
 
-    // `bannerSlot(adProvider:adGate:)` moved to LiveRouteFactory+Helpers.swift
+    // `bannerSlot()` moved to LiveRouteFactory+Helpers.swift
     // (#814 — this file sat at the 400-line ceiling; extraction per the repo
     // convention). #1020: `static` so `Live+TabRoots.swift`'s Today/Practice
     // tab-root builder — which has no `LiveRouteFactory` instance to call

@@ -27,7 +27,6 @@ public import GameCenterClient
 // GameShellUI's `CompletionStreakAdvance` in this view's public API.
 public import GameShellUI
 public import MinesweeperEngine
-public import MonetizationCore
 import MonetizationUI
 internal import MinesweeperGameState
 public import MinesweeperPersistence
@@ -132,11 +131,6 @@ public struct MinesweeperBoardView: View {
     // below has exactly one commit point (`.onEnded`) and can never leak a
     // stale in-flight value into the next gesture.
     @GestureState private var pinchMagnification: CGFloat = 1.0
-    // U15 (2026-06-03): banner slot wiring. Optional so the merged MVP `init`
-    // shapes (used by `#Preview` + tests) keep compiling without monetization.
-    // Production callsites wire both via `LiveRouteFactory`.
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
     // #292: Game Center client forwarded into the Completion overlay's
     // leaderboard-slice VM. Optional so MVP / preview callsites stay no-op
     // (the slice degrades to the sign-in affordance, never blocking the win).
@@ -193,8 +187,6 @@ public struct MinesweeperBoardView: View {
 
     public init(
         viewModel: MinesweeperGameViewModel,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         onPlayAgain: ((Difficulty) -> Void)? = nil,
@@ -207,8 +199,6 @@ public struct MinesweeperBoardView: View {
         tapModeDefaults: UserDefaults = .standard
     ) {
         self._viewModel = State(initialValue: viewModel)
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
@@ -235,8 +225,6 @@ public struct MinesweeperBoardView: View {
         difficulty: Difficulty = .beginner,
         seed: UInt64 = 0,
         mode: GameMode = .practice,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -261,8 +249,6 @@ public struct MinesweeperBoardView: View {
             recordName: recordName,
             personalRecordStore: personalRecordStore
         ))
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.gameCenter = gameCenter
         self.soundPlayer = soundPlayer
         self.onPlayAgain = onPlayAgain
@@ -522,8 +508,7 @@ public struct MinesweeperBoardView: View {
             // record of something main ever had.)
             boardGrid
                 .layoutPriority(1)
-            bannerSlot
-                .padding(.horizontal, theme.spacing.medium)
+            bannerSlot(horizontalPadding: theme.spacing.medium)
             controlCluster
                 .padding(.horizontal, theme.spacing.medium)
         }
@@ -584,7 +569,7 @@ public struct MinesweeperBoardView: View {
                 macBoardColumn
                 controlRail
             }
-            bannerSlot
+            bannerSlot(horizontalPadding: 0)
         }
         .frame(maxWidth: Self.macOuterMaxWidth)
         .frame(maxWidth: .infinity, alignment: .center)
@@ -630,30 +615,27 @@ public struct MinesweeperBoardView: View {
     // BoardView slot pattern. Suppressed during terminal states (win / lose) —
     // showing an ad on top of the Completion surface contradicts the moment's
     // tone, same way Sudoku suppresses banners during pause.
-    @ViewBuilder
-    private var bannerSlot: some View {
+    //
+    // #1058: the environment's session model decides whether the slot shows.
+    // The slot is always built, so its identity and loaded banner survive a
+    // pause, and a hidden slot adds no spacing.
+    private func bannerSlot(horizontalPadding: CGFloat) -> some View {
         // #434: also suppress the banner while paused — mirrors Sudoku, which
-        // gates its banner behind `if !viewModel.isPaused` so the paused board
-        // reads as a deliberate quiet state.
-        if !viewModel.isTerminal, !viewModel.isPaused, let adProvider, let adGate {
-            BannerSlotView(
-                adProvider: adProvider,
-                adGate: adGate,
-                // Live provider conforms to `BannerViewProviding`; fakes / macOS
-                // return nil → honest fallback. Cast keeps MinesweeperUI free of
-                // an AdsAdMob import (§9.1).
-                bannerHost: adProvider as? any BannerViewProviding,
-                // #688 item 2: was `theme.surface.placeholder.resolved` — the
-                // "card" placeholder tone reads as a mismatched seam against
-                // the page background (audit-ms-01, dark mode). Match the
-                // page background instead so an empty/loading slot is
-                // invisible; mirrors the same fix in `GameAppKit.TodayTabHost`.
-                backgroundColor: theme.surface.background.resolved,
-                progressTint: theme.accent.primary.resolved,
-                captionColor: theme.text.secondary.resolved,
-                dismissTint: theme.accent.muted.resolved.opacity(0.7)
-            )
-        }
+        // suppresses its banner while paused so the paused board reads as a
+        // deliberate quiet state.
+        BannerSlotView(
+            isSuppressed: viewModel.isTerminal || viewModel.isPaused,
+            // #688 item 2: was `theme.surface.placeholder.resolved` — the
+            // "card" placeholder tone reads as a mismatched seam against
+            // the page background (audit-ms-01, dark mode). Match the
+            // page background instead so an empty/loading slot is
+            // invisible; mirrors the same fix in `GameAppKit.TodayTabHost`.
+            backgroundColor: theme.surface.background.resolved,
+            progressTint: theme.accent.primary.resolved,
+            captionColor: theme.text.secondary.resolved,
+            dismissTint: theme.accent.muted.resolved.opacity(0.7),
+            horizontalPadding: horizontalPadding
+        )
     }
 
     // MARK: - Status bar
@@ -1190,6 +1172,7 @@ public struct MinesweeperBoardView: View {
 
 #Preview("Beginner 9x9") {
     MinesweeperBoardView(difficulty: .beginner, seed: 42)
+        .environment(\.bannerSession, .disabled)
         .frame(minWidth: 360, minHeight: 480)
 }
 // swiftlint:enable file_length

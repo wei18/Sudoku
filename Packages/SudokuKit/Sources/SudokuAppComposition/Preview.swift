@@ -76,9 +76,7 @@ extension SudokuAppComposition {
             gameCenter: gameCenter,
             telemetry: telemetry,
             errorReporter: errorReporter,
-            adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate,
             monetizationController: monetizationController,
             toastController: toastController
         )

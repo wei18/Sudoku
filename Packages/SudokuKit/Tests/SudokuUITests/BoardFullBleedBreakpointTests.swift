@@ -71,7 +71,7 @@ struct BoardFullBleedBreakpointTests {
         testName: String = #function
     ) throws {
         let host = hostingView(
-            BoardView(viewModel: try makeViewModel()),
+            adFreeBoard(try makeViewModel()),
             size: CGSize(width: width, height: height),
             colorScheme: .light,
             sizeClass: .compact

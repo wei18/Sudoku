@@ -54,7 +54,6 @@ public import GameCenterClient
 public import GameAudio
 public import MinesweeperEngine
 public import MinesweeperPersistence
-public import MonetizationCore
 public import Telemetry
 public import SettingsUI
 // #1023 Phase B: `public` — `fetchStreakAdvance`'s public init param exposes
@@ -84,8 +83,6 @@ public struct MinesweeperDailyOpenGuardView: View {
     private let seed: UInt64
     private let store: MinesweeperSavedGameStore
     private let dateProvider: @Sendable () -> Date
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
@@ -117,8 +114,6 @@ public struct MinesweeperDailyOpenGuardView: View {
         seed: UInt64,
         store: MinesweeperSavedGameStore,
         dateProvider: @escaping @Sendable () -> Date = { Date() },
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -133,8 +128,6 @@ public struct MinesweeperDailyOpenGuardView: View {
         self.seed = seed
         self.store = store
         self.dateProvider = dateProvider
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -168,8 +161,6 @@ public struct MinesweeperDailyOpenGuardView: View {
                 difficulty: difficulty,
                 seed: seed,
                 mode: .daily,
-                adProvider: adProvider,
-                adGate: adGate,
                 gameCenter: gameCenter,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer,
@@ -211,8 +202,6 @@ public struct MinesweeperDailyOpenGuardView: View {
                 seed: seed,
                 recordName: recordName,
                 store: store,
-                adProvider: adProvider,
-                adGate: adGate,
                 errorReporter: errorReporter,
                 soundPlayer: soundPlayer
             )

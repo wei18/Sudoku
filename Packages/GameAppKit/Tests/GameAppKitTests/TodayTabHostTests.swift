@@ -1,38 +1,10 @@
-// TodayTabHostTests — C-33: the ATT primer anchor lives on `TodayTabHost`'s
-// banner slot now (design.md §3.6.1; the retired HOME view's banner slot was
-// the old anchor).
-//
-// #1020 CR follow-up: an earlier version of this suite tried to drive
-// `onAdContext` end-to-end by rendering `TodayTabHost` in an offscreen
-// `NSWindow` and pumping the run loop until `.task` resolved (mirroring
-// SudokuKit's `NavigationPreferencePropagationTests`). Four diagnostics
-// isolated a genuine harness limitation, not a bug in this code: a plain
-// synchronous `.task` fires reliably in that harness, but a `.task` whose
-// body `await`s across an ACTOR boundary (e.g. `AdGate.shouldShowBanner`,
-// itself an `actor`) never resumes — confirmed hung past a 10s pump. This
-// looks specific to how `swift-testing`'s async test executor relates to
-// `RunLoop.main` in a headless `swift test` process (no `NSApplication` event
-// loop ever bootstraps), not to `TodayTabHost`/`BannerSlotView`.
-//
-// Per the dispatch's own fallback ("if onAdContext can't be driven
-// headlessly, assert via the injected coordinator's isPrimerPresented after
-// invoking the host's own wiring through whatever internal seam exists, and
-// say so"): `todayTabHostFireOnAdContext(attPrimer:)` was factored out of
-// `TodayTabHost.bannerSlot` into a free function (internal, additive, zero
-// behavior change — `bannerSlot` now calls it instead of duplicating its
-// one-line body) so this suite calls the EXACT function the real banner
-// slot's `onAdContext` hook invokes, without needing to render anything.
-//
-// NOT covered here (documented, not silently skipped): whether `BannerSlotView`
-// itself withholds calling `onAdContext` while its gate is closed. That guard
-// (`guard allowed else { return }` in `BannerSlotView.resolveGateAndLoad()`)
-// lives in a pre-existing, unmodified shared component upstream of
-// `todayTabHostFireOnAdContext` — verified by reading the source, not by a
-// live test, since exercising it behaviorally hits the exact same
-// actor-hop/`.task` harness limitation this suite works around.
-// `ATTPrimerCoordinatorTests` covers the coordinator's own idempotency in
-// isolation; this suite is the missing middle link — proving `TodayTabHost`
-// actually WIRES its banner slot's ad-context hook to that coordinator.
+// TodayTabHostTests — C-33: the ATT primer is requested at the session's first
+// ad-relevant moment. Since #1058 the request is made by the session-scoped
+// `BannerSessionModel` (its readiness task runs `onAdContext`), and
+// `makeGameApp` wires that hook to `ATTPrimerCoordinator` through
+// `makeBannerSession(adProvider:adGate:attPrimer:)`. This suite drives that
+// exact wiring function, and pins that `TodayTabHost` still constructs around
+// the Today content with only its non-monetization inputs.
 
 import Foundation
 import SwiftUI
@@ -98,74 +70,69 @@ private struct ATTHostStubGameCenter: GameCenterClient {
 }
 
 @MainActor
-private func makeRootViewModel() -> GameRootViewModel<ATTHostTestRoute> {
-    GameRootViewModel<ATTHostTestRoute>(
-        gameCenter: ATTHostStubGameCenter(),
-        persistence: ATTHostStubPersistence()
-    )
+private func openGate() -> AdGate {
+    AdGate(store: FakeAdGateStateStore(initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))))
 }
 
-/// Proves `TodayTabHost` actually CONSTRUCTS with the exact dep shape
-/// `Live+TabRoots.swift` wires it with (an `attPrimer` shared across the
-/// whole tab-root build). The behavioral assertions below go through
-/// `todayTabHostFireOnAdContext`, the free function `bannerSlot`'s
-/// `onAdContext` closure calls — so both "the host builds" and "the host's
-/// own wiring reaches the coordinator" are covered.
+/// Polls `condition` every 10ms until it holds or `timeout` elapses.
 @MainActor
-private func makeHost(attPrimer: ATTPrimerCoordinator) -> TodayTabHost<ATTHostTestRoute, Color> {
-    TodayTabHost(
-        rootViewModel: makeRootViewModel(),
-        adProvider: FakeAdProvider(),
-        adGate: AdGate(store: FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )),
-        attPrimer: attPrimer
-    ) { Color.clear }
+private func eventually(timeout: Duration = .seconds(2), _ condition: () -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while !condition() {
+        if ContinuousClock.now >= deadline { return false }
+        try? await Task.sleep(for: .milliseconds(10))
+    }
+    return true
 }
 
 // MARK: - Suite
 
 @MainActor
-@Suite("TodayTabHost — C-33 ATT anchor wiring")
+@Suite("TodayTabHost + banner session — C-33 ATT anchor wiring", .timeLimit(.minutes(1)))
 struct TodayTabHostTests {
+
+    @Test("TodayTabHost constructs around the Today content")
+    func hostConstructs() {
+        let rootViewModel = GameRootViewModel<ATTHostTestRoute>(
+            gameCenter: ATTHostStubGameCenter(),
+            persistence: ATTHostStubPersistence()
+        )
+        _ = TodayTabHost(rootViewModel: rootViewModel) { Color.clear }
+    }
 
     @Test("first ad context, ATT notDetermined: presents the primer")
     func firstAdContextPresentsWhenNotDetermined() async {
         let attPrimer = ATTPrimerCoordinator(isNotDetermined: { true }, requestSystemPrompt: {})
-        _ = makeHost(attPrimer: attPrimer) // proves TodayTabHost constructs with this attPrimer
+        let session = makeBannerSession(adProvider: FakeAdProvider(), adGate: openGate(), attPrimer: attPrimer)
 
-        await todayTabHostFireOnAdContext(attPrimer: attPrimer)
+        await session.start()
 
-        #expect(attPrimer.isPrimerPresented == true, "TodayTabHost's banner slot must reach the ATT primer coordinator")
+        #expect(await eventually { attPrimer.isPrimerPresented }, "the session's ad-context hook must reach the ATT primer")
     }
 
     @Test("first ad context, ATT already determined: never presents")
-    func firstAdContextNeverPresentsWhenDetermined() async {
+    func firstAdContextNeverPresentsWhenDetermined() async throws {
         let attPrimer = ATTPrimerCoordinator(isNotDetermined: { false }, requestSystemPrompt: {})
-        _ = makeHost(attPrimer: attPrimer)
+        let session = makeBannerSession(adProvider: FakeAdProvider(), adGate: openGate(), attPrimer: attPrimer)
 
-        await todayTabHostFireOnAdContext(attPrimer: attPrimer)
+        await session.start()
+        try await Task.sleep(for: .milliseconds(200))
 
         #expect(attPrimer.isPrimerPresented == false)
     }
 
-    @Test("hasOffered latch: exactly one offer across two ad-context hooks sharing the coordinator")
-    func offersExactlyOnceAcrossTwoAdContexts() async {
+    @Test("hasOffered latch: a declined primer is not re-offered on a later foreground")
+    func declinedPrimerIsNotReoffered() async throws {
         let attPrimer = ATTPrimerCoordinator(isNotDetermined: { true }, requestSystemPrompt: {})
-        // Two SEPARATE `TodayTabHost` mounts (e.g. leaving and revisiting the
-        // Today tab) sharing the SAME `attPrimer` instance, exactly like
-        // production: `attPrimer` is built once in `makeGameApp` and handed
-        // to every tab-root build.
-        _ = makeHost(attPrimer: attPrimer)
-        _ = makeHost(attPrimer: attPrimer)
+        let session = makeBannerSession(adProvider: FakeAdProvider(), adGate: openGate(), attPrimer: attPrimer)
 
-        await todayTabHostFireOnAdContext(attPrimer: attPrimer)
-        #expect(attPrimer.isPrimerPresented == true, "first ad context should offer the primer")
+        await session.start()
+        #expect(await eventually { attPrimer.isPrimerPresented }, "first ad context should offer the primer")
 
-        attPrimer.declinePrimer() // "Not now" — mirrors ATTPrimerCoordinatorTests.notNow_…
-        #expect(attPrimer.isPrimerPresented == false)
+        attPrimer.declinePrimer()
+        await session.sceneDidBecomeActive()
+        try await Task.sleep(for: .milliseconds(200))
 
-        await todayTabHostFireOnAdContext(attPrimer: attPrimer)
-        #expect(attPrimer.isPrimerPresented == false, "hasOffered latch must prevent a second offer this session")
+        #expect(attPrimer.isPrimerPresented == false, "a declined primer must not be offered again this session")
     }
 }

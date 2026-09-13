@@ -84,17 +84,12 @@ struct ReminderSettingsIdentityTests {
     }
 
     private func makeFactory(reminderSettings: ReminderSettingsEntry) -> LiveRouteFactory {
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
-        return LiveRouteFactory(
+        LiveRouteFactory(
             puzzleProvider: FakePuzzleProvider(),
             persistence: FakePersistence(),
             gameCenter: FakeGameCenterClient(),
             telemetry: Telemetry(sinks: []),
-            adProvider: FakeAdProvider(),
             iapClient: FakeIAPClient(),
-            adGate: AdGate(store: adGateStore),
             reminderSettings: reminderSettings
         )
     }

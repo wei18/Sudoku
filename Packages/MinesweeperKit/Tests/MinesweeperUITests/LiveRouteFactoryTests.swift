@@ -155,10 +155,6 @@ import Telemetry
                 persistence: FakePersistence(),
                 errorReporter: NoopErrorReporter(),
                 telemetry: Telemetry(sinks: []),
-                adProvider: FakeAdProvider(),
-                adGate: AdGate(store: FakeAdGateStateStore(
-                    initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-                )),
                 savedGameStore: MinesweeperSavedGameStore(gateway: gateway),
                 dailyOverlayReading: nil,
                 personalRecordStore: MinesweeperPersonalRecordStore(gateway: gateway),

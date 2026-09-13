@@ -11,7 +11,6 @@
 // why the board keeps its size when the cluster unmounts.
 
 internal import GameAppKit
-import MonetizationCore
 import MonetizationUI
 import SudokuEngine
 import SwiftUI
@@ -46,10 +45,7 @@ extension BoardView {
             // suppressed while paused — pause is a moment of intentional quiet
             // (PauseOverlayView already dims the grid) and an ad on top of that
             // contradicts the calm contract.
-            if !viewModel.isPaused, let adProvider, let adGate {
-                themedBanner(adProvider: adProvider, adGate: adGate)
-                    .padding(.horizontal, theme.spacing.medium)
-            }
+            themedBanner(horizontalPadding: theme.spacing.medium)
             controlCluster
         }
         // #1022: vertical screen margin only — the horizontal half of the old
@@ -77,9 +73,7 @@ extension BoardView {
                 controlCluster
             }
             // Pause-time banner suppression preserved on Mac too.
-            if !viewModel.isPaused, let adProvider, let adGate {
-                themedBanner(adProvider: adProvider, adGate: adGate)
-            }
+            themedBanner(horizontalPadding: 0)
         }
         .frame(maxWidth: 960)
         .frame(maxWidth: .infinity, alignment: .center)
@@ -94,15 +88,13 @@ extension BoardView {
         .padding(theme.spacing.medium)
     }
 
-    /// Themed shared `MonetizationUI.BannerSlotView` (#441). Board never drives
-    /// ATT (Home owns the primer), so `onAdContext` stays nil. The live provider
-    /// conforms to `BannerViewProviding`; fakes / macOS return nil → honest
-    /// fallback. The cast keeps SudokuUI free of an AdsAdMob import (§9.1).
-    private func themedBanner(adProvider: any AdProvider, adGate: AdGate) -> some View {
+    /// Themed shared `MonetizationUI.BannerSlotView` (#441). The session model
+    /// in the environment decides whether it shows (#1058); the board only
+    /// suppresses it while paused. The slot is always built, so its identity
+    /// and loaded banner survive a pause, and a hidden slot adds no spacing.
+    private func themedBanner(horizontalPadding: CGFloat) -> some View {
         BannerSlotView(
-            adProvider: adProvider,
-            adGate: adGate,
-            bannerHost: adProvider as? any BannerViewProviding,
+            isSuppressed: viewModel.isPaused,
             // #688 item 2: was `theme.surface.placeholder.resolved` — mirrors
             // the MS fix in `MinesweeperBoardView` so both apps' banner
             // containers match their own page background instead of a
@@ -110,7 +102,8 @@ extension BoardView {
             backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
-            dismissTint: theme.accent.muted.resolved.opacity(0.7)
+            dismissTint: theme.accent.muted.resolved.opacity(0.7),
+            horizontalPadding: horizontalPadding
         )
     }
 

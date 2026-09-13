@@ -37,6 +37,7 @@ public struct MinesweeperNearWinModifier: ViewModifier {
 
 import MinesweeperEngine
 import MinesweeperGameState
+import MonetizationUI
 
 @MainActor
 private struct MinesweeperNearWinIOSModifier: ViewModifier {
@@ -76,6 +77,9 @@ private struct MinesweeperNearWinCoverView: View {
         MinesweeperBoardView(viewModel: nearWin.viewModel)
             .environment(\.theme, MinesweeperTheme())
             .environment(\.minesweeperCell, MinesweeperTheme().cell)
+            // This cover sits outside `makeGameApp`'s injection, and the hook
+            // bypasses monetization by design.
+            .environment(\.bannerSession, .disabled)
             // #510 Phase 3 (#633): winning-cell beacon. Unlike Sudoku (where a
             // wrong digit is harmless and can be brute-forced), tapping the
             // wrong hidden cell here hits a mine = loss — the E2E test must tap

@@ -55,6 +55,11 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     // so a plain stored reference (not a second `@State`) is correct here and
     // keeps single ownership.
     private let viewModel: GameRootViewModel<Route>
+    /// The session's one banner model (#1058). GameRoot starts it, drives its
+    /// foreground repoll, and re-injects it on the board cover. The primary
+    /// `\.bannerSession` injection sits on the `GameRoot(…)` value in
+    /// `makeGameApp`, next to `\.theme`.
+    private let bannerSession: BannerSessionModel
     private let routeFactory: any RouteFactory<Route>
     // #1041: threaded straight into `RootShellView`'s fixed sidebar Settings
     // row (iPad regular / macOS) — the same route `GameConfig.settingsRoute`
@@ -75,6 +80,8 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     @State private var chromeState = GameChromeState()
     #endif
 
+    @Environment(\.scenePhase) private var scenePhase
+
     // #823 / #1042: the join point between a board's terminal-persist Task
     // and the teardown-triggered hub refresh now lives on
     // `GameRootViewModel.persistJoin` (one join per root VM), not as a
@@ -84,6 +91,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
 
     public init(
         viewModel: GameRootViewModel<Route>,
+        bannerSession: BannerSessionModel,
         routeFactory: any RouteFactory<Route>,
         settingsRoute: Route,
         toastController: ToastController?,
@@ -93,6 +101,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
         @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
     ) {
         self.viewModel = viewModel
+        self.bannerSession = bannerSession
         self.routeFactory = routeFactory
         self.settingsRoute = settingsRoute
         self.toastController = toastController
@@ -104,7 +113,17 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
 
     public var body: some View {
         shellContent
-            .onAppear { Task { await viewModel.bootstrap() } }
+            // #1058: the banner session's foreground repoll (#341). Observed
+            // here — always mounted, never `EmptyView` — rather than on any
+            // slot; the boards' own scenePhase flush observers are separate.
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { await bannerSession.sceneDidBecomeActive() }
+            }
+            .onAppear {
+                Task { await viewModel.bootstrap() }
+                Task { await bannerSession.start() }
+            }
             // #761: route views (e.g. the Daily hubs) read this to refresh
             // after a game session ends — see `GameRootViewModel.sessionTeardownCount`.
             .environment(\.gameSessionTeardownCount, viewModel.sessionTeardownCount)
@@ -171,6 +190,9 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
                     // key. The injection stays only so the dormant seam keeps
                     // compiling until the follow-up removal.
                     .environment(\.gameChrome, chromeState)
+                    // #1058: belt-and-braces re-injection; the `\.theme`-level
+                    // injection in `makeGameApp` already reaches cover content.
+                    .environment(\.bannerSession, bannerSession)
                 }
             }
             #endif

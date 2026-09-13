@@ -27,6 +27,7 @@ import Testing
 
 import MinesweeperEngine
 import MinesweeperGameState
+import MonetizationUI
 
 @MainActor
 @Suite("MinesweeperBoardView — revealed-state snapshots")
@@ -43,7 +44,7 @@ struct MinesweeperBoardRevealedSnapshotTests {
         status: MinesweeperSessionStatus,
         elapsedSeconds: Int = 42,
         flagCount: Int = 0
-    ) -> MinesweeperBoardView {
+    ) -> some View {
         let snapshot = MinesweeperSessionSnapshot(
             difficulty: .beginner,
             cells: cells,
@@ -57,6 +58,7 @@ struct MinesweeperBoardRevealedSnapshotTests {
             suppressTickerForSnapshot: true,
             tapModeDefaults: BoardTestDefaults.store
         )
+        .environment(\.bannerSession, .disabled)
     }
 
     /// A 9×9 board whose top two rows surface every neighbor-count 1…8 as a
