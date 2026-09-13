@@ -53,7 +53,7 @@ CHANGES_SCREEN = [
  ("C-2b", "BREAK",  "MS-DAILY-HUB",           "同 C-2(MS 側)"),
  ("C-3",  "EXTEND", "SUD-PRACTICE-HUB",       "改名 PRACTICE;難度 picker 改盤面預覽卡"),
  ("C-3b", "EXTEND", "MS-PRACTICE-HUB",        "同 C-3(MS 側)"),
- ("C-4",  "BREAK",  "PROGRES",                "改名 PROGRESS + 紀錄陳列"),
+ ("C-4",  "BREAK",  "PROGRESS",               "改名 PROGRESS + 紀錄陳列"),
  ("C-5",  "BREAK",  "PROGRESS",               "「無前向導航」不再成立"),
  ("C-6",  "BREAK",  "SUD-DAILY-HUB",          "CK degraded 改骨架而非整卡消失"),
  ("C-7",  "BREAK",  "SUD-DAILY-HUB",          "exhausted 的 Cancel 落點改留在 Today"),
