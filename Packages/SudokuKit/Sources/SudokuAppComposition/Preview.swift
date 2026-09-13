@@ -36,7 +36,6 @@ extension SudokuAppComposition {
         let errorReporter: any ErrorReporter = NoopErrorReporter()
 
         // v2 monetization fakes.
-        let adProvider: any AdProvider = FakeAdProvider()
         let iapClient: any IAPClient = FakeIAPClient()
         let adGateStore: any AdGateStateStore = FakeAdGateStateStore(
             initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
@@ -89,9 +88,7 @@ extension SudokuAppComposition {
             gameCenter: gameCenter,
             telemetry: telemetry,
             errorReporter: errorReporter,
-            adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate,
             monetizationStateStore: adGateStore,
             monetizationController: monetizationController,
             toastController: toastController

@@ -138,22 +138,90 @@ These are decisions the brief left open. **Pinned** means a named mutation of th
 ## Deletions and batch items
 - **Delete in `BannerSlotView`:** the `ZStack`, `.task`, three `.onChange`s, `scenePhase`, three `@State`s, the lifecycle methods, and five init parameters.
 - **Delete elsewhere:**
-  - `MonetizationBootSignal`, `GameDeps.bootSignal`, and `bootMonetization`'s `bootSignal` parameter along with both `markReady` calls.
-  - `TodayTabHost`'s monetization parameters and `todayTabHostFireOnAdContext`.
-  - The `adProvider/adGate/bootSignal` threading, verified at `a9a48e1a` with `rg -l 'bootSignal|MonetizationBootSignal|adProvider|adGate'` over the three packages' `Sources`: **25 production files**.
+  - `MonetizationBootSignal`, `GameDeps.bootSignal`, and `bootMonetization`'s `bootSignal` parameter along with both `markReady` calls. **Done in 2d.**
+  - `TodayTabHost`'s monetization parameters and `todayTabHostFireOnAdContext`. **Done in 2c.**
+  - The `adProvider/adGate/bootSignal` threading, verified at `a9a48e1a` with `rg -l 'bootSignal|MonetizationBootSignal|adProvider|adGate'` over the three packages' `Sources`: **25 production files**. **Done in 2c.**
     - **GameAppKit (4):** `GameConfig`, `MakeGameApp`, `MakeGameApp+Helpers`, `TodayTabHost`.
     - **MinesweeperAppComposition (8):** `Live`, `Live+TabRoots`, `LiveRouteFactory`, `LiveRouteFactory+DailyBoardOpen`, `LiveRouteFactory+Helpers`, `LiveRouteFactory+ReplayDailyBoard`, `MinesweeperAppComposition`, `Preview`.
     - **MinesweeperUI (5):** `MinesweeperBoardLoaderView`, `MinesweeperBoardView`, `MinesweeperDailyOpenGuardView`, `MinesweeperDailyReplayLoaderView`, `MinesweeperFreshBoardLoaderView`.
     - **SudokuAppComposition (5):** `Live`, `Live+TabRoots`, `LiveRouteFactory`, `SudokuAppComposition`, `Preview`.
     - **SudokuUI (3):** `BoardLoaderView`, `BoardView`, `BoardView+Layout`.
     - Count history, 20 → 23 → 25: rev 3.1 said 20, and the lead's recount said 23. The recount's 23 is this list without the two `Preview.swift` files (25 − 2 = 23); those also build `FakeAdProvider`/`AdGate` and pass them into the composition struct's init, so they change too, giving 25. How rev 3.1 reached 20 was not recorded, so the 20 → 23 gap is not itemized; this verified list is the source of truth.
-  - `BannerSlotColdLaunchTests`.
+  - `BannerSlotColdLaunchTests`. **Done in 2c.**
 - **Deleted in the 2c commit (PM ruling), not 2d:** `scan/bannerslot_bootsignal` plus its `lint.yml` job, header index line and "seven job names". 2c removes the `bootSignal:` parameter the gate checks. Its guarantee is now carried by the readiness latch inside the carrier (`AdProvider`) and by M1's DEBUG `onMissingSession` assertion on a lost `\.bannerSession` injection.
 - **Keep:** the in-view padding, `BannerSlotCollapsedHeightTests`, the CLAUDE.md commit, and the latch.
 - **Retarget** to an injected session, with baselines byte-identical: TodayTabHostTests, BoardViewBannerTests (construction only), BannerSlotDarkBandRegressionTests, MinesweeperBoardSnapshotTests, and HubSettingsBannerTests.
 - **Padding:** `BoardView+Layout.swift:51` and `MinesweeperBoardView.swift:534` move their external padding to `horizontalPadding:`.
 - **Collapsed-height test:** the header names both `themedBanner`s, and the rows use the real per-layout configs.
 - **Test support:** `FakeAdProvider.awaitReadyCallCount` and a `loadGate` on `FakeAdMobBridge`.
+
+### Phase 2d — deletions and survivors
+
+Deletions-only pass (#1076). No behavior change, no new seam.
+
+**Deleted**
+- `MonetizationBootSignal` (subject deleted): the whole file. Its job — gating
+  the first ad request on boot completion — is now the provider's own
+  `ReadinessLatch` inside `AdProvider.awaitReady()`, which `BannerSessionModel`
+  already awaits. The signal was redundant since the session model landed.
+- `GameDeps.bootSignal` (subject deleted): no reader once `bootMonetization`
+  stopped taking a `bootSignal` parameter.
+- `bootMonetization`'s `bootSignal` parameter and both `markReady()` calls
+  (subject deleted): same reason: nothing awaits the signal any more.
+- `AdGate.lastKnownShouldShowBanner` + its backing `Mutex` (subject deleted):
+  a layout-reservation hint for the old per-screen `BannerSlotView` lifecycle.
+  The session-scoped `BannerSessionModel` carries its own `shouldShow` state,
+  so the hint has had no reader since 2c.
+- `AdGateLayoutHintTests.swift` (subject deleted): tested only the removed
+  hint.
+- `GameDeps.adProvider` / `GameDeps.adGate` (subject deleted): the only
+  readers were `SudokuAppComposition` / `MinesweeperAppComposition`'s stored
+  `adProvider` / `adGate` fields, which are also deleted below (test-only
+  readers, no production reader). `makeGameAppCore` never read these off
+  `GameDeps` — it holds its own local `adProvider` / `adGate` (see survivors).
+- `SudokuAppComposition.adProvider` / `.adGate` and
+  `MinesweeperAppComposition.adProvider` / `.adGate` (subject deleted): the
+  only readers were `CompositionTests` / `MinesweeperAppCompositionTests`.
+  Removed the stored properties, init params, `Live.swift` fills, and
+  `Preview.swift` args (and the now-unused local `FakeAdProvider()` in each
+  `Preview.swift`).
+- `CompositionTests.liveCompositionExposesMonetizationDeps` (subject deleted
+  for the dropped lines): dropped the `adProvider` type assertion and the
+  `_ = composition.adGate` smoke; the test stays for its `iapClient` assertion.
+- `CompositionTests.previewCompositionUsesFakes` /
+  `.testsCompositionUsesFakes` (subject deleted for the dropped line): dropped
+  the `adProvider` assertion line each; the rest of each test is unchanged.
+- `MinesweeperAppCompositionTests.liveFactoryConstructs` /
+  `.previewFactoryConstructs` (subject deleted for the dropped lines): dropped
+  `_ = bag.adProvider` / `_ = bag.adGate`; the other field smokes stay.
+- `MinesweeperAppCompositionTests.liveAdProviderIsLiveOnIOSNoopOnMac` (subject
+  deleted): asserted `bag.adProvider`'s concrete type, which no longer exists
+  on the bag.
+
+**Coverage gap (deletions-only, no new test added):** deleting
+`liveAdProviderIsLiveOnIOSNoopOnMac` removes the only test asserting
+`makeGameAppCore`'s Live/Noop `AdProvider` platform selection
+(`MakeGameApp.swift:142-160`, the `#if os(iOS)` branch inside
+`resolveAdProvider`). No GameAppKit test covers that selection either. Not
+backfilled here — out of scope for a deletions-only phase.
+
+**Survivors (must stay, with production reader)**
+
+| Symbol | Production reader |
+|---|---|
+| `ReadinessLatch` | `Packages/AppMonetizationKit/Sources/MonetizationUI/BannerSessionModel.swift:71` (`sessionReady`); `Packages/AppMonetizationKit/Sources/AdsAdMob/LiveAdMobAdProvider.swift:30` (`readiness`) |
+| `AdProvider.awaitReady()` | `Packages/AppMonetizationKit/Sources/MonetizationUI/BannerSessionModel.swift:203` (`try await provider.awaitReady()`) |
+| `BannerSessionModel` | `Packages/GameAppKit/Sources/GameAppKit/GameRoot.swift:62,94,104,121,125,195` (stored, injected via `\.bannerSession`, driven on scenePhase + start) |
+| `makeBannerSession(...)` | `Packages/GameAppKit/Sources/GameAppKit/MakeGameApp.swift:173` |
+| M1 `onMissingSession` | `Packages/AppMonetizationKit/Sources/MonetizationUI/BannerSlotRegistration.swift:34` (definition), `:63` (invoked when a slot renders with no injected session) |
+| `makeGameAppCore`'s local `adProvider` | `Packages/GameAppKit/Sources/GameAppKit/MakeGameApp.swift:142` (declared), read at `:173` (`makeBannerSession`) and `:375` (`bootMonetization`) |
+| `makeGameAppCore`'s local `adGate` | `Packages/GameAppKit/Sources/GameAppKit/MakeGameApp.swift:123` (declared), read at `:173` (`makeBannerSession`) and `:178` (`MonetizationStateController`) |
+
+`GameDeps.adProvider` / `GameDeps.adGate` are gone because `makeGameAppCore`
+never read them off the `GameDeps` bag it builds — it closes over its own
+local `adProvider` / `adGate` directly — and the only other readers
+(`SudokuAppComposition` / `MinesweeperAppComposition`'s stored fields) are
+deleted in this same phase.
 
 ## Prerequisites
 | # | Assumption | Status |

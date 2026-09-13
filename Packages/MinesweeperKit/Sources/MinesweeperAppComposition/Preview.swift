@@ -34,7 +34,6 @@ extension MinesweeperAppComposition {
 
         let persistence = FakePersistence()
 
-        let adProvider: any AdProvider = FakeAdProvider()
         let iapClient: any IAPClient = FakeIAPClient()
         let monetizationStateStore: any AdGateStateStore = FakeAdGateStateStore(
             initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
@@ -78,9 +77,7 @@ extension MinesweeperAppComposition {
             errorReporter: errorReporter,
             gameCenter: gameCenter,
             persistence: persistence,
-            adProvider: adProvider,
             iapClient: iapClient,
-            adGate: adGate,
             monetizationStateStore: monetizationStateStore,
             monetizationController: monetizationController,
             toastController: toastController

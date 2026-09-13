@@ -115,10 +115,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     let persistence: any PersistenceProtocol = resolvePersistence(fallback: livePersistence)
 
     // 5. Monetization stack.
-    // #1058: latch marking the UMP→ATT→AdMob boot sequence (step 10's
-    // `.onAppear`) complete — every `BannerSlotView` awaits it before its
-    // first ad request (threaded via `GameDeps.bootSignal`).
-    let bootSignal = MonetizationBootSignal()
     let monetizationStateStore = livePersistence.monetizationStateStore()
 
     // #931: uitest-arg-gated fake swap, see MakeGameApp+UITestOverrides.swift.
@@ -285,9 +281,6 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         errorReporter: errorReporter,
         gameCenter: gameCenter,
         persistence: persistence,
-        adProvider: adProvider,
-        adGate: adGate,
-        bootSignal: bootSignal,
         monetizationStateStore: monetizationStateStore,
         iapClient: iapClient,
         monetizationController: monetizationController,
@@ -379,7 +372,7 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     // archive. (Scoped to the app-root, NOT a blanket `.task` ban — leaf-view
     // one-shot `.task` verifies link-clean; see #607.) #361
     .onAppear { Task {
-        await bootMonetization(adProvider: adProvider, telemetry: telemetry, bootSignal: bootSignal)
+        await bootMonetization(adProvider: adProvider, telemetry: telemetry)
     } }
 
     // #557: universal theme-tinted ATT primer sheet applied on the returned
