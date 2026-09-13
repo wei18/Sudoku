@@ -198,12 +198,18 @@ Deletions-only pass (#1076). No behavior change, no new seam.
   deleted): asserted `bag.adProvider`'s concrete type, which no longer exists
   on the bag.
 
-**Coverage gap (deletions-only, no new test added):** deleting
-`liveAdProviderIsLiveOnIOSNoopOnMac` removes the only test asserting
+**Coverage gap — closed by 2d.1 (PM ruling):** deleting
+`liveAdProviderIsLiveOnIOSNoopOnMac` removed the only test of
 `makeGameAppCore`'s Live/Noop `AdProvider` platform selection
 (`MakeGameApp.swift:142-160`, the `#if os(iOS)` branch inside
-`resolveAdProvider`). No GameAppKit test covers that selection either. Not
-backfilled here — out of scope for a deletions-only phase.
+`resolveAdProvider`). That branch is a closure inside `makeGameAppCore`, and
+no unit test can reach it without refactoring production code. 2d.1 pins it
+at compile time in the carrier instead: `LiveAdMobAdProvider.init(bannerAdUnitID:)`
+is now wrapped in `#if canImport(GoogleMobileAds)`, the same guard
+`LiveAdMobBridge` uses. On macOS the SDK is absent, so the public init does
+not exist. A flipped branch that constructs the live provider on macOS fails
+the macOS build. `internal init(bridge:)` stays unguarded, so the macOS-host
+provider tests with fake bridges still run.
 
 **Survivors (must stay, with production reader)**
 

@@ -31,6 +31,8 @@ public actor LiveAdMobAdProvider: AdProvider {
     private var didStart: Bool = false
     private var lastKnownStatus: AdBannerStatus = .notInitialized
 
+    // macOS must get NoopAdProvider: this pins makeGameAppCore's Live/Noop branch at compile time (#1058).
+    #if canImport(GoogleMobileAds)
     /// Production init. Wires `LiveAdMobBridge` — the only path that touches
     /// the Google Mobile Ads SDK.
     ///
@@ -40,6 +42,7 @@ public actor LiveAdMobAdProvider: AdProvider {
     public init(bannerAdUnitID: String) {
         self.bridge = LiveAdMobBridge(bannerAdUnitID: bannerAdUnitID)
     }
+    #endif
 
     /// Test-only init. Inject a `FakeAdMobBridge` (in `AdsAdMobTests`) to drive
     /// the provider through deterministic scripted behavior without booting
