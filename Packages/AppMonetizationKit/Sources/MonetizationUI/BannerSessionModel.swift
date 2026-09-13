@@ -73,6 +73,10 @@ public final class BannerSessionModel {
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var loads: [BannerSlotID: LoadEntry] = [:]
     @ObservationIgnored private var registered: Set<BannerSlotID> = []
+    /// Bumped by every `hideAll()`. `runStart` and `sceneDidBecomeActive`
+    /// capture it before their first await and drop their publish and loads
+    /// when a hide (purchase, dismiss) landed while they were suspended.
+    @ObservationIgnored private var hideGeneration = 0
 
     public init(
         adProvider: any AdProvider,
@@ -117,12 +121,13 @@ public final class BannerSessionModel {
     /// hidden banner back, loads slots with no handle and retries failed ones.
     public func sceneDidBecomeActive() async {
         guard let services else { return }
+        let generation = hideGeneration
         await start()
         guard await services.adGate.shouldShowBanner(now: services.now()) else {
             await hideAll()
             return
         }
-        guard await providerCanServe(services) else { return }
+        guard await providerCanServe(services), hideGeneration == generation else { return }
         if shouldShow != true { shouldShow = true }
         beginReadinessOnce()
         ensureLoads(retryingFailed: registered)
@@ -167,9 +172,11 @@ public final class BannerSessionModel {
 
     private func runStart() async {
         guard let services else { return }
+        let generation = hideGeneration
         let open = await services.adGate.shouldShowBanner(now: services.now())
+        guard hideGeneration == generation else { return }
         shouldShow = open
-        guard open, await providerCanServe(services) else { return }
+        guard open, await providerCanServe(services), hideGeneration == generation else { return }
         beginReadinessOnce()
         ensureLoads()
     }
@@ -251,6 +258,7 @@ public final class BannerSessionModel {
     }
 
     private func hideAll() async {
+        hideGeneration &+= 1
         if shouldShow != false { shouldShow = false }
         for entry in loads.values { entry.task.cancel() }
         loads = [:]

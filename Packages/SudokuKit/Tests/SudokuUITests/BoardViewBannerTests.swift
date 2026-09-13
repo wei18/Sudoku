@@ -7,11 +7,14 @@
 //   1. `viewModel.isPaused == false` AND gate allows → banner mounts.
 //   2. `viewModel.isPaused == true` → banner hidden regardless of gate.
 //
-// BoardView consults `viewModel.isPaused` synchronously inside `body`; we
-// assert the property gates the conditional so the snapshot pair (running /
-// paused) pins the visual outcome.
+// The pause pins render the real `BoardView` with a started session and a
+// loaded slot, and read the height its banner is laid out at (#1058 2c.1):
+// running > 0, paused == 0.
 
 import Foundation
+#if canImport(AppKit)
+import AppKit
+#endif
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -82,12 +85,45 @@ struct BoardViewBannerTests {
         _ = BoardView(viewModel: vm)
     }
 
-    @Test func paused_bannerIsSuppressed() async throws {
-        let vm = try makeViewModel(paused: true)
-        #expect(vm.isPaused == true)
-        // Even with the gate open, the board suppresses its slot on `isPaused`.
-        _ = BoardView(viewModel: vm)
+    // MARK: - Pause host wiring (#1058 2c.1)
+    //
+    // Mutation target: `BoardView+Layout.themedBanner`'s
+    // `isSuppressed: viewModel.isPaused` → `false` (the paused row goes red).
+
+    #if canImport(AppKit)
+    @Test func runningBoard_rendersLoadedBanner() async throws {
+        let height = try await renderedBannerHeight(paused: false)
+        #expect(height > 0)
     }
+
+    @Test func pausedBoard_suppressesLoadedBanner() async throws {
+        let height = try await renderedBannerHeight(paused: true)
+        #expect(height == 0)
+    }
+
+    /// Hosts the real board over a started, visible session whose provider
+    /// serves a height probe, waits for the slot to load, then lays the host
+    /// out again and reads the height the probe was given.
+    private func renderedBannerHeight(paused: Bool) async throws -> CGFloat {
+        let probe = BannerHeightProbe()
+        let session = BannerSessionModel(adProvider: BannerHeightProbeProvider(probe: probe), adGate: makeAdGate(allow: true))
+        await session.start()
+        let host = hostingView(
+            BoardView(viewModel: try makeViewModel(paused: paused)).environment(\.bannerSession, session),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .light,
+            sizeClass: .compact
+        )
+        var waits = 0
+        while !session.slots.values.contains(where: \.isLoaded), waits < 200 {
+            try await Task.sleep(for: .milliseconds(10))
+            waits += 1
+        }
+        let loaded = session.slots.values.contains(where: \.isLoaded)
+        #expect(loaded, "the board's slot should load")
+        return settledBannerHeight(of: host, probe: probe)
+    }
+    #endif
 
     @Test func running_butGateDenies_bannerSlotCollapsesToEmpty() async throws {
         let vm = try makeViewModel(paused: false)
@@ -163,3 +199,61 @@ struct BoardViewBannerTests {
     #endif
 }
 // swiftlint:enable identifier_name
+
+#if canImport(AppKit)
+
+/// Records the tallest height the banner slot lays its loaded banner out at.
+@MainActor
+private final class BannerHeightProbe {
+    private(set) var height: CGFloat = 0
+
+    func clearView(recording newHeight: CGFloat) -> Color {
+        height = max(height, newHeight)
+        return .clear
+    }
+}
+
+/// Serves a loaded banner whose view is a height probe.
+private actor BannerHeightProbeProvider: AdProvider, BannerViewProviding {
+    nonisolated let probe: BannerHeightProbe
+
+    init(probe: BannerHeightProbe) {
+        self.probe = probe
+    }
+
+    func initialize() async throws {}
+
+    func awaitReady() async throws {}
+
+    var bannerStatus: AdBannerStatus { .notInitialized }
+
+    func refreshBanner() async throws -> AdBannerHandle { AdBannerHandle() }
+
+    func dispose(handle: AdBannerHandle) async {}
+
+    @MainActor
+    func bannerView(for handle: AdBannerHandle) -> AnyView? {
+        let probe = probe
+        return AnyView(GeometryReader { proxy in probe.clearView(recording: proxy.size.height) })
+    }
+}
+
+/// Lays the host out until the probe reports a height or the passes run out,
+/// letting SwiftUI apply the session's observation updates between passes.
+@MainActor
+private func settledBannerHeight(of host: NSView, probe: BannerHeightProbe, passes: Int = 25) -> CGFloat {
+    for _ in 0..<passes where probe.height == 0 {
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+    }
+    return probe.height
+}
+
+private extension AdBannerStatus {
+    var isLoaded: Bool {
+        if case .loaded = self { return true }
+        return false
+    }
+}
+
+#endif
