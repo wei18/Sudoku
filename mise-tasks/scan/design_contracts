@@ -5,8 +5,8 @@
 #   contracts.py landed with the v3 design spec as a verification gate, but no
 #   CI job and no mise task ever ran it. #1051 renamed `## STATS` to
 #   `## PROGRESS` in docs/screen-contracts.md without re-pointing the four
-#   change rows that anchored to it, and the gate sat at RESULT: FAIL on main
-#   through six merges before anyone ran it by hand (#1064).
+#   change rows that anchored to it, and the gate sat at RESULT: FAIL on main,
+#   merge after merge, until someone ran it by hand (#1064).
 #   This wrapper makes it discoverable (`mise tasks ls`) and lets lint.yml
 #   fail the PR that breaks an anchor, instead of a later reader finding it.
 #
