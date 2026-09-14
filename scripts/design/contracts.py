@@ -71,7 +71,9 @@ CHANGES_SCREEN = [
  ("C-17", "KEEP",   "PAUSE-OVERLAY",          "明文確認不碰"),
  ("C-18", "BREAK",  "SUD-DAILY-HUB",          "三題卡改真實盤面縮圖"),
  ("C-19", "EXTEND", "SUD-DAILY-HUB",          "degraded 時縮圖仍可畫(不依賴 CK)"),
- ("C-20", "BREAK",  "HOME",                   "Resume 卡改 standard material + 殘局快照"),
+ # C-20 / C-34: re-anchored HOME -> SUD-DAILY-HUB by #1081 — the resume pill now lives in
+ # GameAppKit/TodayTabHost.swift, contracted under the Today-tab root section (C-2).
+ ("C-20", "BREAK",  "SUD-DAILY-HUB",          "Resume 卡改 standard material + 殘局快照"),
  ("C-21", "BREAK",  "SUD-BOARD",              "滿版 + G4 玻璃叢集;32pt 留白規則作廢"),
  ("C-22", "EXTEND", "SUD-BOARD",              "格徑裁定數字更新 40.1 -> 43.2pt"),
  ("C-23", "BREAK",  "SUD-COMPLETION-OVERLAY", "完成期間盤面保持可見"),
@@ -85,7 +87,7 @@ CHANGES_SCREEN = [
  ("C-31", "EXTEND", "SUD-BOARD",              "格子級成功回饋 M12/M13"),
  ("C-32", "EXTEND", "SETTINGS",               "7 語系 GC 術語譯法"),
  ("C-33", "BREAK",  "ATT-PRIMER",             "ATT 觸發錨點改 Today tab 首次 banner(HOME 移除)"),
- ("C-34", "NEW",    "HOME",                   "Resume pill refresh 改「任一 tab 的 path 縮短」"),
+ ("C-34", "NEW",    "SUD-DAILY-HUB",          "Resume pill refresh 改「任一 tab 的 path 縮短」"),
  ("C-35", "BREAK",  "GC-SIGNED-OUT-ALERT",    "HOME leaderboard 卡入口消失"),
  ("C-36", "NEW",    "GC-DASHBOARD",           "Progress 的 Achievements 列入口"),
 ]

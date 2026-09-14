@@ -2,6 +2,18 @@
 
 **Status:** AS-BUILT · **Date:** 2026-07-05 · **main @** `9d6bf71`
 
+> ⚠️ **Partially superseded by 3.0 (#1020 / #1038, 2026-08-25).** `HOME` is
+> retired: the root is a 3-tab `sidebarAdaptable` shell with one path per tab
+> (`GameShellUI/RootShellView.swift`, `GameAppKit/GameRootViewModel.swift`),
+> the Today tab is the landing screen, and the `home` / `stats` routes no
+> longer exist (`scripts/design/contracts.py` N-A / N-D / N-E). Every
+> remaining `HOME` mention below — the §1 route enums, the §2 hub list and
+> resume-refresh prose (#679, redefined by design.md §3.6.2 / N-C), the §3
+> diagrams and chains S1–S3 / M1–M3, and negative flow N4 — is the pre-3.0
+> record, superseded by the 3.0 spec PR (those anchored BREAK rows own the
+> rewrite) and kept until this doc is regenerated for 3.0. The GC entry
+> points (S5 / M6 / N14) were re-pointed to the Progress tab by #1081.
+
 **Scope:** iOS iPhone (board = `fullScreenCover` modal; everything else =
 `NavigationStack` push) and macOS (everything, including the board, is a
 `NavigationStack` push). iPad regular size class uses the same route table
@@ -16,7 +28,7 @@ files for the pointer back here).
 Per-screen detail (element inventories, exact copy, a11y ids, covering
 behavior, state variants) lives in **`docs/screen-contracts.md`**; this doc
 holds the navigation **model** and the **chains** between screens (§3) plus
-the **negative flows** (§4). Screen IDs (`HOME`, `SUD-BOARD`, `MS-DAILY-HUB`,
+the **negative flows** (§4). Screen IDs (`PROGRESS`, `SUD-BOARD`, `MS-DAILY-HUB`,
 …) are defined there and referenced here without re-deriving them.
 
 DEBUG-only hooks (`-uitest-*` launch-arg routes, `UITestRouteModifier`,
@@ -199,7 +211,7 @@ flowchart TD
 | S2 | `HOME → SUD-PRACTICE-HUB → (draw+play in one tap) → SUD-BOARD-LOAD-FAILED → SUD-BOARD → SUD-COMPLETION-OVERLAY → Play Again → new SUD-BOARD` | Play Again only exists when `onPresentBoard` is wired (iOS only); macOS Practice completion is Close-only. |
 | S3 | `HOME(resume pill) → SUD-BOARD-LOAD-FAILED → SUD-BOARD` | Same loader as S1/S2 — the resume pill routes to `.board(puzzleId:)`, not a distinct resume route. |
 | S4 | `SUD-DAILY-HUB(completed card) → SUD-COMPLETION-REVIEW → Close → SUD-DAILY-HUB` | #379. Pop, not dismiss — this is always a push (never modal) since it targets the hub's own stack. |
-| S5 | `HOME(Leaderboard, authenticated) → GC-DASHBOARD(external)` / `HOME(Leaderboard, signed out) → GC-SIGNED-OUT-ALERT → OK → HOME` | Side-effect, never a route. |
+| S5 | `PROGRESS(Leaderboards or Achievements row, authenticated) → GC-DASHBOARD(external)` / `PROGRESS(either row, signed out) → GC-SIGNED-OUT-ALERT → OK → PROGRESS` | Side-effect, never a route. Re-pointed from the retired HOME leaderboard card by #1081 (#1020 C-15 / C-36, N-F); the `SETTINGS` GC row is the other entry — see N14. |
 | S6 | reminder notification tap → `.daily` pushed (if not already on top) → `SUD-DAILY-HUB` | `Live.swift` `reminderTapRoute`; Sudoku only (see §4 negative flows for the MS gap). |
 | S7 | `SETTINGS` + sheets — see `screen-contracts.md` `REMINDER-PRIMER` / `REMINDER-DENIED` / `CLEAR-CACHE-DIALOG` / acknowledgements deep-link | All hang off `SETTINGS`; none is a pushed `AppRoute`. |
 
@@ -252,7 +264,7 @@ flowchart TD
 | M3 | `HOME(resume pill) → MS-BOARD-LOAD-FAILED(.resumeBoard) → MS-BOARD` | Only `.resumeBoard` uses the async loader; fresh `.board`/`.replayDailyBoard` mount `MS-BOARD` inline (no persistence fetch needed). |
 | M4 | `MS-DAILY-HUB(failed card) → MS-BOARD(.replayDailyBoard, unscored)` | Epic 8 (SDD-003). No persistence, no GC submit; the original Failed record is untouched. |
 | M5 | `MS-DAILY-HUB(completed card) → MS-COMPLETION-REVIEW → Close → MS-DAILY-HUB` | **#386, Close fixed by #697: pops one `path` entry** (`path?.wrappedValue.removeLast()`), landing back on `MS-DAILY-HUB` — now symmetric with Sudoku's S4. |
-| M6 | `HOME(Leaderboard, authenticated) → GC-DASHBOARD(external)` / signed-out → alert | Same shared mechanism as Sudoku S5. |
+| M6 | `PROGRESS(Leaderboards or Achievements row, authenticated) → GC-DASHBOARD(external)` / signed-out → alert | Same shared mechanism as Sudoku S5 (N-F2). |
 | M7 | reminder notification tap → push `.daily` | Fixed by #696: MS's `GameConfig.reminderTapRoute` now mirrors Sudoku's — a tapped MS daily-ready notification pushes `.daily` (`MDH`) unless already on top. |
 | M8 | `SETTINGS` + sheets | Same shared components as Sudoku §3.1 S7. |
 
@@ -277,7 +289,7 @@ Every exit / cancel / error / degraded path, both apps unless noted.
 | N11 | Completion Close — MS (in-board overlay) | Always `dismiss()`, no `path` branch at all (MS's board never receives a `path` parameter — the board is either modally presented or pushed inline, and `dismiss()` covers both) | `MinesweeperUI/MinesweeperBoardView.swift:657-661` |
 | N12 | Completion Close — re-view route, Sudoku | One `path` pop → back to `SUD-DAILY-HUB` | `SudokuAppComposition/LiveRouteFactory.swift:260` — E2E: `App/SudokuE2ETests/SudokuE2ETests.swift` `test_completionReviewCloseLandsOnDailyHub_N12` (#935 batch 3) |
 | N13 | Completion Close — re-view route, MS | One `path` pop (`closePath?.wrappedValue.removeLast()`) → back to `MS-DAILY-HUB` — fixed by #697, now symmetric with N12 | `MinesweeperAppComposition/LiveRouteFactory.swift:326` — E2E: `App/MinesweeperE2ETests/MinesweeperE2ETests.swift` `test_completionReviewCloseLandsOnDailyHub_N13` (#935 batch 3) |
-| N14 | GC signed-out alert | `.alert` OK → dismiss, origin screen unchanged (reachable from HOME leaderboard card OR `SETTINGS` GC row, #685/#714 — see `GC-SIGNED-OUT-ALERT` in `screen-contracts.md`) | `GameAppKit/GameRoot.swift:113-123` (moved from `MakeGameApp+Modifiers.swift` by #685 — see that contract's dated note) — E2E: `App/SudokuE2ETests/SudokuE2ETests.swift` / `App/MinesweeperE2ETests/MinesweeperE2ETests.swift` `test_gcSignedOutAlertDismissesInPlace_N14` (#935 batch 4) |
+| N14 | GC signed-out alert | `.alert` OK → dismiss, origin screen unchanged (reachable from the `PROGRESS` tab's `Leaderboards` / `Achievements` rows — N-Q / N-AA, the Achievements row shares the same guard — OR the `SETTINGS` GC row, #685/#714 — see `GC-SIGNED-OUT-ALERT` in `screen-contracts.md`) | `GameAppKit/GameRoot.swift:113-123` (moved from `MakeGameApp+Modifiers.swift` by #685 — see that contract's dated note) — E2E: `App/SudokuE2ETests/SudokuE2ETests.swift` / `App/MinesweeperE2ETests/MinesweeperE2ETests.swift` `test_gcSignedOutAlertDismissesInPlace_N14` (#935 batch 4) |
 | N15 | ATT primer decline | "Not now" → dismiss sheet, latched for the session (no re-offer), no system prompt fired; Home unaffected throughout | `AppMonetizationKit/ATTPrimerCoordinator.swift:79-81` — E2E: `App/SudokuE2ETests/SudokuE2ETests+MonetizationFlows.swift` / `App/MinesweeperE2ETests/MinesweeperE2ETests.swift` `test_attPrimerDeclineDismissesAndLatches_N15` (#935 batch 5) |
 | N16 | UMP/ATT boot sequence | Runs concurrently with first-frame render (`.onAppear { Task {…} }`), **never gates Home interaction**; a failing step does not skip later steps (every step attempted, outcome logged) | `GameAppKit/MakeGameApp+Helpers.swift:16-42`, `MonetizationBootCoordinator` header comment — **OUT of E2E scope** (#935 batch 5): "never gates Home" is covered by the existing launch smoke test; step ordering / no-ATT-at-boot is unit-covered (`BootDoesNotRequestATTTests`); the UMP consent form is Google-owned + EEA/UK-only, structurally unreachable on CI sims |
 | N17 | AdMob banner unresolved / degraded | Banner slot degrades to a `.failed` placeholder rather than blocking its host screen (Home / Daily / Practice / Board all keep working) | referenced by `MonetizationBootCoordinator` contract note; `BannerSlotView` — **OUT of E2E scope** (batch 4 adjudication): pure-appearance assertion with no dedicated a11y id to discriminate loaded vs. failed; snapshot/unit is the right layer |
