@@ -175,8 +175,18 @@ public final class BannerSessionModel {
         let generation = hideGeneration
         let open = await services.adGate.shouldShowBanner(now: services.now())
         guard hideGeneration == generation else { return }
+        // #1078 2g: resolve the provider's suppression BEFORE publishing an open
+        // gate. Publishing first left one frame in which `isVisible` read true
+        // on a host whose provider can never serve (macOS `NoopAdProvider`), so
+        // a cold launch painted a 50pt spinner band and then collapsed it.
+        // `sceneDidBecomeActive` already has this order.
+        var canServe = false
+        if open {
+            canServe = await providerCanServe(services)
+            guard hideGeneration == generation else { return }
+        }
         shouldShow = open
-        guard open, await providerCanServe(services), hideGeneration == generation else { return }
+        guard canServe else { return }
         beginReadinessOnce()
         ensureLoads()
     }

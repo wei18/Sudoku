@@ -85,6 +85,17 @@ private func eventually(timeout: Duration = .seconds(2), _ condition: () -> Bool
     return true
 }
 
+/// `eventually` for conditions that read actor state (the fake provider's counters).
+@MainActor
+private func eventuallyAsync(timeout: Duration = .seconds(2), _ condition: () async -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while !(await condition()) {
+        if ContinuousClock.now >= deadline { return false }
+        try? await Task.sleep(for: .milliseconds(10))
+    }
+    return true
+}
+
 // MARK: - Suite
 
 @MainActor
@@ -110,29 +121,53 @@ struct TodayTabHostTests {
         #expect(await eventually { attPrimer.isPrimerPresented }, "the session's ad-context hook must reach the ATT primer")
     }
 
+    // #1078 2g: the two negative rows below no longer sleep a fixed 200ms.
+    // Readiness is held on the fake's `markReady()` seam and released by the
+    // test; a registered slot's load runs only AFTER the readiness path
+    // (ready → ad context → sessionReady → loads), so a `refreshBanner()` call
+    // arriving is the positive proof that the primer hook already ran.
+
     @Test("first ad context, ATT already determined: never presents")
-    func firstAdContextNeverPresentsWhenDetermined() async throws {
+    func firstAdContextNeverPresentsWhenDetermined() async {
         let attPrimer = ATTPrimerCoordinator(isNotDetermined: { false }, requestSystemPrompt: {})
-        let session = makeBannerSession(adProvider: FakeAdProvider(), adGate: openGate(), attPrimer: attPrimer)
+        let provider = FakeAdProvider(readinessHeld: true)
+        let session = makeBannerSession(adProvider: provider, adGate: openGate(), attPrimer: attPrimer)
+        session.register(BannerSlotID())
 
         await session.start()
-        try await Task.sleep(for: .milliseconds(200))
+        provider.markReady()
 
+        #expect(
+            await eventuallyAsync { await provider.refreshCallCount >= 1 },
+            "the slot load must arrive, proving the readiness path (and the primer hook) ran"
+        )
         #expect(attPrimer.isPrimerPresented == false)
     }
 
     @Test("hasOffered latch: a declined primer is not re-offered on a later foreground")
-    func declinedPrimerIsNotReoffered() async throws {
+    func declinedPrimerIsNotReoffered() async {
         let attPrimer = ATTPrimerCoordinator(isNotDetermined: { true }, requestSystemPrompt: {})
-        let session = makeBannerSession(adProvider: FakeAdProvider(), adGate: openGate(), attPrimer: attPrimer)
+        // Every load fails, so the foreground repoll retries the slot and its
+        // second `refreshBanner()` call proves the repoll ran to its load step.
+        let provider = FakeAdProvider(
+            scripted: ScriptedAdProviderState(refreshThrows: AdProviderError.unsupported),
+            readinessHeld: true
+        )
+        let session = makeBannerSession(adProvider: provider, adGate: openGate(), attPrimer: attPrimer)
+        session.register(BannerSlotID())
 
         await session.start()
+        provider.markReady()
         #expect(await eventually { attPrimer.isPrimerPresented }, "first ad context should offer the primer")
+        #expect(await eventuallyAsync { await provider.refreshCallCount >= 1 }, "the first load must have run")
 
         attPrimer.declinePrimer()
         await session.sceneDidBecomeActive()
-        try await Task.sleep(for: .milliseconds(200))
 
+        #expect(
+            await eventuallyAsync { await provider.refreshCallCount >= 2 },
+            "the repoll must retry the failed slot, proving it ran past the readiness step"
+        )
         #expect(attPrimer.isPrimerPresented == false, "a declined primer must not be offered again this session")
     }
 }

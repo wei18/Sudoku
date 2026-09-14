@@ -320,6 +320,42 @@ render differently so the compare cannot pass vacuously. Mutation (plain
 property restored) → red on the identity row. E2E: Minesweeper N19 2/2 with
 the fix.
 
+### Phase 2g — whole-PR CR closures (#1078)
+
+Three findings from the PM's whole-PR code review at `a5ebe93f`, closed in one
+commit:
+
+- **MAJOR-1 — `HubSettingsBannerTests` deleted.** Since 2c the slot holds no
+  provider, so all seven tests built a `FakeAdProvider` wired to nothing and
+  asserted `refreshCallCount == 0`, which holds for any production code. The
+  behaviour they named is pinned elsewhere: the gate decision by the `AdGate`
+  suites; "gate allows → the slot is live" by
+  `BoardViewBannerTests.running_andGateAllows_bannerMountIsActive` and
+  `runningBoard_rendersLoadedBanner`; "gate denies / Remove Ads purchased →
+  the slot collapses" by
+  `BoardViewBannerTests.running_butGateDenies_bannerSlotCollapsesToEmpty` and
+  `BannerEntitlementWiringTests` (purchase / restore / updates collapse the
+  slot); "a load that finds the gate closed collapses every slot" by
+  `BannerSessionModelFollowUpTests`. The SudokuKit "hubs" batch filter drops
+  the name (62 tests / 9 suites).
+- **MINOR-1 — suppression before publish.** `runStart()` published
+  `shouldShow = open` and only then awaited `providerCanServe`; on a macOS
+  cold launch with an open gate that painted one 50pt spinner band before the
+  `NoopAdProvider` suppression collapsed it. Now the suppression is resolved
+  first (the hide-generation capture stays before the first await;
+  `sceneDidBecomeActive` already had this order). Pinned by
+  `BannerSessionModelSuppressionOrderTests`: an actor provider holds its
+  `bannerStatus` read on a latch and the test samples `isVisible` while
+  `runStart()` is suspended in it — `[false, false]` with 2g; the mutation
+  (old order restored) samples `[true, false]`, the frame in question.
+- **MINOR-2 — no fixed sleeps in the negative primer rows.**
+  `TodayTabHostTests.firstAdContextNeverPresentsWhenDetermined` and
+  `declinedPrimerIsNotReoffered` hold readiness on the fake's `markReady()`
+  seam and wait for a positive signal that the readiness path ran (a
+  registered slot's `refreshBanner()` call, which only happens after ready →
+  ad context → `sessionReady`; for the repoll, the retry of a slot whose loads
+  are scripted to fail) before asserting the primer did not present.
+
 ## Prerequisites
 | # | Assumption | Status |
 |---|---|---|
