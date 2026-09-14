@@ -366,7 +366,9 @@ public struct LiveRouteFactory: RouteFactory {
             backgroundColor: DefaultTheme().surface.background.resolved,
             progressTint: .accentColor,
             captionColor: .secondary,
-            dismissTint: Color.secondary.opacity(0.7),
+            // uiux-bugfix-plan P1-6: `.opacity(0.7)` left the ✕ glyph nearly
+            // invisible after crop — full-strength token instead (#1084).
+            dismissTint: Color.secondary,
             // #1058: moved inside `BannerSlotView` (was chained here).
             horizontalPadding: 16,
             verticalPadding: 12

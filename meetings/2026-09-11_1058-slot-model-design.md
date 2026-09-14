@@ -229,6 +229,61 @@ local `adProvider` / `adGate` directly — and the only other readers
 (`SudokuAppComposition` / `MinesweeperAppComposition`'s stored fields) are
 deleted in this same phase.
 
+### Phase 2e — #1084 dismiss placement
+
+AdMob policy forbids app content over or immediately adjacent to the
+creative; a manual tap sweep hit the ad on 2 of 9 taps against the ✕
+overlaid at the creative's top-trailing corner. `BannerSlotView.banner(...)`
+now pins the creative to its native 320×50 size, leading-aligned in the
+slot band, and moves the ✕ into the gutter past the creative's trailing
+edge (`.overlay(alignment: .trailing)` + an `.alignmentGuide(.trailing)`
+that reads the ✕'s leading edge instead of its own trailing edge), at a
+44×44pt hit target. Pinned by `BannerSlotDismissPlacementTests`, which reads
+the creative/✕/slot-band frames via a test-only `BannerSlotGeometryKey`
+anchor-preference triple and asserts no overlap at 402pt, 393pt, and 375pt
+host widths.
+
+**Glyph contrast (uiux-bugfix-plan P1-6, #1084):** an after-crop review found
+the ✕ nearly invisible on a warm paper background at 12pt with
+`Color.secondary.opacity(0.7)`. The glyph is now 16pt inside the same
+44×44pt target, and every `dismissTint` — the default and the four host
+call sites (`BoardView+Layout`, `MinesweeperBoardView`, `TodayTabHost`,
+`LiveRouteFactory`) — drops the `.opacity(0.7)`, keeping the underlying
+color token. A second PM pass on a new crop found `theme.accent.muted` still
+read as a ghost on the paper ground even at 16pt and full opacity, so the
+three themed hosts (`BoardView+Layout`, `MinesweeperBoardView`,
+`TodayTabHost`) now pass `theme.text.secondary` instead — the same token
+those calls already use for `captionColor`, not a new color.
+`LiveRouteFactory` (the un-themed Settings route banner) already passed
+`Color.secondary` and is unchanged.
+
+**PM ruling — narrow-width padding, final (#1084):** the ruled constraint is
+"the ✕ stays fully on-screen", **not** "the ✕ stays inside the visible slot
+band" — an important correction from an earlier draft of this rule. On a
+host too narrow to fit `needed = creativeWidth + dismissTargetSize = 364` at
+the full nominal padding on ONE side, the padding shrinks symmetrically
+instead of letting the ✕ run off-screen: `padding = nominalPadding` while
+`width ≥ needed + nominalPadding` (380pt at the shipped constants), else
+`max(0, (width − needed) / 2)`. This is a ONE-SIDED comfort check
+(`needed + nominalPadding`), not the two-sided `needed + 2×nominalPadding`
+an earlier draft used — the two-sided version gave 393pt (the most common
+iPhone width) a 14.5pt padding while 402pt kept 16pt, a visible, unjustified
+inconsistency between the two most common widths once someone noticed it.
+Implemented as a custom `Layout` (`BannerSlotBandLayout`), not
+`onGeometryChange` + `@State` — the PM's own call: the state-loop approach
+draws one frame at the wrong padding before correcting.
+- **402pt** (≥ 364 + 16 = 380): padding stays the full nominal 16pt,
+  byte-identical to the pre-shrink geometry — creative 16…336, ✕ 336…380,
+  slot band 16…386.
+- **393pt** (also ≥ 380): SAME full 16pt padding as 402pt — creative 16…336,
+  ✕ 336…380, slot band 16…377. The ✕ ends 3pt past the band's own trailing
+  edge but 13pt inside the screen; that's fine under the on-screen (not
+  in-band) constraint.
+- **375pt** (< 380): `(375 − 364) / 2 = 5.5`, so the padding shrinks to
+  5.5pt on each side — creative 5.5…325.5, ✕ 325.5…369.5, slot band
+  5.5…369.5 — the ✕ stays fully on-screen with a 5.5pt margin instead of
+  overflowing.
+
 ## Prerequisites
 | # | Assumption | Status |
 |---|---|---|

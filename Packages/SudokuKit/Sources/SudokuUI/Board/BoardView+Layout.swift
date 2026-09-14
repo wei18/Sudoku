@@ -102,7 +102,10 @@ extension BoardView {
             backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
-            dismissTint: theme.accent.muted.resolved.opacity(0.7),
+            // uiux-bugfix-plan P1-6 / #1084: text.secondary, not accent.muted
+            // — the muted accent reads as a ghost on the paper ground even
+            // at 16pt and full opacity.
+            dismissTint: theme.text.secondary.resolved,
             horizontalPadding: horizontalPadding
         )
     }
