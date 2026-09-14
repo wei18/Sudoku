@@ -52,7 +52,7 @@ struct BannerReloadCoordinatorTests {
         let (gate, _) = makeGate(AdGateState(firstLaunchAt: firstLaunch))
         let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
 
-        let status = await coordinator.reloadIfGateOpen(now: days(10, after: firstLaunch))
+        let status = try await coordinator.reloadIfGateOpen(now: days(10, after: firstLaunch))
 
         #expect(await provider.refreshCallCount == 1)
         #expect(status == .loaded(handle))
@@ -76,7 +76,7 @@ struct BannerReloadCoordinatorTests {
         )
         let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
 
-        let status = await coordinator.reloadIfGateOpen(now: today)
+        let status = try await coordinator.reloadIfGateOpen(now: today)
 
         #expect(await provider.refreshCallCount == 1)
         #expect(status == .loaded(handle))
@@ -84,7 +84,7 @@ struct BannerReloadCoordinatorTests {
 
     // MARK: Dismissed today → gate closed → suppressed, NO reload
 
-    @Test func doesNotReloadWhenDismissedToday() async {
+    @Test func doesNotReloadWhenDismissedToday() async throws {
         let provider = FakeAdProvider(scripted: .init(statusSequence: [.loaded(AdBannerHandle())]))
         let today = days(10, after: firstLaunch)
         let (gate, _) = makeGate(
@@ -95,7 +95,7 @@ struct BannerReloadCoordinatorTests {
         )
         let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
 
-        let status = await coordinator.reloadIfGateOpen(now: today)
+        let status = try await coordinator.reloadIfGateOpen(now: today)
 
         #expect(await provider.refreshCallCount == 0)
         #expect(status == .suppressed)
@@ -103,7 +103,7 @@ struct BannerReloadCoordinatorTests {
 
     // MARK: Remove-Ads regression — purchased user NEVER reloads
 
-    @Test func purchasedUserNeverReloads() async {
+    @Test func purchasedUserNeverReloads() async throws {
         let provider = FakeAdProvider(scripted: .init(statusSequence: [.loaded(AdBannerHandle())]))
         let (gate, _) = makeGate(
             AdGateState(firstLaunchAt: firstLaunch, hasPurchasedRemoveAds: true)
@@ -111,13 +111,13 @@ struct BannerReloadCoordinatorTests {
         let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
 
         // Even far past any window, on a fresh day, with no dismissal: purchase wins.
-        let status = await coordinator.reloadIfGateOpen(now: days(365, after: firstLaunch))
+        let status = try await coordinator.reloadIfGateOpen(now: days(365, after: firstLaunch))
 
         #expect(await provider.refreshCallCount == 0)
         #expect(status == .suppressed)
     }
 
-    @Test func purchasedUserNeverReloadsAcrossRepeatedRepolls() async {
+    @Test func purchasedUserNeverReloadsAcrossRepeatedRepolls() async throws {
         let provider = FakeAdProvider(scripted: .init(statusSequence: [.loaded(AdBannerHandle())]))
         let (gate, _) = makeGate(
             AdGateState(firstLaunchAt: firstLaunch, hasPurchasedRemoveAds: true)
@@ -126,7 +126,7 @@ struct BannerReloadCoordinatorTests {
 
         // Simulate many re-poll triggers (scene activations / day rolls).
         for day in 1...5 {
-            let status = await coordinator.reloadIfGateOpen(now: days(Double(day), after: firstLaunch))
+            let status = try await coordinator.reloadIfGateOpen(now: days(Double(day), after: firstLaunch))
             #expect(status == .suppressed)
         }
         #expect(await provider.refreshCallCount == 0)
@@ -134,7 +134,7 @@ struct BannerReloadCoordinatorTests {
 
     // MARK: Refresh failure surfaces as .failed (not a crash, not suppressed)
 
-    @Test func refreshFailureSurfacesFailedStatus() async {
+    @Test func refreshFailureSurfacesFailedStatus() async throws {
         struct LoadError: Error {}
         let provider = FakeAdProvider(
             scripted: .init(statusSequence: [.loading], refreshThrows: LoadError())
@@ -142,7 +142,7 @@ struct BannerReloadCoordinatorTests {
         let (gate, _) = makeGate(AdGateState(firstLaunchAt: firstLaunch))
         let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
 
-        let status = await coordinator.reloadIfGateOpen(now: days(10, after: firstLaunch))
+        let status = try await coordinator.reloadIfGateOpen(now: days(10, after: firstLaunch))
 
         #expect(await provider.refreshCallCount == 1)
         if case .failed = status {
@@ -151,4 +151,86 @@ struct BannerReloadCoordinatorTests {
             Issue.record("expected .failed, got \(status)")
         }
     }
+
+    // MARK: Cancellation is not failure (#1058 PM 1, seam 2)
+
+    @Test func cancelledRefreshThrowsCancellationInsteadOfFailed() async throws {
+        let provider = FakeAdProvider(
+            scripted: .init(statusSequence: [.loading], refreshThrows: CancellationError())
+        )
+        let (gate, _) = makeGate(AdGateState(firstLaunchAt: firstLaunch))
+        let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await coordinator.reloadIfGateOpen(now: days(10, after: firstLaunch))
+        }
+        #expect(await provider.refreshCallCount == 1)
+    }
+
+    // MARK: Gap 2 — concurrent reloads never share a handle (#1058)
+
+    // Bounded by `.timeLimit`: every wait inside `InterleavingAdProvider` is a
+    // cancellable `ReadinessLatch.wait()`, so the limit's cancellation unblocks it.
+    @Test(.timeLimit(.minutes(1)))
+    func concurrentReloadsEachReturnTheirOwnHandle() async throws {
+        let provider = InterleavingAdProvider(expectedLoads: 2)
+        let (gate, _) = makeGate(AdGateState(firstLaunchAt: firstLaunch))
+        let coordinator = BannerReloadCoordinator(adProvider: provider, adGate: gate)
+        let now = days(10, after: firstLaunch)
+
+        async let first = coordinator.reloadIfGateOpen(now: now)
+        async let second = coordinator.reloadIfGateOpen(now: now)
+        let statuses = try await [first, second]
+
+        guard case let .loaded(firstHandle) = statuses[0],
+              case let .loaded(secondHandle) = statuses[1] else {
+            Issue.record("expected two .loaded statuses, got \(statuses)")
+            return
+        }
+        #expect(
+            firstHandle != secondHandle,
+            "each reload must return the handle it loaded, not the provider's last-written status"
+        )
+    }
+}
+
+/// Two loads that are both in flight before either completes. `bannerStatus`
+/// is last-writer-wins (like `LiveAdMobAdProvider`'s) and answers only once
+/// every load has completed, so a caller that re-reads it after its own load
+/// gets whichever load finished last instead of the handle it loaded.
+private actor InterleavingAdProvider: AdProvider {
+    private let expectedLoads: Int
+    private let allInFlight = ReadinessLatch()
+    private let allCompleted = ReadinessLatch()
+    private var started = 0
+    private var completed = 0
+    private var lastLoaded: AdBannerHandle?
+
+    init(expectedLoads: Int) {
+        self.expectedLoads = expectedLoads
+    }
+
+    func initialize() async throws {}
+
+    func awaitReady() async throws {}
+
+    var bannerStatus: AdBannerStatus {
+        get async {
+            try? await allCompleted.wait()
+            return lastLoaded.map { .loaded($0) } ?? .notInitialized
+        }
+    }
+
+    func refreshBanner() async throws -> AdBannerHandle {
+        let handle = AdBannerHandle()
+        started += 1
+        if started == expectedLoads { allInFlight.open() }
+        try await allInFlight.wait()
+        lastLoaded = handle
+        completed += 1
+        if completed == expectedLoads { allCompleted.open() }
+        return handle
+    }
+
+    func dispose(handle: AdBannerHandle) async {}
 }

@@ -1,7 +1,11 @@
 # CLAUDE.md — agent operating guide for this repo
 
-Two shipping Apple-platform games — **Sudoku** and **Minesweeper** (both v2.6, synced versioning) — built
-spec-first by an AI Leader/Developer workflow on shared modules. (A third game,
+Two **unreleased** Apple-platform games — **Sudoku** and **Minesweeper** (both v2.6, synced
+versioning) — built spec-first by an AI Leader/Developer workflow on shared modules.
+Neither has ever been on the App Store: v2.6 targets the **first** release, distribution
+is TestFlight-only today, and the 2.6.0 submissions were withdrawn (`DEVELOPER_REJECTED`).
+Do not reason as though live users exist — that mistake reframed #1058 as a revenue
+incident when there is no revenue yet. (A third game,
 Tiles2048 / SDD-004, was prototyped then **removed** 2026-06-29 to keep MS + Sudoku
 the focus; SDD-004 is abandoned.) This file is the distilled operating
 knowledge for agents; deeper truth lives in the pointers below, not here.

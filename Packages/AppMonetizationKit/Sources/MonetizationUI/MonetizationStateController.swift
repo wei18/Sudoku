@@ -138,6 +138,13 @@ public final class MonetizationStateController {
     /// MinesweeperAppComposition.Live.
     @ObservationIgnored
     private let productId: String
+    /// Awaited after each `markPurchased()` path has updated its UI — a
+    /// successful purchase, a restore that returns the entitlement, and a
+    /// `.purchased` event from the `purchaseUpdates()` listener — so the toast
+    /// and `.idle` never wait on banner disposal. The composition root wires it
+    /// to the banner session so every slot collapses (#1058).
+    @ObservationIgnored
+    private let onEntitlementChanged: (@MainActor () async -> Void)?
 
     public init(
         iapClient: any IAPClient,
@@ -145,7 +152,8 @@ public final class MonetizationStateController {
         adGate: AdGate,
         toastController: ToastController? = nil,
         initialPurchased: Bool = false,
-        productId: String = removeAdsProductId
+        productId: String = removeAdsProductId,
+        onEntitlementChanged: (@MainActor () async -> Void)? = nil
     ) {
         self.iapClient = iapClient
         self.stateStore = stateStore
@@ -153,6 +161,7 @@ public final class MonetizationStateController {
         self.toastController = toastController
         self.hasPurchasedRemoveAds = initialPurchased
         self.productId = productId
+        self.onEntitlementChanged = onEntitlementChanged
     }
 
     deinit {
@@ -222,6 +231,7 @@ public final class MonetizationStateController {
             // sentence-case "Ads removed" key #895 added for AdsRemovedRow's a11y label.
             toastController?.show(Toast(style: .success, message: String(localized: "Ads removed", bundle: .main)))
             clearStalePurchaseFailure()
+            await onEntitlementChanged?()
         case .revoked(let eventProductId):
             guard eventProductId == productId else { return }
             hasPurchasedRemoveAds = false
@@ -265,6 +275,7 @@ public final class MonetizationStateController {
                 // #901: localize the visible toast (reuses #895's "Ads removed" key).
                 toastController?.show(Toast(style: .success, message: String(localized: "Ads removed", bundle: .main)))
                 flowState = .idle
+                await onEntitlementChanged?()
             case .userCancelled:
                 latestMessage = nil
                 flowState = .idle
@@ -326,6 +337,9 @@ public final class MonetizationStateController {
             // `.purchaseFailed` from an earlier purchase attempt, since the
             // entitlement question is now settled.
             flowState = .idle
+            if didRestoreEntitlement {
+                await onEntitlementChanged?()
+            }
         } catch {
             // StoreKit user-cancellation (e.g. App Store sign-in sheet dismissed
             // during restore) is silent — no toast, no latestMessage update.

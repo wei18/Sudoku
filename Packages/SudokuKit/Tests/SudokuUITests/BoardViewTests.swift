@@ -86,7 +86,7 @@ struct BoardViewTests {
     #if canImport(AppKit)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_iPhone_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-light-empty")
         }
@@ -96,7 +96,7 @@ struct BoardViewTests {
         // ja layout probe (strings stay English — #977).
         let viewModel = try makeViewModel(clues: Self.emptyClues)
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .dark,
             locale: .init(identifier: "ja"),
@@ -116,7 +116,7 @@ struct BoardViewTests {
     // XCC-recorded baselines) starts from a working base.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_light() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertUISnapshot(of: host, as: .tolerantImage, named: "Board-Mac-light-empty")
         }
@@ -124,7 +124,7 @@ struct BoardViewTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotEmpty_Mac_dark() throws {
         let viewModel = try makeViewModel(clues: Self.emptyClues)
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-dark-empty")
         }
@@ -145,7 +145,7 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPhone, colorScheme: .light, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-light-inProgress")
         }
@@ -165,7 +165,7 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPad-light-inProgress")
         }
@@ -179,7 +179,7 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-dark-inProgress")
         }
@@ -193,7 +193,7 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-light-inProgress")
         }
@@ -209,7 +209,7 @@ struct BoardViewTests {
             elapsedSeconds: 201
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.mac,
             colorScheme: .dark,
             locale: .init(identifier: "ko"),
@@ -229,7 +229,7 @@ struct BoardViewTests {
             canUndo: true
         )
         let host = hostingView(
-            BoardView(viewModel: viewModel),
+            adFreeBoard(viewModel),
             size: SnapshotLayouts.iPhone,
             colorScheme: .light,
             locale: .init(identifier: "zh-Hant"),
@@ -247,7 +247,7 @@ struct BoardViewTests {
             elapsedSeconds: 555,
             canUndo: true
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPhone-dark-almostComplete")
         }
@@ -260,7 +260,7 @@ struct BoardViewTests {
             elapsedSeconds: 555,
             canUndo: true
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.mac, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-light-almostComplete")
         }
@@ -273,7 +273,7 @@ struct BoardViewTests {
             elapsedSeconds: 555,
             canUndo: true
         )
-        let host = hostingView(BoardView(viewModel: viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
+        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.mac, colorScheme: .dark, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-Mac-dark-almostComplete")
         }

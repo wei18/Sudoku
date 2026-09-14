@@ -33,6 +33,7 @@ struct MinesweeperBoardSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPhone_light() {
         let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
+            .environment(\.bannerSession, .disabled)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light),
             as: .tolerantImage,
@@ -44,6 +45,7 @@ struct MinesweeperBoardSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPhone_dark() {
         let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
+            .environment(\.bannerSession, .disabled)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark),
             as: .tolerantImage,
@@ -55,6 +57,7 @@ struct MinesweeperBoardSnapshotTests {
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPad_light() {
         let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
+            .environment(\.bannerSession, .disabled)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
             as: .tolerantImage,
@@ -66,11 +69,11 @@ struct MinesweeperBoardSnapshotTests {
     // MARK: - #723 — ads-enabled, ad NOT loaded, slot reserved
     //
     // Mirrors SudokuKit's BoardViewBannerTests #723 fixtures (mirror
-    // principle / verify-changes-on-both-apps). The gate is resolved once
-    // before the view is built so `AdGate.lastKnownShouldShowBanner == true`
-    // seeds the shared `BannerSlotView` and the first layout reserves the
-    // 50pt rect (spinner placeholder, no ad) — the board never reflows when
-    // the banner content later arrives.
+    // principle / verify-changes-on-both-apps). The fixture injects a started
+    // session over a readiness-held fake provider, so the shared
+    // `BannerSlotView` shows on the first layout and reserves the 50pt rect
+    // (spinner placeholder, no ad) — the board never reflows when the banner
+    // content later arrives.
     //
     // #732: the live `ProgressView` shown while `.loading` is a genuinely
     // timing-dependent spin animation, so capturing it made these baselines
@@ -81,13 +84,21 @@ struct MinesweeperBoardSnapshotTests {
     // per the #586 board-suite convention (AA-heavy boards) as a second line
     // of defense.
 
-    private func adsAllowedGate() -> AdGate {
-        AdGate(store: FakeAdGateStateStore(
-            initial: AdGateState(
-                firstLaunchAt: Date(timeIntervalSince1970: 0),
-                hasPurchasedRemoveAds: false
-            )
-        ))
+    /// A started session over a readiness-held fake: the gate is open, so the
+    /// slot shows, and no load can resolve, so it stays in its reserved
+    /// loading state.
+    private func reservedBannerSession() async -> BannerSessionModel {
+        let session = BannerSessionModel(
+            adProvider: FakeAdProvider(readinessHeld: true),
+            adGate: AdGate(store: FakeAdGateStateStore(
+                initial: AdGateState(
+                    firstLaunchAt: Date(timeIntervalSince1970: 0),
+                    hasPurchasedRemoveAds: false
+                )
+            ))
+        )
+        await session.start()
+        return session
     }
 
     /// Deterministic stand-in for the live `ProgressView` spinner (#732) —
@@ -102,13 +113,13 @@ struct MinesweeperBoardSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotAdsEnabledUnloadedSlot_iPhone_light() async {
-        let gate = adsAllowedGate()
-        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let session = await reservedBannerSession()
         let view = MinesweeperBoardView(
-            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate,
+            difficulty: .beginner, seed: 42,
             tapModeDefaults: BoardTestDefaults.store
         )
         .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+        .environment(\.bannerSession, session)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .light),
             as: .tolerantImage,
@@ -119,13 +130,13 @@ struct MinesweeperBoardSnapshotTests {
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotAdsEnabledUnloadedSlot_iPhone_dark() async {
-        let gate = adsAllowedGate()
-        _ = await gate.shouldShowBanner(now: Date()) // warm the #723 hint
+        let session = await reservedBannerSession()
         let view = MinesweeperBoardView(
-            difficulty: .beginner, seed: 42, adProvider: FakeAdProvider(), adGate: gate,
+            difficulty: .beginner, seed: 42,
             tapModeDefaults: BoardTestDefaults.store
         )
         .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+        .environment(\.bannerSession, session)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark),
             as: .tolerantImage,

@@ -106,23 +106,11 @@ struct ASCScreenshotEmitTests {
         // no longer dims cards, so this only pins the settled in-flight state
         // for determinism.
         dailyViewModel.setPhase2PendingForTesting(false)
-        return TodayTabHost(
-            rootViewModel: rootVM,
-            adProvider: FakeAdProvider(),
-            adGate: AdGate(store: FakeAdGateStateStore(
-                initial: AdGateState(
-                    firstLaunchAt: Date(timeIntervalSince1970: 0),
-                    hasPurchasedRemoveAds: true
-                )
-            )),
-            attPrimer: ATTPrimerCoordinator(
-                isNotDetermined: { false },
-                requestSystemPrompt: {}
-            )
-        ) {
+        return TodayTabHost(rootViewModel: rootVM) {
             MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
         .environment(\.theme, MinesweeperTheme())
+        .environment(\.bannerSession, .disabled)
     }
 
     private func dailyHubView() -> some View {
@@ -178,7 +166,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPhone_board() throws {
         try emitASCScreenshot(
-            boardView(),
+            boardView().environment(\.bannerSession, .disabled),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView
@@ -210,7 +198,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_board() throws {
         try emitASCScreenshot(
-            boardView(),
+            boardView().environment(\.bannerSession, .disabled),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView

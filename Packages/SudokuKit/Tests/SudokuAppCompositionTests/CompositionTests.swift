@@ -9,7 +9,6 @@
 import Foundation
 import Testing
 import GameCenterClient
-import MonetizationCore
 import Persistence
 import SudokuKitTesting
  import SudokuAppComposition
@@ -35,21 +34,10 @@ struct CompositionTests {
     @Test
     func liveCompositionExposesMonetizationDeps() async {
         let composition = SudokuAppComposition.live()
-        // v2.3.2: all three monetization stored properties resolve to Live impls.
-        // On non-iOS platforms (macOS) AdMob's xcframework has no platform
-        // slice, so the live composition wires `NoopAdProvider` instead of
-        // `LiveAdMobAdProvider`. IAP via StoreKit 2 is cross-platform and
-        // keeps its live wiring on every platform.
-        #if os(iOS)
-        #expect(String(describing: type(of: composition.adProvider)).contains("LiveAdMobAdProvider"))
-        #else
-        #expect(String(describing: type(of: composition.adProvider)).contains("NoopAdProvider"))
-        #endif
+        // v2.3.2: the monetization stored property resolves to the Live impl.
+        // IAP via StoreKit 2 is cross-platform and keeps its live wiring on
+        // every platform.
         #expect(String(describing: type(of: composition.iapClient)).contains("LiveStoreKit2IAPClient"))
-        // adGate is the same concrete type for both live + preview (it is
-        // injection-driven via its store), so type identity here is just
-        // a smoke that the property exists and is reachable.
-        _ = composition.adGate
     }
 
     @Test
@@ -92,7 +80,6 @@ struct CompositionTests {
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
         #expect(String(describing: type(of: gcChild!)).contains("FakeGameCenterClient"))
         #expect(String(describing: type(of: persistChild!)).contains("FakePersistence"))
-        #expect(String(describing: type(of: composition.adProvider)).contains("FakeAdProvider"))
         #expect(String(describing: type(of: composition.iapClient)).contains("FakeIAPClient"))
     }
 
@@ -104,7 +91,6 @@ struct CompositionTests {
         let persistChild = mirror.children.first(where: { $0.label == "persistence" })?.value
         #expect(String(describing: type(of: gcChild!)).contains("FakeGameCenterClient"))
         #expect(String(describing: type(of: persistChild!)).contains("FakePersistence"))
-        #expect(String(describing: type(of: composition.adProvider)).contains("FakeAdProvider"))
         #expect(String(describing: type(of: composition.iapClient)).contains("FakeIAPClient"))
     }
 }

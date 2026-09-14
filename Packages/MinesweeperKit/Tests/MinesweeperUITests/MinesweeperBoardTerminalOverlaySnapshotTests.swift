@@ -47,6 +47,7 @@ import GameShellUI
 
 import MinesweeperEngine
 import MinesweeperGameState
+import MonetizationUI
 
 @MainActor
 @Suite("MinesweeperBoardView — terminal overlay snapshots")
@@ -102,6 +103,7 @@ struct MinesweeperBoardTerminalOverlaySnapshotTests {
             tapModeDefaults: BoardTestDefaults.store
         )
         .environment(\.completionHeroSkipsReveal, true)
+        .environment(\.bannerSession, .disabled)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

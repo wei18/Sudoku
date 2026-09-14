@@ -48,9 +48,7 @@ public struct MinesweeperAppComposition {
     public let errorReporter: any ErrorReporter
     public let gameCenter: any GameCenterClient
     public let persistence: any PersistenceProtocol
-    public let adProvider: any AdProvider
     public let iapClient: any IAPClient
-    public let adGate: AdGate
     public let monetizationStateStore: any AdGateStateStore
     public let monetizationController: MonetizationStateController
     public let toastController: ToastController
@@ -136,9 +134,7 @@ public struct MinesweeperAppComposition {
         errorReporter: any ErrorReporter,
         gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
-        adProvider: any AdProvider,
         iapClient: any IAPClient,
-        adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
         monetizationController: MonetizationStateController,
         toastController: ToastController,
@@ -150,9 +146,7 @@ public struct MinesweeperAppComposition {
         self.errorReporter = errorReporter
         self.gameCenter = gameCenter
         self.persistence = persistence
-        self.adProvider = adProvider
         self.iapClient = iapClient
-        self.adGate = adGate
         self.monetizationStateStore = monetizationStateStore
         self.monetizationController = monetizationController
         self.toastController = toastController

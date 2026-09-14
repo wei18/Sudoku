@@ -16,7 +16,6 @@
 internal import SwiftUI
 internal import GameAppKit
 internal import GameShellUI
-internal import MonetizationCore
 internal import Persistence
 internal import SudokuPersistence
 internal import SudokuUI
@@ -36,8 +35,6 @@ extension SudokuAppComposition {
         persistence: any PersistenceProtocol,
         errorReporter: any ErrorReporter,
         telemetry: Telemetry,
-        adProvider: any AdProvider,
-        adGate: AdGate,
         rootViewModel: GameRootViewModel<AppRoute>
     ) -> AnyView {
         switch tab {
@@ -75,7 +72,9 @@ extension SudokuAppComposition {
                         persistDifficulty: { difficultyStore.save($0.rawValue) },
                         path: rootViewModel.pathBinding(for: .practice)
                     ),
-                    banner: { LiveRouteFactory.themedBanner(adProvider: adProvider, adGate: adGate) }
+                    banner: {
+                        LiveRouteFactory.themedBanner()
+                    }
                 )
             )
         case .progress:

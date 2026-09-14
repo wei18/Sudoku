@@ -28,11 +28,26 @@ public actor FakeAdProvider: AdProvider {
     private var cursor: Int = 0
     public private(set) var initializeCallCount: Int = 0
     public private(set) var refreshCallCount: Int = 0
+    public private(set) var awaitReadyCallCount: Int = 0
     /// Handles passed to `dispose(handle:)`, in call order, for test assertions.
     public private(set) var disposedHandles: [AdBannerHandle] = []
+    private nonisolated let readiness: ReadinessLatch
 
-    public init(scripted: ScriptedAdProviderState = ScriptedAdProviderState()) {
+    /// - Parameter readinessHeld: `true` makes `awaitReady()` suspend until
+    ///   `markReady()` — for tests that must prove a caller waits for provider
+    ///   readiness. `refreshBanner()` deliberately does NOT wait on it, so a
+    ///   caller that skips `awaitReady()` shows up in `refreshCallCount`.
+    public init(
+        scripted: ScriptedAdProviderState = ScriptedAdProviderState(),
+        readinessHeld: Bool = false
+    ) {
         self.scripted = scripted
+        self.readiness = ReadinessLatch(isOpen: !readinessHeld)
+    }
+
+    /// Releases a `readinessHeld` fake. Idempotent; readiness never re-closes.
+    public nonisolated func markReady() {
+        readiness.open()
     }
 
     public func script(_ scripted: ScriptedAdProviderState) {
@@ -55,13 +70,26 @@ public actor FakeAdProvider: AdProvider {
         if let error = scripted.initializeThrows { throw error }
     }
 
-    public func refreshBanner() async throws {
+    public func awaitReady() async throws {
+        awaitReadyCallCount += 1
+        try await readiness.wait()
+    }
+
+    /// Returns the handle of the scripted `.loaded` status the cursor lands on,
+    /// or a fresh handle when that status is not `.loaded`.
+    @discardableResult
+    public func refreshBanner() async throws -> AdBannerHandle {
         refreshCallCount += 1
         if let error = scripted.refreshThrows { throw error }
         // Advance status cursor on successful refresh.
         if cursor + 1 < scripted.statusSequence.count {
             cursor += 1
         }
+        if !scripted.statusSequence.isEmpty,
+           case let .loaded(handle) = scripted.statusSequence[min(cursor, scripted.statusSequence.count - 1)] {
+            return handle
+        }
+        return AdBannerHandle()
     }
 
     public func dispose(handle: AdBannerHandle) async {

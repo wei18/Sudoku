@@ -25,17 +25,12 @@ import Telemetry
 struct RouteFactoryTests {
 
     private func makeFactory() -> LiveRouteFactory {
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
-        return LiveRouteFactory(
+        LiveRouteFactory(
             puzzleProvider: FakePuzzleProvider(),
             persistence: FakePersistence(),
             gameCenter: FakeGameCenterClient(),
             telemetry: Telemetry(sinks: []),
-            adProvider: FakeAdProvider(),
-            iapClient: FakeIAPClient(),
-            adGate: AdGate(store: adGateStore)
+            iapClient: FakeIAPClient()
         )
     }
 
@@ -52,17 +47,12 @@ struct RouteFactoryTests {
     /// not the zero-content `GameBoardRedirect`.
     @Test func boardRouteWithOnPresentBoardAndNilPathReturnsBoardLoader() {
         var presented: AppRoute?
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
         let factory = LiveRouteFactory(
             puzzleProvider: FakePuzzleProvider(),
             persistence: FakePersistence(),
             gameCenter: FakeGameCenterClient(),
             telemetry: Telemetry(sinks: []),
-            adProvider: FakeAdProvider(),
             iapClient: FakeIAPClient(),
-            adGate: AdGate(store: adGateStore),
             onPresentBoard: { presented = $0 }
         )
         let view = factory.view(for: .board(puzzleId: "2026-05-21-easy"), path: nil)
@@ -77,9 +67,6 @@ struct RouteFactoryTests {
     /// push context used by a tab's `.navigationDestination`) must still
     /// return the `GameBoardRedirect` so the stack→modal hand-off fires.
     @Test func boardRouteWithOnPresentBoardAndNonNilPathReturnsRedirect() {
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
         var path: [AppRoute] = [.board(puzzleId: "2026-05-21-easy")]
         let binding = Binding<[AppRoute]>(get: { path }, set: { path = $0 })
         let factory = LiveRouteFactory(
@@ -87,9 +74,7 @@ struct RouteFactoryTests {
             persistence: FakePersistence(),
             gameCenter: FakeGameCenterClient(),
             telemetry: Telemetry(sinks: []),
-            adProvider: FakeAdProvider(),
             iapClient: FakeIAPClient(),
-            adGate: AdGate(store: adGateStore),
             onPresentBoard: { _ in }
         )
         let view = factory.view(for: .board(puzzleId: "2026-05-21-easy"), path: binding)
@@ -117,9 +102,6 @@ struct RouteFactoryTests {
     /// .makeTabRoot` is what `GameConfig.makeTabRoot` calls for each of the
     /// three tabs. Pins that every tab yields a real (non-empty) view.
     @Test func makeTabRootYieldsViewForEachTab() {
-        let adGateStore = FakeAdGateStateStore(
-            initial: AdGateState(firstLaunchAt: Date(timeIntervalSince1970: 0))
-        )
         let rootViewModel = GameRootViewModel<AppRoute>(
             gameCenter: FakeGameCenterClient(),
             persistence: FakePersistence()
@@ -131,8 +113,6 @@ struct RouteFactoryTests {
                 persistence: FakePersistence(),
                 errorReporter: NoopErrorReporter(),
                 telemetry: Telemetry(sinks: []),
-                adProvider: FakeAdProvider(),
-                adGate: AdGate(store: adGateStore),
                 rootViewModel: rootViewModel
             )
             let dump = String(describing: view)

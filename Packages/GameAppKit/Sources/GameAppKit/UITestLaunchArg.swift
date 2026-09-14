@@ -78,8 +78,8 @@ public enum UITestLaunchArg {
     /// `makeGameApp`. The fake store throws until the process is observed
     /// entering the background (so `AdGate` never caches an "open" decision
     /// early), then resolves to an always-open gate — deterministically
-    /// pinning `BannerSlotView`'s `.onChange(of: scenePhase)` repoll hook
-    /// (`repollGate()`) as an E2E regression: the banner slot cannot appear
+    /// pinning `GameRoot`'s `.onChange(of: scenePhase)` banner repoll
+    /// (`BannerSessionModel.sceneDidBecomeActive()`) as an E2E regression: the banner slot cannot appear
     /// before a real background→foreground cycle. Absent from Release builds
     /// via the `#if DEBUG` guard.
     public static let fakeAdGateRepoll = "-uitest-fake-ad-gate-repoll"

@@ -4,10 +4,19 @@ public import MonetizationCore
 // MARK: - MonetizationBootCoordinator
 //
 // v2.3.7. Owns the app-launch sequence for the three monetization touch
-// points: UMP consent → ATT prompt → AdMob SDK initialize.
+// points: UMP consent → ATT slot → AdMob SDK initialize.
+//
+// In LIVE wiring the ATT slot is a NO-OP (see `MonetizationBootBridges.live`):
+// the system ATT dialog is never requested here. It is driven later, at the
+// first ad context, by the ATT primer (`onAdContext` → `ATTPrimerCoordinator`).
+// So the live sequence is effectively UMP consent → AdMob initialize.
 //
 // Contract:
-//   1. Steps run strictly in order: UMP, then ATT, then AdMob.
+//   1. Steps run strictly in order: UMP, then ATT slot, then AdMob. The UMP
+//      step returns only once the consent form (if any) is dismissed, and
+//      the AdMob step is the only production caller of
+//      `AdProvider.initialize()` — so the provider's readiness latch
+//      (`AdProvider.awaitReady()`, #1058) opening implies consent resolved.
 //   2. A failing earlier step DOES NOT skip later steps — every step is
 //      attempted and surfaces its outcome via `BootOutcome`. Boot is
 //      never blocking; `BannerSlotView` already degrades to `.failed`

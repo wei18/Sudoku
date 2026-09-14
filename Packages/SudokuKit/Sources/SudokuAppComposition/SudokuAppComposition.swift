@@ -15,9 +15,9 @@
 //   - `rootViewModel` + `routeFactory` come from the `makeGameAppWithDeps` handle
 //     (#556/#557).
 //   - The remaining protocol deps (puzzleProvider / persistence / gameCenter
-//     / telemetry / adProvider / iapClient / adGate) stay accessible on the
-//     bag for callers that need direct references (e.g. App-level boot order,
-//     CompositionTests / BootOrderTests).
+//     / telemetry / iapClient) stay accessible on the bag for callers that
+//     need direct references (e.g. App-level boot order, CompositionTests /
+//     BootOrderTests).
 
 internal import Foundation
 public import GameCenterClient
@@ -48,12 +48,10 @@ public struct SudokuAppComposition {
     /// `try?`-swallowed CloudKit / Persistence errors now route through
     /// this reporter so failures surface in OSLog + telemetry breadcrumbs.
     public let errorReporter: any ErrorReporter
-    // v2 monetization deps. v2.3.4-6 read these directly from individual Views
-    // (banner slot, IAP CTAs, restore button); v2.3.7 reads them to drive the
-    // UMP → ATT → AdMob boot sequence.
-    public let adProvider: any AdProvider
+    // v2 monetization dep. v2.3.4-6 read this directly from individual Views
+    // (IAP CTAs, restore button); v2.3.7 reads it to drive the UMP → ATT →
+    // AdMob boot sequence.
     public let iapClient: any IAPClient
-    public let adGate: AdGate
     // v2.3.6: the persisted MonetizationState store + the shared @Observable
     // controller derived from it. Settings + HomeView read the controller
     // directly; `monetizationStateStore` stays exposed so future Views
@@ -135,9 +133,7 @@ public struct SudokuAppComposition {
         gameCenter: any GameCenterClient,
         telemetry: Telemetry,
         errorReporter: any ErrorReporter = NoopErrorReporter(),
-        adProvider: any AdProvider,
         iapClient: any IAPClient,
-        adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
         monetizationController: MonetizationStateController,
         toastController: ToastController,
@@ -151,9 +147,7 @@ public struct SudokuAppComposition {
         self.gameCenter = gameCenter
         self.telemetry = telemetry
         self.errorReporter = errorReporter
-        self.adProvider = adProvider
         self.iapClient = iapClient
-        self.adGate = adGate
         self.monetizationStateStore = monetizationStateStore
         self.monetizationController = monetizationController
         self.toastController = toastController

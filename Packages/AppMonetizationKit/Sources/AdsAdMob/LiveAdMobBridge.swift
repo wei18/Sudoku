@@ -1,5 +1,6 @@
 internal import Foundation
 internal import MonetizationCore
+internal import MonetizationUI
 internal import os
 internal import SwiftUI
 
@@ -157,6 +158,11 @@ internal final class LiveAdMobBridge: AdMobBridge {
         } catch {
             // Release the view we never got a successful load for.
             _ = liveBanners.withLock { $0.removeValue(forKey: handle.id) }
+            // `onCancel` resumes with `CancellationError`: keep it a
+            // cancellation so callers never surface it as "Ad unavailable".
+            if error is CancellationError || Task.isCancelled {
+                throw CancellationError()
+            }
             let reason = String(describing: error)
             throw AdMobBridgeError.loadFailed(reason: reason)
         }
@@ -283,6 +289,32 @@ internal struct BannerViewRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: BannerView, context: Context) {
         // The bridge owns the view's content (ad load); no per-update mutation.
+    }
+
+    // #1084: without this, SwiftUI stretches the hosted `BannerView` to the
+    // width `BannerSlotView` proposes for the creative slot (e.g. 370pt on an
+    // iPhone 17 Pro), and the creative sometimes fills that width instead of
+    // staying at the SDK's requested 320×50 — pushing the ✕ (pinned to the
+    // creative's *reported* trailing edge) inside the ad's real bounds.
+    //
+    // This must return `BannerSlotView.creativeSize`, NOT read `uiView.adSize`
+    // at layout time: a base-vs-new simulator A/B (#1084) caught a real
+    // regression where `cgSize(for: uiView.adSize)` returned `.zero` here —
+    // GADAdSize.h documents "If the GADAdSize is unknown, returns
+    // CGSizeZero" — leaving the hosted `BannerView` 0×0 and the creative
+    // never painting, invisible to the macOS snapshot suites. `BannerSlotView`
+    // already frames the creative at this exact constant, so returning it
+    // here keeps both sides in agreement by construction, with no runtime
+    // read and no fallback branch.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: BannerView, context: Context) -> CGSize? {
+        #if DEBUG
+        let sdkSize = cgSize(for: AdSizeBanner)
+        assert(
+            sdkSize == .zero || sdkSize == BannerSlotView.creativeSize,
+            "AdSizeBanner \(sdkSize) ≠ BannerSlotView.creativeSize \(BannerSlotView.creativeSize)"
+        )
+        #endif
+        return BannerSlotView.creativeSize
     }
 }
 #endif

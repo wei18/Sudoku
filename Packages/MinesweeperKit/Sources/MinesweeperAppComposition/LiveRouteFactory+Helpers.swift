@@ -4,10 +4,9 @@
 // swiftlint disable).
 
 internal import SwiftUI
-internal import MonetizationUI
 // #814: `bannerSlot()` moved here from LiveRouteFactory.swift (400-line
-// ceiling); it binds the `adProvider` / `adGate` existentials (MonetizationCore).
-internal import MonetizationCore
+// ceiling).
+internal import MonetizationUI
 internal import MinesweeperUI
 internal import GameShellUI
 internal import SettingsUI
@@ -18,19 +17,13 @@ extension LiveRouteFactory {
     // MARK: - Banner helper
 
     /// Epic 5: banner slot for non-Board screens (Today/Practice tab roots +
-    /// Settings). The cast from `AdProvider` → `BannerViewProviding` follows
-    /// the §9.1 pattern (keeps MinesweeperAppComposition off GoogleMobileAds).
-    /// When adProvider / adGate are nil (preview / test), the slot itself is
-    /// not created — the caller passes EmptyView via the `banner: {}` default
-    /// instead.
+    /// Settings). The session model in the environment decides whether the
+    /// slot shows (#1058).
     ///
     /// #1020: `static` (not an instance method) so `Live+TabRoots.swift`'s
     /// Today/Practice tab-root builder — which has no `LiveRouteFactory`
     /// instance to call through, only the wired `GameDeps` bag — can reuse
-    /// the exact same banner instead of re-deriving it. Stays optional-typed
-    /// (unlike Sudoku's non-optional `themedBanner`) because `.settings` still
-    /// calls through an instance whose `adProvider`/`adGate` are optional for
-    /// preview/test callsites.
+    /// the exact same banner instead of re-deriving it.
     @MainActor
     // #851: was relying on `BannerSlotView`'s bare default (`.clear`) — the
     // #468 Epic 5 theming note above already flagged this as unfinished
@@ -39,21 +32,15 @@ extension LiveRouteFactory {
     // `MinesweeperBoardView.themedBanner`'s `theme.surface.background.resolved`
     // so the Today/Practice/Settings banner slot matches the themed Board
     // banner instead of depending on an un-themed transparent default.
-    static func bannerSlot(adProvider: (any AdProvider)?, adGate: AdGate?) -> some View {
-        if let adProvider, let adGate {
-            AnyView(
-                BannerSlotView(
-                    adProvider: adProvider,
-                    adGate: adGate,
-                    bannerHost: adProvider as? any BannerViewProviding,
-                    backgroundColor: MinesweeperTheme().surface.background.resolved
-                )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            )
-        } else {
-            AnyView(EmptyView())
-        }
+    static func bannerSlot() -> some View {
+        BannerSlotView(
+            isSuppressed: false,
+            backgroundColor: MinesweeperTheme().surface.background.resolved,
+            // Padding lives inside `BannerSlotView` so a hidden slot collapses
+            // to zero height.
+            horizontalPadding: 16,
+            verticalPadding: 12
+        )
     }
     /// acknowledgements row deep-links to the app's iOS Settings page where
     /// LicensePlist's `Settings.bundle` surfaces (omitted on macOS, no

@@ -3,7 +3,7 @@
 //
 // 2026-06-02 (Track A): Telemetry + ErrorReporter seam; shape-only coverage.
 // 2026-06-03 (Phase 3): MS monetization wire fields — persistence, IAP,
-// AdGate, MonetizationStateController, ToastController.
+// MonetizationStateController, ToastController.
 //
 // Shape coverage is appropriate here: the bag is a struct of DI handles;
 // behavior tests for each component live in the component's own test target.
@@ -25,9 +25,7 @@ import Telemetry
         _ = bag.telemetry
         _ = bag.errorReporter
         _ = bag.persistence
-        _ = bag.adProvider
         _ = bag.iapClient
-        _ = bag.adGate
         _ = bag.monetizationStateStore
         _ = bag.monetizationController
         _ = bag.toastController
@@ -39,9 +37,7 @@ import Telemetry
         _ = bag.telemetry
         _ = bag.errorReporter
         _ = bag.persistence
-        _ = bag.adProvider
         _ = bag.iapClient
-        _ = bag.adGate
         _ = bag.monetizationStateStore
         _ = bag.monetizationController
         _ = bag.toastController
@@ -64,19 +60,6 @@ import Telemetry
             underlying: DummyError(),
             source: "test"
         )
-    }
-
-    @Test func liveAdProviderIsLiveOnIOSNoopOnMac() {
-        // U15 (2026-06-03): `.live()` swaps `NoopAdProvider` for the real
-        // `LiveAdMobAdProvider` on iOS. macOS keeps Noop since the Google
-        // Mobile Ads SDK ships an iOS-only xcframework.
-        let bag = MinesweeperAppComposition.live()
-        let providerType = String(describing: type(of: bag.adProvider))
-        #if os(iOS)
-        #expect(providerType.contains("LiveAdMobAdProvider"))
-        #else
-        #expect(providerType.contains("NoopAdProvider"))
-        #endif
     }
 
     @Test func liveCompositionGatesSettingsMonetizationControllerByPlatform() {
