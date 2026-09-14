@@ -290,6 +290,36 @@ overlapping or reading as part of the ad; the 44pt target starts at the ad
 edge but the 16pt glyph is centred 14pt away from it, fully outside, on the
 app's own ground. A gap would push 375pt hosts back below a 44pt target."
 
+### Phase 2f — Settings view-model identity (#1078 final-head E2E)
+
+The #1078 final-head E2E run turned Minesweeper N19
+(`test_clearCacheCancelAndFailureToast_N19`) red at `d25702c0` while it stays
+green on `origin/main` (base 3/3, head 0/4; idb tree dumps identical except the
+`settings.storage.cacheReady` anchor never appears at head). Mechanism, the
+#909 shape: both apps' `.settings` `navigationDestination` builders mint
+`SettingsViewModel(...)` inline, SwiftUI re-invokes that builder on any
+ancestor re-render, and `SettingsView` held the model as a plain `@Bindable`
+property, so a re-render replaced the instance whose one-shot
+`.task { bootstrap() }` had already set `isCacheStateReady`; `.task` does not
+re-fire for the same identity. This PR adds the ancestor re-render:
+`GameRoot` now reads `@Environment(\.scenePhase)` for the banner repoll, so
+the launch-time `inactive → active` change re-renders it right after Settings
+mounts. Sudoku N19 was already red on base for the same class (#1088).
+
+Fix: `SettingsView` owns the model as `@State` (`_viewModel =
+State(initialValue:)`), shared by both apps from one place. Correct because
+everything the builders capture is a composition-time `let` (Sudoku:
+`generatorVersionLabel`, `appVersion`, `persistence`, `errorReporter`,
+`toastController`; Minesweeper: `appVersion`, `persistence`, `errorReporter`,
+`toastController`), so the first instance is complete. Pinned by
+`SettingsViewModelIdentityTests` (GameAppKit): an ancestor that mints model
+"A" on its first body evaluation and "B" on every later one, re-rendered
+through an `@Observable` tick in a headless `NSHostingView`; the host's pixels
+must not change (the Version row still reads "A"), and a "B"-first host must
+render differently so the compare cannot pass vacuously. Mutation (plain
+property restored) → red on the identity row. E2E: Minesweeper N19 2/2 with
+the fix.
+
 ## Prerequisites
 | # | Assumption | Status |
 |---|---|---|

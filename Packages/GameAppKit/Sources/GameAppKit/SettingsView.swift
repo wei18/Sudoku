@@ -43,7 +43,14 @@ internal import GameCenterClient
 public import Telemetry
 
 public struct SettingsView<Banner: View>: View {
-    @Bindable private var viewModel: SettingsViewModel
+    // #1058 2f: owned as `@State`, not a plain stored property. Both apps'
+    // `.settings` destination builders mint a fresh `SettingsViewModel` on
+    // every ancestor re-render (the #909 shape, see `GameConfig.reminderSettings`);
+    // `@State` keeps the first instance, whose one-shot `.task { bootstrap() }`
+    // already ran, so `isCacheStateReady` / `resumeCandidate` survive.
+    // Everything the builders capture is a composition-time `let`, so the
+    // first instance is complete. Pinned by `SettingsViewModelIdentityTests`.
+    @State private var viewModel: SettingsViewModel
     private let monetizationController: MonetizationStateController?
     // #287: optional so previews / tests mount a byte-identical Settings screen
     // without the reminder section. Live wiring injects one + its copy so the
@@ -111,7 +118,7 @@ public struct SettingsView<Banner: View>: View {
         telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
         @ViewBuilder banner: () -> Banner = { EmptyView() }
     ) {
-        self.viewModel = viewModel
+        _viewModel = State(initialValue: viewModel)
         self.monetizationController = monetizationController
         self.reminderSettings = reminderSettings
         self.notices = notices
