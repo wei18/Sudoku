@@ -59,6 +59,25 @@ struct BannerSlotDismissPlacementTests {
         return box
     }
 
+    /// Same polling pattern as `measure(hostWidth:session:passes:)`, but
+    /// mounts `UnconstrainedWidthGeometryHost` (a horizontal `ScrollView`,
+    /// proposing `.infinity` width — #1084 review fix 3) instead of a
+    /// fixed-width host. A plain (non-`async`) function, like `measure`:
+    /// `RunLoop.current.run(until:)` is unavailable from an async context.
+    private func measureUnconstrained(session: BannerSessionModel, passes: Int = 50) -> GeometryBox {
+        let box = GeometryBox()
+        let host = NSHostingView(
+            rootView: UnconstrainedWidthGeometryHost(session: session, horizontalPadding: Self.nominalPadding, box: box)
+        )
+        host.frame = CGRect(x: 0, y: 0, width: 300, height: 200)
+        for _ in 0..<passes where box.creative == nil {
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+        host.layoutSubtreeIfNeeded()
+        return box
+    }
+
     @Test(
         "✕ is a 44×44 target that never overlaps the creative and never runs off the host",
         arguments: [402.0, 393.0, 375.0]
@@ -127,6 +146,63 @@ struct BannerSlotDismissPlacementTests {
             )
         }
     }
+
+    /// #1084 review fix 3, end-to-end via a real view hierarchy: an
+    /// unconstrained width proposal must still resolve to a concrete,
+    /// finite geometry, not `.infinity`/`NaN`.
+    ///
+    /// Both `.fixedSize(horizontal:vertical:)` and `ScrollView(.horizontal)`
+    /// were tried as the "give an unconstrained proposal" host, per the
+    /// brief. Neither actually feeds a literal `.infinity` width to
+    /// `BannerSlotBandLayout.sizeThatFits` in this headless macOS
+    /// `NSHostingView` harness — a debug print at the call site showed
+    /// `ScrollView(.horizontal)` proposing `nil` then a concrete resolved
+    /// value (never `.infinity`), so a mutation reverting the `.infinity`
+    /// clamp stays GREEN here; it's a false-negative test for that specific
+    /// case. `ScrollView(.horizontal)` is kept anyway since it's a
+    /// legitimate, useful check that the `nil` path resolves correctly
+    /// end-to-end through the real view/anchor-preference machinery. The
+    /// `.infinity` clamp itself is unit-tested directly below, against the
+    /// extracted `resolvedBannerBandWidth` free function, since no view
+    /// hierarchy available in this harness can produce that input.
+    @Test("an unconstrained (nil) width proposal, e.g. inside a horizontal ScrollView, still reports a finite ideal size (#1084)")
+    func dismissPlacementUnconstrainedWidth() async {
+        let session = await loadedSession()
+        let box = measureUnconstrained(session: session)
+
+        guard let slot = box.slot, let creative = box.creative, let dismiss = box.dismiss else {
+            Issue.record(Comment(rawValue: "geometry did not resolve under an unconstrained width proposal"))
+            return
+        }
+
+        for (name, rect) in [("slot", slot), ("creative", creative), ("dismiss", dismiss)] {
+            #expect(rect.width.isFinite, "\(name) width is not finite: \(rect)")
+            #expect(rect.height.isFinite, "\(name) height is not finite: \(rect)")
+        }
+
+        // The ideal width (`needed + 2×nominalPadding` = 364 + 32 = 396)
+        // gives the full nominal 16pt padding on both sides — same numbers
+        // as the comfortable 402pt/393pt cases above.
+        #expect(creative.minX == 16, "creative \(creative)")
+        #expect(dismiss.maxX == 380, "✕ \(dismiss)")
+        #expect(
+            rectApproximatelyEqual(slot, CGRect(x: 16, y: 0, width: 364, height: 50)),
+            "slot \(slot)"
+        )
+    }
+
+    /// #1084 review fix 3, direct: `resolvedBannerBandWidth` must clamp a
+    /// literal `.infinity` (and `.nan`) proposal to `ideal`, not propagate
+    /// it — the scenario no view hierarchy in this test target can actually
+    /// produce (see `dismissPlacementUnconstrainedWidth`'s doc comment).
+    @Test("resolvedBannerBandWidth clamps nil, infinite, and NaN proposals to the ideal width, and passes finite ones through (#1084)")
+    func resolvedBannerBandWidthClampsNonFiniteProposals() {
+        #expect(resolvedBannerBandWidth(proposal: nil, ideal: 396) == 396)
+        #expect(resolvedBannerBandWidth(proposal: .infinity, ideal: 396) == 396)
+        #expect(resolvedBannerBandWidth(proposal: -.infinity, ideal: 396) == 396)
+        #expect(resolvedBannerBandWidth(proposal: .nan, ideal: 396) == 396)
+        #expect(resolvedBannerBandWidth(proposal: 402, ideal: 396) == 402)
+    }
 }
 
 /// Component-wise `CGRect` equality within `tolerance` — avoids float
@@ -182,6 +258,29 @@ private struct GeometryHost: View {
                     box.record(anchors: anchors, in: proxy)
                 }
             }
+    }
+}
+
+/// A loaded `BannerSlotView` inside a horizontal `ScrollView`, which proposes
+/// literal `.infinity` width to its content along the scroll axis (#1084
+/// review fix 3) — reproduces the unconstrained-width proposal
+/// `BannerSlotBandLayout.sizeThatFits` must clamp instead of propagating.
+private struct UnconstrainedWidthGeometryHost: View {
+    let session: BannerSessionModel
+    let horizontalPadding: CGFloat
+    let box: GeometryBox
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            BannerSlotView(isSuppressed: false, horizontalPadding: horizontalPadding)
+                .environment(\.bannerSession, session)
+                .environment(\.displayScale, 2)
+                .overlayPreferenceValue(BannerSlotGeometryKey.self) { anchors in
+                    GeometryReader { proxy in
+                        box.record(anchors: anchors, in: proxy)
+                    }
+                }
+        }
     }
 }
 

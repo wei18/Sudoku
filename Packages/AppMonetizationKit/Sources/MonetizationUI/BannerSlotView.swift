@@ -147,6 +147,10 @@ public struct BannerSlotView: View {
 
             statusContent(session: session, id: id)
                 .frame(width: Self.creativeSize.width, height: Self.creativeSize.height)
+                // #1084 review: even if the bridge ever misreports the
+                // creative's size, clip it to 320×50 so it can never paint
+                // underneath the ✕.
+                .clipped()
                 .anchorPreference(key: BannerSlotGeometryKey.self, value: .bounds) { [.creative: $0] }
                 .overlay(alignment: .trailing) {
                     dismissButton(session: session)
@@ -280,9 +284,13 @@ private struct BannerSlotBandLayout: Layout {
         return max(0, (width - needed) / 2)
     }
 
+    /// The comfortable width at the full nominal padding on both sides —
+    /// `sizeThatFits`'s ideal, and the fallback `resolvedBannerBandWidth`
+    /// substitutes for a `nil` or non-finite proposal.
+    private var idealWidth: CGFloat { needed + 2 * nominalPadding }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? (needed + 2 * nominalPadding)
-        return CGSize(width: width, height: bannerHeight)
+        CGSize(width: resolvedBannerBandWidth(proposal: proposal.width, ideal: idealWidth), height: bannerHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -304,6 +312,26 @@ private struct BannerSlotBandLayout: Layout {
             }
         }
     }
+}
+
+/// Resolves a proposed width to a concrete, finite value: `proposal` itself
+/// when it's present and finite, `ideal` otherwise — covering both a `nil`
+/// proposal (an unconstrained/"ideal" query) and a non-finite one (e.g.
+/// `.infinity`, which a horizontal `ScrollView` can propose to its content
+/// along the scroll axis). Without this, `BannerSlotBandLayout.sizeThatFits`
+/// would propagate `.infinity`/`NaN`, contradicting its own "always a
+/// concrete, finite size" doc comment (#1084 review fix 3).
+///
+/// `internal`, not `private`, purely as a test seam: `BannerSlotBandLayout`
+/// itself stays `private`, but this pure function is unit-tested directly
+/// with a literal `.infinity` argument, since no host inside
+/// `BannerSlotDismissPlacementTests`'s headless macOS harness actually
+/// produces a literal `.infinity` proposal (confirmed empirically — a
+/// horizontal `ScrollView` and `.fixedSize(horizontal:)` both resolve to a
+/// concrete or `nil` proposal there instead).
+internal func resolvedBannerBandWidth(proposal: CGFloat?, ideal: CGFloat) -> CGFloat {
+    guard let proposal, proposal.isFinite else { return ideal }
+    return proposal
 }
 
 // MARK: - Geometry preference (#1084, test-only)

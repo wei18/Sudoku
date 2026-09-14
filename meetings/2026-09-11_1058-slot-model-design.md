@@ -284,6 +284,12 @@ draws one frame at the wrong padding before correcting.
   5.5…369.5 — the ✕ stays fully on-screen with a 5.5pt margin instead of
   overflowing.
 
+**PM ruling — zero gap between the creative and the ✕ (#1084):** "Zero gap
+kept (creative.maxX == dismiss.minX): the policy concern is a control
+overlapping or reading as part of the ad; the 44pt target starts at the ad
+edge but the 16pt glyph is centred 14pt away from it, fully outside, on the
+app's own ground. A gap would push 375pt hosts back below a 44pt target."
+
 ## Prerequisites
 | # | Assumption | Status |
 |---|---|---|
