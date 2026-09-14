@@ -45,12 +45,14 @@ the landing screen is the Today tab root, contracted under `SUD-DAILY-HUB` /
 resume pill and the banner slot → `GameAppKit/TodayTabHost.swift` (see the
 "Today tab host" note in both DAILY-HUB sections — C-20 / C-34); the
 Leaderboard card → the `PROGRESS` tab's `Leaderboards` / `Achievements` rows
-(C-15 / C-35 / C-36, see `GC-DASHBOARD`); the Settings card → the per-tab
-gear (C-14, see `SETTINGS`); the Statistics card → the `PROGRESS` tab itself
-(C-4). This heading is kept only so `scripts/design/contracts.py` C-1 (`HOME
-整節刪除`) keeps its anchor and the canonical section count stays at 23; no
-element inventory, interaction table or destination contract survives here
-(#1081). Pre-retirement text: `git show 6341999a:docs/screen-contracts.md`.
+(C-15 / C-35 / C-36, see `GC-DASHBOARD`); the Practice card → the `Practice`
+tab root (C-3 / C-3b, see `SUD-PRACTICE-HUB` / `MS-PRACTICE-HUB`); the
+Settings card → the per-tab gear (C-14, see `SETTINGS`); the Statistics
+card → the `PROGRESS` tab itself (C-4). This heading is kept only so
+`scripts/design/contracts.py` C-1 (`HOME 整節刪除`) keeps its anchor and the
+canonical section count stays at 23; no element inventory, interaction table
+or destination contract survives here (#1081). Pre-retirement text:
+`git show 6341999a:docs/screen-contracts.md`.
 
 ---
 
@@ -972,7 +974,7 @@ once at `GameRoot`.
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| GC status row tap (`settings.gameCenter`) | `resolvedOnGameCenter()` → `presentGameCenter` closure → `GameRootViewModel.presentGameCenterOrAlert` (same guard the Home leaderboard card uses) | authenticated: external → `GC-DASHBOARD`. Signed out: `.alert` → `GC-SIGNED-OUT-ALERT` | authenticated: dismiss → `SETTINGS` (side-effect). Signed out: OK → `SETTINGS` |
+| GC status row tap (`settings.gameCenter`) | `resolvedOnGameCenter()` → `presentGameCenter` closure → `GameRootViewModel.presentGameCenterOrAlert` (the same guard the `PROGRESS` GC rows use — and the retired pre-3.0 HOME leaderboard card used) | authenticated: external → `GC-DASHBOARD`. Signed out: `.alert` → `GC-SIGNED-OUT-ALERT` | authenticated: dismiss → `SETTINGS` (side-effect). Signed out: OK → `SETTINGS` |
 | Reminders "Enable"/"Turn On" row tap | `model.enable()` | `sheet(detent: .medium)` → `REMINDER-PRIMER` | dismiss → `SETTINGS` |
 | Reminders denied-status row tap | `model.showDeniedExplainer()` | `sheet(detent: .medium)` → `REMINDER-DENIED` | dismiss → `SETTINGS` |
 | Reminders "Turn off reminders" tap | `model.disable()` | side-effect | `SETTINGS` (status row switches back to enable row) |
@@ -984,7 +986,8 @@ once at `GameRoot`.
 **AS-BUILT NOTE (2026-07-21):** the GC status row was listed in this
 contract's element inventory but had NO interaction row at all until now —
 it is a second, equally real entry point into `GC-DASHBOARD` /
-`GC-SIGNED-OUT-ALERT` alongside the Home leaderboard card (#685/#714;
+`GC-SIGNED-OUT-ALERT` alongside the retired pre-3.0 HOME leaderboard card —
+today's other entry points are the `PROGRESS` GC rows (#685/#714;
 guard-parity #832). Anchors: `GameAppKit/Sources/GameAppKit/SettingsView.swift:65-99`
 (`presentGameCenter` injection + `resolvedOnGameCenter()`'s debug assert),
 `GameAppKit/Sources/GameAppKit/GameRootViewModel.swift:271-278`
