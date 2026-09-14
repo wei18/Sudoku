@@ -139,10 +139,12 @@ public final class MonetizationStateController {
     @ObservationIgnored
     private let productId: String
     /// Awaited after each `markPurchased()` path has updated its UI — a
-    /// successful purchase, a restore that returns the entitlement, and a
-    /// `.purchased` event from the `purchaseUpdates()` listener — so the toast
-    /// and `.idle` never wait on banner disposal. The composition root wires it
-    /// to the banner session so every slot collapses (#1058).
+    /// successful purchase, a restore that returns the entitlement, a
+    /// `.purchased` event from the `purchaseUpdates()` listener, and a
+    /// `bootstrap()` that finds a StoreKit entitlement the store lacks
+    /// (#1074) — so the toast and `.idle` never wait on banner disposal. The
+    /// composition root wires it to the banner session so every slot
+    /// collapses (#1058).
     @ObservationIgnored
     private let onEntitlementChanged: (@MainActor () async -> Void)?
 
@@ -197,10 +199,17 @@ public final class MonetizationStateController {
             availableProducts = products
             // Stay in sync with the App Store side too — a restored entitlement
             // that hasn't yet been written back to MonetizationState shows up
-            // here as `isPurchased = true` and should flip the local flag.
+            // here as `isPurchased = true`. #1074: route it through
+            // `markPurchased()` like every other entitlement path so the
+            // AdGate record lands and the banner session refreshes; flipping
+            // only the local flag left the gate open (ads for a purchaser).
+            // Guarded on the local flag so the hook fires once per store
+            // desync, not on every Settings appearance.
             if let removeAds = products.first(where: { $0.id == productId }),
-               removeAds.isPurchased {
-                hasPurchasedRemoveAds = true
+               removeAds.isPurchased,
+               !hasPurchasedRemoveAds {
+                await markPurchased()
+                await onEntitlementChanged?()
             }
         }
     }
