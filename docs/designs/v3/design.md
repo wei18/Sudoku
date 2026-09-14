@@ -885,7 +885,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | 項目 | 說明 |
 |---|---|
 | **#1012 成就插畫** | 22 張不重用插畫 + `ASCRegisterKit` 上傳路徑。**需美術產能,獨立 epic** |
-| **孤兒字串清理** | 8 個 GC 死鍵 + 英文禁用詞鍵(#49 收尾 backlog) |
+| ~~**孤兒字串清理**~~ | ✅ 已完成(#1025,2026-09-14):以 `rg` 對 `*.swift` / `*.strings` / `*.plist` / `*.py` 逐鍵證明零引用後刪除。Sudoku 刪 23 個區塊(22 鍵,`Friends` 重複兩份):#983 叢集 16 鍵(Daily Rank、World、Friends、Sign In、Connect with Friends、Allow Game Center to see…、Allow Friends Access、No Rankings Yet、Be the first to set a time today.、None of your friends have set a time today…、Open Game Center、Couldn't Load Rankings、Check your connection and try again.、Top Ranked、Your Rank、You)+ stale 6 鍵(Leaderboard、Couldn't load leaderboard.、Enable Friends to see this list.、error.gameCenter.not_authenticated.body、View full leaderboard、Practice puzzles aren't ranked.);Minesweeper 刪 20 鍵(同 #983 叢集 16 鍵 + Leaderboard、Couldn't load leaderboard.、View leaderboard、Practice puzzles aren't ranked.)。`Sign in to Game Center` 仍由 GameRoot 使用,保留 |
 | **`status.warning` 跨 app 統一** | 兩 app 值不同,依「功能色不可覆寫」原則應統一 |
 | **MS 四層 loader 收斂** | 3.0 明確不碰;各 tier 修的是真實競態(#841/#842/#910),硬併會重新引入 bug |
 
@@ -910,7 +910,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 |---|---|---|---|
 | 1 | 「卡片不用玻璃」隱含現況無玻璃 | 現況**有 6 處** shipping 玻璃在內容層 | **談現況要查程式碼,不要只讀設計文件** |
 | 2 | MS 成就 13 個 | **11 個**(兩 app 各 11,合計 22) | **數量要找權威列舉,不要 grep 宣告樣式** |
-| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞**。**追記(2026-09-11,#1030):**「統一リーダーボード」的裁定**與 iOS 26 runtime 不符** —— 系統 ja 全表用英文原詞 `Leaderboard`(ランキング 專指 rank);是否改採由 #1025 定案,見 [B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089) | **判定合規要看全部樣本,不能只看一個鍵** |
+| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞**。**追記(2026-09-11,#1030):**「統一リーダーボード」的裁定**與 iOS 26 runtime 不符** —— 系統 ja 全表用英文原詞 `Leaderboard`(ランキング 專指 rank);是否改採由 #1025 定案,見 [B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)。**定案(2026-09-14,#1025):**存活的 GC 鍵只有 `Achievements` / `Leaderboards`(GameCenterEntryRow);ja `Leaderboards` 統一為 `リーダーボード`(可讀的日文、是系統儀表板 `Leaderboard` 同一詞的片假名、英文原詞夾在日文文案中會被讀成缺陷),ko 對齊系統 `목표 달성` / `순위표`,th 對齊 `ผลสำเร็จ` / `ลีดเดอร์บอร์ด`;InfoPlist 好友清單用途字串同步三詞。其餘 ランキング 命中與 `No Rankings Yet` / `Couldn't Load Rankings` 全為零引用孤兒,直接刪除(見 §11 階段 3),不再翻譯 | **判定合規要看全部樣本,不能只看一個鍵** |
 | 4 | 「v3.2 有 14 片玻璃」 | 實際宣告 **6 片** —— 14 是我的腳本數 HTML class 出現次數 | **驗證腳本的計數欄位要對齊它宣稱測量的概念** |
 | 5 | 「Sudoku 側沒有等價 `allShortIds`」 | **有**,在 `SudokuEngine/GameCenterIdentifiers.swift:82-94` | **找不到時先確認找對模組;跨 app 對稱假設不是每處都成立** |
 | 6 | 契約累計 20 / 12 | **32 / 27**(r2 再更正為 **36 / 28**,見 #10) | **不同量綱不能相加**(BREAK 小計 ≠ 總列數) |
