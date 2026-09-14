@@ -24,7 +24,7 @@ regular uses the same route table via `NavigationSplitView`
 (`GameShellUI/NavigationStackHost.swift`) — no separate contract needed.
 
 **Conventions:**
-- IDs are `HOME`, `SETTINGS`, … (shared) or `SUD-*` / `MS-*` (per-app).
+- IDs are `PROGRESS`, `SETTINGS`, … (shared) or `SUD-*` / `MS-*` (per-app).
 - "Presentation" values: `push` (NavigationStack), `modal-full` (iOS
   `fullScreenCover`), `sheet(detent)`, `.alert`, `.confirmationDialog`,
   `overlay` (in-place `.overlay {}`, not a presentation at all), `external`
@@ -38,70 +38,21 @@ regular uses the same route table via `NavigationSplitView`
 
 ## HOME
 
-**Entry points:** app launch (root content); "Close"/dismiss from any hub or
-board; Settings back; reminder-tap when already elsewhere resets to `.daily`
-(not Home) — see negative-flow table in `navigation-flows.md`.
-
-**Code:** `GameAppKit/GameHomeView.swift`, `GameAppKit/GameHomeViewModel.swift`,
-`GameShellUI/Home/HomeScreen.swift`.
-
-**Element inventory:**
-
-| Element | Copy (en) | a11y id |
-|---|---|---|
-| Resume pill (conditional) | `"Resume {Difficulty}"` / `"{m}:{ss}"` | none (combined element) |
-| Daily card | title "Daily", subtitle Sudoku `"3 puzzles today"` / MS `"3 boards today"` | none¹ |
-| Practice card | title "Practice", subtitle Sudoku `"Mixed difficulty pool"` / MS `"All difficulties"` | none¹ |
-| Leaderboard card | title "Leaderboard", subtitle Sudoku `"Global / friends"` / MS `"Best times"` | none¹ |
-| Settings card | title "Settings", subtitle Sudoku `"Account / language"` / MS `"Purchases / about"` | none¹ |
-| Statistics card (conditional, `GameConfig.statsRoute != nil` — both apps wire it) | title "Statistics", subtitle `"Wins / times / averages"` (same copy both apps) | none² |
-| Banner slot | ad or placeholder | `monetization.banner.slot` (#933) |
-| (root container) | — | `game.home.root` (#936 — E2E landing anchor) |
-
-¹ `HomeScreen.cardAccessibilityIdentifier` defaults to `{ _ in nil }` and
-neither app's `GameHomeView` callsite overrides it post-#557 — MS's older
-"`MinesweeperHomeView.<mode>Card`" comment in `HomeScreen.swift` is stale for
-the current shared path (CODE CONTRADICTED vs. that comment).
-
-² **AS-BUILT NOTE (2026-07-21, #773/#844):** the Statistics card is NOT a
-`HomeMode` case — it is injected below the 4-card grid via `GameHomeView`'s
-`secondaryLink` slot (`GameAppKit/GameHomeView.swift:59,69-89`), gated on
-`GameHomeViewModel.showsStatsEntry` (`GameHomeViewModel.swift:93`, backed by
-a non-nil `statsRoute`). Both apps wire it in production:
-`SudokuAppComposition/Live.swift:120` / `MinesweeperAppComposition/Live.swift:132`
-(`statsRoute: .stats`). Because it is deliberately not a `HomeMode`,
-`HomeModeItem.sidebarItems(from:)` (`GameShellUI/Home/HomeScreen.swift:115-127`)
-does not include it — the Statistics card is absent from the macOS/iPad-regular
-sidebar list, even though the Home grid (where the card itself renders) still
-shows in the `NavigationSplitView` detail pane alongside that sidebar. An
-undocumented-until-now asymmetry, not a trap (Statistics stays reachable on
-every platform via the grid). Destination contract: `## STATS` below.
-
-**Per-interaction outcome:**
-
-| Element → action | Destination | Presentation | Back/Close lands on |
-|---|---|---|---|
-| Resume pill tap | `rootViewModel.resumeTapped()` → `path.append(candidate.route)` | push (→ `GameBoardRedirect` → `modal-full` on iOS; direct push on macOS) | Board's own Close/Leave (see `SUD-BOARD`/`MS-BOARD`) |
-| Daily card tap | `.daily` | push → `SUD-DAILY-HUB`/`MS-DAILY-HUB` | pop → HOME |
-| Practice card tap | `.practice` | push → `SUD-PRACTICE-HUB`/`MS-PRACTICE-HUB` | pop → HOME |
-| Leaderboard card tap, GC authenticated | `GameCenterDashboard.present(nil)` | external (Apple GC UI) | dismiss → HOME (side-effect, no route change) |
-| Leaderboard card tap, GC signed out | none | `.alert` → `GC-SIGNED-OUT-ALERT` | OK → HOME |
-| Settings card tap | `.settings` | push → `SETTINGS` | pop → HOME |
-| Statistics card tap | `viewModel.selectStats()` → `rootViewModel.path.append(statsRoute)` (`GameHomeViewModel.swift:102-105`) | push → `STATS` | pop → HOME |
-| Sidebar row (macOS/iPad regular) | same targets as cards, via `RootShellView` sidebar (Statistics excluded — see element inventory footnote ²) | push | same |
-
-**Covering behavior:** HOME is root content; nothing covers it except the
-universal `GC-SIGNED-OUT-ALERT` (floats, mounted in `GameAppKit/GameRoot.swift:113-123`
-— see #685, and the `GC-SIGNED-OUT-ALERT` contract below) and `ATT-PRIMER`
-sheet (partial detent, applied by `makeGameApp`'s `universalRootModifiers`,
-`GameAppKit/MakeGameApp+Modifiers.swift`). Underlying HOME stays fully
-interactive under an `.alert`; a `.sheet` blocks interaction with HOME until
-dismissed.
-
-**State variants:** single state — HOME has no loading/empty/failed of its
-own (`docs/designs/02-home.md` §a, still accurate). Degraded CK/GC: resume
-pill silently absent (nil `resumeCandidate`); leaderboard card still taps
-through to the alert path.
+**Retired (#1020 / #1038, 2026-08-25) — historical heading only.** The HOME
+screen (`GameHomeView` / `GameHomeViewModel` / `HomeScreen`) no longer exists;
+the landing screen is the Today tab root, contracted under `SUD-DAILY-HUB` /
+`MS-DAILY-HUB` (C-2 / C-2b). What HOME used to own moved as follows: the
+resume pill and the banner slot → `GameAppKit/TodayTabHost.swift` (see the
+"Today tab host" note in both DAILY-HUB sections — C-20 / C-34); the
+Leaderboard card → the `PROGRESS` tab's `Leaderboards` / `Achievements` rows
+(C-15 / C-35 / C-36, see `GC-DASHBOARD`); the Practice card → the `Practice`
+tab root (C-3 / C-3b, see `SUD-PRACTICE-HUB` / `MS-PRACTICE-HUB`); the
+Settings card → the per-tab gear (C-14, see `SETTINGS`); the Statistics
+card → the `PROGRESS` tab itself (C-4). This heading is kept only so
+`scripts/design/contracts.py` C-1 (`HOME 整節刪除`) keeps its anchor and the
+canonical section count stays at 23; no element inventory, interaction table
+or destination contract survives here (#1081). Pre-retirement text:
+`git show 6341999a:docs/screen-contracts.md`.
 
 ---
 
@@ -117,6 +68,21 @@ through to the alert path.
 **Entry points:** Today tab root (`AppTab.today` — no HOME); reminder-tap
 deep link (`reminderTapRoute` → resets to the Today tab, mirrored on MS by
 #696, see `navigation-flows.md` M7/N18).
+
+**Today tab host (resume pill — the C-20 / C-34 anchor, moved here from the
+retired `HOME` contract by #1081):** `GameAppKit/TodayTabHost.swift` wraps
+this hub as the Today tab's root content and renders the shared `ResumePill`
+header above it only while `GameRootViewModel.resumeCandidate` is non-nil
+(copy `"Resume {Difficulty}"` / `"{m}:{ss}"`, one combined a11y element; the
+host's root anchor is `game.today.root`, which replaced HOME's
+`game.home.root`). Pill tap → `rootViewModel.resumeTapped()` → pushes the
+candidate's route onto the selected tab's stack → `SUD-BOARD` via
+`GameBoardRedirect` (`modal-full` on iOS, push on macOS); Back/Close is the
+board's own Close/Leave. Refresh triggers are as design.md §3.6.2 and are
+as-built in `GameRootViewModel.swift` (`setPath(_:for:)` → `handlePathShrink`
+on ANY tab's path shrinking, `dismissGame()`, `bootstrap()`; switching tabs
+never refreshes — C-34 / N-AB). Degraded CK: the pill is silently absent
+(nil `resumeCandidate`).
 
 **Code:** `SudokuUI/Daily/DailyHubView.swift`, `DailyHubViewModel.swift`,
 `SudokuUI/Daily/TodayMapper.swift`, `GameShellUI/DailyHubShellView.swift`,
@@ -193,6 +159,11 @@ The streak header row is plain content-layer text with no container at all
 **Entry points:** Today tab root (`AppTab.today` — no HOME); reminder-tap
 deep link (`reminderTapRoute` → resets to the Today tab, mirrors Sudoku; see
 `navigation-flows.md` M7/N18).
+
+**Today tab host (resume pill):** the same shared `TodayTabHost` as
+`SUD-DAILY-HUB` — see that section's note (C-20 / C-34). The MS pill routes
+to `.resumeBoard(recordName:mode:)`, i.e. `MS-BOARD` via
+`MS-BOARD-LOAD-FAILED`'s tier-1 loader.
 
 **Code:** `MinesweeperUI/Daily/MinesweeperDailyHubView.swift`,
 `MinesweeperDailyHubViewModel.swift`,
@@ -355,9 +326,9 @@ Anchors: CTA copy — `MinesweeperPracticeHubView.swift:125-127`
 
 ## SUD-BOARD
 
-**Entry points:** `SUD-DAILY-HUB` / `SUD-PRACTICE-HUB` card tap; HOME resume
-pill; Play Again (from a prior `SUD-BOARD`'s completion overlay, practice
-only).
+**Entry points:** `SUD-DAILY-HUB` / `SUD-PRACTICE-HUB` card tap; Today tab
+resume pill (`TodayTabHost`, see `SUD-DAILY-HUB`); Play Again (from a prior
+`SUD-BOARD`'s completion overlay, practice only).
 
 **Code:** `SudokuUI/Board/BoardView.swift` (+`BoardView+Completion.swift`),
 `GameViewModel.swift`, `BoardLoaderView.swift` (async wrapper, see
@@ -403,7 +374,7 @@ truly cover edge-to-edge. Banner suppressed under both overlays.
 ## MS-BOARD
 
 **Entry points:** `MS-DAILY-HUB` card tap (fresh, replay, or re-view);
-`MS-PRACTICE-HUB` Start; HOME resume pill (→ `.resumeBoard`, loads via
+`MS-PRACTICE-HUB` Start; Today tab resume pill (→ `.resumeBoard`, loads via
 `MS-BOARD-LOAD-FAILED`'s loader); Play Again (practice only).
 
 **Code:** `MinesweeperUI/MinesweeperBoardView.swift`.
@@ -453,7 +424,7 @@ error caption, `Label("Close", systemImage: "xmark")` button (`.bordered`,
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Close tap (#719) | `dismiss()` | modal dismiss (iOS) / pop (macOS) | HOME/hub that pushed the board — on iOS the board's `fullScreenCover` has no interactive dismiss otherwise, so Retry used to be the only affordance (a dead end for a player whose fetch keeps failing, e.g. offline) |
+| Close tap (#719) | `dismiss()` | modal dismiss (iOS) / pop (macOS) | the tab root / hub that pushed the board — on iOS the board's `fullScreenCover` has no interactive dismiss otherwise, so Retry used to be the only affordance (a dead end for a player whose fetch keeps failing, e.g. offline) |
 | Retry tap | re-runs `load()` in place | — (no navigation change) | success swaps to `SUD-BOARD`, repeat failure stays on this block |
 
 Anchors: `SudokuUI/Board/BoardLoaderView.swift:210-247` (`failedBlock`, Close
@@ -508,7 +479,7 @@ surface mounts instead). All are dispatched unconditionally from
 (`boardOpenDestination`, called from `LiveRouteFactory.swift`'s `.board`
 case).
 
-**Entry points:** `.resumeBoard(recordName:mode:)` (HOME resume pill — tier 1,
+**Entry points:** `.resumeBoard(recordName:mode:)` (Today tab resume pill — tier 1,
 unchanged from pre-#841). `.board(mode: .daily)` (`MS-DAILY-HUB` unplayed
 card — tier 2). `.replayDailyBoard` (`MS-DAILY-HUB` failed card, or a
 `.daily` open tier 2 resolves `.failed` — tier 3). `.board(mode: .practice)`
@@ -532,7 +503,7 @@ systemImage: "arrow.clockwise")` (`.bordered`, `minesweeper.boardLoader.retry`,
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Close tap (#719) | `dismiss()` | modal dismiss (iOS) / pop (macOS) | HOME (resume pill's caller) |
+| Close tap (#719) | `dismiss()` | modal dismiss (iOS) / pop (macOS) | Today tab root (resume pill's caller) |
 | Retry tap | re-runs `load()` in place | — | success swaps to `MS-BOARD`; repeat failure stays on this block |
 
 Anchors: `MinesweeperUI/MinesweeperBoardLoaderView.swift:137-172`
@@ -641,7 +612,7 @@ both boards).
 |---|---|---|---|
 | Mask tap (anywhere outside the card) | `onResume()` | side-effect | dismiss overlay → same board, `.playing` (or `.idle` — see next row) |
 | Resume button tap | `onResume()` → `viewModel.resume()` on `SUD-BOARD` and `MS-BOARD` from `.paused`; on `MS-BOARD` from `.idle` (#681) OR `SUD-BOARD` from `.leaveReady` (#849/#868) `onResume()` instead just clears the view-local flag (`showIdleLeaveOverlay` / `showReadyLeaveOverlay`) — no session call, since `resume()` no-ops unless `.paused` | side-effect | same board, `.playing` (or unchanged `.idle`/`.leaveReady`) |
-| Leave button tap | `dismiss()` (SwiftUI environment action — pops push OR dismisses `fullScreenCover`, same call either context) | modal dismiss (iOS) / pop (macOS) | HOME (iOS: cover collapses) or the hub that pushed the board (macOS: 1-entry pop) |
+| Leave button tap | `dismiss()` (SwiftUI environment action — pops push OR dismisses `fullScreenCover`, same call either context) | modal dismiss (iOS) / pop (macOS) | the tab root (iOS: cover collapses) or the hub that pushed the board (macOS: 1-entry pop) |
 
 **Covering behavior:** full-screen `.ultraThinMaterial` blur, `.ignoresSafeArea()`
 — hides the entire board (anti-cheat: can't study the puzzle while paused).
@@ -682,7 +653,7 @@ leaderboard" section is **CODE CONTRADICTED** — none of that renders today.
 | Reminder affordance tap | `presentPrimer()` | `sheet(detent)` → `REMINDER-PRIMER` | dismiss → same overlay |
 | `"Next: <difficulty>"` tap (#1023, Daily-more-today) | `onDailyNext` — clears overlay and presents the next still-open daily difficulty | modal-full (new board instance) | new `SUD-BOARD` instance |
 | Play Again tap | clears overlay, `exitToHub()`, then `playAgain(difficulty)` draws a fresh practice puzzle and re-presents | modal-full (new board instance) | new `SUD-BOARD` instance |
-| Close / `"Done"` / `"See you tomorrow"` tap | clears overlay, `exitToHub()` | iOS: `dismiss()` (cover collapses) · macOS: pop 1 path entry | HOME/hub that pushed the board (never the solved board — #667 fix) |
+| Close / `"Done"` / `"See you tomorrow"` tap | clears overlay, `exitToHub()` | iOS: `dismiss()` (cover collapses) · macOS: pop 1 path entry | the tab root / hub that pushed the board (never the solved board — #667 fix) |
 
 **Covering behavior (updated 2026-09-01, #1023):** full-height Liquid-Glass
 panel (G6 — design.md §4.4's D-3.3 explicit exception, never a system sheet)
@@ -746,7 +717,7 @@ is the win gate because a solved-daily re-view is `didWin: true` by definition.
 |---|---|---|---|
 | Reminder affordance tap | `presentPrimer()` | `sheet(detent: [.medium, .large])` → `REMINDER-PRIMER` | dismiss → same overlay |
 | Play Again tap | clears overlay VM, `dismiss()`, then `playAgain(difficulty)` with a fresh random seed, mounted via `MinesweeperFreshBoardLoaderView` (#910 — see `MS-BOARD-LOAD-FAILED` Tier 4; still `modal-full`, just with a brief `.loading` frame first, not the direct construction the row previously implied) | modal-full (new board instance) | new `MS-BOARD` instance |
-| Close tap | clears overlay VM, `dismiss()` | iOS: cover collapses · macOS: pops the push (same `dismiss()` call both contexts — MS never branches on `path`) | HOME/hub that pushed the board |
+| Close tap | clears overlay VM, `dismiss()` | iOS: cover collapses · macOS: pops the push (same `dismiss()` call both contexts — MS never branches on `path`) | the tab root / hub that pushed the board |
 
 **Covering behavior (updated 2026-09-01, #1023):** identical full-height
 Liquid-Glass panel as `SUD-COMPLETION-OVERLAY` (same shared scaffold — the
@@ -1003,7 +974,7 @@ once at `GameRoot`.
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| GC status row tap (`settings.gameCenter`) | `resolvedOnGameCenter()` → `presentGameCenter` closure → `GameRootViewModel.presentGameCenterOrAlert` (same guard the Home leaderboard card uses) | authenticated: external → `GC-DASHBOARD`. Signed out: `.alert` → `GC-SIGNED-OUT-ALERT` | authenticated: dismiss → `SETTINGS` (side-effect). Signed out: OK → `SETTINGS` |
+| GC status row tap (`settings.gameCenter`) | `resolvedOnGameCenter()` → `presentGameCenter` closure → `GameRootViewModel.presentGameCenterOrAlert` (the same guard the `PROGRESS` GC rows use — and the retired pre-3.0 HOME leaderboard card used) | authenticated: external → `GC-DASHBOARD`. Signed out: `.alert` → `GC-SIGNED-OUT-ALERT` | authenticated: dismiss → `SETTINGS` (side-effect). Signed out: OK → `SETTINGS` |
 | Reminders "Enable"/"Turn On" row tap | `model.enable()` | `sheet(detent: .medium)` → `REMINDER-PRIMER` | dismiss → `SETTINGS` |
 | Reminders denied-status row tap | `model.showDeniedExplainer()` | `sheet(detent: .medium)` → `REMINDER-DENIED` | dismiss → `SETTINGS` |
 | Reminders "Turn off reminders" tap | `model.disable()` | side-effect | `SETTINGS` (status row switches back to enable row) |
@@ -1015,7 +986,8 @@ once at `GameRoot`.
 **AS-BUILT NOTE (2026-07-21):** the GC status row was listed in this
 contract's element inventory but had NO interaction row at all until now —
 it is a second, equally real entry point into `GC-DASHBOARD` /
-`GC-SIGNED-OUT-ALERT` alongside the Home leaderboard card (#685/#714;
+`GC-SIGNED-OUT-ALERT` alongside the retired pre-3.0 HOME leaderboard card —
+today's other entry points are the `PROGRESS` GC rows (#685/#714;
 guard-parity #832). Anchors: `GameAppKit/Sources/GameAppKit/SettingsView.swift:65-99`
 (`presentGameCenter` injection + `resolvedOnGameCenter()`'s debug assert),
 `GameAppKit/Sources/GameAppKit/GameRootViewModel.swift:271-278`
@@ -1224,11 +1196,14 @@ instead of a fixed normalized-offset coordinate.
 
 ## GC-DASHBOARD
 
-**Entry points:** HOME leaderboard card (authenticated only); `SETTINGS` GC
-status row (authenticated only, #685/#714 — same
-`presentGameCenterOrAlert` guard as the Home card, see `SETTINGS`'s
-interaction table). No behavioral drift between the two entry points, only
-a prior documentation gap (this contract undercounted its own entry points).
+**Entry points (3.0 — C-15 / C-36, #1020 / #1051):** the `PROGRESS` tab's
+`Leaderboards` row (authenticated → `.leaderboards` state) and `Achievements`
+row (authenticated → `.achievements` state, C-26 / C-36) — see `PROGRESS`'s
+interaction table; and the `SETTINGS` GC status row (authenticated only,
+#685 / #714 — see `SETTINGS`'s interaction table). All three go through the
+same `GameRootViewModel.presentGameCenterOrAlert` guard, so there is no
+behavioral drift between entry points. The pre-3.0 HOME leaderboard card is
+retired (#1020 / #1038, C-35) — HOME is no longer an entry point.
 
 **Code:** `GameCenterKit/Sources/GameCenterClient/GameCenterDashboard.swift`.
 
@@ -1249,9 +1224,11 @@ drill-through) — out of this repo's contract.
 
 ## GC-SIGNED-OUT-ALERT
 
-**Entry points:** HOME leaderboard card tap, OR `SETTINGS` GC status row tap
-(#685/#714, same guard — see `SETTINGS`'s interaction table), while
-`authState != .authenticated`.
+**Entry points:** `PROGRESS` `Achievements` / `Leaderboards` row tap (C-35 /
+N-AA — the Achievements row shares the same guard), OR `SETTINGS` GC status
+row tap (#685/#714 — see each screen's interaction table), while
+`authState != .authenticated`. The pre-3.0 HOME leaderboard card entry is
+retired (#1020, C-35).
 
 **Code:** `GameAppKit/GameRoot.swift:113-123` — bound via a hand-rolled
 `Binding(get:set:)` off the stable `GameRootViewModel.showGameCenterSignedOutAlert`
@@ -1273,8 +1250,8 @@ Game Center to compare with others.", "OK" (cancel role).
 
 **Per-interaction outcome:** OK → dismiss, no route change.
 
-**Covering behavior:** system `.alert` — floats, HOME stays visible but
-non-interactive until dismissed.
+**Covering behavior:** system `.alert` — floats, the origin screen (tab root
+or `SETTINGS`) stays visible but non-interactive until dismissed.
 
 **E2E coverage (N14, #935 batch 4):** `-uitest-gc-signed-out` (DEBUG-only,
 `UITestLaunchArg.gcSignedOut`) swaps in `UITestSignedOutGameCenterClient`
@@ -1311,11 +1288,11 @@ this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).
 
 | Element → action | Destination | Presentation | Back/Close lands on |
 |---|---|---|---|
-| Continue | dismiss this sheet → `requestSystemPrompt()` → **external** system ATT dialog | sheet → external | HOME, banner now resolves per the ATT-determined state |
-| Not now | `declinePrimer()` — no system prompt fired; latched for the rest of the session | dismiss sheet | HOME |
+| Continue | dismiss this sheet → `requestSystemPrompt()` → **external** system ATT dialog | sheet → external | Today tab, banner now resolves per the ATT-determined state |
+| Not now | `declinePrimer()` — no system prompt fired; latched for the rest of the session | dismiss sheet | Today tab |
 
 **Covering behavior:** `.sheet` with `[.medium, .large]` detents, drag
-indicator visible — HOME stays mounted but non-interactive underneath.
+indicator visible — the Today tab stays mounted but non-interactive underneath.
 
 **State variants:** only presented while ATT status is `.notDetermined`;
 already-determined statuses skip the sheet entirely (silent).
