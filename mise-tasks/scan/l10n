@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="L10n completeness + SudokuAppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper) have 0 <TRANSLATE> placeholders and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
+#MISE description="L10n completeness + SudokuAppCompositionTests fixture-sync gate: shipping catalogs (Sudoku + Minesweeper) have 0 <TRANSLATE> placeholders, 0 stale entries (#1086) and all 7 locales per key (#394); the Localizable + PrivacyInfo test fixtures stay byte-copies of shipping (#361 C)."
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -21,6 +21,16 @@ check_catalog() {
   n="$(grep -c '<TRANSLATE>' "$path" || true)"
   if [ "$n" -ne 0 ]; then
     echo "FAIL [$name]: $n <TRANSLATE> placeholder(s) remain in $path" >&2
+    fail=1
+  fi
+
+  # 1b) No `extractionState: stale` entries (#1086). Xcode's extraction pass
+  #     cannot see `bundle: .main` lookups from SwiftPM packages, so live keys
+  #     carry `manual`; a `stale` label is an unproven orphan — prove it
+  #     unreferenced and delete it, or prove it live and relabel it `manual`.
+  n="$(grep -c '"extractionState" : "stale"' "$path" || true)"
+  if [ "$n" -ne 0 ]; then
+    echo "FAIL [$name]: $n extractionState \"stale\" entr(y/ies) in $path — delete (proven orphan) or relabel to \"manual\" (live)" >&2
     fail=1
   fi
 
@@ -147,4 +157,4 @@ if [ "$fail" -ne 0 ]; then
   echo "L10n gate FAILED." >&2
   exit 1
 fi
-echo "L10n gate passed: all 2 catalogs 0 placeholders, all 7 locales complete."
+echo "L10n gate passed: all 2 catalogs 0 placeholders, 0 stale, all 7 locales complete."
