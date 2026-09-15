@@ -8,13 +8,17 @@
 // that a gate-denied slot measures 0pt with each host's real arguments.
 //
 // Rows are audited from `rg -n "BannerSlotView\(" Packages/*/Sources`:
-//   - `GameAppKit.TodayTabHost.bannerSlot` (Today tab, both apps): 16 / 12.
 //   - Sudoku `BoardView+Layout.themedBanner(horizontalPadding:)` and
 //     Minesweeper `MinesweeperBoardView.bannerSlot(horizontalPadding:)`:
 //     `theme.spacing.medium` on the compact layout (16 — both themes use
 //     `SpacingTokens()`), 0 on the regular layout; no vertical padding.
 // AppMonetizationKit cannot import the host modules, so the rows carry the
 // literal values; the hosts' own snapshot suites pin that they pass them.
+//
+// #1080: dropped the `TodayTabHost (Today tab, both apps)` row —
+// `TodayTabHost` has had no `BannerSlotView` of its own since #1024 (its
+// banner moved into the shared `tabViewBottomAccessory`); the row was
+// exercising a host that no longer constructs this view.
 
 #if canImport(AppKit)
 
@@ -47,7 +51,6 @@ struct BannerSlotCollapsedHeightTests {
     /// `LiveRouteFactory.bannerSlot` rows (Practice, Settings) — both helpers
     /// (the unused tab-content-bottom fallback) were deleted.
     nonisolated static let productionHosts: [HostPadding] = [
-        HostPadding(name: "TodayTabHost (Today tab, both apps)", horizontal: 16, vertical: 12),
         HostPadding(name: "Sudoku Board compact (BoardView+Layout.themedBanner)", horizontal: 16, vertical: 0),
         HostPadding(name: "Sudoku Board regular (BoardView+Layout.themedBanner)", horizontal: 0, vertical: 0),
         HostPadding(name: "Minesweeper Board compact (MinesweeperBoardView.bannerSlot)", horizontal: 16, vertical: 0),

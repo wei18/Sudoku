@@ -39,10 +39,13 @@ extension SudokuAppComposition {
     ) -> AnyView {
         switch tab {
         case .today:
-            // #1020 CR: no `banner:` here — `TodayTabHost` (GameAppKit) already
-            // wraps this content with its OWN `BannerSlotView` (and is the C-33
-            // ATT anchor); passing another one too would render two banners.
-            // `DailyHubView`'s `banner:` param defaults to `EmptyView()`.
+            // #1024: no `banner:` here — the shared `tabViewBottomAccessory`
+            // (design.md §2.4) covers this tab; `TodayTabHost` (GameAppKit)
+            // has carried no `BannerSlotView` of its own since that move. The
+            // accessory slot's registration is now the "first ad context"
+            // that fires the C-33 ATT primer, not a Today-tab-local slot.
+            // `DailyHubView`'s `banner:` param is dead (defaults to
+            // `EmptyView()`, no caller overrides it) — tracked in #1096.
             return AnyView(
                 DailyHubView(
                     viewModel: DailyHubViewModel(

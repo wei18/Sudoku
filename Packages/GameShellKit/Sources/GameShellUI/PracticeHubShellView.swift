@@ -9,9 +9,6 @@
 //   - the chrome triple (`.background(Color)` + `.navigationTitle`)
 //   - the inline section header `Text` for the filter slot, with caller-
 //     supplied foreground color (`headerForeground`)
-//   - the optional `banner` slot pinned below the scrollable content (Epic 5).
-//     GameShellKit is zero-dep: the actual `BannerSlotView` is injected by
-//     each app at the RouteFactory level; the default is EmptyView.
 //
 // Caller supplies:
 //   - `title` and `filterHeader` (both `LocalizedStringKey`)
@@ -21,8 +18,12 @@
 //     glassEffect / padding decoration — none of which the shell touches)
 //   - the `cta` slot (the game's draw/start affordance — Sudoku's `drawCard`
 //     with its shimmer + glassEffect, or Minesweeper's simpler Start button)
-//   - the `banner` slot (injected by each app; EmptyView default for
-//     previews/tests; the actual BannerSlotView is never imported here)
+//
+// #1080: the `banner` slot (Epic 5) was removed — its only two
+// forwarders (`PracticeHubView`, `MinesweeperPracticeHubView`) dropped their
+// own `banner:` params in the same PR, so nothing fed this one any more.
+// The shared `tabViewBottomAccessory` (design.md §2.4) covers Practice's
+// banner today.
 //
 // Loading state (Sudoku's `PracticeHubLoadingState`) deliberately stays in
 // the caller's CTA — the shell carries no state machine. Lets Minesweeper
@@ -30,15 +31,14 @@
 
 public import SwiftUI
 
-public struct PracticeHubShellView<Filter, CTA, Banner>: View
-where Filter: View, CTA: View, Banner: View {
+public struct PracticeHubShellView<Filter, CTA>: View
+where Filter: View, CTA: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let filterHeader: LocalizedStringKey
     private let headerForeground: Color
     private let filter: () -> Filter
     private let cta: () -> CTA
-    private let banner: Banner
 
     // Structural screen-edge inset (#762 PR1 two-tier spacing contract).
     // This shell deliberately does not read `@Environment(\.theme)` for
@@ -56,8 +56,7 @@ where Filter: View, CTA: View, Banner: View {
         filterHeader: LocalizedStringKey,
         headerForeground: Color,
         @ViewBuilder filter: @escaping () -> Filter,
-        @ViewBuilder cta: @escaping () -> CTA,
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
+        @ViewBuilder cta: @escaping () -> CTA
     ) {
         self.title = title
         self.backgroundColor = backgroundColor
@@ -65,39 +64,32 @@ where Filter: View, CTA: View, Banner: View {
         self.headerForeground = headerForeground
         self.filter = filter
         self.cta = cta
-        self.banner = banner()
     }
 
     public var body: some View {
-        // spacing-exempt: zero-gap chrome seam between the scrollable content
-        // and the banner slot — not a spacing decision.
-        VStack(spacing: 0) {
-            // #1021 Phase G: the filter/CTA content flows in a `ScrollView`
-            // below the navigation title instead of a fixed, screen-filling
-            // `VStack`. A bare `VStack` under a large title only reserves a
-            // single-line title's worth of top space; at an accessibility
-            // Dynamic Type size the title wraps to 2+ lines and the fixed
-            // content overlapped it (the "Difficulty" label drawn under
-            // "Practice"'s second line). A `ScrollView` lets the system
-            // report the title's actual (multi-line) height as a top
-            // safe-area inset the content flows below, with no magic offset,
-            // and also satisfies G3 (content stays reachable if it ever
-            // grows taller than the screen at large text sizes).
-            ScrollView {
-                VStack(alignment: .leading, spacing: contentGap) {
-                    Text(filterHeader)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(headerForeground)
+        // #1021 Phase G: the filter/CTA content flows in a `ScrollView`
+        // below the navigation title instead of a fixed, screen-filling
+        // `VStack`. A bare `VStack` under a large title only reserves a
+        // single-line title's worth of top space; at an accessibility
+        // Dynamic Type size the title wraps to 2+ lines and the fixed
+        // content overlapped it (the "Difficulty" label drawn under
+        // "Practice"'s second line). A `ScrollView` lets the system
+        // report the title's actual (multi-line) height as a top
+        // safe-area inset the content flows below, with no magic offset,
+        // and also satisfies G3 (content stays reachable if it ever
+        // grows taller than the screen at large text sizes).
+        ScrollView {
+            VStack(alignment: .leading, spacing: contentGap) {
+                Text(filterHeader)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(headerForeground)
 
-                    filter()
+                filter()
 
-                    cta()
-                }
-                .padding(screenEdgeInset)
-                .frame(maxWidth: .infinity, alignment: .top)
+                cta()
             }
-
-            banner
+            .padding(screenEdgeInset)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
         .background(backgroundColor)
         .navigationTitle(title)
