@@ -11,6 +11,7 @@
 // covers the sibling `modalOverlayPresentation` key; this suite covers the
 // toggle's own state selection (`BoardView.leaveOrPauseState`).
 
+import Foundation
 import Testing
 @testable import SudokuUI
 import GameShellUI
@@ -104,10 +105,16 @@ struct BoardLeaveOrPauseStateTests {
     // test closes the loop up through `GameViewModel` to `BoardView`: a
     // freshly-opened board — no digit placed, no wall-clock time ticked yet
     // — resolves to `.leaveReady`, exactly the window the fix above targets.
+    //
+    // #1082: "live" means the real session/view-model path, not live time —
+    // the clock is frozen on purpose; do not swap back to `LiveMonotonicClock`.
+    // `GameSession.elapsedSeconds` floors `clock.now - runningSince`, so on a
+    // real clock a loaded batch runner that stalls ≥1 s between `start()` and
+    // the resync reads 1 and leaves the Ready window — a flake, not a regression.
     @Test("live startOrResume() lands in the reachable Ready window")
     func liveStartOrResumeReachesLeaveReady() async throws {
         let puzzle = PuzzleFixtures.latinSquarePuzzle()
-        let session = GameSession(puzzle: puzzle)
+        let session = GameSession(puzzle: puzzle, clock: FrozenMonotonicClock())
         let viewModel = GameViewModel(
             identity: Self.identity,
             session: session,
@@ -153,4 +160,11 @@ struct BoardLeaveOrPauseStateTests {
         let boardView = BoardView(viewModel: viewModel, path: nil)
         #expect(boardView.leaveOrPauseState == .pause)
     }
+}
+
+// #1082: test-local frozen `MonotonicClock` — `now` never advances, so the
+// session under test cannot tick past `elapsedSeconds == 0` however long the
+// runner stalls.
+private struct FrozenMonotonicClock: MonotonicClock {
+    let now: TimeInterval = 0
 }
