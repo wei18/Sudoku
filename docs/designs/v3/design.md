@@ -144,6 +144,19 @@ spike:真實 `BannerView` 在 accessory 內非零尺寸渲染、`.expanded`↔`.
 一份共用 banner 覆蓋 Today/Practice/Progress/Settings(Settings 是 push 進
 tab 的 stack,還在 TabView 裡,所以也吃得到)。
 
+**【AS-BUILT,#1079 → #1080,2026-09-15】** owner 裁定 option 1:iOS
+deployment floor 升到 26.1(`Project.swift` 四個 app target + 所有
+`Packages/*/Package.swift`);`RootShellView` 改用
+`tabViewBottomAccessory(isEnabled:content:)`(iOS 26.1+,
+`@available(macOS, unavailable)`),`isEnabled` 由
+`GameAppKit.GameRoot` 傳入的 `bannerSession.isVisible` 驅動。gate 拒絕時
+(signed out / Remove Ads / 今日已關)整個 capsule 完全不畫——先前量到的
+48pt 空 capsule(見上方 2026-09-08 Leader verification round 的 sim 證據)
+已由此取代,不再出現。單一 code path,無 `#available` 分支——`.tabViewBottomAccessory`
+modifier 仍在 `#if os(iOS)` 內每次 render 無條件掛上,`isEnabled` 只是 SDK
+提供的顯示開關,不是條件式掛載(不重開 2.4 節「絕不條件式掛載」的規則)。
+macOS 仍是 2.4.1 節 option A,`tabViewBottomAccessory` 命中數維持 0。
+
 #### 2.4.1 ⚠️ macOS 沒有 tab accessory —— D18 在 macOS 缺承載機制
 
 `tabViewBottomAccessory` 只到 iOS / iPadOS / Mac Catalyst,**macOS 原生沒有**。

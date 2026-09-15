@@ -144,3 +144,38 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
 
 - PM done-when checklist requested (check-in sent 2026-09-07); proceeding with local impl,
   PR opens after PM ack + rebase.
+
+## #1080 follow-through (2026-09-15, plucky-wren)
+
+- **Merge resolution summary (#1080, rebasing #1024 onto the #1062 session
+  model)**: `BannerAccessoryView` was rewritten onto `\.bannerSession` — a
+  plain `BannerSlotView(isSuppressed: false, …)` like every other slot, no
+  `provider` / `gate` / `primer` parameters flowing through it any more; the
+  ATT anchor (C-33) lives on the session's `onAdContext` hook, wired in
+  `makeBannerSession`. `BannerAccessoryViewTests` was deleted rather than
+  ported: it called an init that no longer exists, and the ATT-primer
+  coverage it existed for is already pinned by `makeBannerSession`'s own
+  tests plus `TodayTabHostTests` (restored from main, unchanged). `#1024`'s
+  removal of the inline Today/Practice/Settings banner slots won every
+  conflicting hunk; no board file was touched.
+- **`isEnabled` design (#1079, this session)**: `RootShellView` gained a
+  plain `Bool` parameter, `bottomAccessoryIsEnabled`, feeding
+  `tabViewBottomAccessory(isEnabled:content:)`. GameShellKit still has no
+  idea what the Bool means — GameAppKit's `GameRoot` is the one that reads
+  `bannerSession.isVisible` and passes it through, keeping GameShellKit
+  zero-dependency. The modifier itself stays attached unconditionally, every
+  render, inside `#if os(iOS)` — `isEnabled` is an SDK display switch, not a
+  conditional attach, so the #1020 unmount-hazard rule this file's design.md
+  section already documents still holds.
+- **Floor**: iOS deployment target raised 26.0 → 26.1 across `Project.swift`'s
+  four app targets and every `Packages/*/Package.swift` (macOS unchanged at
+  26.0) — `tabViewBottomAccessory(isEnabled:content:)` requires iOS 26.1.
+  Neither app has shipped, so no existing user is affected by the raise.
+- **Open question**: when `isEnabled` flips (banner session's `isVisible`
+  changes), `GameRoot.body` re-evaluates. Whether a pushed Settings stack or a
+  presented board `fullScreenCover` survives that re-evaluation the way #1020
+  requires (rule 2 in `RootShellView`'s file header) has not been verified on
+  a simulator — the automated tests here only prove the render-level wiring
+  (capsule appears/disappears with `isEnabled`), not this interaction with an
+  in-flight navigation state. Needs sim verification before treating this as
+  fully closed.

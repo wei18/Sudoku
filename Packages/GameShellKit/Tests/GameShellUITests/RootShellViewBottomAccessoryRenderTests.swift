@@ -52,6 +52,7 @@ private struct AccessoryRenderSentinelFactory: RouteFactory {
 
 @MainActor
 private func makeHostedShell(
+    isEnabled: Bool = true,
     @ViewBuilder bottomAccessory: @escaping () -> AnyView
 ) -> UIWindow {
     let shell = RootShellView<AccessoryRenderSentinelRoute, Text, AnyView>(
@@ -60,6 +61,7 @@ private func makeHostedShell(
         routeFactory: AccessoryRenderSentinelFactory(),
         settingsRoute: .settings,
         tabRoot: { tab in Text(tab.rawValue) },
+        bottomAccessoryIsEnabled: isEnabled,
         bottomAccessory: bottomAccessory
     )
     let controller = UIHostingController(rootView: shell)
@@ -149,6 +151,29 @@ struct RootShellViewBottomAccessoryRenderTests {
         #expect(
             container?.subviews.isEmpty ?? true,
             "EmptyView bottomAccessory produced a non-empty container — the sentinel test's pass is not proof of real wiring"
+        )
+    }
+
+    @Test("isEnabled: false never draws the accessory capsule, even with real content (#1079)")
+    func disabledAccessoryDrawsNoCapsule() async {
+        let window = makeHostedShell(isEnabled: false) {
+            AnyView(
+                Text("SENTINEL")
+                    .frame(width: 111, height: 22)
+                    .background(Color.red)
+            )
+        }
+
+        // Same bounded settle as the sentinel case above, but we EXPECT the
+        // capsule itself to never appear — `isEnabled: false` must suppress
+        // the whole container, not just leave it empty (that would be the
+        // pre-#1079 empty-capsule regression this test guards against).
+        _ = await waitForAccessoryContainer(in: window)
+        let container = findAccessoryContainer(in: window)
+
+        #expect(
+            container?.subviews.isEmpty ?? true,
+            "isEnabled:false still drew a non-empty tabViewBottomAccessory container — the empty-capsule regression is back"
         )
     }
 }

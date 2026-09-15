@@ -236,6 +236,11 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: Vie
             routeFactory: routeFactory,
             settingsRoute: settingsRoute,
             tabRoot: tabRoot,
+            // #1079: drives `tabViewBottomAccessory(isEnabled:)` — this read
+            // happens inside `shellContent`, which is only ever evaluated
+            // from `body`, so `@Observable`'s dependency tracking picks up
+            // `bannerSession.isVisible` changes and re-renders the shell.
+            bottomAccessoryIsEnabled: bannerSession.isVisible,
             bottomAccessory: bottomAccessory
         )
     }

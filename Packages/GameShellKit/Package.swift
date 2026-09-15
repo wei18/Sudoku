@@ -67,7 +67,7 @@ let testTargets: [Target] = [
 let package = Package(
     name: "GameShellKit",
     platforms: [
-        .iOS(.v26),
+        .iOS("26.1"),
         .macOS(.v26),
     ],
     products: [

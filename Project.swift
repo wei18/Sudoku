@@ -46,7 +46,7 @@ let sudokuTarget = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .app,
     bundleId: "com.wei18.sudoku",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     infoPlist: .file(path: "App/Sudoku/Info.plist"),
     sources: ["App/Sudoku/**/*.swift"],
     resources: [
@@ -109,7 +109,7 @@ let minesweeperTarget = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .app,
     bundleId: "com.wei18.minesweeper",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     infoPlist: .file(path: "App/Minesweeper/Info.plist"),
     sources: ["App/Minesweeper/**/*.swift"],
     resources: [
@@ -166,7 +166,7 @@ let sudokuE2ETestsTarget = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .uiTests,
     bundleId: "com.wei18.sudoku.e2e",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     // The E2E targets depend only on `.target(name: "Sudoku")` (no package
     // product deps — see minesweeperE2ETestsTarget for the mirrored setup), so
     // `UITestLaunchArg` (GameAppKit) can't be reached via `import GameAppKit`.
@@ -191,7 +191,7 @@ let minesweeperE2ETestsTarget = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .uiTests,
     bundleId: "com.wei18.minesweeper.e2e",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     // Mirrors sudokuE2ETestsTarget: no package product deps on this target
     // (only `.target(name: "Minesweeper")`), so `UITestLaunchArg` is compiled
     // in directly rather than imported as a GameAppKit module.

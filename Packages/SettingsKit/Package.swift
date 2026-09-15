@@ -75,7 +75,7 @@ let testTargets: [Target] = [
 let package = Package(
     name: "SettingsKit",
     platforms: [
-        .iOS(.v26),
+        .iOS("26.1"),
         .macOS(.v26),
     ],
     products: [
