@@ -133,9 +133,11 @@ CK 失敗時**不顯示 badge**(不是顯示 0)。
 
 **【AS-BUILT,#1029 B-6 → #1024,2026-09-08】** U-10 已驗證 **PASS**(#1029 B-6
 spike:真實 `BannerView` 在 accessory 內非零尺寸渲染、`.expanded`↔`.inline`
-切換存活、impression 正常),accessory 路徑照建;降級備案**沒有啟用**,但保留
+切換存活、impression 正常),accessory 路徑照建;降級備案**沒有啟用**,原本保留
 在 `SudokuAppComposition.themedBanner` / `MinesweeperKit`'s `LiveRouteFactory
-.bannerSlot` 裡隨時可接回(#1024 doc comment 有標)。實作:
+.bannerSlot` 裡隨時可接回。**【AS-BUILT,#1080,2026-09-15】** 兩個函式與
+`PracticeHubView`/`SettingsView` 的 `banner:` 參數已一併刪除——accessory 路徑
+經 #1079 驗證穩定後,這個未啟用的降級備案視為過時,不再保留。實作:
 `RootShellView`(GameShellKit)以泛型 `bottomAccessory` ViewBuilder 收內容,
 `.tabViewBottomAccessory { … }` 在 `#if os(iOS)` 內**無條件**掛上(不做條件式
 掛載/卸載——那是 #1020 macOS unmount 傷疤同一類地雷)。是否顯示由內容自己決定
@@ -184,8 +186,10 @@ D18(banner 覆蓋範圍是 feature)在 macOS 因此沒有落點。**方案(擇�
 `RootShellView.swift` 一處、包在 `#if os(iOS)` 裡 —— macOS binary 裡完全不會
 出現這支 API(`rg "tabViewBottomAccessory"` 驗證過,不是 runtime 判斷)。
 `MakeGameApp+Helpers.swift` 的 `makeBottomAccessory` 在 macOS 那個 `#else`
-分支只回 `EmptyView()`,連 `AdProvider`/`AdGate`/`BannerSlotView` 這些型別
-都不會在 macOS 建置裡被建構。
+分支只回 `EmptyView()`,不會建構 `BannerAccessoryView`;macOS 建置裡也不存在
+`tabViewBottomAccessory` 這支呼叫。(`AdProvider`/`AdGate`/`BannerSlotView`
+本身在 macOS 仍會建構——`MakeGameApp.swift` 建 `NoopAdProvider` + `AdGate`,
+Board 的 slot 也照常掛;只有 accessory 這條路徑是 iOS-only。)
 
 ---
 

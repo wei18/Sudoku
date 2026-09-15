@@ -57,7 +57,7 @@ A cancelled wait or load produces **no status change**.
   sheet dismissal, layout changes) without re-evaluating `GameRoot`'s body — a `BannerSlotView`
   inside it had its `@StateObject` lease re-created 8 times in one launch-to-idle script (measured,
   #1080 probe), each re-creation disposing the loaded ad and sending a fresh request (vs 2 on
-  `main`'s never-re-hosted inline slots). See `tabview-bottom-accessory-rehosts-content`.
+  `main`'s never-re-hosted inline slots).
 - **Shape:** `BannerSlotRegistration` grows an `init(lease: BannerSlotLease? = nil)`; when
   `external` is supplied it is used INSTEAD of the still-constructed-but-inert `ownLease`. A new
   `BannerSlotView(lease:...)` public init threads the caller's lease through.

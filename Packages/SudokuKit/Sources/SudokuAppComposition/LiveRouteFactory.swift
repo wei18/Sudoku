@@ -305,11 +305,10 @@ public struct LiveRouteFactory: RouteFactory {
                     // #1024: no `banner:` here any more — Settings is pushed
                     // onto a tab's stack, so it stays inside the TabView and
                     // the shared `tabViewBottomAccessory` (design.md §2.4)
-                    // already covers it. `SettingsView`'s `banner:` param
-                    // stays (defaults to `EmptyView()`) as the documented
-                    // §2.4 tab-content-bottom fallback, kept reachable but
-                    // unused — `Self.themedBanner` below is that fallback's
-                    // ready-made implementation.
+                    // already covers it. #1080: `SettingsView`'s `banner:`
+                    // param and the `Self.themedBanner` tab-content-bottom
+                    // fallback it fed were both removed — obsolete once
+                    // #1079 confirmed the accessory path.
                 )
             )
         }
@@ -343,48 +342,4 @@ public struct LiveRouteFactory: RouteFactory {
         }
     }
 
-    // MARK: - Banner helper
-
-    /// Epic 5: themed `BannerSlotView` for all non-Board screens. Same theme
-    /// tokens across Today/Practice/Settings — no per-screen override. Board
-    /// never calls this; it owns its own `themedBanner` method. The session
-    /// model in the environment decides whether the slot shows (#1058).
-    ///
-    /// #851: `backgroundColor` was `Color.secondary.opacity(0.12)` — a
-    /// translucent SYSTEM-GRAY tint left over from before #688 gave
-    /// `BannerSlotView` a themed default. Composited over the app's actual
-    /// warm-dark page background (`DefaultTheme.surface.background.dark`,
-    /// 0x15171A) it painted a visibly lighter 50pt rounded band across the
-    /// bottom of Today/Practice/Settings whenever the ad gate opened —
-    /// exactly the "faint horizontal banding" reported. `LiveRouteFactory` is
-    /// a plain struct (not a `View`), so it cannot read `@Environment(\.theme)`
-    /// like `BoardView.themedBanner` does; `DefaultTheme()` is the same
-    /// concrete theme the app injects into the environment everywhere else,
-    /// so resolving it directly here yields an identical color.
-    ///
-    /// #1020: `static` (not an instance method) so `Live+TabRoots.swift`'s
-    /// Today/Practice tab-root builder — which has no `LiveRouteFactory`
-    /// instance to call through, only the wired `GameDeps` bag — can reuse
-    /// the exact same banner instead of re-deriving it.
-    ///
-    /// #1024: no production call site left (the shared `tabViewBottomAccessory`,
-    /// design.md §2.4, covers Today/Practice/Settings now) — kept as the
-    /// documented §2.4 tab-content-bottom fallback implementation, ready to
-    /// wire back in if the accessory path is ever reverted (see #1029's B-6
-    /// gate for the incompatibility this fallback exists to catch).
-    @MainActor
-    static func themedBanner() -> some View {
-        BannerSlotView(
-            isSuppressed: false,
-            backgroundColor: DefaultTheme().surface.background.resolved,
-            progressTint: .accentColor,
-            captionColor: .secondary,
-            // uiux-bugfix-plan P1-6: `.opacity(0.7)` left the ✕ glyph nearly
-            // invisible after crop — full-strength token instead (#1084).
-            dismissTint: Color.secondary,
-            // #1058: moved inside `BannerSlotView` (was chained here).
-            horizontalPadding: 16,
-            verticalPadding: 12
-        )
-    }
 }

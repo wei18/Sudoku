@@ -55,6 +55,9 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
 - **Accessory path ships** — B-6 gate (#1029) PASSED (comment: real BannerView in accessory,
   {360,48} non-zero, survives .expanded→.inline, impression fires every launch). Fallback
   (tab-content-bottom, today's TodayTabHost slot) stays reachable + documented, not shipped.
+  **Update (#1080, 2026-09-15):** removed. Once #1079 confirmed the accessory path stable,
+  the PM ruled the unused fallback (`themedBanner()`/`bannerSlot()` + the `banner:` params
+  on `PracticeHubView`/`SettingsView`) obsolete — deleted, not kept reachable.
 - **macOS: NO banner at all** (§2.4.1 option A, FINAL). Structural exclusion
   (`#if os(macOS)` / platform-conditional composition), never runtime check.
   Acceptance: zero `tabViewBottomAccessory` hits in macOS path.
@@ -211,8 +214,9 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
   launch-to-idle script (2 on `main`'s never-re-hosted inline slots), each
   re-creation disposing the loaded ad handle and sending a fresh request. The
   host-owned-lease prototype cut that to 1 request per launch on both
-  devices. Full measurement recorded in the session memory reference
-  `tabview-bottom-accessory-rehosts-content`.
+  devices. Full measurement recorded in
+  `meetings/2026-09-11_1058-slot-model-design.md` §"Externally owned lease
+  (#1080)".
 - **E-a trigger mechanism**: `BannerAccessoryPinTests`'s T2
   (`accessorySurvivesPushPopReHost`) reproduces the re-host inside the same
   bare-`UIWindow`/`UIHostingController` harness (a) and (b) already use — no

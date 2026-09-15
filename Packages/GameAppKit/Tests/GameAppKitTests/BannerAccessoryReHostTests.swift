@@ -1,6 +1,8 @@
 // BannerAccessoryReHostTests — T2 for #1080: the accessory's banner lease
 // must survive `tabViewBottomAccessory` natively re-hosting its content
-// (push, pop, sheet dismissal — see `tabview-bottom-accessory-rehosts-content`).
+// (push, pop, sheet dismissal — see
+// `meetings/2026-09-11_1058-slot-model-design.md` §"Externally owned lease
+// (#1080)").
 //
 // Separate file, not added into `BannerAccessoryPinTests`'s suite (PM's
 // "T2 可以直接加進同一個 suite" was permissive, not mandatory): folding T2's

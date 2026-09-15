@@ -267,7 +267,7 @@ let {name}Target = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .app,
     bundleId: "com.wei18.{name}",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     infoPlist: .file(path: "App/{NAME}/Info.plist"),
     sources: ["App/{NAME}/**/*.swift"],
     resources: [
@@ -295,7 +295,7 @@ let {name}E2ETestsTarget = Target.target(
     destinations: [.iPhone, .iPad, .mac],
     product: .uiTests,
     bundleId: "com.wei18.{name}.e2e",
-    deploymentTargets: .multiplatform(iOS: "26.0", macOS: "26.0"),
+    deploymentTargets: .multiplatform(iOS: "26.1", macOS: "26.0"),
     sources: ["App/{NAME}E2ETests/**/*.swift", "App/UITestsShared/**/*.swift"],
     dependencies: [.target(name: "{NAME}")],
     settings: .settings(base: swiftSettings)

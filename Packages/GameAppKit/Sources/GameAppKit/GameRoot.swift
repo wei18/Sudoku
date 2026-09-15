@@ -88,10 +88,11 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: Vie
     // #1080: the accessory's banner lease, owned HERE (not by
     // `BannerAccessoryView` itself) so it outlives `tabViewBottomAccessory`'s
     // native re-hosting of its content — see
-    // `tabview-bottom-accessory-rehosts-content`. `GameRoot` is the scene-
-    // lifetime owner every other `@State` on this type already relies on
-    // (`chromeState` above), and injecting it here (not in GameShellKit) is
-    // what keeps GameShellKit itself zero-dependency on monetization types.
+    // `meetings/2026-09-11_1058-slot-model-design.md` §"Externally owned
+    // lease (#1080)". `GameRoot` is the scene-lifetime owner every other
+    // `@State` on this type already relies on (`chromeState` above), and
+    // injecting it here (not in GameShellKit) is what keeps GameShellKit
+    // itself zero-dependency on monetization types.
     @State private var accessoryLease = BannerSlotLease()
 
     @Environment(\.scenePhase) private var scenePhase

@@ -76,9 +76,9 @@ extension MinesweeperAppComposition {
             )
             // #1024: no `banner:` here any more — the shared
             // `tabViewBottomAccessory` (design.md §2.4) covers this tab.
-            // `MinesweeperPracticeHubView`'s `banner:` param stays (defaults
-            // to `EmptyView()`) as the documented §2.4 tab-content-bottom
-            // fallback mechanism, kept reachable but unused.
+            // #1080: `MinesweeperPracticeHubView`'s `banner:` param and the
+            // tab-content-bottom fallback it fed were both removed —
+            // obsolete once #1079 confirmed the accessory path.
             return AnyView(
                 MinesweeperPracticeHubView(
                     path: rootViewModel.pathBinding(for: .practice),

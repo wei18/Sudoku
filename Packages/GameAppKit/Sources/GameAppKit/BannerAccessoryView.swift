@@ -26,7 +26,8 @@
 // every re-host (measured: 8 requests vs 2 on `main`'s never-re-hosted
 // slots). `GameRoot` owns the lease instead (`@State`, scene lifetime) and
 // injects it via `\.bannerAccessoryLease`; see
-// `tabview-bottom-accessory-rehosts-content`.
+// `meetings/2026-09-11_1058-slot-model-design.md` §"Externally owned lease
+// (#1080)".
 //
 // Visibility: `RootShellView` drives `tabViewBottomAccessory(isEnabled:)`
 // from `bannerSession.isVisible` (#1079 option 1, iOS 26.1 floor), so when

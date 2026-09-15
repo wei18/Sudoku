@@ -9,8 +9,6 @@
 //
 // Rows are audited from `rg -n "BannerSlotView\(" Packages/*/Sources`:
 //   - `GameAppKit.TodayTabHost.bannerSlot` (Today tab, both apps): 16 / 12.
-//   - Sudoku `LiveRouteFactory.themedBanner()` and Minesweeper
-//     `LiveRouteFactory.bannerSlot()` (Practice + Settings): 16 / 12.
 //   - Sudoku `BoardView+Layout.themedBanner(horizontalPadding:)` and
 //     Minesweeper `MinesweeperBoardView.bannerSlot(horizontalPadding:)`:
 //     `theme.spacing.medium` on the compact layout (16 — both themes use
@@ -45,10 +43,11 @@ struct BannerSlotCollapsedHeightTests {
 
     /// `nonisolated` (not the suite's own `@MainActor`): `@Test(arguments:)`
     /// evaluates this at test-discovery time, outside MainActor isolation.
+    /// #1080: dropped the Sudoku `LiveRouteFactory.themedBanner` / Minesweeper
+    /// `LiveRouteFactory.bannerSlot` rows (Practice, Settings) — both helpers
+    /// (the unused tab-content-bottom fallback) were deleted.
     nonisolated static let productionHosts: [HostPadding] = [
         HostPadding(name: "TodayTabHost (Today tab, both apps)", horizontal: 16, vertical: 12),
-        HostPadding(name: "Sudoku LiveRouteFactory.themedBanner (Practice, Settings)", horizontal: 16, vertical: 12),
-        HostPadding(name: "Minesweeper LiveRouteFactory.bannerSlot (Practice, Settings)", horizontal: 16, vertical: 12),
         HostPadding(name: "Sudoku Board compact (BoardView+Layout.themedBanner)", horizontal: 16, vertical: 0),
         HostPadding(name: "Sudoku Board regular (BoardView+Layout.themedBanner)", horizontal: 0, vertical: 0),
         HostPadding(name: "Minesweeper Board compact (MinesweeperBoardView.bannerSlot)", horizontal: 16, vertical: 0),

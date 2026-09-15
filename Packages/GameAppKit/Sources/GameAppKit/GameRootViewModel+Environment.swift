@@ -6,7 +6,7 @@
 
 public import SwiftUI
 public import GameShellUI
-public import MonetizationUI
+internal import MonetizationUI
 
 // MARK: - EnvironmentKey (#761)
 
@@ -56,11 +56,15 @@ private struct BannerAccessoryLeaseKey: EnvironmentKey {
     static let defaultValue: BannerSlotLease? = nil
 }
 
-public extension EnvironmentValues {
+// `internal` (not `public`, unlike the other environment keys above): only
+// `GameRoot` (injects it) and `BannerAccessoryView` (reads it) use this key,
+// both inside GameAppKit — #1080 CR (over-public API).
+extension EnvironmentValues {
     /// The `tabViewBottomAccessory` capsule's banner lease, injected by
     /// `GameRoot` (scene-lifetime `@State`) so `BannerAccessoryView` can keep
     /// its registration stable across the accessory's native re-hosting of
-    /// its content (#1080 — see `tabview-bottom-accessory-rehosts-content`).
+    /// its content (#1080 — see `meetings/2026-09-11_1058-slot-model-design.md`
+    /// §"Externally owned lease (#1080)").
     /// `nil` for any other host: every OTHER slot keeps its own self-owned
     /// lease via `BannerSlotView`'s default init.
     var bannerAccessoryLease: BannerSlotLease? {

@@ -93,7 +93,7 @@
 //   never drawn, not just its content. That is why the deployment floor rose
 //   to iOS 26.1 (Project.swift / every `Package.swift`) in the same change:
 //   neither app has shipped, so raising the floor costs no existing user
-//   (`project/apps-never-released.md`).
+//   (#1080 — see CLAUDE.md: both apps are pre-first-release, TestFlight-only).
 //
 //   `isEnabled` is still just a `Bool` this shell receives from its host —
 //   GameShellKit stays zero-dependency and still has no idea it is wired to

@@ -4,7 +4,8 @@
 // The production motivation (`GameAppKit.BannerAccessoryView`, hosted inside
 // `tabViewBottomAccessory`) is that a native host can re-host a view's
 // SwiftUI content under a NEW view identity without re-rendering anything
-// above it — see `tabview-bottom-accessory-rehosts-content`. `NSHostingView`
+// above it — see `meetings/2026-09-11_1058-slot-model-design.md` §"Externally
+// owned lease (#1080)". `NSHostingView`
 // can't reproduce that native re-host mechanism directly, but the behavior
 // under test — a `BannerSlotRegistration` backed by the SAME externally
 // owned `BannerSlotLease` must not re-register when ITS OWN view identity

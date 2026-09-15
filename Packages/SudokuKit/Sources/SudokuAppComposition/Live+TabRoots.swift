@@ -66,9 +66,9 @@ extension SudokuAppComposition {
             )
             // #1024: no `banner:` here any more — the shared
             // `tabViewBottomAccessory` (design.md §2.4) covers this tab.
-            // `PracticeHubView`'s `banner:` param stays (defaults to
-            // `EmptyView()`) as the documented §2.4 tab-content-bottom
-            // fallback mechanism, kept reachable but unused.
+            // #1080: `PracticeHubView`'s `banner:` param and the
+            // tab-content-bottom fallback it fed were both removed —
+            // obsolete once #1079 confirmed the accessory path.
             return AnyView(
                 PracticeHubView(
                     viewModel: PracticeHubViewModel(
