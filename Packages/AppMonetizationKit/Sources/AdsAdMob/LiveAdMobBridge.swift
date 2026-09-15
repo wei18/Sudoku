@@ -289,6 +289,18 @@ internal final class BannerLoadDelegate: NSObject, BannerViewDelegate, @unchecke
 internal struct BannerViewRepresentable: UIViewRepresentable {
     let bannerView: BannerView
 
+    // #1080: a `tabViewBottomAccessory` placement that hands this same
+    // `bannerView` a `BannerSlotLease` owned by a longer-lived host
+    // (`GameAppKit.GameRoot`) can have this representable re-hosted by UIKit
+    // — the SwiftUI content is torn down and rebuilt, but the retained
+    // `BannerView` (and its lease) survives. Measured invariant (probe,
+    // #1080): on each re-host the NEW host's `makeUIView`/`updateUIView`
+    // adopts the view (via `addSubview`, done by SwiftUI internally) BEFORE
+    // the OLD host's `dismantleUIView` runs. This type deliberately has no
+    // `dismantleUIView` today. If one is ever added, it must NEVER call
+    // `removeFromSuperview()` or otherwise reset `uiView` — that would strip
+    // the view back out of the new host that already adopted it, not just
+    // clean up the old one.
     func makeUIView(context: Context) -> BannerView {
         bannerView
     }

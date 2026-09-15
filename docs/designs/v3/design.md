@@ -157,6 +157,15 @@ modifier 仍在 `#if os(iOS)` 內每次 render 無條件掛上,`isEnabled` 只�
 提供的顯示開關,不是條件式掛載(不重開 2.4 節「絕不條件式掛載」的規則)。
 macOS 仍是 2.4.1 節 option A,`tabViewBottomAccessory` 命中數維持 0。
 
+**【AS-BUILT,#1080,2026-09-15】** 原生 re-host 修正:`tabViewBottomAccessory`
+會在 push/pop/sheet 關閉等時機原生重建內容而不重跑 `GameRoot.body`,原本
+accessory 自有的 `@StateObject` lease 因此被重置、廣告重新請求(量到單次腳本
+8 次 vs main 的 2 次)。修正:`GameRoot` 用 `@State` 持有一個 `BannerSlotLease`
+並經 `\.bannerAccessoryLease` 注入,`BannerAccessoryView` 改用
+`BannerSlotView(lease:...)` 這個外部 lease 加入 session,修正後同一腳本降到
+1 次請求。詳見 `meetings/2026-09-11_1058-slot-model-design.md`
+「Externally owned lease (#1080)」段;重繪殘留 gap 另追 #1094。
+
 #### 2.4.1 ⚠️ macOS 沒有 tab accessory —— D18 在 macOS 缺承載機制
 
 `tabViewBottomAccessory` 只到 iOS / iPadOS / Mac Catalyst,**macOS 原生沒有**。

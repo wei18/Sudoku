@@ -161,15 +161,23 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
 - **Pin test restored (#1080, PM requirement — an E2E-only pin does not
   count)**: `GameAppKitTests/BannerAccessoryPinTests.swift` replaces the
   deleted `BannerAccessoryViewTests` as the accessory's own render-level pin.
-  Three `@Test`s, each named for the mutation that turns it red: (a) gate open
-  → the accessory container renders a registered, loading-or-loaded slot
-  (mutation: reverting `BannerAccessoryView.body` to `EmptyView()`, or
-  dropping the `\.bannerSession` environment injection); (b) gate denied → no
-  container, or a zero-height one with no registered slot (mutation: hardcoding
-  `RootShellView`'s `isEnabled:` to `true`); (c) macOS → `makeBottomAccessory()`
-  returns `EmptyView`, structurally, because `BannerAccessoryView` does not
-  compile into the macOS binary at all (mutation: removing the `#if os(iOS)`
-  guard around `makeBottomAccessory` so both platforms return the same type).
+  Round 2 (review gap): the (a)/(b) tests host the REAL `GameRoot`, not a
+  bare `RootShellView` with `isVisible` frozen at construction — a bare host
+  never re-reads anything, so a regression hard-coding
+  `bottomAccessoryIsEnabled` to either constant passed every round-1 test.
+  Hosting `GameRoot` with an UN-started `BannerSessionModel` (its own
+  `.onAppear` calls `start()`, exactly like `MakeGameApp.swift`) closes that
+  gap. Six mutations, each named where it bites; all but (a2) executed red
+  and reverted: (a1) `BannerAccessoryView.body` → `EmptyView()` — (a) red
+  (no registration, no `.loaded`); (a2) drop the `\.bannerSession`
+  injection from the test's own hosting helper — named-only, since it
+  mutates the test file, not production; (b) `RootShellView`'s
+  `.tabViewBottomAccessory(isEnabled:)` hard-coded `true` — (b) red and the
+  dismiss half of (a) red; (c) macOS — `makeBottomAccessory()` returns
+  `EmptyView` structurally, `BannerAccessoryView` doesn't compile into the
+  macOS binary; (d1) `GameRoot.shellContent`'s `bottomAccessoryIsEnabled:`
+  hard-coded `true` — (b) red and the dismiss half of (a) red; (d2) same
+  site hard-coded `false` — (a) red (capsule never appears).
 - **`isEnabled` design (#1079, this session)**: `RootShellView` gained a
   plain `Bool` parameter, `bottomAccessoryIsEnabled`, feeding
   `tabViewBottomAccessory(isEnabled:content:)`. GameShellKit still has no
@@ -191,3 +199,87 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
   (capsule appears/disappears with `isEnabled`), not this interaction with an
   in-flight navigation state. Needs sim verification before treating this as
   fully closed.
+
+## #1080 fix: host-owned accessory lease (2026-09-15, plucky-wren round 3)
+
+- **Probe summary**: a DEBUG `os_log`-instrumented prototype (`remount-probe`,
+  not shipped — every `PROBE1080`/`identityLog`/`ProbeEC` line was stripped
+  before this change) found `tabViewBottomAccessory` re-hosts its content
+  natively — a new hosting view, `GameRoot.body` never re-runs — on push,
+  pop, sheet dismissal, and cold-launch transitions. A `BannerSlotView`'s
+  `@StateObject` lease inside that content was re-created 8 times across one
+  launch-to-idle script (2 on `main`'s never-re-hosted inline slots), each
+  re-creation disposing the loaded ad handle and sending a fresh request. The
+  host-owned-lease prototype cut that to 1 request per launch on both
+  devices. Full measurement recorded in the session memory reference
+  `tabview-bottom-accessory-rehosts-content`.
+- **E-a trigger mechanism**: `BannerAccessoryPinTests`'s T2
+  (`accessorySurvivesPushPopReHost`) reproduces the re-host inside the same
+  bare-`UIWindow`/`UIHostingController` harness (a) and (b) already use — no
+  real app scene needed — by pushing then popping a route on the Today tab's
+  own `NavigationStack` (`viewModel.pathBinding(for: .today)`). Confirmed
+  empirically: under the pre-fix mutation (accessory reverted to a
+  self-owned lease) the test goes red (refresh count 1→2, slot id changes);
+  with the fix it stays green. This closes the PM condition that a hosted-
+  window harness must be proven to actually re-host before it can serve as
+  the pin, rather than assumed.
+- **E-c numbers (ad-request count, same scripted push/pop/sheet script, both
+  devices)**: accessory before the fix sent 8 ad requests per device; `main`
+  sent 2; the host-owned-lease fix sent 1 on both iPhone and iPad.
+- **PM ruling on the residual repaint gap**: after each re-host the
+  reparented banner's creative stays visually unpainted for 0.6–1.9s past the
+  transition animation — video-measured empty-creative durations: iPad ATT
+  1926ms (single recording — an earlier 1855ms figure for the same video was
+  a superseded ad-hoc estimate, not a second sample), push 1580ms, reminder
+  decline 644ms, pop 1428ms; iPhone ATT 1236ms, push 934ms, reminder decline
+  824ms, pop 1341ms. Control (C1): the
+  main branch's never-re-hosted inline slot stayed painted in 144/144 frames,
+  ruling out a recording artifact. A `setNeedsLayout`/`layoutIfNeeded` nudge
+  in `updateUIView` was tried and dropped — its trigger (a window-change
+  observation) never fired, since no window change is visible at that call
+  site. PM accepted this gap as out of #1080's scope; it is NOT fixed by this
+  change. Follow-up: #1094.
+- **New pins and mutations (this round)**:
+  - T1 (`AppMonetizationKit/Tests/MonetizationUITests/BannerSlotExternalLeaseTests.swift`,
+    macOS): the same external lease survives its view being re-hosted under
+    a new SwiftUI identity — one registration, one refresh, same slot id and
+    loaded handle. Mutation (`BannerSlotRegistration.update()` attaches
+    `ownLease` instead of `effective`) executed red, reverted green.
+  - T2 (`GameAppKitTests/BannerAccessoryReHostTests.swift`, iOS Simulator, a
+    sibling suite rather than folded into the round-2 file — that pushed it
+    to 438 lines, over the `file_length` ceiling; duplicates its own stubs
+    per the codebase's established file-private-copy convention): see E-a
+    above. Mutation (`BannerAccessoryView` reverted to the self-owned-lease
+    init) executed red on-device, reverted green.
+  - T4 (`GameAppKitTests/BannerAccessoryMissingLeaseTests.swift`, iOS
+    Simulator): a missing `\.bannerAccessoryLease` injection calls
+    `BannerAccessoryView.onMissingAccessoryLease()` — mirrors
+    `BannerSessionModel.onMissingSession` (#1058 M1), no silent fallback.
+    Mutation (drop the call from the `nil` branch) executed red, reverted
+    green. The API contract's "renders nothing" half is documented, not
+    independently asserted — `UIHostingController.sizeThatFits(in:)`
+    reported a nonzero height for this exact tree even with `EmptyView()` as
+    the only content on an unwindowed, unparented hosting controller, the
+    same false-negative class this file's own (a)/(b) header already flags
+    for accessibility-identifier lookup in a headless host.
+  - Round-2 vs T2 dedupe (PM condition 3): round-2's (a)/(b)/(c)/(d1)/(d2)
+    pin `isEnabled`/visibility wiring (does the capsule show/hide with the
+    gate); T2 pins lease-identity stability across a native re-host (does
+    registration churn). Disjoint behaviors — both kept, nothing redundant.
+  - Teardown (T3): no pin added this round (PM ruling: hygiene, not a gate)
+    — a separate bounded diagnostic covers it, not investigated further
+    here. The app is single-scene (no `UIApplicationSceneManifest`), so
+    `GameRoot` and its accessory lease live for the process lifetime. In a
+    hosted-window diagnostic
+    (`build/evidence-1080/remount-probe/test-ec-teardown-v2.log`), releasing
+    the hosting controller leaves the `GameRoot`-owned lease alive:
+    `session.slots` still holds that same lease id after 5s and nothing is
+    disposed. The retain path is not identified. An earlier v1 run that
+    reported the lease deallocated was invalid (its capture hook never
+    fired). Per-re-host accumulation checked from the E-c logs
+    (`ec-head-{iphone,ipad}.log`): self-owned never-attached leases
+    inits/deinits = iPhone 23/22, iPad 16/15. The one alive on each device is
+    the live host's own lease, so old hosted content is released on every
+    re-host. The harness-teardown retention does not accumulate in normal
+    use. Board/Practice/Settings slots keep self-owned leases and deinit
+    normally.

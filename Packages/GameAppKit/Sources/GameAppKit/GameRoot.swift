@@ -85,6 +85,15 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: Vie
     @State private var chromeState = GameChromeState()
     #endif
 
+    // #1080: the accessory's banner lease, owned HERE (not by
+    // `BannerAccessoryView` itself) so it outlives `tabViewBottomAccessory`'s
+    // native re-hosting of its content — see
+    // `tabview-bottom-accessory-rehosts-content`. `GameRoot` is the scene-
+    // lifetime owner every other `@State` on this type already relies on
+    // (`chromeState` above), and injecting it here (not in GameShellKit) is
+    // what keeps GameShellKit itself zero-dependency on monetization types.
+    @State private var accessoryLease = BannerSlotLease()
+
     @Environment(\.scenePhase) private var scenePhase
 
     // #823 / #1042: the join point between a board's terminal-persist Task
@@ -243,6 +252,9 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: Vie
             bottomAccessoryIsEnabled: bannerSession.isVisible,
             bottomAccessory: bottomAccessory
         )
+        // #1080: the accessory's own externally-owned lease, scene-lifetime
+        // via `accessoryLease` above.
+        .environment(\.bannerAccessoryLease, accessoryLease)
     }
 }
 

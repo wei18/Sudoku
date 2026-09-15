@@ -6,6 +6,7 @@
 
 public import SwiftUI
 public import GameShellUI
+public import MonetizationUI
 
 // MARK: - EnvironmentKey (#761)
 
@@ -46,5 +47,24 @@ public extension EnvironmentValues {
     var gameSelectedTab: AppTab {
         get { self[GameSelectedTabKey.self] }
         set { self[GameSelectedTabKey.self] = newValue }
+    }
+}
+
+// MARK: - EnvironmentKey (#1080)
+
+private struct BannerAccessoryLeaseKey: EnvironmentKey {
+    static let defaultValue: BannerSlotLease? = nil
+}
+
+public extension EnvironmentValues {
+    /// The `tabViewBottomAccessory` capsule's banner lease, injected by
+    /// `GameRoot` (scene-lifetime `@State`) so `BannerAccessoryView` can keep
+    /// its registration stable across the accessory's native re-hosting of
+    /// its content (#1080 — see `tabview-bottom-accessory-rehosts-content`).
+    /// `nil` for any other host: every OTHER slot keeps its own self-owned
+    /// lease via `BannerSlotView`'s default init.
+    var bannerAccessoryLease: BannerSlotLease? {
+        get { self[BannerAccessoryLeaseKey.self] }
+        set { self[BannerAccessoryLeaseKey.self] = newValue }
     }
 }

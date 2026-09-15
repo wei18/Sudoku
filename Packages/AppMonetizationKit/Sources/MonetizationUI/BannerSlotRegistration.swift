@@ -44,18 +44,33 @@ extension BannerSessionModel {
 // loudly if that ever stops being true.
 struct BannerSlotRegistration: DynamicProperty {
     @Environment(\.bannerSession) private var environmentSession
-    @StateObject private var lease: BannerSlotLease
+    @StateObject private var ownLease: BannerSlotLease
+    // #1080: an externally owned lease, when supplied, is used INSTEAD of
+    // `ownLease` — `ownLease` is still constructed (a `@StateObject`'s
+    // storage exists unconditionally) but is never attached, so its
+    // `isolated deinit` finds no session and unregisters nothing. This is
+    // what lets a host that outlives this view's own identity (`GameRoot`,
+    // for the `tabViewBottomAccessory` placement that gets natively
+    // re-hosted) keep one lease alive across that re-hosting instead of
+    // every remount registering a fresh one. Do not "simplify" this to a
+    // single lease — `ownLease` existing-but-inert while `external` is set
+    // is the point, not an oversight.
+    private let external: BannerSlotLease?
 
     @MainActor
-    init() {
-        _lease = StateObject(wrappedValue: BannerSlotLease())
+    init(lease: BannerSlotLease? = nil) {
+        _ownLease = StateObject(wrappedValue: BannerSlotLease())
+        external = lease
     }
+
+    @MainActor
+    private var effective: BannerSlotLease { external ?? ownLease }
 
     @MainActor
     var session: BannerSessionModel? { environmentSession }
 
     @MainActor
-    var id: BannerSlotID { lease.id }
+    var id: BannerSlotID { effective.id }
 
     nonisolated func update() {
         MainActor.assumeIsolated {
@@ -63,7 +78,7 @@ struct BannerSlotRegistration: DynamicProperty {
                 BannerSessionModel.onMissingSession()
                 return
             }
-            lease.attach(to: session)
+            effective.attach(to: session)
         }
     }
 }
@@ -72,10 +87,18 @@ struct BannerSlotRegistration: DynamicProperty {
 
 /// One slot view's registration with the session: created once per view
 /// identity, released with it.
+///
+/// `public` (#1080): a host that outlives a placement's own view identity
+/// (`GameAppKit.GameRoot`, for the `tabViewBottomAccessory` capsule) needs to
+/// construct one of these itself and hand it to `BannerSlotView(lease:...)`.
+/// `id` and `attach(to:)` stay `internal` — a host only ever needs to own the
+/// lease's lifetime, never its registration mechanics.
 @MainActor
-final class BannerSlotLease: ObservableObject {
+public final class BannerSlotLease: ObservableObject {
     let id = BannerSlotID()
     private weak var session: BannerSessionModel?
+
+    public init() {}
 
     /// Idempotent. `update()` runs many times per mount, so a repeat call with
     /// the same session must do nothing — re-registering would cancel and
