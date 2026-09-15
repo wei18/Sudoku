@@ -52,6 +52,37 @@ A cancelled wait or load produces **no status change**.
   - `update()` with no session calls `BannerSessionModel.onMissingSession`: `assertionFailure` in DEBUG, and the slot renders nothing in Release. That assertion is the regression signal for a lost injection.
   - Only the three allow-listed uses inject `BannerSessionModel.disabled`: previews, snapshot fixtures, and the DEBUG near-win covers.
 
+## Externally owned lease (#1080)
+- **Why:** `tabViewBottomAccessory`'s content is re-hosted by UIKit natively (push, pop,
+  sheet dismissal, layout changes) without re-evaluating `GameRoot`'s body — a `BannerSlotView`
+  inside it had its `@StateObject` lease re-created 8 times in one launch-to-idle script (measured,
+  #1080 probe), each re-creation disposing the loaded ad and sending a fresh request (vs 2 on
+  `main`'s never-re-hosted inline slots).
+- **Shape:** `BannerSlotRegistration` grows an `init(lease: BannerSlotLease? = nil)`; when
+  `external` is supplied it is used INSTEAD of the still-constructed-but-inert `ownLease`. A new
+  `BannerSlotView(lease:...)` public init threads the caller's lease through.
+  `GameAppKit.GameRoot` owns one `BannerSlotLease` as `@State` (scene lifetime, same as
+  `chromeState`) and injects it via `\.bannerAccessoryLease`; `BannerAccessoryView` reads it and,
+  when present, joins the session through it instead of a self-owned lease. One lease per
+  placement (only the accessory), `BannerSessionModel` keying untouched.
+- **Why this does not reopen "host-side registration would copy four hosts' mount conditions"
+  (line 50 above):** that ruling was about the SESSION MODEL's registration mechanics moving into
+  each host's own mount/render logic — the four hosts each deciding for themselves when to
+  register. Here registration still happens in exactly one place, `BannerSlotRegistration.update()`,
+  on every mount regardless of caller; only WHICH `BannerSlotLease` instance `update()` attaches
+  changes, and only for the one placement (the accessory) whose host outlives its own view identity.
+  No host copies another's mount condition.
+- **Dismantle invariant (`AdsAdMob.BannerViewRepresentable`):** the retained `BannerView` survives
+  a re-host because the NEW host's `makeUIView`/`updateUIView` adopts it before the OLD host's
+  `dismantleUIView` would run (there is none today — documented as an invariant a future
+  `dismantleUIView` must preserve, not implemented as new code).
+- **Residual gap, tracked separately:** the reparented banner's creative stays visually unpainted
+  for 0.6–1.9s after each re-host (video-measured, iPhone: ATT 1236, push 934, reminder decline
+  824, pop 1341ms; iPad: ATT 1926, push 1580, reminder decline 644, pop 1428ms). A
+  `setNeedsLayout`/`layoutIfNeeded` nudge in `updateUIView` was tried and never fired (no window
+  change is visible there) — dropped, not shipped. PM-accepted as out of #1080's scope; tracked in
+  #1094.
+
 ## Start, ordering, repoll
 - **Environment injection (P3a disposition, PM-approved):** `.environment(\.bannerSession, bannerSession)` goes on the **`GameRoot(…)` value inside `makeGameApp`, right next to `.environment(\.theme, config.theme)`** (MakeGameApp.swift:374).
   - It does **not** go on `shellContent` inside `GameRoot.body`. That placement sits inside the chain, with `.fullScreenCover` applied outside it, which is S1's `innerChain` variant.

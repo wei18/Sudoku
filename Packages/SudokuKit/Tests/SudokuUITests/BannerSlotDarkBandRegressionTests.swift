@@ -74,8 +74,8 @@ struct BannerSlotDarkBandRegressionTests {
 
     // MARK: - Post-#866: themed background — the real production path
 
-    /// Mirrors `SudokuAppComposition.LiveRouteFactory.themedBanner()`
-    /// exactly (same `backgroundColor` token). Pins the fix: the slot's
+    /// Mirrors `SudokuAppComposition.LiveRouteFactory.themedBanner()` (removed
+    /// in #1080) exactly (same `backgroundColor` token). Pins the fix: the slot's
     /// background must equal the page's own background token so no seam is
     /// visible in dark mode, regardless of which hub mounts it.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))

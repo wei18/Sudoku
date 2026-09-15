@@ -36,7 +36,7 @@ let swiftSettings: [SwiftSetting] = [
 let package = Package(
     name: "GameAudioKit",
     platforms: [
-        .iOS(.v26),
+        .iOS("26.1"),
         .macOS(.v26),
     ],
     products: [

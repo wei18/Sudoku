@@ -320,17 +320,16 @@ public struct LiveRouteFactory: RouteFactory {
                     presentGameCenter: presentGameCenter,
                     appStoreID: appStoreID,
                     presentInviteFriends: presentInviteFriends,
-                    telemetryEmit: { event in Task { await telemetry?.observe(event) } },
-                    banner: { Self.bannerSlot() }
+                    telemetryEmit: { event in Task { await telemetry?.observe(event) } }
+                    // #1024: no `banner:` here any more — Settings is pushed
+                    // onto a tab's stack, so it stays inside the TabView and
+                    // the shared `tabViewBottomAccessory` (design.md §2.4)
+                    // already covers it. #1080: `SettingsView`'s `banner:`
+                    // param and the `Self.bannerSlot` tab-content-bottom
+                    // fallback it fed were both removed — obsolete once
+                    // #1079 confirmed the accessory path.
                 )
             )
         }
     }
-
-    // `bannerSlot()` moved to LiveRouteFactory+Helpers.swift
-    // (#814 — this file sat at the 400-line ceiling; extraction per the repo
-    // convention). #1020: `static` so `Live+TabRoots.swift`'s Today/Practice
-    // tab-root builder — which has no `LiveRouteFactory` instance to call
-    // through, only the wired `GameDeps` bag — can reuse the exact same
-    // banner instead of re-deriving it.
 }

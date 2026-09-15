@@ -323,10 +323,10 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
 
     // #1020: per-tab root content. The game builds each tab's screen; the Today
     // tab is additionally wrapped in the shared `TodayTabHost`, which carries
-    // the resume pill and the themed banner slot. The ATT primer (C-33) is no
-    // longer tied to that slot: the banner session requests it after provider
-    // readiness and before the first load (`onAdContext`). The other two tabs
-    // get the game's content unwrapped.
+    // the resume pill (#1024: the banner slot and the C-33 ATT anchor moved
+    // out of it, into `BannerAccessoryView` / the shell-level
+    // `tabViewBottomAccessory`). The other two tabs get the game's content
+    // unwrapped.
     //
     // `chromedTabRoots` runs this builder exactly ONCE per tab, at composition
     // time, then attaches the shared Settings gear to every tab root (§2.1 /
@@ -341,11 +341,10 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
     ) { tab in
         let content = config.makeTabRoot(tab, deps, rootViewModel)
         guard tab == .today else { return content }
+        // #1024: TodayTabHost no longer carries a banner slot / ATT anchor —
+        // both moved into the shared `tabViewBottomAccessory` below.
         return AnyView(
-            TodayTabHost(
-                rootViewModel: rootViewModel,
-                content: { content }
-            )
+            TodayTabHost(rootViewModel: rootViewModel, content: { content })
         )
     }
 
@@ -360,7 +359,11 @@ private func makeGameAppCore<Route: Hashable & Sendable>(
         successTint: config.successTint,
         failureTint: config.failureTint,
         infoTint: config.infoTint,
-        tabRoot: tabRoot
+        tabRoot: tabRoot,
+        // #1024: shared banner accessory (design.md §2.4) — iOS/iPadOS real
+        // content, `EmptyView` on macOS (no `tabViewBottomAccessory` API
+        // there at all, §2.4.1 option A). See `makeBottomAccessory`'s doc.
+        bottomAccessory: { makeBottomAccessory() }
     )
     .environment(\.theme, config.theme)
     // #1058 P3a: `\.theme`'s level, which reaches the board cover content.

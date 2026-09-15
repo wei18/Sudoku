@@ -131,6 +131,43 @@ CK 失敗時**不顯示 badge**(不是顯示 0)。
 ⚠️ **AdMob banner 是 `UIViewRepresentable`,包進 accessory 的相容性未驗證**(U-10)。
 **降級備案:不相容則退回 tab 內容底部**,不阻擋任何其他設計。**變現路徑不卡在未驗證 API 上。**
 
+**【AS-BUILT,#1029 B-6 → #1024,2026-09-08】** U-10 已驗證 **PASS**(#1029 B-6
+spike:真實 `BannerView` 在 accessory 內非零尺寸渲染、`.expanded`↔`.inline`
+切換存活、impression 正常),accessory 路徑照建;降級備案**沒有啟用**,原本保留
+在 `SudokuAppComposition.themedBanner` / `MinesweeperKit`'s `LiveRouteFactory
+.bannerSlot` 裡隨時可接回。**【AS-BUILT,#1080,2026-09-15】** 兩個函式與
+`PracticeHubView`/`SettingsView` 的 `banner:` 參數已一併刪除——accessory 路徑
+經 #1079 驗證穩定後,這個未啟用的降級備案視為過時,不再保留。實作:
+`RootShellView`(GameShellKit)以泛型 `bottomAccessory` ViewBuilder 收內容,
+`.tabViewBottomAccessory { … }` 在 `#if os(iOS)` 內**無條件**掛上(不做條件式
+掛載/卸載——那是 #1020 macOS unmount 傷疤同一類地雷)。是否顯示由內容自己決定
+(gate 關就渲染空/零高度),不是由「掛不掛這個 modifier」決定。
+`GameAppKit.BannerAccessoryView` 是實際內容,包住既有的 `BannerSlotView`,
+一份共用 banner 覆蓋 Today/Practice/Progress/Settings(Settings 是 push 進
+tab 的 stack,還在 TabView 裡,所以也吃得到)。
+
+**【AS-BUILT,#1079 → #1080,2026-09-15】** owner 裁定 option 1:iOS
+deployment floor 升到 26.1(`Project.swift` 四個 app target + 所有
+`Packages/*/Package.swift`);`RootShellView` 改用
+`tabViewBottomAccessory(isEnabled:content:)`(iOS 26.1+,
+`@available(macOS, unavailable)`),`isEnabled` 由
+`GameAppKit.GameRoot` 傳入的 `bannerSession.isVisible` 驅動。gate 拒絕時
+(signed out / Remove Ads / 今日已關)整個 capsule 完全不畫——先前量到的
+48pt 空 capsule(見上方 2026-09-08 Leader verification round 的 sim 證據)
+已由此取代,不再出現。單一 code path,無 `#available` 分支——`.tabViewBottomAccessory`
+modifier 仍在 `#if os(iOS)` 內每次 render 無條件掛上,`isEnabled` 只是 SDK
+提供的顯示開關,不是條件式掛載(不重開 2.4 節「絕不條件式掛載」的規則)。
+macOS 仍是 2.4.1 節 option A,`tabViewBottomAccessory` 命中數維持 0。
+
+**【AS-BUILT,#1080,2026-09-15】** 原生 re-host 修正:`tabViewBottomAccessory`
+會在 push/pop/sheet 關閉等時機原生重建內容而不重跑 `GameRoot.body`,原本
+accessory 自有的 `@StateObject` lease 因此被重置、廣告重新請求(量到單次腳本
+8 次 vs main 的 2 次)。修正:`GameRoot` 用 `@State` 持有一個 `BannerSlotLease`
+並經 `\.bannerAccessoryLease` 注入,`BannerAccessoryView` 改用
+`BannerSlotView(lease:...)` 這個外部 lease 加入 session,修正後同一腳本降到
+1 次請求。詳見 `meetings/2026-09-11_1058-slot-model-design.md`
+「Externally owned lease (#1080)」段;重繪殘留 gap 另追 #1094。
+
 #### 2.4.1 ⚠️ macOS 沒有 tab accessory —— D18 在 macOS 缺承載機制
 
 `tabViewBottomAccessory` 只到 iOS / iPadOS / Mac Catalyst,**macOS 原生沒有**。
@@ -143,6 +180,16 @@ D18(banner 覆蓋範圍是 feature)在 macOS 因此沒有落點。**方案(擇�
 | C | 放在 sidebar 底部 | sidebar 是功能層,塞廣告違反 §4 的層歸屬 |
 
 **推薦 A**,理由是 B 與盤面滿版衝突、C 違反層歸屬 —— 兩者都要犧牲 3.0 的核心結構。
+
+**【AS-BUILT,#1024,2026-09-08】** U-13 裁定 **A(定案)**,B、C 沒有實作
+(連 dead code 都沒留)。結構性排除:`.tabViewBottomAccessory` 呼叫本身只存在
+`RootShellView.swift` 一處、包在 `#if os(iOS)` 裡 —— macOS binary 裡完全不會
+出現這支 API(`rg "tabViewBottomAccessory"` 驗證過,不是 runtime 判斷)。
+`MakeGameApp+Helpers.swift` 的 `makeBottomAccessory` 在 macOS 那個 `#else`
+分支只回 `EmptyView()`,不會建構 `BannerAccessoryView`;macOS 建置裡也不存在
+`tabViewBottomAccessory` 這支呼叫。(`AdProvider`/`AdGate`/`BannerSlotView`
+本身在 macOS 仍會建構——`MakeGameApp.swift` 建 `NoopAdProvider` + `AdGate`,
+Board 的 slot 也照常掛;只有 accessory 這條路徑是 iOS-only。)
 
 ---
 
@@ -334,6 +381,14 @@ re-view、Sudoku loader 的 `.completedRedirect`、MS Tier2 guard 的 `.resolved
 語意等價(仍然是「第一個廣告脈絡」),且既有行為全部保留:不擋 Today 互動、
 一次性 `hasOffered` latch、decline 後不再提供、`.notDetermined` 才出現。
 → 契約總表補一條 **BREAK**(C-33)。
+
+**【AS-BUILT,#1024,2026-09-08】** C-33 再錨一次:banner 本體移進 §2.4 的
+`tabViewBottomAccessory` 後,ATT 觸發點跟著從「Today tab 自己的 banner slot」
+(`TodayTabHost`)搬到「整個 shell 共用的那一個 accessory banner slot」
+(`BannerAccessoryView`)。語意仍然等價(第一個廣告脈絡、`hasOffered` 一次性、
+不擋互動),但**可及性變寬**:accessory 是 TabView 的 chrome,不是任一 tab 的
+內容,所以不再要求「使用者曾經看過 Today」才觸發 —— 哪個 tab 在前景都算數。
+詳細 before/after 見 `docs/screen-contracts.md` ATT-PRIMER 章節。
 
 ---
 

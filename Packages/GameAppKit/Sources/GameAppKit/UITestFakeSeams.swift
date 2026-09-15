@@ -88,6 +88,27 @@ final actor UITestFlipOnBackgroundAdGateStateStore: AdGateStateStore {
     }
 }
 
+/// #1024: unconditionally-open ad-gate store — no background-flip
+/// discrimination needed (unlike `UITestFlipOnBackgroundAdGateStateStore`
+/// above), because this arg's purpose isn't pinning a repoll hook, it's
+/// letting the REAL `AdProvider` load and render a real ad for sim
+/// verification of the `tabViewBottomAccessory` banner. `AdGate`'s decision
+/// logic (docs/v1/design.md §How.3) reads every field here as "never
+/// suppress": no purchase, no same-day dismissal, no clock-tamper baseline,
+/// and a `firstLaunchAt` far enough in the past that the (currently
+/// zero-valued) grace period can never apply either.
+struct UITestAlwaysOpenAdGateStateStore: AdGateStateStore {
+    func loadState() async throws -> AdGateState {
+        AdGateState(firstLaunchAt: .distantPast)
+    }
+
+    func saveState(_ state: AdGateState) async throws {
+        // No-op: this fake exists purely to seed an always-open READ; nothing
+        // in the `-uitest-open-ad-gate` scenario needs the write path (no
+        // dismiss/purchase interaction is part of that sim-verification flow).
+    }
+}
+
 /// Minimal `AdProvider` fake so the #931 ad-gate E2E case never touches the
 /// real AdMob SDK or network. Always reports `.loaded` once asked — the
 /// discriminating signal for that test is the ad GATE (open/closed, via

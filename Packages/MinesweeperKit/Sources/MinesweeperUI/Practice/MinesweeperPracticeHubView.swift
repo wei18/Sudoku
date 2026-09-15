@@ -18,7 +18,7 @@ public import SwiftUI
 internal import GameShellUI
 public import MinesweeperEngine
 
-public struct MinesweeperPracticeHubView<Banner: View>: View {
+public struct MinesweeperPracticeHubView: View {
     @Binding private var path: [AppRoute]
     @State private var difficulty: Difficulty
     // #765: threads MS's theme through the hub, mirroring Sudoku's
@@ -27,7 +27,6 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
     // #1021 Phase C: gap between the 3 difficulty cards — content tier,
     // scales with Dynamic Type.
     @ScaledSpacing(.small) private var cardGap
-    private let banner: Banner
     // #720 G2: fires when the player picks a new difficulty segment so the
     // composition root can persist it (mirrors Sudoku's
     // `PracticeHubViewModel.persistDifficulty`). `nil` (previews / most unit
@@ -37,13 +36,11 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
     public init(
         path: Binding<[AppRoute]>,
         initialDifficulty: Difficulty = .beginner,
-        onDifficultyChanged: ((Difficulty) -> Void)? = nil,
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
+        onDifficultyChanged: ((Difficulty) -> Void)? = nil
     ) {
         self._path = path
         self._difficulty = State(initialValue: initialDifficulty)
         self.onDifficultyChanged = onDifficultyChanged
-        self.banner = banner()
     }
 
     public var body: some View {
@@ -53,8 +50,7 @@ public struct MinesweeperPracticeHubView<Banner: View>: View {
             filterHeader: "Difficulty",
             headerForeground: theme.text.primary.resolved,
             filter: { difficultyCards },
-            cta: { startCard },
-            banner: { banner }
+            cta: { startCard }
         )
     }
 

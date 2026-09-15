@@ -327,7 +327,7 @@ let testTargets: [Target] = [
 let package = Package(
     name: "SudokuKit",
     platforms: [
-        .iOS(.v26),
+        .iOS("26.1"),
         .macOS(.v26),
     ],
     products: [

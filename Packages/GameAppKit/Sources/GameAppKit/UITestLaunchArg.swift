@@ -164,6 +164,18 @@ public enum UITestLaunchArg {
     /// flag also backs the restore-with-nothing-to-restore negative flow
     /// (N23 follow-up). Absent from Release builds via the `#if DEBUG` guard.
     public static let iapScript = "-uitest-iap-script"
+
+    /// #1024 (PM-approved): forces `AdGate` to resolve the banner as
+    /// unconditionally open (ancient `firstLaunchAt`, no purchase, no
+    /// dismissal, no clock-tamper baseline) so the `tabViewBottomAccessory`
+    /// banner can be sim-verified showing a REAL rendered ad, not just an
+    /// empty/gated slot. Deliberately narrower than `fakeAdGateRepoll`
+    /// above: swaps ONLY the `AdGateStateStore` (`UITestAlwaysOpenAdGateStateStore`)
+    /// — `resolveAdProvider` is UNCHANGED and untouched by this arg, so the
+    /// real live `AdProvider` (AdMob SDK, Google's public DEBUG test creative
+    /// per `LiveAdMobBridge`) still loads and renders for real. Absent from
+    /// Release builds via the `#if DEBUG` guard.
+    public static let openAdGate = "-uitest-open-ad-gate"
 }
 
 #endif

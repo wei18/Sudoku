@@ -101,7 +101,7 @@ let testTargets: [Target] = [
 let package = Package(
     name: "AppMonetizationKit",
     platforms: [
-        .iOS(.v26),
+        .iOS("26.1"),
         .macOS(.v26),
     ],
     products: [
@@ -116,7 +116,7 @@ let package = Package(
         // Pinned to 13.x — first major exposing Swift-native API names
         // (`MobileAds.shared`, `ConsentForm`, `ConsentInformation`). v13.0
         // raised the minimum deployment target and removed a swathe of
-        // deprecated ObjC-prefixed surface; our `.iOS(.v26)` floor exceeds the
+        // deprecated ObjC-prefixed surface; our `.iOS("26.1")` floor exceeds the
         // v13 min iOS 13 requirement. Bridge seam (`AdMobBridge`) shields the
         // rest of the package from future API churn.
         .package(

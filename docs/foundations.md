@@ -23,7 +23,7 @@
 
 **牽連**：
 - 工具鏈最低需求：**Xcode 16+**（首個正式支援 Swift 6 language mode 的版本）。
-- 部署目標最低需求：**iOS 26 / macOS 26**。理由：對齊 §4 鎖定的 Xcode 26.5 工具鏈、保留 Liquid Glass（`.glassEffect()` 為 iOS 26+ API）；本 App 無向下相容歷史包袱、屬個人作品兼案例展示，cut off 26 以下用戶可接受。**偏離 [[apple-platform-targets]] 的 iOS 18 / macOS 15 預設**——該 skill 為一般專案預設，本專案因 Liquid Glass 採用而上調。
+- 部署目標最低需求：**iOS 26.1 / macOS 26**（#1079：`tabViewBottomAccessory(isEnabled:)` 需要 26.1）。理由：對齊 §4 鎖定的 Xcode 26.5 工具鏈、保留 Liquid Glass（`.glassEffect()` 為 iOS 26+ API）；本 App 無向下相容歷史包袱、屬個人作品兼案例展示，cut off 26 以下用戶可接受。**偏離 [[apple-platform-targets]] 的 iOS 18 / macOS 15 預設**——該 skill 為一般專案預設，本專案因 Liquid Glass 採用而上調。
 - 所有自寫型別預設視為需要 `Sendable`；跨 actor 共享型別必須顯式宣告。
 - 第三方相依若尚未支援 Swift 6 complete check，需評估：(a) 用 `@preconcurrency` 隔離匯入、(b) 換套件、(c) 暫緩採用。此議題在 §2、§3、§5、§6 各別套件選擇時逐一核對。
 
@@ -39,7 +39,7 @@
 
 1. **單 Package 多 target**：所有 module 收在一個 `SudokuKit` Swift Package 內，以 target 切分。
 2. **App target 極薄**：只含 `@main`、`App` struct、Info.plist、entitlements、Assets，以及一個 DI composition root（把 protocol 與具體實作接起來）。所有畫面、邏輯、Storage 都在 Package。
-3. **Package platforms 與 App target 對齊**：`iOS 26 / macOS 26`，與 §1 一致。
+3. **Package platforms 與 App target 對齊**：`iOS 26.1 / macOS 26`（#1079：`tabViewBottomAccessory(isEnabled:)` 需要 26.1），與 §1 一致。
 4. **Apple 框架 import 範圍受限**：`CloudKit` 只在 `PuzzleStore` + `Persistence` 直接 import；`GameKit` 只在 `GameCenterClient`。`SudokuUI` 與 `GameState` 透過 protocol 注入使用，不直接 import — 便於 UI/邏輯層的單元測試與 SwiftUI preview。**例外（issue #49, 2026-05-20）**：`SudokuUI/Leaderboard/GameCenterDashboard.swift` 直接 `import GameKit` / `UIKit` / `AppKit`，因 Apple 原生 Game Center dashboard（`GKAccessPoint` / `GKGameCenterViewController`）為終端 UI 表面、無 protocol-injectable seam 可走。檔案層級的局部 import 不污染 SudokuUI 其餘 Views 的測試性（其他 View 仍透過 `any GameCenterClient` 注入）。
 5. **測試 target 一對一**：每個 production target 對應一個 `<Module>Tests` target。
 
@@ -52,7 +52,7 @@
 │   └── (Assets, Info.plist, entitlements)
 └── Packages/
     └── SudokuKit/
-        ├── Package.swift               # platforms: [.iOS(.v26), .macOS(.v26)]
+        ├── Package.swift               # platforms: [.iOS("26.1"), .macOS(.v26)]
         └── Sources/
             ├── SudokuEngine/           # 純 Swift 核心：board / rules / validator
             ├── GameState/              # 進行中局面：moves, undo/redo, notes

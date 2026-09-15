@@ -145,8 +145,11 @@ struct ASCScreenshotEmitTests {
 
     // #1020: HOME is gone — the marketing "01-home" slot (name kept; ASC
     // ordering depends on it) now renders the Today tab's real content:
-    // `TodayTabHost` (resume pill + banner + ATT anchor) wrapping the Daily
-    // hub, exactly what `Live+TabRoots.swift` wires for the `.today` tab.
+    // `TodayTabHost` (resume pill) wrapping the Daily hub, exactly what
+    // `Live+TabRoots.swift` wires for the `.today` tab. #1024: the banner /
+    // ATT anchor `TodayTabHost` used to carry moved to the shared
+    // `tabViewBottomAccessory` — this ASC fixture has no ad seams to stub any
+    // more.
     private func todayTabView() async -> some View {
         let rootVM = RootViewModel(
             gameCenter: FakeGameCenterClient(),

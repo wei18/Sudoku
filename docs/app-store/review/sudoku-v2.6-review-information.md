@@ -32,6 +32,8 @@ leaderboards stay fair. The macOS build is a native SwiftUI app, not a Mac
 Catalyst wrapper. All UI text ships in 7 full localizations. Ads are
 banner-only — no interstitials — with a one-time Remove Ads unlock.
 
+MINIMUM OS: iOS 26.1 / macOS 26.0.
+
 PLATFORM DIFFERENCES (IF REVIEWING THE MAC BUILD)
 The macOS build ships NO advertising: AdMob/UMP have no macOS slice, so no
 banner ever appears, the Remove Ads purchase is not offered, and the ATT /
