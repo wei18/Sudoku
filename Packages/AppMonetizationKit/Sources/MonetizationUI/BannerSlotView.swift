@@ -5,58 +5,49 @@
 // (mirrors the #435 `PauseOverlayView` extraction; per
 // minesweeper-mirrors-sudoku + reusable-targets-over-duplication).
 //
-// Contract (design.md v2 §How.3):
-//   - Exactly 50pt visible when shown; 0pt (EmptyView) when hidden — no
-//     shimmer / skeleton / teaser (Brand "calm" contract).
-//   - #723 layout stability: when the gate's LAST resolution this session
-//     allowed ads (`AdGate.lastKnownShouldShowBanner == true`), the slot
-//     occupies its 50pt from the FIRST layout — before the async gate
-//     re-resolution and before any ad loads — so the surrounding screen
-//     (e.g. the Sudoku board) never reflows when the banner content
-//     arrives. Loading only fills the already-reserved rect; it never
-//     resizes it. Gate-denied (Remove Ads purchased / dismissed today)
-//     still collapses to EmptyView. Before the session's first-ever
-//     resolution the hint is `nil` and the slot keeps the legacy
-//     collapsed-while-pending behavior (cold-launch first screen only).
-//   - Dismiss ✕ writes through to `AdGate.recordBannerDismissed` AND hides the
-//     slot for the rest of the session.
+// Contract (design.md v2 §How.3; #1058 slot-model spec rev 3.2):
+//   - A PURE renderer. Everything that decides whether and what to show lives
+//     in the session-scoped `BannerSessionModel` injected as `\.bannerSession`:
+//     gate, provider readiness, the ATT primer, loads, repoll, dismiss. This
+//     view carries no lifecycle modifiers and no `@State` — those never run on
+//     a view whose body renders nothing, which is exactly how #1058 shipped.
+//   - Registration is a `DynamicProperty` (`BannerSlotRegistration`), installed
+//     on the view node whether or not the body renders anything.
+//   - Exactly 50pt visible when shown; zero subviews when hidden (session gate
+//     closed or pending, host-suppressed, provider suppressed) — a parent with
+//     non-zero spacing adds no gap around a hidden slot.
+//   - `isSuppressed` is the host's own quiet state (a paused or finished
+//     board). The slot's identity and its loaded handle survive it.
 //   - Honest status captions: loading (ProgressView), failed ("Ad unavailable"),
-//     suppressed / disposed (collapse).
-//   - `.loaded(handle)` now renders the REAL banner from `bannerHost` (#441).
-//     When no host is wired (fakes / macOS NoopAdProvider) it shows nothing
-//     inside the rect rather than lying with a placeholder.
+//     loaded (the real banner from `session.bannerView(for:)`, or nothing when
+//     the provider hosts no view).
+//   - ✕ calls `session.dismiss()`, which records today's dismissal and then
+//     hides every slot. It sits outside the creative's trailing edge, never
+//     overlapping it (AdMob policy forbids app content over the creative;
+//     #1084) — pinned by `BannerSlotGeometryKey`, read only by tests.
+//     `BannerSlotBandLayout` insets the pair by `horizontalPadding`,
+//     shrinking that inset symmetrically (never below 0) once the host is
+//     narrower than `creative + ✕ + one inset` — the constraint is "the ✕
+//     stays fully on-screen", not "the ✕ stays inside the visible band"
+//     (PM's final ruling, #1084).
 //
 // Theme decoupling: this module must not depend on the apps' `Theme` protocol
 // (Package.swift — MonetizationUI → MonetizationCore only). Colours are DI'd as
-// `Color` params with sensible system defaults (mirrors `ToastView`). Both apps'
-// Home/Board callers pass their own theme tokens; the Daily/Practice/Settings
-// callers (both apps) still rely on the defaults below — #688 item 2 made the
-// default `backgroundColor` transparent so those un-themed slots blend with
-// whatever page background sits behind them instead of drawing a mismatched
-// system-gray seam.
+// `Color` params with system defaults (mirrors `ToastView`).
 //
 // SDK isolation: the real banner view crosses the AdsAdMob border as an
 // `AnyView` via `BannerViewProviding` — `GoogleMobileAds` never leaks here
 // (foundations.md §9.1).
 
-public import MonetizationCore
 public import SwiftUI
 
 @MainActor
 public struct BannerSlotView: View {
-    private let adProvider: any AdProvider
-    private let adGate: AdGate
+    private var registration: BannerSlotRegistration
 
-    /// Live banner-view source. `nil` for providers that serve no real ad
-    /// (fakes / macOS NoopAdProvider) — the `.loaded` branch then renders
-    /// nothing inside the rect instead of a placeholder.
-    private let bannerHost: (any BannerViewProviding)?
-
-    /// Optional ad-context hook (Sudoku's ATT pre-prompt, #371 / #195). Invoked
-    /// once the gate opens — the first moment a personalized ad is about to
-    /// load. Injected as a closure so MonetizationUI stays free of SudokuUI's
-    /// `ATTPrimerCoordinator`. Minesweeper passes `nil` (no ATT flow).
-    private let onAdContext: (@Sendable () async -> Void)?
+    /// The host's quiet state (paused / terminal board). Renders nothing while
+    /// `true`, without ending the slot's registration.
+    private let isSuppressed: Bool
 
     // DI'd colours (theme decoupling — see file header).
     private let backgroundColor: Color
@@ -64,145 +55,127 @@ public struct BannerSlotView: View {
     private let captionColor: Color
     private let dismissTint: Color
 
-    /// Banner height contract (design.md v2 §How.3). Exactly 50pt visible,
-    /// 0pt when hidden — no in-between skeleton state.
+    /// Outer inset applied ONLY to the visible banner, never to the hidden
+    /// state, so a hidden slot contributes zero size to its parent. A caller
+    /// must not chain `.padding(...)` onto the whole `BannerSlotView` value.
+    /// `horizontalPadding` doubles as `BannerSlotBandLayout`'s nominal
+    /// padding (#1084 PM ruling): the Layout itself carves out this inset,
+    /// shrinking below it only when the host is too narrow to keep the ✕
+    /// fully on-screen at the full inset.
+    private let horizontalPadding: CGFloat
+    private let verticalPadding: CGFloat
+
+    /// Banner height contract (design.md v2 §How.3). Exactly 50pt visible.
     private static let bannerHeight: CGFloat = 50
 
-    @State private var shouldShow: Bool?
-    @State private var status: AdBannerStatus = .notInitialized
-    @State private var dismissed: Bool = false
-
-    @Environment(\.scenePhase) private var scenePhase
+    /// AdMob's standard banner creative (design.md v2 §How.6; #1084). Also
+    /// the source of truth `AdsAdMob.BannerViewRepresentable.sizeThatFits`
+    /// returns — the two sides must agree by construction, not by reading
+    /// the SDK's `AdSize` at layout time (#1084 sim A/B: that read can be
+    /// `.zero`, leaving the hosted `BannerView` invisible).
+    public static let creativeSize = CGSize(width: 320, height: 50)
+    /// Minimum tap target for the ✕, outside the creative's bounds (#1084).
+    public static let dismissTargetSize: CGFloat = 44
 
     /// Test/preview-only override for the `.loading`/`.notInitialized` visual
-    /// (#732): the live `ProgressView` is a genuinely timing-dependent spin
-    /// animation, so board-banner snapshot fixtures that capture it are
-    /// environment-sensitive across machines/worktrees. `nil` (default)
-    /// preserves production's real spinner untouched; a caller (snapshot
-    /// tests only) can inject a static placeholder via
-    /// `.environment(\.bannerSlotLoadingPreview, ...)` from OUTSIDE this
-    /// view, so no production call site needs to change.
+    /// (#732): the live `ProgressView` is a timing-dependent spin animation, so
+    /// board-banner snapshot fixtures inject a static placeholder via
+    /// `.environment(\.bannerSlotLoadingPreview, ...)`. `nil` in production.
     @Environment(\.bannerSlotLoadingPreview) private var loadingPreview
 
-    /// Gate-aware reload seam (#341).
-    private let reloadCoordinator: BannerReloadCoordinator
-
     public init(
-        adProvider: any AdProvider,
-        adGate: AdGate,
-        bannerHost: (any BannerViewProviding)? = nil,
-        onAdContext: (@Sendable () async -> Void)? = nil,
-        // #688 item 2: was `Color.secondary.opacity(0.12)` — a translucent
-        // system-gray overlay that reads as a mismatched seam against a
-        // custom (non-system) page background, especially in dark mode.
-        // Transparent by default so an unthemed caller's slot blends with
-        // whatever sits behind it instead of announcing its own tint.
+        isSuppressed: Bool,
+        // #688 item 2: transparent by default so an unthemed caller's slot
+        // blends with whatever sits behind it instead of announcing its own tint.
         backgroundColor: Color = .clear,
         progressTint: Color = .accentColor,
         captionColor: Color = .secondary,
-        dismissTint: Color = Color.secondary.opacity(0.7)
+        // uiux-bugfix-plan P1-6: `.opacity(0.7)` on a warm paper background
+        // left the ✕ glyph nearly invisible after crop — full-strength
+        // `.secondary` instead (#1084).
+        dismissTint: Color = .secondary,
+        horizontalPadding: CGFloat = 0,
+        verticalPadding: CGFloat = 0
     ) {
-        self.adProvider = adProvider
-        self.adGate = adGate
-        self.bannerHost = bannerHost
-        self.onAdContext = onAdContext
+        self.registration = BannerSlotRegistration()
+        self.isSuppressed = isSuppressed
         self.backgroundColor = backgroundColor
         self.progressTint = progressTint
         self.captionColor = captionColor
         self.dismissTint = dismissTint
-        self.reloadCoordinator = BannerReloadCoordinator(adProvider: adProvider, adGate: adGate)
-        // #723: seed the show/hide decision from the gate's synchronous
-        // session hint so a slot mounted after the gate has resolved once
-        // (Board entered from Home, hub screens, …) reserves its 50pt from
-        // the very first layout. `nil` (nothing resolved yet this session)
-        // keeps the legacy collapsed-pending default; the authoritative
-        // async resolution in `resolveGateAndLoad` overwrites this either way.
-        _shouldShow = State(initialValue: adGate.lastKnownShouldShowBanner)
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
     }
 
     public var body: some View {
-        Group {
-            // #968: `status == .suppressed` while `shouldShow == true` means
-            // the gate said "show a banner" but the provider disagrees — the
-            // only production path there is `NoopAdProvider` (macOS: Google
-            // ships no AdMob/UMP xcframework slice for that SDK, D-v2-03).
-            // Without this check the ZStack below still mounted its dismiss
-            // (✕) button and "Advertisement" accessibility element over an
-            // empty rect on every macOS Home/board screen — a phantom control
-            // for an ad that can never load. Collapsing here matches the
-            // `.suppressed` case already documented in `statusContent` (the
-            // provider disagreeing with the gate is a second line of
-            // defense) and doesn't affect the `.notInitialized`/`.loading`
-            // reserved-space contract (#723) since neither is `.suppressed`.
-            if dismissed || shouldShow == false || status == .suppressed {
-                EmptyView()
-            } else if shouldShow == true {
-                banner
-            } else {
-                // Gate decision pending AND no session hint (`shouldShow` is
-                // seeded from `AdGate.lastKnownShouldShowBanner` in init, so
-                // this branch only runs before the session's first-ever
-                // resolution — #723). Reserve zero space; the slot
-                // materializes once `shouldShow == true` resolves.
-                EmptyView()
-            }
-        }
-        .task { await resolveGateAndLoad() }
-        .onChange(of: status) { oldStatus, _ in
-            // Defensive: dispose the previously-loaded handle if it is ever
-            // replaced or dropped. Since #341, `status` is written again on a
-            // foreground re-poll (`repollGate`), so this DOES fire when a reload
-            // yields a new handle; same-handle reloads short-circuit below. It
-            // guards the dispose path WITHOUT reviving the raw `.onDisappear`
-            // dispose, which thrashed on transient SwiftUI teardown (#276).
-            guard case let .loaded(handle) = oldStatus else { return }
-            if case .loaded(handle) = status { return } // same handle, no churn
-            Task { await adProvider.dispose(handle: handle) }
-        }
-        .onChange(of: dismissed) { _, isDismissed in
-            // Gate closed for the session (user tapped ✕). Release the held
-            // banner so the provider drops its retained banner view (#221).
-            guard isDismissed, case let .loaded(handle) = status else { return }
-            Task { await adProvider.dispose(handle: handle) }
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            // Re-poll seam (#341). On returning to the foreground, re-evaluate
-            // the gate: if it has reopened (e.g. the calendar day rolled over
-            // since a dismiss), reload so the banner reappears instead of
-            // staying gone until app relaunch. The coordinator consults
-            // `AdGate` first, so a purchaser / dismissed-today / tamper case
-            // returns `.suppressed` and the provider is never touched.
-            guard newPhase == .active else { return }
-            Task { await repollGate() }
+        if let session = registration.session, session.isVisible, !isSuppressed {
+            // Horizontal inset is `BannerSlotBandLayout`'s job now (#1084) —
+            // only the vertical inset stays a plain `.padding()` here.
+            banner(session: session, id: registration.id)
+                .padding(.vertical, verticalPadding)
         }
     }
 
     // MARK: - Banner
 
-    private var banner: some View {
-        ZStack(alignment: .topTrailing) {
-            statusContent
-                .frame(maxWidth: .infinity)
-                .frame(height: Self.bannerHeight)
-                .background(backgroundColor, in: .rect(cornerRadius: 8))
+    private func banner(session: BannerSessionModel, id: BannerSlotID) -> some View {
+        // #1084: the creative is pinned to its native 320×50 size. The ✕
+        // sits in the gutter past the creative's trailing edge, never the
+        // creative itself, so a mistap can never open the ad (AdMob policy).
+        // `BannerSlotBandLayout` places both at a horizontal inset that is
+        // `horizontalPadding` when the available width allows it, shrinking
+        // symmetrically only when it can't (PM ruling, #1084).
+        BannerSlotBandLayout(
+            nominalPadding: horizontalPadding,
+            creativeWidth: Self.creativeSize.width,
+            dismissTargetSize: Self.dismissTargetSize,
+            bannerHeight: Self.bannerHeight
+        ) {
+            // The visible band background, proposed the padded-in width
+            // (`bounds.width − 2×padding`) by `placeSubviews` — NOT the
+            // Layout's full, un-padded width — so it never bleeds into the
+            // horizontal inset (#1084 review fix 1) and its `.slot` anchor
+            // reads that same padded-in rect, not a tautological fixed size
+            // (#1084 review fix 2). Non-interactive; declared first so the
+            // real content (below, holding the interactive ✕) paints on
+            // top of it.
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+                .allowsHitTesting(false)
+                .layoutValue(key: BannerSlotBandRoleKey.self, value: .band)
+                .anchorPreference(key: BannerSlotGeometryKey.self, value: .bounds) { [.slot: $0] }
 
-            dismissButton
-                .padding(6)
+            statusContent(session: session, id: id)
+                .frame(width: Self.creativeSize.width, height: Self.creativeSize.height)
+                // #1084 review: even if the bridge ever misreports the
+                // creative's size, clip it to 320×50 so it can never paint
+                // underneath the ✕.
+                .clipped()
+                .anchorPreference(key: BannerSlotGeometryKey.self, value: .bounds) { [.creative: $0] }
+                .overlay(alignment: .trailing) {
+                    dismissButton(session: session)
+                        // Pins the ✕'s leading edge to the creative's
+                        // trailing edge instead of the ✕'s own trailing edge.
+                        .alignmentGuide(.trailing) { $0[.leading] }
+                }
         }
         .accessibilityElement(children: .contain)
         // #895: was a raw Swift string — VoiceOver announced English on all
         // 7 locales.
         .accessibilityLabel(String(localized: "Advertisement", bundle: .main))
         // #931: stable, locale-independent anchor so E2E can query the slot's
-        // shown/hidden state without depending on the localized "Advertisement"
-        // label. Only present on this `banner` branch — `EmptyView()` (gate
-        // closed / dismissed) has no element at all, which IS the discriminator.
+        // shown/hidden state. Only present while the banner renders — a hidden
+        // slot has no element at all, which IS the discriminator.
         .accessibilityIdentifier("monetization.banner.slot")
+        // The accessibility element's own frame now spans the Layout's full,
+        // un-padded width (host width) rather than just the padded-in band —
+        // accepted as-is (#1084 review round); VoiceOver still reads the
+        // right label and identifier at the right visible location.
     }
 
     @ViewBuilder
-    private var statusContent: some View {
-        switch status {
+    private func statusContent(session: BannerSessionModel, id: BannerSlotID) -> some View {
+        switch session.status(for: id) {
         case .loading, .notInitialized:
             if let loadingPreview {
                 loadingPreview
@@ -211,98 +184,176 @@ public struct BannerSlotView: View {
                     .controlSize(.small)
                     .tint(progressTint)
             }
-        case let .loaded(handle):
+        case .loaded:
             // The real banner view, type-erased across the AdsAdMob border
-            // (#441). When no host is wired (fakes / macOS NoopAdProvider) we
-            // render nothing inside the rect rather than a placeholder.
-            if let view = bannerHost?.bannerView(for: handle) {
+            // (#441). A provider with no view host renders nothing inside the
+            // rect rather than a placeholder.
+            if let view = session.bannerView(for: id) {
                 view
             } else {
                 EmptyView()
             }
         case .failed:
-            // #901: was a bare LocalizedStringKey with no catalog entry — it
-            // rendered English on all 7 locales. Explicit `bundle: .main`
-            // matches #895's convention (catalogs live in the app target).
+            // #901: explicit `bundle: .main` — catalogs live in the app target.
             Text("Ad unavailable", bundle: .main)
                 .font(.caption)
                 .foregroundStyle(captionColor)
-        case .suppressed:
-            // AdGate handles suppression; reaching here means the provider
-            // disagreed with the gate. Render nothing inside the rect so
-            // we don't show a stale state.
-            EmptyView()
-        case .disposed:
-            // The held handle was released (gate closed / dismissed); the slot
-            // is already collapsing. Render nothing rather than a stale ad.
+        case .suppressed, .disposed:
             EmptyView()
         }
     }
 
-    private var dismissButton: some View {
+    private func dismissButton(session: BannerSessionModel) -> some View {
         Button {
-            Task { await dismissTapped() }
+            Task { await session.dismiss() }
         } label: {
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 12))
+                // uiux-bugfix-plan P1-6: 12pt read too small/low-contrast
+                // after crop; 16pt inside the 44×44pt target (#1084).
+                .font(.system(size: 16))
                 .foregroundStyle(dismissTint)
+                // #1084: 44×44pt hit target. Framing + `.contentShape` must
+                // live on the label — `.buttonStyle(.plain)` otherwise shrinks
+                // the hit-test region to the drawn glyph (swiftui-interaction-footguns).
+                .frame(width: Self.dismissTargetSize, height: Self.dismissTargetSize)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         // #895: was a raw Swift string — VoiceOver announced English on all
         // 7 locales.
         .accessibilityLabel(String(localized: "Dismiss ad", bundle: .main))
+        .anchorPreference(key: BannerSlotGeometryKey.self, value: .bounds) { [.dismiss: $0] }
+    }
+}
+
+// MARK: - BannerSlotBandLayout (#1084)
+
+/// Which of `BannerSlotBandLayout`'s two subviews a child is — tagged via
+/// `.layoutValue(key:value:)` since `placeSubviews` must propose the band a
+/// different width than the content (#1084 review fix 1 and 2: the band must
+/// stop at the padded-in width, not bleed into the horizontal inset or fill
+/// the Layout's full un-padded width).
+private enum BannerSlotBandRole: Sendable {
+    /// The visible band background — proposed exactly the padded-in width
+    /// (`bounds.width − 2×padding`), so its `.slot` anchor reads that rect.
+    case band
+    /// The creative + ✕ pair — proposed `.unspecified` so each keeps its own
+    /// declared, fixed size.
+    case content
+}
+
+private struct BannerSlotBandRoleKey: LayoutValueKey {
+    static let defaultValue: BannerSlotBandRole = .content
+}
+
+/// Arranges the visible band background and the creative + ✕ pair at a
+/// horizontal inset that is `nominalPadding` while `width ≥ needed +
+/// nominalPadding` (380pt at the shipped constants: 320 + 44 + 16), shrinking
+/// symmetrically (never below 0) below that. The constraint PM ruled on is
+/// "the ✕ stays fully on-screen", not "the ✕ stays inside the band" — see
+/// `padding(for:)`. A custom `Layout`, not `onGeometryChange` + `@State`: the
+/// state-loop approach draws one frame at the wrong padding before
+/// correcting on the next layout pass (PM ruling, #1084).
+///
+/// `sizeThatFits` always returns a concrete, finite size — including for an
+/// unconstrained ("ideal") proposal — which is also what keeps
+/// `NSHostingView.fittingSize` (the pre-existing `BannerSlotViewTests`
+/// `measuredHeight` / `pauseKeepsLease` measurement path) from degenerating
+/// to a zero height the way a bare `.frame(maxWidth: .infinity)` chain does.
+private struct BannerSlotBandLayout: Layout {
+    let nominalPadding: CGFloat
+    let creativeWidth: CGFloat
+    let dismissTargetSize: CGFloat
+    let bannerHeight: CGFloat
+
+    /// The creative and the ✕ side by side, with no gap between them.
+    private var needed: CGFloat { creativeWidth + dismissTargetSize }
+
+    /// `nominalPadding` while `width ≥ needed + nominalPadding` (PM's final
+    /// ruling, #1084: the constraint is "the ✕ stays fully on-screen", not
+    /// "the ✕ stays inside the band" — a ONE-SIDED comfort check, not
+    /// `needed + 2×nominalPadding`. At 393pt (the most common iPhone width)
+    /// this keeps the full 16pt left padding instead of shrinking to 14.5pt,
+    /// which would visibly mismatch 402pt's 16pt for no reason; the ✕ then
+    /// sits a few points past the band's own trailing edge but still well
+    /// inside the screen. Below `needed + nominalPadding`, the padding
+    /// shrinks symmetrically, clamped at 0.
+    private func padding(for width: CGFloat) -> CGFloat {
+        let comfortable = needed + nominalPadding
+        guard width < comfortable else { return nominalPadding }
+        return max(0, (width - needed) / 2)
     }
 
-    // MARK: - Lifecycle
+    /// The comfortable width at the full nominal padding on both sides —
+    /// `sizeThatFits`'s ideal, and the fallback `resolvedBannerBandWidth`
+    /// substitutes for a `nil` or non-finite proposal.
+    private var idealWidth: CGFloat { needed + 2 * nominalPadding }
 
-    private func resolveGateAndLoad() async {
-        let now = Date()
-        let allowed = await adGate.shouldShowBanner(now: now)
-        shouldShow = allowed
-        guard allowed else { return }
-        // #968: a provider that can never serve an ad (macOS `NoopAdProvider`
-        // — Google ships no AdMob/UMP xcframework slice for that SDK) always
-        // reports `.suppressed` here, even before any load is attempted
-        // (`LiveAdMobAdProvider` never does — it starts `.notInitialized` and
-        // only ever reaches `.loading`/`.loaded`/`.failed`/`.disposed`). Bail
-        // out before `onAdContext?()` in that case: ATT exists to gate
-        // tracking that actually happens, and firing the priming sheet (then
-        // the real system dialog) for a platform with no ad/tracking
-        // behavior behind it is exactly the misuse ATT is meant to prevent.
-        guard await adProvider.bannerStatus != .suppressed else {
-            status = .suppressed
-            return
-        }
-        // Gate open == a personalized ad is about to load == the first moment
-        // ATT actually matters (#371 / #195). Idempotent — the closure latches.
-        await onAdContext?()
-        // Kick the provider via the reload seam. A failed load surfaces as the
-        // visible "Ad unavailable" caption (its `.failed` status) rather than
-        // being silently swallowed.
-        status = await reloadCoordinator.reloadIfGateOpen(now: now)
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        CGSize(width: resolvedBannerBandWidth(proposal: proposal.width, ideal: idealWidth), height: bannerHeight)
     }
 
-    /// Foreground re-poll (#341). If the gate has reopened since the last
-    /// resolution (new calendar day after a dismiss), clear the session
-    /// `dismissed` latch and reload so the slot reappears. If the gate is
-    /// still closed (purchased / dismissed-today / tamper), the coordinator
-    /// returns `.suppressed` without touching the provider and we leave the
-    /// slot hidden.
-    private func repollGate() async {
-        let reloaded = await reloadCoordinator.reloadIfGateOpen(now: Date())
-        guard reloaded != .suppressed else { return }
-        status = reloaded
-        shouldShow = true
-        if dismissed {
-            withAnimation(.easeInOut(duration: 0.18)) { dismissed = false }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let padding = padding(for: bounds.width)
+        let origin = CGPoint(x: bounds.minX + padding, y: bounds.minY)
+        for subview in subviews {
+            switch subview[BannerSlotBandRoleKey.self] {
+            case .band:
+                // Stops at the padded-in width — never the Layout's full,
+                // un-padded width (#1084 review fix 1 and 2).
+                let bandWidth = max(0, bounds.width - 2 * padding)
+                subview.place(
+                    at: origin,
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: bandWidth, height: bannerHeight)
+                )
+            case .content:
+                subview.place(at: origin, anchor: .topLeading, proposal: .unspecified)
+            }
         }
     }
+}
 
-    private func dismissTapped() async {
-        await adGate.recordBannerDismissed(now: Date())
-        withAnimation(.easeInOut(duration: 0.18)) {
-            dismissed = true
-        }
+/// Resolves a proposed width to a concrete, finite value: `proposal` itself
+/// when it's present and finite, `ideal` otherwise — covering both a `nil`
+/// proposal (an unconstrained/"ideal" query) and a non-finite one (e.g.
+/// `.infinity`, which a horizontal `ScrollView` can propose to its content
+/// along the scroll axis). Without this, `BannerSlotBandLayout.sizeThatFits`
+/// would propagate `.infinity`/`NaN`, contradicting its own "always a
+/// concrete, finite size" doc comment (#1084 review fix 3).
+///
+/// `internal`, not `private`, purely as a test seam: `BannerSlotBandLayout`
+/// itself stays `private`, but this pure function is unit-tested directly
+/// with a literal `.infinity` argument, since no host inside
+/// `BannerSlotDismissPlacementTests`'s headless macOS harness actually
+/// produces a literal `.infinity` proposal (confirmed empirically — a
+/// horizontal `ScrollView` and `.fixedSize(horizontal:)` both resolve to a
+/// concrete or `nil` proposal there instead).
+internal func resolvedBannerBandWidth(proposal: CGFloat?, ideal: CGFloat) -> CGFloat {
+    guard let proposal, proposal.isFinite else { return ideal }
+    return proposal
+}
+
+// MARK: - Geometry preference (#1084, test-only)
+
+/// The three named parts `BannerSlotGeometryKey` reports bounds for.
+public enum BannerSlotGeometryPart: Hashable, Sendable {
+    case slot
+    case creative
+    case dismiss
+}
+
+/// Anchor bounds for the slot band, the creative, and the ✕ — read only by
+/// `BannerSlotDismissPlacementTests` to prove the ✕ never overlaps the
+/// creative (#1084). Declaring it has zero effect on what's rendered.
+public struct BannerSlotGeometryKey: PreferenceKey {
+    public static var defaultValue: [BannerSlotGeometryPart: Anchor<CGRect>] { [:] }
+
+    public static func reduce(
+        value: inout [BannerSlotGeometryPart: Anchor<CGRect>],
+        nextValue: () -> [BannerSlotGeometryPart: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue()) { _, new in new }
     }
 }
 

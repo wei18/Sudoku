@@ -68,19 +68,19 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sudoku は Game Center のフレンドリストを参照して、デイリーランキングにフレンドのベストタイムを表示します。"
+            "value" : "Sudoku は Game Center のフレンドリストを参照して、デイリーリーダーボードにフレンドのベストタイムを表示します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sudoku는 Game Center 친구 목록을 이용해 데일리 리더보드에 친구들의 최고 기록을 표시합니다."
+            "value" : "Sudoku는 Game Center 친구 목록을 이용해 데일리 순위표에 친구들의 최고 기록을 표시합니다."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sudoku ใช้รายชื่อเพื่อนของคุณเพื่อแสดงเวลาที่ดีที่สุดของเพื่อนบนกระดานผู้นำประจำวัน"
+            "value" : "Sudoku ใช้รายชื่อเพื่อนของคุณเพื่อแสดงเวลาที่ดีที่สุดของเพื่อนบนลีดเดอร์บอร์ดประจำวัน"
           }
         },
         "zh-Hans" : {

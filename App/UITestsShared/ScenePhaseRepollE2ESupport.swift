@@ -21,8 +21,21 @@ enum ScenePhaseRepollE2ESupport {
     static let reminderEnableID = "reminders.settings.enable"
     static let reminderDisableID = "reminders.settings.disable"
 
-    /// `BannerSlotView`'s stable slot anchor (#341/#931).
-    static let bannerSlotID = "monetization.banner.slot"
+    /// Banner slots on screen, found by their "Advertisement" label (see
+    /// `assertBannerScenePhaseRepoll` for why not by identifier).
+    @MainActor
+    static func bannerSlots(in app: XCUIApplication) -> XCUIElementQuery {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Advertisement"))
+    }
+
+    /// Taps the ATT primer's "Not now" when the primer is up; no-op otherwise.
+    @MainActor
+    static func dismissATTPrimerIfPresent(in app: XCUIApplication) {
+        let notNow = app.buttons[NegativeNavigationE2ESupport.attPrimerNotNowID]
+        guard notNow.waitForExistence(timeout: 5) else { return }
+        notNow.tap()
+        _ = notNow.waitForNonExistence(timeout: 10)
+    }
 
     /// Reminders case: launch already routed to Settings with
     /// `-uitest-fake-reminder-repoll` set. Asserts the denied row renders at
@@ -60,28 +73,40 @@ enum ScenePhaseRepollE2ESupport {
     }
 
     /// Banner case: launch already carries `-uitest-fake-ad-gate-repoll`
-    /// (lands on Home, which renders `BannerSlotView`). Asserts the slot is
-    /// absent at launch (the fake gate store throws until backgrounded), then
-    /// that it appears ONLY after a real background→foreground cycle.
+    /// (lands on Today, whose `TodayTabHost` renders a `BannerSlotView`).
+    /// Asserts the slot is absent at launch (the fake gate store throws until
+    /// backgrounded), then that it appears ONLY after a real
+    /// background→foreground cycle, which `GameRoot`'s scenePhase hook turns
+    /// into `BannerSessionModel.sceneDidBecomeActive()`.
+    ///
+    /// - The slot is queried by its "Advertisement" label, not its
+    ///   `monetization.banner.slot` identifier: `TodayTabHost`'s
+    ///   `game.today.root` container identifier shadows the slot's (#1072).
+    /// - Once the repoll opens the gate, the session's readiness task requests
+    ///   the ATT primer before any load (B2′ ordering), so the primer can
+    ///   cover Today here. That is expected.
+    /// - The primer is dismissed only when present, so this assertion does
+    ///   not depend on the simulator's real ATT authorization state.
     @MainActor
     static func assertBannerScenePhaseRepoll(
         in app: XCUIApplication,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let slot = app.descendants(matching: .any)[bannerSlotID]
+        let slot = bannerSlots(in: app).firstMatch
         XCTAssertFalse(
             slot.waitForExistence(timeout: 3),
-            "monetization.banner.slot should be absent at launch (fake ad-gate store throws until backgrounded)",
+            "the banner slot should be absent at launch (fake ad-gate store throws until backgrounded)",
             file: file, line: line
         )
 
         cycleThroughBackground(app, file: file, line: line)
+        dismissATTPrimerIfPresent(in: app)
 
         XCTAssertTrue(
             slot.waitForExistence(timeout: 15),
-            "monetization.banner.slot should reappear after a real background→foreground cycle"
-                + " (scenePhase re-poll) — dropping .onChange(of: scenePhase) leaves it hidden forever",
+            "the banner slot should appear after a real background→foreground cycle"
+                + " (scenePhase re-poll) — dropping GameRoot's .onChange(of: scenePhase) leaves it hidden forever",
             file: file, line: line
         )
     }

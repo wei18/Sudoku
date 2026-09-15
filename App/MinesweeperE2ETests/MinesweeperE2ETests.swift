@@ -259,14 +259,34 @@ final class MinesweeperE2ETests: XCTestCase {
         ScenePhaseRepollE2ESupport.assertReminderScenePhaseRepoll(in: app)
     }
 
-    /// #931: pins `BannerSlotView`'s `.onChange(of: scenePhase)` repoll hook
-    /// (`repollGate()`, #341) — the hidden → visible slot swap only happens
-    /// after a real background→foreground cycle.
+    /// #931: pins `GameRoot`'s `.onChange(of: scenePhase)` repoll hook
+    /// (`BannerSessionModel.sceneDidBecomeActive()`, #341/#1058) — the hidden →
+    /// visible slot swap only happens after a real background→foreground cycle.
     func test_bannerSlotRepollsOnForeground() {
         let app = XCUIApplication()
         app.launchArguments += [UITestLaunchArg.fakeAdGateRepoll]
         app.launch()
         ScenePhaseRepollE2ESupport.assertBannerScenePhaseRepoll(in: app)
+    }
+
+    /// #1058: a board presented through `GameRoot`'s cover renders its own
+    /// banner slot (the session reaches the cover), and pausing it removes
+    /// that slot. See `BannerCoverE2ESupport`. The first reveal starts the
+    /// game (always safe: mines are placed around the first click), so the
+    /// board's control pauses instead of offering Leave.
+    func test_boardCoverRendersBannerSlot() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestLaunchArg.fakeAdGateRepoll]
+        app.launch()
+        BannerCoverE2ESupport.assertBoardCoverRendersBannerSlot(
+            in: app,
+            dailyCardLabelPrefix: "Beginner,",
+            boardPauseToggleID: "minesweeper.board.pauseToggle",
+            startGame: { app in
+                let cell = app.buttons["Row 5, Column 5, Hidden"]
+                if cell.waitForExistence(timeout: 10) { cell.tap() }
+            }
+        )
     }
 
     /// #940: the primer sheet must survive the async permission-status write

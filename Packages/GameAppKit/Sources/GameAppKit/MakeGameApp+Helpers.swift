@@ -94,17 +94,15 @@ func chromedTabRoots<Route: Hashable & Sendable>(
 /// `GameRoot.bottomAccessory` content: the real `BannerAccessoryView` on
 /// iOS/iPadOS, `EmptyView` on macOS. The `#if os(iOS)` branch is what makes
 /// the exclusion STRUCTURAL rather than a runtime check — on a macOS build
-/// the `BannerAccessoryView` type (and everything it references —
-/// `AdProvider`/`AdGate`/`BannerSlotView`) never compiles into this function
-/// at all; the macOS binary constructs `EmptyView()` and nothing else.
+/// the `BannerAccessoryView` type (and the `BannerSlotView` it wraps) never
+/// compiles into this function at all; the macOS binary constructs
+/// `EmptyView()` and nothing else. Takes no monetization parameters: the
+/// accessory reads the session through `\.bannerSession` (#1062) like every
+/// other slot.
 @MainActor
-func makeBottomAccessory(
-    adProvider: any AdProvider,
-    adGate: AdGate,
-    attPrimer: ATTPrimerCoordinator
-) -> AnyView {
+func makeBottomAccessory() -> AnyView {
     #if os(iOS)
-    AnyView(BannerAccessoryView(adProvider: adProvider, adGate: adGate, attPrimer: attPrimer))
+    AnyView(BannerAccessoryView())
     #else
     AnyView(EmptyView())
     #endif

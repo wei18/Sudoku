@@ -12,20 +12,19 @@
 // per-screen ones. Board screens are untouched (`fullScreenCover`, outside
 // the TabView — #1022 owns their bottom chrome).
 //
-// Visibility: `BannerSlotView` already collapses to `EmptyView()` when the
-// gate denies / the user dismissed / the provider reports `.suppressed` —
-// unchanged by this move. `RootShellView` attaches `.tabViewBottomAccessory`
-// UNCONDITIONALLY (never a conditional attach — PM ruling, see
-// meetings/2026-09-07_1024-banner-accessory.impl-notes.md); suppression lives
-// entirely inside this content, exactly as `BannerSlotView` already behaves.
+// Session model (#1062): this is just another `BannerSlotView`. It reads the
+// session's `BannerSessionModel` through `\.bannerSession` (injected once on
+// the `GameRoot` value by `MakeGameApp`) and registers itself like every other
+// slot — no provider / gate / primer parameters flow through here. The ATT
+// anchor (C-33) lives on the session's `onAdContext` hook, wired in
+// `makeBannerSession`, so the primer fires before the first ad load no matter
+// which slot triggers it.
 //
-// C-33 (ATT anchor) moves here from `TodayTabHost`: `onAdContext` still fires
-// on the SAME event it always has — the gate opening, the first moment a
-// personalized ad is about to load — just from the accessory's shared banner
-// instead of the old per-Today-tab one. Ordering is unchanged and enforced by
-// `BannerSlotView.resolveGateAndLoad` (untouched by this move): `await
-// onAdContext?()` always runs BEFORE the reload coordinator's actual ad load,
-// so the primer is guaranteed to offer before any ad-context/ad-load event.
+// Visibility: `RootShellView` drives `tabViewBottomAccessory(isEnabled:)`
+// from `bannerSession.isVisible` (#1079 option 1, iOS 26.1 floor), so when
+// the gate denies the whole capsule is gone — not an empty capsule. Inside
+// the enabled capsule `BannerSlotView` still collapses on its own for the
+// same `isVisible` read, so both layers agree by construction.
 //
 // Cosmetic (B-6 bonus finding, #1029): a fixed-size 320×50 test creative can
 // leave the accessory's rounded capsule ends uncovered. `backgroundColor`
@@ -35,39 +34,19 @@
 #if os(iOS)
 
 public import SwiftUI
-public import MonetizationCore
 public import MonetizationUI
-
-/// The free function `BannerSlotView`'s `onAdContext` hook calls — a plain
-/// function (not a method on `BannerAccessoryView`) so it takes `attPrimer`
-/// without capturing `self` in a `@Sendable` closure, and so tests can invoke
-/// this EXACT call without rendering (mirrors the retired
-/// `todayTabHostFireOnAdContext`, moved here with C-33).
-@MainActor
-func bannerAccessoryFireOnAdContext(attPrimer: ATTPrimerCoordinator) async {
-    await attPrimer.maybePresentOnAdContext()
-}
 
 @MainActor
 struct BannerAccessoryView: View {
-    let adProvider: any AdProvider
-    let adGate: AdGate
-    let attPrimer: ATTPrimerCoordinator
-
     @Environment(\.theme) private var theme
 
     var body: some View {
         BannerSlotView(
-            adProvider: adProvider,
-            adGate: adGate,
-            bannerHost: adProvider as? any BannerViewProviding,
-            onAdContext: { [attPrimer] in
-                await bannerAccessoryFireOnAdContext(attPrimer: attPrimer)
-            },
+            isSuppressed: false,
             backgroundColor: theme.surface.background.resolved,
             progressTint: theme.accent.primary.resolved,
             captionColor: theme.text.secondary.resolved,
-            dismissTint: theme.accent.muted.resolved.opacity(0.7)
+            dismissTint: theme.text.secondary.resolved
         )
         .padding(.horizontal, 12)
     }

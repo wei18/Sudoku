@@ -40,8 +40,6 @@ public struct GameDeps {
     public let errorReporter: any ErrorReporter
     public let gameCenter: any GameCenterClient
     public let persistence: any PersistenceProtocol
-    public let adProvider: any AdProvider
-    public let adGate: AdGate
     public let monetizationStateStore: any AdGateStateStore
     public let iapClient: any IAPClient
     public let monetizationController: MonetizationStateController
@@ -76,8 +74,6 @@ public struct GameDeps {
         errorReporter: any ErrorReporter,
         gameCenter: any GameCenterClient,
         persistence: any PersistenceProtocol,
-        adProvider: any AdProvider,
-        adGate: AdGate,
         monetizationStateStore: any AdGateStateStore,
         iapClient: any IAPClient,
         monetizationController: MonetizationStateController,
@@ -92,8 +88,6 @@ public struct GameDeps {
         self.errorReporter = errorReporter
         self.gameCenter = gameCenter
         self.persistence = persistence
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.monetizationStateStore = monetizationStateStore
         self.iapClient = iapClient
         self.monetizationController = monetizationController

@@ -199,9 +199,7 @@ extension MinesweeperAppComposition {
             errorReporter: deps.errorReporter,
             gameCenter: deps.gameCenter,
             persistence: deps.persistence,
-            adProvider: deps.adProvider,
             iapClient: deps.iapClient,
-            adGate: deps.adGate,
             monetizationStateStore: deps.monetizationStateStore,
             monetizationController: deps.monetizationController,
             toastController: deps.toastController,
@@ -238,8 +236,6 @@ extension MinesweeperAppComposition {
         }()
         return LiveRouteFactory(
             monetizationController: settingsMonetizationController,
-            adProvider: deps.adProvider,
-            adGate: deps.adGate,
             persistence: deps.persistence,
             gameCenter: deps.gameCenter,
             errorReporter: deps.errorReporter,

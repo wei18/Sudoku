@@ -10,11 +10,9 @@
 // the audit agent). This file is a from-scratch, deterministic repro
 // instead of re-litigating those screenshots:
 //
-//   - the ad gate is forced OPEN by pre-resolving `AdGate.shouldShowBanner`
-//     BEFORE constructing `BannerSlotView`, so the #723 layout-reservation
-//     hint (`AdGate.lastKnownShouldShowBanner`) is already `true` when
-//     `BannerSlotView.init` seeds its `@State shouldShow` — the slot then
-//     renders on the FIRST synchronous layout pass, no async `.task` race;
+//   - the ad gate is OPEN and the injected session is started over a
+//     readiness-held fake provider BEFORE the view is built, so the slot
+//     renders on the FIRST synchronous layout pass with no async race;
 //   - dark mode, iPhone size, via the existing `NSHostingView` harness
 //     (`SnapshotConfig.swift`).
 //
@@ -48,10 +46,8 @@ struct BannerSlotDarkBandRegressionTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
 
-    /// Seed + synchronously pre-resolve an `AdGate` so `shouldShowBanner`
-    /// returns `true` AND `lastKnownShouldShowBanner` (the #723 hint
-    /// `BannerSlotView.init` reads) is already `true` before the view is
-    /// constructed — see file header for why that matters for determinism.
+    /// An `AdGate` that resolves OPEN at `fixedDate` — see file header for why
+    /// the session is started before the view is built.
     private func makeOpenAdGate() async -> AdGate {
         let store = FakeAdGateStateStore(
             initial: AdGateState(firstLaunchAt: Self.fixedDate.addingTimeInterval(-30 * 86_400))
@@ -59,7 +55,6 @@ struct BannerSlotDarkBandRegressionTests {
         let gate = AdGate(store: store)
         let allowed = await gate.shouldShowBanner(now: Self.fixedDate)
         #expect(allowed == true)
-        #expect(gate.lastKnownShouldShowBanner == true)
         return gate
     }
 
@@ -85,19 +80,23 @@ struct BannerSlotDarkBandRegressionTests {
     /// visible in dark mode, regardless of which hub mounts it.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func postFix_themedBackground_dailyHubDarkMode_bannerOpen_noBand() async {
-        let gate = await makeOpenAdGate()
-        let provider = FakeAdProvider()
+        let session = BannerSessionModel(
+            adProvider: FakeAdProvider(readinessHeld: true),
+            adGate: await makeOpenAdGate(),
+            now: { Self.fixedDate }
+        )
+        await session.start()
         let viewModel = await makeLoadedHubViewModel()
 
         let view = DailyHubView(viewModel: viewModel) {
             BannerSlotView(
-                adProvider: provider,
-                adGate: gate,
+                isSuppressed: false,
                 backgroundColor: DefaultTheme().surface.background.resolved
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+        .environment(\.bannerSession, session)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-dark-bannerOpen-postFix")

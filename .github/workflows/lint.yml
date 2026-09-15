@@ -1,14 +1,15 @@
-# Consolidated lint workflow — 6 jobs:
+# Consolidated lint workflow — 7 jobs:
 #   1. pr-metadata   — Conventional Commits PR title (ubuntu, no source)
 #   2. docs-link-check — lychee scan of docs/ + meetings/ (ubuntu, no source)
 #   3. swift-lint    — swiftlint + swiftformat on changed Swift files (macos)
 #   4. l10n          — L10n catalog completeness gate (ubuntu, no source)
 #   5. settings-root — Settings.bundle Root.plist sync gate (ubuntu, no source)
 #   6. frame-drift-gate — ASC marketing-frame drift proxy gate (ubuntu, #1001)
+#   7. design-contracts — design contract anchoring gate (ubuntu, #1064)
 #
 # Workflow-level path filter is omitted so the workflow always runs and each
 # job's own `if:` (or path-aware logic) decides whether to do work; this keeps
-# the required-status-check setup simple — one workflow name, six job
+# the required-status-check setup simple — one workflow name, seven job
 # names — once branch protection lands (user-owned).
 
 name: Lint
@@ -227,3 +228,24 @@ jobs:
       # This check is state-based (no base ref, no history needed).
       - name: Run store-baseline orphan gate
         run: mise run scan:store_baseline_orphans
+
+  design-contracts:
+    name: Design contract anchoring gate (#1064)
+    # scripts/design/contracts.py: every C-x / N-x row of the 3.0 change table
+    # must anchor to a section/row that still exists in docs/screen-contracts.md
+    # / docs/navigation-flows.md, and both docs must keep their expected shape.
+    # It ran nowhere until #1064, so #1051's `## STATS` -> `## PROGRESS` rename
+    # left it red on main unnoticed. Gate mode (no --coverage): exits 1 on a
+    # broken anchor. State-based, pure python3 stdlib — no history needed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + pinned tools
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Run design contract anchoring gate
+        run: mise run scan:design_contracts

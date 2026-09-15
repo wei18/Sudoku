@@ -53,8 +53,9 @@ struct UITestAlwaysOpenAdGateStateStoreTests {
     func resolveAdProviderStillReturnsMakeLiveResult() {
         struct MarkerProvider: AdProvider {
             func initialize() async throws {}
+            func awaitReady() async throws {}
             var bannerStatus: AdBannerStatus { get async { .notInitialized } }
-            func refreshBanner() async throws {}
+            func refreshBanner() async throws -> AdBannerHandle { throw AdProviderError.unsupported }
             func dispose(handle: AdBannerHandle) async {}
         }
 

@@ -227,7 +227,8 @@ public enum ATTOutcome: Sendable {
 - 在 4 個 mode cards **下方** 加一個 `BannerSlotView`，固定 320×50 pt（AdMob 標準）
 - `BannerSlotView` 內部呼叫 `AdGate.shouldShowBanner()`：
   - `false` → 隱藏（用 `EmptyView()`；不佔空間）
-  - `true` → 顯示 AdMob banner；右上角 12pt 灰色「✕」close button
+  - `true` → 顯示 AdMob banner；320×50 creative leading-aligned 於 slot；44×44pt 的 ✕ dismiss target 在 creative trailing edge 之外的 gutter，不與 creative 重疊（#1084）；glyph 16pt（原 12pt 對比不足，crop 後幾乎看不見）、tint = `theme.text.secondary`（themed hosts：Board、Today、MS board）/ `Color.secondary`（Settings route，不變）——`theme.accent.muted` 即使拿掉 opacity 仍是鬼影色（uiux-bugfix-plan P1-6）
+  - 約束是「✕ 完整在螢幕內」，不是「✕ 在 slot band 內」（PM 最終裁定，#1084）：host 寬 ≥ `364（creative + ✕）+ 1 × nominal padding`（即 380pt）時，左右 padding 維持 nominal 16pt——這讓 393pt（最常見的 iPhone 寬度）與 402pt 拿到同樣的 16pt padding，不會出現「393 縮到 14.5、402 卻是 16」這種肉眼可見的不一致；393 時 ✕ 會超出 slot band 尾端 3pt（16…377）但距螢幕邊還有 13pt。host 寬 < 380 時，左右 padding 對稱縮至 `max(0, (width − 364) / 2)`（例：375pt host 縮至 5.5pt，creative 5.5…325.5、✕ 325.5…369.5）
 - Close button tap → `AdGate.recordBannerDismissed()` → banner 隱藏，當天不再出現
 
 #### Board view  

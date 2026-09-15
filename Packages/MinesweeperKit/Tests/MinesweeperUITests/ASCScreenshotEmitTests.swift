@@ -113,6 +113,7 @@ struct ASCScreenshotEmitTests {
             MinesweeperDailyHubView(viewModel: dailyViewModel)
         }
         .environment(\.theme, MinesweeperTheme())
+        .environment(\.bannerSession, .disabled)
     }
 
     private func dailyHubView() -> some View {
@@ -168,7 +169,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPhone_board() throws {
         try emitASCScreenshot(
-            boardView(),
+            boardView().environment(\.bannerSession, .disabled),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView
@@ -200,7 +201,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_board() throws {
         try emitASCScreenshot(
-            boardView(),
+            boardView().environment(\.bannerSession, .disabled),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView

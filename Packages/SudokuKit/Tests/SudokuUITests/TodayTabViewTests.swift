@@ -53,6 +53,7 @@ struct TodayTabViewTests {
         return TodayTabHost(rootViewModel: rootVM) {
             DailyHubView(viewModel: dailyViewModel)
         }
+        .environment(\.bannerSession, .disabled)
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotIPhoneLight() async {

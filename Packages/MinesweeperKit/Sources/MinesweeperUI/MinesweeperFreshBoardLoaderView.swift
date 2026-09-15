@@ -64,7 +64,6 @@ public import GameAudio
 public import GameCenterClient
 public import MinesweeperEngine
 public import MinesweeperPersistence
-public import MonetizationCore
 public import Telemetry
 // #814: `ReminderPrimerCoordinator` (SettingsUI) appears in the public init's
 // `makeDailyReminderPrimer` builder — mirrors `MinesweeperBoardLoaderView`.
@@ -92,8 +91,6 @@ public struct MinesweeperFreshBoardLoaderView: View {
     private let difficulty: Difficulty
     private let seed: UInt64
     private let mode: GameMode
-    private let adProvider: (any AdProvider)?
-    private let adGate: AdGate?
     private let gameCenter: (any GameCenterClient)?
     private let errorReporter: (any ErrorReporter)?
     private let soundPlayer: any SoundPlaying
@@ -113,8 +110,6 @@ public struct MinesweeperFreshBoardLoaderView: View {
         difficulty: Difficulty,
         seed: UInt64,
         mode: GameMode,
-        adProvider: (any AdProvider)? = nil,
-        adGate: AdGate? = nil,
         gameCenter: (any GameCenterClient)? = nil,
         errorReporter: (any ErrorReporter)? = nil,
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
@@ -129,8 +124,6 @@ public struct MinesweeperFreshBoardLoaderView: View {
         self.difficulty = difficulty
         self.seed = seed
         self.mode = mode
-        self.adProvider = adProvider
-        self.adGate = adGate
         self.gameCenter = gameCenter
         self.errorReporter = errorReporter
         self.soundPlayer = soundPlayer
@@ -174,8 +167,6 @@ public struct MinesweeperFreshBoardLoaderView: View {
     func boardContent(viewModel: MinesweeperGameViewModel) -> some View {
         MinesweeperBoardView(
             viewModel: viewModel,
-            adProvider: adProvider,
-            adGate: adGate,
             gameCenter: gameCenter,
             soundPlayer: soundPlayer,
             onPlayAgain: onPlayAgain,

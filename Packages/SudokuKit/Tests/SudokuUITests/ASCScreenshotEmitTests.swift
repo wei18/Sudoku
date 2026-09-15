@@ -166,6 +166,7 @@ struct ASCScreenshotEmitTests {
         return TodayTabHost(rootViewModel: rootVM) {
             DailyHubView(viewModel: dailyViewModel)
         }
+        .environment(\.bannerSession, .disabled)
     }
 
     // MARK: - iPhone 6.9" (1290×2796) — Today / Daily / Board / Completion / Settings
@@ -193,7 +194,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPhone_board() throws {
         try emitASCScreenshot(
-            try boardView(),
+            try boardView().environment(\.bannerSession, .disabled),
             profile: .iPhone69, app: Self.app, device: "iphone-6.9", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView
@@ -235,7 +236,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_board() throws {
         try emitASCScreenshot(
-            try boardView(),
+            try boardView().environment(\.bannerSession, .disabled),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView
@@ -257,7 +258,7 @@ struct ASCScreenshotEmitTests {
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_mac_board() throws {
         try emitASCScreenshot(
-            try boardView(),
+            try boardView().environment(\.bannerSession, .disabled),
             profile: .mac, app: Self.app, device: "mac", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView

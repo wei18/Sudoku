@@ -244,7 +244,7 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 │    從玻璃底下透出         │
 │                         │
 │ ▤ G4 控制叢集(玻璃)     │  Sudoku:數字鍵 + undo/redo/鉛筆
-│ ▤ G4(MS 版)             │  MS:揭開/旗標模式切換 + undo
+│ ▤ G4(MS 版)             │  MS:揭開/旗標模式切換(見下方 ⚠️)
 └─────────────────────────┘
 ```
 
@@ -268,16 +268,41 @@ Progress 與 Settings 都是 menu screen ✅;盤面上沒有 GC 入口 ✅。
 | iPhone 15/17 Pro 393pt | 40.1pt | **43.2pt** | 仍未達,差距 3.9→0.8pt |
 | iPhone Pro Max 430pt | 44.2pt | **47.3pt** | **首次跨過** |
 
+⚠️ **格徑推導更正(#1022 實作實測):** 上表的「3.0 滿版」欄是 `(W − 4) / 9` —— 附錄 B 的
+「扣除外框」扣了一個 **4pt 外框,而盤面實際上沒有這個外框**(只有每格 0.5pt 髮絲線,
+`BoardCellView.swift`)。真正的滿版格徑是 `W / 9`,**比表格數字略大**:
+
+| 裝置 | 表格 | 實測(#1022 baseline 量測) | 受限於 |
+|---|---|---|---|
+| iPhone SE 320pt | 35.1pt | **26.1pt**(盤面只有 235pt 寬) | **高度** |
+| iPhone 15/17 Pro 393pt | 43.2pt | **43.7pt**(盤面 393pt,真滿版) | 寬度 |
+| iPhone Pro Max 430pt | 47.3pt | **47.8pt**(盤面 430pt,真滿版) | 寬度 |
+
+⚠️ **SE 那一列做不到。** 568pt 高的螢幕扣掉 header + G4 叢集 + 邊距後只剩約 235pt,
+盤面是被**高度**卡住而不是寬度,拿掉左右內縮完全不會變大 —— 表格假設的「寬度受限」
+在 SE 上從來不成立(「現況 32.0pt」同樣如此)。26.1pt 低於本節自己引用的 28pt 絕對下限。
+要解只能給短螢幕一個**更矮的 G4 變體**(單列 9 鍵,或更矮的格),那是設計決策,不在 #1022 範圍 —— 追蹤於 **#1055**。
+
 **裁定(沿用並更新數字):** 盤面格預設 ~43.2pt 低於 HIG 預設 44pt、高於官方下限 28pt。
 理由:9 欄硬性擠壓,提高格徑只能靠捲動,而捲動破壞「一眼看完整盤」的玩法前提。
 緩解:選取環清晰、MS Intermediate/Expert 已在 #764 提到 44pt、#815 提供 pinch-to-zoom。
 
-**⚠️ MS Intermediate(24.3pt)與 Expert(13.0pt)在未縮放時低於官方 28pt 絕對下限。**
-合規路徑是 **#815 的 pinch-to-zoom** —— 玩家可放大到 2×(≈48.6 / 26pt)。
-**B-5 驗收要加一條:zoom 後格徑 ≥28pt。**
+**✅ 更正(B-5 實測,#1028 · 2026-09-11):MS Intermediate / Expert 在 1× 已是 44pt。**
+前一版寫的「未縮放 24.3 / 13.0pt、2× ≈48.6 / 26pt」是 #764 之前的數字 —— #764 起 Intermediate/Expert 盤面改為
+**44pt 下限 + 可捲動**,不再靠壓縮格徑塞進螢幕(而且前一版自己的 2× Expert 值 26pt 也低於它引用的 28pt 下限,該列本身是矛盾的)。
+iPhone 17 Pro sim 實測(`ui_describe_all` 讀回的格框):1× 兩者皆 44×44pt(pitch 46pt);#815 pinch 到 2× 後 **88×88pt**(pitch 90pt),
+第二次 pinch 仍停在 88pt(`maxZoomScale = 2.0` clamp 生效)。唯一會低於 28pt 的是玩家主動縮到 0.5×(22pt),#815 已定義為 session-only 的明示選擇。
+**B-5 驗收條「zoom 後格徑 ≥28pt」:通過(88 ≥ 28;1× 的 44 也已 ≥ 28)。**
 
 ⚠️ 另更正:前一版把「格間無間隙」列為緩解措施 —— **移除**。
 官方把間距與尺寸視為同等重要,零間距是一個**取捨**(避免點擊掉進縫隙),不是把格子做小的緩解理由。
+
+⚠️ **MS 沒有 undo(#1022 查證,#1052 追蹤)。** 上圖原本寫「MS:揭開/旗標模式切換 + undo」,
+但 Minesweeper **任何一層都沒有 undo** —— 沒有 `canUndo`、沒有 `undo()`,
+`MinesweeperSession.swift` 與 `MinesweeperGameViewModel.swift` 的 scope 註解直接寫明
+「no undo」;engine 的 `moves: [Move]` 是只往前追加的重播記錄,restore 時就丟掉,不是 undo stack。
+所以 #1022 的 MS G4 **只有一組**(輸入組 = 模式切換),編輯組**整組不畫**,不塞 disabled 佔位鍵
+(死控制項比沒有控制項更糟)。undo 是 engine 工作,見 **#1052**;它落地後 MS 才會有第二組。
 
 **保留不碰:** Sudoku 即時錯誤高亮 + 鉛筆註記 · pause 現狀(D5/D6)· `.idle`/`.leaveReady` 逃生口。
 
@@ -399,13 +424,25 @@ tab** 的 path,與齒輪(`TabRootChrome`)走同一條 in-tab push,並以 `last !
 |---|---|---|---|
 | **G1** | Tab bar / sidebar | **系統自帶** | ✅ 保留(自動取得玻璃) |
 | **G2** | 各 tab 的 toolbar(含齒輪、board 的計時/暫停) | **系統自帶** | ✅ 保留 |
-| ~~G3~~ | ~~Board 上緣自訂膠囊~~ | ~~自訂~~ | 🗑 **刪除** → 併入 G2 標準 toolbar |
+| ~~G3~~ | ~~Board 上緣自訂膠囊~~ | ~~自訂~~ | 🗑 **刪除** → 併入 G2 標準 toolbar ⏳ **尚未執行,見 #1053** |
 | **G4** | Board 下緣控制叢集 | **自訂** | ✅ 保留 —— 盤面的主要輸入介面 |
 | ~~G5~~ | ~~Resume 面板~~ | ~~自訂~~ | 🗑 **刪除** → standard material(它是內容層卡片) |
 | **G6** | Completion 面板 | **自訂** | ✅ 保留為**明示例外**(見 §4.4) |
 | **G7** | Tab bar accessory(banner 容器) | **系統自帶** | ✅ 保留 —— 免計(系統元件自動取得玻璃)。前一版清單漏列 |
 
 **自訂玻璃只有 2 片(G4、G6),且同一時間最多一片可見。**
+
+⚠️ **快照測不到玻璃(#1054)。** 本 repo 的快照器走 `NSHostingView` + `cacheDisplay`,
+標準材質(`.ultraThinMaterial`)與 `.bordered` 都畫得出來,但 **Liquid Glass 完全不畫**
+(`.buttonStyle(.glass)` 只剩文字,`.glassEffect()` 什麼都沒有 —— #1022 兩條路徑實測)。
+所以 G4/G6 的玻璃**只能靠模擬器實機驗證**;快照能證明版面,不能證明材質。
+連帶影響:App Store 的 `03-board` 版位就是讀這些 baseline,見 **#1054**(送審前必須處理)。
+
+⏳ **G3 的刪除延後到 #1053。** #1022 只做滿版盤面 + G4,沒有動 header。原因:iPhone 的 board 是
+`fullScreenCover`,內容外面**沒有 NavigationStack**(`GameRoot.swift`),`.toolbar` 根本不會畫;
+要補一層 NavigationStack 會改變 BoardView 的 frame,而 iOS 的 pause/completion overlay 是就地
+`.overlay`,會因此蓋不住 toolbar —— 正好是 #763 保證、#1019/#1038 才修好的那條縫。所以在 #1053
+落地前,board 上緣仍然是現況那一列(非玻璃),本表的 G3 列尚未成真。
 
 ### 4.2 為什麼 streak / 卡片不用玻璃
 
@@ -467,7 +504,14 @@ pause overlay 是 `ultraThinMaterial`(standard material,非 Liquid Glass),不構
   是「融合距離」而非內距)
 - **不覆寫標準間距**:「Prefer to use **standard spacing metrics** instead of overriding them」→ 叢集內距引用系統標準,不寫死
 - **分組原則用官方的**:「Group items that perform similar actions or affect the same part of the interface, and maintain consistent groupings and placement across platforms」→ **輸入組**(數字鍵 / 模式切換)與**編輯組**(undo / redo / 鉛筆),兩 app 一致、三平台一致
-- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。兩組各有自己的背景,同屬一個 `GlassEffectContainer`
+- ⚠️ **G4 拆成兩個 group,不是一個**:官方同段明文「**don't mix text and icons across items that share a background**」—— 數字鍵(文字)與工具鍵(圖示)不能共用同一個背景。
+- ⚠️ **更正(#1022 實作):每一組各自一個 `GlassEffectContainer`,不是兩組共用一個。**
+  前一版寫「兩組…同屬一個 `GlassEffectContainer`」,實作後改掉,理由是 **B-7(#1029)驗證的合併行為**:
+  容器內的形狀融合是**鄰近度驅動**的(gap 12 就開始連成一片,gap 6/2 併成一顆膠囊)。
+  兩組放同一個容器,「文字與圖示不共用背景」就變成**取決於兩組之間的間距**——
+  哪天有人調間距、或 Dynamic Type 把某一組撐高,兩組就會自己黏成一片,而且沒有任何測試會擋。
+  各自一個容器,不相黏是**結構保證**,與間距無關。#1022 spec item 3 也是這樣寫的。
+  (代價:失去跨組的形狀聯動動畫。可接受——本來就不該聯動。)
 - **【官方】每個圖示按鈕必須有 accessibility label**:「**Provide an accessibility label for every icon.** Regardless of what you show in the interface, always specify an accessibility label for each icon.」
 - **圓角同心**:官方要求「using rounded shapes that are **concentric to their containers**」【官方】;**但「內圓角 = 外圓角 − 內距」這條公式是【我方推論】**,官方沒有給公式
 - 官方**沒給**「一組最多幾項」的數字 → **不自訂上限**
@@ -809,7 +853,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | ~~U-5~~ | games 專章 | — | ✅ 已結案:**官方無介面結構規範** |
 | ~~U-6~~ | `GlassEffectContainer` | — | ✅ 已解:存在,26.0+ |
 | **U-2** | 玻璃叢集官方間距數值 | ❌ 不擋 | 引用系統標準即可 |
-| **U-7** | 各語系系統 GC 用詞 | ⚠️ **擋 L10n 定案** | B-3 |
+| ~~U-7~~ | 各語系系統 GC 用詞 | — | ✅ 已解(#1030,2026-09-11,[B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)):系統用詞取自 iOS 26.4 / 26.5 sim runtime 的 `GameCenterUI.framework` 字串表,六語系齊。zh-Hant / zh-Hans / es 與我方一致;**ja Leaderboards、ko 兩詞、th 兩詞不一致** → 交 #1025 定案。截圖未取得(本機 38 個 sim 皆無 GC 登入,owner-owned) |
 | **U-9** | `GlassEffectContainer` × 系統 button style | ⚠️ **擋 G4 實作細節** | B-7 |
 | **U-10** | `tabViewBottomAccessory` × AdMob | ❌ **不擋**(有降級備案) | B-6 |
 | **U-11** | MS `status.warning` 的實際使用位置 | ❌ 不擋 | 查清後決定是否另開 issue |
@@ -822,9 +866,9 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 |---|---|---|---|---|
 | B-1 | MS 盤面留白成因 | sim agent | Beginner >32pt 且 Expert ≈0 → 成因確認 | ✅ |
 | B-2 | Dynamic Type AX5 | sim agent | 不截斷且不減內容量。**⚠️ 不可用注入 env 快照(假通過)** | ✅ |
-| B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ |
+| B-3 | GC 六語系實機用詞 | sim agent | 我方譯法與系統一致 | ✅ 已執行(#1030,[verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)):以 runtime 字串表替代截圖(證據鏈見留言);結果 3 語系一致、ja/ko/th 不一致 → #1025 |
 | B-4 | `sidebarAdaptable` vs #763 | macOS agent | pause/completion 期間 sidebar 與 tab 皆不可互動 | ⏳ iPad idb PASS(#1019 evidence 06–10);macOS XCUITest pending → #1039 |
-| B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ |
+| B-5 | 八種開關組合 | sim agent | 盤面格全可見可點 · IC 下 pip 三階可辨 · RT 下版面不位移 · RM 走 fade | ✅ 已跑(2026-09-11,[#1028 verdict](https://github.com/wei18/Sudoku/issues/1028#issuecomment-5631511746)):8 組合 × 2 app,判準 1/2/3/5 全過;判準 4 除 **M1**(RM 下 accent seep 被整個關掉而非 crossfade → #1065)外全過;§6 未實作列的漂移 → #1066 |
 | B-6 | accessory × AdMob | dev | banner 不塌、impression 正常 | ✅(最小樣板) |
 | B-7 | `GlassEffectContainer` × button style | dev | 正確合併為單一玻璃形狀 | ✅(最小樣板) |
 
@@ -863,14 +907,14 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 | 項目 | 等什麼 | 沒等到就 |
 |---|---|---|
 | Banner 改 tab accessory | B-6 | **退回 tab 內容底部**(設計已備案,不阻擋出貨) |
-| L10n 新字串定案 | B-3 / U-7 | 先只上英文,其餘語系待核對 |
+| L10n 新字串定案 | ~~B-3 / U-7~~ ✅ 已解 → #1025 | 系統用詞已知;ja/ko/th 對齊與否由 #1025 定案 |
 
 ### 階段 3 — 獨立 PR,不綁 3.0
 
 | 項目 | 說明 |
 |---|---|
 | **#1012 成就插畫** | 22 張不重用插畫 + `ASCRegisterKit` 上傳路徑。**需美術產能,獨立 epic** |
-| **孤兒字串清理** | 8 個 GC 死鍵 + 英文禁用詞鍵(#49 收尾 backlog) |
+| ~~**孤兒字串清理**~~ | ✅ 已完成(#1025,2026-09-14):以 `rg` 對 `*.swift` / `*.strings` / `*.plist` / `*.py` 逐鍵證明零引用後刪除。Sudoku 刪 23 個區塊(22 鍵,`Friends` 重複兩份):#983 叢集 16 鍵(Daily Rank、World、Friends、Sign In、Connect with Friends、Allow Game Center to see…、Allow Friends Access、No Rankings Yet、Be the first to set a time today.、None of your friends have set a time today…、Open Game Center、Couldn't Load Rankings、Check your connection and try again.、Top Ranked、Your Rank、You)+ stale 6 鍵(Leaderboard、Couldn't load leaderboard.、Enable Friends to see this list.、error.gameCenter.not_authenticated.body、View full leaderboard、Practice puzzles aren't ranked.);Minesweeper 刪 20 鍵(同 #983 叢集 16 鍵 + Leaderboard、Couldn't load leaderboard.、View leaderboard、Practice puzzles aren't ranked.)。`Sign in to Game Center` 仍由 GameRoot 使用,保留 |
 | **`status.warning` 跨 app 統一** | 兩 app 值不同,依「功能色不可覆寫」原則應統一 |
 | **MS 四層 loader 收斂** | 3.0 明確不碰;各 tier 修的是真實競態(#841/#842/#910),硬併會重新引入 bug |
 
@@ -895,7 +939,7 @@ r2 又抓到一層問題:**C-x / N-x 是我們自己的編號,從來沒有對應
 |---|---|---|---|
 | 1 | 「卡片不用玻璃」隱含現況無玻璃 | 現況**有 6 處** shipping 玻璃在內容層 | **談現況要查程式碼,不要只讀設計文件** |
 | 2 | MS 成就 13 個 | **11 個**(兩 app 各 11,合計 22) | **數量要找權威列舉,不要 grep 宣告樣式** |
-| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞** | **判定合規要看全部樣本,不能只看一個鍵** |
+| 3 | ja「兩種譯法並存」+ 英文來源詞全合規 | 並存不成立(8/9 是孤兒);英文 `No Rankings Yet` / `Couldn't Load Rankings` **本身就用了禁用詞**。**追記(2026-09-11,#1030):**「統一リーダーボード」的裁定**與 iOS 26 runtime 不符** —— 系統 ja 全表用英文原詞 `Leaderboard`(ランキング 專指 rank);是否改採由 #1025 定案,見 [B-3 verdict](https://github.com/wei18/Sudoku/issues/1030#issuecomment-5630948089)。**定案(2026-09-14,#1025):**存活的 GC 鍵只有 `Achievements` / `Leaderboards`(GameCenterEntryRow);ja `Leaderboards` 統一為 `リーダーボード`(可讀的日文、是系統儀表板 `Leaderboard` 同一詞的片假名、英文原詞夾在日文文案中會被讀成缺陷),ko 對齊系統 `목표 달성` / `순위표`,th 對齊 `ผลสำเร็จ` / `ลีดเดอร์บอร์ด`;InfoPlist 好友清單用途字串同步三詞。其餘 ランキング 命中與 `No Rankings Yet` / `Couldn't Load Rankings` 全為零引用孤兒,直接刪除(見 §11 階段 3),不再翻譯 | **判定合規要看全部樣本,不能只看一個鍵** |
 | 4 | 「v3.2 有 14 片玻璃」 | 實際宣告 **6 片** —— 14 是我的腳本數 HTML class 出現次數 | **驗證腳本的計數欄位要對齊它宣稱測量的概念** |
 | 5 | 「Sudoku 側沒有等價 `allShortIds`」 | **有**,在 `SudokuEngine/GameCenterIdentifiers.swift:82-94` | **找不到時先確認找對模組;跨 app 對稱假設不是每處都成立** |
 | 6 | 契約累計 20 / 12 | **32 / 27**(r2 再更正為 **36 / 28**,見 #10) | **不同量綱不能相加**(BREAK 小計 ≠ 總列數) |
