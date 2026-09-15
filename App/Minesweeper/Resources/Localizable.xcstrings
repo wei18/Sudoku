@@ -1265,7 +1265,8 @@
       }
     },
     "gc.minesweeper.leaderboard.easy.daily.title" : {
-      "extractionState" : "stale",
+      "comment" : "#1086: read by ASCRegister (`Config.leaderboards(for: .minesweeper)` titleKey, required by `validate`/`plan`/`apply --app minesweeper`) for the Game Center leaderboard name, not by app code. Do not delete.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1312,7 +1313,8 @@
       }
     },
     "gc.minesweeper.leaderboard.hard.daily.title" : {
-      "extractionState" : "stale",
+      "comment" : "#1086: read by ASCRegister (`Config.leaderboards(for: .minesweeper)` titleKey, required by `validate`/`plan`/`apply --app minesweeper`) for the Game Center leaderboard name, not by app code. Do not delete.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1359,7 +1361,8 @@
       }
     },
     "gc.minesweeper.leaderboard.medium.daily.title" : {
-      "extractionState" : "stale",
+      "comment" : "#1086: read by ASCRegister (`Config.leaderboards(for: .minesweeper)` titleKey, required by `validate`/`plan`/`apply --app minesweeper`) for the Game Center leaderboard name, not by app code. Do not delete.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1406,7 +1409,8 @@
       }
     },
     "iap.minesweeper.remove_ads.description" : {
-      "extractionState" : "stale",
+      "comment" : "#1086: read by ASCRegister (`IAPProduct.descriptionKey`: required by `validate --app minesweeper`, uploaded by `iap plan`/`iap apply` as the App Store IAP description), not by app code. Do not delete.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1453,7 +1457,7 @@
       }
     },
     "iap.minesweeper.remove_ads.name" : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
