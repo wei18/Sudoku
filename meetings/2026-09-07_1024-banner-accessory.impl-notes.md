@@ -158,6 +158,18 @@ All pass on macOS `swift test` (85/85 full GameAppKit suite, up from 82).
   tests plus `TodayTabHostTests` (restored from main, unchanged). `#1024`'s
   removal of the inline Today/Practice/Settings banner slots won every
   conflicting hunk; no board file was touched.
+- **Pin test restored (#1080, PM requirement — an E2E-only pin does not
+  count)**: `GameAppKitTests/BannerAccessoryPinTests.swift` replaces the
+  deleted `BannerAccessoryViewTests` as the accessory's own render-level pin.
+  Three `@Test`s, each named for the mutation that turns it red: (a) gate open
+  → the accessory container renders a registered, loading-or-loaded slot
+  (mutation: reverting `BannerAccessoryView.body` to `EmptyView()`, or
+  dropping the `\.bannerSession` environment injection); (b) gate denied → no
+  container, or a zero-height one with no registered slot (mutation: hardcoding
+  `RootShellView`'s `isEnabled:` to `true`); (c) macOS → `makeBottomAccessory()`
+  returns `EmptyView`, structurally, because `BannerAccessoryView` does not
+  compile into the macOS binary at all (mutation: removing the `#if os(iOS)`
+  guard around `makeBottomAccessory` so both platforms return the same type).
 - **`isEnabled` design (#1079, this session)**: `RootShellView` gained a
   plain `Bool` parameter, `bottomAccessoryIsEnabled`, feeding
   `tabViewBottomAccessory(isEnabled:content:)`. GameShellKit still has no

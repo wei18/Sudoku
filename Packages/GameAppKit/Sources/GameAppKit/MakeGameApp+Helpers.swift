@@ -100,11 +100,11 @@ func chromedTabRoots<Route: Hashable & Sendable>(
 /// accessory reads the session through `\.bannerSession` (#1062) like every
 /// other slot.
 @MainActor
-func makeBottomAccessory() -> AnyView {
+func makeBottomAccessory() -> some View {
     #if os(iOS)
-    AnyView(BannerAccessoryView())
+    BannerAccessoryView()
     #else
-    AnyView(EmptyView())
+    EmptyView()
     #endif
 }
 

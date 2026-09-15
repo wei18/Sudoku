@@ -10,7 +10,7 @@
 // #1024: `TodayTabHost` no longer owns a banner slot at all — it moved to
 // the shared `tabViewBottomAccessory` (design.md §2.4, `BannerAccessoryView`
 // in GameAppKit). The retired banner-region coverage below (`bannerVisible`)
-// is now `BannerAccessoryViewTests` + the pre-existing `BannerSlotView`
+// is now `BannerAccessoryPinTests` + the pre-existing `BannerSlotView`
 // coverage (`HubSettingsBannerTests`, `BoardViewBannerTests`) — this suite
 // no longer has any banner state to seed or assert on.
 

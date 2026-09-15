@@ -1274,30 +1274,35 @@ GC row entry point: `App/SudokuE2ETests/SudokuE2ETests.swift`
 
 ## ATT-PRIMER
 
-**Entry points (3.0, C-33 BREAK — #1020, re-anchored again by #1024):** first
-ad-relevant moment — the shared banner accessory's slot
-(`GameAppKit/BannerAccessoryView.swift`, `onAdContext`) calls
-`attPrimer.maybePresentOnAdContext()` (i.e., the **first accessory banner
-load**, not app launch). Pre-3.0 this was `GameHomeView`'s banner slot; #1020
-moved it to the Today tab's own slot (`GameAppKit/TodayTabHost.swift`); #1024
-moved it again, from Today-only to the ONE shared `tabViewBottomAccessory`
-banner that now covers every tab. One-offer-per-launch latch (`hasOffered`)
-unchanged — same `ATTPrimerCoordinator`, only the call site moved.
+**Entry points (3.0, C-33 BREAK — #1020, re-anchored again by #1024, moved onto
+the session model by #1062):** first ad-relevant moment — the session-scoped
+`BannerSessionModel` (`AppMonetizationKit/Sources/MonetizationUI/BannerSessionModel.swift`)
+runs its `onAdContext` hook once provider readiness resolves, before any
+registered slot's first load. `MakeGameApp+BannerSession.swift`'s
+`makeBannerSession(adProvider:adGate:attPrimer:)` wires that hook to
+`attPrimer.maybePresentOnAdContext()`. Pre-3.0 this was `GameHomeView`'s
+banner slot; #1020 moved it to the Today tab's own slot
+(`GameAppKit/TodayTabHost.swift`); #1024 moved it again, from Today-only to
+the ONE shared `tabViewBottomAccessory` banner that now covers every tab;
+#1062 moved the hook off any one slot's view code entirely, onto the session
+that every slot (accessory included) merely registers with. One-offer-per-launch
+latch (`hasOffered`) unchanged — same `ATTPrimerCoordinator`, only the call
+site moved.
 
 **Reachability change (#1024, before vs. after):**
 
-| | Before (#1020) | After (#1024) |
+| | Before (#1020) | After (#1024 / #1062) |
 |---|---|---|
-| Trigger surface | Today tab's OWN `BannerSlotView` (`TodayTabHost`) — Practice/Settings had independent `BannerSlotView`s with no `onAdContext` wired | ONE `BannerSlotView` for the whole shell (`BannerAccessoryView`), the only one wired to `onAdContext` |
+| Trigger surface | Today tab's OWN `BannerSlotView` (`TodayTabHost`) — Practice/Settings had independent `BannerSlotView`s with no `onAdContext` wired | The session's `onAdContext`, fired once by `BannerSessionModel` and triggered by whichever slot registers first (the accessory is root `TabView` chrome, so in practice that's usually it) |
 | Gated on | Visiting/rendering the Today tab at least once | Nothing tab-specific — the accessory is part of the root `TabView` chrome, mounted once regardless of which tab is initially selected |
-| Practical effect | A user who navigated straight to Practice/Progress without visiting Today never triggered the primer until they did | Fires as soon as the shared accessory's gate resolves, independent of which tab is on screen (in practice still effectively "first frame", since Today is `AppTab`'s default selection) |
+| Practical effect | A user who navigated straight to Practice/Progress without visiting Today never triggered the primer until they did | Fires as soon as the session's provider-readiness wait resolves, independent of which tab is on screen (in practice still effectively "first frame", since Today is `AppTab`'s default selection) |
 
-Order-pinning is unchanged and still enforced by the same, untouched
-`BannerSlotView.resolveGateAndLoad` (AppMonetizationKit): `onAdContext` always
-fires before the reload coordinator's actual ad load — see
-`GameAppKitTests/BannerAccessoryViewTests.primerFiresBeforeAnyAdLoad` (iOS
-Simulator only; the equivalent macOS headless harness cannot pump an
-actor-hop inside `.task`, documented on that suite).
+Order-pinning is unchanged and still enforced by `BannerSessionModel`'s own
+readiness sequence (gate → provider `awaitReady()` → `onAdContext` → slot
+loads): `onAdContext` always fires before any slot's actual ad load — see
+`GameAppKitTests/TodayTabHostTests` (`makeBannerSession`'s C-33 ordering
+tests) and `GameAppKitTests/BannerAccessoryPinTests` (the accessory itself
+renders only a registered slot, no bypass of the session's order).
 
 **Does not block interaction** — the shell is already rendered and tappable
 when this sheet appears (CODE CONTRADICTED vs. a "boot-time gate" assumption).

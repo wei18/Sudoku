@@ -6,7 +6,7 @@
 // shell with a sentinel accessory and asserts it lands in the live view
 // hierarchy — no monetization types, GameShellKit stays zero-dep.
 //
-// iOS-only, like `GameAppKit.BannerAccessoryViewTests`: `tabViewBottomAccessory`
+// iOS-only, like `GameAppKit.BannerAccessoryPinTests`: `tabViewBottomAccessory`
 // doesn't exist on macOS (design.md §2.4.1), and a macOS `swift test` host has
 // no `UIApplication` run loop to mount a `UIHostingController` in anyway.
 //
@@ -168,12 +168,16 @@ struct RootShellViewBottomAccessoryRenderTests {
         // capsule itself to never appear — `isEnabled: false` must suppress
         // the whole container, not just leave it empty (that would be the
         // pre-#1079 empty-capsule regression this test guards against).
+        // Checking `subviews.isEmpty` alone is not enough: an empty capsule
+        // with zero height still passes that check, so also require the
+        // container (when present at all) to have zero height — the
+        // capsule reserving no space is the actual #1079 contract.
         _ = await waitForAccessoryContainer(in: window)
         let container = findAccessoryContainer(in: window)
 
         #expect(
-            container?.subviews.isEmpty ?? true,
-            "isEnabled:false still drew a non-empty tabViewBottomAccessory container — the empty-capsule regression is back"
+            container == nil || (container!.bounds.height == 0 && container!.subviews.isEmpty),
+            "isEnabled:false still drew a non-empty or non-zero-height tabViewBottomAccessory container — the empty-capsule regression is back"
         )
     }
 }
