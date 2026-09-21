@@ -40,7 +40,7 @@ internal import GameAppKit
 internal import GameShellUI
 internal import SudokuEngine
 
-public struct DailyHubView<Banner: View>: View {
+public struct DailyHubView: View {
     // #536: @State (first-value-wins) so a re-render that mints a fresh idle
     // VM from the factory does not replace the bootstrapped instance. The view
     // keeps the same SwiftUI identity across re-renders, so @State retains the
@@ -63,7 +63,6 @@ public struct DailyHubView<Banner: View>: View {
     /// lifecycle signal actually fire" trap #761 already burned once (see
     /// the `.onChange` below).
     @Environment(\.gameSelectedTab) private var selectedTab
-    private let banner: Banner
     // Exhausted-state card padding (#762 PR2 two-tier spacing contract) —
     // content tier, wraps the icon/message/action-button stack, scales
     // with Dynamic Type.
@@ -75,12 +74,8 @@ public struct DailyHubView<Banner: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    public init(
-        viewModel: DailyHubViewModel,
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
-    ) {
+    public init(viewModel: DailyHubViewModel) {
         _viewModel = State(wrappedValue: viewModel)
-        self.banner = banner()
     }
 
     public var body: some View {
@@ -304,7 +299,6 @@ public struct DailyHubView<Banner: View>: View {
                         .accessibilityIdentifier("sudoku.dailyHub.root")
                 }
             },
-            banner: { banner },
             loading: {
                 ScrollView {
                     // spacing-exempt: 12pt matches `DailyHubShellView.cardGridGap`

@@ -88,7 +88,15 @@ struct BannerSlotDarkBandRegressionTests {
         await session.start()
         let viewModel = await makeLoadedHubViewModel()
 
-        let view = DailyHubView(viewModel: viewModel) {
+        // #1096 removed `DailyHubView`'s banner slot (no production caller
+        // had filled it since #1020). This fixture reconstructs the
+        // pre-#1024 in-shell composition — banner BELOW the hub, zero gap,
+        // on the same page-background token — so the #851 no-band property
+        // stays pinned. Production now hosts the banner in
+        // `tabViewBottomAccessory`; retargeting this pin is tracked in
+        // #1097's re-baseline.
+        let view = VStack(spacing: 0) {
+            DailyHubView(viewModel: viewModel)
             BannerSlotView(
                 isSuppressed: false,
                 backgroundColor: DefaultTheme().surface.background.resolved
@@ -96,6 +104,7 @@ struct BannerSlotDarkBandRegressionTests {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+        .background(DefaultTheme().surface.background.resolved)
         .environment(\.bannerSession, session)
         let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
         withSnapshotTesting(record: SnapshotMode.recordMode) {

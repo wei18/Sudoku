@@ -31,7 +31,7 @@ internal import GameAppKit
 internal import GameShellUI
 internal import MinesweeperEngine
 
-public struct MinesweeperDailyHubView<Banner: View>: View {
+public struct MinesweeperDailyHubView: View {
     // #536: @State (first-value-wins) so a re-render that mints a fresh idle
     // VM from the factory does not replace the bootstrapped instance. Mirrors
     // the Sudoku fix in DailyHubView — both share the same @Bindable bug class.
@@ -45,7 +45,6 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     // the `ResumePill` / `refreshResumeCandidate` precedent (#675). Mirrors
     // Sudoku's `DailyHubView`.
     @Environment(\.gameSessionTeardownCount) private var sessionTeardownCount
-    private let banner: Banner
     @ScaledSpacing(.medium) private var headerGap
     // #1021 Phase G: calls the shared `DailyHubGridLayout.columnCount(...)`
     // so the `loading:` skeleton grid doesn't visibly reflow once real data
@@ -53,12 +52,8 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    public init(
-        viewModel: MinesweeperDailyHubViewModel,
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
-    ) {
+    public init(viewModel: MinesweeperDailyHubViewModel) {
         _viewModel = State(wrappedValue: viewModel)
-        self.banner = banner()
     }
 
     public var body: some View {
@@ -171,7 +166,6 @@ public struct MinesweeperDailyHubView<Banner: View>: View {
                         .accessibilityIdentifier("minesweeper.dailyHub.root")
                 }
             },
-            banner: { banner },
             loading: {
                 ScrollView {
                     // spacing-exempt: 12pt matches `DailyHubShellView.cardGridGap`
