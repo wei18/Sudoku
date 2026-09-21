@@ -42,7 +42,7 @@ private struct SentinelFactory: RouteFactory {
 @Suite("GameShellUI — RootShellView stays generic")
 struct RootShellViewGenericityTests {
     @Test @MainActor func instantiatesWithNonSudokuRoute() {
-        let shell = RootShellView<SentinelRoute, Text>(
+        let shell = RootShellView<SentinelRoute, Text, EmptyView>(
             selectedTab: .constant(.today),
             path: { _ in .constant([.first]) },
             routeFactory: SentinelFactory(),
@@ -68,7 +68,7 @@ struct RootShellViewGenericityTests {
             )
         }
 
-        let shell = RootShellView<SentinelRoute, Text>(
+        let shell = RootShellView<SentinelRoute, Text, EmptyView>(
             selectedTab: .constant(.practice),
             path: path,
             routeFactory: SentinelFactory(),
@@ -105,7 +105,7 @@ struct RootShellViewGenericityTests {
             )
         }
 
-        let shell = RootShellView<SentinelRoute, Text>(
+        let shell = RootShellView<SentinelRoute, Text, EmptyView>(
             selectedTab: .constant(.practice),
             path: path,
             routeFactory: SentinelFactory(),
@@ -136,7 +136,7 @@ struct RootShellViewGenericityTests {
             )
         }
 
-        let shell = RootShellView<SentinelRoute, Text>(
+        let shell = RootShellView<SentinelRoute, Text, EmptyView>(
             selectedTab: .constant(.practice),
             path: path,
             routeFactory: SentinelFactory(),
@@ -166,7 +166,7 @@ struct RootShellViewGenericityTests {
             )
         }
 
-        let shell = RootShellView<SentinelRoute, Text>(
+        let shell = RootShellView<SentinelRoute, Text, EmptyView>(
             selectedTab: .constant(.today),
             path: path,
             routeFactory: SentinelFactory(),

@@ -49,7 +49,7 @@ public import SwiftUI
 public import GameShellUI
 public import MonetizationUI
 
-public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
+public struct GameRoot<Route: Hashable & Sendable, TabRoot: View, Accessory: View>: View {
     // The app-side Root owns the VM as `@State`; GameRoot holds the same
     // `@Observable` reference. Property access in `body` registers observation,
     // so a plain stored reference (not a second `@State`) is correct here and
@@ -70,6 +70,11 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     private let failureTint: Color
     private let infoTint: Color
     private let tabRoot: (AppTab) -> TabRoot
+    // #1024: forwarded straight into `RootShellView`'s `tabViewBottomAccessory`
+    // content (design.md §2.4). `MakeGameApp` supplies the real (monetization)
+    // content on iOS and `{ EmptyView() }` on macOS — this type stays agnostic
+    // either way, same as `tabRoot`.
+    private let bottomAccessory: () -> Accessory
 
     // SDD-003 OQ-001: single chrome state instance, owned here so it outlives
     // individual modal presentations. Reset on dismiss so a stale label from a
@@ -79,6 +84,16 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
     #if os(iOS)
     @State private var chromeState = GameChromeState()
     #endif
+
+    // #1080: the accessory's banner lease, owned HERE (not by
+    // `BannerAccessoryView` itself) so it outlives `tabViewBottomAccessory`'s
+    // native re-hosting of its content — see
+    // `meetings/2026-09-11_1058-slot-model-design.md` §"Externally owned
+    // lease (#1080)". `GameRoot` is the scene-lifetime owner every other
+    // `@State` on this type already relies on (`chromeState` above), and
+    // injecting it here (not in GameShellKit) is what keeps GameShellKit
+    // itself zero-dependency on monetization types.
+    @State private var accessoryLease = BannerSlotLease()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -98,7 +113,8 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
         successTint: Color,
         failureTint: Color,
         infoTint: Color,
-        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot
+        @ViewBuilder tabRoot: @escaping (AppTab) -> TabRoot,
+        @ViewBuilder bottomAccessory: @escaping () -> Accessory
     ) {
         self.viewModel = viewModel
         self.bannerSession = bannerSession
@@ -109,6 +125,7 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
         self.failureTint = failureTint
         self.infoTint = infoTint
         self.tabRoot = tabRoot
+        self.bottomAccessory = bottomAccessory
     }
 
     public var body: some View {
@@ -228,8 +245,17 @@ public struct GameRoot<Route: Hashable & Sendable, TabRoot: View>: View {
             path: viewModel.pathBinding(for:),
             routeFactory: routeFactory,
             settingsRoute: settingsRoute,
-            tabRoot: tabRoot
+            tabRoot: tabRoot,
+            // #1079: drives `tabViewBottomAccessory(isEnabled:)` — this read
+            // happens inside `shellContent`, which is only ever evaluated
+            // from `body`, so `@Observable`'s dependency tracking picks up
+            // `bannerSession.isVisible` changes and re-renders the shell.
+            bottomAccessoryIsEnabled: bannerSession.isVisible,
+            bottomAccessory: bottomAccessory
         )
+        // #1080: the accessory's own externally-owned lease, scene-lifetime
+        // via `accessoryLease` above.
+        .environment(\.bannerAccessoryLease, accessoryLease)
     }
 }
 

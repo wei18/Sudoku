@@ -42,7 +42,7 @@ internal import GameCenterClient
 // param (mirrors `SettingsScreen`'s decoupled emit closure).
 public import Telemetry
 
-public struct SettingsView<Banner: View>: View {
+public struct SettingsView: View {
     // #1058 2f: owned as `@State`, not a plain stored property. Both apps'
     // `.settings` destination builders mint a fresh `SettingsViewModel` on
     // every ancestor re-render (the #909 shape, see `GameConfig.reminderSettings`);
@@ -65,10 +65,6 @@ public struct SettingsView<Banner: View>: View {
     // `nil` in previews / tests → no audio section, byte-identical screen. Live
     // wiring injects one whose setters fan out to the running `LiveSoundPlayer`.
     private let audioSettings: AudioSettingsModel?
-    // Epic 5: optional banner slot below the Form. SettingsKit / GameShellUI
-    // must NOT import MonetizationUI; the actual BannerSlotView is injected by
-    // each app's LiveRouteFactory. EmptyView default keeps previews/tests inert.
-    private let banner: Banner
     // #685: the Game Center row previously called `GameCenterDashboard.present()`
     // directly with no signed-out guard — a silent no-op when unauthenticated.
     // Injected so the live wiring can route through
@@ -115,8 +111,7 @@ public struct SettingsView<Banner: View>: View {
         presentGameCenter: (@MainActor () -> Void)? = nil,
         appStoreID: String? = nil,
         presentInviteFriends: (@MainActor () -> Void)? = nil,
-        telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
+        telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in }
     ) {
         _viewModel = State(initialValue: viewModel)
         self.monetizationController = monetizationController
@@ -127,7 +122,6 @@ public struct SettingsView<Banner: View>: View {
         self.appStoreID = appStoreID
         self.presentInviteFriends = presentInviteFriends
         self.telemetryEmit = telemetryEmit
-        self.banner = banner()
     }
 
     public var body: some View {
@@ -214,10 +208,7 @@ public struct SettingsView<Banner: View>: View {
                         tintColor: theme.accent.primary.resolved
                     )
                 }
-            },
-            // Epic 5: banner injected by each app's LiveRouteFactory; EmptyView
-            // in previews/tests.
-            banner: { banner }
+            }
         )
         .task { await viewModel.bootstrap() }
         .task {

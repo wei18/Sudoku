@@ -8,7 +8,6 @@
 // `MinesweeperUI.SettingsView(...)` / `SettingsViewModel(...)` call sites
 // (production + tests) unqualified and source-compatible.
 public import GameAppKit
-public import SwiftUI
 
-public typealias SettingsView<Banner: View> = GameAppKit.SettingsView<Banner>
+public typealias SettingsView = GameAppKit.SettingsView
 public typealias SettingsViewModel = GameAppKit.SettingsViewModel

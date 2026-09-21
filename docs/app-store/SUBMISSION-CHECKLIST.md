@@ -3,6 +3,8 @@
 Linear copy-paste session guide. Work top-to-bottom per app.
 All source files live under `docs/app-store/`.
 
+> **Minimum OS (v2.6):** iOS 26.1 / macOS 26.0 — raised from iOS 26.0 by #1079 (banner accessory `isEnabled`). Neither app has shipped, so no existing users are affected.
+
 ---
 
 ## Step 0 — run the preflight gate FIRST (Leader-orderable, read-only)

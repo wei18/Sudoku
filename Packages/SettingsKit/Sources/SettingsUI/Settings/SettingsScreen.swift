@@ -19,9 +19,6 @@
 //     leaderboard-as-value-type decoupling).
 //   - `aboutExtraRows` (@ViewBuilder, default EmptyView) — Sudoku injects its
 //     Sudoku-only "Generator" row here; Minesweeper injects nothing.
-//   - `banner` (@ViewBuilder, default EmptyView) — the app-injected
-//     `BannerSlotView` (Epic 5). SettingsKit must NOT import MonetizationUI /
-//     AppMonetizationKit; the actual slot is injected at the RouteFactory level.
 //   - `version`, `reminderSettings`, `notices`, `clearCache`, `tint` — injected
 //     config exactly as the prior wrappers passed them.
 //
@@ -35,7 +32,7 @@ public import SwiftUI
 // (SettingsKit already depends on TelemetryKit for that type).
 public import Telemetry
 
-public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View>: View {
+public struct SettingsScreen<Purchases: View, AboutExtraRows: View>: View {
     private let purchases: () -> Purchases
     private let reminderSettings: SettingsScreenReminderConfig?
     private let audioSettings: AudioSettingsModel?
@@ -48,7 +45,6 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
     // tests without an async bootstrap stay unchanged.
     private let isCacheStateReady: Bool
     private let tint: Color
-    private let banner: () -> Banner
     // Game Center entry point: when non-nil the shared `Section("Game Center")`
     // row is rendered. The action is injected per-app so SettingsKit never
     // imports GameKit. Every game passes `{ GameCenterDashboard.present() }`
@@ -89,8 +85,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         presentInviteFriends: (@MainActor () -> Void)? = nil,
         telemetryEmit: @escaping @Sendable (TelemetryEvent) -> Void = { _ in },
         @ViewBuilder purchases: @escaping () -> Purchases,
-        @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() },
-        @ViewBuilder banner: @escaping () -> Banner = { EmptyView() }
+        @ViewBuilder aboutExtraRows: @escaping () -> AboutExtraRows = { EmptyView() }
     ) {
         self.version = version
         self.tint = tint
@@ -105,7 +100,6 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
         self.telemetryEmit = telemetryEmit
         self.purchases = purchases
         self.aboutExtraRows = aboutExtraRows
-        self.banner = banner
     }
 
     public var body: some View {
@@ -215,7 +209,7 @@ public struct SettingsScreen<Purchases: View, AboutExtraRows: View, Banner: View
 
             // 5. Storage — shared section. Wires the host-supplied clearCache.
             SettingsStorageSection(isCacheStateReady: isCacheStateReady, clearCache: clearCache)
-        }, banner: banner)
+        })
         // #940: the primer + denied-explainer sheets used to be attached on
         // `ReminderSettingsSection`'s `Section` INSIDE the Form above — a
         // presentation host nested in a List row-group whose content is

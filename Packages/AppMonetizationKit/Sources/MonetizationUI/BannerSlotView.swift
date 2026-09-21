@@ -107,6 +107,31 @@ public struct BannerSlotView: View {
         self.verticalPadding = verticalPadding
     }
 
+    /// Joins the session with a lease OWNED BY THE CALLER instead of a fresh
+    /// `@StateObject` one. Only for a placement whose native host rebuilds
+    /// this view's SwiftUI content (`tabViewBottomAccessory`, #1080) — the
+    /// caller must keep this lease alive across that re-hosting, or
+    /// registration churns exactly like it would without this init.
+    public init(
+        lease: BannerSlotLease,
+        isSuppressed: Bool,
+        backgroundColor: Color = .clear,
+        progressTint: Color = .accentColor,
+        captionColor: Color = .secondary,
+        dismissTint: Color = .secondary,
+        horizontalPadding: CGFloat = 0,
+        verticalPadding: CGFloat = 0
+    ) {
+        self.registration = BannerSlotRegistration(lease: lease)
+        self.isSuppressed = isSuppressed
+        self.backgroundColor = backgroundColor
+        self.progressTint = progressTint
+        self.captionColor = captionColor
+        self.dismissTint = dismissTint
+        self.horizontalPadding = horizontalPadding
+        self.verticalPadding = verticalPadding
+    }
+
     public var body: some View {
         if let session = registration.session, session.isVisible, !isSuppressed {
             // Horizontal inset is `BannerSlotBandLayout`'s job now (#1084) —
@@ -224,114 +249,6 @@ public struct BannerSlotView: View {
         .accessibilityLabel(String(localized: "Dismiss ad", bundle: .main))
         .anchorPreference(key: BannerSlotGeometryKey.self, value: .bounds) { [.dismiss: $0] }
     }
-}
-
-// MARK: - BannerSlotBandLayout (#1084)
-
-/// Which of `BannerSlotBandLayout`'s two subviews a child is — tagged via
-/// `.layoutValue(key:value:)` since `placeSubviews` must propose the band a
-/// different width than the content (#1084 review fix 1 and 2: the band must
-/// stop at the padded-in width, not bleed into the horizontal inset or fill
-/// the Layout's full un-padded width).
-private enum BannerSlotBandRole: Sendable {
-    /// The visible band background — proposed exactly the padded-in width
-    /// (`bounds.width − 2×padding`), so its `.slot` anchor reads that rect.
-    case band
-    /// The creative + ✕ pair — proposed `.unspecified` so each keeps its own
-    /// declared, fixed size.
-    case content
-}
-
-private struct BannerSlotBandRoleKey: LayoutValueKey {
-    static let defaultValue: BannerSlotBandRole = .content
-}
-
-/// Arranges the visible band background and the creative + ✕ pair at a
-/// horizontal inset that is `nominalPadding` while `width ≥ needed +
-/// nominalPadding` (380pt at the shipped constants: 320 + 44 + 16), shrinking
-/// symmetrically (never below 0) below that. The constraint PM ruled on is
-/// "the ✕ stays fully on-screen", not "the ✕ stays inside the band" — see
-/// `padding(for:)`. A custom `Layout`, not `onGeometryChange` + `@State`: the
-/// state-loop approach draws one frame at the wrong padding before
-/// correcting on the next layout pass (PM ruling, #1084).
-///
-/// `sizeThatFits` always returns a concrete, finite size — including for an
-/// unconstrained ("ideal") proposal — which is also what keeps
-/// `NSHostingView.fittingSize` (the pre-existing `BannerSlotViewTests`
-/// `measuredHeight` / `pauseKeepsLease` measurement path) from degenerating
-/// to a zero height the way a bare `.frame(maxWidth: .infinity)` chain does.
-private struct BannerSlotBandLayout: Layout {
-    let nominalPadding: CGFloat
-    let creativeWidth: CGFloat
-    let dismissTargetSize: CGFloat
-    let bannerHeight: CGFloat
-
-    /// The creative and the ✕ side by side, with no gap between them.
-    private var needed: CGFloat { creativeWidth + dismissTargetSize }
-
-    /// `nominalPadding` while `width ≥ needed + nominalPadding` (PM's final
-    /// ruling, #1084: the constraint is "the ✕ stays fully on-screen", not
-    /// "the ✕ stays inside the band" — a ONE-SIDED comfort check, not
-    /// `needed + 2×nominalPadding`. At 393pt (the most common iPhone width)
-    /// this keeps the full 16pt left padding instead of shrinking to 14.5pt,
-    /// which would visibly mismatch 402pt's 16pt for no reason; the ✕ then
-    /// sits a few points past the band's own trailing edge but still well
-    /// inside the screen. Below `needed + nominalPadding`, the padding
-    /// shrinks symmetrically, clamped at 0.
-    private func padding(for width: CGFloat) -> CGFloat {
-        let comfortable = needed + nominalPadding
-        guard width < comfortable else { return nominalPadding }
-        return max(0, (width - needed) / 2)
-    }
-
-    /// The comfortable width at the full nominal padding on both sides —
-    /// `sizeThatFits`'s ideal, and the fallback `resolvedBannerBandWidth`
-    /// substitutes for a `nil` or non-finite proposal.
-    private var idealWidth: CGFloat { needed + 2 * nominalPadding }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        CGSize(width: resolvedBannerBandWidth(proposal: proposal.width, ideal: idealWidth), height: bannerHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let padding = padding(for: bounds.width)
-        let origin = CGPoint(x: bounds.minX + padding, y: bounds.minY)
-        for subview in subviews {
-            switch subview[BannerSlotBandRoleKey.self] {
-            case .band:
-                // Stops at the padded-in width — never the Layout's full,
-                // un-padded width (#1084 review fix 1 and 2).
-                let bandWidth = max(0, bounds.width - 2 * padding)
-                subview.place(
-                    at: origin,
-                    anchor: .topLeading,
-                    proposal: ProposedViewSize(width: bandWidth, height: bannerHeight)
-                )
-            case .content:
-                subview.place(at: origin, anchor: .topLeading, proposal: .unspecified)
-            }
-        }
-    }
-}
-
-/// Resolves a proposed width to a concrete, finite value: `proposal` itself
-/// when it's present and finite, `ideal` otherwise — covering both a `nil`
-/// proposal (an unconstrained/"ideal" query) and a non-finite one (e.g.
-/// `.infinity`, which a horizontal `ScrollView` can propose to its content
-/// along the scroll axis). Without this, `BannerSlotBandLayout.sizeThatFits`
-/// would propagate `.infinity`/`NaN`, contradicting its own "always a
-/// concrete, finite size" doc comment (#1084 review fix 3).
-///
-/// `internal`, not `private`, purely as a test seam: `BannerSlotBandLayout`
-/// itself stays `private`, but this pure function is unit-tested directly
-/// with a literal `.infinity` argument, since no host inside
-/// `BannerSlotDismissPlacementTests`'s headless macOS harness actually
-/// produces a literal `.infinity` proposal (confirmed empirically — a
-/// horizontal `ScrollView` and `.fixedSize(horizontal:)` both resolve to a
-/// concrete or `nil` proposal there instead).
-internal func resolvedBannerBandWidth(proposal: CGFloat?, ideal: CGFloat) -> CGFloat {
-    guard let proposal, proposal.isFinite else { return ideal }
-    return proposal
 }
 
 // MARK: - Geometry preference (#1084, test-only)

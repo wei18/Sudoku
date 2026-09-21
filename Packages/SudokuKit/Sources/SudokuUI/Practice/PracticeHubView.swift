@@ -21,25 +21,19 @@
 // (design.md §4.2: content-layer cards don't get the Slider/Toggle glass
 // exception).
 
-public import MonetizationCore
 public import SwiftUI
 internal import GameShellUI
 internal import SudokuEngine
 
-public struct PracticeHubView<Banner: View>: View {
+public struct PracticeHubView: View {
     @Bindable private var viewModel: PracticeHubViewModel
     @Environment(\.theme) private var theme
-    private let banner: Banner
     // Gap between the 3 difficulty cards (#1021 Phase C) — content tier,
     // scales with Dynamic Type.
     @ScaledSpacing(.small) private var cardGap
 
-    public init(
-        viewModel: PracticeHubViewModel,
-        @ViewBuilder banner: () -> Banner = { EmptyView() }
-    ) {
+    public init(viewModel: PracticeHubViewModel) {
         self.viewModel = viewModel
-        self.banner = banner()
     }
 
     public var body: some View {
@@ -49,8 +43,7 @@ public struct PracticeHubView<Banner: View>: View {
             filterHeader: "Difficulty",
             headerForeground: theme.text.primary.resolved,
             filter: { difficultyCards },
-            cta: { drawCard },
-            banner: { banner }
+            cta: { drawCard }
         )
     }
 

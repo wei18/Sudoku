@@ -1,27 +1,17 @@
 // TodayTabHost — the shared frame around every game's Today tab (#1020).
 //
-// The retired HOME view owned three universal pieces on top of each game's
-// own content: the resume pill, the themed banner slot, and — hanging off that
-// banner slot — the ATT pre-prompt anchor. HOME is gone in v3.0, so the resume
-// pill and banner slot move here, wrapped around whatever the app supplies as
-// its Today content (design.md §2.1: Today is a tab identity now, not a route).
+// The retired HOME view owned two universal pieces on top of each game's own
+// content: the resume pill and the themed banner slot. HOME is gone in v3.0,
+// so both moved here, wrapped around whatever the app supplies as its Today
+// content (design.md §2.1: Today is a tab identity now, not a route).
 //
-// **C-33 (BREAK) — the ATT anchor.** `screen-contracts.md` recorded
-// ATT-PRIMER's entry point as "the HOME view's banner slot"; design.md §3.6.1
-// re-anchored it to the Today tab's first banner load. Since #1058 the primer
-// is requested by the session's `BannerSessionModel` readiness task (its
-// `onAdContext` hook, wired in `makeGameApp`), not by this host's slot. The
-// semantics are unchanged — still the first ad-relevant context — and so is
-// every existing behavior: the primer does not block Today's interaction, the
-// one-shot `hasOffered` latch still gates it, a decline is never re-offered,
-// and it only appears while ATT is `.notDetermined`. `ATTPrimerCoordinator`
-// itself is NOT modified; only the call site moved.
-//
-// The banner styling (tint tokens, padding) is carried over unchanged from that
-// retired banner slot so this one renders identically.
+// **#1024 — the banner slot (and the ATT anchor riding on it, C-33) moved
+// OUT again**, into `BannerAccessoryView` / `tabViewBottomAccessory` (design.md
+// §2.4): the accessory now covers the whole tab shell (Today/Practice/Settings)
+// with ONE shared banner instead of a separate one per screen. `TodayTabHost`
+// keeps only the resume pill.
 
 public import SwiftUI
-internal import MonetizationUI
 internal import GameShellUI
 
 @MainActor
@@ -44,7 +34,6 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
             resumeHeader
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            bannerSlot
         }
         .background(theme.surface.background.resolved)
         // Stable, non-localized anchor for the landing assertion in host-driven
@@ -69,28 +58,5 @@ public struct TodayTabHost<Route: Hashable & Sendable, Content: View>: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
-    }
-
-    // MARK: - BannerSlotView (#371 / #195 / #441)
-
-    /// Themed banner slot. Whether it shows is the environment's
-    /// `BannerSessionModel`'s decision (#1058); Today never suppresses it.
-    private var bannerSlot: some View {
-        BannerSlotView(
-            isSuppressed: false,
-            // #688 item 2: match the page background so an empty/loading slot is
-            // invisible instead of reading as a mismatched seam in dark mode.
-            backgroundColor: theme.surface.background.resolved,
-            progressTint: theme.accent.primary.resolved,
-            captionColor: theme.text.secondary.resolved,
-            // uiux-bugfix-plan P1-6 / #1084: text.secondary, not accent.muted
-            // — the muted accent reads as a ghost on the paper ground even
-            // at 16pt and full opacity.
-            dismissTint: theme.text.secondary.resolved,
-            // Padding lives inside `BannerSlotView` so a hidden slot collapses
-            // to zero height instead of leaving a padded gap.
-            horizontalPadding: 16,
-            verticalPadding: 12
-        )
     }
 }

@@ -63,6 +63,8 @@ To test: sign in to Game Center (Sandbox Apple Account) → play a Daily
 board → Home → Leaderboard → confirm the board's time appears in Apple's
 dashboard.
 
+MINIMUM OS: iOS 26.1 / macOS 26.0.
+
 PLATFORM DIFFERENCES (IF REVIEWING THE MAC BUILD)
 The macOS build ships NO advertising: AdMob/UMP have no macOS slice, so no
 banner ever appears, the Remove Ads purchase is not offered, and the ATT /
