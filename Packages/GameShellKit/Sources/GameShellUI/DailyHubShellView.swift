@@ -6,9 +6,6 @@
 //   - the state switch over `HubLoadState<Item>` (idle / loading / loaded /
 //     empty / failed)
 //   - the `Button { onItemTap } label: { card }`.buttonStyle(.plain) wrapper
-//   - the optional `banner` slot below the scroll region (Epic 5 — Banner
-//     Coverage Expansion). GameShellKit is zero-dep: the actual `BannerSlotView`
-//     is injected by each app at the RouteFactory level; the default is EmptyView.
 //
 // The caller supplies:
 //   - the title (as `LocalizedStringKey`)
@@ -35,8 +32,6 @@
 //     For the non-scrolling states (idle/loading/empty/failed) there is no
 //     scroll container to join, so the header still renders, just above
 //     the centered content, preserving the #774 "never disappears" property.
-//   - the `banner` slot (injected by each app; EmptyView default for
-//     previews/tests; the actual BannerSlotView is never imported here)
 //   - the `loading` slot (#1021 Phase B, additive): rendered in the content
 //     area for `.idle`/`.loading`, in place of the default `ProgressView`.
 //     design.md §3.1's `loading` row requires grid-preserving skeleton
@@ -46,14 +41,19 @@
 //     .skeleton)` rows) while every OTHER existing caller that doesn't pass
 //     one keeps the original spinner via the default.
 //
+// #1096: the shell no longer takes a slot below the scroll region for an
+// app-injected ad banner (Epic 5 — Banner Coverage Expansion) — no
+// production caller has filled that slot since #1020, and the banner now
+// lives in the shared `tabViewBottomAccessory` (#1024).
+//
 // `.task { bootstrap() }` is NOT owned by the shell — same precedent as X4
 // (SettingsShellView owns no side-effect modifiers). The caller applies
 // that on top of the shell.
 
 public import SwiftUI
 
-public struct DailyHubShellView<Item, Card, Failure, Empty, Header, Banner, Loading>: View
-where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Header: View, Banner: View, Loading: View {
+public struct DailyHubShellView<Item, Card, Failure, Empty, Header, Loading>: View
+where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty: View, Header: View, Loading: View {
     private let title: LocalizedStringKey
     private let backgroundColor: Color
     private let state: HubLoadState<Item>
@@ -62,7 +62,6 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
     private let empty: () -> Empty
     private let onItemTap: (Item) -> Void
     private let header: Header
-    private let banner: Banner
     private let loading: () -> Loading
 
     // Structural spacing (#762 PR1 two-tier spacing contract). This shell
@@ -91,7 +90,6 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         @ViewBuilder empty: @escaping () -> Empty = { Color.clear },
         onItemTap: @escaping (Item) -> Void,
         @ViewBuilder header: () -> Header = { EmptyView() },
-        @ViewBuilder banner: () -> Banner = { EmptyView() },
         @ViewBuilder loading: @escaping () -> Loading = { ProgressView().controlSize(.large) }
     ) {
         self.title = title
@@ -102,17 +100,13 @@ where Item: Hashable & Sendable & Identifiable, Card: View, Failure: View, Empty
         self.empty = empty
         self.onItemTap = onItemTap
         self.header = header()
-        self.banner = banner()
         self.loading = loading
     }
 
     public var body: some View {
-        // spacing-exempt: zero-gap chrome seam between scroll content and
-        // the banner slot — not a spacing decision.
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            banner
         }
         .background(backgroundColor)
         .navigationTitle(title)

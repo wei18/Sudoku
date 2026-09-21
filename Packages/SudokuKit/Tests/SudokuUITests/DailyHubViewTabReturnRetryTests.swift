@@ -52,7 +52,7 @@ private final class SelectedTabProbe {
 /// `BoardModalOverlayHoistTests`.
 private struct DailyHubEnvironmentHost: View {
     let probe: SelectedTabProbe
-    let daily: DailyHubView<EmptyView>
+    let daily: DailyHubView
 
     var body: some View {
         daily.environment(\.gameSelectedTab, probe.tab)
