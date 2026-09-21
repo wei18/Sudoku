@@ -54,7 +54,15 @@ public final class ToastController {
     @ObservationIgnored
     private var dismissTask: Task<Void, Never>?
 
-    public init() {}
+    @ObservationIgnored
+    private let sleep: @Sendable (Duration) async throws -> Void
+
+    /// `sleep` is the auto-dismiss timing seam: production callers rely on
+    /// the default (`Task.sleep`), tests inject a manually-released sleeper
+    /// so auto-dismiss assertions don't depend on wall-clock duration.
+    public init(sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+        self.sleep = sleep
+    }
 
     /// Show `toast` and schedule auto-dismiss after `toast.duration`.
     /// Replaces any in-flight toast (and cancels its pending dismissal).
@@ -62,11 +70,12 @@ public final class ToastController {
         dismissTask?.cancel()
         current = toast
         let duration = toast.duration
+        let sleep = self.sleep
         dismissTask = Task { [weak self] in
-            // try?: Task.sleep cancellation is normal control flow (a
+            // try?: sleep cancellation is normal control flow (a
             // subsequent show()/dismiss() cancels this task). M10
             // (issue #67) — not an error path.
-            try? await Task.sleep(for: duration)
+            try? await sleep(duration)
             guard !Task.isCancelled else { return }
             self?.current = nil
         }
