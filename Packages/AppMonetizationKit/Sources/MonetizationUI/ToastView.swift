@@ -51,8 +51,9 @@ public final class ToastController {
 
     public private(set) var current: Toast?
 
+    // Internal-readable only so tests can await dismissal completion (#1087); nothing outside the module should rely on it.
     @ObservationIgnored
-    private var dismissTask: Task<Void, Never>?
+    private(set) var dismissTask: Task<Void, Never>?
 
     @ObservationIgnored
     private let sleep: @Sendable (Duration) async throws -> Void
