@@ -33,6 +33,9 @@ public import SwiftUI
 public struct CompletionOverlayScaffold<Card: View>: View {
     @Environment(\.theme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // #1065: `accessibilityReduceMotion` is read-only in `EnvironmentValues`,
+    // so the rendered Reduce-Motion path needs its own offline seam.
+    @Environment(\.completionReduceMotionOverride) private var reduceMotionOverride
     // #1023: mirrors `completionHeroSkipsReveal` — the panel-rise state below
     // is ALSO onAppear-driven, so it needs the same offline-renderer escape
     // hatch (snapshot tests / ASC screenshot emitter never fire `.onAppear`).
@@ -72,7 +75,18 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     }
 
     private var motionPlan: CompletionMotionPlan {
-        CompletionMotionPlan.plan(variant: variant, outcomeKind: outcomeKind, reduceMotion: reduceMotion)
+        CompletionMotionPlan.plan(
+            variant: variant,
+            outcomeKind: outcomeKind,
+            reduceMotion: Self.effectiveReduceMotion(override: reduceMotionOverride, system: reduceMotion)
+        )
+    }
+
+    /// The seam falls through to the live `accessibilityReduceMotion` unless
+    /// a test set it — pinned by `CompletionAccentGlowTests` so production
+    /// can't silently ignore the user's setting.
+    nonisolated static func effectiveReduceMotion(override: Bool?, system: Bool) -> Bool {
+        override ?? system
     }
 
     private var isPanelRevealed: Bool {
@@ -166,24 +180,13 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     }
 
     /// M1 (accent seep) + M10's accompanying glow, painted BEHIND the glass
-    /// so the glass naturally picks up the tint (§3.5, `color.md:68`). Only
-    /// renders when the panel actually rises (`liveSolve`) — `review` shows
-    /// no glow, matching its "no ritual" contract.
-    @ViewBuilder
+    /// so the glass naturally picks up the tint (§3.5, `color.md:68`).
+    /// `CompletionAccentGlow` resolves WHICH glow plays from the plan (M1's
+    /// `.seep`/`.crossfade` when the ritual plays, M10's glow for a live
+    /// loss, nothing for `review`) — #1065: no `panelRise` gate here any
+    /// more, that is what dropped the seep under Reduce Motion.
     private var accentGlow: some View {
-        if case .rise(_, let glowDuration) = motionPlan.panelRise {
-            // Subtle by design — this paints BEHIND the glass so the glass
-            // itself picks up the tint (§3.5); it must not overpower the
-            // CTA text sitting on top of the glass.
-            RadialGradient(
-                colors: [glowTint.opacity(isPanelRevealed ? 0.16 : 0), .clear],
-                center: .bottom,
-                startRadius: 0,
-                endRadius: 260
-            )
-            .ignoresSafeArea()
-            .animation(.easeOut(duration: glowDuration), value: isPanelRevealed)
-        }
+        CompletionAccentGlow(motionPlan: motionPlan, tint: glowTint, revealed: isPanelRevealed)
     }
 
     private var glowTint: Color {
@@ -296,6 +299,25 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         .buttonStyle(.bordered)
         .controlSize(.large)
         .modifier(OptionalAccessibilityIdentifier(identifier: identifier))
+    }
+}
+
+// MARK: - Reduce Motion offline seam (#1065)
+
+private struct CompletionReduceMotionOverrideKey: EnvironmentKey {
+    static let defaultValue: Bool? = nil
+}
+
+extension EnvironmentValues {
+    /// Test/offline-renderer-only override for `accessibilityReduceMotion`,
+    /// which SwiftUI exposes read-only (`.environment(\.accessibilityReduceMotion, _)`
+    /// does not compile). Lets `CompletionAccentGlowTests` render the
+    /// scaffold's real Reduce-Motion path — the one #1065 found dead — in
+    /// an offscreen `NSHostingView`. `nil` (default) reads the live setting.
+    /// Internal on purpose: not part of the shell's public surface.
+    var completionReduceMotionOverride: Bool? {
+        get { self[CompletionReduceMotionOverrideKey.self] }
+        set { self[CompletionReduceMotionOverrideKey.self] = newValue }
     }
 }
 
