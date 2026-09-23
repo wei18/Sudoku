@@ -85,7 +85,7 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     /// The seam falls through to the live `accessibilityReduceMotion` unless
     /// a test set it — pinned by `CompletionAccentGlowTests` so production
     /// can't silently ignore the user's setting.
-    static func effectiveReduceMotion(override: Bool?, system: Bool) -> Bool {
+    nonisolated static func effectiveReduceMotion(override: Bool?, system: Bool) -> Bool {
         override ?? system
     }
 

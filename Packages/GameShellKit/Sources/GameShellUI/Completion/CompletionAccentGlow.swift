@@ -49,7 +49,7 @@ struct CompletionAccentGlow: View {
     ///   — the MS-loss error wash, unchanged from before #1065;
     /// - otherwise `.none` (`review`, and a loss under Reduce Motion — M10's
     ///   Reduce-Motion row says nothing about its glow; left as-is here).
-    static func form(for plan: CompletionMotionPlan) -> CompletionMotionPlan.AccentSeepForm {
+    nonisolated static func form(for plan: CompletionMotionPlan) -> CompletionMotionPlan.AccentSeepForm {
         switch (plan.accentSeep, plan.panelRise) {
         case (.seep, _), (.crossfade, _):
             plan.accentSeep
@@ -62,7 +62,7 @@ struct CompletionAccentGlow: View {
 
     /// `.seep` keeps the pre-#1065 0.6 s ease-out; `.crossfade` is a plain
     /// symmetric opacity fade so nothing reads as the seep's outward push.
-    static func animation(for form: CompletionMotionPlan.AccentSeepForm) -> Animation? {
+    nonisolated static func animation(for form: CompletionMotionPlan.AccentSeepForm) -> Animation? {
         switch form {
         case .seep(let duration): .easeOut(duration: duration)
         case .crossfade(let duration): .easeInOut(duration: duration)
