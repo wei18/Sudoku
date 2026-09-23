@@ -1,31 +1,42 @@
-// BannerSlotDarkBandRegressionTests — #851 deterministic repro.
+// BannerSlotDarkBandRegressionTests — #851 deterministic repro, retargeted
+// to a SHIPPED composition in #1097.
 //
-// #866 replaced `LiveRouteFactory.themedBanner()`'s `BannerSlotView`
-// `backgroundColor` from a stale `Color.secondary.opacity(0.12)`
-// system-gray tint to `DefaultTheme().surface.background.resolved` — the
-// SAME token the hub shell paints its own page background with. The CR's
-// pixel analysis on the ORIGINAL audit screenshots found zero measurable
-// row-mean variation in the reported 60-100% region, so the band itself was
-// unconfirmed from those thumbnails (likely a rendering artifact that fooled
-// the audit agent). This file is a from-scratch, deterministic repro
-// instead of re-litigating those screenshots:
+// What this pins: in dark mode, the banner slot must paint no visible band
+// (seam) against the page it sits on. #866 fixed #851 by giving
+// `BannerSlotView` the SAME `theme.surface.background` token the page paints
+// itself with, replacing a stale `Color.secondary.opacity(0.12)` system-gray
+// tint that read as a lighter rounded band on the dark ground.
 //
-//   - the ad gate is OPEN and the injected session is started over a
-//     readiness-held fake provider BEFORE the view is built, so the slot
-//     renders on the FIRST synchronous layout pass with no async race;
-//   - dark mode, iPhone size, via the existing `NSHostingView` harness
-//     (`SnapshotConfig.swift`).
+// Which composition, and why this one:
+//   - The original pin (session 064a54f6, #851) rendered the hub shell with
+//     the slot composed BELOW `DailyHubView`. #1024 / #1080 moved the hub
+//     banner into `tabViewBottomAccessory` (`GameAppKit.BannerAccessoryView`,
+//     leased by `GameRoot`), so that composition no longer ships; #1096 kept
+//     the pin alive on a hand-reconstructed VStack, and #1097 retargets it.
+//   - The accessory itself CANNOT be pixel-pinned on this harness:
+//     `BannerAccessoryView.swift` and `RootShellView`'s
+//     `.tabViewBottomAccessory(...)` are both `#if os(iOS)`, and the macOS
+//     build `swift test` uses (`NSHostingView`, `SnapshotConfig.swift`)
+//     ships `EmptyView()` in that slot. Only an iOS-Simulator XCUITest could
+//     see it.
+//   - The board screen's slot (`BoardView+Layout.swift` `themedBanner`,
+//     between the grid and the control cluster) is the shipped composition
+//     that renders on this harness AND uses the same `surface.background`
+//     token, so the pin lives there now.
 //
-// Verdict (session 064a54f6, #851): the `postFix...` fixture below shows NO
-// visible band — the themed background now matches the page background
-// exactly. During investigation a second fixture reconstructed the STALE
-// `Color.secondary.opacity(0.12)` literal (pre-#866) side by side and DID
-// show a visible lighter rounded band at the same slot — confirming the
-// report was real and #866 fixed it. That fixture was a synthetic
-// reconstruction (no production call site references the stale color
-// anymore), so it was not kept as a permanent test — only this ONE test
-// pins the real regression contract per the CR's "zero coverage exists"
-// finding.
+// Strictness: `.image` (precision 1.0), deliberately NOT `.tolerantImage`
+// like `BoardViewBannerTests`' sibling of the same state — a 12 %-alpha band
+// over the slot area is ~1 % of the frame, inside a 0.95 tolerance, so only
+// a strict compare catches the regression. Mutant proof (#1097): with
+// `themedBanner`'s `backgroundColor` temporarily set back to
+// `Color.secondary.opacity(0.12)`, this test fails; with the token, it
+// passes.
+//
+// Determinism: the ad gate is OPEN and the session is started over a
+// readiness-held fake provider BEFORE the view is built, so the slot renders
+// reserved-but-unloaded on the first synchronous layout pass; the live
+// loading spinner is replaced by the static ring via
+// `\.bannerSlotLoadingPreview` (#732).
 
 import Foundation
 import SnapshotTesting
@@ -35,16 +46,23 @@ import Testing
 import MonetizationCore
 import MonetizationTesting
 import MonetizationUI
-@testable import SudokuUI
-
-import SudokuKitTesting
+import SudokuEngine
+import SudokuGameState
 import SudokuPersistence
+@testable import SudokuUI
 
 @MainActor
 @Suite("BannerSlotView — dark-mode band regression (#851)")
 struct BannerSlotDarkBandRegressionTests {
 
     nonisolated(unsafe) private static let fixedDate = Date(timeIntervalSince1970: 1_715_000_000)
+
+    private static let identity = PuzzleIdentity(
+        puzzleId: "test-dark-band",
+        kind: .practice,
+        difficulty: .easy
+    )
+    private static let emptyClues = String(repeating: ".", count: 81)
 
     /// An `AdGate` that resolves OPEN at `fixedDate` — see file header for why
     /// the session is started before the view is built.
@@ -58,57 +76,57 @@ struct BannerSlotDarkBandRegressionTests {
         return gate
     }
 
-    private func makeLoadedHubViewModel() async -> DailyHubViewModel {
-        let provider = FakePuzzleProvider()
-        await provider.setDailyTrioResult(.success(FakePuzzleProvider.defaultDailyTrio(date: Self.fixedDate)))
-        let viewModel = DailyHubViewModel(
-            provider: provider,
-            persistence: FakePersistence(),
-            dateProvider: { Self.fixedDate }
+    /// A playing board with no clues and no selection — the same fixture
+    /// `BoardViewBannerTests` renders, so the two suites disagree only on
+    /// tolerance, never on content.
+    private func makePlayingViewModel() throws -> GameViewModel {
+        let board = try Board(clues: Self.emptyClues)
+        return GameViewModel(
+            identity: Self.identity,
+            board: board,
+            status: .playing,
+            elapsedSeconds: 0,
+            errorIndices: [],
+            selection: nil
         )
-        await viewModel.bootstrap()
-        return viewModel
+    }
+
+    /// Deterministic stand-in for the live `ProgressView` spinner (#732).
+    private var deterministicBannerLoadingPreview: AnyView {
+        AnyView(
+            Circle()
+                .strokeBorder(Color.accentColor, lineWidth: 2)
+                .frame(width: 16, height: 16)
+        )
     }
 
     #if canImport(AppKit)
 
-    // MARK: - Post-#866: themed background — the real production path
+    // MARK: - Post-#866: themed background — the shipped board slot
 
-    /// Mirrors `SudokuAppComposition.LiveRouteFactory.themedBanner()` (removed
-    /// in #1080) exactly (same `backgroundColor` token). Pins the fix: the slot's
-    /// background must equal the page's own background token so no seam is
-    /// visible in dark mode, regardless of which hub mounts it.
+    /// Pins the fix on the board screen: the slot's background must equal the
+    /// page's own `surface.background` token so no seam is visible in dark
+    /// mode. Strict compare; see the file header for the mutant proof.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
-    func postFix_themedBackground_dailyHubDarkMode_bannerOpen_noBand() async {
+    func postFix_themedBackground_boardDarkMode_bannerOpen_noBand() async throws {
         let session = BannerSessionModel(
             adProvider: FakeAdProvider(readinessHeld: true),
             adGate: await makeOpenAdGate(),
             now: { Self.fixedDate }
         )
         await session.start()
-        let viewModel = await makeLoadedHubViewModel()
+        let viewModel = try makePlayingViewModel()
 
-        // #1096 removed `DailyHubView`'s banner slot (no production caller
-        // had filled it since #1020). This fixture reconstructs the
-        // pre-#1024 in-shell composition — banner BELOW the hub, zero gap,
-        // on the same page-background token — so the #851 no-band property
-        // stays pinned. Production now hosts the banner in
-        // `tabViewBottomAccessory`; retargeting this pin is tracked in
-        // #1097's re-baseline.
-        let view = VStack(spacing: 0) {
-            DailyHubView(viewModel: viewModel)
-            BannerSlotView(
-                isSuppressed: false,
-                backgroundColor: DefaultTheme().surface.background.resolved
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .background(DefaultTheme().surface.background.resolved)
-        .environment(\.bannerSession, session)
-        let host = hostingView(view, size: SnapshotLayouts.iPhone, colorScheme: .dark, sizeClass: .compact)
+        let host = hostingView(
+            BoardView(viewModel: viewModel)
+                .environment(\.bannerSlotLoadingPreview, deterministicBannerLoadingPreview)
+                .environment(\.bannerSession, session),
+            size: SnapshotLayouts.iPhone,
+            colorScheme: .dark,
+            sizeClass: .compact
+        )
         withSnapshotTesting(record: SnapshotMode.recordMode) {
-            assertSnapshot(of: host, as: .image, named: "DailyHub-iPhone-dark-bannerOpen-postFix")
+            assertSnapshot(of: host, as: .image, named: "Board-iPhone-dark-bannerOpen-postFix")
         }
     }
 
