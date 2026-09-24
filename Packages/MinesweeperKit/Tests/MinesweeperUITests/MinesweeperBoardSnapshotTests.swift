@@ -54,14 +54,40 @@ struct MinesweeperBoardSnapshotTests {
         )
     }
 
+    // #1101: the macOS test host has no notion of "iPad" beyond the injected
+    // size class, so it must be told explicitly which board-viewport rule to
+    // apply — un-injected, `regularBoardContainer` would default to
+    // `.cappedDetailPane` (this process's platform is macOS), silently
+    // testing the wrong rule for an iPad baseline.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
     func snapshotBeginnerCovered_iPad_light() {
         let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
             .environment(\.bannerSession, .disabled)
+            .environment(\.regularBoardContainer, .fillsColumn)
         assertUISnapshot(
             of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
             as: .tolerantImage,
             named: "Board-iPad-light-beginner-covered",
+            record: SnapshotMode.recordMode
+        )
+    }
+
+    // #1101: same view/host as above but forcing `.cappedDetailPane` — this
+    // is the Mac detail-pane rule (#298 #6, locked 2026-05-30), which the PNG
+    // this test renamed from (`snapshotBeginnerCovered_iPad_light`'s old
+    // baseline) already recorded pixel-for-pixel. It is expected to pass
+    // WITHOUT re-recording: that is the mechanical proof that the capped rule
+    // still renders byte-identically at this size once `regularBoardContainer`
+    // exists and iPad's default flips to `.fillsColumn`.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshotBeginnerCovered_regularCapped_light() {
+        let view = MinesweeperBoardView(difficulty: .beginner, seed: 42, tapModeDefaults: BoardTestDefaults.store)
+            .environment(\.bannerSession, .disabled)
+            .environment(\.regularBoardContainer, .cappedDetailPane)
+        assertUISnapshot(
+            of: hostingView(view, size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular),
+            as: .tolerantImage,
+            named: "Board-Regular-light-beginner-covered-cappedDetailPane",
             record: SnapshotMode.recordMode
         )
     }

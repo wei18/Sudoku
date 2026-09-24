@@ -48,6 +48,10 @@ public struct MinesweeperBoardView: View {
     // vertical stack. swiftui-interaction-footguns: read `horizontalSizeClass`,
     // which is `.regular` on Mac, not a hardcoded `#if os(macOS)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    // #1101: which sizing rule `macLayout` applies to the board viewport on a
+    // regular-width host — iPad fills the column, Mac stays capped to the
+    // 900/600 detail-pane rule. Platform-defaulted; tests override it.
+    @Environment(\.regularBoardContainer) private var regularBoardContainer
     // #455 step 4: app-backgrounding is a save point (the other two are pause
     // and terminal reveal, both inside the VM). Mirrors Sudoku's
     // scenePhase-triggered flush (§How.5.5).
@@ -506,7 +510,9 @@ public struct MinesweeperBoardView: View {
             // board. (An earlier revision of #1022 added one here and then
             // removed it; this note is why it should not come back, not a
             // record of something main ever had.)
-            boardGrid
+            // #1101 round 2: compact (iPhone) always centers its fitted
+            // board — only regular `.fillsColumn` (iPad) top-aligns.
+            boardGrid()
                 .layoutPriority(1)
             bannerSlot(horizontalPadding: theme.spacing.medium)
             controlCluster
@@ -555,6 +561,11 @@ public struct MinesweeperBoardView: View {
     // toggle (MS has no digit pad), keeping the iPhone grid out of the wide Mac
     // detail pane (#298 critique: the board currently renders the iPhone stack
     // in the Mac detail).
+    //
+    // #1101: this VStack/HStack shape is shared by BOTH iPad and Mac (both are
+    // `.regular`); `regularBoardContainer` decides whether the outer column
+    // and the board viewport are capped (Mac detail pane) or fill the column
+    // (iPad — see `macOuterFrameMaxWidth` / `macBoardFrameMaxSide` below).
     private var macLayout: some View {
         // #762 PR3 re-tier: all three `theme.spacing.*` uses below are
         // structural — the outer `VStack` gap is the chrome seam to the
@@ -571,13 +582,13 @@ public struct MinesweeperBoardView: View {
             }
             bannerSlot(horizontalPadding: 0)
         }
-        .frame(maxWidth: Self.macOuterMaxWidth)
+        .frame(maxWidth: macOuterFrameMaxWidth)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, theme.spacing.medium)
         // #1022: the screen margin `body` used to apply to BOTH layouts.
         // Full-bleed is an iPhone-board rule (§3.4's cell table is three iPhone
-        // widths); the Mac board sits in a capped detail column, so it keeps
-        // the margin it had and is unchanged by #1022.
+        // widths); the Mac board sits in a capped detail column and iPad fills
+        // it (#1101), so both keep the margin it had and are unchanged by #1022.
         .padding(theme.spacing.medium)
     }
 
@@ -585,10 +596,25 @@ public struct MinesweeperBoardView: View {
     private static let macBoardMaxSide: CGFloat = 600
     private static let macRailWidth: CGFloat = 260
 
+    // #1101: capped (Mac) keeps the locked 900pt outer column; fillsColumn
+    // (iPad) removes the cap so the column takes the full width the parent
+    // offers. `.infinity`, not `nil` — `.frame(maxWidth: nil)` logs a SwiftUI
+    // runtime warning.
+    private var macOuterFrameMaxWidth: CGFloat {
+        regularBoardContainer == .cappedDetailPane ? Self.macOuterMaxWidth : .infinity
+    }
+
     private var macBoardColumn: some View {
-        boardGrid
-            .frame(maxWidth: Self.macBoardMaxSide, maxHeight: Self.macBoardMaxSide)
+        boardGrid(fittedAlignment: Self.fittedAlignment(for: regularBoardContainer))
+            .frame(maxWidth: macBoardFrameMaxSide, maxHeight: macBoardFrameMaxSide)
             .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    // #1101: capped (Mac) keeps the locked 600pt square; fillsColumn (iPad)
+    // removes both axis caps so the board viewport is the full column (width
+    // AND height), leaving cell size to the #764 `cellSizing` ladder.
+    private var macBoardFrameMaxSide: CGFloat {
+        regularBoardContainer == .cappedDetailPane ? Self.macBoardMaxSide : .infinity
     }
 
     // The Mac control rail: status read-out + the Reveal/Flag toggle, stacked
@@ -871,6 +897,24 @@ public struct MinesweeperBoardView: View {
         }
     }
 
+    // #1101 round 2: Beginner (9×9) is always width-bound and lands in
+    // `.fitted`. Under `.fillsColumn` (iPad), `.fitted`'s frame is the WHOLE
+    // column height, and a `.center` alignment there splits the leftover
+    // space into a band above AND below the board — the ASC Beginner store
+    // frame showed this as dead space sandwiched around a small board. "Fill
+    // the column" should mean the board starts flush with the column's top
+    // (level with the status bar/HUD above it), pushing all the leftover
+    // space below instead of splitting it. `.cappedDetailPane` (Mac) keeps
+    // `.center` — the 600pt square cap in `macBoardColumn` already prevents
+    // `.fitted` from receiving a tall column in the first place, so this
+    // never fires there in practice, but the mapping is total and explicit.
+    nonisolated static func fittedAlignment(for container: RegularBoardContainer) -> Alignment {
+        switch container {
+        case .fillsColumn: return .top
+        case .cappedDetailPane: return .center
+        }
+    }
+
     // MARK: - Pinch-to-zoom (#815, pure, testable)
 
     // Zoom composes ON TOP of `cellSizing` above: the ladder still picks the
@@ -990,7 +1034,11 @@ public struct MinesweeperBoardView: View {
     // own fixed-constant treatment just above.
     private var scrollIndicatorClearance: CGFloat { theme.spacing.extraSmall }
 
-    private var boardGrid: some View {
+    // #1101 round 2: `fittedAlignment` defaults to `.center` (the pre-#1101
+    // behavior, unchanged for every existing call site) and only affects the
+    // `.fitted` branch's outer frame below; the two scroll branches are
+    // untouched.
+    private func boardGrid(fittedAlignment: Alignment = .center) -> some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
         // (Expert is 16×30), then floor it for crisp glyphs. See
@@ -1021,7 +1069,7 @@ public struct MinesweeperBoardView: View {
             switch sizing.branch {
             case .fitted:
                 gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
-                    .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: fittedAlignment)
             case .heightFitScrollHorizontal:
                 ScrollView(.horizontal) {
                     gridStack(rows: rows, cols: cols, cellSide: effectiveCellSide, spacing: spacing)
