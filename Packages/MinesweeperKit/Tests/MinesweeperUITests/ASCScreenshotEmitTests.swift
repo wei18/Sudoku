@@ -200,8 +200,12 @@ struct ASCScreenshotEmitTests {
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_board() throws {
+        // #1101: force the iPad board-viewport rule so the ASC store frame
+        // reflects the fills-the-column layout, not the inherited Mac cap.
         try emitASCScreenshot(
-            boardView().environment(\.bannerSession, .disabled),
+            boardView()
+                .environment(\.bannerSession, .disabled)
+                .environment(\.regularBoardContainer, .fillsColumn),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView
