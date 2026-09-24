@@ -98,7 +98,7 @@ public struct MinesweeperAppComposition {
     /// #1020: `daily` / `practice` used to be push routes; they are tab
     /// identities now, so both just select their tab — `settings` still
     /// pushes onto the Today tab's stack. Unknown keys stay at the root. Keys:
-    /// `daily` / `practice` / `settings` / `resumeFail` /
+    /// `daily` / `practice` / `settings` / `resumeFail` / `board:showcase` /
     /// `board:<beginner|intermediate|expert>` (#1026 B-1: zero-click straight
     /// into a practice board at that difficulty, fixed seed above, pushed on
     /// the Practice tab so the runner sees it where a Start tap would land it).
@@ -115,6 +115,19 @@ public struct MinesweeperAppComposition {
         // read when `-uitest-loader-fail` is also passed — the hook short-
         // circuits `load()` before `store.loadInProgress` is called.
         case "resumeFail": return .push(.resumeBoard(recordName: "uitest-loader-fail", mode: .practice))
+        // #1054: checked BEFORE the `board:` prefix fallback below so it can
+        // never be shadowed by (or accidentally fall through into) the
+        // `board:<difficulty>` parsing — `Difficulty(rawValue: "showcase")`
+        // is nil regardless, but the explicit case makes that non-shadowing
+        // a compile-time-adjacent guarantee, not a coincidence of the
+        // fallback's own rejection logic. Fixed seed lives on
+        // `MinesweeperShowcaseSession`, not `uitestBoardSeed` — this route
+        // always lands on the ONE pre-built showcase board, never a fresh one.
+        case UITestLaunchArg.showcaseBoardRouteKey:
+            return .push(
+                .board(difficulty: .beginner, seed: MinesweeperShowcaseSession.seed, mode: .practice),
+                tab: .practice
+            )
         default:
             // #1026 B-1: `board:<difficulty>` — macOS has no synthetic tap
             // path to the practice hub's Start button, so this is the only
