@@ -266,6 +266,13 @@ public final class MinesweeperGameViewModel {
     }
 
     public func reveal(row: Int, col: Int) async {
+        // #1054 CR round 1 (blocker): a seeded VM's `session` is a throwaway
+        // actor at the snapshot's difficulty (see `init(seeded:)`) — routing
+        // a real tap through it would silently replace the fixed showcase
+        // board with a fresh seed-0 game on first touch. Every mutator that
+        // would touch `session` must no-op when seeded; `refresh()` already
+        // does (see its doc), this one didn't.
+        guard !isSeeded else { return }
         // #330 P2: snapshot the prior status + revealed-count so we can classify
         // the outcome of this reveal into the right audio event.
         let previousStatus = snapshot.status
@@ -322,6 +329,8 @@ public final class MinesweeperGameViewModel {
     // file under the 400-line lint ceiling).
 
     public func toggleFlag(row: Int, col: Int) async {
+        // #1054 CR round 1 (blocker): see `reveal(row:col:)` — same reasoning.
+        guard !isSeeded else { return }
         let flagsBefore = snapshot.flagCount
         do {
             snapshot = try await session.toggleFlag(row: row, col: col)

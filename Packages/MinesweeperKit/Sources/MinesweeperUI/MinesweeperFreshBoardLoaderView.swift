@@ -211,7 +211,17 @@ public struct MinesweeperFreshBoardLoaderView: View {
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil
     ) -> MinesweeperGameViewModel {
-        MinesweeperGameViewModel(
+        #if DEBUG
+        // #1054: the showcase route's fixed (difficulty, seed) pair mounts
+        // the pre-built deterministic fixture instead of a fresh
+        // actor-backed board. See `MinesweeperShowcaseSession`'s header doc
+        // for why this must go through the `(seeded:)` init, not a session
+        // restore. Absent from Release builds via the `#if DEBUG` guard.
+        if difficulty == .beginner, seed == MinesweeperShowcaseSession.seed {
+            return MinesweeperGameViewModel(seeded: MinesweeperShowcaseSession.snapshot)
+        }
+        #endif
+        return MinesweeperGameViewModel(
             difficulty: difficulty,
             seed: seed,
             mode: mode,

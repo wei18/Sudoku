@@ -341,7 +341,22 @@ public struct BoardLoaderView: View {
                 difficulty: identity.difficulty
             )
         } ?? NoOpGameStateTelemetry()
+        #if DEBUG
+        // #1054: the showcase board's elapsed time must never tick — two
+        // captures taken seconds apart must hash byte-identical (App Store
+        // 03-board marketing slot, acceptance item 6). A live
+        // `LiveMonotonicClock` would advance between `startOrResume()` below
+        // and the screenshot; a frozen clock keeps `elapsedSeconds` pinned at
+        // the snapshot's value forever. Every other puzzleId is byte-for-byte
+        // unchanged (still `LiveMonotonicClock`). See `SudokuShowcaseBoard`'s
+        // header doc. Absent from Release builds via the `#if DEBUG` guard.
+        let clock: any MonotonicClock = puzzleId == SudokuShowcaseBoard.puzzleId
+            ? UITestFrozenMonotonicClock()
+            : LiveMonotonicClock()
+        let session = await GameSession.restore(from: snapshot, clock: clock, telemetry: gameTelemetry)
+        #else
         let session = await GameSession.restore(from: snapshot, telemetry: gameTelemetry)
+        #endif
         let viewModel = GameViewModel(
             identity: identity,
             session: session,

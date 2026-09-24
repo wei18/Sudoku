@@ -146,5 +146,37 @@ import Telemetry
         // pre-existing exact-match keys.
         #expect(MinesweeperAppComposition.uitestRoute(for: "practice") == .tab(.practice))
     }
+
+    // #1054: `board:showcase` — the fixed pre-built board for App Store
+    // marketing captures. Distinct from the `board:<difficulty>` branch
+    // above (a fresh board at `uitestBoardSeed`).
+
+    @Test func uitestRouteBoardShowcaseResolvesToFixedShowcaseBoard() {
+        #expect(
+            MinesweeperAppComposition.uitestRoute(for: "board:showcase")
+                == .push(
+                    .board(difficulty: .beginner, seed: MinesweeperShowcaseSession.seed, mode: .practice),
+                    tab: .practice
+                )
+        )
+    }
+
+    @Test func uitestRouteBoardShowcaseDoesNotShadowDifficultyPrefixBranch() {
+        // Regression: `board:showcase` must be handled by its own explicit
+        // case, never by falling into the `board:<difficulty>` prefix
+        // parsing — and that branch must still resolve `board:beginner` to
+        // the FRESH-board seed, not the showcase seed.
+        #expect(
+            MinesweeperAppComposition.uitestRoute(for: "board:beginner")
+                == .push(
+                    .board(difficulty: .beginner, seed: MinesweeperAppComposition.uitestBoardSeed, mode: .practice),
+                    tab: .practice
+                )
+        )
+    }
+
+    @Test func uitestRouteBoardShowcaseRejectsTrailingWhitespace() {
+        #expect(MinesweeperAppComposition.uitestRoute(for: "board:showcase ") == nil)
+    }
     #endif
 }

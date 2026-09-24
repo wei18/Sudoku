@@ -245,7 +245,12 @@ extension SudokuAppComposition {
         // completion route (N12) — see `resolvePersistence`. A no-op
         // pass-through outside DEBUG / without the matching launch arg, so
         // this is `deps.persistence` itself in every production launch.
-        let persistence = resolvePersistence(live: deps.persistence, puzzleProvider: puzzleProvider)
+        // #1054: layered with `resolveShowcasePersistence` (same injection
+        // point) — DEBUG-only, gated on a DIFFERENT launch arg
+        // (`-uitest-route board:showcase`), also a pass-through otherwise.
+        let persistence = resolveShowcasePersistence(
+            resolvePersistence(live: deps.persistence, puzzleProvider: puzzleProvider)
+        )
         // #968: macOS has zero ads to remove (Google ships no macOS AdMob/UMP
         // xcframework slice — D-v2-03), so Settings must not offer "Remove
         // Ads" / "Restore Purchases" there (Guideline 2.1 / 3.1.1 — the IAP

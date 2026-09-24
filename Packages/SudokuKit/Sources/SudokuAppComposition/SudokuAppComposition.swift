@@ -114,12 +114,20 @@ public struct SudokuAppComposition {
     /// #510: map a `-uitest-route` screen key to Sudoku's launch target.
     /// #1020: `daily` / `practice` used to be push routes; they are tab
     /// identities now, so both just select their tab — `settings` still
-    /// pushes onto the Today tab's stack. Unknown keys stay at the root.
+    /// pushes onto the Today tab's stack. #1054: `board:showcase` pushes the
+    /// ONE fixed, pre-built showcase board (pencil notes + one conflicting
+    /// entry) for App Store marketing captures — its content comes from
+    /// `UITestShowcasePersistence` intercepting the board's own
+    /// `puzzleId` (`SudokuShowcaseBoard.puzzleId`), not from a case here;
+    /// this just routes to the same `.board` destination a real Start tap
+    /// would use. Unknown keys stay at the root.
     static func uitestRoute(for key: String) -> UITestLaunchTarget<AppRoute>? {
         switch key {
         case "daily": return .tab(.today)
         case "practice": return .tab(.practice)
         case "settings": return .push(.settings)
+        case UITestLaunchArg.showcaseBoardRouteKey:
+            return .push(.board(puzzleId: SudokuShowcaseBoard.puzzleId), tab: .practice)
         default: return nil
         }
     }

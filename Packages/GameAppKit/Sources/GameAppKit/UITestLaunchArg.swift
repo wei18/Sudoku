@@ -176,6 +176,17 @@ public enum UITestLaunchArg {
     /// per `LiveAdMobBridge`) still loads and renders for real. Absent from
     /// Release builds via the `#if DEBUG` guard.
     public static let openAdGate = "-uitest-open-ad-gate"
+
+    /// #1054: shared `-uitest-route` screen key both apps resolve to their
+    /// own FIXED, pre-built mid-game board — a deterministic fixture for App
+    /// Store marketing captures (03-board slot). Distinct from Minesweeper's
+    /// `board:<difficulty>` key (a FRESH, empty board at a fixed seed): this
+    /// key always resolves to the SAME one pre-populated scenario per app
+    /// (Minesweeper: a revealed region + 3 flags on real mines; Sudoku:
+    /// pencil notes + one conflicting entry). Held here (not duplicated per
+    /// app) so both `uitestRoute(for:)` resolvers compare against the same
+    /// string. Absent from Release builds via the `#if DEBUG` guard.
+    public static let showcaseBoardRouteKey = "board:showcase"
 }
 
 #endif
