@@ -510,7 +510,9 @@ public struct MinesweeperBoardView: View {
             // board. (An earlier revision of #1022 added one here and then
             // removed it; this note is why it should not come back, not a
             // record of something main ever had.)
-            boardGrid
+            // #1101 round 2: compact (iPhone) always centers its fitted
+            // board — only regular `.fillsColumn` (iPad) top-aligns.
+            boardGrid()
                 .layoutPriority(1)
             bannerSlot(horizontalPadding: theme.spacing.medium)
             controlCluster
@@ -603,7 +605,7 @@ public struct MinesweeperBoardView: View {
     }
 
     private var macBoardColumn: some View {
-        boardGrid
+        boardGrid(fittedAlignment: Self.fittedAlignment(for: regularBoardContainer))
             .frame(maxWidth: macBoardFrameMaxSide, maxHeight: macBoardFrameMaxSide)
             .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -895,6 +897,24 @@ public struct MinesweeperBoardView: View {
         }
     }
 
+    // #1101 round 2: Beginner (9×9) is always width-bound and lands in
+    // `.fitted`. Under `.fillsColumn` (iPad), `.fitted`'s frame is the WHOLE
+    // column height, and a `.center` alignment there splits the leftover
+    // space into a band above AND below the board — the ASC Beginner store
+    // frame showed this as dead space sandwiched around a small board. "Fill
+    // the column" should mean the board starts flush with the column's top
+    // (level with the status bar/HUD above it), pushing all the leftover
+    // space below instead of splitting it. `.cappedDetailPane` (Mac) keeps
+    // `.center` — the 600pt square cap in `macBoardColumn` already prevents
+    // `.fitted` from receiving a tall column in the first place, so this
+    // never fires there in practice, but the mapping is total and explicit.
+    nonisolated static func fittedAlignment(for container: RegularBoardContainer) -> Alignment {
+        switch container {
+        case .fillsColumn: return .top
+        case .cappedDetailPane: return .center
+        }
+    }
+
     // MARK: - Pinch-to-zoom (#815, pure, testable)
 
     // Zoom composes ON TOP of `cellSizing` above: the ladder still picks the
@@ -1014,7 +1034,11 @@ public struct MinesweeperBoardView: View {
     // own fixed-constant treatment just above.
     private var scrollIndicatorClearance: CGFloat { theme.spacing.extraSmall }
 
-    private var boardGrid: some View {
+    // #1101 round 2: `fittedAlignment` defaults to `.center` (the pre-#1101
+    // behavior, unchanged for every existing call site) and only affects the
+    // `.fitted` branch's outer frame below; the two scroll branches are
+    // untouched.
+    private func boardGrid(fittedAlignment: Alignment = .center) -> some View {
         // GeometryReader reports the offered rectangle; we derive a single
         // square cell side that fits the NON-SQUARE board by its longer axis
         // (Expert is 16×30), then floor it for crisp glyphs. See
@@ -1045,7 +1069,7 @@ public struct MinesweeperBoardView: View {
             switch sizing.branch {
             case .fitted:
                 gridStack(rows: rows, cols: cols, cellSide: sizing.cellSide, spacing: spacing)
-                    .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: fittedAlignment)
             case .heightFitScrollHorizontal:
                 ScrollView(.horizontal) {
                     gridStack(rows: rows, cols: cols, cellSide: effectiveCellSide, spacing: spacing)

@@ -22,4 +22,13 @@ struct RegularBoardContainerTests {
     func environmentDefaultsToPlatformDefault() {
         #expect(EnvironmentValues().regularBoardContainer == RegularBoardContainer.platformDefault)
     }
+
+    // #1101 round 2: `.fitted` boards top-align under `.fillsColumn` (iPad,
+    // so leftover column space lands below the board, not split above/below
+    // it) and stay centered under `.cappedDetailPane` (Mac, unchanged).
+    @Test("fittedAlignment maps fillsColumn to top and cappedDetailPane to center")
+    func fittedAlignmentMapsPerContainer() {
+        #expect(MinesweeperBoardView.fittedAlignment(for: .fillsColumn) == .top)
+        #expect(MinesweeperBoardView.fittedAlignment(for: .cappedDetailPane) == .center)
+    }
 }
