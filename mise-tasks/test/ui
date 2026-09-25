@@ -13,6 +13,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
+# shellcheck source=../lib/sim-app.sh
+source "$REPO_ROOT/mise-tasks/lib/sim-app.sh"
 
 APP="${usage_app:-all}"
 UDID="${usage_udid:-}"
@@ -24,19 +26,9 @@ scheme_for() { case "$1" in sudoku) echo "Sudoku-E2E";; minesweeper) echo "Mines
 
 # ── Resolve the simulator ──────────────────────────────────────────────
 if [[ -z "$UDID" ]]; then
-  UDID="$(xcrun simctl list devices booted 2>/dev/null | grep -Eo '[0-9A-F-]{36}' | head -1 || true)"
+  UDID="$(sim_pick_booted_or_boot "iPhone 17 Pro")"
 fi
-if [[ -z "$UDID" ]]; then
-  UDID="$(xcrun simctl list devices available | grep -E 'iPhone 17 Pro \(' | grep -Eo '[0-9A-F-]{36}' | head -1)"
-  [[ -n "$UDID" ]] || { echo "error: no 'iPhone 17 Pro' simulator found in available devices" >&2; exit 1; }
-  echo "==> booting iPhone 17 Pro ($UDID)"
-  xcrun simctl boot "$UDID"
-fi
-boot_waits=0
-until xcrun simctl list devices booted | grep -q "$UDID"; do
-  sleep 2; boot_waits=$((boot_waits + 1))
-  (( boot_waits < 30 )) || { echo "error: simulator $UDID did not finish booting" >&2; exit 1; }
-done
+sim_wait_booted "$UDID"
 echo "==> simulator: $UDID"
 
 # ── Apps to test ───────────────────────────────────────────────────────

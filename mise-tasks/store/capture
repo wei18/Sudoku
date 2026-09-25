@@ -1,0 +1,541 @@
+#!/usr/bin/env bash
+#MISE description="Capture the App Store 03-board raw screenshot from a LIVE iOS Simulator (DEBUG build, -uitest-route board:showcase), for both apps × device classes × all 7 listing locales (#1054). Output: docs/app-store/captures/<app>/<device>/<locale>/03-board.png — committed inputs the build-ascspec compositor frames. Also runs a Release-vs-DEBUG pixel identity check (--identity-check)."
+#USAGE flag "--app <app>" help="Which app(s) to capture" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
+#USAGE flag "--device <device>" help="Which device class(es) to capture" default="all" {
+#USAGE   choices "iphone-6.9" "ipad-13" "all"
+#USAGE }
+#USAGE flag "--locale <locale>" help="Which locale(s) to capture (default: all 7 ASC listing locales)" default="all"
+#USAGE flag "--no-build" help="Skip the Debug build+install; capture from the already-installed app" default="false"
+#USAGE flag "--keep-sims" help="Don't delete the named store-capture-* simulators when done" default="false"
+#USAGE flag "--staging-only" help="Capture + validate into build/store-capture/staging/ but do not publish to docs/app-store/captures" default="false"
+#USAGE flag "--identity-check <app>" help="Run the Release-vs-DEBUG pixel identity check for <app> instead of capturing; mutually exclusive with a capture run" default="" {
+#USAGE   choices "sudoku" "minesweeper" ""
+#USAGE }
+#USAGE flag "--attempts <n>" help="Max screenshots per locale while waiting for determinism to settle" default="6"
+#USAGE flag "--settle <sec>" help="Seconds to wait after launch before the first screenshot attempt" default="4"
+#
+# ── Determinism policy (PM ruling, #1054, fixed priority order) ────────────
+#   1. Stabilize AT THE CAPTURE END: re-screenshot the same launch until two
+#      CONSECUTIVE sha256 hashes match (bounded by --attempts); publish that
+#      frame. Cheap-suspect-first: settle length and in-flight glass
+#      animation are the two things worth varying, not tolerance.
+#   2. If consecutive-match never happens within --attempts: fall back to the
+#      first hash that recurs ANYWHERE in the attempt window (not
+#      necessarily consecutively) and publish that. Still no convergence
+#      within --attempts → the cell FAILS with an explicit error.
+#   3. Pixel tolerance is NOT implemented here — it is a last resort the PM
+#      decides on, using the numbers this task's jitter measurement reports.
+#
+# ── All-or-nothing publish ───────────────────────────────────────────────
+# Captures land in build/store-capture/staging/ first. Every file in this
+# run's scope is validated (exists, exact device pixel size, no alpha
+# channel) against an in-memory manifest. Only when EVERY expected cell
+# passes does the task copy that scope's files into docs/app-store/captures/
+# — a single missing or failing cell leaves docs/app-store/captures/
+# byte-for-byte untouched and exits 1 listing exactly what's missing.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+# shellcheck source=../lib/sim-app.sh
+source "$REPO_ROOT/mise-tasks/lib/sim-app.sh"
+
+APP_FLAG="${usage_app:-all}"
+DEVICE_FLAG="${usage_device:-all}"
+LOCALE_FLAG="${usage_locale:-all}"
+NO_BUILD="${usage_no_build:-false}"
+KEEP_SIMS="${usage_keep_sims:-false}"
+STAGING_ONLY="${usage_staging_only:-false}"
+IDENTITY_CHECK_APP="${usage_identity_check:-}"
+ATTEMPTS="${usage_attempts:-6}"
+SETTLE="${usage_settle:-4}"
+
+STAGING_ROOT="build/store-capture/staging"
+DERIVED_ROOT="build/store-capture/derived"
+IDENTITY_ROOT="build/store-capture/identity"
+PUBLISH_ROOT="docs/app-store/captures"
+
+# key | friendly device-type name (simctl create accepts either the plain
+# name or the full com.apple.CoreSimulator.SimDeviceType.* identifier,
+# verified empirically #1054) | ASC-exact width | height | own-named
+# simulator | driver. Device class is DATA: a future "mac" row would add a
+# driver dispatched to its own capture function; an unknown driver fails
+# loudly rather than silently no-op'ing.
+CAPTURE_DEVICES=(
+  "iphone-6.9|iPhone 17 Pro Max|1320|2868|store-capture-iphone|sim"
+  "ipad-13|iPad Pro 13-inch (M5)|2064|2752|store-capture-ipad|sim"
+)
+
+# ── Locale list — read from the single source of truth, never re-typed ────
+LOCALES_LINE="$(python3 -c '
+import ast
+tree = ast.parse(open("scripts/build-ascspec-screenshots.py").read())
+for node in ast.walk(tree):
+    if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "LOCALES" for t in node.targets):
+        print(" ".join(ast.literal_eval(node.value)))
+        break
+')"
+read -r -a ALL_LOCALES <<<"$LOCALES_LINE"
+[[ ${#ALL_LOCALES[@]} -eq 7 ]] || { echo "error: expected 7 locales from build-ascspec-screenshots.py, got ${#ALL_LOCALES[@]}: ${ALL_LOCALES[*]}" >&2; exit 2; }
+
+CREATED_UDIDS=()
+
+cleanup_sims() {
+  [[ "$KEEP_SIMS" == "true" ]] && return 0
+  # bash 3.2 (macOS system bash): expanding "${arr[@]}" on a zero-element
+  # array under `set -u` raises "unbound variable" even though the array
+  # was declared — guard with the count first.
+  (( ${#CREATED_UDIDS[@]} == 0 )) && return 0
+  local udid
+  for udid in "${CREATED_UDIDS[@]}"; do
+    echo "==> deleting simulator $udid"
+    xcrun simctl delete "$udid" >/dev/null 2>&1 || true
+  done
+}
+trap cleanup_sims EXIT
+
+# dismiss_banner <udid> <point-center-x> — swipe any transient iOS system
+# notification banner (e.g. the one-time "Ready for Apple Intelligence"
+# banner, measured #1054 — see ensure_named_sim's header note) upward off
+# screen. No documented simctl/defaults suppression for this banner was
+# found (checked: no relevant `simctl privacy`/`push` subcommand; not
+# addressed in public write-ups of the same CI problem). A swipe from mid
+# status-bar height to the very top dismisses a banner if present and is a
+# harmless no-op flick in empty status-bar space if absent — coordinates are
+# in POINTS (idb's space), not pixels; requires `idb` on PATH.
+dismiss_banner() {
+  local udid="$1" center_x="$2"
+  idb ui swipe --udid "$udid" "$center_x" 120 "$center_x" 5 --duration 0.15 >/dev/null 2>&1 || true
+  sleep 0.4   # let the dismiss (or no-op) animation settle before screenshotting
+}
+
+# point_center_x_for_device <device-key> — horizontal screen center in
+# POINTS for `dismiss_banner`'s swipe, derived from each device's known
+# pixel-to-point scale factor (iPhone 17 Pro Max = 3x, iPad Pro 13" M5 = 2x;
+# not read from CAPTURE_DEVICES, which stores pixel dims for ASC validation).
+point_center_x_for_device() {
+  case "$1" in
+    iphone-6.9) echo 220;;
+    ipad-13) echo 516;;
+    *) echo 200;;
+  esac
+}
+
+# flatten_to_rgb <file> — `xcrun simctl io screenshot` PNGs on this machine
+# carry a fully-opaque (255,255) alpha channel (measured #1054 — contradicts
+# the #1054 spike's "RGB, no alpha" note, likely a post-spike macOS/Simulator
+# renderer change per the #1104 macOS-27 drift precedent). ASC requires no
+# alpha channel; since every pixel is fully opaque, dropping it is lossless.
+flatten_to_rgb() {
+  python3 -c '
+from PIL import Image
+import sys
+im = Image.open(sys.argv[1])
+if im.mode != "RGB":
+    im.convert("RGB").save(sys.argv[1])
+' "$1"
+}
+
+# ── One deterministic capture: retry-until-stable, per PM policy above ────
+# Prints "<attempts-used> <strategy>" to stdout on success (strategy:
+# consecutive | nonconsecutive-dup(i,j)); returns 1 (nothing printed) on
+# total non-convergence, with the reason on stderr.
+capture_one_locale() {
+  local udid="$1" bundle="$2" locale="$3" out_file="$4" attempts="$5" settle="$6" point_center_x="$7"
+  local tmp_dir; tmp_dir="$(mktemp -d)"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" -uitest-route board:showcase -AppleLanguages "($locale)" >/dev/null 2>&1
+  sleep "$settle"
+  dismiss_banner "$udid" "$point_center_x"
+
+  local hashes=() files=() prev="" cur="" i shot
+  for (( i = 1; i <= attempts; i++ )); do
+    dismiss_banner "$udid" "$point_center_x"
+    shot="$tmp_dir/try-$i.png"
+    xcrun simctl io "$udid" screenshot "$shot" >/dev/null 2>&1
+    flatten_to_rgb "$shot"
+    cur="$(shasum -a 256 "$shot" | awk '{print $1}')"
+    hashes+=("$cur"); files+=("$shot")
+    if [[ -n "$prev" && "$cur" == "$prev" ]]; then
+      cp "$shot" "$out_file"
+      echo "$i consecutive"
+      rm -rf "$tmp_dir"
+      return 0
+    fi
+    prev="$cur"
+    (( i < attempts )) && sleep 1
+  done
+
+  # Fallback: first hash that recurs anywhere in the window (not necessarily
+  # consecutive) — policy item 2.
+  local j
+  for (( i = 1; i <= attempts; i++ )); do
+    for (( j = i + 1; j <= attempts; j++ )); do
+      if [[ "${hashes[$((i - 1))]}" == "${hashes[$((j - 1))]}" ]]; then
+        cp "${files[$((j - 1))]}" "$out_file"
+        echo "$attempts nonconsecutive-dup($i,$j)"
+        rm -rf "$tmp_dir"
+        return 0
+      fi
+    done
+  done
+
+  echo "error: $locale never converged within $attempts attempts (all hashes distinct)" >&2
+  rm -rf "$tmp_dir"
+  return 1
+}
+
+validate_capture() {
+  local file="$1" want_w="$2" want_h="$3" w h alpha
+  [[ -f "$file" ]] || { echo "error: missing $file" >&2; return 1; }
+  w="$(sips -g pixelWidth "$file" 2>/dev/null | awk '/pixelWidth/{print $2}')"
+  h="$(sips -g pixelHeight "$file" 2>/dev/null | awk '/pixelHeight/{print $2}')"
+  alpha="$(sips -g hasAlpha "$file" 2>/dev/null | awk '/hasAlpha/{print $2}')"
+  if [[ "$w" != "$want_w" || "$h" != "$want_h" ]]; then
+    echo "error: $file is ${w}x${h}, want ${want_w}x${want_h}" >&2
+    return 1
+  fi
+  if [[ "$alpha" != "no" ]]; then
+    echo "error: $file has an alpha channel (hasAlpha=$alpha) — ASC requires RGB, no alpha" >&2
+    return 1
+  fi
+}
+
+ensure_named_sim() {
+  # NOTE: never call this as `x="$(ensure_named_sim ...)"` and expect
+  # CREATED_UDIDS to see the append — command substitution forks a subshell,
+  # so the array mutation would be silently lost. Callers must append the
+  # echoed udid to CREATED_UDIDS themselves (see call sites).
+  # A REAL non-determinism source (measured #1054, not glass-rendering
+  # jitter as first hypothesized): the one-time iOS "Ready for Apple
+  # Intelligence" system banner fires at an unpredictable time after a
+  # fresh simulator boots and can sit on screen for multiple seconds — long
+  # enough to fool the per-locale consecutive-match check into converging
+  # on a frame WITH the banner overlaid (confirmed by pixel diff across
+  # independent full-matrix runs; a fixed post-boot wait was tried and did
+  # NOT reliably avoid it — see the #1054 report). No documented
+  # simctl/defaults key to suppress the banner was found (checked: no
+  # matching `simctl privacy`/`push` subcommand; unresolved in public
+  # write-ups of the same CI problem). Fixed instead at the point of
+  # failure — capture_one_locale's `dismiss_banner` swipes it away before
+  # every screenshot attempt, regardless of when it appears.
+  local sim_name="$1" device_name="$2" udid
+  udid="$(sim_create_or_reuse_named "$sim_name" "$device_name")"
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  sim_wait_booted "$udid"
+  echo "$udid"
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# --identity-check
+# ══════════════════════════════════════════════════════════════════════════
+run_identity_check() {
+  local app="$1" scheme bundle sim_name device_name w h udid
+  scheme="$(app_scheme_for "$app")"; bundle="$(app_bundle_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+
+  if [[ "$app" == "sudoku" ]]; then
+    echo "error: --identity-check sudoku is not implemented." >&2
+    echo "  SudokuAppComposition.uitestRoute(for:) (SudokuAppComposition.swift:118-127) has no" >&2
+    echo "  'board:<difficulty>' DEBUG route to a FRESH board — only 'board:showcase' (fixed" >&2
+    echo "  pencil-notes/error content) exists. A fresh Release practice board vs. that DEBUG" >&2
+    echo "  state differs in cell content across the whole grid, not just the status-bar band," >&2
+    echo "  so no valid content-matched identity comparison can be built without adding a new" >&2
+    echo "  DEBUG route to SudokuAppComposition — out of this task's scope (AppComposition" >&2
+    echo "  Swift changes belong to PR-1's territory and need their own Code Review). Flagged" >&2
+    echo "  to the PM; see session message from dev-1054-pr2a." >&2
+    exit 1
+  fi
+
+  # Minesweeper only, below this line: board:beginner is a real DEBUG fresh-
+  # board route (#1026 B-1), directly comparable to Release's tap-driven path.
+  device_name="iPhone 17 Pro Max"; sim_name="identity-check-$app"; w=1320; h=2868
+
+  echo "==> [$app] identity-check: building Release + Debug"
+  local t0 t1
+  t0=$(date +%s)
+  local rel_derived="$IDENTITY_ROOT/$app/derived-release"
+  local dbg_derived="$IDENTITY_ROOT/$app/derived-debug"
+  mkdir -p "$IDENTITY_ROOT/$app"
+  local rel_products dbg_products
+  rel_products="$(build_sim_app "$scheme" Release "$rel_derived")"
+  check_plist_resolved "$rel_products/$scheme.app"
+  dbg_products="$(build_sim_app "$scheme" Debug "$dbg_derived")"
+  check_plist_resolved "$dbg_products/$scheme.app"
+  t1=$(date +%s); echo "    builds: $((t1 - t0))s"
+
+  udid="$(ensure_named_sim "$sim_name" "$device_name")"
+  CREATED_UDIDS+=("$udid")
+  sim_mute_bgm "$udid" "$bundle"
+  sim_override_status_bar "$udid"
+
+  # ── Release side: tap-driven (Practice tab -> first difficulty card -> New Game) ──
+  echo "==> [$app] Release: install + tap-drive to a fresh board"
+  xcrun simctl install "$udid" "$rel_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+  sleep 3
+
+  local tree practice_x practice_y start_x start_y
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+
+  practice_read="$(python3 -c '
+import json, sys
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    if e.get("AXLabel") == "Practice":
+        f = e["frame"]
+        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
+        break
+' "$tree" 2>/dev/null || true)"
+  if [[ -n "$practice_read" ]]; then
+    read -r practice_x practice_y <<<"$practice_read"
+    echo "    Practice tab @ ($practice_x, $practice_y) (from idb describe-all)"
+  else
+    practice_x=220; practice_y=903
+    echo "    Practice tab: idb describe-all found no 'Practice' label — falling back to spike coords ($practice_x, $practice_y)"
+  fi
+  idb ui tap --udid "$udid" "$practice_x" "$practice_y" >/dev/null 2>&1
+  sleep 1
+
+  # First difficulty card: default-selected is already Beginner
+  # (`MinesweeperPracticeHubView.init(initialDifficulty: .beginner)`), so the
+  # Beginner card need not be re-tapped for content correctness — tapped
+  # anyway per spec, located by its localized "Beginner" label prefix.
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  card_read="$(python3 -c '
+import json, sys
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    label = e.get("AXLabel") or ""
+    if label.startswith("Beginner"):
+        f = e["frame"]
+        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
+        break
+' "$tree" 2>/dev/null || true)"
+  if [[ -n "$card_read" ]]; then
+    read -r card_x card_y <<<"$card_read"
+    idb ui tap --udid "$udid" "$card_x" "$card_y" >/dev/null 2>&1
+    sleep 1
+  else
+    echo "    (no 'Beginner' card label found — Beginner is already the default selection, continuing)"
+  fi
+
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  # idb exposes a SwiftUI `.accessibilityIdentifier(...)` as "AXUniqueId"
+  # (verified empirically #1054 — NOT "AXIdentifier", which idb never emits).
+  start_read="$(python3 -c '
+import json, sys
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    if e.get("AXUniqueId") == sys.argv[2]:
+        f = e["frame"]
+        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
+        break
+' "$tree" "$app.practiceHub.start" 2>/dev/null || true)"
+  [[ -n "$start_read" ]] || { echo "error: idb describe-all found no '$app.practiceHub.start' element — cannot tap New Game" >&2; exit 1; }
+  read -r start_x start_y <<<"$start_read"
+  echo "    New Game @ ($start_x, $start_y)"
+  idb ui tap --udid "$udid" "$start_x" "$start_y" >/dev/null 2>&1
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+  mkdir -p "$IDENTITY_ROOT/$app"
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/release-board.png" >/dev/null 2>&1
+
+  # ── DEBUG side: zero-click board:beginner route ──
+  echo "==> [$app] DEBUG: install + board:beginner route"
+  xcrun simctl install "$udid" "$dbg_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" -uitest-route "board:beginner" >/dev/null 2>&1
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/debug-board.png" >/dev/null 2>&1
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  echo "==> [$app] comparing Release vs DEBUG"
+  set +e
+  python3 - "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "$w" "$h" <<'PYEOF'
+import sys
+from PIL import Image, ImageChops
+
+rel_path, dbg_path, mask_path, w, h = sys.argv[1:6]
+w, h = int(w), int(h)
+rel = Image.open(rel_path).convert("RGB")
+dbg = Image.open(dbg_path).convert("RGB")
+if rel.size != (w, h) or dbg.size != (w, h):
+    print(f"error: size mismatch rel={rel.size} dbg={dbg.size} want=({w},{h})", file=sys.stderr)
+    sys.exit(1)
+
+diff = ImageChops.difference(rel, dbg)
+bbox = diff.getbbox()
+pixels = diff.load()
+differing = 0
+max_x1 = max_y1 = 0
+min_x0, min_y0 = w, h
+for y in range(h):
+    for x in range(w):
+        r, g, b = pixels[x, y]
+        if r or g or b:
+            differing += 1
+            if x < min_x0:
+                min_x0 = x
+            if y < min_y0:
+                min_y0 = y
+            if x > max_x1:
+                max_x1 = x
+            if y > max_y1:
+                max_y1 = y
+
+diff.save(mask_path)
+pct = 100.0 * differing / (w * h)
+print(f"differing px: {differing} ({pct:.4f}%)")
+if differing:
+    print(f"bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})")
+else:
+    print("bbox: (none — byte-identical)")
+
+# PASS iff every differing pixel's y falls inside the status-bar band. The
+# iPhone 17 Pro Max safe-area top is 62pt @3x = 186px (spike-measured); use a
+# small margin (200px) to be robust to minor status-bar-icon layout shift.
+STATUS_BAR_PX = 200
+verdict_pass = (differing == 0) or (max_y1 < STATUS_BAR_PX)
+print("PASS" if verdict_pass else "FAIL")
+sys.exit(0 if verdict_pass else 1)
+PYEOF
+  local verdict=$?
+  set -e
+  if [[ $verdict -eq 0 ]]; then
+    echo "==> [$app] identity-check: PASS"
+  else
+    echo "==> [$app] identity-check: FAIL"
+  fi
+  xcrun simctl delete "$udid" >/dev/null 2>&1 || true
+  CREATED_UDIDS=()
+  return $verdict
+}
+
+if [[ -n "$IDENTITY_CHECK_APP" ]]; then
+  run_identity_check "$IDENTITY_CHECK_APP"
+  exit $?
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# Capture matrix
+# ══════════════════════════════════════════════════════════════════════════
+
+APPS=()
+case "$APP_FLAG" in
+  all) APPS=(sudoku minesweeper);;
+  *) APPS=("$APP_FLAG");;
+esac
+
+DEVICE_ROWS=()
+for row in "${CAPTURE_DEVICES[@]}"; do
+  key="${row%%|*}"
+  if [[ "$DEVICE_FLAG" == "all" || "$DEVICE_FLAG" == "$key" ]]; then
+    DEVICE_ROWS+=("$row")
+  fi
+done
+[[ ${#DEVICE_ROWS[@]} -gt 0 ]] || { echo "error: --device $DEVICE_FLAG matched no known device class" >&2; exit 2; }
+
+LOCALES=()
+if [[ "$LOCALE_FLAG" == "all" ]]; then
+  LOCALES=("${ALL_LOCALES[@]}")
+else
+  LOCALES=("$LOCALE_FLAG")
+fi
+
+echo "==> matrix: apps=${APPS[*]} devices=$(printf '%s ' "${DEVICE_ROWS[@]%%|*}") locales=${LOCALES[*]}"
+
+MANIFEST=()   # relative paths this run expects to produce
+MISSING=()    # relative paths that failed capture or validation
+RUN_START=$(date +%s)
+
+for app in "${APPS[@]}"; do
+  scheme="$(app_scheme_for "$app")"; bundle="$(app_bundle_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+
+  derived="$DERIVED_ROOT/$app"
+  products="$derived/Build/Products/Debug-iphonesimulator"
+  if [[ "$NO_BUILD" != "true" ]]; then
+    t0=$(date +%s)
+    build_sim_app "$scheme" Debug "$derived" >/dev/null
+    t1=$(date +%s); echo "    [$app] build: $((t1 - t0))s"
+    check_plist_resolved "$products/$scheme.app"
+  fi
+
+  for row in "${DEVICE_ROWS[@]}"; do
+    IFS='|' read -r dev_key dev_name dev_w dev_h sim_name driver <<<"$row"
+    [[ "$driver" == "sim" ]] || { echo "error: unknown capture driver '$driver' for device '$dev_key'" >&2; exit 2; }
+
+    t0=$(date +%s)
+    udid="$(ensure_named_sim "$sim_name" "$dev_name")"
+    CREATED_UDIDS+=("$udid")
+    t1=$(date +%s); echo "    [$app/$dev_key] sim ready ($udid): $((t1 - t0))s"
+
+    sim_mute_bgm "$udid" "$bundle"
+    if [[ "$NO_BUILD" != "true" ]]; then
+      sim_install "$udid" "$products/$scheme.app"
+    fi
+    sim_override_status_bar "$udid"
+    point_center_x="$(point_center_x_for_device "$dev_key")"
+
+    for locale in "${LOCALES[@]}"; do
+      out_dir="$STAGING_ROOT/$app/$dev_key/$locale"
+      mkdir -p "$out_dir"
+      rel_path="$app/$dev_key/$locale/03-board.png"
+      MANIFEST+=("$rel_path")
+      out_file="$out_dir/03-board.png"
+
+      t0=$(date +%s)
+      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x")"; then
+        t1=$(date +%s)
+        if validate_capture "$out_file" "$dev_w" "$dev_h"; then
+          echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s"
+        else
+          echo "    [$app/$dev_key/$locale] FAILED validation"
+          MISSING+=("$rel_path")
+        fi
+      else
+        t1=$(date +%s)
+        echo "    [$app/$dev_key/$locale] FAILED capture ($((t1 - t0))s)"
+        MISSING+=("$rel_path")
+      fi
+    done
+
+    xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  done
+done
+
+RUN_END=$(date +%s)
+echo "==> matrix done: $((RUN_END - RUN_START))s total, ${#MANIFEST[@]} expected, ${#MISSING[@]} missing"
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+  echo "==> MISSING (docs/app-store/captures left untouched):" >&2
+  printf '   %s\n' "${MISSING[@]}" >&2
+  exit 1
+fi
+
+if [[ "$STAGING_ONLY" == "true" ]]; then
+  echo "==> --staging-only: skipping publish. Staged at $STAGING_ROOT/"
+  exit 0
+fi
+
+echo "==> publishing ${#MANIFEST[@]} file(s) to $PUBLISH_ROOT/"
+for rel_path in "${MANIFEST[@]}"; do
+  mkdir -p "$PUBLISH_ROOT/$(dirname "$rel_path")"
+  cp -f "$STAGING_ROOT/$rel_path" "$PUBLISH_ROOT/$rel_path"
+done
+echo "==> done."
