@@ -202,6 +202,24 @@ validate_capture() {
     echo "error: $file has an alpha channel (hasAlpha=$alpha) — ASC requires RGB, no alpha" >&2
     return 1
   fi
+  # Content-sanity floor (#1054 — a blank/near-blank capture, e.g. an
+  # in-flight launch frame caught by a mistimed dismiss_banner swipe,
+  # matches the correct pixel size and has no alpha, so the checks above
+  # alone let it through silently: one such frame WAS published before this
+  # check existed. Calibrated on a real blank capture, 99.9% near-white vs
+  # 7.7% for a real board; 90% leaves comfortable margin either side.
+  if ! python3 -c '
+from PIL import Image
+import sys
+im = Image.open(sys.argv[1]).convert("RGB")
+px = im.getdata()
+total = im.width * im.height
+near_white = sum(1 for r, g, b in px if r > 245 and g > 245 and b > 245)
+sys.exit(0 if (near_white / total) < 0.90 else 1)
+' "$file"; then
+    echo "error: $file is >=90% near-white — looks blank, not a rendered board" >&2
+    return 1
+  fi
 }
 
 ensure_named_sim() {
