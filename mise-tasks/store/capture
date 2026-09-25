@@ -112,6 +112,72 @@ dismiss_banner() {
   sleep 0.4   # let the dismiss (or no-op) animation settle before screenshotting
 }
 
+# idb_element_center <udid> <label-prefix|identifier> <value> — echoes
+# "<x> <y>" (POINT-space, integer) of the first matching element's center,
+# or nothing if not found. "label-prefix" matches AXLabel.startswith(value);
+# "identifier" matches AXUniqueId == value (idb's name for a SwiftUI
+# `.accessibilityIdentifier(...)` — verified empirically #1054, NOT
+# "AXIdentifier", which idb never emits).
+idb_element_center() {
+  local udid="$1" kind="$2" value="$3" tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+kind, value = sys.argv[2], sys.argv[3]
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    matched = (kind == "label-prefix" and label.startswith(value)) or (kind == "identifier" and uid == value)
+    if matched:
+        f = e["frame"]
+        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
+        break
+' "$tree" "$kind" "$value" 2>/dev/null || true
+}
+
+# idb_element_frame <udid> <label-prefix|identifier> <value> — echoes
+# "<x> <y> <w> <h>" (POINT-space) of the first matching element's frame, or
+# nothing if not found. Same matching rules as idb_element_center.
+idb_element_frame() {
+  local udid="$1" kind="$2" value="$3" tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+kind, value = sys.argv[2], sys.argv[3]
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    matched = (kind == "label-prefix" and label.startswith(value)) or (kind == "identifier" and uid == value)
+    if matched:
+        f = e["frame"]
+        print(f["x"], f["y"], f["width"], f["height"])
+        break
+' "$tree" "$kind" "$value" 2>/dev/null || true
+}
+
+# wait_for_element_center <udid> <label-prefix|identifier> <value> [max-tries]
+# — retries idb_element_center every 2s (default 6 tries = 12s) before
+# giving up. A cold-booted, freshly-installed sim's FIRST launch can take
+# noticeably longer to finish rendering than a warm relaunch (measured
+# #1054) — a single describe-all right after `sleep 3` is not reliable.
+wait_for_element_center() {
+  local udid="$1" kind="$2" value="$3" max_tries="${4:-6}" xy try
+  for (( try = 1; try <= max_tries; try++ )); do
+    xy="$(idb_element_center "$udid" "$kind" "$value")"
+    [[ -n "$xy" ]] && { echo "$xy"; return 0; }
+    (( try < max_tries )) && sleep 2
+  done
+  return 1
+}
+
 # point_center_x_for_device <device-key> — horizontal screen center in
 # POINTS for `dismiss_banner`'s swipe, derived from each device's known
 # pixel-to-point scale factor (iPhone 17 Pro Max = 3x, iPad Pro 13" M5 = 2x;
@@ -250,27 +316,69 @@ ensure_named_sim() {
 # ══════════════════════════════════════════════════════════════════════════
 # --identity-check
 # ══════════════════════════════════════════════════════════════════════════
+# reach_minesweeper_board <udid> <app> — tap-drive from a fresh launch
+# (Today tab) to a fresh Practice board: Practice tab -> first (Beginner)
+# difficulty card -> New Game. Only used for the Release side; DEBUG reaches
+# the same board zero-click via `-uitest-route board:beginner` (#1026 B-1).
+reach_minesweeper_board() {
+  local udid="$1" app="$2" xy
+  xy="$(wait_for_element_center "$udid" label-prefix "Practice" || true)"
+  if [[ -n "$xy" ]]; then
+    echo "    Practice tab @ ($xy) (from idb describe-all)"
+  else
+    xy="220 903"
+    echo "    Practice tab: idb describe-all found no 'Practice' label — falling back to spike coords ($xy)"
+  fi
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+  sleep 1
+
+  # First difficulty card: default-selected is already Beginner
+  # (`MinesweeperPracticeHubView.init(initialDifficulty: .beginner)`), so the
+  # Beginner card need not be re-tapped for content correctness — tapped
+  # anyway per spec, located by its localized "Beginner" label prefix.
+  xy="$(idb_element_center "$udid" label-prefix "Beginner")"
+  if [[ -n "$xy" ]]; then
+    # shellcheck disable=SC2086
+    idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+    sleep 1
+  else
+    echo "    (no 'Beginner' card label found — Beginner is already the default selection, continuing)"
+  fi
+
+  xy="$(wait_for_element_center "$udid" identifier "$app.practiceHub.start" || true)"
+  [[ -n "$xy" ]] || { echo "error: idb describe-all found no '$app.practiceHub.start' element after retrying — cannot tap New Game" >&2; exit 1; }
+  echo "    New Game @ ($xy)"
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+}
+
+# reach_sudoku_board <udid> — tap-drive from a fresh launch (Today tab,
+# default) to the daily Easy board. Used identically on BOTH Release and
+# DEBUG (PM ruling #1054: Sudoku has no DEBUG fresh-board route, so both
+# binaries are driven by the SAME taps instead — the daily puzzle is
+# date-seeded and generated on-device with no network call
+# (`PuzzleStore.fetchDailyTrio`, SudokuPersistence/PuzzleStore.swift:54+, a
+# pure wrapper over `SudokuEngine.PuzzleGenerator`), so both builds render
+# the identical grid for today's date).
+reach_sudoku_board() {
+  local udid="$1" xy
+  xy="$(wait_for_element_center "$udid" label-prefix "Easy" || true)"
+  [[ -n "$xy" ]] || { echo "error: idb describe-all found no 'Easy' daily card after retrying — cannot reach the board (network-dependent daily fetch? see #1054 report)" >&2; exit 1; }
+  echo "    Easy card @ ($xy)"
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+}
+
 run_identity_check() {
   local app="$1" scheme bundle sim_name device_name w h udid
   scheme="$(app_scheme_for "$app")"; bundle="$(app_bundle_for "$app")"
   [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
 
-  if [[ "$app" == "sudoku" ]]; then
-    echo "error: --identity-check sudoku is not implemented." >&2
-    echo "  SudokuAppComposition.uitestRoute(for:) (SudokuAppComposition.swift:118-127) has no" >&2
-    echo "  'board:<difficulty>' DEBUG route to a FRESH board — only 'board:showcase' (fixed" >&2
-    echo "  pencil-notes/error content) exists. A fresh Release practice board vs. that DEBUG" >&2
-    echo "  state differs in cell content across the whole grid, not just the status-bar band," >&2
-    echo "  so no valid content-matched identity comparison can be built without adding a new" >&2
-    echo "  DEBUG route to SudokuAppComposition — out of this task's scope (AppComposition" >&2
-    echo "  Swift changes belong to PR-1's territory and need their own Code Review). Flagged" >&2
-    echo "  to the PM; see session message from dev-1054-pr2a." >&2
-    exit 1
-  fi
-
-  # Minesweeper only, below this line: board:beginner is a real DEBUG fresh-
-  # board route (#1026 B-1), directly comparable to Release's tap-driven path.
+  # iPhone 17 Pro Max: 1320x2868 px, 440x956 pt -> 3x point-to-pixel scale
+  # (used to convert idb's point-space element frames to pixel rects below).
   device_name="iPhone 17 Pro Max"; sim_name="identity-check-$app"; w=1320; h=2868
+  local point_scale=3
 
   echo "==> [$app] identity-check: building Release + Debug"
   local t0 t1
@@ -290,93 +398,57 @@ run_identity_check() {
   sim_mute_bgm "$udid" "$bundle"
   sim_override_status_bar "$udid"
 
-  # ── Release side: tap-driven (Practice tab -> first difficulty card -> New Game) ──
-  echo "==> [$app] Release: install + tap-drive to a fresh board"
+  # ── Release side ──
+  echo "==> [$app] Release: install + tap-drive"
   xcrun simctl install "$udid" "$rel_products/$scheme.app"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
   sleep 3
+  dismiss_banner "$udid" 220
 
-  local tree practice_x practice_y start_x start_y
-  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
-
-  practice_read="$(python3 -c '
-import json, sys
-try:
-    els = json.loads(sys.argv[1]) if sys.argv[1] else []
-except Exception:
-    els = []
-for e in els:
-    if e.get("AXLabel") == "Practice":
-        f = e["frame"]
-        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
-        break
-' "$tree" 2>/dev/null || true)"
-  if [[ -n "$practice_read" ]]; then
-    read -r practice_x practice_y <<<"$practice_read"
-    echo "    Practice tab @ ($practice_x, $practice_y) (from idb describe-all)"
+  local timer_rect_px=""
+  if [[ "$app" == "sudoku" ]]; then
+    reach_sudoku_board "$udid"
   else
-    practice_x=220; practice_y=903
-    echo "    Practice tab: idb describe-all found no 'Practice' label — falling back to spike coords ($practice_x, $practice_y)"
+    reach_minesweeper_board "$udid" "$app"
   fi
-  idb ui tap --udid "$udid" "$practice_x" "$practice_y" >/dev/null 2>&1
-  sleep 1
-
-  # First difficulty card: default-selected is already Beginner
-  # (`MinesweeperPracticeHubView.init(initialDifficulty: .beginner)`), so the
-  # Beginner card need not be re-tapped for content correctness — tapped
-  # anyway per spec, located by its localized "Beginner" label prefix.
-  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
-  card_read="$(python3 -c '
-import json, sys
-try:
-    els = json.loads(sys.argv[1]) if sys.argv[1] else []
-except Exception:
-    els = []
-for e in els:
-    label = e.get("AXLabel") or ""
-    if label.startswith("Beginner"):
-        f = e["frame"]
-        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
-        break
-' "$tree" 2>/dev/null || true)"
-  if [[ -n "$card_read" ]]; then
-    read -r card_x card_y <<<"$card_read"
-    idb ui tap --udid "$udid" "$card_x" "$card_y" >/dev/null 2>&1
-    sleep 1
-  else
-    echo "    (no 'Beginner' card label found — Beginner is already the default selection, continuing)"
-  fi
-
-  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
-  # idb exposes a SwiftUI `.accessibilityIdentifier(...)` as "AXUniqueId"
-  # (verified empirically #1054 — NOT "AXIdentifier", which idb never emits).
-  start_read="$(python3 -c '
-import json, sys
-try:
-    els = json.loads(sys.argv[1]) if sys.argv[1] else []
-except Exception:
-    els = []
-for e in els:
-    if e.get("AXUniqueId") == sys.argv[2]:
-        f = e["frame"]
-        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
-        break
-' "$tree" "$app.practiceHub.start" 2>/dev/null || true)"
-  [[ -n "$start_read" ]] || { echo "error: idb describe-all found no '$app.practiceHub.start' element — cannot tap New Game" >&2; exit 1; }
-  read -r start_x start_y <<<"$start_read"
-  echo "    New Game @ ($start_x, $start_y)"
-  idb ui tap --udid "$udid" "$start_x" "$start_y" >/dev/null 2>&1
   sleep "$SETTLE"
   dismiss_banner "$udid" 220
+
+  if [[ "$app" == "sudoku" ]]; then
+    # PM ruling #1054: a fresh Sudoku board's timer ticks from open, so the
+    # two captures may legitimately differ by ~1s in the "Elapsed time"
+    # label. Excluded mechanically: find its frame via idb, convert
+    # points->pixels, pass the printed rect to the compare step below —
+    # never a blanket tolerance.
+    local frame_read
+    frame_read="$(idb_element_frame "$udid" label-prefix "Elapsed time")"
+    [[ -n "$frame_read" ]] || { echo "error: idb describe-all found no 'Elapsed time' element — cannot exclude the timer from the identity compare" >&2; exit 1; }
+    # shellcheck disable=SC2086  # intentional word-split: "x y w h" -> argv[1..4]
+    timer_rect_px="$(python3 -c "
+import sys
+x, y, w_, h_ = (float(v) for v in sys.argv[1:5])
+scale = float(sys.argv[5])
+print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
+" $frame_read "$point_scale")"
+    echo "    timer rect (px, x y w h): $timer_rect_px"
+  fi
   mkdir -p "$IDENTITY_ROOT/$app"
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/release-board.png" >/dev/null 2>&1
 
-  # ── DEBUG side: zero-click board:beginner route ──
-  echo "==> [$app] DEBUG: install + board:beginner route"
+  # ── DEBUG side ──
+  echo "==> [$app] DEBUG: install + same reach"
   xcrun simctl install "$udid" "$dbg_products/$scheme.app"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
-  xcrun simctl launch "$udid" "$bundle" -uitest-route "board:beginner" >/dev/null 2>&1
+  if [[ "$app" == "sudoku" ]]; then
+    xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+    sleep 3
+    dismiss_banner "$udid" 220
+    reach_sudoku_board "$udid"
+  else
+    # Zero-click DEBUG route to the same fresh board (#1026 B-1) — no taps.
+    xcrun simctl launch "$udid" "$bundle" -uitest-route "board:beginner" >/dev/null 2>&1
+  fi
   sleep "$SETTLE"
   dismiss_banner "$udid" 220
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/debug-board.png" >/dev/null 2>&1
@@ -384,12 +456,17 @@ for e in els:
 
   echo "==> [$app] comparing Release vs DEBUG"
   set +e
-  python3 - "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "$w" "$h" <<'PYEOF'
+  python3 - "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "$w" "$h" "$timer_rect_px" <<'PYEOF'
 import sys
 from PIL import Image, ImageChops
 
 rel_path, dbg_path, mask_path, w, h = sys.argv[1:6]
 w, h = int(w), int(h)
+timer_rect = None
+if len(sys.argv) > 6 and sys.argv[6].strip():
+    tx, ty, tw, th = (int(v) for v in sys.argv[6].split())
+    timer_rect = (tx, ty, tx + tw, ty + th)
+
 rel = Image.open(rel_path).convert("RGB")
 dbg = Image.open(dbg_path).convert("RGB")
 if rel.size != (w, h) or dbg.size != (w, h):
@@ -397,11 +474,16 @@ if rel.size != (w, h) or dbg.size != (w, h):
     sys.exit(1)
 
 diff = ImageChops.difference(rel, dbg)
-bbox = diff.getbbox()
 pixels = diff.load()
 differing = 0
+outside_excluded = 0
 max_x1 = max_y1 = 0
 min_x0, min_y0 = w, h
+# PASS iff every differing pixel's y falls inside the status-bar band, OR
+# (Sudoku only) inside the printed timer rect. The iPhone 17 Pro Max
+# safe-area top is 62pt @3x = 186px (spike-measured); 200px margin for
+# minor status-bar-icon layout shift.
+STATUS_BAR_PX = 200
 for y in range(h):
     for x in range(w):
         r, g, b = pixels[x, y]
@@ -415,6 +497,10 @@ for y in range(h):
                 max_x1 = x
             if y > max_y1:
                 max_y1 = y
+            in_status_bar = y < STATUS_BAR_PX
+            in_timer = timer_rect is not None and timer_rect[0] <= x < timer_rect[2] and timer_rect[1] <= y < timer_rect[3]
+            if not (in_status_bar or in_timer):
+                outside_excluded += 1
 
 diff.save(mask_path)
 pct = 100.0 * differing / (w * h)
@@ -423,12 +509,9 @@ if differing:
     print(f"bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})")
 else:
     print("bbox: (none — byte-identical)")
+print(f"differing px outside status-bar/timer exclusion: {outside_excluded}")
 
-# PASS iff every differing pixel's y falls inside the status-bar band. The
-# iPhone 17 Pro Max safe-area top is 62pt @3x = 186px (spike-measured); use a
-# small margin (200px) to be robust to minor status-bar-icon layout shift.
-STATUS_BAR_PX = 200
-verdict_pass = (differing == 0) or (max_y1 < STATUS_BAR_PX)
+verdict_pass = outside_excluded == 0
 print("PASS" if verdict_pass else "FAIL")
 sys.exit(0 if verdict_pass else 1)
 PYEOF
