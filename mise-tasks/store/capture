@@ -61,12 +61,41 @@ PUBLISH_ROOT="docs/app-store/captures"
 # key | friendly device-type name (simctl create accepts either the plain
 # name or the full com.apple.CoreSimulator.SimDeviceType.* identifier,
 # verified empirically #1054) | ASC-exact width | height | own-named
-# simulator | driver. Device class is DATA: a future "mac" row would add a
-# driver dispatched to its own capture function; an unknown driver fails
-# loudly rather than silently no-op'ing.
+# simulator | driver | top_px | bottom_px. Device class is DATA: a future
+# "mac" row would add a driver dispatched to its own capture function; an
+# unknown driver fails loudly rather than silently no-op'ing.
+#
+# top_px/bottom_px: safe-area bands stripped at capture time (#1054 PM
+# ruling) because `simctl status_bar override --time` does NOT cover the
+# iPad status bar's date ("09:41 Fri Sep 25"), which would otherwise make
+# every iPad capture change on every calendar day even with nothing else
+# different. MEASURED per device (not assumed) from a real `en` capture of
+# each app, by finding the pixel row where content stops being pure
+# background across the full image width, scanning inward from each edge —
+# see mise-tasks/store/capture's git history / #1054 report for the probe
+# method and per-row pixel dumps. Both apps agreed exactly on top_px
+# (status-bar height is OS chrome, not app-dependent); bottom_px used the
+# larger of the two apps' measurements for safety margin.
+#   iphone-6.9 (iPhone 17 Pro Max, 3x scale): Dynamic Island + status-bar
+#     icons end (fully clear, no remnant) at pixel row 160; the app's own
+#     first header content (flag counter / "Easy" label) does not start
+#     until row 278 — top_px=190 sits in that ~118px gap with margin.
+#     Bottom: a very faint (min pixel 236 vs 244 background, likely the
+#     Reveal-button drop shadow, not a clearly rendered home-indicator
+#     glyph on this OS/sim build) trace runs from row ~2748 to ~2836; pure
+#     background confirmed rows 2837-2867. bottom_px=110 (Apple's
+#     documented 34pt bottom safe-area inset @3x) comfortably covers the
+#     observed trace with margin.
+#   ipad-13 (iPad Pro 13-inch M5, 2x scale): status bar clears by row 47
+#     (both apps agreed exactly); header content starts well after. Home
+#     indicator glyph is CLEARLY visible (sharp edges, min pixel 128 vs 244
+#     background) spanning rows 2696-2742 of a 2752-tall capture;
+#     bottom_px=65 crops to row 2687, 9px of margin above the glyph.
+# The mechanical per-capture check below (verify_control_cluster_in_band)
+# is the real safety net if a future OS/layout change moves any of this.
 CAPTURE_DEVICES=(
-  "iphone-6.9|iPhone 17 Pro Max|1320|2868|store-capture-iphone|sim"
-  "ipad-13|iPad Pro 13-inch (M5)|2064|2752|store-capture-ipad|sim"
+  "iphone-6.9|iPhone 17 Pro Max|1320|2868|store-capture-iphone|sim|190|110"
+  "ipad-13|iPad Pro 13-inch (M5)|2064|2752|store-capture-ipad|sim|50|65"
 )
 
 # ── Locale list — read from the single source of truth, never re-typed ────
@@ -190,6 +219,114 @@ point_center_x_for_device() {
   esac
 }
 
+# point_scale_for_device <device-key> — pixel-per-point scale, used to
+# convert idb's point-space element frames to pixel rects (iPhone 17 Pro
+# Max = 3x, iPad Pro 13-inch M5 = 2x — both well-known, fixed OS/hardware
+# constants for these specific device classes).
+point_scale_for_device() {
+  case "$1" in
+    iphone-6.9) echo 3;;
+    ipad-13) echo 2;;
+    *) echo 2;;
+  esac
+}
+
+# idb_elements_union_bbox <udid> <kind1> <value1> [<kind2> <value2> ...] —
+# echoes "<x0> <y0> <x1> <y1>" (POINT-space) union bounding box of every
+# element matching ANY of the given (kind, value) pairs, or nothing if none
+# matched. kind is "label" (exact AXLabel), "label-prefix"
+# (AXLabel.startswith), or "identifier" (AXUniqueId ==).
+idb_elements_union_bbox() {
+  local udid="$1"; shift
+  local tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+tree_json = sys.argv[1]
+pairs = sys.argv[2:]
+matchers = list(zip(pairs[0::2], pairs[1::2]))
+try:
+    els = json.loads(tree_json) if tree_json else []
+except Exception:
+    els = []
+x0 = y0 = x1 = y1 = None
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    for kind, value in matchers:
+        hit = (
+            (kind == "label" and label == value)
+            or (kind == "label-prefix" and label.startswith(value))
+            or (kind == "identifier" and uid == value)
+        )
+        if hit:
+            f = e["frame"]
+            fx0, fy0 = f["x"], f["y"]
+            fx1, fy1 = f["x"] + f["width"], f["y"] + f["height"]
+            x0 = fx0 if x0 is None else min(x0, fx0)
+            y0 = fy0 if y0 is None else min(y0, fy0)
+            x1 = fx1 if x1 is None else max(x1, fx1)
+            y1 = fy1 if y1 is None else max(y1, fy1)
+            break
+if x0 is not None:
+    print(x0, y0, x1, y1)
+' "$tree" "$@" 2>/dev/null || true
+}
+
+# crop_to_band <file> <top_px> <bottom_px> — crop <file> in place to
+# [top_px, height - bottom_px), keeping full width.
+crop_to_band() {
+  local file="$1" top_px="$2" bottom_px="$3"
+  python3 -c '
+from PIL import Image
+import sys
+path, top, bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+im = Image.open(path)
+w, h = im.size
+im.crop((0, top, w, h - bottom)).save(path)
+' "$file" "$top_px" "$bottom_px"
+}
+
+# verify_element_in_band <udid> <point_scale> <top_px> <bottom_px> <H_px> <label> <kind1> <value1> [...]
+# — finds the union bbox (points) of the matching element(s), converts to
+# pixels, and asserts it lies fully inside [top_px, H_px - bottom_px).
+# Prints the measured frame and the band on every call (so the numbers land
+# in the report even on success); returns 1 and prints an error if the
+# element is missing OR falls outside the band.
+verify_element_in_band() {
+  local udid="$1" scale="$2" top_px="$3" bottom_px="$4" h_px="$5" label="$6"
+  shift 6
+  local bbox_read try
+  # Retry: a cold-booted, freshly-installed sim's FIRST launch can still be
+  # mid-render after the fixed `sleep "$settle"` (measured #1054 — same
+  # cause as wait_for_element_center's retry). Subsequent relaunches in the
+  # same session are warm and normally succeed on try 1.
+  for (( try = 1; try <= 5; try++ )); do
+    bbox_read="$(idb_elements_union_bbox "$udid" "$@")"
+    [[ -n "$bbox_read" ]] && break
+    (( try < 5 )) && sleep 2
+  done
+  if [[ -z "$bbox_read" ]]; then
+    echo "error: verify_element_in_band($label): no matching element found after retrying" >&2
+    return 1
+  fi
+  local result
+  # shellcheck disable=SC2086  # intentional word-split of "x0 y0 x1 y1" -> argv[1..4]
+  result="$(python3 -c "
+import sys
+x0, y0, x1, y1 = (float(v) for v in sys.argv[1:5])
+scale = float(sys.argv[5])
+top_px, bottom_px, h_px = (int(v) for v in sys.argv[6:9])
+px0, py0, px1, py1 = int(x0 * scale), int(y0 * scale), int(x1 * scale) + 1, int(y1 * scale) + 1
+band_bottom = h_px - bottom_px
+inside = (py0 >= top_px) and (py1 <= band_bottom)
+print(px0, py0, px1, py1, top_px, band_bottom, 'OK' if inside else 'CLIPPED')
+" $bbox_read "$scale" "$top_px" "$bottom_px" "$h_px")"
+  read -r px0 py0 px1 py1 band_top band_bottom verdict <<<"$result"
+  echo "    [$label] frame_px=($px0,$py0)-($px1,$py1) band=[$band_top,$band_bottom) -> $verdict" >&2
+  [[ "$verdict" == "OK" ]] || { echo "error: [$label] falls outside the published band — crop would clip it" >&2; return 1; }
+}
+
 # flatten_to_rgb <file> — `xcrun simctl io screenshot` PNGs on this machine
 # carry a fully-opaque (255,255) alpha channel (measured #1054 — contradicts
 # the #1054 spike's "RGB, no alpha" note, likely a post-spike macOS/Simulator
@@ -205,24 +342,56 @@ if im.mode != "RGB":
 ' "$1"
 }
 
-# ── One deterministic capture: retry-until-stable, per PM policy above ────
-# Prints "<attempts-used> <strategy>" to stdout on success (strategy:
-# consecutive | nonconsecutive-dup(i,j)); returns 1 (nothing printed) on
-# total non-convergence, with the reason on stderr.
-capture_one_locale() {
-  local udid="$1" bundle="$2" locale="$3" out_file="$4" attempts="$5" settle="$6" point_center_x="$7"
-  local tmp_dir; tmp_dir="$(mktemp -d)"
+# capture_one_relaunch <udid> <bundle> <locale> <point_center_x> <app> <scale>
+# <top_px> <bottom_px> <full_h> <settle> <out_png> — ONE full relaunch:
+# terminate -> launch -> settle -> dismiss banner -> verify the control
+# cluster/header aren't clipped by the published band -> screenshot ->
+# flatten -> crop to the band. Building block for capture_one_locale's
+# relaunch-level convergence loop below. Returns 1 (band verification
+# failure is fatal per PM ruling — "fail the cell loudly") if the band
+# check fails; the screenshot is still written to <out_png> either way so a
+# caller doing raw jitter measurement can inspect it.
+capture_one_relaunch() {
+  local udid="$1" bundle="$2" locale="$3" point_center_x="$4" app="$5" scale="$6" top_px="$7" bottom_px="$8" full_h="$9" settle="${10}" out_png="${11}"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl launch "$udid" "$bundle" -uitest-route board:showcase -AppleLanguages "($locale)" >/dev/null 2>&1
   sleep "$settle"
   dismiss_banner "$udid" "$point_center_x"
 
+  local band_ok=0
+  if [[ "$app" == "minesweeper" ]]; then
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "MS header" identifier "minesweeper.board.pauseToggle" || band_ok=1
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "MS control cluster" identifier "minesweeper.board.tapModeToggle" || band_ok=1
+  else
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku header" identifier "sudoku.board.pauseToggle" || band_ok=1
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku control cluster" \
+      identifier "arrow.uturn.backward" identifier "arrow.uturn.forward" identifier "pencil" identifier "delete.left" \
+      label-prefix "Digit 7" label-prefix "Digit 8" label-prefix "Digit 9" || band_ok=1
+  fi
+
+  xcrun simctl io "$udid" screenshot "$out_png" >/dev/null 2>&1
+  flatten_to_rgb "$out_png"
+  crop_to_band "$out_png" "$top_px" "$bottom_px"
+  [[ $band_ok -eq 0 ]] || return 1
+}
+
+# ── One deterministic capture: retry-until-stable at RELAUNCH granularity
+# (#1054 PM ruling — same-launch repeat screenshots were already
+# byte-identical; the residual jitter this PR measured appears fresh at
+# each INDEPENDENT launch, not while a launch is settling, so the
+# convergence unit must be a relaunch, not a screenshot). Prints
+# "<attempts-used> <strategy>" to stdout on success (strategy: consecutive |
+# nonconsecutive-dup(i,j)); returns 1 (nothing printed) on total
+# non-convergence OR a band-verification failure, with the reason on
+# stderr.
+capture_one_locale() {
+  local udid="$1" bundle="$2" locale="$3" out_file="$4" attempts="$5" settle="$6" point_center_x="$7" app="$8" scale="$9" top_px="${10}" bottom_px="${11}" full_h="${12}"
+  local tmp_dir; tmp_dir="$(mktemp -d)"
+
   local hashes=() files=() prev="" cur="" i shot
   for (( i = 1; i <= attempts; i++ )); do
-    dismiss_banner "$udid" "$point_center_x"
     shot="$tmp_dir/try-$i.png"
-    xcrun simctl io "$udid" screenshot "$shot" >/dev/null 2>&1
-    flatten_to_rgb "$shot"
+    capture_one_relaunch "$udid" "$bundle" "$locale" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$full_h" "$settle" "$shot" || { rm -rf "$tmp_dir"; return 1; }
     cur="$(shasum -a 256 "$shot" | awk '{print $1}')"
     hashes+=("$cur"); files+=("$shot")
     if [[ -n "$prev" && "$cur" == "$prev" ]]; then
@@ -232,7 +401,6 @@ capture_one_locale() {
       return 0
     fi
     prev="$cur"
-    (( i < attempts )) && sleep 1
   done
 
   # Fallback: first hash that recurs anywhere in the window (not necessarily
@@ -249,7 +417,7 @@ capture_one_locale() {
     done
   done
 
-  echo "error: $locale never converged within $attempts attempts (all hashes distinct)" >&2
+  echo "error: $locale never converged within $attempts relaunches (all hashes distinct)" >&2
   rm -rf "$tmp_dir"
   return 1
 }
@@ -435,6 +603,9 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   fi
   mkdir -p "$IDENTITY_ROOT/$app"
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/release-board.png" >/dev/null 2>&1
+  local release_date debug_date
+  release_date="$(date -u +%Y-%m-%d)"
+  echo "    Release capture date (UTC): $release_date"
 
   # ── DEBUG side ──
   echo "==> [$app] DEBUG: install + same reach"
@@ -452,7 +623,15 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   sleep "$SETTLE"
   dismiss_banner "$udid" 220
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/debug-board.png" >/dev/null 2>&1
+  debug_date="$(date -u +%Y-%m-%d)"
+  echo "    DEBUG capture date (UTC): $debug_date"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  if [[ "$app" == "sudoku" && "$release_date" != "$debug_date" ]]; then
+    echo "error: [$app] Release capture ($release_date) and DEBUG capture ($debug_date) are on different UTC calendar days —" >&2
+    echo "  the daily-Easy board is only deterministic per date; this run crossed midnight UTC mid-comparison." >&2
+    exit 1
+  fi
 
   echo "==> [$app] comparing Release vs DEBUG"
   set +e
@@ -476,6 +655,7 @@ if rel.size != (w, h) or dbg.size != (w, h):
 diff = ImageChops.difference(rel, dbg)
 pixels = diff.load()
 differing = 0
+inside_excluded = 0
 outside_excluded = 0
 max_x1 = max_y1 = 0
 min_x0, min_y0 = w, h
@@ -499,17 +679,25 @@ for y in range(h):
                 max_y1 = y
             in_status_bar = y < STATUS_BAR_PX
             in_timer = timer_rect is not None and timer_rect[0] <= x < timer_rect[2] and timer_rect[1] <= y < timer_rect[3]
-            if not (in_status_bar or in_timer):
+            if in_status_bar or in_timer:
+                inside_excluded += 1
+            else:
                 outside_excluded += 1
 
 diff.save(mask_path)
 pct = 100.0 * differing / (w * h)
+print(f"status-bar band: y < {STATUS_BAR_PX}px")
+if timer_rect is not None:
+    print(f"timer-rect mask (px): x=[{timer_rect[0]},{timer_rect[2]}) y=[{timer_rect[1]},{timer_rect[3]})")
+else:
+    print("timer-rect mask (px): none (not applicable to this app)")
 print(f"differing px: {differing} ({pct:.4f}%)")
 if differing:
     print(f"bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})")
 else:
     print("bbox: (none — byte-identical)")
-print(f"differing px outside status-bar/timer exclusion: {outside_excluded}")
+print(f"differing px INSIDE status-bar/timer exclusion: {inside_excluded}")
+print(f"differing px OUTSIDE status-bar/timer exclusion: {outside_excluded} (expected 0 for PASS)")
 
 verdict_pass = outside_excluded == 0
 print("PASS" if verdict_pass else "FAIL")
@@ -578,7 +766,7 @@ for app in "${APPS[@]}"; do
   fi
 
   for row in "${DEVICE_ROWS[@]}"; do
-    IFS='|' read -r dev_key dev_name dev_w dev_h sim_name driver <<<"$row"
+    IFS='|' read -r dev_key dev_name dev_w dev_h sim_name driver top_px bottom_px <<<"$row"
     [[ "$driver" == "sim" ]] || { echo "error: unknown capture driver '$driver' for device '$dev_key'" >&2; exit 2; }
 
     t0=$(date +%s)
@@ -592,6 +780,9 @@ for app in "${APPS[@]}"; do
     fi
     sim_override_status_bar "$udid"
     point_center_x="$(point_center_x_for_device "$dev_key")"
+    scale="$(point_scale_for_device "$dev_key")"
+    cropped_w="$dev_w"
+    cropped_h=$(( dev_h - top_px - bottom_px ))
 
     for locale in "${LOCALES[@]}"; do
       out_dir="$STAGING_ROOT/$app/$dev_key/$locale"
@@ -601,9 +792,9 @@ for app in "${APPS[@]}"; do
       out_file="$out_dir/03-board.png"
 
       t0=$(date +%s)
-      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x")"; then
+      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$dev_h")"; then
         t1=$(date +%s)
-        if validate_capture "$out_file" "$dev_w" "$dev_h"; then
+        if validate_capture "$out_file" "$cropped_w" "$cropped_h"; then
           echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s"
         else
           echo "    [$app/$dev_key/$locale] FAILED validation"
