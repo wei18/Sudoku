@@ -566,8 +566,26 @@ run_identity_check() {
   sim_mute_bgm "$udid" "$bundle"
   sim_override_status_bar "$udid"
 
+  # State-parity note (#1054, PM-diagnosed): installing DEBUG over a Release
+  # container with the same bundle id lets CloudKit-independent LOCAL state
+  # (a daily-Easy in-progress save) survive the swap — the DEBUG launch then
+  # RESUMES that save (already-running header: elapsed timer ticking, pause
+  # button present, maybe a selection) instead of starting fresh, which
+  # previously produced a real, reproducible 28%-of-pixels false FAIL: the
+  # Release capture was mid-game (header "Easy · 0:10 · Pause") while the
+  # DEBUG capture was pre-start (header "Easy · 0:00", no pause button) —
+  # same puzzle, same board size, header just 33px shorter, so the whole
+  # grid sat 33px higher. `uninstall` before EACH install below removes the
+  # container, so every launch is guaranteed fresh; `pause_id_for` below
+  # then polls for the RUNNING-game header (the pause button) before
+  # capturing either side, so both captures are taken from the same state
+  # even if one build happens to render/settle faster than the other.
+  pause_id_for() { [[ "$1" == "sudoku" ]] && echo "sudoku.board.pauseToggle" || echo "minesweeper.board.pauseToggle"; }
+  local pause_id; pause_id="$(pause_id_for "$app")"
+
   # ── Release side ──
   echo "==> [$app] Release: install + tap-drive"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl install "$udid" "$rel_products/$scheme.app"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
@@ -582,6 +600,15 @@ run_identity_check() {
   fi
   sleep "$SETTLE"
   dismiss_banner "$udid" 220
+
+  local rel_pause_xy
+  rel_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$rel_pause_xy" ]] || { echo "error: [$app] Release: pause button never appeared — board did not reach the running state" >&2; exit 1; }
+  local rel_header_frame rel_bottom_frame
+  rel_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  rel_bottom_frame="$(idb_elements_union_bbox "$udid" label-prefix "Banner" label-prefix "Ad " identifier "banner" identifier "adBanner")"
+  echo "    Release header (pause) frame (pt): $rel_header_frame"
+  echo "    Release bottom/banner frame (pt): ${rel_bottom_frame:-none found}"
 
   if [[ "$app" == "sudoku" ]]; then
     # PM ruling #1054: a fresh Sudoku board's timer ticks from open, so the
@@ -609,6 +636,7 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
 
   # ── DEBUG side ──
   echo "==> [$app] DEBUG: install + same reach"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl install "$udid" "$dbg_products/$scheme.app"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
   if [[ "$app" == "sudoku" ]]; then
@@ -622,10 +650,24 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   fi
   sleep "$SETTLE"
   dismiss_banner "$udid" 220
+
+  local dbg_pause_xy
+  dbg_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$dbg_pause_xy" ]] || { echo "error: [$app] DEBUG: pause button never appeared — board did not reach the running state" >&2; exit 1; }
+  local dbg_header_frame dbg_bottom_frame
+  dbg_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  dbg_bottom_frame="$(idb_elements_union_bbox "$udid" label-prefix "Banner" label-prefix "Ad " identifier "banner" identifier "adBanner")"
+  echo "    DEBUG header (pause) frame (pt): $dbg_header_frame"
+  echo "    DEBUG bottom/banner frame (pt): ${dbg_bottom_frame:-none found}"
+
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/debug-board.png" >/dev/null 2>&1
   debug_date="$(date -u +%Y-%m-%d)"
   echo "    DEBUG capture date (UTC): $debug_date"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  if [[ "$rel_header_frame" != "$dbg_header_frame" ]]; then
+    echo "==> [$app] NOTE: header frames differ between Release ($rel_header_frame) and DEBUG ($dbg_header_frame) even with both in the running state — state parity alone did not equalize layout; investigate before trusting the pixel compare." >&2
+  fi
 
   if [[ "$app" == "sudoku" && "$release_date" != "$debug_date" ]]; then
     echo "error: [$app] Release capture ($release_date) and DEBUG capture ($debug_date) are on different UTC calendar days —" >&2
