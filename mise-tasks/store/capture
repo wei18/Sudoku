@@ -257,6 +257,15 @@ for e in els:
         hit = (
             (kind == "label" and label == value)
             or (kind == "label-prefix" and label.startswith(value))
+            # "," excluded deliberately: a board-cell label ("Row 1, Column
+            # 9, given 9" / "1行目、1列目, ...") also ends in " 9" but is a
+            # compound, comma-separated description, not a short control
+            # label ("Digit 9" / "数字 9") — without this guard, a suffix
+            # match on a digit palette button would ALSO sweep in whichever
+            # board cell happens to hold that digit, corrupting the union
+            # bbox with a cell from anywhere on the grid (caught in review,
+            # not by a failing run — #1054).
+            or (kind == "label-suffix" and label.endswith(value) and "," not in label)
             or (kind == "identifier" and uid == value)
         )
         if hit:
@@ -364,9 +373,17 @@ capture_one_relaunch() {
     verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "MS control cluster" identifier "minesweeper.board.tapModeToggle" || band_ok=1
   else
     verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku header" identifier "sudoku.board.pauseToggle" || band_ok=1
+    # Digit-button AXLabels are localized ("Digit 7" en, "数字 9" ja, ...) but
+    # every locale checked keeps the trailing Western digit after a space
+    # (verified live #1054: en/ja) — label-suffix " 7"/" 8"/" 9" is
+    # locale-independent, unlike the English-only label-prefix this replaced
+    # (which silently dropped the whole digit row from the union bbox on
+    # every non-English locale — found while reviewing run 2's per-cell log:
+    # ipad-13/en control-cluster bbox reached y=2719, every other locale
+    # only reached y=2038, the undo/redo/pencil/erase row alone).
     verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku control cluster" \
       identifier "arrow.uturn.backward" identifier "arrow.uturn.forward" identifier "pencil" identifier "delete.left" \
-      label-prefix "Digit 7" label-prefix "Digit 8" label-prefix "Digit 9" || band_ok=1
+      label-suffix " 7" label-suffix " 8" label-suffix " 9" || band_ok=1
   fi
 
   xcrun simctl io "$udid" screenshot "$out_png" >/dev/null 2>&1
