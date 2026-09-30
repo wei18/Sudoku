@@ -483,6 +483,112 @@ sys.exit(0 if (near_white / total) < 0.90 else 1)
   fi
 }
 
+# ── cross-cell invariants (stable-placeholder guard, #1054 P-A spec item 2) ──
+# Runs once over the whole run's staged manifest, right before the atomic
+# publish move (or right before exiting on --staging-only, since that flag
+# only skips the *publish*, not validation). Two checks, NEITHER of which
+# ever widens itself automatically — any violation fails loudly and lists
+# the offending cell(s)/numbers:
+#   (a) no two staged cells in this run may share a sha256 — catches a
+#       stable placeholder silently reused across cells (e.g. one capture
+#       accidentally copied over another).
+#   (b) within each (app,device) group, every cell's "non-background pixel
+#       ratio" (fraction of pixels differing from the cell's own
+#       corner-sampled background color by more than a small threshold) must
+#       sit within the group median +-25% — catches a near-blank or
+#       corrupted cell that still passes validate_capture's coarser 90%
+#       near-white floor (that floor is per-cell and absolute; this is
+#       relative to its sibling locales, which should render the same
+#       layout with only text differing).
+check_cross_cell_invariants() {
+  local -a paths=("$@")
+  (( ${#paths[@]} > 0 )) || return 0
+  echo "==> cross-cell invariants (stable-placeholder guard): ${#paths[@]} staged cell(s)"
+
+  # (a) sha256 uniqueness across the whole batch.
+  local p hash
+  local -a hashes=()
+  for p in "${paths[@]}"; do
+    hash="$(shasum -a 256 "$STAGING_ROOT/$p" | awk '{print $1}')"
+    hashes+=("$hash")
+  done
+  local i j
+  for (( i = 0; i < ${#paths[@]}; i++ )); do
+    for (( j = i + 1; j < ${#paths[@]}; j++ )); do
+      if [[ "${hashes[$i]}" == "${hashes[$j]}" ]]; then
+        echo "error: cross-cell invariant (a) violated — identical sha256 (${hashes[$i]}) between ${paths[$i]} and ${paths[$j]}" >&2
+        return 1
+      fi
+    done
+  done
+  echo "    (a) sha256 uniqueness: OK (${#paths[@]} distinct hashes)"
+
+  # (b) non-background pixel ratio, grouped by "<app>/<device>" (strip the
+  # trailing "/<locale>/03-board.png").
+  local -a group_keys=() key found gk
+  for p in "${paths[@]}"; do
+    key="${p%/*/*}"
+    found=0
+    for gk in "${group_keys[@]:-}"; do
+      [[ "$gk" == "$key" ]] && { found=1; break; }
+    done
+    (( found == 0 )) && group_keys+=("$key")
+  done
+
+  local overall_ok=0
+  for gk in "${group_keys[@]}"; do
+    local -a members=()
+    for p in "${paths[@]}"; do
+      [[ "$p" == "$gk"/* ]] && members+=("$STAGING_ROOT/$p")
+    done
+    if python3 - "$gk" "${members[@]}" <<'PYEOF'
+import sys
+from PIL import Image, ImageChops
+
+gk = sys.argv[1]
+paths = sys.argv[2:]
+THRESH = 24
+BAND_FRAC = 0.25
+
+def nonbg_ratio(path):
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    corners = [im.getpixel((0, 0)), im.getpixel((w - 1, 0)), im.getpixel((0, h - 1)), im.getpixel((w - 1, h - 1))]
+    bg = tuple(sum(c[i] for c in corners) // 4 for i in range(3))
+    diff = ImageChops.difference(im, Image.new("RGB", (w, h), bg))
+    nonbg = sum(1 for r, g, b in diff.getdata() if r > THRESH or g > THRESH or b > THRESH)
+    return nonbg / (w * h)
+
+ratios = {path: nonbg_ratio(path) for path in paths}
+vals = sorted(ratios.values())
+n = len(vals)
+median = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+lo, hi = median * (1 - BAND_FRAC), median * (1 + BAND_FRAC)
+
+fail = []
+for path, r in ratios.items():
+    ok = lo <= r <= hi
+    print(f"    (b) [{gk}] {path}: nonbg_ratio={r:.4%} (group median={median:.4%}, band=[{lo:.4%},{hi:.4%}]) -> {'OK' if ok else 'OUT-OF-BAND'}")
+    if not ok:
+        fail.append((path, r))
+
+if fail:
+    print(f"error: (b) cross-cell invariant violated in [{gk}] — {len(fail)} cell(s) outside median +-25%: " +
+          ", ".join(f"{path}={r:.4%}" for path, r in fail), file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+PYEOF
+    then
+      :
+    else
+      overall_ok=1
+    fi
+  done
+
+  [[ $overall_ok -eq 0 ]] || { echo "error: cross-cell invariant (b) failed for at least one (app,device) group — see above" >&2; return 1; }
+  return 0
+}
+
 ensure_named_sim() {
   # NOTE: never call this as `x="$(ensure_named_sim ...)"` and expect
   # CREATED_UDIDS to see the append — command substitution forks a subshell,
@@ -944,6 +1050,8 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   printf '   %s\n' "${MISSING[@]}" >&2
   exit 1
 fi
+
+check_cross_cell_invariants "${MANIFEST[@]}" || exit 1
 
 if [[ "$STAGING_ONLY" == "true" ]]; then
   echo "==> --staging-only: skipping publish. Staged at $STAGING_ROOT/"
