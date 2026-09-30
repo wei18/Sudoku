@@ -19,6 +19,41 @@
 app_scheme_for() { case "$1" in sudoku) echo "Sudoku";; minesweeper) echo "Minesweeper";; *) echo "";; esac; }
 app_bundle_for() { case "$1" in sudoku) echo "com.wei18.sudoku";; minesweeper) echo "com.wei18.minesweeper";; *) echo "";; esac; }
 
+# ── Machine-load gate (#1054 P-A) ───────────────────────────────────────────
+
+# read_load_1m — echoes the 1-minute load average from `sysctl -n vm.loadavg`
+# (format "{ 1.23 4.56 7.89 }" — first figure only).
+read_load_1m() {
+  sysctl -n vm.loadavg | awk '{gsub(/[{}]/, ""); print $1}'
+}
+
+# check_load_gate <max_load> <max_wait_sec> <label> — reads the 1-minute load
+# average and, if it exceeds <max_load>, polls every 15s (printing each wait)
+# until it drops back under the threshold or <max_wait_sec> elapses. On
+# timeout it fails LOUDLY (never silently proceeds over-threshold): "machine
+# busy: load X > max Y". Always prints the load value on the fast path too,
+# so every build/relaunch/identity-check log line carries a load number
+# (#1054 P-A spec item 1). Shared by every call site in mise-tasks/store/capture
+# that builds or relaunches a simulator app.
+check_load_gate() {
+  local max_load="$1" max_wait="$2" label="$3" waited=0 load
+  load="$(read_load_1m)"
+  if awk -v l="$load" -v m="$max_load" 'BEGIN{exit !(l>m)}'; then
+    echo "    [$label] load=$load > max=$max_load — waiting for it to drop (max wait ${max_wait}s)"
+    while awk -v l="$load" -v m="$max_load" 'BEGIN{exit !(l>m)}'; do
+      if (( waited >= max_wait )); then
+        echo "error: machine busy: load $load > max $max_load (waited ${waited}s, --load-wait ${max_wait}s exhausted) [$label]" >&2
+        return 1
+      fi
+      sleep 15
+      waited=$((waited + 15))
+      load="$(read_load_1m)"
+      echo "    [$label] load=$load (waited ${waited}s/${max_wait}s)"
+    done
+  fi
+  echo "    [$label] load=$load (max=$max_load) OK"
+}
+
 # ── Post-build unresolved-xcconfig gate (#863) ──────────────────────────────
 # A hand-created worktree missing gitignored Tuist/*.xcconfig (see
 # .worktreeinclude — the automatic copy only runs for HARNESS-created

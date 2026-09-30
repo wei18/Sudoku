@@ -15,6 +15,8 @@
 #USAGE }
 #USAGE flag "--attempts <n>" help="Max screenshots per locale while waiting for determinism to settle" default="6"
 #USAGE flag "--settle <sec>" help="Seconds to wait after launch before the first screenshot attempt" default="4"
+#USAGE flag "--max-load <load>" help="Max 1-minute load average before a build/relaunch proceeds (#1054 P-A)" default="8.0"
+#USAGE flag "--load-wait <sec>" help="Max seconds to wait for load to drop below --max-load before failing loudly" default="300"
 #
 # ── Determinism policy (PM ruling, #1054, fixed priority order) ────────────
 #   1. Stabilize AT THE CAPTURE END: re-screenshot the same launch until two
@@ -52,6 +54,13 @@ STAGING_ONLY="${usage_staging_only:-false}"
 IDENTITY_CHECK_APP="${usage_identity_check:-}"
 ATTEMPTS="${usage_attempts:-6}"
 SETTLE="${usage_settle:-4}"
+# MAX_LOAD / LOAD_WAIT: read directly as globals (like CREATED_UDIDS above)
+# by check_load_gate call sites inside capture_one_relaunch / run_identity_check
+# / the matrix build loop below — all defined later in this same process, so
+# they see these values without needing to thread them through every
+# function signature (#1054 P-A spec item 1).
+MAX_LOAD="${usage_max_load:-8.0}"
+LOAD_WAIT="${usage_load_wait:-300}"
 
 STAGING_ROOT="build/store-capture/staging"
 DERIVED_ROOT="build/store-capture/derived"
@@ -362,6 +371,7 @@ if im.mode != "RGB":
 # caller doing raw jitter measurement can inspect it.
 capture_one_relaunch() {
   local udid="$1" bundle="$2" locale="$3" point_center_x="$4" app="$5" scale="$6" top_px="$7" bottom_px="$8" full_h="$9" settle="${10}" out_png="${11}"
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app/$locale relaunch" || return 1
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl launch "$udid" "$bundle" -uitest-route board:showcase -AppleLanguages "($locale)" >/dev/null 2>&1
   sleep "$settle"
@@ -572,8 +582,10 @@ run_identity_check() {
   local dbg_derived="$IDENTITY_ROOT/$app/derived-debug"
   mkdir -p "$IDENTITY_ROOT/$app"
   local rel_products dbg_products
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Release build"
   rel_products="$(build_sim_app "$scheme" Release "$rel_derived")"
   check_plist_resolved "$rel_products/$scheme.app"
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Debug build"
   dbg_products="$(build_sim_app "$scheme" Debug "$dbg_derived")"
   check_plist_resolved "$dbg_products/$scheme.app"
   t1=$(date +%s); echo "    builds: $((t1 - t0))s"
@@ -601,6 +613,7 @@ run_identity_check() {
   local pause_id; pause_id="$(pause_id_for "$app")"
 
   # ── Release side ──
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Release relaunch"
   echo "==> [$app] Release: install + tap-drive"
   xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl install "$udid" "$rel_products/$scheme.app"
@@ -652,6 +665,7 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   echo "    Release capture date (UTC): $release_date"
 
   # ── DEBUG side ──
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check DEBUG relaunch"
   echo "==> [$app] DEBUG: install + same reach"
   xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl install "$udid" "$dbg_products/$scheme.app"
@@ -699,6 +713,7 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   # judged AGAINST this floor, not against a fixed zero — a real
   # Release-vs-DEBUG difference is one that exceeds what relaunching the
   # SAME build twice already produces.
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check control relaunch"
   echo "==> [$app] control: reinstall Release + same reach (same-build noise floor)"
   xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
   xcrun simctl install "$udid" "$rel_products/$scheme.app"
@@ -869,6 +884,7 @@ for app in "${APPS[@]}"; do
   products="$derived/Build/Products/Debug-iphonesimulator"
   if [[ "$NO_BUILD" != "true" ]]; then
     t0=$(date +%s)
+    check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app Debug build"
     build_sim_app "$scheme" Debug "$derived" >/dev/null
     t1=$(date +%s); echo "    [$app] build: $((t1 - t0))s"
     check_plist_resolved "$products/$scheme.app"
