@@ -523,3 +523,229 @@ device/app in the PR body) — the crop_all_sides gap fix alone dropped
 band matching every other slot; panel-fill on the width-fill slots moved
 up 1-3 points from the margin trim (e.g. Sudoku iPhone `01-home`
 47.1%→48.8%, `03-board` 76.6%→79.2%).
+
+## Live-simulator capture for 03-board (#1054)
+
+`03-board`'s snapshot host cannot render Liquid Glass at all (measured: a
+bare `.buttonStyle(.glass)` renders label-only under `NSHostingView` +
+`cacheDisplay`, nothing at all for bare `.glassEffect()`; `ImageRenderer`
+renders it as a flat opaque fill instead of translucent glass — neither
+path is a faithful render of what ships). Once #1022's board rework made
+the control cluster glass, the committed `03-board` baselines legitimately
+re-recorded to bare, surface-less glyphs, and the currently-committed
+iPhone frame separately cropped the control cluster off the canvas
+entirely (an unrelated width-fill-scale defect, not a glass problem).
+
+### Owner ruling (2026-09-24)
+
+**Option 1**: capture `03-board` from a live simulator instead of a
+snapshot baseline. Two forks, both accepted:
+
+- **Fork A — capture the in-progress board from the DEBUG build.**
+  `-uitest-route` is inert in Release, so only the pre-start "Ready" board
+  is reproducible there (a near-empty grid); a mid-game/flagged board is
+  only reachable via a DEBUG-only route (`board:showcase`, #1107). Accepted
+  because Release and DEBUG were measured to render the board
+  pixel-identical apart from the status-bar clock — see "Release ≡ DEBUG
+  identity" below. Any future change to the capture path (route, board
+  builder, taps, device, OS) **must** re-run this measurement; it is the
+  entire basis for shipping marketing frames captured from a non-shipping
+  binary.
+- **Fork B — change the template scaling rule to fit-height, keep the
+  caption band.** `03-board` stays visually consistent with the other five
+  slots, and fixes the existing width-fill-scale defect (see above). See
+  "Fit-height compositor rule" below.
+
+### Release ≡ DEBUG identity — measured, not assumed
+
+Both apps' identity check drives Release to the board by the SAME
+interaction the app ships with (taps for Minesweeper: Practice tab →
+Beginner card → New Game; for Sudoku: Today tab → the "Easy" daily card —
+the daily puzzle is date-seeded and generated on-device with no network
+call, so it is reproducible across builds on the same calendar date), then
+compares against DEBUG the same way, judged against a **same-build
+control** (Release vs a fresh reinstall of the SAME Release build, same
+taps) rather than a fixed zero threshold — PASS iff the cross-build
+outside-mask pixel count and max channel delta both stay within the
+control's own (floored at 20px / delta 3, so a byte-identical control
+can't demand a zero-tolerance cross result). Full evidence, method, and
+images: `docs/app-store/identity-check-evidence/{sudoku,minesweeper}/README.md`.
+
+| | control (Release vs Release) | cross (Release vs DEBUG) | verdict |
+|---|---|---|---|
+| Sudoku | 0px outside-mask / maxΔ166 | 0px outside-mask / maxΔ166 | **PASS** — every observed difference (same-build or cross-build) sits inside the elapsed-time timer-rect mask (`x=[918,1105) y=[269,331)`); header frame identical (`380 78 44 44`) on all 3 captures; Release/DEBUG capture dates both `2026-09-30` UTC (same calendar day guarantees the same daily puzzle) |
+| Minesweeper | run1: 0px/Δ2 · run2: 0px/Δ0 · run3: 0px/Δ2 | run1: **488px/Δ2 (FAIL)** · run2: 0px/Δ2 (PASS) · run3: 0px/Δ2 (PASS) | 2 of 3 runs PASS; run1's 488 outside-mask px is the same small-magnitude (max channel Δ2/255) residual glass-rendering jitter on the mode-toggle pill documented below — not a distinct Release-vs-DEBUG bug, but a real ~1/3 observed failure rate under this criterion. Header frame identical (`380 78 44 44`) all 3 runs; this screen renders no ad banner |
+
+This screen renders through the same `BoardView` + control cluster the
+showcase state does, only cell contents differ — the identity measurement
+on the fresh-board state (the only state both binaries can reach) is
+therefore taken as evidence for the DEBUG-only showcase state too, per the
+Fork A ruling above.
+
+### Capture-time safe-area crop
+
+`mise run store:capture` (`mise-tasks/store/capture`) crops the raw
+`simctl io screenshot` to strip OS chrome BEFORE anything downstream sees
+it, because `simctl status_bar override --time` does not cover the iPad
+status bar's calendar date ("09:41 Fri Sep 25"), which would otherwise
+change every iPad capture on every calendar day even with nothing else
+different. Boundaries measured (not assumed) per device from a real `en`
+capture of each app, scanning inward from each edge for the first
+non-background pixel row:
+
+| Device | Raw capture | top_px | bottom_px | Published size |
+|---|---|---|---|---|
+| iPhone 6.9" (iPhone 17 Pro Max, 3×) | 1320×2868 | 190 | 110 | **1320×2568** |
+| iPad 13" (iPad Pro 13-inch M5, 2×) | 2064×2752 | 50 | 65 | **2064×2637** |
+
+iPhone: Dynamic Island + status-bar icons clear (no remnant) by row 160;
+the app's own header content doesn't start until row 278 — `top_px=190`
+sits in that gap with margin. Bottom: a faint drop-shadow trace runs rows
+~2748-2836 (pure background confirmed 2837-2867); `bottom_px=110` (Apple's
+documented 34pt bottom safe-area inset @3×) covers it with margin. iPad:
+status bar clears by row 47 (both apps agreed exactly — status-bar height
+is OS chrome, not app-dependent); the home-indicator glyph is clearly
+visible spanning rows 2696-2742 of the 2752-tall capture, so `top_px=50` /
+`bottom_px=65` crops to row 2687, 9px of margin above the glyph. A
+mechanical per-capture check (`verify_element_in_band`, via `idb ui
+describe-all` against real accessibility identifiers) re-verifies the
+board's header row and control cluster stay fully inside the published
+band on every capture — the real safety net if a future OS/layout change
+moves any of this.
+
+### Mandatory capture steps, and why
+
+- **`simctl status_bar override --time 9:41 --batteryLevel 100
+  --batteryState discharging --wifiBars 3 --cellularBars 4`** before every
+  launch — Apple's own marketing mechanism (a shipping-system knob, not app
+  code), and the reason three cold-boot captures hashed byte-identical
+  (see determinism below) once this was applied; without it, cross-run
+  captures differed only in the status-bar clock digits/signal glyphs
+  (735-781px, 0.014-0.021%).
+- **Swipe away the "Ready for Apple Intelligence" system banner** before
+  every screenshot attempt — the dominant source of cross-run
+  non-determinism turned out to be this one-time OS banner racing capture
+  timing on a freshly-booted simulator, not glass-rendering jitter.
+- **Reject near-blank captures** (≥90% near-white pixels, calibrated
+  against a real caught blank in-flight-launch frame: 99.9% near-white vs
+  7.7% on a real board) — correct pixel size and no alpha channel say
+  nothing about content; two identical blank screenshots would otherwise
+  "converge" just as successfully as two identical real ones.
+- **Cross-cell invariant: the board's header row and control cluster stay
+  inside the published band** (`verify_element_in_band`, locale-independent
+  matcher — an earlier version matched Sudoku's digit palette by English
+  label prefix and silently found nothing on non-English locales, missing
+  real coverage of the digit row on every locale but `en`).
+- **All-or-nothing publish**: captures land in `build/store-capture/staging/`
+  first; every file in scope is validated (exists, exact device pixel size,
+  no alpha) against an in-memory manifest, and only when every expected
+  cell passes does the task copy that scope's files into
+  `docs/app-store/captures/` — a single missing or failing cell leaves the
+  published tree byte-for-byte untouched.
+
+### Determinism policy and relaunch-convergence numbers
+
+Fixed priority order (PM ruling): (1) stabilize AT THE CAPTURE END —
+re-screenshot the same launch until two CONSECUTIVE hashes match, bounded
+by `--attempts` (default 6, `--settle` default 4s); (2) if that never
+happens, fall back to the first hash that recurs anywhere in the attempt
+window; (3) neither → the cell FAILS with an explicit error. **Pixel
+tolerance is deliberately not implemented** in the capture task itself —
+it is a last resort for the PM to decide on, using the jitter numbers
+this task reports, not something to reach for by default.
+
+The determinism *unit* took two iterations to get right: same-launch
+repeat screenshots were already byte-identical, but a residual
+sub-pixel Liquid Glass rendering variance (~0.02-0.1% of pixels, 13 of 28
+cells) appeared fresh at each INDEPENDENT launch — so the retry loop now
+compares full terminate→launch→settle→screenshot **relaunches**, not
+repeated screenshots within one launch.
+
+Final republish (3 full scoped passes, chunked per app/device, each run
+regenerating from a fresh relaunch):
+
+- **14 of 21 cells agreed across all 3 independent runs**: every
+  Minesweeper/iPhone and Sudoku/iPhone locale (14 = 2 groups × 7 locales).
+- **The 7 Sudoku/iPad cells** converge reliably WITHIN each run (2-4
+  relaunches to a stable hash) but not always to the SAME hash ACROSS
+  independent runs — the same small-magnitude residual glass jitter above,
+  not a new finding. Published from the third (final) run.
+- **Minesweeper/iPad never converges** to a byte-identical hash across
+  independent runs at all (mode-toggle-pill jitter) — excluded from
+  `CaptureSlot` entirely; `SLOTS` keeps it on the snapshot baseline with a
+  `pending #1054 tolerant publish (MS/iPad glass-pill variance)` comment,
+  not `#1054-affected` (a path forward exists, just not landed yet).
+
+  **iPad determinism policy, split by cell**: iPhone cells (Sudoku +
+  Minesweeper, 14 of 21) are byte-exact — no tolerance, the priority-order
+  policy above suffices. Sudoku/iPad cells (7 of 21) are also published as
+  CaptureSlot despite the cross-run hash variance recorded above (the
+  variance is small enough and the PM accepted publishing from the final
+  run rather than gating on it). Minesweeper/iPad (excluded from
+  CaptureSlot) is the one cell whose variance the PM ruled must be handled
+  structurally rather than accepted: a **region-scoped tolerance** derived
+  from the control cluster's own accessibility frame, with an idempotent
+  publish (the committed bytes change only when a capture differs beyond
+  that region's tolerance) — being implemented by dev-A in
+  `mise run store:capture`, with the tolerance regions and bounds recorded
+  per cell in `docs/app-store/captures/manifest.json`. The blind spot this
+  leaves (what a tolerance-masked region could hide) is dev-A's to state in
+  numbers once that lands.
+
+  <!-- #1054 dev-A: fill final margins/bounds/blind-spot -->
+
+### Fit-height compositor rule (Fork B)
+
+`build_asc_image(..., source_kind="capture")` (`scripts/build-ascspec-screenshots.py`):
+unlike every other slot's width-fill scale (which can push tall content
+past the canvas bottom — the exact defect that cropped the iPhone
+control cluster off the previously-committed frame), a capture-sourced
+slot is never cropped (the safe-area crop already happened at capture
+time) and scales by `min(screen_w / src_w, available_h / src_h)` — fit
+BOTH width and height inside the screen band, so the whole capture
+(header through control cluster) always lands inside the canvas. Upscale
+is **not capped at 1:1** here (unlike the `crop_all_sides` — i.e.
+`04-completion` — branch): the capture's own pixel size is close to but
+not identical to the available screen band, and 03-board's pre-#1054
+behavior already upscaled its baseline unconditionally, so keeping that
+behavior avoids shrinking the frame more than necessary. All 4 corners
+round (content no longer necessarily bleeds off the canvas bottom, unlike
+the top-only rounding every width-fill slot uses). Verified byte-identical
+(sha256) for every one of the other 147 frames (168 total, 21 changed)
+across two full regenerations of `python3 scripts/build-ascspec-screenshots.py`.
+
+`CALLOUTS` for the 3 affected `(app, device)` `03-board` cells were
+re-measured against the new capture source (pixel-scanned anchor + chip
+target coordinates, not guessed) and eyeballed across all 7 locales —
+see the inline comments in `build-ascspec-screenshots.py` for the exact
+numbers and the one iteration this took (the first iPad `chip_at` pick
+overlapped the grid's first row; moved into the large empty panel band
+above the header instead).
+
+### Status bar override — what it does and doesn't cover
+
+`simctl status_bar override` pins the clock/battery/signal glyphs, but
+**not** the iPad status bar's calendar date — that's why the safe-area
+crop above exists as a separate, capture-time step rather than relying on
+the override alone. There is no per-app status-bar override policy beyond
+this: the same override is applied uniformly to every capture, every
+locale, every device class.
+
+### MS/iPad and Mac 03-board — not on CaptureSlot
+
+- **Minesweeper iPad 13"**: `pending #1054 tolerant publish (MS/iPad
+  glass-pill variance)` — see the determinism section above. Tracked in
+  `SLOTS`/MAP with that comment, not `#1054-affected`.
+- **Mac, both apps**: `#1054-affected` — no simulator on Mac, so this slot
+  has no live-capture path at all today (owner-deferred, done-when 5).
+  Stays on the snapshot baseline; still glass-less. No probe has been run
+  in this PR (out of scope: no xcodebuild/sim work was authorized for this
+  session).
+
+### Related follow-up
+
+#1108 tracks giving Sudoku a DEBUG-only `board:<difficulty>` route
+(parity with Minesweeper's `#1026` route) — today Sudoku's Release≡DEBUG
+identity pair is the daily Easy board (see above), which works for the
+identity measurement but is not a fresh-board capture route DEBUG can pin
+independently of the calendar date the way Minesweeper's is.
