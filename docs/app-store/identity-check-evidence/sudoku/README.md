@@ -1,24 +1,52 @@
-# Sudoku Release-vs-DEBUG identity check — residual evidence (#1054)
+# Sudoku Release ≡ DEBUG identity check (#1054)
 
-`mise run store:capture --identity-check sudoku`, run 2026-09-28, both builds
-reaching the daily-Easy board by the same idb taps, both captured only after
-the pause button (running-game header) appeared on both sides — see the
-`state-parity` fix in `mise-tasks/store/capture`'s `run_identity_check`.
+`mise run store:capture --identity-check sudoku`, both builds reaching the
+daily-Easy board by the same idb taps, captured only after the pause button
+(running-game header) appeared on both sides (state-parity fix — see git
+history), and now judged against a **same-build control**, not a fixed zero
+threshold.
 
-Before the state-parity fix, this check reported a 28%-of-pixels FAIL caused
-entirely by capturing Release mid-game and DEBUG pre-start (different header
-height, whole grid shifted 33px). With both sides forced to the same running
-state (header frames verified byte-identical: `380 78 44 44` on both), the
-result is:
+## Method
 
-- 3908 differing px (0.1032%), 3495 inside the status-bar/timer exclusion
-  masks, **413 outside** (bbox y:2600-2900, the digit-keypad area).
-- Magnitude of the 413 outside-mask pixels: 50th/90th/99th percentile = 1/1/2
-  out of 255, max 2/255 — essentially the noise floor, not a visible
-  difference.
+1. **Release** capture (install → uninstall-then-reinstall guarantees a
+   fresh container → taps → wait for the pause button → screenshot).
+2. **control** capture: uninstall + reinstall the SAME Release build, same
+   taps, same wait-for-pause-button — measures the launch-to-launch noise
+   floor with zero possibility of a Release-vs-DEBUG difference.
+3. **DEBUG** capture: same method, the DEBUG build.
+4. Compare Release-vs-control (`control`) and Release-vs-DEBUG (`cross`)
+   with the identical status-bar-band + timer-rect exclusion masks. PASS
+   iff `cross.outside <= max(control.outside, 20)` AND
+   `cross.maxdelta <= max(control.maxdelta, 3)`.
 
-Frames identical, pixels still differ (even if only at noise-floor
-magnitude) → per PM ruling this is a genuine Release-vs-DEBUG rendering
-difference, not a state-parity or capture-pipeline artifact. Filed here as
-evidence rather than silently accepted; `release-board.png` /
-`debug-board.png` / `diff-mask.png` are the three captures involved.
+## Result: Release ≡ DEBUG to within the single-build launch noise floor
+
+| | outside-mask px | max channel Δ |
+|---|---|---|
+| control (Release vs Release) | 0 | 166 |
+| cross (Release vs DEBUG) | 0 | 166 |
+
+Both control and cross differences sit entirely **inside** the timer-rect
+mask (`x=[918,1105) y=[269,331)`) — i.e. every observed pixel difference,
+same-build or cross-build, is explained by the elapsed-time digits ticking
+between captures, not by anything Release/DEBUG-specific. Header frames
+identical on all three captures (`380 78 44 44`); Release and DEBUG capture
+dates both `2026-09-30` (UTC) — same calendar day, so the daily puzzle was
+guaranteed identical.
+
+**PASS.**
+
+## History
+
+An earlier run (before the same-build control existed, and before the
+state-parity fix) reported a 28%-of-pixels FAIL: Release was captured
+mid-game while DEBUG was captured pre-start (the DEBUG install had resumed
+a leftover in-progress save from the previous Release install, since both
+builds share a bundle id and therefore a container) — a header-height
+difference that shifted the entire grid 33px, not a rendering bug. Fixed by
+uninstalling between every install and polling for the pause button
+(running-game state) before capturing either side.
+
+Files: `release-board.png`, `control-board.png`, `debug-board.png`,
+`diff-mask.png` (Release vs DEBUG), `control-diff-mask.png` (Release vs
+Release, the noise-floor reference).

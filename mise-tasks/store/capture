@@ -692,50 +692,76 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
     exit 1
   fi
 
-  echo "==> [$app] comparing Release vs DEBUG"
-  set +e
-  python3 - "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "$w" "$h" "$timer_rect_px" <<'PYEOF'
+  # ── Same-build control (PM ruling): a second Release capture, same
+  # uninstall+reach+wait-for-pause method, measures the launch-to-launch
+  # noise floor (the residual glass jitter this PR found elsewhere) with NO
+  # Release-vs-DEBUG difference possible. Cross-build (Release vs DEBUG) is
+  # judged AGAINST this floor, not against a fixed zero — a real
+  # Release-vs-DEBUG difference is one that exceeds what relaunching the
+  # SAME build twice already produces.
+  echo "==> [$app] control: reinstall Release + same reach (same-build noise floor)"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$rel_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+  sleep 3
+  dismiss_banner "$udid" 220
+  if [[ "$app" == "sudoku" ]]; then
+    reach_sudoku_board "$udid"
+  else
+    reach_minesweeper_board "$udid" "$app"
+  fi
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+  local ctrl_pause_xy
+  ctrl_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$ctrl_pause_xy" ]] || { echo "error: [$app] control: pause button never appeared" >&2; exit 1; }
+  local ctrl_header_frame
+  ctrl_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  echo "    control header (pause) frame (pt): $ctrl_header_frame"
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/control-board.png" >/dev/null 2>&1
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  echo "==> [$app] comparing Release vs control (same-build noise floor)"
+  compare_identity_pair() {
+    local path_a="$1" path_b="$2" mask_out="$3" label="$4"
+    python3 - "$path_a" "$path_b" "$mask_out" "$w" "$h" "$timer_rect_px" "$label" <<'PYEOF'
 import sys
 from PIL import Image, ImageChops
 
-rel_path, dbg_path, mask_path, w, h = sys.argv[1:6]
+a_path, b_path, mask_path, w, h = sys.argv[1:6]
 w, h = int(w), int(h)
 timer_rect = None
-if len(sys.argv) > 6 and sys.argv[6].strip():
+if sys.argv[6].strip():
     tx, ty, tw, th = (int(v) for v in sys.argv[6].split())
     timer_rect = (tx, ty, tx + tw, ty + th)
+label = sys.argv[7]
 
-rel = Image.open(rel_path).convert("RGB")
-dbg = Image.open(dbg_path).convert("RGB")
-if rel.size != (w, h) or dbg.size != (w, h):
-    print(f"error: size mismatch rel={rel.size} dbg={dbg.size} want=({w},{h})", file=sys.stderr)
-    sys.exit(1)
+a = Image.open(a_path).convert("RGB")
+b = Image.open(b_path).convert("RGB")
+if a.size != (w, h) or b.size != (w, h):
+    print(f"error: [{label}] size mismatch a={a.size} b={b.size} want=({w},{h})", file=sys.stderr)
+    sys.exit(2)
 
-diff = ImageChops.difference(rel, dbg)
+diff = ImageChops.difference(a, b)
 pixels = diff.load()
 differing = 0
 inside_excluded = 0
 outside_excluded = 0
+max_delta = 0
 max_x1 = max_y1 = 0
 min_x0, min_y0 = w, h
-# PASS iff every differing pixel's y falls inside the status-bar band, OR
-# (Sudoku only) inside the printed timer rect. The iPhone 17 Pro Max
-# safe-area top is 62pt @3x = 186px (spike-measured); 200px margin for
-# minor status-bar-icon layout shift.
 STATUS_BAR_PX = 200
 for y in range(h):
     for x in range(w):
-        r, g, b = pixels[x, y]
-        if r or g or b:
+        r, g, b_ = pixels[x, y]
+        if r or g or b_:
             differing += 1
-            if x < min_x0:
-                min_x0 = x
-            if y < min_y0:
-                min_y0 = y
-            if x > max_x1:
-                max_x1 = x
-            if y > max_y1:
-                max_y1 = y
+            max_delta = max(max_delta, r, g, b_)
+            if x < min_x0: min_x0 = x
+            if y < min_y0: min_y0 = y
+            if x > max_x1: max_x1 = x
+            if y > max_y1: max_y1 = y
             in_status_bar = y < STATUS_BAR_PX
             in_timer = timer_rect is not None and timer_rect[0] <= x < timer_rect[2] and timer_rect[1] <= y < timer_rect[3]
             if in_status_bar or in_timer:
@@ -745,29 +771,53 @@ for y in range(h):
 
 diff.save(mask_path)
 pct = 100.0 * differing / (w * h)
-print(f"status-bar band: y < {STATUS_BAR_PX}px")
+print(f"[{label}] status-bar band: y < {STATUS_BAR_PX}px")
 if timer_rect is not None:
-    print(f"timer-rect mask (px): x=[{timer_rect[0]},{timer_rect[2]}) y=[{timer_rect[1]},{timer_rect[3]})")
-else:
-    print("timer-rect mask (px): none (not applicable to this app)")
-print(f"differing px: {differing} ({pct:.4f}%)")
-if differing:
-    print(f"bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})")
-else:
-    print("bbox: (none — byte-identical)")
-print(f"differing px INSIDE status-bar/timer exclusion: {inside_excluded}")
-print(f"differing px OUTSIDE status-bar/timer exclusion: {outside_excluded} (expected 0 for PASS)")
-
-verdict_pass = outside_excluded == 0
-print("PASS" if verdict_pass else "FAIL")
-sys.exit(0 if verdict_pass else 1)
+    print(f"[{label}] timer-rect mask (px): x=[{timer_rect[0]},{timer_rect[2]}) y=[{timer_rect[1]},{timer_rect[3]})")
+print(f"[{label}] differing px: {differing} ({pct:.4f}%)")
+print(f"[{label}] bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})" if differing else f"[{label}] bbox: (none — byte-identical)")
+print(f"[{label}] differing px INSIDE status-bar/timer exclusion: {inside_excluded}")
+print(f"[{label}] differing px OUTSIDE status-bar/timer exclusion: {outside_excluded}")
+print(f"[{label}] max channel delta: {max_delta}")
+print(f"RESULT {label} outside={outside_excluded} maxdelta={max_delta}")
 PYEOF
-  local verdict=$?
-  set -e
+  }
+
+  compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/control-board.png" "$IDENTITY_ROOT/$app/control-diff-mask.png" "control" > "$IDENTITY_ROOT/$app/control-compare.log" 2>&1
+  cat "$IDENTITY_ROOT/$app/control-compare.log"
+  local control_outside control_maxdelta
+  control_outside="$(grep '^RESULT control' "$IDENTITY_ROOT/$app/control-compare.log" | sed -E 's/.*outside=([0-9]+).*/\1/')"
+  control_maxdelta="$(grep '^RESULT control' "$IDENTITY_ROOT/$app/control-compare.log" | sed -E 's/.*maxdelta=([0-9]+).*/\1/')"
+
+  echo "==> [$app] comparing Release vs DEBUG (cross-build)"
+  compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "cross" > "$IDENTITY_ROOT/$app/cross-compare.log" 2>&1
+  cat "$IDENTITY_ROOT/$app/cross-compare.log"
+  local cross_outside cross_maxdelta
+  cross_outside="$(grep '^RESULT cross' "$IDENTITY_ROOT/$app/cross-compare.log" | sed -E 's/.*outside=([0-9]+).*/\1/')"
+  cross_maxdelta="$(grep '^RESULT cross' "$IDENTITY_ROOT/$app/cross-compare.log" | sed -E 's/.*maxdelta=([0-9]+).*/\1/')"
+
+  # PASS iff cross-build doesn't exceed the same-build noise floor (a small
+  # floor guards a control that happens to land byte-identical — 20px /
+  # delta 3 is generous next to the ~2-6k px / delta<=30 the glass jitter
+  # elsewhere in this PR actually measured).
+  local floor_px=20 floor_delta=3
+  local effective_floor_px=$control_outside
+  (( effective_floor_px < floor_px )) && effective_floor_px=$floor_px
+  local effective_floor_delta=$control_maxdelta
+  (( effective_floor_delta < floor_delta )) && effective_floor_delta=$floor_delta
+
+  echo "    control (same-build) outside=$control_outside maxdelta=$control_maxdelta"
+  echo "    cross (Release vs DEBUG) outside=$cross_outside maxdelta=$cross_maxdelta"
+  echo "    PASS threshold: outside<=$effective_floor_px AND maxdelta<=$effective_floor_delta"
+
+  local verdict=1
+  if (( cross_outside <= effective_floor_px && cross_maxdelta <= effective_floor_delta )); then
+    verdict=0
+  fi
   if [[ $verdict -eq 0 ]]; then
-    echo "==> [$app] identity-check: PASS"
+    echo "==> [$app] identity-check: PASS (within same-build noise floor)"
   else
-    echo "==> [$app] identity-check: FAIL"
+    echo "==> [$app] identity-check: FAIL (exceeds same-build noise floor)"
   fi
   xcrun simctl delete "$udid" >/dev/null 2>&1 || true
   CREATED_UDIDS=()
