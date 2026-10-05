@@ -138,11 +138,13 @@ read -r -a ALL_LOCALES <<<"$LOCALES_LINE"
 # x1.5 safety factor is the PM ruling ("halo boundary x1.5").
 HALO_MARGIN_PT=39
 HALO_SAFETY_FACTOR="1.5"
-REGION_MAX_DELTA=48   # PM ceiling
-# REGION_MAX_PX: calibrated by this PR's sensitivity proof (item 4c/4d) — a
-# 100x100px (10000px) patch at delta 48 on a real Minesweeper/iPad capture
-# passes (9922px measured, i.e. right at the boundary); 10100px or delta 49
-# fails. See scripts/compare_capture.py and docs/app-store/captures/README.md.
+REGION_MAX_DELTA=48   # PM ceiling (per-channel), never raised
+# REGION_MAX_PX — PLACEHOLDER until the quiet-window measurement (#1054 P-A
+# item 1b): the final value is derived as 2x the largest differing-pixel count
+# measured between launches inside the region, NOT chosen to make a test
+# pass. The sensitivity proof (scripts/capture_sensitivity_proof.py) must
+# still fire on a subtle retint at the final value, and its printed blind
+# spot is copied verbatim into docs/app-store/screenshot-strategy.md.
 REGION_MAX_PX=10000
 
 # mode_for_device <device_key> — "exact" (iPhone, PM hard rule) or
@@ -871,6 +873,24 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
     echo "    timer rect (px, x y w h): $timer_rect_px"
   fi
   mkdir -p "$IDENTITY_ROOT/$app"
+  # Glass-control region (PM condition 3): the control cluster's live
+  # accessibility bbox (pt -> px, uncropped screenshot space) plus the same
+  # halo margin the capture pipeline uses. Cross-build pixels INSIDE it are
+  # reported against the same-build control; OUTSIDE it (and outside the
+  # status-bar/timer masks) the claim is 0 px, printed separately.
+  local glass_rect_px=""
+  local glass_bbox_pt
+  glass_bbox_pt="$(control_cluster_bbox_pt "$udid" "$app" || true)"
+  if [[ -n "$glass_bbox_pt" ]]; then
+    glass_rect_px="$(python3 -c "
+import sys
+x0,y0,x1,y1=(float(v) for v in sys.argv[1].split()); s=float(sys.argv[2]); m=int(sys.argv[3]); w=int(sys.argv[4]); h=int(sys.argv[5])
+print(max(0,int(x0*s)-m), max(0,int(y0*s)-m), min(w,int(x1*s+0.999)+m), min(h,int(y1*s+0.999)+m))
+" "$glass_bbox_pt" "$point_scale" "$(halo_margin_px_for_scale "$point_scale")" "$w" "$h")"
+    echo "    glass-control region (px, bbox+halo): $glass_rect_px"
+  else
+    echo "    warning: no control-cluster elements found — glass region empty, every differing px counts as OUTSIDE" >&2
+  fi
   xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/release-board.png" >/dev/null 2>&1
   local release_date debug_date
   release_date="$(date -u +%Y-%m-%d)"
@@ -952,11 +972,15 @@ print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
   echo "==> [$app] comparing Release vs control (same-build noise floor)"
   compare_identity_pair() {
     local path_a="$1" path_b="$2" mask_out="$3" label="$4"
-    python3 - "$path_a" "$path_b" "$mask_out" "$w" "$h" "$timer_rect_px" "$label" <<'PYEOF'
+    python3 - "$path_a" "$path_b" "$mask_out" "$w" "$h" "$timer_rect_px" "$label" "$glass_rect_px" <<'PYEOF'
 import sys
 from PIL import Image, ImageChops
 
 a_path, b_path, mask_path, w, h = sys.argv[1:6]
+glass_rect = None
+if len(sys.argv) > 8 and sys.argv[8].strip():
+    gx0, gy0, gx1, gy1 = (int(v) for v in sys.argv[8].split())
+    glass_rect = (gx0, gy0, gx1, gy1)
 w, h = int(w), int(h)
 timer_rect = None
 if sys.argv[6].strip():
@@ -975,6 +999,8 @@ pixels = diff.load()
 differing = 0
 inside_excluded = 0
 outside_excluded = 0
+glass_px = 0
+glass_max_delta = 0
 max_delta = 0
 max_x1 = max_y1 = 0
 min_x0, min_y0 = w, h
@@ -991,8 +1017,12 @@ for y in range(h):
             if y > max_y1: max_y1 = y
             in_status_bar = y < STATUS_BAR_PX
             in_timer = timer_rect is not None and timer_rect[0] <= x < timer_rect[2] and timer_rect[1] <= y < timer_rect[3]
+            in_glass = glass_rect is not None and glass_rect[0] <= x < glass_rect[2] and glass_rect[1] <= y < glass_rect[3]
             if in_status_bar or in_timer:
                 inside_excluded += 1
+            elif in_glass:
+                glass_px += 1
+                glass_max_delta = max(glass_max_delta, r, g, b_)
             else:
                 outside_excluded += 1
 
@@ -1003,48 +1033,57 @@ if timer_rect is not None:
     print(f"[{label}] timer-rect mask (px): x=[{timer_rect[0]},{timer_rect[2]}) y=[{timer_rect[1]},{timer_rect[3]})")
 print(f"[{label}] differing px: {differing} ({pct:.4f}%)")
 print(f"[{label}] bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})" if differing else f"[{label}] bbox: (none — byte-identical)")
-print(f"[{label}] differing px INSIDE status-bar/timer exclusion: {inside_excluded}")
-print(f"[{label}] differing px OUTSIDE status-bar/timer exclusion: {outside_excluded}")
-print(f"[{label}] max channel delta: {max_delta}")
-print(f"RESULT {label} outside={outside_excluded} maxdelta={max_delta}")
+if glass_rect is not None:
+    print(f"[{label}] glass-control region (px): x=[{glass_rect[0]},{glass_rect[2]}) y=[{glass_rect[1]},{glass_rect[3]})")
+print(f"[{label}] differing px INSIDE status-bar/timer exclusion (ignored): {inside_excluded}")
+print(f"[{label}] differing px INSIDE glass-control region: {glass_px} (max channel delta {glass_max_delta})")
+print(f"[{label}] differing px OUTSIDE every region/mask: {outside_excluded}   <- claim: 0")
+print(f"[{label}] max channel delta (all): {max_delta}")
+print(f"RESULT {label} outside={outside_excluded} glass={glass_px} glassdelta={glass_max_delta} maxdelta={max_delta}")
 PYEOF
   }
 
   compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/control-board.png" "$IDENTITY_ROOT/$app/control-diff-mask.png" "control" > "$IDENTITY_ROOT/$app/control-compare.log" 2>&1
   cat "$IDENTITY_ROOT/$app/control-compare.log"
-  local control_outside control_maxdelta
-  control_outside="$(grep '^RESULT control' "$IDENTITY_ROOT/$app/control-compare.log" | sed -E 's/.*outside=([0-9]+).*/\1/')"
-  control_maxdelta="$(grep '^RESULT control' "$IDENTITY_ROOT/$app/control-compare.log" | sed -E 's/.*maxdelta=([0-9]+).*/\1/')"
+  local control_outside control_glass control_glassdelta
+  control_outside="$(sed -nE 's/^RESULT control outside=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
+  control_glass="$(sed -nE 's/^RESULT control .*glass=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
+  control_glassdelta="$(sed -nE 's/^RESULT control .*glassdelta=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
 
   echo "==> [$app] comparing Release vs DEBUG (cross-build)"
   compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "cross" > "$IDENTITY_ROOT/$app/cross-compare.log" 2>&1
   cat "$IDENTITY_ROOT/$app/cross-compare.log"
-  local cross_outside cross_maxdelta
-  cross_outside="$(grep '^RESULT cross' "$IDENTITY_ROOT/$app/cross-compare.log" | sed -E 's/.*outside=([0-9]+).*/\1/')"
-  cross_maxdelta="$(grep '^RESULT cross' "$IDENTITY_ROOT/$app/cross-compare.log" | sed -E 's/.*maxdelta=([0-9]+).*/\1/')"
+  local cross_outside cross_glass cross_glassdelta
+  cross_outside="$(sed -nE 's/^RESULT cross outside=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
+  cross_glass="$(sed -nE 's/^RESULT cross .*glass=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
+  cross_glassdelta="$(sed -nE 's/^RESULT cross .*glassdelta=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
 
-  # PASS iff cross-build doesn't exceed the same-build noise floor (a small
-  # floor guards a control that happens to land byte-identical — 20px /
-  # delta 3 is generous next to the ~2-6k px / delta<=30 the glass jitter
-  # elsewhere in this PR actually measured).
+  # Two figures, reported separately (PM condition 3) — never collapsed into
+  # one number:
+  #   1. OUTSIDE the glass-control region and the status-bar/timer masks:
+  #      the claim is 0 px cross-build. Hard requirement.
+  #   2. INSIDE the glass-control region: the cross-build difference must
+  #      not exceed the same-build control's noise floor (a small floor
+  #      guards a control that happens to land byte-identical).
   local floor_px=20 floor_delta=3
-  local effective_floor_px=$control_outside
-  (( effective_floor_px < floor_px )) && effective_floor_px=$floor_px
-  local effective_floor_delta=$control_maxdelta
-  (( effective_floor_delta < floor_delta )) && effective_floor_delta=$floor_delta
+  local glass_floor_px=$control_glass glass_floor_delta=$control_glassdelta
+  (( glass_floor_px < floor_px )) && glass_floor_px=$floor_px
+  (( glass_floor_delta < floor_delta )) && glass_floor_delta=$floor_delta
 
-  echo "    control (same-build) outside=$control_outside maxdelta=$control_maxdelta"
-  echo "    cross (Release vs DEBUG) outside=$cross_outside maxdelta=$cross_maxdelta"
-  echo "    PASS threshold: outside<=$effective_floor_px AND maxdelta<=$effective_floor_delta"
+  echo "    [1] OUTSIDE glass region + masks — control: ${control_outside} px   cross-build: ${cross_outside} px   (claim: 0)"
+  echo "    [2] INSIDE glass region        — control: ${control_glass} px / delta ${control_glassdelta}   cross-build: ${cross_glass} px / delta ${cross_glassdelta}   (floor: <=${glass_floor_px} px, <=${glass_floor_delta})"
 
-  local verdict=1
-  if (( cross_outside <= effective_floor_px && cross_maxdelta <= effective_floor_delta )); then
-    verdict=0
+  local verdict=0
+  if (( cross_outside != 0 )); then
+    echo "==> [$app] identity-check: FAIL on figure [1] — ${cross_outside} differing px OUTSIDE the glass region (claim was 0)"
+    verdict=1
   fi
-  if [[ $verdict -eq 0 ]]; then
-    echo "==> [$app] identity-check: PASS (within same-build noise floor)"
-  else
-    echo "==> [$app] identity-check: FAIL (exceeds same-build noise floor)"
+  if (( cross_glass > glass_floor_px || cross_glassdelta > glass_floor_delta )); then
+    echo "==> [$app] identity-check: FAIL on figure [2] — inside-glass ${cross_glass} px / delta ${cross_glassdelta} exceeds the same-build floor (${glass_floor_px} px / ${glass_floor_delta})"
+    verdict=1
+  fi
+  if (( verdict == 0 )); then
+    echo "==> [$app] identity-check: both figures hold — outside glass: 0 px cross-build; inside glass within the same-build noise floor"
   fi
   xcrun simctl delete "$udid" >/dev/null 2>&1 || true
   CREATED_UDIDS=()
