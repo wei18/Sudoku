@@ -498,29 +498,49 @@ capture_one_relaunch() {
 # stderr.
 capture_one_locale() {
   local udid="$1" bundle="$2" locale="$3" out_file="$4" attempts="$5" settle="$6" point_center_x="$7" app="$8" scale="$9" top_px="${10}" bottom_px="${11}" full_h="${12}"
+  local mode="${13:-exact}" cropped_w="${14:-}" cropped_h="${15:-}" margin_px="${16:-}"
   local tmp_dir; tmp_dir="$(mktemp -d)"
+  rm -f "$out_file.region"
 
-  local hashes=() files=() prev="" cur="" i shot
+  # same_or_within <a> <b> — exact mode: byte-identical; tolerant mode:
+  # byte-identical OR compare_capture.py OK inside the cell's region (never
+  # outside it). The comparator is the SAME one the publish decision and
+  # --verify use, so "converged" means "would publish as unchanged".
+  local region=""
+  same_or_within() {
+    cmp -s "$1" "$2" && return 0
+    [[ "$mode" == "tolerant" && -n "$region" ]] || return 1
+    python3 scripts/compare_capture.py "$1" "$2" --regions "[[${region// /,}]]" \
+      --max-delta "$REGION_MAX_DELTA" --max-px "$REGION_MAX_PX" >/dev/null 2>&1
+  }
+
+  local files=() prev="" i shot
   for (( i = 1; i <= attempts; i++ )); do
     shot="$tmp_dir/try-$i.png"
     capture_one_relaunch "$udid" "$bundle" "$locale" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$full_h" "$settle" "$shot" || { rm -rf "$tmp_dir"; return 1; }
-    cur="$(shasum -a 256 "$shot" | awk '{print $1}')"
-    hashes+=("$cur"); files+=("$shot")
-    if [[ -n "$prev" && "$cur" == "$prev" ]]; then
+    files+=("$shot")
+    if [[ "$mode" == "tolerant" && -z "$region" ]]; then
+      # Region from the LIVE accessibility frames of this launch (frames are
+      # launch-stable — measured — so one read per cell is enough); written
+      # beside the output so the caller records exactly what the loop used.
+      region="$(compute_region_for_cell "$udid" "$app" "$scale" "$top_px" "$cropped_w" "$cropped_h" "$margin_px")" || { rm -rf "$tmp_dir"; return 1; }
+      printf '%s\n' "$region" > "$out_file.region"
+    fi
+    if [[ -n "$prev" ]] && same_or_within "$prev" "$shot"; then
       cp "$shot" "$out_file"
       echo "$i consecutive"
       rm -rf "$tmp_dir"
       return 0
     fi
-    prev="$cur"
+    prev="$shot"
   done
 
-  # Fallback: first hash that recurs anywhere in the window (not necessarily
-  # consecutive) — policy item 2.
+  # Fallback: first pair that agrees anywhere in the window (not necessarily
+  # consecutive) — policy item 2. Publishes the later of the pair.
   local j
   for (( i = 1; i <= attempts; i++ )); do
     for (( j = i + 1; j <= attempts; j++ )); do
-      if [[ "${hashes[$((i - 1))]}" == "${hashes[$((j - 1))]}" ]]; then
+      if same_or_within "${files[$((i - 1))]}" "${files[$((j - 1))]}"; then
         cp "${files[$((j - 1))]}" "$out_file"
         echo "$attempts nonconsecutive-dup($i,$j)"
         rm -rf "$tmp_dir"
@@ -529,7 +549,8 @@ capture_one_locale() {
     done
   done
 
-  echo "error: $locale never converged within $attempts relaunches (all hashes distinct)" >&2
+  local how="byte-identical"; [[ "$mode" == "tolerant" ]] && how="within tolerance of each other (region=[$region])"
+  echo "error: $locale never converged within $attempts relaunches (mode=$mode: no two launches $how)" >&2
   rm -rf "$tmp_dir"
   return 1
 }
@@ -1115,15 +1136,17 @@ for app in "${APPS[@]}"; do
       out_file="$out_dir/03-board.png"
 
       t0=$(date +%s)
-      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$dev_h")"; then
+      mode="$(mode_for_device "$dev_key")"
+      margin=""; [[ "$mode" == "tolerant" ]] && margin="$(halo_margin_px_for_device "$dev_key")"
+      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$dev_h" "$mode" "$cropped_w" "$cropped_h" "$margin")"; then
         t1=$(date +%s)
         if validate_capture "$out_file" "$cropped_w" "$cropped_h"; then
-          mode="$(mode_for_device "$dev_key")"
           region=""
           region_ok=0
           if [[ "$mode" == "tolerant" ]]; then
-            margin="$(halo_margin_px_for_device "$dev_key")"
-            region="$(compute_region_for_cell "$udid" "$app" "$scale" "$top_px" "$cropped_w" "$cropped_h" "$margin")" || region_ok=1
+            # The loop computed the region from the live frames and converged
+            # against it; record that exact region, never a recomputation.
+            if [[ -f "$out_file.region" ]]; then region="$(cat "$out_file.region")"; rm -f "$out_file.region"; else region_ok=1; fi
           fi
           if [[ $region_ok -eq 0 ]]; then
             echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s mode=$mode region=[$region]"
