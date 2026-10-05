@@ -17,6 +17,7 @@
 #USAGE flag "--settle <sec>" help="Seconds to wait after launch before the first screenshot attempt" default="4"
 #USAGE flag "--max-load <load>" help="Max 1-minute load average before a build/relaunch proceeds (#1054 P-A)" default="8.0"
 #USAGE flag "--load-wait <sec>" help="Max seconds to wait for load to drop below --max-load before failing loudly" default="300"
+#USAGE flag "--verify" help="Re-capture and compare against committed docs/app-store/captures/ instead of publishing; nonzero exit on any cell outside its manifest tolerance, never modifies committed files" default="false"
 #
 # ── Determinism policy (PM ruling, #1054, fixed priority order) ────────────
 #   1. Stabilize AT THE CAPTURE END: re-screenshot the same launch until two
@@ -61,6 +62,7 @@ SETTLE="${usage_settle:-4}"
 # function signature (#1054 P-A spec item 1).
 MAX_LOAD="${usage_max_load:-8.0}"
 LOAD_WAIT="${usage_load_wait:-300}"
+VERIFY_MODE="${usage_verify:-false}"
 
 STAGING_ROOT="build/store-capture/staging"
 DERIVED_ROOT="build/store-capture/derived"
@@ -118,6 +120,46 @@ for node in ast.walk(tree):
 ')"
 read -r -a ALL_LOCALES <<<"$LOCALES_LINE"
 [[ ${#ALL_LOCALES[@]} -eq 7 ]] || { echo "error: expected 7 locales from build-ascspec-screenshots.py, got ${#ALL_LOCALES[@]}: ${ALL_LOCALES[*]}" >&2; exit 2; }
+
+# ── Region-limited tolerance policy (#1054 P-A, PM-approved) ───────────────
+# iPhone cells stay byte-exact (PM hard rule). iPad cells (both apps) get ONE
+# halo region around the control-cluster accessibility frame: region-outside
+# stays byte-exact, region-inside tolerates the residual glass-rendering
+# jitter measured across independent relaunches/runs (#1054 P-A item 3):
+#   - Sudoku/ipad-13/en, 3 independent runs (shutdown+boot between each):
+#     0 differing px across all 3 pairwise comparisons (byte-identical).
+#   - Minesweeper/ipad-13/en, 7 consecutive relaunches (6 pairs, same boot):
+#     2222-6816 differing px per pair, max channel delta 4-18, ALL 6 pairs'
+#     diff bbox contained within the control-cluster union bbox (points
+#     1629,96)-(2001,333) px @2x) expanded by 78px on every side — this is
+#     the binding (larger) measurement, so it sets the device's halo margin.
+# Halo margin stored in POINTS (device-independent) so it converts correctly
+# to any device's pixel scale: 78px @ ipad-13's 2x point scale = 39pt.
+# x1.5 safety factor is the PM ruling ("halo boundary x1.5").
+HALO_MARGIN_PT=39
+HALO_SAFETY_FACTOR="1.5"
+REGION_MAX_DELTA=48   # PM ceiling
+# REGION_MAX_PX: calibrated by this PR's sensitivity proof (item 4c/4d) — a
+# 100x100px (10000px) patch at delta 48 on a real Minesweeper/iPad capture
+# passes (9922px measured, i.e. right at the boundary); 10100px or delta 49
+# fails. See scripts/compare_capture.py and docs/app-store/captures/README.md.
+REGION_MAX_PX=10000
+
+# mode_for_device <device_key> — "exact" (iPhone, PM hard rule) or
+# "tolerant" (iPad, halo-region policy above).
+mode_for_device() { case "$1" in ipad-13) echo tolerant;; *) echo exact;; esac; }
+
+# halo_margin_px_for_scale <point_scale> — HALO_MARGIN_PT x HALO_SAFETY_FACTOR
+# converted to that device's pixel scale (int, truncated).
+halo_margin_px_for_scale() {
+  python3 -c "print(int($HALO_MARGIN_PT * $HALO_SAFETY_FACTOR * $1))"
+}
+
+# halo_margin_px_for_device <device_key> — resolves the device's point scale
+# via point_scale_for_device (defined below) and converts to px.
+halo_margin_px_for_device() {
+  halo_margin_px_for_scale "$(point_scale_for_device "$1")"
+}
 
 CREATED_UDIDS=()
 
@@ -289,6 +331,49 @@ for e in els:
 if x0 is not None:
     print(x0, y0, x1, y1)
 ' "$tree" "$@" 2>/dev/null || true
+}
+
+# control_cluster_bbox_pt <udid> <app> — echoes "x0 y0 x1 y1" (POINT-space)
+# union bbox of the SAME control-cluster identifiers verify_element_in_band
+# checks (header pause toggle + per-app control cluster), or nothing if not
+# found. Shared by compute_region_for_cell below and the identity-check
+# capsule-halo exclusion.
+control_cluster_bbox_pt() {
+  local udid="$1" app="$2"
+  if [[ "$app" == "minesweeper" ]]; then
+    idb_elements_union_bbox "$udid" identifier "minesweeper.board.pauseToggle" identifier "minesweeper.board.tapModeToggle"
+  else
+    idb_elements_union_bbox "$udid" identifier "sudoku.board.pauseToggle" \
+      identifier "arrow.uturn.backward" identifier "arrow.uturn.forward" identifier "pencil" identifier "delete.left" \
+      label-suffix " 7" label-suffix " 8" label-suffix " 9"
+  fi
+}
+
+# compute_region_for_cell <udid> <app> <scale> <top_px> <cropped_w> <cropped_h> <margin_px>
+# — echoes "x0 y0 x1 y1" (published/cropped-file px space, clamped to the
+# image bounds): control_cluster_bbox_pt converted points->pixels, shifted
+# by -top_px (capture crops that band away before this rect is ever compared
+# against a published file), then padded by <margin_px> on all four sides.
+# Safe to call right after capture_one_locale returns regardless of which
+# relaunch attempt won — #1054 P-A item 3 measured this bbox identical
+# across every independent relaunch/run tried (3 Sudoku runs, 7 Minesweeper
+# relaunches), so any live post-capture state gives the same rect.
+compute_region_for_cell() {
+  local udid="$1" app="$2" scale="$3" top_px="$4" cropped_w="$5" cropped_h="$6" margin_px="$7"
+  local bbox
+  bbox="$(control_cluster_bbox_pt "$udid" "$app")"
+  [[ -n "$bbox" ]] || { echo "error: compute_region_for_cell($app): no control-cluster elements found" >&2; return 1; }
+  # shellcheck disable=SC2086  # intentional word-split of "x0 y0 x1 y1"
+  python3 -c "
+import sys
+x0, y0, x1, y1 = (float(v) for v in sys.argv[1:5])
+scale, top_px, margin, cw, ch = (float(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7]), int(sys.argv[8]), int(sys.argv[9]))
+px0, py0 = int(x0 * scale) - top_px, int(y0 * scale) - top_px
+px1, py1 = int(x1 * scale) + 1 - top_px, int(y1 * scale) + 1 - top_px
+rx0, ry0 = max(0, px0 - margin), max(0, py0 - margin)
+rx1, ry1 = min(cw, px1 + margin), min(ch, py1 + margin)
+print(rx0, ry0, rx1, ry1)
+" $bbox "$scale" "$top_px" "$margin_px" "$cropped_w" "$cropped_h"
 }
 
 # crop_to_band <file> <top_px> <bottom_px> — crop <file> in place to
@@ -980,6 +1065,13 @@ echo "==> matrix: apps=${APPS[*]} devices=$(printf '%s ' "${DEVICE_ROWS[@]%%|*}"
 
 MANIFEST=()   # relative paths this run expects to produce
 MISSING=()    # relative paths that failed capture or validation
+# Parallel arrays to MANIFEST (same index), filled in on every path so the
+# publish step can zip them back together — "" placeholders on any failure
+# branch (those cells are in MISSING too, which aborts before publish).
+MANIFEST_MODE=()     # "exact" | "tolerant"
+MANIFEST_REGION=()   # "x0 y0 x1 y1" (cropped px) or "" for exact cells
+MANIFEST_LOAD=()     # 1-minute load average at capture time
+MANIFEST_DATE=()     # UTC capture date (YYYY-MM-DD)
 RUN_START=$(date +%s)
 
 for app in "${APPS[@]}"; do
@@ -1026,15 +1118,32 @@ for app in "${APPS[@]}"; do
       if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$dev_h")"; then
         t1=$(date +%s)
         if validate_capture "$out_file" "$cropped_w" "$cropped_h"; then
-          echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s"
+          mode="$(mode_for_device "$dev_key")"
+          region=""
+          region_ok=0
+          if [[ "$mode" == "tolerant" ]]; then
+            margin="$(halo_margin_px_for_device "$dev_key")"
+            region="$(compute_region_for_cell "$udid" "$app" "$scale" "$top_px" "$cropped_w" "$cropped_h" "$margin")" || region_ok=1
+          fi
+          if [[ $region_ok -eq 0 ]]; then
+            echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s mode=$mode region=[$region]"
+            MANIFEST_MODE+=("$mode"); MANIFEST_REGION+=("$region")
+            MANIFEST_LOAD+=("$(read_load_1m)"); MANIFEST_DATE+=("$(date -u +%Y-%m-%d)")
+          else
+            echo "    [$app/$dev_key/$locale] FAILED region measurement"
+            MISSING+=("$rel_path")
+            MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
+          fi
         else
           echo "    [$app/$dev_key/$locale] FAILED validation"
           MISSING+=("$rel_path")
+          MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
         fi
       else
         t1=$(date +%s)
         echo "    [$app/$dev_key/$locale] FAILED capture ($((t1 - t0))s)"
         MISSING+=("$rel_path")
+        MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
       fi
     done
 
@@ -1053,14 +1162,134 @@ fi
 
 check_cross_cell_invariants "${MANIFEST[@]}" || exit 1
 
-if [[ "$STAGING_ONLY" == "true" ]]; then
-  echo "==> --staging-only: skipping publish. Staged at $STAGING_ROOT/"
+if [[ "$STAGING_ONLY" == "true" && "$VERIFY_MODE" != "true" ]]; then
+  echo "==> --staging-only: skipping publish/verify. Staged at $STAGING_ROOT/"
   exit 0
 fi
 
-echo "==> publishing ${#MANIFEST[@]} file(s) to $PUBLISH_ROOT/"
-for rel_path in "${MANIFEST[@]}"; do
-  mkdir -p "$PUBLISH_ROOT/$(dirname "$rel_path")"
-  cp -f "$STAGING_ROOT/$rel_path" "$PUBLISH_ROOT/$rel_path"
+# ── idempotent publish decision (#1054 P-A item 4) ──────────────────────────
+# One pass over every cell in this run's manifest scope, deciding "keep"
+# (committed bytes untouched), "replace" (exceeded tolerance / exact-mode
+# byte diff), or "new" (no committed file yet) — WITHOUT writing anything
+# yet, so --verify can reuse the identical decision logic read-only.
+echo "==> comparing ${#MANIFEST[@]} cell(s) against committed $PUBLISH_ROOT/ (mode: iphone-6.9=exact, ipad-13=tolerant regions<=$REGION_MAX_PX px @ delta<=$REGION_MAX_DELTA)"
+PUBLISH_ACTIONS=()
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  mode="${MANIFEST_MODE[$idx]}"
+  region="${MANIFEST_REGION[$idx]}"
+  staged="$STAGING_ROOT/$rel_path"
+  committed="$PUBLISH_ROOT/$rel_path"
+  regions_json="[]"
+  [[ -n "$region" ]] && regions_json="[[${region// /,}]]"
+
+  if [[ ! -f "$committed" ]]; then
+    PUBLISH_ACTIONS+=("new")
+    echo "    [$rel_path] new (no committed file yet)"
+    continue
+  fi
+  if cmp -s "$staged" "$committed"; then
+    PUBLISH_ACTIONS+=("keep")
+    echo "    [$rel_path] unchanged (byte-identical)"
+    continue
+  fi
+  if [[ "$mode" == "tolerant" ]]; then
+    if python3 scripts/compare_capture.py "$committed" "$staged" --regions "$regions_json" --max-delta "$REGION_MAX_DELTA" --max-px "$REGION_MAX_PX" 2>&1 | sed 's/^/        /'; then
+      PUBLISH_ACTIONS+=("keep")
+      echo "    [$rel_path] unchanged (within tolerance) — regions=$regions_json"
+    else
+      PUBLISH_ACTIONS+=("replace")
+      echo "    [$rel_path] replaced (exceeded tolerance) — regions=$regions_json"
+    fi
+  else
+    PUBLISH_ACTIONS+=("replace")
+    echo "    [$rel_path] replaced (exact mode, bytes differ)"
+  fi
 done
+
+if [[ "$VERIFY_MODE" == "true" ]]; then
+  verify_fail=0
+  for action in "${PUBLISH_ACTIONS[@]}"; do
+    [[ "$action" == "keep" ]] || verify_fail=1
+  done
+  if [[ $verify_fail -eq 0 ]]; then
+    echo "==> --verify: all ${#MANIFEST[@]} cell(s) within tolerance of committed files — $PUBLISH_ROOT/ untouched"
+    exit 0
+  else
+    echo "error: --verify found cell(s) outside their manifest tolerance (see 'replaced'/'new' above) — $PUBLISH_ROOT/ NOT modified" >&2
+    exit 1
+  fi
+fi
+
+# ── apply (real publish only — --verify already returned above) ───────────
+new_n=0 replaced_n=0 kept_n=0
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  action="${PUBLISH_ACTIONS[$idx]}"
+  staged="$STAGING_ROOT/$rel_path"
+  committed="$PUBLISH_ROOT/$rel_path"
+  case "$action" in
+    keep) kept_n=$((kept_n + 1));;
+    new) mkdir -p "$PUBLISH_ROOT/$(dirname "$rel_path")"; cp -f "$staged" "$committed"; new_n=$((new_n + 1));;
+    replace) cp -f "$staged" "$committed"; replaced_n=$((replaced_n + 1));;
+  esac
+done
+echo "==> publish done: $new_n new, $replaced_n replaced, $kept_n unchanged"
+
+# ── manifest.json merge (#1054 P-A item 4) ──────────────────────────────────
+# Cells outside this run's scope (e.g. a --app/--device/--locale-scoped run)
+# are preserved untouched; only this run's cells are added/updated, keyed by
+# published path. "size"/"sha256" are read from the FINAL committed bytes
+# (post-apply) so a "keep" decision records the unchanged committed file's
+# own hash, never the staged candidate that was discarded.
+: > "$STAGING_ROOT/.manifest-cells.jsonl"
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  committed="$PUBLISH_ROOT/$rel_path"
+  mode="${MANIFEST_MODE[$idx]}"
+  region="${MANIFEST_REGION[$idx]}"
+  load="${MANIFEST_LOAD[$idx]}"
+  cdate="${MANIFEST_DATE[$idx]}"
+  IFS='/' read -r cell_app cell_dev cell_locale _ <<<"$rel_path"
+  sha="$(shasum -a 256 "$committed" | awk '{print $1}')"
+  w="$(sips -g pixelWidth "$committed" 2>/dev/null | awk '/pixelWidth/{print $2}')"
+  h="$(sips -g pixelHeight "$committed" 2>/dev/null | awk '/pixelHeight/{print $2}')"
+  regions_json="[]"; bounds_json="None"
+  if [[ -n "$region" ]]; then
+    regions_json="[[${region// /,}]]"
+    bounds_json="{\"max_delta\": $REGION_MAX_DELTA, \"max_px\": $REGION_MAX_PX}"
+  fi
+  python3 -c "
+import json
+print(json.dumps({
+  'app': '$cell_app', 'device': '$cell_dev', 'locale': '$cell_locale', 'path': '$rel_path',
+  'size': [$w, $h], 'sha256': '$sha', 'mode': '$mode', 'regions': $regions_json,
+  'bounds': $bounds_json, 'capture_date': '$cdate', 'load': $load,
+}))
+" >> "$STAGING_ROOT/.manifest-cells.jsonl"
+done
+
+python3 - "$PUBLISH_ROOT/manifest.json" "$STAGING_ROOT/.manifest-cells.jsonl" <<'PYEOF'
+import json, sys, os
+
+manifest_path, cells_path = sys.argv[1], sys.argv[2]
+existing = {"cells": []}
+if os.path.exists(manifest_path):
+    with open(manifest_path) as f:
+        existing = json.load(f)
+by_path = {c["path"]: c for c in existing.get("cells", [])}
+with open(cells_path) as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        cell = json.loads(line)
+        by_path[cell["path"]] = cell
+merged = {"cells": [by_path[k] for k in sorted(by_path)]}
+with open(manifest_path, "w") as f:
+    json.dump(merged, f, indent=2)
+    f.write("\n")
+print(f"==> {manifest_path}: {len(merged['cells'])} cell(s) total")
+PYEOF
+
 echo "==> done."
