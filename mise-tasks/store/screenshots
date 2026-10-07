@@ -102,8 +102,10 @@ MAP=(
   # 01-home REPOINTED AGAIN (#1021 Phase E2): see the iPhone row's comment above.
   "sudoku|ipad-13|en|01-home|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPadLight.ProgressScreen-iPad-light-store.png"
   "sudoku|ipad-13|en|02-daily|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/DailyHubViewTests/snapshotUnfinishedIPadLight.DailyHub-iPad-light-unfinished.png"
-  # 03-board REPOINTED (#1054): see the iPhone row's comment above.
-  "sudoku|ipad-13|en|03-board|docs/app-store/captures/sudoku/ipad-13/en/03-board.png"
+  # 03-board: pending #1110 tolerant publish — Sudoku/iPad captures vary
+  # across independent runs (glass number pad), so this preview stays on the
+  # snapshot the generator uses (SLOTS) until #1110 publishes it tolerant.
+  "sudoku|ipad-13|en|03-board|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/BoardViewPencilNotesTests/snapshotPencilNotesWithError_iPad_light.Board-iPad-light-pencilNotesWithError.png"
   "sudoku|ipad-13|en|04-completion|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/CompletionViewTests/snapshot_authenticatedLoaded_iPadLight.Completion-iPad-light-loaded.png"
   "sudoku|ipad-13|en|05-settings|Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/SettingsViewTests/snapshot_iPad_light_purchased.SettingsView-fullpage-iPad-light-purchased.png"
   # ── Sudoku · Mac ────────────────────────────────────────────────────────────

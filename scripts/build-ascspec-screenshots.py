@@ -355,8 +355,11 @@ CALLOUTS = {
         # header text and the grid), horizontally still centered in the
         # "Easy"...pause-controls gap (x=146-1706 of 2064, 76% of width) so
         # the leader line still reads as pointing at the same row.
-        "anchor": {"iphone-6.9": (0.500, 0.136), "ipad-13": (0.345, 0.314)},
-        "chip_at": {"iphone-6.9": (0.408, 0.043), "ipad-13": (0.449, 0.130)},
+        # ipad-13 keeps the snapshot-era values (the iPad slot is snapshot-
+        # sourced until #1110); only iphone-6.9 was re-measured against the
+        # capture panel. Re-measure ipad-13 when #1110 flips it to CaptureSlot.
+        "anchor": {"iphone-6.9": (0.500, 0.136), "ipad-13": (0.207, 0.315)},
+        "chip_at": {"iphone-6.9": (0.408, 0.043), "ipad-13": (0.360, 0.210)},
         "en": "Catches mistakes instantly", "zh-Hant": "即時抓出錯誤", "zh-Hans": "实时揪出错误",
         "ja": "ミスをその場で検出", "ko": "실수를 즉시 잡아냄",
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
@@ -541,8 +544,16 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
-            # #1054 Fork B: see the Sudoku iPhone 03-board comment above.
-            CaptureSlot("03-board", "docs/app-store/captures/sudoku/ipad-13/{locale}/03-board.png"),
+            # pending #1110 tolerant publish (Sudoku/iPad cross-run variance):
+            # store:capture converges this cell WITHIN a run but lands on a
+            # different hash ACROSS independent runs (glass number pad), so
+            # an exact-mode capture would be rewritten on every regeneration
+            # and the drift gate would fire on noise. Stays on the snapshot
+            # baseline until the region-scoped tolerance is measured and
+            # the cell is published in tolerant mode (#1110). "Capture-
+            # sourced" means "reproducible" on this branch.
+            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
+                 "snapshotPencilNotesWithError_iPad_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
                  "snapshot_authenticatedLoaded_iPadLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPad-light-purchased",

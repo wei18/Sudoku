@@ -678,12 +678,15 @@ regenerating from a fresh relaunch):
 
   **iPad determinism policy, split by cell**: iPhone cells (Sudoku +
   Minesweeper, 14 of 21) are byte-exact — no tolerance, the priority-order
-  policy above suffices. Sudoku/iPad cells (7 of 21) are also published as
-  CaptureSlot despite the cross-run hash variance recorded above (the
-  variance is small enough and the PM accepted publishing from the final
-  run rather than gating on it). Minesweeper/iPad (excluded from
-  CaptureSlot) is the one cell whose variance the PM ruled must be handled
-  structurally rather than accepted: a **region-scoped tolerance** derived
+  policy above suffices. **Only those 14 byte-reproducible cells are
+  capture-sourced on this branch.** Sudoku/iPad (7 cells) converges within a
+  run but lands on a different hash across independent runs (glass number
+  pad); publishing it in exact mode would rewrite the files on every
+  regeneration and make `scan:store_frame_drift` fire on noise, so it stays
+  on its snapshot baseline, labelled "pending #1110 tolerant publish", until
+  the tolerance is measured. Minesweeper/iPad never converges byte-exact at
+  all and is handled the same way. The PM ruled that both iPad apps' variance
+  is handled structurally rather than accepted: a **region-scoped tolerance** derived
   from the control cluster's own accessibility frame, with an idempotent
   publish (the committed bytes change only when a capture differs beyond
   that region's tolerance) — implemented in `mise run store:capture`
@@ -699,8 +702,10 @@ regenerating from a fresh relaunch):
   `10000` because its derivation (2× the largest differing-pixel count
   measured between launches inside the region) needs a quiet machine the
   owner cannot give for now. Consequences, stated so nobody reads this as
-  complete: `minesweeper/ipad-13` is **not** published from captures yet
-  (its `03-board` frame is still snapshot-sourced), and the blind spot at
+  complete: the tolerance machinery ships **dormant** — no published cell
+  uses it (proven on synthetic fixtures only); neither `sudoku/ipad-13` nor
+  `minesweeper/ipad-13` is published from captures yet (both `03-board`
+  frames are still snapshot-sourced), and the blind spot at
   the provisional bound is: inside a tolerant region, a change of up to
   48/255 per channel on up to 10 000 pixels passes undetected (on the
   synthetic 480×280 px test region that is 7.4 % of the region and 0.3 % of
