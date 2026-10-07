@@ -96,6 +96,29 @@ matches the uploader contract `<app>/<device>/<locale>` exactly. Key facts:
   check passed even while every zh-Hant caption was tofu (#504). See [[interactive-sim-ux-audit]]
   discipline: verify content, not just dims.
 
+## Capture-sourced slots (#1054) — 03-board is NOT always baseline-sourced
+
+`03-board` for Sudoku iPhone/iPad and Minesweeper iPhone is sourced from a
+**live-simulator capture**, not a snapshot baseline — the snapshot host
+(`NSHostingView`/`ImageRenderer`) cannot render Liquid Glass at all, so a
+snapshot-sourced `03-board` would show bare, surface-less controls. `mise
+run store:capture` (`mise-tasks/store/capture`) publishes these to
+`docs/app-store/captures/<app>/<device>/<locale>/03-board.png`, already
+cropped of device safe-area bands; the generator's `SLOTS` table points
+those 3 (app, device) cells at a `CaptureSlot` instead of a `Slot`, and
+`build_asc_image(..., source_kind="capture")` composites them with a
+fit-height (not width-fill) scale so the full control cluster stays inside
+the canvas. Minesweeper iPad 13" and both apps' Mac `03-board` stay
+snapshot-sourced (`Slot`) — Mac has no simulator at all (owner-deferred);
+Minesweeper iPad's capture doesn't yet converge to a byte-identical hash
+across relaunches, pending a region-scoped tolerance. Full rationale,
+Release≡DEBUG identity evidence, and the fit-height rule:
+`docs/app-store/screenshot-strategy.md` §"Live-simulator capture for
+03-board (#1054)". Both scan gates (`scan:store_baseline_orphans`,
+`scan:store_frame_drift`) parse `CaptureSlot(...)` the same way they parse
+`Slot(...)` — a capture-sourced slot is just as watched as a
+snapshot-sourced one.
+
 ## Known footguns
 
 - **Do not upload the symlinked PNGs to App Store Connect.** They fail the

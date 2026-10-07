@@ -327,22 +327,39 @@ COPY = {
 # eyeballing both baselines, not guessed.
 CALLOUTS = {
     ("sudoku", "03-board"): [{
-        # Anchor dot = the red error cell (row0,col2) — the actual thing
-        # "catches mistakes instantly" refers to. The OLD default (chip
-        # dropped straight below the dot) landed on row2's live "9"/"8"
-        # cells. A first `chip_at` attempt tried the empty block at
-        # columns 6-8 — that's real empty grid space, but the chip's own
-        # width (measured: ~42% of canvas width for the longest label) means
-        # centering it there pushes past the right margin, and the margin
-        # clamp in draw_callout_chip then drags it back LEFT onto the very
-        # cells being avoided. Fixed target instead: the empty gap in the
-        # HEADER ROW above the grid, between "Easy" and the timer/pause
-        # controls — measured directly (column-scan for non-background
-        # pixels in that row) at 56%/76% of the baseline's own width on
-        # iPhone/iPad respectively, comfortably wider than the chip in every
-        # locale, so no clamp ever engages.
-        "anchor": {"iphone-6.9": (0.295, 0.180), "ipad-13": (0.207, 0.315)},
-        "chip_at": {"iphone-6.9": (0.403, 0.112), "ipad-13": (0.360, 0.210)},
+        # #1054: RE-MEASURED against the live-capture source
+        # (docs/app-store/captures/sudoku/{iphone-6.9,ipad-13}/en/03-board.png,
+        # the `board:showcase` DEBUG route), which replaced the
+        # BoardViewPencilNotesTests snapshot this callout used to be measured
+        # against — same idea (anchor on the red error cell, chip in open
+        # space above the grid), new numbers, since the two sources don't
+        # share layout/content. Anchor dot = the red error-highlighted cell,
+        # found by scanning for reddish pixels
+        # (row bbox 592-728 x 280-416 px of a 1320x2568 iPhone capture;
+        # 644-778 x 761-896 px of a 2064x2637 iPad capture).
+        #
+        # Chip target — iPhone: the empty gap in the HEADER ROW between
+        # "Easy" and the timer/pause controls (x=159-918 of 1320, 62% of
+        # width), vertically centered on that row — plenty of clearance to
+        # the grid below on this device.
+        #
+        # Chip target — iPad: NOT the header row. The iPad capture has a
+        # much taller top margin (header floats ~27% down the capture, not
+        # near the top), but the header-to-grid gap itself is only ~45px in
+        # canvas pixels once scaled — too tight for the chip's own ~136px
+        # height (measured: chip at the header's vertical center visibly
+        # overlapped the grid's first row, caught by eyeballing this exact
+        # locale/device per item C). Placed instead in the LARGE empty
+        # panel band above the header (canvas y 753-1243 of a 1943px-tall
+        # panel, i.e. fy 0-0.253 of capture height, well clear of both the
+        # header text and the grid), horizontally still centered in the
+        # "Easy"...pause-controls gap (x=146-1706 of 2064, 76% of width) so
+        # the leader line still reads as pointing at the same row.
+        # ipad-13 keeps the snapshot-era values (the iPad slot is snapshot-
+        # sourced until #1110); only iphone-6.9 was re-measured against the
+        # capture panel. Re-measure ipad-13 when #1110 flips it to CaptureSlot.
+        "anchor": {"iphone-6.9": (0.500, 0.136), "ipad-13": (0.207, 0.315)},
+        "chip_at": {"iphone-6.9": (0.408, 0.043), "ipad-13": (0.360, 0.210)},
         "en": "Catches mistakes instantly", "zh-Hant": "即時抓出錯誤", "zh-Hans": "实时揪出错误",
         "ja": "ミスをその場で検出", "ko": "실수를 즉시 잡아냄",
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
@@ -366,16 +383,19 @@ CALLOUTS = {
         "es": "Tu tiempo y tus errores", "th": "เวลาและจำนวนที่พลาดของคุณ",
     }],
     ("minesweeper", "03-board"): [{
-        # iPad: the default below-anchor drop landed the chip on the covered
-        # grid tiles. `chip_at` moves the chip into the right-hand
-        # control column, well below the Reveal button (both measured off
-        # the baseline: grid's own right edge, and the button's bottom
-        # edge). fx is deliberately far enough right that draw_callout_chip's
-        # own margin clamp is what places it (any fx past ~0.83 clamps to
-        # the same spot) — the clamped position clears the grid's right edge
-        # with room to spare. iPhone's anchor already has clear space
-        # directly below it (verified — the stacked-controls layout puts the
-        # grid much lower on that device), so it keeps the default drop.
+        # iPad stays sourced from the snapshot baseline (pending #1054
+        # tolerant publish — see the SLOTS comment) so ITS anchor/chip_at/
+        # chip_max_w below are UNCHANGED, still measured against that
+        # baseline. iPhone's `anchor` below is #1054 RE-MEASURED against the
+        # live-capture source
+        # (docs/app-store/captures/minesweeper/iphone-6.9/en/03-board.png,
+        # the `board:showcase` DEBUG route) — same flag-counter target as
+        # before (top-left "🚩 7"), new coordinates because the capture's own
+        # header geometry differs slightly from the old snapshot's (bbox
+        # 55-148 x 88-131 px of a 1320x2568 capture). Still keeps the default
+        # below-anchor chip drop: the grid starts much lower on this capture
+        # than on the old baseline, so there is if anything MORE clear space
+        # below the anchor than before.
         #
         # `chip_max_w` (iPad only): the "room to spare" comment above was
         # verified against `en`'s 662px-wide chip only. Re-verifying every
@@ -390,7 +410,7 @@ CALLOUTS = {
         # fixed-position UI element rather than dropping it into open canvas)
         # needs a `chip_max_w` sanity check as a matter of course, not just
         # the slot someone happens to be touching that round.
-        "anchor": {"iphone-6.9": (0.092, 0.045), "ipad-13": (0.700, 0.016)},
+        "anchor": {"iphone-6.9": (0.077, 0.043), "ipad-13": (0.700, 0.016)},
         "chip_at": {"ipad-13": (0.850, 0.200)},
         "chip_max_w": {"ipad-13": 0.30},
         "en": "Flag suspected mines", "zh-Hant": "標記可疑地雷", "zh-Hans": "标记可疑地雷",
@@ -475,13 +495,37 @@ class Slot:
         return baselines_root / self.suite_dir / f"{self.prefix}.{self.named}.png"
 
 
+class CaptureSlot:
+    """A slot sourced from a live-simulator capture (#1054) instead of a
+    snapshot-test baseline — `mise run store:capture` publishes these,
+    already cropped of device safe-area bands, to
+    docs/app-store/captures/<app>/<device>/<locale>/<name>.png. Unlike
+    `Slot`, the source PNG is per-locale (a snapshot baseline never
+    localizes — see the "per-locale-baseline variant" comment above — but a
+    live capture genuinely renders each locale's own strings), so
+    `rel_path_template` carries a `{locale}` placeholder instead of a fixed
+    suite/named/prefix triple."""
+
+    __slots__ = ("name", "rel_path_template")
+
+    def __init__(self, name: str, rel_path_template: str):
+        self.name = name
+        self.rel_path_template = rel_path_template
+
+    def path_for(self, locale: str) -> Path:
+        return REPO_ROOT / self.rel_path_template.format(locale=locale)
+
+
 SLOTS = {
     "iphone-6.9": {
         "sudoku": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPhone-light-allDone", "snapshotAllCompletedIPhoneLight"),
-            Slot("03-board", "BoardViewPencilNotesTests", "Board-iPhone-light-pencilNotesWithError",
-                 "snapshotPencilNotesWithError_iPhone_light"),
+            # #1054 Fork B: sourced from a live-simulator capture (glass
+            # renders correctly there; the snapshot host cannot render
+            # Liquid Glass at all — see the issue). mise run store:capture
+            # publishes this file, already cropped of safe-area bands.
+            CaptureSlot("03-board", "docs/app-store/captures/sudoku/iphone-6.9/{locale}/03-board.png"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPhone-light-loaded",
                  "snapshot_authenticatedLoaded_iPhoneLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-iPhone-light-purchased",
@@ -490,8 +534,8 @@ SLOTS = {
         "minesweeper": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPhone-light-loaded", "snapshotLoaded_iPhone_light"),
-            Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-iPhone-light-beginner-flagged",
-                 "snapshotFlagged_iPhone_light"),
+            # #1054 Fork B: see the Sudoku iPhone 03-board comment above.
+            CaptureSlot("03-board", "docs/app-store/captures/minesweeper/iphone-6.9/{locale}/03-board.png"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPhone-light-win-reminder",
                  "snapshotWinDailyReminder_iPhone_light"),
         ],
@@ -500,6 +544,14 @@ SLOTS = {
         "sudoku": [
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "DailyHubViewTests", "DailyHub-iPad-light-unfinished", "snapshotUnfinishedIPadLight"),
+            # pending #1110 tolerant publish (Sudoku/iPad cross-run variance):
+            # store:capture converges this cell WITHIN a run but lands on a
+            # different hash ACROSS independent runs (glass number pad), so
+            # an exact-mode capture would be rewritten on every regeneration
+            # and the drift gate would fire on noise. Stays on the snapshot
+            # baseline until the region-scoped tolerance is measured and
+            # the cell is published in tolerant mode (#1110). "Capture-
+            # sourced" means "reproducible" on this branch.
             Slot("03-board", "BoardViewPencilNotesTests", "Board-iPad-light-pencilNotesWithError",
                  "snapshotPencilNotesWithError_iPad_light"),
             Slot("04-completion", "CompletionViewTests", "Completion-iPad-light-loaded",
@@ -511,6 +563,15 @@ SLOTS = {
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPad-light-store", "snapshotStoreIPadLight"),
             Slot("02-daily", "MinesweeperDailyHubSnapshotTests", "Daily-iPad-light-allDone",
                  "snapshotAllDone_iPad_light"),
+            # pending #1054 tolerant publish (MS/iPad glass-pill variance):
+            # store:capture cannot converge this cell to a byte-identical
+            # hash across independent relaunches (residual Liquid Glass
+            # rendering jitter on the mode-toggle pill) — stays on the
+            # snapshot baseline until dev-A's region-scoped tolerance ships
+            # (docs/app-store/captures/manifest.json). Do NOT read this as
+            # "#1054-affected" (that label is for the owner-deferred Mac
+            # slots, which have no path forward yet at all); this cell has
+            # one, just not landed.
             Slot("03-board", "MinesweeperBoardSnapshotTests", "Board-iPad-light-beginner-covered",
                  "snapshotBeginnerCovered_iPad_light"),
             Slot("04-completion", "MinesweeperCompletionSnapshotTests", "Completion-iPad-light-win-loaded",
@@ -530,12 +591,16 @@ SLOTS = {
     # path.
     "mac": {
         "sudoku": [
+            # #1054-affected: no simulator on Mac, so this slot has no
+            # live-capture path today (owner-deferred, #1054 done-when 5).
+            # Stays on the snapshot baseline — still glass-less.
             Slot("03-board", "BoardViewTests", "Board-Mac-light-inProgress", "snapshotInProgress_Mac_light"),
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-Mac-light-store", "snapshotStoreMacLight"),
             Slot("05-settings", "SettingsViewTests", "SettingsView-fullpage-mac-light-purchased",
                  "snapshot_mac_light_purchased"),
         ],
         "minesweeper": [
+            # #1054-affected: see the Sudoku mac 03-board comment above.
             Slot("03-board", "MinesweeperBoardRevealedSnapshotTests", "Board-Mac-light-beginner-flagged",
                  "snapshotFlagged_Mac_light"),
             Slot("01-home", "ProgressScreenTests", "ProgressScreen-Mac-light-store", "snapshotStoreMacLight"),
@@ -1023,7 +1088,8 @@ def build_asc_image(baseline_path: Path,
                     callouts: Optional[list[dict]] = None,
                     device: str = "iphone-6.9",
                     slot_name: str = "",
-                    crop_all_sides: bool = False) -> Image.Image:
+                    crop_all_sides: bool = False,
+                    source_kind: str = "baseline") -> Image.Image:
     """
     Compose one ASC-spec RGB PNG at the given canvas size — Direction C
     (full-bleed brand-gradient ground + headline set directly into the color +
@@ -1055,6 +1121,16 @@ def build_asc_image(baseline_path: Path,
     from the actual rendered position/size, not a baseline-fraction lookup
     (see the loop below) — a fixed fx/fy anchor would be wrong as soon as
     crop+scale+center moves the content around.
+
+    `source_kind="capture"` (#1054 Fork B, `CaptureSlot`-sourced 03-board
+    only): the source PNG is a live-simulator capture, already cropped of
+    device safe-area bands at capture time (`mise-tasks/store/capture`) —
+    no `detect_content_*` cropping here, and no upscale cap, so the whole
+    capture (including its full glass control cluster) fits inside the
+    screen band with fit-HEIGHT scaling (`min(width-fill, height-fill)`)
+    instead of width-fill-only. See the branch below for why upscale stays
+    uncapped. Every other slot (`source_kind="baseline"`, the default) is
+    untouched by this branch and must stay byte-identical to before.
     """
     bg_color, accent_color, accent_deep, accent_muted = make_frame(app)
 
@@ -1218,6 +1294,29 @@ def build_asc_image(baseline_path: Path,
         # leaves the leftover gradient below the card instead, where
         # Direction C's callout chip (04-completion) already anchors off
         # the card's own bottom edge with room to spare.
+        paste_y = SCREEN_TOP
+    elif source_kind == "capture":
+        # #1054 Fork B: the capture is already cropped of safe-area bands at
+        # capture time (mise-tasks/store/capture) — no content-bbox
+        # detection here, and unlike crop_all_sides, no upscale cap. Fit
+        # HEIGHT as well as width so the full control cluster (which sits
+        # near the capture's own bottom edge) always lands inside the
+        # canvas instead of being pushed past it by an unconditional
+        # width-fill scale (the defect that motivated this fork — the
+        # committed iPhone 03-board frame cropped the control cluster off
+        # entirely). `available_h` reserves the same small bottom margin
+        # (2% of asc_h) the width-fill branch leaves as breathing room via
+        # CONTENT_PAD_FRAC, so the panel never touches the canvas edge.
+        available_h = asc_h - SCREEN_TOP - int(asc_h * 0.02)
+        scale = min(screen_w / src_w, available_h / src_h_full)
+        fit_w = max(1, round(src_w * scale))
+        fit_h = max(1, round(src_h_full * scale))
+        src_resized = src_full.resize((fit_w, fit_h), Image.LANCZOS)
+        bg_patch = Image.new("RGB", (fit_w, fit_h), bg_color)
+        bg_patch.paste(src_resized, (0, 0), src_resized)
+        mask = Image.new("L", (fit_w, fit_h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, fit_w - 1, fit_h - 1), radius=corner_radius, fill=255)
+        paste_x = SCREEN_MARGIN + (screen_w - fit_w) // 2  # center — may be narrower than screen_w
         paste_y = SCREEN_TOP
     else:
         content_bottom_px = detect_content_bottom(src_full, bg_color)
@@ -1493,7 +1592,10 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                         })
                         continue
 
-                    baseline_path = slot.baseline(baselines_root)
+                    if isinstance(slot, CaptureSlot):
+                        baseline_path = slot.path_for(locale)
+                    else:
+                        baseline_path = slot.baseline(baselines_root)
                     if not baseline_path.exists():
                         results.append({
                             "device": device, "app": app, "slot": slot.name,
@@ -1525,6 +1627,8 @@ def generate_all(dry_run: bool = False) -> list[dict]:
                                 # existed at the time must stay byte-identical to
                                 # what's already uploaded.
                                 crop_all_sides=(slot.name in {"04-completion"}),
+                                # #1054 Fork B: CaptureSlot-sourced 03-board only.
+                                source_kind="capture" if isinstance(slot, CaptureSlot) else "baseline",
                             )
                         img.save(str(out_path), "PNG", optimize=False)
 

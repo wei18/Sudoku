@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="ASC frame drift proxy gate (#1001): fail a PR that changes a snapshot baseline feeding a Slot() in scripts/build-ascspec-screenshots.py without touching docs/app-store/screenshots-ascspec/ in the same PR. Pure git/grep — no Python, no Pillow, no fonts, runs on ubuntu-latest. The real regenerate-and-diff check needs macOS system fonts (see script header) and can't run there."
+#MISE description="ASC frame drift proxy gate (#1001): fail a PR that changes a snapshot baseline feeding a Slot() — or a live-simulator capture feeding a CaptureSlot() (#1054) — in scripts/build-ascspec-screenshots.py without touching docs/app-store/screenshots-ascspec/ in the same PR. Pure git/grep — no Python, no Pillow, no fonts, runs on ubuntu-latest. The real regenerate-and-diff check needs macOS system fonts (see script header) and can't run there."
 #USAGE flag "--base <ref>" help="Base ref to diff against (default: origin/main, falling back to main)"
 #USAGE flag "--list" help="Print the derived baseline -> slot mapping and exit 0 (no gate check)" default="false"
 #
@@ -71,6 +71,17 @@ if [[ -z "$BASELINES_SUDOKU_REL" || -z "$BASELINES_MS_REL" ]]; then
   exit 1
 fi
 
+# #1054: LOCALES — read from the single source of truth (never re-typed),
+# pure grep/sed (no python, per this gate's own "pure git/grep" design) —
+# needed to expand each CaptureSlot(...) (one source file per locale) into
+# per-locale watched paths below.
+LOCALES_RAW="$(grep -E '^LOCALES = \[' "$SCRIPT" | sed -E 's/^LOCALES = \[(.*)\]/\1/' | tr -d '"' | tr ',' ' ')"
+read -r -a ALL_LOCALES <<<"$LOCALES_RAW"
+if [[ ${#ALL_LOCALES[@]} -eq 0 ]]; then
+  echo "ERROR [store_frame_drift]: could not parse LOCALES out of $SCRIPT — script format changed, gate needs updating." >&2
+  exit 1
+fi
+
 # Extract the SLOTS = { ... } block (up to the BASELINES_ROOT assignment that
 # immediately follows it), flatten to one line so a Slot(...) call that wraps
 # across source lines (long entries do, e.g. the "02b-rank" slots) still reads
@@ -86,7 +97,7 @@ fi
 # guard below, and the mutation tests in the PR description for why a
 # presence-only check (no closing tokens) isn't enough.
 TOKENS="$(sed -n '/^SLOTS = {/,/^BASELINES_ROOT = {/p' "$SCRIPT" | tr '\n' ' ' | \
-  grep -oE '"[A-Za-z0-9._-]+": \{|"(sudoku|minesweeper)": \[|Slot\([^)]*\)|\]|\}' || true)"
+  grep -oE '"[A-Za-z0-9._-]+": \{|"(sudoku|minesweeper)": \[|Slot\([^)]*\)|CaptureSlot\([^)]*\)|\]|\}' || true)"
 
 if [[ -z "$TOKENS" ]]; then
   echo "ERROR [store_frame_drift]: found no SLOTS table content in $SCRIPT — script format changed, gate needs updating." >&2
@@ -119,6 +130,27 @@ while IFS= read -r tok; do
       esac
       baseline_relpath="${baselines_root}/${suite_dir}/${prefix}.${named}.png"
       ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\n'
+      ;;
+    CaptureSlot\(*)
+      # #1054: CaptureSlot("name", "rel/path/{locale}/template.png") — 2 args,
+      # no suite/named/prefix. The watched path is per-locale (a live capture
+      # genuinely localizes, unlike a snapshot baseline) — expand into one
+      # ROW per locale so a change to ANY locale's capture is caught.
+      args=()
+      while IFS= read -r a; do args+=("$a"); done < <(grep -oE '"[^"]*"' <<<"$tok" | sed -E 's/^"(.*)"$/\1/')
+      if [[ ${#args[@]} -ne 2 ]]; then
+        echo "ERROR [store_frame_drift]: CaptureSlot(...) with ${#args[@]} args (expected 2) while parsing $SCRIPT: $tok" >&2
+        exit 1
+      fi
+      if [[ -z "$device" || -z "$app" ]]; then
+        echo "ERROR [store_frame_drift]: CaptureSlot(...) found before a device/app context — parser out of sync with $SCRIPT: $tok" >&2
+        exit 1
+      fi
+      slot_name="${args[0]}"; rel_template="${args[1]}"
+      for loc in "${ALL_LOCALES[@]}"; do
+        baseline_relpath="${rel_template//\{locale\}/$loc}"
+        ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\n'
+      done
       ;;
     \"*\":\ \{)
       device="${tok#\"}"; device="${device%%\":*}"

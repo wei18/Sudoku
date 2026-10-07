@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
-#MISE description="Repo hygiene: block secret-shaped files (.p8/.p12/.pem/.env) from ever entering history."
+#MISE description="Repo hygiene: block secret-shaped files (.p8/.p12/.pem/.env) from ever entering history, and block unfilled doc placeholders (<!-- FILL: ... --> / <!-- #NNN who: fill ... -->) from surviving under docs/."
 set -euo pipefail
 if git ls-files | grep -E '\.(p8|p12|pem|env)$'; then
   echo "Secret-shaped files tracked. Aborting." >&2
+  exit 1
+fi
+
+# Unfilled placeholder guard (#1054 PM condition): a doc that ships saying
+# "fill this in later" reads as complete. Split builds leave markers like
+#   <!-- #1054 dev-A: fill final margins/bounds/blind-spot -->
+#   <!-- FILL: ... -->
+# in docs/; they must not survive to merge. Tracked files only, docs/ only.
+if git ls-files -- 'docs/**' | xargs grep -nE '<!--[[:space:]]*(FILL:|#[0-9]+ [A-Za-z0-9_-]+: fill)' 2>/dev/null; then
+  echo "Unfilled placeholder marker(s) under docs/ (see lines above). Fill them, then remove the marker. Aborting." >&2
   exit 1
 fi
