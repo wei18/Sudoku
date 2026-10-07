@@ -686,13 +686,29 @@ regenerating from a fresh relaunch):
   structurally rather than accepted: a **region-scoped tolerance** derived
   from the control cluster's own accessibility frame, with an idempotent
   publish (the committed bytes change only when a capture differs beyond
-  that region's tolerance) — being implemented by dev-A in
-  `mise run store:capture`, with the tolerance regions and bounds recorded
-  per cell in `docs/app-store/captures/manifest.json`. The blind spot this
-  leaves (what a tolerance-masked region could hide) is dev-A's to state in
-  numbers once that lands.
+  that region's tolerance) — implemented in `mise run store:capture`
+  (`scripts/compare_capture.py` is the one comparator the convergence loop,
+  the publish decision and `--verify` share; regions and bounds are recorded
+  per cell in `docs/app-store/captures/manifest.json`; the identity check
+  prints "outside the glass region" and "inside the glass region vs the
+  same-build control" as two separate figures).
 
-  <!-- #1054 dev-A: fill final margins/bounds/blind-spot -->
+  **Status of the bounds (owner decision 2026-10-07, tracked in #1110):**
+  the per-channel ceiling is `REGION_MAX_DELTA = 48` (PM ceiling); the
+  pixel-count bound `REGION_MAX_PX` is still the **provisional** placeholder
+  `10000` because its derivation (2× the largest differing-pixel count
+  measured between launches inside the region) needs a quiet machine the
+  owner cannot give for now. Consequences, stated so nobody reads this as
+  complete: `minesweeper/ipad-13` is **not** published from captures yet
+  (its `03-board` frame is still snapshot-sourced), and the blind spot at
+  the provisional bound is: inside a tolerant region, a change of up to
+  48/255 per channel on up to 10 000 pixels passes undetected (on the
+  synthetic 480×280 px test region that is 7.4 % of the region and 0.3 % of
+  an iPhone frame; one more pixel or one more level fires). Verified by
+  `scripts/capture_sensitivity_proof.py`: 1 px outside the region, a 4 px
+  shift, and a subtle +6 retint over the control fill all fire at the
+  provisional bound. Final bound, measured blind spot and the MS/iPad
+  publish land with #1110.
 
 ### Fit-height compositor rule (Fork B)
 

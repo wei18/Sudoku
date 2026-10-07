@@ -139,8 +139,8 @@ read -r -a ALL_LOCALES <<<"$LOCALES_LINE"
 HALO_MARGIN_PT=39
 HALO_SAFETY_FACTOR="1.5"
 REGION_MAX_DELTA=48   # PM ceiling (per-channel), never raised
-# REGION_MAX_PX — PLACEHOLDER until the quiet-window measurement (#1054 P-A
-# item 1b): the final value is derived as 2x the largest differing-pixel count
+# REGION_MAX_PX — PROVISIONAL placeholder until the quiet-window measurement
+# (#1110, split out of #1054 by the owner on 2026-10-07): the final value is derived as 2x the largest differing-pixel count
 # measured between launches inside the region, NOT chosen to make a test
 # pass. The sensitivity proof (scripts/capture_sensitivity_proof.py) must
 # still fire on a subtle retint at the final value, and its printed blind
