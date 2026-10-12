@@ -1,0 +1,1357 @@
+#!/usr/bin/env bash
+#MISE description="Capture the App Store 03-board raw screenshot from a LIVE iOS Simulator (DEBUG build, -uitest-route board:showcase), for both apps × device classes × all 7 listing locales (#1054). Output: docs/app-store/captures/<app>/<device>/<locale>/03-board.png — committed inputs the build-ascspec compositor frames. Also runs a Release-vs-DEBUG pixel identity check (--identity-check)."
+#USAGE flag "--app <app>" help="Which app(s) to capture" default="all" {
+#USAGE   choices "sudoku" "minesweeper" "all"
+#USAGE }
+#USAGE flag "--device <device>" help="Which device class(es) to capture" default="all" {
+#USAGE   choices "iphone-6.9" "ipad-13" "all"
+#USAGE }
+#USAGE flag "--locale <locale>" help="Which locale(s) to capture (default: all 7 ASC listing locales)" default="all"
+#USAGE flag "--no-build" help="Skip the Debug build+install; capture from the already-installed app" default="false"
+#USAGE flag "--keep-sims" help="Don't delete the named store-capture-* simulators when done" default="false"
+#USAGE flag "--staging-only" help="Capture + validate into build/store-capture/staging/ but do not publish to docs/app-store/captures" default="false"
+#USAGE flag "--identity-check <app>" help="Run the Release-vs-DEBUG pixel identity check for <app> instead of capturing; mutually exclusive with a capture run" default="" {
+#USAGE   choices "sudoku" "minesweeper" ""
+#USAGE }
+#USAGE flag "--attempts <n>" help="Max screenshots per locale while waiting for determinism to settle" default="6"
+#USAGE flag "--settle <sec>" help="Seconds to wait after launch before the first screenshot attempt" default="4"
+#USAGE flag "--max-load <load>" help="Max 1-minute load average before a build/relaunch proceeds (#1054 P-A)" default="8.0"
+#USAGE flag "--load-wait <sec>" help="Max seconds to wait for load to drop below --max-load before failing loudly" default="300"
+#USAGE flag "--verify" help="Re-capture and compare against committed docs/app-store/captures/ instead of publishing; nonzero exit on any cell outside its manifest tolerance, never modifies committed files" default="false"
+#
+# ── Determinism policy (PM ruling, #1054, fixed priority order) ────────────
+#   1. Stabilize AT THE CAPTURE END: re-screenshot the same launch until two
+#      CONSECUTIVE sha256 hashes match (bounded by --attempts); publish that
+#      frame. Cheap-suspect-first: settle length and in-flight glass
+#      animation are the two things worth varying, not tolerance.
+#   2. If consecutive-match never happens within --attempts: fall back to the
+#      first hash that recurs ANYWHERE in the attempt window (not
+#      necessarily consecutively) and publish that. Still no convergence
+#      within --attempts → the cell FAILS with an explicit error.
+#   3. Pixel tolerance is NOT implemented here — it is a last resort the PM
+#      decides on, using the numbers this task's jitter measurement reports.
+#
+# ── All-or-nothing publish ───────────────────────────────────────────────
+# Captures land in build/store-capture/staging/ first. Every file in this
+# run's scope is validated (exists, exact device pixel size, no alpha
+# channel) against an in-memory manifest. Only when EVERY expected cell
+# passes does the task copy that scope's files into docs/app-store/captures/
+# — a single missing or failing cell leaves docs/app-store/captures/
+# byte-for-byte untouched and exits 1 listing exactly what's missing.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+# shellcheck source=../lib/sim-app.sh
+source "$REPO_ROOT/mise-tasks/lib/sim-app.sh"
+
+APP_FLAG="${usage_app:-all}"
+DEVICE_FLAG="${usage_device:-all}"
+LOCALE_FLAG="${usage_locale:-all}"
+NO_BUILD="${usage_no_build:-false}"
+KEEP_SIMS="${usage_keep_sims:-false}"
+STAGING_ONLY="${usage_staging_only:-false}"
+IDENTITY_CHECK_APP="${usage_identity_check:-}"
+ATTEMPTS="${usage_attempts:-6}"
+SETTLE="${usage_settle:-4}"
+# MAX_LOAD / LOAD_WAIT: read directly as globals (like CREATED_UDIDS above)
+# by check_load_gate call sites inside capture_one_relaunch / run_identity_check
+# / the matrix build loop below — all defined later in this same process, so
+# they see these values without needing to thread them through every
+# function signature (#1054 P-A spec item 1).
+MAX_LOAD="${usage_max_load:-8.0}"
+LOAD_WAIT="${usage_load_wait:-300}"
+VERIFY_MODE="${usage_verify:-false}"
+
+STAGING_ROOT="build/store-capture/staging"
+DERIVED_ROOT="build/store-capture/derived"
+IDENTITY_ROOT="build/store-capture/identity"
+PUBLISH_ROOT="docs/app-store/captures"
+
+# key | friendly device-type name (simctl create accepts either the plain
+# name or the full com.apple.CoreSimulator.SimDeviceType.* identifier,
+# verified empirically #1054) | ASC-exact width | height | own-named
+# simulator | driver | top_px | bottom_px. Device class is DATA: a future
+# "mac" row would add a driver dispatched to its own capture function; an
+# unknown driver fails loudly rather than silently no-op'ing.
+#
+# top_px/bottom_px: safe-area bands stripped at capture time (#1054 PM
+# ruling) because `simctl status_bar override --time` does NOT cover the
+# iPad status bar's date ("09:41 Fri Sep 25"), which would otherwise make
+# every iPad capture change on every calendar day even with nothing else
+# different. MEASURED per device (not assumed) from a real `en` capture of
+# each app, by finding the pixel row where content stops being pure
+# background across the full image width, scanning inward from each edge —
+# see mise-tasks/store/capture's git history / #1054 report for the probe
+# method and per-row pixel dumps. Both apps agreed exactly on top_px
+# (status-bar height is OS chrome, not app-dependent); bottom_px used the
+# larger of the two apps' measurements for safety margin.
+#   iphone-6.9 (iPhone 17 Pro Max, 3x scale): Dynamic Island + status-bar
+#     icons end (fully clear, no remnant) at pixel row 160; the app's own
+#     first header content (flag counter / "Easy" label) does not start
+#     until row 278 — top_px=190 sits in that ~118px gap with margin.
+#     Bottom: a very faint (min pixel 236 vs 244 background, likely the
+#     Reveal-button drop shadow, not a clearly rendered home-indicator
+#     glyph on this OS/sim build) trace runs from row ~2748 to ~2836; pure
+#     background confirmed rows 2837-2867. bottom_px=110 (Apple's
+#     documented 34pt bottom safe-area inset @3x) comfortably covers the
+#     observed trace with margin.
+#   ipad-13 (iPad Pro 13-inch M5, 2x scale): status bar clears by row 47
+#     (both apps agreed exactly); header content starts well after. Home
+#     indicator glyph is CLEARLY visible (sharp edges, min pixel 128 vs 244
+#     background) spanning rows 2696-2742 of a 2752-tall capture;
+#     bottom_px=65 crops to row 2687, 9px of margin above the glyph.
+# The mechanical per-capture check below (verify_control_cluster_in_band)
+# is the real safety net if a future OS/layout change moves any of this.
+CAPTURE_DEVICES=(
+  "iphone-6.9|iPhone 17 Pro Max|1320|2868|store-capture-iphone|sim|190|110"
+  "ipad-13|iPad Pro 13-inch (M5)|2064|2752|store-capture-ipad|sim|50|65"
+)
+
+# ── Locale list — read from the single source of truth, never re-typed ────
+LOCALES_LINE="$(python3 -c '
+import ast
+tree = ast.parse(open("scripts/build-ascspec-screenshots.py").read())
+for node in ast.walk(tree):
+    if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "LOCALES" for t in node.targets):
+        print(" ".join(ast.literal_eval(node.value)))
+        break
+')"
+read -r -a ALL_LOCALES <<<"$LOCALES_LINE"
+[[ ${#ALL_LOCALES[@]} -eq 7 ]] || { echo "error: expected 7 locales from build-ascspec-screenshots.py, got ${#ALL_LOCALES[@]}: ${ALL_LOCALES[*]}" >&2; exit 2; }
+
+# ── Region-limited tolerance policy (#1054 P-A, PM-approved) ───────────────
+# iPhone cells stay byte-exact (PM hard rule). iPad cells (both apps) get ONE
+# halo region around the control-cluster accessibility frame: region-outside
+# stays byte-exact, region-inside tolerates the residual glass-rendering
+# jitter measured across independent relaunches/runs (#1054 P-A item 3):
+#   - Sudoku/ipad-13/en, 3 independent runs (shutdown+boot between each):
+#     0 differing px across all 3 pairwise comparisons (byte-identical).
+#   - Minesweeper/ipad-13/en, 7 consecutive relaunches (6 pairs, same boot):
+#     2222-6816 differing px per pair, max channel delta 4-18, ALL 6 pairs'
+#     diff bbox contained within the control-cluster union bbox (points
+#     1629,96)-(2001,333) px @2x) expanded by 78px on every side — this is
+#     the binding (larger) measurement, so it sets the device's halo margin.
+# Halo margin stored in POINTS (device-independent) so it converts correctly
+# to any device's pixel scale: 78px @ ipad-13's 2x point scale = 39pt.
+# x1.5 safety factor is the PM ruling ("halo boundary x1.5").
+HALO_MARGIN_PT=39
+HALO_SAFETY_FACTOR="1.5"
+REGION_MAX_DELTA=48   # PM ceiling (per-channel), never raised
+# REGION_MAX_PX — PROVISIONAL placeholder until the quiet-window measurement
+# (#1110, split out of #1054 by the owner on 2026-10-07): the final value is derived as 2x the largest differing-pixel count
+# measured between launches inside the region, NOT chosen to make a test
+# pass. The sensitivity proof (scripts/capture_sensitivity_proof.py) must
+# still fire on a subtle retint at the final value, and its printed blind
+# spot is copied verbatim into docs/app-store/screenshot-strategy.md.
+REGION_MAX_PX=10000
+
+# mode_for_device <device_key> — "exact" (iPhone, PM hard rule) or
+# "tolerant" (iPad, halo-region policy above).
+mode_for_device() { case "$1" in ipad-13) echo tolerant;; *) echo exact;; esac; }
+
+# halo_margin_px_for_scale <point_scale> — HALO_MARGIN_PT x HALO_SAFETY_FACTOR
+# converted to that device's pixel scale (int, truncated).
+halo_margin_px_for_scale() {
+  python3 -c "print(int($HALO_MARGIN_PT * $HALO_SAFETY_FACTOR * $1))"
+}
+
+# halo_margin_px_for_device <device_key> — resolves the device's point scale
+# via point_scale_for_device (defined below) and converts to px.
+halo_margin_px_for_device() {
+  halo_margin_px_for_scale "$(point_scale_for_device "$1")"
+}
+
+CREATED_UDIDS=()
+
+cleanup_sims() {
+  [[ "$KEEP_SIMS" == "true" ]] && return 0
+  # bash 3.2 (macOS system bash): expanding "${arr[@]}" on a zero-element
+  # array under `set -u` raises "unbound variable" even though the array
+  # was declared — guard with the count first.
+  (( ${#CREATED_UDIDS[@]} == 0 )) && return 0
+  local udid
+  for udid in "${CREATED_UDIDS[@]}"; do
+    echo "==> deleting simulator $udid"
+    xcrun simctl delete "$udid" >/dev/null 2>&1 || true
+  done
+}
+trap cleanup_sims EXIT
+
+# dismiss_banner <udid> <point-center-x> — swipe any transient iOS system
+# notification banner (e.g. the one-time "Ready for Apple Intelligence"
+# banner, measured #1054 — see ensure_named_sim's header note) upward off
+# screen. No documented simctl/defaults suppression for this banner was
+# found (checked: no relevant `simctl privacy`/`push` subcommand; not
+# addressed in public write-ups of the same CI problem). A swipe from mid
+# status-bar height to the very top dismisses a banner if present and is a
+# harmless no-op flick in empty status-bar space if absent — coordinates are
+# in POINTS (idb's space), not pixels; requires `idb` on PATH.
+dismiss_banner() {
+  local udid="$1" center_x="$2"
+  idb ui swipe --udid "$udid" "$center_x" 120 "$center_x" 5 --duration 0.15 >/dev/null 2>&1 || true
+  sleep 0.4   # let the dismiss (or no-op) animation settle before screenshotting
+}
+
+# idb_element_center <udid> <label-prefix|identifier> <value> — echoes
+# "<x> <y>" (POINT-space, integer) of the first matching element's center,
+# or nothing if not found. "label-prefix" matches AXLabel.startswith(value);
+# "identifier" matches AXUniqueId == value (idb's name for a SwiftUI
+# `.accessibilityIdentifier(...)` — verified empirically #1054, NOT
+# "AXIdentifier", which idb never emits).
+idb_element_center() {
+  local udid="$1" kind="$2" value="$3" tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+kind, value = sys.argv[2], sys.argv[3]
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    matched = (kind == "label-prefix" and label.startswith(value)) or (kind == "identifier" and uid == value)
+    if matched:
+        f = e["frame"]
+        print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))
+        break
+' "$tree" "$kind" "$value" 2>/dev/null || true
+}
+
+# idb_element_frame <udid> <label-prefix|identifier> <value> — echoes
+# "<x> <y> <w> <h>" (POINT-space) of the first matching element's frame, or
+# nothing if not found. Same matching rules as idb_element_center.
+idb_element_frame() {
+  local udid="$1" kind="$2" value="$3" tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+kind, value = sys.argv[2], sys.argv[3]
+try:
+    els = json.loads(sys.argv[1]) if sys.argv[1] else []
+except Exception:
+    els = []
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    matched = (kind == "label-prefix" and label.startswith(value)) or (kind == "identifier" and uid == value)
+    if matched:
+        f = e["frame"]
+        print(f["x"], f["y"], f["width"], f["height"])
+        break
+' "$tree" "$kind" "$value" 2>/dev/null || true
+}
+
+# wait_for_element_center <udid> <label-prefix|identifier> <value> [max-tries]
+# — retries idb_element_center every 2s (default 6 tries = 12s) before
+# giving up. A cold-booted, freshly-installed sim's FIRST launch can take
+# noticeably longer to finish rendering than a warm relaunch (measured
+# #1054) — a single describe-all right after `sleep 3` is not reliable.
+wait_for_element_center() {
+  local udid="$1" kind="$2" value="$3" max_tries="${4:-6}" xy try
+  for (( try = 1; try <= max_tries; try++ )); do
+    xy="$(idb_element_center "$udid" "$kind" "$value")"
+    [[ -n "$xy" ]] && { echo "$xy"; return 0; }
+    (( try < max_tries )) && sleep 2
+  done
+  return 1
+}
+
+# point_center_x_for_device <device-key> — horizontal screen center in
+# POINTS for `dismiss_banner`'s swipe, derived from each device's known
+# pixel-to-point scale factor (iPhone 17 Pro Max = 3x, iPad Pro 13" M5 = 2x;
+# not read from CAPTURE_DEVICES, which stores pixel dims for ASC validation).
+point_center_x_for_device() {
+  case "$1" in
+    iphone-6.9) echo 220;;
+    ipad-13) echo 516;;
+    *) echo 200;;
+  esac
+}
+
+# point_scale_for_device <device-key> — pixel-per-point scale, used to
+# convert idb's point-space element frames to pixel rects (iPhone 17 Pro
+# Max = 3x, iPad Pro 13-inch M5 = 2x — both well-known, fixed OS/hardware
+# constants for these specific device classes).
+point_scale_for_device() {
+  case "$1" in
+    iphone-6.9) echo 3;;
+    ipad-13) echo 2;;
+    *) echo 2;;
+  esac
+}
+
+# idb_elements_union_bbox <udid> <kind1> <value1> [<kind2> <value2> ...] —
+# echoes "<x0> <y0> <x1> <y1>" (POINT-space) union bounding box of every
+# element matching ANY of the given (kind, value) pairs, or nothing if none
+# matched. kind is "label" (exact AXLabel), "label-prefix"
+# (AXLabel.startswith), or "identifier" (AXUniqueId ==).
+idb_elements_union_bbox() {
+  local udid="$1"; shift
+  local tree
+  tree="$(idb ui describe-all --udid "$udid" --json 2>/dev/null || true)"
+  python3 -c '
+import json, sys
+tree_json = sys.argv[1]
+pairs = sys.argv[2:]
+matchers = list(zip(pairs[0::2], pairs[1::2]))
+try:
+    els = json.loads(tree_json) if tree_json else []
+except Exception:
+    els = []
+x0 = y0 = x1 = y1 = None
+for e in els:
+    label = e.get("AXLabel") or ""
+    uid = e.get("AXUniqueId") or ""
+    for kind, value in matchers:
+        hit = (
+            (kind == "label" and label == value)
+            or (kind == "label-prefix" and label.startswith(value))
+            # "," excluded deliberately: a board-cell label ("Row 1, Column
+            # 9, given 9" / "1行目、1列目, ...") also ends in " 9" but is a
+            # compound, comma-separated description, not a short control
+            # label ("Digit 9" / "数字 9") — without this guard, a suffix
+            # match on a digit palette button would ALSO sweep in whichever
+            # board cell happens to hold that digit, corrupting the union
+            # bbox with a cell from anywhere on the grid (caught in review,
+            # not by a failing run — #1054).
+            or (kind == "label-suffix" and label.endswith(value) and "," not in label)
+            or (kind == "identifier" and uid == value)
+        )
+        if hit:
+            f = e["frame"]
+            fx0, fy0 = f["x"], f["y"]
+            fx1, fy1 = f["x"] + f["width"], f["y"] + f["height"]
+            x0 = fx0 if x0 is None else min(x0, fx0)
+            y0 = fy0 if y0 is None else min(y0, fy0)
+            x1 = fx1 if x1 is None else max(x1, fx1)
+            y1 = fy1 if y1 is None else max(y1, fy1)
+            break
+if x0 is not None:
+    print(x0, y0, x1, y1)
+' "$tree" "$@" 2>/dev/null || true
+}
+
+# control_cluster_bbox_pt <udid> <app> — echoes "x0 y0 x1 y1" (POINT-space)
+# union bbox of the SAME control-cluster identifiers verify_element_in_band
+# checks (header pause toggle + per-app control cluster), or nothing if not
+# found. Shared by compute_region_for_cell below and the identity-check
+# capsule-halo exclusion.
+control_cluster_bbox_pt() {
+  local udid="$1" app="$2"
+  if [[ "$app" == "minesweeper" ]]; then
+    idb_elements_union_bbox "$udid" identifier "minesweeper.board.pauseToggle" identifier "minesweeper.board.tapModeToggle"
+  else
+    idb_elements_union_bbox "$udid" identifier "sudoku.board.pauseToggle" \
+      identifier "arrow.uturn.backward" identifier "arrow.uturn.forward" identifier "pencil" identifier "delete.left" \
+      label-suffix " 7" label-suffix " 8" label-suffix " 9"
+  fi
+}
+
+# compute_region_for_cell <udid> <app> <scale> <top_px> <cropped_w> <cropped_h> <margin_px>
+# — echoes "x0 y0 x1 y1" (published/cropped-file px space, clamped to the
+# image bounds): control_cluster_bbox_pt converted points->pixels, shifted
+# by -top_px (capture crops that band away before this rect is ever compared
+# against a published file), then padded by <margin_px> on all four sides.
+# Safe to call right after capture_one_locale returns regardless of which
+# relaunch attempt won — #1054 P-A item 3 measured this bbox identical
+# across every independent relaunch/run tried (3 Sudoku runs, 7 Minesweeper
+# relaunches), so any live post-capture state gives the same rect.
+compute_region_for_cell() {
+  local udid="$1" app="$2" scale="$3" top_px="$4" cropped_w="$5" cropped_h="$6" margin_px="$7"
+  local bbox
+  bbox="$(control_cluster_bbox_pt "$udid" "$app")"
+  [[ -n "$bbox" ]] || { echo "error: compute_region_for_cell($app): no control-cluster elements found" >&2; return 1; }
+  # shellcheck disable=SC2086  # intentional word-split of "x0 y0 x1 y1"
+  python3 -c "
+import sys
+x0, y0, x1, y1 = (float(v) for v in sys.argv[1:5])
+scale, top_px, margin, cw, ch = (float(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7]), int(sys.argv[8]), int(sys.argv[9]))
+px0, py0 = int(x0 * scale) - top_px, int(y0 * scale) - top_px
+px1, py1 = int(x1 * scale) + 1 - top_px, int(y1 * scale) + 1 - top_px
+rx0, ry0 = max(0, px0 - margin), max(0, py0 - margin)
+rx1, ry1 = min(cw, px1 + margin), min(ch, py1 + margin)
+print(rx0, ry0, rx1, ry1)
+" $bbox "$scale" "$top_px" "$margin_px" "$cropped_w" "$cropped_h"
+}
+
+# crop_to_band <file> <top_px> <bottom_px> — crop <file> in place to
+# [top_px, height - bottom_px), keeping full width.
+crop_to_band() {
+  local file="$1" top_px="$2" bottom_px="$3"
+  python3 -c '
+from PIL import Image
+import sys
+path, top, bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+im = Image.open(path)
+w, h = im.size
+im.crop((0, top, w, h - bottom)).save(path)
+' "$file" "$top_px" "$bottom_px"
+}
+
+# verify_element_in_band <udid> <point_scale> <top_px> <bottom_px> <H_px> <label> <kind1> <value1> [...]
+# — finds the union bbox (points) of the matching element(s), converts to
+# pixels, and asserts it lies fully inside [top_px, H_px - bottom_px).
+# Prints the measured frame and the band on every call (so the numbers land
+# in the report even on success); returns 1 and prints an error if the
+# element is missing OR falls outside the band.
+verify_element_in_band() {
+  local udid="$1" scale="$2" top_px="$3" bottom_px="$4" h_px="$5" label="$6"
+  shift 6
+  local bbox_read try
+  # Retry: a cold-booted, freshly-installed sim's FIRST launch can still be
+  # mid-render after the fixed `sleep "$settle"` (measured #1054 — same
+  # cause as wait_for_element_center's retry). Subsequent relaunches in the
+  # same session are warm and normally succeed on try 1.
+  for (( try = 1; try <= 5; try++ )); do
+    bbox_read="$(idb_elements_union_bbox "$udid" "$@")"
+    [[ -n "$bbox_read" ]] && break
+    (( try < 5 )) && sleep 2
+  done
+  if [[ -z "$bbox_read" ]]; then
+    echo "error: verify_element_in_band($label): no matching element found after retrying" >&2
+    return 1
+  fi
+  local result
+  # shellcheck disable=SC2086  # intentional word-split of "x0 y0 x1 y1" -> argv[1..4]
+  result="$(python3 -c "
+import sys
+x0, y0, x1, y1 = (float(v) for v in sys.argv[1:5])
+scale = float(sys.argv[5])
+top_px, bottom_px, h_px = (int(v) for v in sys.argv[6:9])
+px0, py0, px1, py1 = int(x0 * scale), int(y0 * scale), int(x1 * scale) + 1, int(y1 * scale) + 1
+band_bottom = h_px - bottom_px
+inside = (py0 >= top_px) and (py1 <= band_bottom)
+print(px0, py0, px1, py1, top_px, band_bottom, 'OK' if inside else 'CLIPPED')
+" $bbox_read "$scale" "$top_px" "$bottom_px" "$h_px")"
+  read -r px0 py0 px1 py1 band_top band_bottom verdict <<<"$result"
+  echo "    [$label] frame_px=($px0,$py0)-($px1,$py1) band=[$band_top,$band_bottom) -> $verdict" >&2
+  [[ "$verdict" == "OK" ]] || { echo "error: [$label] falls outside the published band — crop would clip it" >&2; return 1; }
+}
+
+# flatten_to_rgb <file> — `xcrun simctl io screenshot` PNGs on this machine
+# carry a fully-opaque (255,255) alpha channel (measured #1054 — contradicts
+# the #1054 spike's "RGB, no alpha" note, likely a post-spike macOS/Simulator
+# renderer change per the #1104 macOS-27 drift precedent). ASC requires no
+# alpha channel; since every pixel is fully opaque, dropping it is lossless.
+flatten_to_rgb() {
+  python3 -c '
+from PIL import Image
+import sys
+im = Image.open(sys.argv[1])
+if im.mode != "RGB":
+    im.convert("RGB").save(sys.argv[1])
+' "$1"
+}
+
+# capture_one_relaunch <udid> <bundle> <locale> <point_center_x> <app> <scale>
+# <top_px> <bottom_px> <full_h> <settle> <out_png> — ONE full relaunch:
+# terminate -> launch -> settle -> dismiss banner -> verify the control
+# cluster/header aren't clipped by the published band -> screenshot ->
+# flatten -> crop to the band. Building block for capture_one_locale's
+# relaunch-level convergence loop below. Returns 1 (band verification
+# failure is fatal per PM ruling — "fail the cell loudly") if the band
+# check fails; the screenshot is still written to <out_png> either way so a
+# caller doing raw jitter measurement can inspect it.
+capture_one_relaunch() {
+  local udid="$1" bundle="$2" locale="$3" point_center_x="$4" app="$5" scale="$6" top_px="$7" bottom_px="$8" full_h="$9" settle="${10}" out_png="${11}"
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app/$locale relaunch" || return 1
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" -uitest-route board:showcase -AppleLanguages "($locale)" >/dev/null 2>&1
+  sleep "$settle"
+  dismiss_banner "$udid" "$point_center_x"
+
+  local band_ok=0
+  if [[ "$app" == "minesweeper" ]]; then
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "MS header" identifier "minesweeper.board.pauseToggle" || band_ok=1
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "MS control cluster" identifier "minesweeper.board.tapModeToggle" || band_ok=1
+  else
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku header" identifier "sudoku.board.pauseToggle" || band_ok=1
+    # Digit-button AXLabels are localized ("Digit 7" en, "数字 9" ja, ...) but
+    # every locale checked keeps the trailing Western digit after a space
+    # (verified live #1054: en/ja) — label-suffix " 7"/" 8"/" 9" is
+    # locale-independent, unlike the English-only label-prefix this replaced
+    # (which silently dropped the whole digit row from the union bbox on
+    # every non-English locale — found while reviewing run 2's per-cell log:
+    # ipad-13/en control-cluster bbox reached y=2719, every other locale
+    # only reached y=2038, the undo/redo/pencil/erase row alone).
+    verify_element_in_band "$udid" "$scale" "$top_px" "$bottom_px" "$full_h" "Sudoku control cluster" \
+      identifier "arrow.uturn.backward" identifier "arrow.uturn.forward" identifier "pencil" identifier "delete.left" \
+      label-suffix " 7" label-suffix " 8" label-suffix " 9" || band_ok=1
+  fi
+
+  xcrun simctl io "$udid" screenshot "$out_png" >/dev/null 2>&1
+  flatten_to_rgb "$out_png"
+  crop_to_band "$out_png" "$top_px" "$bottom_px"
+  [[ $band_ok -eq 0 ]] || return 1
+}
+
+# ── One deterministic capture: retry-until-stable at RELAUNCH granularity
+# (#1054 PM ruling — same-launch repeat screenshots were already
+# byte-identical; the residual jitter this PR measured appears fresh at
+# each INDEPENDENT launch, not while a launch is settling, so the
+# convergence unit must be a relaunch, not a screenshot). Prints
+# "<attempts-used> <strategy>" to stdout on success (strategy: consecutive |
+# nonconsecutive-dup(i,j)); returns 1 (nothing printed) on total
+# non-convergence OR a band-verification failure, with the reason on
+# stderr.
+capture_one_locale() {
+  local udid="$1" bundle="$2" locale="$3" out_file="$4" attempts="$5" settle="$6" point_center_x="$7" app="$8" scale="$9" top_px="${10}" bottom_px="${11}" full_h="${12}"
+  local mode="${13:-exact}" cropped_w="${14:-}" cropped_h="${15:-}" margin_px="${16:-}"
+  local tmp_dir; tmp_dir="$(mktemp -d)"
+  rm -f "$out_file.region"
+
+  # same_or_within <a> <b> — exact mode: byte-identical; tolerant mode:
+  # byte-identical OR compare_capture.py OK inside the cell's region (never
+  # outside it). The comparator is the SAME one the publish decision and
+  # --verify use, so "converged" means "would publish as unchanged".
+  local region=""
+  same_or_within() {
+    cmp -s "$1" "$2" && return 0
+    [[ "$mode" == "tolerant" && -n "$region" ]] || return 1
+    python3 scripts/compare_capture.py "$1" "$2" --regions "[[${region// /,}]]" \
+      --max-delta "$REGION_MAX_DELTA" --max-px "$REGION_MAX_PX" >/dev/null 2>&1
+  }
+
+  local files=() prev="" i shot
+  for (( i = 1; i <= attempts; i++ )); do
+    shot="$tmp_dir/try-$i.png"
+    capture_one_relaunch "$udid" "$bundle" "$locale" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$full_h" "$settle" "$shot" || { rm -rf "$tmp_dir"; return 1; }
+    files+=("$shot")
+    if [[ "$mode" == "tolerant" && -z "$region" ]]; then
+      # Region from the LIVE accessibility frames of this launch (frames are
+      # launch-stable — measured — so one read per cell is enough); written
+      # beside the output so the caller records exactly what the loop used.
+      region="$(compute_region_for_cell "$udid" "$app" "$scale" "$top_px" "$cropped_w" "$cropped_h" "$margin_px")" || { rm -rf "$tmp_dir"; return 1; }
+      printf '%s\n' "$region" > "$out_file.region"
+    fi
+    if [[ -n "$prev" ]] && same_or_within "$prev" "$shot"; then
+      cp "$shot" "$out_file"
+      echo "$i consecutive"
+      rm -rf "$tmp_dir"
+      return 0
+    fi
+    prev="$shot"
+  done
+
+  # Fallback: first pair that agrees anywhere in the window (not necessarily
+  # consecutive) — policy item 2. Publishes the later of the pair.
+  local j
+  for (( i = 1; i <= attempts; i++ )); do
+    for (( j = i + 1; j <= attempts; j++ )); do
+      if same_or_within "${files[$((i - 1))]}" "${files[$((j - 1))]}"; then
+        cp "${files[$((j - 1))]}" "$out_file"
+        echo "$attempts nonconsecutive-dup($i,$j)"
+        rm -rf "$tmp_dir"
+        return 0
+      fi
+    done
+  done
+
+  local how="byte-identical"; [[ "$mode" == "tolerant" ]] && how="within tolerance of each other (region=[$region])"
+  echo "error: $locale never converged within $attempts relaunches (mode=$mode: no two launches $how)" >&2
+  rm -rf "$tmp_dir"
+  return 1
+}
+
+validate_capture() {
+  local file="$1" want_w="$2" want_h="$3" w h alpha
+  [[ -f "$file" ]] || { echo "error: missing $file" >&2; return 1; }
+  w="$(sips -g pixelWidth "$file" 2>/dev/null | awk '/pixelWidth/{print $2}')"
+  h="$(sips -g pixelHeight "$file" 2>/dev/null | awk '/pixelHeight/{print $2}')"
+  alpha="$(sips -g hasAlpha "$file" 2>/dev/null | awk '/hasAlpha/{print $2}')"
+  if [[ "$w" != "$want_w" || "$h" != "$want_h" ]]; then
+    echo "error: $file is ${w}x${h}, want ${want_w}x${want_h}" >&2
+    return 1
+  fi
+  if [[ "$alpha" != "no" ]]; then
+    echo "error: $file has an alpha channel (hasAlpha=$alpha) — ASC requires RGB, no alpha" >&2
+    return 1
+  fi
+  # Content-sanity floor (#1054 — a blank/near-blank capture, e.g. an
+  # in-flight launch frame caught by a mistimed dismiss_banner swipe,
+  # matches the correct pixel size and has no alpha, so the checks above
+  # alone let it through silently: one such frame WAS published before this
+  # check existed. Calibrated on a real blank capture, 99.9% near-white vs
+  # 7.7% for a real board; 90% leaves comfortable margin either side.
+  if ! python3 -c '
+from PIL import Image
+import sys
+im = Image.open(sys.argv[1]).convert("RGB")
+px = im.getdata()
+total = im.width * im.height
+near_white = sum(1 for r, g, b in px if r > 245 and g > 245 and b > 245)
+sys.exit(0 if (near_white / total) < 0.90 else 1)
+' "$file"; then
+    echo "error: $file is >=90% near-white — looks blank, not a rendered board" >&2
+    return 1
+  fi
+}
+
+# ── cross-cell invariants (stable-placeholder guard, #1054 P-A spec item 2) ──
+# Runs once over the whole run's staged manifest, right before the atomic
+# publish move (or right before exiting on --staging-only, since that flag
+# only skips the *publish*, not validation). Two checks, NEITHER of which
+# ever widens itself automatically — any violation fails loudly and lists
+# the offending cell(s)/numbers:
+#   (a) no two staged cells in this run may share a sha256 — catches a
+#       stable placeholder silently reused across cells (e.g. one capture
+#       accidentally copied over another).
+#   (b) within each (app,device) group, every cell's "non-background pixel
+#       ratio" (fraction of pixels differing from the cell's own
+#       corner-sampled background color by more than a small threshold) must
+#       sit within the group median +-25% — catches a near-blank or
+#       corrupted cell that still passes validate_capture's coarser 90%
+#       near-white floor (that floor is per-cell and absolute; this is
+#       relative to its sibling locales, which should render the same
+#       layout with only text differing).
+check_cross_cell_invariants() {
+  local -a paths=("$@")
+  (( ${#paths[@]} > 0 )) || return 0
+  echo "==> cross-cell invariants (stable-placeholder guard): ${#paths[@]} staged cell(s)"
+
+  # (a) sha256 uniqueness across the whole batch.
+  local p hash
+  local -a hashes=()
+  for p in "${paths[@]}"; do
+    hash="$(shasum -a 256 "$STAGING_ROOT/$p" | awk '{print $1}')"
+    hashes+=("$hash")
+  done
+  local i j
+  for (( i = 0; i < ${#paths[@]}; i++ )); do
+    for (( j = i + 1; j < ${#paths[@]}; j++ )); do
+      if [[ "${hashes[$i]}" == "${hashes[$j]}" ]]; then
+        echo "error: cross-cell invariant (a) violated — identical sha256 (${hashes[$i]}) between ${paths[$i]} and ${paths[$j]}" >&2
+        return 1
+      fi
+    done
+  done
+  echo "    (a) sha256 uniqueness: OK (${#paths[@]} distinct hashes)"
+
+  # (b) non-background pixel ratio, grouped by "<app>/<device>" (strip the
+  # trailing "/<locale>/03-board.png").
+  local -a group_keys=() key found gk
+  for p in "${paths[@]}"; do
+    key="${p%/*/*}"
+    found=0
+    for gk in "${group_keys[@]:-}"; do
+      [[ "$gk" == "$key" ]] && { found=1; break; }
+    done
+    (( found == 0 )) && group_keys+=("$key")
+  done
+
+  local overall_ok=0
+  for gk in "${group_keys[@]}"; do
+    local -a members=()
+    for p in "${paths[@]}"; do
+      [[ "$p" == "$gk"/* ]] && members+=("$STAGING_ROOT/$p")
+    done
+    if python3 - "$gk" "${members[@]}" <<'PYEOF'
+import sys
+from PIL import Image, ImageChops
+
+gk = sys.argv[1]
+paths = sys.argv[2:]
+THRESH = 24
+BAND_FRAC = 0.25
+
+def nonbg_ratio(path):
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    corners = [im.getpixel((0, 0)), im.getpixel((w - 1, 0)), im.getpixel((0, h - 1)), im.getpixel((w - 1, h - 1))]
+    bg = tuple(sum(c[i] for c in corners) // 4 for i in range(3))
+    diff = ImageChops.difference(im, Image.new("RGB", (w, h), bg))
+    nonbg = sum(1 for r, g, b in diff.getdata() if r > THRESH or g > THRESH or b > THRESH)
+    return nonbg / (w * h)
+
+ratios = {path: nonbg_ratio(path) for path in paths}
+vals = sorted(ratios.values())
+n = len(vals)
+median = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+lo, hi = median * (1 - BAND_FRAC), median * (1 + BAND_FRAC)
+
+fail = []
+for path, r in ratios.items():
+    ok = lo <= r <= hi
+    print(f"    (b) [{gk}] {path}: nonbg_ratio={r:.4%} (group median={median:.4%}, band=[{lo:.4%},{hi:.4%}]) -> {'OK' if ok else 'OUT-OF-BAND'}")
+    if not ok:
+        fail.append((path, r))
+
+if fail:
+    print(f"error: (b) cross-cell invariant violated in [{gk}] — {len(fail)} cell(s) outside median +-25%: " +
+          ", ".join(f"{path}={r:.4%}" for path, r in fail), file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+PYEOF
+    then
+      :
+    else
+      overall_ok=1
+    fi
+  done
+
+  [[ $overall_ok -eq 0 ]] || { echo "error: cross-cell invariant (b) failed for at least one (app,device) group — see above" >&2; return 1; }
+  return 0
+}
+
+ensure_named_sim() {
+  # NOTE: never call this as `x="$(ensure_named_sim ...)"` and expect
+  # CREATED_UDIDS to see the append — command substitution forks a subshell,
+  # so the array mutation would be silently lost. Callers must append the
+  # echoed udid to CREATED_UDIDS themselves (see call sites).
+  # A REAL non-determinism source (measured #1054, not glass-rendering
+  # jitter as first hypothesized): the one-time iOS "Ready for Apple
+  # Intelligence" system banner fires at an unpredictable time after a
+  # fresh simulator boots and can sit on screen for multiple seconds — long
+  # enough to fool the per-locale consecutive-match check into converging
+  # on a frame WITH the banner overlaid (confirmed by pixel diff across
+  # independent full-matrix runs; a fixed post-boot wait was tried and did
+  # NOT reliably avoid it — see the #1054 report). No documented
+  # simctl/defaults key to suppress the banner was found (checked: no
+  # matching `simctl privacy`/`push` subcommand; unresolved in public
+  # write-ups of the same CI problem). Fixed instead at the point of
+  # failure — capture_one_locale's `dismiss_banner` swipes it away before
+  # every screenshot attempt, regardless of when it appears.
+  local sim_name="$1" device_name="$2" udid
+  udid="$(sim_create_or_reuse_named "$sim_name" "$device_name")"
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  sim_wait_booted "$udid"
+  echo "$udid"
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# --identity-check
+# ══════════════════════════════════════════════════════════════════════════
+# reach_minesweeper_board <udid> <app> — tap-drive from a fresh launch
+# (Today tab) to a fresh Practice board: Practice tab -> first (Beginner)
+# difficulty card -> New Game. Only used for the Release side; DEBUG reaches
+# the same board zero-click via `-uitest-route board:beginner` (#1026 B-1).
+reach_minesweeper_board() {
+  local udid="$1" app="$2" xy
+  xy="$(wait_for_element_center "$udid" label-prefix "Practice" || true)"
+  if [[ -n "$xy" ]]; then
+    echo "    Practice tab @ ($xy) (from idb describe-all)"
+  else
+    xy="220 903"
+    echo "    Practice tab: idb describe-all found no 'Practice' label — falling back to spike coords ($xy)"
+  fi
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+  sleep 1
+
+  # First difficulty card: default-selected is already Beginner
+  # (`MinesweeperPracticeHubView.init(initialDifficulty: .beginner)`), so the
+  # Beginner card need not be re-tapped for content correctness — tapped
+  # anyway per spec, located by its localized "Beginner" label prefix.
+  xy="$(idb_element_center "$udid" label-prefix "Beginner")"
+  if [[ -n "$xy" ]]; then
+    # shellcheck disable=SC2086
+    idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+    sleep 1
+  else
+    echo "    (no 'Beginner' card label found — Beginner is already the default selection, continuing)"
+  fi
+
+  xy="$(wait_for_element_center "$udid" identifier "$app.practiceHub.start" || true)"
+  [[ -n "$xy" ]] || { echo "error: idb describe-all found no '$app.practiceHub.start' element after retrying — cannot tap New Game" >&2; exit 1; }
+  echo "    New Game @ ($xy)"
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+}
+
+# reach_sudoku_board <udid> — tap-drive from a fresh launch (Today tab,
+# default) to the daily Easy board. Used identically on BOTH Release and
+# DEBUG (PM ruling #1054: Sudoku has no DEBUG fresh-board route, so both
+# binaries are driven by the SAME taps instead — the daily puzzle is
+# date-seeded and generated on-device with no network call
+# (`PuzzleStore.fetchDailyTrio`, SudokuPersistence/PuzzleStore.swift:54+, a
+# pure wrapper over `SudokuEngine.PuzzleGenerator`), so both builds render
+# the identical grid for today's date).
+reach_sudoku_board() {
+  local udid="$1" xy
+  xy="$(wait_for_element_center "$udid" label-prefix "Easy" || true)"
+  [[ -n "$xy" ]] || { echo "error: idb describe-all found no 'Easy' daily card after retrying — cannot reach the board (network-dependent daily fetch? see #1054 report)" >&2; exit 1; }
+  echo "    Easy card @ ($xy)"
+  # shellcheck disable=SC2086
+  idb ui tap --udid "$udid" $xy >/dev/null 2>&1
+}
+
+run_identity_check() {
+  local app="$1" scheme bundle sim_name device_name w h udid
+  scheme="$(app_scheme_for "$app")"; bundle="$(app_bundle_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+
+  # iPhone 17 Pro Max: 1320x2868 px, 440x956 pt -> 3x point-to-pixel scale
+  # (used to convert idb's point-space element frames to pixel rects below).
+  device_name="iPhone 17 Pro Max"; sim_name="identity-check-$app"; w=1320; h=2868
+  local point_scale=3
+
+  echo "==> [$app] identity-check: building Release + Debug"
+  local t0 t1
+  t0=$(date +%s)
+  local rel_derived="$IDENTITY_ROOT/$app/derived-release"
+  local dbg_derived="$IDENTITY_ROOT/$app/derived-debug"
+  mkdir -p "$IDENTITY_ROOT/$app"
+  local rel_products dbg_products
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Release build"
+  rel_products="$(build_sim_app "$scheme" Release "$rel_derived")"
+  check_plist_resolved "$rel_products/$scheme.app"
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Debug build"
+  dbg_products="$(build_sim_app "$scheme" Debug "$dbg_derived")"
+  check_plist_resolved "$dbg_products/$scheme.app"
+  t1=$(date +%s); echo "    builds: $((t1 - t0))s"
+
+  udid="$(ensure_named_sim "$sim_name" "$device_name")"
+  CREATED_UDIDS+=("$udid")
+  sim_mute_bgm "$udid" "$bundle"
+  sim_override_status_bar "$udid"
+
+  # State-parity note (#1054, PM-diagnosed): installing DEBUG over a Release
+  # container with the same bundle id lets CloudKit-independent LOCAL state
+  # (a daily-Easy in-progress save) survive the swap — the DEBUG launch then
+  # RESUMES that save (already-running header: elapsed timer ticking, pause
+  # button present, maybe a selection) instead of starting fresh, which
+  # previously produced a real, reproducible 28%-of-pixels false FAIL: the
+  # Release capture was mid-game (header "Easy · 0:10 · Pause") while the
+  # DEBUG capture was pre-start (header "Easy · 0:00", no pause button) —
+  # same puzzle, same board size, header just 33px shorter, so the whole
+  # grid sat 33px higher. `uninstall` before EACH install below removes the
+  # container, so every launch is guaranteed fresh; `pause_id_for` below
+  # then polls for the RUNNING-game header (the pause button) before
+  # capturing either side, so both captures are taken from the same state
+  # even if one build happens to render/settle faster than the other.
+  pause_id_for() { [[ "$1" == "sudoku" ]] && echo "sudoku.board.pauseToggle" || echo "minesweeper.board.pauseToggle"; }
+  local pause_id; pause_id="$(pause_id_for "$app")"
+
+  # ── Release side ──
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check Release relaunch"
+  echo "==> [$app] Release: install + tap-drive"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$rel_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+  sleep 3
+  dismiss_banner "$udid" 220
+
+  local timer_rect_px=""
+  if [[ "$app" == "sudoku" ]]; then
+    reach_sudoku_board "$udid"
+  else
+    reach_minesweeper_board "$udid" "$app"
+  fi
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+
+  local rel_pause_xy
+  rel_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$rel_pause_xy" ]] || { echo "error: [$app] Release: pause button never appeared — board did not reach the running state" >&2; exit 1; }
+  local rel_header_frame rel_bottom_frame
+  rel_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  rel_bottom_frame="$(idb_elements_union_bbox "$udid" label-prefix "Banner" label-prefix "Ad " identifier "banner" identifier "adBanner")"
+  echo "    Release header (pause) frame (pt): $rel_header_frame"
+  echo "    Release bottom/banner frame (pt): ${rel_bottom_frame:-none found}"
+
+  if [[ "$app" == "sudoku" ]]; then
+    # PM ruling #1054: a fresh Sudoku board's timer ticks from open, so the
+    # two captures may legitimately differ by ~1s in the "Elapsed time"
+    # label. Excluded mechanically: find its frame via idb, convert
+    # points->pixels, pass the printed rect to the compare step below —
+    # never a blanket tolerance.
+    local frame_read
+    frame_read="$(idb_element_frame "$udid" label-prefix "Elapsed time")"
+    [[ -n "$frame_read" ]] || { echo "error: idb describe-all found no 'Elapsed time' element — cannot exclude the timer from the identity compare" >&2; exit 1; }
+    # shellcheck disable=SC2086  # intentional word-split: "x y w h" -> argv[1..4]
+    timer_rect_px="$(python3 -c "
+import sys
+x, y, w_, h_ = (float(v) for v in sys.argv[1:5])
+scale = float(sys.argv[5])
+print(int(x * scale), int(y * scale), int(w_ * scale) + 1, int(h_ * scale) + 1)
+" $frame_read "$point_scale")"
+    echo "    timer rect (px, x y w h): $timer_rect_px"
+  fi
+  mkdir -p "$IDENTITY_ROOT/$app"
+  # Glass-control region (PM condition 3): the control cluster's live
+  # accessibility bbox (pt -> px, uncropped screenshot space) plus the same
+  # halo margin the capture pipeline uses. Cross-build pixels INSIDE it are
+  # reported against the same-build control; OUTSIDE it (and outside the
+  # status-bar/timer masks) the claim is 0 px, printed separately.
+  local glass_rect_px=""
+  local glass_bbox_pt
+  glass_bbox_pt="$(control_cluster_bbox_pt "$udid" "$app" || true)"
+  if [[ -n "$glass_bbox_pt" ]]; then
+    glass_rect_px="$(python3 -c "
+import sys
+x0,y0,x1,y1=(float(v) for v in sys.argv[1].split()); s=float(sys.argv[2]); m=int(sys.argv[3]); w=int(sys.argv[4]); h=int(sys.argv[5])
+print(max(0,int(x0*s)-m), max(0,int(y0*s)-m), min(w,int(x1*s+0.999)+m), min(h,int(y1*s+0.999)+m))
+" "$glass_bbox_pt" "$point_scale" "$(halo_margin_px_for_scale "$point_scale")" "$w" "$h")"
+    echo "    glass-control region (px, bbox+halo): $glass_rect_px"
+  else
+    echo "    warning: no control-cluster elements found — glass region empty, every differing px counts as OUTSIDE" >&2
+  fi
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/release-board.png" >/dev/null 2>&1
+  local release_date debug_date
+  release_date="$(date -u +%Y-%m-%d)"
+  echo "    Release capture date (UTC): $release_date"
+
+  # ── DEBUG side ──
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check DEBUG relaunch"
+  echo "==> [$app] DEBUG: install + same reach"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$dbg_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  if [[ "$app" == "sudoku" ]]; then
+    xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+    sleep 3
+    dismiss_banner "$udid" 220
+    reach_sudoku_board "$udid"
+  else
+    # Zero-click DEBUG route to the same fresh board (#1026 B-1) — no taps.
+    xcrun simctl launch "$udid" "$bundle" -uitest-route "board:beginner" >/dev/null 2>&1
+  fi
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+
+  local dbg_pause_xy
+  dbg_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$dbg_pause_xy" ]] || { echo "error: [$app] DEBUG: pause button never appeared — board did not reach the running state" >&2; exit 1; }
+  local dbg_header_frame dbg_bottom_frame
+  dbg_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  dbg_bottom_frame="$(idb_elements_union_bbox "$udid" label-prefix "Banner" label-prefix "Ad " identifier "banner" identifier "adBanner")"
+  echo "    DEBUG header (pause) frame (pt): $dbg_header_frame"
+  echo "    DEBUG bottom/banner frame (pt): ${dbg_bottom_frame:-none found}"
+
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/debug-board.png" >/dev/null 2>&1
+  debug_date="$(date -u +%Y-%m-%d)"
+  echo "    DEBUG capture date (UTC): $debug_date"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  if [[ "$rel_header_frame" != "$dbg_header_frame" ]]; then
+    echo "==> [$app] NOTE: header frames differ between Release ($rel_header_frame) and DEBUG ($dbg_header_frame) even with both in the running state — state parity alone did not equalize layout; investigate before trusting the pixel compare." >&2
+  fi
+
+  if [[ "$app" == "sudoku" && "$release_date" != "$debug_date" ]]; then
+    echo "error: [$app] Release capture ($release_date) and DEBUG capture ($debug_date) are on different UTC calendar days —" >&2
+    echo "  the daily-Easy board is only deterministic per date; this run crossed midnight UTC mid-comparison." >&2
+    exit 1
+  fi
+
+  # ── Same-build control (PM ruling): a second Release capture, same
+  # uninstall+reach+wait-for-pause method, measures the launch-to-launch
+  # noise floor (the residual glass jitter this PR found elsewhere) with NO
+  # Release-vs-DEBUG difference possible. Cross-build (Release vs DEBUG) is
+  # judged AGAINST this floor, not against a fixed zero — a real
+  # Release-vs-DEBUG difference is one that exceeds what relaunching the
+  # SAME build twice already produces.
+  check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app identity-check control relaunch"
+  echo "==> [$app] control: reinstall Release + same reach (same-build noise floor)"
+  xcrun simctl uninstall "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$rel_products/$scheme.app"
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  xcrun simctl launch "$udid" "$bundle" >/dev/null 2>&1
+  sleep 3
+  dismiss_banner "$udid" 220
+  if [[ "$app" == "sudoku" ]]; then
+    reach_sudoku_board "$udid"
+  else
+    reach_minesweeper_board "$udid" "$app"
+  fi
+  sleep "$SETTLE"
+  dismiss_banner "$udid" 220
+  local ctrl_pause_xy
+  ctrl_pause_xy="$(wait_for_element_center "$udid" identifier "$pause_id" || true)"
+  [[ -n "$ctrl_pause_xy" ]] || { echo "error: [$app] control: pause button never appeared" >&2; exit 1; }
+  local ctrl_header_frame
+  ctrl_header_frame="$(idb_element_frame "$udid" identifier "$pause_id")"
+  echo "    control header (pause) frame (pt): $ctrl_header_frame"
+  xcrun simctl io "$udid" screenshot "$IDENTITY_ROOT/$app/control-board.png" >/dev/null 2>&1
+  xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+
+  echo "==> [$app] comparing Release vs control (same-build noise floor)"
+  compare_identity_pair() {
+    local path_a="$1" path_b="$2" mask_out="$3" label="$4"
+    python3 - "$path_a" "$path_b" "$mask_out" "$w" "$h" "$timer_rect_px" "$label" "$glass_rect_px" <<'PYEOF'
+import sys
+from PIL import Image, ImageChops
+
+a_path, b_path, mask_path, w, h = sys.argv[1:6]
+glass_rect = None
+if len(sys.argv) > 8 and sys.argv[8].strip():
+    gx0, gy0, gx1, gy1 = (int(v) for v in sys.argv[8].split())
+    glass_rect = (gx0, gy0, gx1, gy1)
+w, h = int(w), int(h)
+timer_rect = None
+if sys.argv[6].strip():
+    tx, ty, tw, th = (int(v) for v in sys.argv[6].split())
+    timer_rect = (tx, ty, tx + tw, ty + th)
+label = sys.argv[7]
+
+a = Image.open(a_path).convert("RGB")
+b = Image.open(b_path).convert("RGB")
+if a.size != (w, h) or b.size != (w, h):
+    print(f"error: [{label}] size mismatch a={a.size} b={b.size} want=({w},{h})", file=sys.stderr)
+    sys.exit(2)
+
+diff = ImageChops.difference(a, b)
+pixels = diff.load()
+differing = 0
+inside_excluded = 0
+outside_excluded = 0
+glass_px = 0
+glass_max_delta = 0
+max_delta = 0
+max_x1 = max_y1 = 0
+min_x0, min_y0 = w, h
+STATUS_BAR_PX = 200
+for y in range(h):
+    for x in range(w):
+        r, g, b_ = pixels[x, y]
+        if r or g or b_:
+            differing += 1
+            max_delta = max(max_delta, r, g, b_)
+            if x < min_x0: min_x0 = x
+            if y < min_y0: min_y0 = y
+            if x > max_x1: max_x1 = x
+            if y > max_y1: max_y1 = y
+            in_status_bar = y < STATUS_BAR_PX
+            in_timer = timer_rect is not None and timer_rect[0] <= x < timer_rect[2] and timer_rect[1] <= y < timer_rect[3]
+            in_glass = glass_rect is not None and glass_rect[0] <= x < glass_rect[2] and glass_rect[1] <= y < glass_rect[3]
+            if in_status_bar or in_timer:
+                inside_excluded += 1
+            elif in_glass:
+                glass_px += 1
+                glass_max_delta = max(glass_max_delta, r, g, b_)
+            else:
+                outside_excluded += 1
+
+diff.save(mask_path)
+pct = 100.0 * differing / (w * h)
+print(f"[{label}] status-bar band: y < {STATUS_BAR_PX}px")
+if timer_rect is not None:
+    print(f"[{label}] timer-rect mask (px): x=[{timer_rect[0]},{timer_rect[2]}) y=[{timer_rect[1]},{timer_rect[3]})")
+print(f"[{label}] differing px: {differing} ({pct:.4f}%)")
+print(f"[{label}] bbox: ({min_x0},{min_y0})-({max_x1},{max_y1})" if differing else f"[{label}] bbox: (none — byte-identical)")
+if glass_rect is not None:
+    print(f"[{label}] glass-control region (px): x=[{glass_rect[0]},{glass_rect[2]}) y=[{glass_rect[1]},{glass_rect[3]})")
+print(f"[{label}] differing px INSIDE status-bar/timer exclusion (ignored): {inside_excluded}")
+print(f"[{label}] differing px INSIDE glass-control region: {glass_px} (max channel delta {glass_max_delta})")
+print(f"[{label}] differing px OUTSIDE every region/mask: {outside_excluded}   <- claim: 0")
+print(f"[{label}] max channel delta (all): {max_delta}")
+print(f"RESULT {label} outside={outside_excluded} glass={glass_px} glassdelta={glass_max_delta} maxdelta={max_delta}")
+PYEOF
+  }
+
+  compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/control-board.png" "$IDENTITY_ROOT/$app/control-diff-mask.png" "control" > "$IDENTITY_ROOT/$app/control-compare.log" 2>&1
+  cat "$IDENTITY_ROOT/$app/control-compare.log"
+  local control_outside control_glass control_glassdelta
+  control_outside="$(sed -nE 's/^RESULT control outside=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
+  control_glass="$(sed -nE 's/^RESULT control .*glass=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
+  control_glassdelta="$(sed -nE 's/^RESULT control .*glassdelta=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/control-compare.log")"
+
+  echo "==> [$app] comparing Release vs DEBUG (cross-build)"
+  compare_identity_pair "$IDENTITY_ROOT/$app/release-board.png" "$IDENTITY_ROOT/$app/debug-board.png" "$IDENTITY_ROOT/$app/diff-mask.png" "cross" > "$IDENTITY_ROOT/$app/cross-compare.log" 2>&1
+  cat "$IDENTITY_ROOT/$app/cross-compare.log"
+  local cross_outside cross_glass cross_glassdelta
+  cross_outside="$(sed -nE 's/^RESULT cross outside=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
+  cross_glass="$(sed -nE 's/^RESULT cross .*glass=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
+  cross_glassdelta="$(sed -nE 's/^RESULT cross .*glassdelta=([0-9]+).*/\1/p' "$IDENTITY_ROOT/$app/cross-compare.log")"
+
+  # Two figures, reported separately (PM condition 3) — never collapsed into
+  # one number:
+  #   1. OUTSIDE the glass-control region and the status-bar/timer masks:
+  #      the claim is 0 px cross-build. Hard requirement.
+  #   2. INSIDE the glass-control region: the cross-build difference must
+  #      not exceed the same-build control's noise floor (a small floor
+  #      guards a control that happens to land byte-identical).
+  local floor_px=20 floor_delta=3
+  local glass_floor_px=$control_glass glass_floor_delta=$control_glassdelta
+  (( glass_floor_px < floor_px )) && glass_floor_px=$floor_px
+  (( glass_floor_delta < floor_delta )) && glass_floor_delta=$floor_delta
+
+  echo "    [1] OUTSIDE glass region + masks — control: ${control_outside} px   cross-build: ${cross_outside} px   (claim: 0)"
+  echo "    [2] INSIDE glass region        — control: ${control_glass} px / delta ${control_glassdelta}   cross-build: ${cross_glass} px / delta ${cross_glassdelta}   (floor: <=${glass_floor_px} px, <=${glass_floor_delta})"
+
+  local verdict=0
+  if (( cross_outside != 0 )); then
+    echo "==> [$app] identity-check: FAIL on figure [1] — ${cross_outside} differing px OUTSIDE the glass region (claim was 0)"
+    verdict=1
+  fi
+  if (( cross_glass > glass_floor_px || cross_glassdelta > glass_floor_delta )); then
+    echo "==> [$app] identity-check: FAIL on figure [2] — inside-glass ${cross_glass} px / delta ${cross_glassdelta} exceeds the same-build floor (${glass_floor_px} px / ${glass_floor_delta})"
+    verdict=1
+  fi
+  if (( verdict == 0 )); then
+    echo "==> [$app] identity-check: both figures hold — outside glass: 0 px cross-build; inside glass within the same-build noise floor"
+  fi
+  xcrun simctl delete "$udid" >/dev/null 2>&1 || true
+  CREATED_UDIDS=()
+  return $verdict
+}
+
+if [[ -n "$IDENTITY_CHECK_APP" ]]; then
+  run_identity_check "$IDENTITY_CHECK_APP"
+  exit $?
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# Capture matrix
+# ══════════════════════════════════════════════════════════════════════════
+
+APPS=()
+case "$APP_FLAG" in
+  all) APPS=(sudoku minesweeper);;
+  *) APPS=("$APP_FLAG");;
+esac
+
+DEVICE_ROWS=()
+for row in "${CAPTURE_DEVICES[@]}"; do
+  key="${row%%|*}"
+  if [[ "$DEVICE_FLAG" == "all" || "$DEVICE_FLAG" == "$key" ]]; then
+    DEVICE_ROWS+=("$row")
+  fi
+done
+[[ ${#DEVICE_ROWS[@]} -gt 0 ]] || { echo "error: --device $DEVICE_FLAG matched no known device class" >&2; exit 2; }
+
+LOCALES=()
+if [[ "$LOCALE_FLAG" == "all" ]]; then
+  LOCALES=("${ALL_LOCALES[@]}")
+else
+  LOCALES=("$LOCALE_FLAG")
+fi
+
+echo "==> matrix: apps=${APPS[*]} devices=$(printf '%s ' "${DEVICE_ROWS[@]%%|*}") locales=${LOCALES[*]}"
+
+MANIFEST=()   # relative paths this run expects to produce
+MISSING=()    # relative paths that failed capture or validation
+# Parallel arrays to MANIFEST (same index), filled in on every path so the
+# publish step can zip them back together — "" placeholders on any failure
+# branch (those cells are in MISSING too, which aborts before publish).
+MANIFEST_MODE=()     # "exact" | "tolerant"
+MANIFEST_REGION=()   # "x0 y0 x1 y1" (cropped px) or "" for exact cells
+MANIFEST_LOAD=()     # 1-minute load average at capture time
+MANIFEST_DATE=()     # UTC capture date (YYYY-MM-DD)
+RUN_START=$(date +%s)
+
+for app in "${APPS[@]}"; do
+  scheme="$(app_scheme_for "$app")"; bundle="$(app_bundle_for "$app")"
+  [[ -z "$scheme" ]] && { echo "unknown app: $app" >&2; exit 2; }
+
+  derived="$DERIVED_ROOT/$app"
+  products="$derived/Build/Products/Debug-iphonesimulator"
+  if [[ "$NO_BUILD" != "true" ]]; then
+    t0=$(date +%s)
+    check_load_gate "$MAX_LOAD" "$LOAD_WAIT" "$app Debug build"
+    build_sim_app "$scheme" Debug "$derived" >/dev/null
+    t1=$(date +%s); echo "    [$app] build: $((t1 - t0))s"
+    check_plist_resolved "$products/$scheme.app"
+  fi
+
+  for row in "${DEVICE_ROWS[@]}"; do
+    IFS='|' read -r dev_key dev_name dev_w dev_h sim_name driver top_px bottom_px <<<"$row"
+    [[ "$driver" == "sim" ]] || { echo "error: unknown capture driver '$driver' for device '$dev_key'" >&2; exit 2; }
+
+    t0=$(date +%s)
+    udid="$(ensure_named_sim "$sim_name" "$dev_name")"
+    CREATED_UDIDS+=("$udid")
+    t1=$(date +%s); echo "    [$app/$dev_key] sim ready ($udid): $((t1 - t0))s"
+
+    sim_mute_bgm "$udid" "$bundle"
+    if [[ "$NO_BUILD" != "true" ]]; then
+      sim_install "$udid" "$products/$scheme.app"
+    fi
+    sim_override_status_bar "$udid"
+    point_center_x="$(point_center_x_for_device "$dev_key")"
+    scale="$(point_scale_for_device "$dev_key")"
+    cropped_w="$dev_w"
+    cropped_h=$(( dev_h - top_px - bottom_px ))
+
+    for locale in "${LOCALES[@]}"; do
+      out_dir="$STAGING_ROOT/$app/$dev_key/$locale"
+      mkdir -p "$out_dir"
+      rel_path="$app/$dev_key/$locale/03-board.png"
+      MANIFEST+=("$rel_path")
+      out_file="$out_dir/03-board.png"
+
+      t0=$(date +%s)
+      mode="$(mode_for_device "$dev_key")"
+      margin=""; [[ "$mode" == "tolerant" ]] && margin="$(halo_margin_px_for_device "$dev_key")"
+      if result="$(capture_one_locale "$udid" "$bundle" "$locale" "$out_file" "$ATTEMPTS" "$SETTLE" "$point_center_x" "$app" "$scale" "$top_px" "$bottom_px" "$dev_h" "$mode" "$cropped_w" "$cropped_h" "$margin")"; then
+        t1=$(date +%s)
+        if validate_capture "$out_file" "$cropped_w" "$cropped_h"; then
+          region=""
+          region_ok=0
+          if [[ "$mode" == "tolerant" ]]; then
+            # The loop computed the region from the live frames and converged
+            # against it; record that exact region, never a recomputation.
+            if [[ -f "$out_file.region" ]]; then region="$(cat "$out_file.region")"; rm -f "$out_file.region"; else region_ok=1; fi
+          fi
+          if [[ $region_ok -eq 0 ]]; then
+            echo "    [$app/$dev_key/$locale] OK attempts=$result $((t1 - t0))s mode=$mode region=[$region]"
+            MANIFEST_MODE+=("$mode"); MANIFEST_REGION+=("$region")
+            MANIFEST_LOAD+=("$(read_load_1m)"); MANIFEST_DATE+=("$(date -u +%Y-%m-%d)")
+          else
+            echo "    [$app/$dev_key/$locale] FAILED region measurement"
+            MISSING+=("$rel_path")
+            MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
+          fi
+        else
+          echo "    [$app/$dev_key/$locale] FAILED validation"
+          MISSING+=("$rel_path")
+          MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
+        fi
+      else
+        t1=$(date +%s)
+        echo "    [$app/$dev_key/$locale] FAILED capture ($((t1 - t0))s)"
+        MISSING+=("$rel_path")
+        MANIFEST_MODE+=(""); MANIFEST_REGION+=(""); MANIFEST_LOAD+=(""); MANIFEST_DATE+=("")
+      fi
+    done
+
+    xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
+  done
+done
+
+RUN_END=$(date +%s)
+echo "==> matrix done: $((RUN_END - RUN_START))s total, ${#MANIFEST[@]} expected, ${#MISSING[@]} missing"
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+  echo "==> MISSING (docs/app-store/captures left untouched):" >&2
+  printf '   %s\n' "${MISSING[@]}" >&2
+  exit 1
+fi
+
+check_cross_cell_invariants "${MANIFEST[@]}" || exit 1
+
+if [[ "$STAGING_ONLY" == "true" && "$VERIFY_MODE" != "true" ]]; then
+  echo "==> --staging-only: skipping publish/verify. Staged at $STAGING_ROOT/"
+  exit 0
+fi
+
+# ── idempotent publish decision (#1054 P-A item 4) ──────────────────────────
+# One pass over every cell in this run's manifest scope, deciding "keep"
+# (committed bytes untouched), "replace" (exceeded tolerance / exact-mode
+# byte diff), or "new" (no committed file yet) — WITHOUT writing anything
+# yet, so --verify can reuse the identical decision logic read-only.
+echo "==> comparing ${#MANIFEST[@]} cell(s) against committed $PUBLISH_ROOT/ (mode: iphone-6.9=exact, ipad-13=tolerant regions<=$REGION_MAX_PX px @ delta<=$REGION_MAX_DELTA)"
+PUBLISH_ACTIONS=()
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  mode="${MANIFEST_MODE[$idx]}"
+  region="${MANIFEST_REGION[$idx]}"
+  staged="$STAGING_ROOT/$rel_path"
+  committed="$PUBLISH_ROOT/$rel_path"
+  regions_json="[]"
+  [[ -n "$region" ]] && regions_json="[[${region// /,}]]"
+
+  if [[ ! -f "$committed" ]]; then
+    PUBLISH_ACTIONS+=("new")
+    echo "    [$rel_path] new (no committed file yet)"
+    continue
+  fi
+  if cmp -s "$staged" "$committed"; then
+    PUBLISH_ACTIONS+=("keep")
+    echo "    [$rel_path] unchanged (byte-identical)"
+    continue
+  fi
+  if [[ "$mode" == "tolerant" ]]; then
+    if python3 scripts/compare_capture.py "$committed" "$staged" --regions "$regions_json" --max-delta "$REGION_MAX_DELTA" --max-px "$REGION_MAX_PX" 2>&1 | sed 's/^/        /'; then
+      PUBLISH_ACTIONS+=("keep")
+      echo "    [$rel_path] unchanged (within tolerance) — regions=$regions_json"
+    else
+      PUBLISH_ACTIONS+=("replace")
+      echo "    [$rel_path] replaced (exceeded tolerance) — regions=$regions_json"
+    fi
+  else
+    PUBLISH_ACTIONS+=("replace")
+    echo "    [$rel_path] replaced (exact mode, bytes differ)"
+  fi
+done
+
+if [[ "$VERIFY_MODE" == "true" ]]; then
+  verify_fail=0
+  for action in "${PUBLISH_ACTIONS[@]}"; do
+    [[ "$action" == "keep" ]] || verify_fail=1
+  done
+  if [[ $verify_fail -eq 0 ]]; then
+    echo "==> --verify: all ${#MANIFEST[@]} cell(s) within tolerance of committed files — $PUBLISH_ROOT/ untouched"
+    exit 0
+  else
+    echo "error: --verify found cell(s) outside their manifest tolerance (see 'replaced'/'new' above) — $PUBLISH_ROOT/ NOT modified" >&2
+    exit 1
+  fi
+fi
+
+# ── apply (real publish only — --verify already returned above) ───────────
+new_n=0 replaced_n=0 kept_n=0
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  action="${PUBLISH_ACTIONS[$idx]}"
+  staged="$STAGING_ROOT/$rel_path"
+  committed="$PUBLISH_ROOT/$rel_path"
+  case "$action" in
+    keep) kept_n=$((kept_n + 1));;
+    new) mkdir -p "$PUBLISH_ROOT/$(dirname "$rel_path")"; cp -f "$staged" "$committed"; new_n=$((new_n + 1));;
+    replace) cp -f "$staged" "$committed"; replaced_n=$((replaced_n + 1));;
+  esac
+done
+echo "==> publish done: $new_n new, $replaced_n replaced, $kept_n unchanged"
+
+# ── manifest.json merge (#1054 P-A item 4) ──────────────────────────────────
+# Cells outside this run's scope (e.g. a --app/--device/--locale-scoped run)
+# are preserved untouched; only this run's cells are added/updated, keyed by
+# published path. "size"/"sha256" are read from the FINAL committed bytes
+# (post-apply) so a "keep" decision records the unchanged committed file's
+# own hash, never the staged candidate that was discarded.
+: > "$STAGING_ROOT/.manifest-cells.jsonl"
+for idx in "${!MANIFEST[@]}"; do
+  rel_path="${MANIFEST[$idx]}"
+  committed="$PUBLISH_ROOT/$rel_path"
+  mode="${MANIFEST_MODE[$idx]}"
+  region="${MANIFEST_REGION[$idx]}"
+  load="${MANIFEST_LOAD[$idx]}"
+  cdate="${MANIFEST_DATE[$idx]}"
+  IFS='/' read -r cell_app cell_dev cell_locale _ <<<"$rel_path"
+  sha="$(shasum -a 256 "$committed" | awk '{print $1}')"
+  w="$(sips -g pixelWidth "$committed" 2>/dev/null | awk '/pixelWidth/{print $2}')"
+  h="$(sips -g pixelHeight "$committed" 2>/dev/null | awk '/pixelHeight/{print $2}')"
+  regions_json="[]"; bounds_json="None"
+  if [[ -n "$region" ]]; then
+    regions_json="[[${region// /,}]]"
+    bounds_json="{\"max_delta\": $REGION_MAX_DELTA, \"max_px\": $REGION_MAX_PX}"
+  fi
+  python3 -c "
+import json
+print(json.dumps({
+  'app': '$cell_app', 'device': '$cell_dev', 'locale': '$cell_locale', 'path': '$rel_path',
+  'size': [$w, $h], 'sha256': '$sha', 'mode': '$mode', 'regions': $regions_json,
+  'bounds': $bounds_json, 'capture_date': '$cdate', 'load': $load,
+}))
+" >> "$STAGING_ROOT/.manifest-cells.jsonl"
+done
+
+python3 - "$PUBLISH_ROOT/manifest.json" "$STAGING_ROOT/.manifest-cells.jsonl" <<'PYEOF'
+import json, sys, os
+
+manifest_path, cells_path = sys.argv[1], sys.argv[2]
+existing = {"cells": []}
+if os.path.exists(manifest_path):
+    with open(manifest_path) as f:
+        existing = json.load(f)
+by_path = {c["path"]: c for c in existing.get("cells", [])}
+with open(cells_path) as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        cell = json.loads(line)
+        by_path[cell["path"]] = cell
+merged = {"cells": [by_path[k] for k in sorted(by_path)]}
+with open(manifest_path, "w") as f:
+    json.dump(merged, f, indent=2)
+    f.write("\n")
+print(f"==> {manifest_path}: {len(merged['cells'])} cell(s) total")
+PYEOF
+
+echo "==> done."

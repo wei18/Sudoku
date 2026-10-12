@@ -67,6 +67,7 @@ swift test --package-path Packages/<Kit>     # ALWAYS absolute or repo-relative 
 mise tasks ls                                # ops entry point — check BEFORE hand-rolling any infra command
 mise run scan:l10n                           # L10n gate: 7 locales complete + fixture byte-sync (CI-enforced)
 tuist generate                               # workspace; new sibling packages are auto-discovered via the umbrella Kits
+mise run store:capture                       # live-simulator capture for the 03-board ASC slot (#1054); see appstore-screenshot-pipeline skill
 ```
 
 - Verify with `swift test`, not SourceKit: post-edit `new-diagnostics` ("no such

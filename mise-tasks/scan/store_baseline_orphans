@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Store-baseline orphan gate (#1021): every snapshot baseline mapped by mise-tasks/store/screenshots or a Slot() in scripts/build-ascspec-screenshots.py must (a) exist on disk and (b) still have a live test function that records it. Pure python3 stdlib — no Pillow, no fonts, runs on ubuntu-latest."
+#MISE description="Store-baseline orphan gate (#1021): every snapshot baseline mapped by mise-tasks/store/screenshots or a Slot() in scripts/build-ascspec-screenshots.py must (a) exist on disk and (b) still have a live test function that records it. Capture-sourced slots (#1054 CaptureSlot) get an existence + recorder-string check instead (no Swift test involved). Pure python3 stdlib — no Pillow, no fonts, runs on ubuntu-latest."
 #
 # Why this exists:
 #   #1021 rewrote the Sudoku Today hub. Test methods were renamed/deleted, but
@@ -30,18 +30,38 @@ import re, pathlib, sys
 root = pathlib.Path('.')
 SUDOKU_TESTS = 'Packages/SudokuKit/Tests/SudokuUITests'
 MS_TESTS = 'Packages/MinesweeperKit/Tests/MinesweeperUITests'
-rows = []
+CAPTURE_PREFIX = 'docs/app-store/captures/'
+CAPTURE_TASK = 'mise-tasks/store/capture'
+rows = []          # swift-backed: (pipeline, key, path, recorder_fn)
+capture_rows = []  # #1054 capture-backed: (pipeline, key, path, slot_name)
+
+# LOCALES — read from the single source of truth (never re-typed), the same
+# way mise-tasks/store/capture itself does, so a locale added/removed there
+# is picked up here automatically.
+gen_text = pathlib.Path('scripts/build-ascspec-screenshots.py').read_text()
+m = re.search(r'^LOCALES = \[(.*?)\]', gen_text, re.M)
+if not m:
+    print('FAIL [store_baseline_orphans]: could not find LOCALES in scripts/build-ascspec-screenshots.py — gate needs updating.')
+    sys.exit(1)
+LOCALES = [tok.strip().strip('"') for tok in m.group(1).split(',') if tok.strip()]
 
 # Pipeline 1 — the preview symlink map: "app|device|locale|slot|path"
 map_path = pathlib.Path('mise-tasks/store/screenshots')
 for line in map_path.read_text().splitlines():
     m = re.search(r'"([^"|]+)\|([^"|]+)\|([^"|]+)\|([^"|]+)\|([^"]+)"', line)
-    if m and m.group(5).startswith('Packages/'):
-        app, dev, _loc, slot, path = m.groups()
+    if not m:
+        continue
+    app, dev, _loc, slot, path = m.groups()
+    if path.startswith('Packages/'):
         rows.append(('store:screenshots', f'{app}/{dev}/{slot}', path,
                      pathlib.Path(path).name.split('.')[0]))
+    elif path.startswith(CAPTURE_PREFIX):
+        # #1054: a capture-sourced MAP row — existence check only, "recorder"
+        # is mise-tasks/store/capture naming this slot (grep'd below), not a
+        # Swift `func` (there is no snapshot test backing this file at all).
+        capture_rows.append(('store:screenshots', f'{app}/{dev}/{slot}', path, slot))
 
-# Pipeline 2 — the ASC-spec generator's Slot() table.
+# Pipeline 2 — the ASC-spec generator's Slot()/CaptureSlot() tables.
 #
 # ⚠️ SUITE-NAME COLLISION — do not "simplify" this to a suite-name check.
 # A Slot() names only its suite (e.g. "ProgressScreenTests"), and BOTH packages
@@ -51,7 +71,7 @@ for line in map_path.read_text().splitlines():
 # was hit while writing this gate. The owning app is only knowable from the
 # enclosing device → app block in the generator, so parse that nesting and pass
 # the package down.
-gen = pathlib.Path('scripts/build-ascspec-screenshots.py').read_text()
+gen = gen_text
 for dev_block in re.finditer(r'"(iphone-6\.9|ipad-13|mac)":\s*\{(.*?)\n    \},', gen, re.S):
     dev, body = dev_block.groups()
     for app_block in re.finditer(r'"(sudoku|minesweeper)":\s*\[(.*?)\n        \],', body, re.S):
@@ -61,15 +81,25 @@ for dev_block in re.finditer(r'"(iphone-6\.9|ipad-13|mac)":\s*\{(.*?)\n    \},',
             slot, suite, base, fn = m.groups()
             rows.append(('build-ascspec', f'{dev}/{app}/{slot}',
                          f'{pkg}/__Snapshots__/{suite}/{fn}.{base}.png', fn))
+        # #1054: CaptureSlot("name", "rel/path/{locale}/template.png") — two
+        # args, no suite/named/prefix. Expand across every LOCALES entry
+        # (one row per locale, existence check only, same as pipeline 1).
+        for m in re.finditer(r'CaptureSlot\(\s*"([^"]+)",\s*"([^"]+)"\s*\)', slots):
+            slot, rel_template = m.groups()
+            for loc in LOCALES:
+                capture_rows.append(('build-ascspec', f'{dev}/{app}/{slot}/{loc}',
+                                     rel_template.format(locale=loc), slot))
 
-if not rows:
-    print('FAIL [store_baseline_orphans]: parsed 0 mapped baselines — the map or Slot() format changed; fix this gate.')
+if not rows and not capture_rows:
+    print('FAIL [store_baseline_orphans]: parsed 0 mapped baselines — the map or Slot()/CaptureSlot() format changed; fix this gate.')
     sys.exit(1)
 
 recorders = set()
 for d in ('Packages/SudokuKit/Tests', 'Packages/MinesweeperKit/Tests'):
     for f in pathlib.Path(d).rglob('*.swift'):
         recorders.update(re.findall(r'func\s+(\w+)', f.read_text(errors='ignore')))
+
+capture_task_text = pathlib.Path(CAPTURE_TASK).read_text() if pathlib.Path(CAPTURE_TASK).exists() else ''
 
 failures = []
 for pipeline, key, path, fn in rows:
@@ -78,6 +108,12 @@ for pipeline, key, path, fn in rows:
     elif fn not in recorders:
         failures.append(f'  ORPHANED [{pipeline}] {key}\n             baseline exists but no `func {fn}` remains in the test packages\n             path: {path}')
 
+for pipeline, key, path, slot_name in capture_rows:
+    if not (root / path).exists():
+        failures.append(f'  MISSING  [{pipeline}] {key}\n             path: {path}')
+    elif slot_name not in capture_task_text:
+        failures.append(f'  ORPHANED [{pipeline}] {key}\n             capture exists but {CAPTURE_TASK} no longer names slot {slot_name!r}\n             path: {path}')
+
 if failures:
     print('FAIL [store_baseline_orphans]: mapped store baseline(s) are missing or orphaned\n')
     print('\n'.join(failures))
@@ -85,7 +121,10 @@ if failures:
     print('suite directory for fuller states), or restore the test that records it,')
     print('then delete the orphan .png/.txt. Never leave a slot pointing at a file')
     print('no test regenerates — the frames silently freeze at the last recording.')
+    print('For a CaptureSlot: re-run `mise run store:capture`, or restore the slot')
+    print('name in mise-tasks/store/capture if it was renamed there.')
     sys.exit(1)
 
-print(f'PASS [store_baseline_orphans]: {len(rows)} mapped baselines, all present with a live recording test.')
+total = len(rows) + len(capture_rows)
+print(f'PASS [store_baseline_orphans]: {total} mapped baselines ({len(rows)} snapshot-backed, {len(capture_rows)} capture-backed), all present with a live recorder.')
 PY

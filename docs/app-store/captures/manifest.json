@@ -1,0 +1,242 @@
+{
+  "cells": [
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "en",
+      "path": "minesweeper/iphone-6.9/en/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "da95af87ac7827b0647a77198df321d4881045a83f26bac2e2708648353ec000",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "es",
+      "path": "minesweeper/iphone-6.9/es/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "64b1c802e96df7b3e876453dcfeecd6b2af7f76dcab02448b17deaedef4d203f",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "ja",
+      "path": "minesweeper/iphone-6.9/ja/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "42b5816874e6a25a6fe8ce2e9fb4940b78ef4112fa8b6db45fb1ba013920293c",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "ko",
+      "path": "minesweeper/iphone-6.9/ko/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "b18af824a2f20d172b7f2d06b13a82e150a93b1f693cb93b53713aaf910bc4af",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "th",
+      "path": "minesweeper/iphone-6.9/th/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "e407e8d1a174a7f36c79f638eccf1fade905a295b062c3b98a1eb108e2508df9",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "zh-Hans",
+      "path": "minesweeper/iphone-6.9/zh-Hans/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "3627005d2b1a34e9b4ad0fb21036d026d100a753c32c75193475a244a19e0e5f",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "minesweeper",
+      "device": "iphone-6.9",
+      "locale": "zh-Hant",
+      "path": "minesweeper/iphone-6.9/zh-Hant/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "81a3bc0de7c8eba195b1bb86ec13baf39988350b57d30388f4892353ce8438e7",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "en",
+      "path": "sudoku/iphone-6.9/en/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "87faa2f34ba40e874a42ab804c4c9c10491ce08b59996c5277f3d5df7cdd70c3",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "es",
+      "path": "sudoku/iphone-6.9/es/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "1b723858124d71cc0bbd6f43ce7de063d4f5961b043c9eecb05c126d1a39ae20",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "ja",
+      "path": "sudoku/iphone-6.9/ja/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "05261d307ca5fc75b2d9c61ea90110fef472a7a16d3831afd35523464d87953c",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "ko",
+      "path": "sudoku/iphone-6.9/ko/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "97f37cdda62338005f9ae442be8ecb85153c1b891514d97713eb2c41602d3d2f",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "th",
+      "path": "sudoku/iphone-6.9/th/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "a47ffaf51c69b1f6dc007b7cda461d45bf0aeed536ceb6479cf6544369d4566a",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "zh-Hans",
+      "path": "sudoku/iphone-6.9/zh-Hans/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "47ead377cc14558033009433b7df62e574226f985718281e1496f9b777808e87",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    },
+    {
+      "app": "sudoku",
+      "device": "iphone-6.9",
+      "locale": "zh-Hant",
+      "path": "sudoku/iphone-6.9/zh-Hant/03-board.png",
+      "size": [
+        1320,
+        2568
+      ],
+      "sha256": "79cb9be8f03207178c72bd900d00578657336733c958c1da6c1d1c9a8419d124",
+      "mode": "exact",
+      "regions": [],
+      "bounds": null,
+      "capture_date": "2026-09-30",
+      "load": null,
+      "provenance": "scanned from the committed capture (#1111 review); no tolerance applies to exact cells"
+    }
+  ]
+}
