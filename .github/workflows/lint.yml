@@ -180,10 +180,14 @@ jobs:
 
   frame-drift-gate:
     name: ASC frame drift proxy gate (#1001)
-    # Catches #995/#998: a snapshot baseline that FEEDS a Slot() in
-    # scripts/build-ascspec-screenshots.py changes, but no file under
-    # docs/app-store/screenshots-ascspec/ changes in the same PR — i.e. a
-    # baseline moved and the marketing frames weren't regenerated to match.
+    # Catches #995/#998/#1112: a snapshot baseline (or live capture, #1054)
+    # that FEEDS a Slot()/CaptureSlot() in scripts/build-ascspec-screenshots.py
+    # changes, but not every docs/app-store/screenshots-ascspec/ frame it
+    # feeds gets regenerated in the same PR — checked per (device, app,
+    # slot, locale), not just "did any file under that path change" — i.e. a
+    # baseline moved and the marketing frames weren't regenerated to match,
+    # the wrong slot got regenerated instead (#1112), or only some locales
+    # did (#998).
     #
     # This is a proxy, not the real regenerate-and-diff check: the generator
     # loads macOS system fonts by absolute path (Hiragino Sans GB / PingFang /
@@ -209,6 +213,9 @@ jobs:
         with:
           install: true
           cache: true
+
+      - name: Self-test the drift gate (throwaway repo)
+        run: mise run test:store_frame_drift
 
       - name: Run ASC frame drift proxy gate
         env:

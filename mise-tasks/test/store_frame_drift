@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-#MISE description="Throwaway-repo harness for the store frame-drift gate (#1112): drives mise-tasks/scan/store_frame_drift with real git commits in a disposable repo to prove the gate's per-diff (not per-slot) silencing as a failing test, before the gate itself is fixed. Pure bash + git — no Python, no Pillow, no simulator."
+#MISE description="Self-test for the store frame-drift gate (#1112): drives mise-tasks/scan/store_frame_drift with real git commits in a disposable repo, covering per-slot and per-locale drift (not just per-diff) plus both escape hatches. Pure bash + git — no Python, no Pillow, no simulator."
 #USAGE flag "--gate <path>" help="Gate script to test (default: mise-tasks/scan/store_frame_drift in this repo)"
 #
 # Why this exists:
-#   store_frame_drift (#1001) passes a PR as soon as ANY file under
-#   docs/app-store/screenshots-ascspec/ changed, without checking that the
-#   file that changed is the one the drifted baseline actually feeds. #1112
-#   is that gap: regenerate the wrong slot (or only some locales, #998-style)
-#   and the gate still says PASS.
+#   store_frame_drift (#1001) must catch a drifted baseline/capture that
+#   isn't matched by a regenerated frame for the SAME slot and locale it
+#   feeds — "any file under docs/app-store/screenshots-ascspec/ changed" is
+#   not enough, since that's blind to the wrong slot being regenerated
+#   instead (#1112) or to a partial-locale regeneration (#998).
 #
 #   This harness seeds a disposable git repo with a copy of
 #   scripts/build-ascspec-screenshots.py and placeholder fixture files for
 #   every baseline/capture + frame the SLOTS table maps, then makes real
 #   commits reproducing specific drift scenarios and runs the gate against
-#   each one. It only asserts; it does not patch the gate (that's a
-#   follow-up PR).
+#   each one.
 #
-# Expected result against the CURRENT (unfixed) gate: 3 cases FAIL —
-# cross-slot-snapshot, cross-slot-capture, partial-locale — which is the
-# bug this harness exists to pin down. The other 6 cases PASS.
+# Expected result against the current gate: all 10 cases PASS, exit 0. Run
+# with --gate pointing at an older (pre-#1112) copy of the gate to confirm
+# cases 1-3 FAIL instead — that regression is exactly what this harness
+# exists to catch.
 #
 set -euo pipefail
 
@@ -157,6 +157,7 @@ CAPTURE_C_FRAME_JA="docs/app-store/screenshots-ascspec/minesweeper/iphone-6.9/ja
 
 check_result() {
   # check_result <name> <expected_exit> <actual_exit> <output> [needle ...]
+  # A needle prefixed with "!" must be ABSENT from the output instead.
   local name="$1" expected_exit="$2" actual_exit="$3" output="$4"
   shift 4
   local ok=1
@@ -165,9 +166,18 @@ check_result() {
   fi
   local needle
   for needle in "$@"; do
-    if ! grep -qF -- "$needle" <<<"$output"; then
-      ok=0
-    fi
+    case "$needle" in
+      '!'*)
+        if grep -qF -- "${needle#!}" <<<"$output"; then
+          ok=0
+        fi
+        ;;
+      *)
+        if ! grep -qF -- "$needle" <<<"$output"; then
+          ok=0
+        fi
+        ;;
+    esac
   done
   if [[ "$ok" -eq 1 ]]; then
     echo "PASS $name"
@@ -206,7 +216,7 @@ for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
 git add -A
 git commit -q --no-gpg-sign -m "case: cross-slot-snapshot"
 run_gate
-check_result "cross-slot-snapshot" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home"
+check_result "cross-slot-snapshot" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "sudoku/iphone-6.9/en/01-home.png"
 
 # ── Case 2: cross-slot-capture ───────────────────────────────────────────────
 # Same shape, but the drifted source is a live-simulator capture (#1054)
@@ -217,7 +227,7 @@ for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
 git add -A
 git commit -q --no-gpg-sign -m "case: cross-slot-capture"
 run_gate
-check_result "cross-slot-capture" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/minesweeper/03-board"
+check_result "cross-slot-capture" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/minesweeper/03-board" "minesweeper/iphone-6.9/ja/03-board.png" "!minesweeper/iphone-6.9/en/03-board.png"
 
 # ── Case 3: partial-locale (#998) ────────────────────────────────────────────
 # Baseline A drifts, slot A's frames get regenerated for every locale except
@@ -277,11 +287,8 @@ run_gate
 check_result "no-frames" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home"
 
 # ── Case 8: escape-trailer ───────────────────────────────────────────────────
-# Same diff as no-frames (the only shape that actually reaches the
-# escape-hatch branch — a cross-slot diff already short-circuits to PASS at
-# the coarse "ascspec/ changed" check before the escape hatch is ever
-# consulted, see the deviation note in the dispatch report), but the commit
-# carries a Frame-Drift-Verified trailer.
+# Same diff as no-frames, but the commit carries a Frame-Drift-Verified
+# trailer.
 git checkout -q -b test/escape-trailer main
 mutate "$BASELINE_A"
 git add -A
@@ -298,6 +305,20 @@ git add -A
 git commit -q --no-gpg-sign -m "case: escape-label"
 run_gate_with_label
 check_result "escape-label" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN"
+
+# ── Case 10: escape-trailer-cross-slot ───────────────────────────────────────
+# Same diff as cross-slot-snapshot (case 1), but with the escape-hatch
+# trailer. Under the per-slot gate, baseline A's own slot (01-home) is
+# stale regardless of slot B's frames changing, so this diff now genuinely
+# reaches the escape-hatch branch — confirming the hatch still works for a
+# cross-slot diff, not just the plain no-frames shape.
+git checkout -q -b test/escape-trailer-cross-slot main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: escape-trailer-cross-slot" -m "Frame-Drift-Verified: harness"
+run_gate
+check_result "escape-trailer-cross-slot" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN" "iphone-6.9/sudoku/01-home"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo
