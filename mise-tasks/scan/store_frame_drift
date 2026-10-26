@@ -248,7 +248,9 @@ while IFS= read -r changed_baseline; do
       frame="${ASCSPEC_PREFIX}${app}/${device}/${loc}/${slot_name}.png"
       git cat-file -e "HEAD:${frame}" 2>/dev/null || continue
       grep -qxF "$frame" <<<"$CHANGED" && continue
-      STALE+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${frame}"$'\t'"${changed_baseline}"$'\n'
+      # Ordered device/app/slot/baseline/frame so a plain sort groups every
+      # stale frame under its (device, app, slot, baseline) block below.
+      STALE+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${changed_baseline}"$'\t'"${frame}"$'\n'
     done
   done <<<"$ROWS"
 done <<<"$CHANGED_MAPPED"
@@ -258,6 +260,22 @@ if [[ -z "$STALE" ]]; then
   echo "PASS [store_frame_drift]: every store frame fed by a changed baseline was regenerated in this diff."
   exit 0
 fi
+
+# One block per (device, app, slot, baseline): a header line naming the slot
+# and the baseline that changed, then one "missing: <path>" line per stale
+# frame — copy-paste-able, never comma-joined.
+print_stale_blocks() {
+  local prev_key="" device app slot_name baseline_relpath frame key
+  while IFS=$'\t' read -r device app slot_name baseline_relpath frame; do
+    [[ -z "$device" ]] && continue
+    key="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"
+    if [[ "$key" != "$prev_key" ]]; then
+      echo "  - ${device}/${app}/${slot_name}  (baseline changed: ${baseline_relpath})"
+      prev_key="$key"
+    fi
+    echo "      missing: ${frame}"
+  done <<<"$STALE"
+}
 
 # ── Escape hatch ──────────────────────────────────────────────────────────────
 ESCAPE_REASON=""
@@ -271,10 +289,9 @@ fi
 
 if [[ -n "$ESCAPE_REASON" ]]; then
   echo "WARN [store_frame_drift]: mapped baseline(s) changed without regenerating every frame they feed, but the escape hatch was used ($ESCAPE_REASON) — passing."
-  while IFS=$'\t' read -r device app slot_name frame baseline_relpath; do
-    [[ -z "$device" ]] && continue
-    echo "  - ${device}/${app}/${slot_name}: missing ${frame} (fed by ${baseline_relpath})"
-  done <<<"$STALE"
+  echo
+  echo "Stale slot(s) the escape hatch is covering for — review these before approving:"
+  print_stale_blocks
   exit 0
 fi
 
@@ -282,19 +299,19 @@ fi
   echo "FAIL [store_frame_drift]: mapped snapshot baseline(s) changed without regenerating every store frame they feed (the #995/#998/#1112 failure mode)."
   echo
   echo "Stale frame(s) — not updated in this diff:"
-  while IFS=$'\t' read -r device app slot_name frame baseline_relpath; do
-    [[ -z "$device" ]] && continue
-    echo "  - ${device}/${app}/${slot_name}: ${frame}"
-    echo "      fed by: ${baseline_relpath}"
-  done <<<"$STALE"
+  print_stale_blocks
   echo
-  echo "Fix: on macOS (the generator needs system fonts not present on this runner), run"
-  echo "    python3 scripts/build-ascspec-screenshots.py"
-  echo "  then commit the regenerated PNGs under docs/app-store/screenshots-ascspec/."
-  echo
-  echo "Escape hatch, only if this baseline change genuinely does not alter any ASC"
-  echo "frame (e.g. an unrelated test refactor produced byte-identical pixels): add"
-  echo "the PR label 'frame-drift-verified', or add a commit-message trailer:"
-  echo "    Frame-Drift-Verified: <why the frame doesn't need regenerating>"
+  echo "Fix — one of the following:"
+  echo "  (a) Regenerate: on macOS (the generator needs system fonts not present"
+  echo "      on this runner), run"
+  echo "          python3 scripts/build-ascspec-screenshots.py"
+  echo "      then commit every \"missing:\" frame listed above under"
+  echo "      docs/app-store/screenshots-ascspec/."
+  echo "  (b) Escape hatch — only if regenerating produces a byte-identical frame"
+  echo "      (the compositor can absorb a small baseline change, e.g. an"
+  echo "      unrelated test refactor, with no visible pixel difference, so"
+  echo "      there is nothing to commit): add the PR label 'frame-drift-verified',"
+  echo "      or add a commit-message trailer:"
+  echo "          Frame-Drift-Verified: <why the frame doesn't need regenerating>"
 } >&2
 exit 1

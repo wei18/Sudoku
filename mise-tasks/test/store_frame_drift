@@ -216,7 +216,7 @@ for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
 git add -A
 git commit -q --no-gpg-sign -m "case: cross-slot-snapshot"
 run_gate
-check_result "cross-slot-snapshot" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "sudoku/iphone-6.9/en/01-home.png"
+check_result "cross-slot-snapshot" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/en/01-home.png" "Frame-Drift-Verified:"
 
 # ── Case 2: cross-slot-capture ───────────────────────────────────────────────
 # Same shape, but the drifted source is a live-simulator capture (#1054)
@@ -242,7 +242,7 @@ done
 git add -A
 git commit -q --no-gpg-sign -m "case: partial-locale"
 run_gate
-check_result "partial-locale" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "sudoku/iphone-6.9/th/01-home.png"
+check_result "partial-locale" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png"
 
 # ── Case 4: honest-snapshot ──────────────────────────────────────────────────
 # Baseline A drifts and slot A's frames are regenerated for all 7 locales —
