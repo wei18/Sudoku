@@ -15,10 +15,10 @@
 #   commits reproducing specific drift scenarios and runs the gate against
 #   each one.
 #
-# Expected result against the current gate: all 10 cases PASS, exit 0. Run
+# Expected result against the current gate: all 11 cases PASS, exit 0. Run
 # with --gate pointing at an older (pre-#1112) copy of the gate to confirm
-# cases 1-3 FAIL instead — that regression is exactly what this harness
-# exists to catch.
+# cases 1-3 and 11 FAIL instead — that regression is exactly what this
+# harness exists to catch.
 #
 set -euo pipefail
 
@@ -319,6 +319,19 @@ git add -A
 git commit -q --no-gpg-sign -m "case: escape-trailer-cross-slot" -m "Frame-Drift-Verified: harness"
 run_gate
 check_result "escape-trailer-cross-slot" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN" "iphone-6.9/sudoku/01-home"
+
+# ── Case 11: deleted-frames (#1112) ──────────────────────────────────────────
+# Baseline A drifts, and every frame it feeds is `git rm`'d instead of
+# regenerated — the shape a gate that reads "HEAD:${frame} doesn't exist" as
+# "generator never produced it" would wrongly pass, since deleting the frame
+# makes it look like a locale the generator SKIPPED-NO-COPY.
+git checkout -q -b test/deleted-frames main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do git rm -q "$(slot_a_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: deleted-frames"
+run_gate
+check_result "deleted-frames" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png" "deleted in this diff"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo
