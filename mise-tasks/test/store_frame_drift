@@ -15,10 +15,12 @@
 #   commits reproducing specific drift scenarios and runs the gate against
 #   each one.
 #
-# Expected result against the current gate: all 11 cases PASS, exit 0. Run
+# Expected result against the current gate: all 13 cases PASS, exit 0. Run
 # with --gate pointing at an older (pre-#1112) copy of the gate to confirm
-# cases 1-3 and 11 FAIL instead — that regression is exactly what this
-# harness exists to catch.
+# cases 1-3, 11, and 13 FAIL instead (case 12 stays PASS even on an older
+# gate — it's a sanity check for an honest slot retirement, not a
+# regression probe) — that regression is exactly what this harness exists
+# to catch.
 #
 set -euo pipefail
 
@@ -332,6 +334,62 @@ git add -A
 git commit -q --no-gpg-sign -m "case: deleted-frames"
 run_gate
 check_result "deleted-frames" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png" "deleted in this diff"
+
+# ── Case 12: slot-retired ────────────────────────────────────────────────────
+# Honest slot retirement: deleting the Slot() line itself out of the
+# generator's SLOTS table (not just letting a baseline drift) means the
+# mapping no longer requires those frames at all — a legitimate "we dropped
+# this screen" diff must not be blocked, even though baseline A still
+# drifts and its old frames are all gone too. The gate reads the mapping
+# from the checked-out working tree's generator (== HEAD in CI), so once
+# HEAD no longer has this Slot(), its baseline isn't "mapped" any more.
+git checkout -q -b test/slot-retired main
+SLOT_SIGNATURE='Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),'
+SLOT_SIGNATURE_COUNT_BEFORE="$(grep -cF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py || true)"
+if [[ "$SLOT_SIGNATURE_COUNT_BEFORE" -ne 2 ]]; then
+  echo "ERROR [test/store_frame_drift]: expected 2 copies of the 01-home Slot() signature (sudoku's iphone-6.9 row and minesweeper's, which share identical Slot() arguments and differ only by their BASELINES_SUDOKU/BASELINES_MS root) before retiring one — got $SLOT_SIGNATURE_COUNT_BEFORE; update the harness fixtures." >&2
+  exit 1
+fi
+# Retire the FIRST occurrence only — sudoku's row, which appears before
+# minesweeper's identical-looking row in the SLOTS table (sudoku's app
+# context is declared first under "iphone-6.9"). Deleting by line number
+# (not a text substitution) is what guarantees we remove exactly one row,
+# since the two rows' Slot() text is byte-identical.
+SLOT_LINE="$(grep -nF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py | head -1 | cut -d: -f1)"
+if [[ -z "$SLOT_LINE" ]]; then
+  echo "ERROR [test/store_frame_drift]: could not locate the 01-home Slot() line to retire — update the harness fixtures." >&2
+  exit 1
+fi
+sed -i.bak "${SLOT_LINE}d" scripts/build-ascspec-screenshots.py
+rm -f scripts/build-ascspec-screenshots.py.bak
+SLOT_SIGNATURE_COUNT_AFTER="$(grep -cF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py || true)"
+if [[ "$SLOT_SIGNATURE_COUNT_AFTER" -ne 1 ]]; then
+  echo "ERROR [test/store_frame_drift]: expected exactly 1 copy of the 01-home Slot() signature to remain (minesweeper's) after retiring sudoku's — got $SLOT_SIGNATURE_COUNT_AFTER; update the harness fixtures." >&2
+  exit 1
+fi
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do git rm -q "$(slot_a_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: slot-retired"
+run_gate
+check_result "slot-retired" 0 "$GATE_EXIT" "$GATE_OUTPUT"
+
+# ── Case 13: deleted-frames-partial (#1112) ──────────────────────────────────
+# Baseline A drifts; 6 of 7 locale frames are honestly regenerated, but the
+# th frame is `git rm`'d instead of regenerated — the gate must flag
+# exactly th as stale (with the deleted annotation) and must NOT flag any
+# of the 6 honestly-regenerated locales.
+git checkout -q -b test/deleted-frames-partial main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do
+  [[ "$loc" == "th" ]] && continue
+  mutate "$(slot_a_frame "$loc")"
+done
+git rm -q "$(slot_a_frame "th")"
+git add -A
+git commit -q --no-gpg-sign -m "case: deleted-frames-partial"
+run_gate
+check_result "deleted-frames-partial" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png" "deleted in this diff" "!missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/en/01-home.png"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo
