@@ -1,16 +1,14 @@
 // BoardViewTests — 12 snapshots + Mac keyboard + A11y dump.
 //
-// Snapshots use the test seam `GameViewModel(identity:board:...)` to bypass
-// the GameSession actor and render deterministic states. Three locale axes
-// (ja, ko, zh-TW) are LAYOUT probes, not translation checks — UI strings stay
-// English in a headless host; see `hostingView`'s `locale` note and #977.
+// Snapshots use the test seam `GameViewModel(identity:board:...)` to bypass the GameSession actor and render deterministic states. Three locale
+// axes (ja, ko, zh-TW) are LAYOUT probes, not translation checks — UI strings stay English in a headless host; see `hostingView`'s `locale` note and #977.
 
 import Foundation
+import GameShellUI
 import SnapshotTesting
 import SwiftUI
 import Testing
 @testable import SudokuUI
-
 import SudokuGameState
 import SudokuPersistence
 import SudokuEngine
@@ -165,7 +163,9 @@ struct BoardViewTests {
             selection: GridCoordinate(row: 4, column: 4),
             elapsedSeconds: 201
         )
-        let host = hostingView(adFreeBoard(viewModel), size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
+        // #1105: inject iPad rule — un-injected defaults to `.cappedDetailPane` on this macOS host.
+        let host = hostingView(adFreeBoard(viewModel).environment(\.regularBoardContainer, .fillsColumn),
+            size: SnapshotLayouts.iPad, colorScheme: .light, sizeClass: .regular)
         withSnapshotTesting(record: SnapshotMode.recordMode) {
             assertSnapshot(of: host, as: .image, named: "Board-iPad-light-inProgress")
         }
