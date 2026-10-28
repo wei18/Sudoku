@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-#MISE description="ASC frame drift proxy gate (#1001): fail a PR that changes a snapshot baseline feeding a Slot() — or a live-simulator capture feeding a CaptureSlot() (#1054) — in scripts/build-ascspec-screenshots.py without touching docs/app-store/screenshots-ascspec/ in the same PR. Pure git/grep — no Python, no Pillow, no fonts, runs on ubuntu-latest. The real regenerate-and-diff check needs macOS system fonts (see script header) and can't run there."
+#MISE description="ASC frame drift gate (#1001/#1112): fail a PR that changes a snapshot baseline feeding a Slot() — or a live-simulator capture feeding a CaptureSlot() (#1054) — in scripts/build-ascspec-screenshots.py without regenerating EVERY docs/app-store/screenshots-ascspec/ frame that baseline feeds (a Slot() feeds every locale; a CaptureSlot() feeds only its own locale). Pure git/grep — no Python, no Pillow, no fonts, runs on ubuntu-latest. The real regenerate-and-diff check needs macOS system fonts (see script header) and can't run there."
 #USAGE flag "--base <ref>" help="Base ref to diff against (default: origin/main, falling back to main)"
-#USAGE flag "--list" help="Print the derived baseline -> slot mapping and exit 0 (no gate check)" default="false"
+#USAGE flag "--list" help="Print the derived baseline -> slot -> locale mapping and exit 0 (no gate check)" default="false"
 #
 # What this catches (and does not):
-#   Catches exactly the #995/#998 failure mode: a committed snapshot baseline
-#   that FEEDS a Slot() in the ASC-spec generator changes, but no file under
-#   docs/app-store/screenshots-ascspec/ changes in the same PR — i.e. someone
-#   moved a baseline and forgot (or partially forgot, #998) to regenerate.
+#   Catches the #995/#998/#1112 failure mode: a committed snapshot baseline
+#   (or live capture, #1054) that FEEDS a Slot()/CaptureSlot() changes, but
+#   not every frame it feeds under docs/app-store/screenshots-ascspec/ gets
+#   regenerated in the same PR — whether that's the wrong slot entirely
+#   (#1112), or only some locales (#998). Checked per (device, app, slot,
+#   locale), not "did ANY file under screenshots-ascspec/ change". A frame
+#   that doesn't exist at HEAD yet (a locale the generator SKIPPED-NO-COPY)
+#   is never required.
 #
 #   Does NOT verify pixel equality between the regenerated frame and the
 #   committed one — that needs the actual generator, which needs macOS system
@@ -104,7 +108,8 @@ if [[ -z "$TOKENS" ]]; then
   exit 1
 fi
 
-# rows: device<TAB>app<TAB>slot_name<TAB>baseline_relpath (one per Slot()).
+# rows: device<TAB>app<TAB>slot_name<TAB>baseline_relpath<TAB>locale (one per
+# Slot(), locale "*"; one per locale per CaptureSlot(), locale that locale).
 ROWS=""
 device=""
 app=""
@@ -129,7 +134,8 @@ while IFS= read -r tok; do
         minesweeper)  baselines_root="$BASELINES_MS_REL" ;;
       esac
       baseline_relpath="${baselines_root}/${suite_dir}/${prefix}.${named}.png"
-      ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\n'
+      # locale "*" — one baseline feeds every locale's frame (#1112).
+      ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\t'"*"$'\n'
       ;;
     CaptureSlot\(*)
       # #1054: CaptureSlot("name", "rel/path/{locale}/template.png") — 2 args,
@@ -149,7 +155,9 @@ while IFS= read -r tok; do
       slot_name="${args[0]}"; rel_template="${args[1]}"
       for loc in "${ALL_LOCALES[@]}"; do
         baseline_relpath="${rel_template//\{locale\}/$loc}"
-        ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\n'
+        # locale is this row's own locale — a capture only feeds its own
+        # locale's frame, unlike a Slot() baseline (locale "*" above).
+        ROWS+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"$'\t'"${loc}"$'\n'
       done
       ;;
     \"*\":\ \{)
@@ -175,10 +183,10 @@ if [[ -z "$ROWS" ]]; then
 fi
 
 if [[ "$LIST_ONLY" -eq 1 ]]; then
-  printf '%-11s %-13s %-11s %s\n' DEVICE APP SLOT BASELINE
-  echo "$ROWS" | sort | while IFS=$'\t' read -r device app slot_name baseline_relpath; do
+  printf '%-11s %-13s %-11s %-180s %s\n' DEVICE APP SLOT BASELINE LOCALE
+  echo "$ROWS" | sort | while IFS=$'\t' read -r device app slot_name baseline_relpath locale; do
     [[ -z "$device" ]] && continue
-    printf '%-11s %-13s %-11s %s\n' "$device" "$app" "$slot_name" "$baseline_relpath"
+    printf '%-11s %-13s %-11s %-180s %s\n' "$device" "$app" "$slot_name" "$baseline_relpath" "$locale"
   done
   exit 0
 fi
@@ -201,12 +209,17 @@ if ! MERGE_BASE="$(git merge-base HEAD "$BASE_REF" 2>&1)"; then
 fi
 
 CHANGED="$(git diff --name-only "$MERGE_BASE" HEAD)"
+# #1112 follow-up: CHANGED includes deleted paths (a frame that was `git rm`'d
+# still shows up in --name-only). The per-frame freshness check below must
+# tell "regenerated/added" apart from "deleted" rather than treating any
+# diff-mentioned path as fresh, so it needs the present-at-HEAD subset too
+# (--diff-filter=d excludes deletions).
+CHANGED_PRESENT="$(git diff --name-only --diff-filter=d "$MERGE_BASE" HEAD)"
 
-# ── Cross-reference: which changed files are MAPPED baselines? ───────────────
-# (No associative arrays — macOS system bash is 3.2, which predates them;
-# `slots_for_baseline` below just re-scans ROWS, which is ~30 rows.)
+# ── Cross-reference: which changed files are MAPPED baselines/captures? ─────
+# (No associative arrays — macOS system bash is 3.2, which predates them.)
 CHANGED_MAPPED=""
-while IFS=$'\t' read -r device app slot_name baseline_relpath; do
+while IFS=$'\t' read -r device app slot_name baseline_relpath locale; do
   [[ -z "$baseline_relpath" ]] && continue
   if grep -qxF "$baseline_relpath" <<<"$CHANGED"; then
     CHANGED_MAPPED+="${baseline_relpath}"$'\n'
@@ -214,24 +227,86 @@ while IFS=$'\t' read -r device app slot_name baseline_relpath; do
 done <<<"$ROWS"
 CHANGED_MAPPED="$(printf '%s' "$CHANGED_MAPPED" | sort -u | sed '/^$/d')"
 
-slots_for_baseline() {
-  local target="$1" device app slot_name baseline_relpath out=""
-  while IFS=$'\t' read -r device app slot_name baseline_relpath; do
-    [[ "$baseline_relpath" == "$target" ]] || continue
-    if [[ -n "$out" ]]; then out+=", ${device}/${app}/${slot_name}"; else out="${device}/${app}/${slot_name}"; fi
-  done <<<"$ROWS"
-  printf '%s' "$out"
-}
-
-CHANGED_ASCSPEC="$(grep -F "$ASCSPEC_PREFIX" <<<"$CHANGED" || true)"
-
-if [[ -z "$CHANGED_MAPPED" || -n "$CHANGED_ASCSPEC" ]]; then
+if [[ -z "$CHANGED_MAPPED" ]]; then
   echo "PASS [store_frame_drift]: no mapped baseline drifted from docs/app-store/screenshots-ascspec/."
-  if [[ -n "$CHANGED_MAPPED" ]]; then
-    echo "  (mapped baseline(s) changed, but screenshots-ascspec/ changed too in this PR — regeneration assumed covered.)"
-  fi
   exit 0
 fi
+
+# ── Per-slot, per-locale check (#1112) ───────────────────────────────────────
+# "Any file under screenshots-ascspec/ changed" is not enough — it's blind to
+# the wrong slot being regenerated instead (#1112), to a partial-locale
+# regeneration (#998), and to the frame being `git rm`'d outright instead of
+# regenerated (also #1112 — a deleted frame still passes "HEAD:${frame}
+# doesn't exist, so skip" if that's read as "never generated"). For every
+# changed baseline/capture, expand EVERY frame it feeds (a Slot's locale "*"
+# means every ALL_LOCALES entry; a CaptureSlot row already names its own
+# locale) and classify each expected frame by existence at HEAD vs at
+# MERGE_BASE:
+#   1. missing at both HEAD and MERGE_BASE  -> skip (the generator
+#      SKIPPED-NO-COPY this locale; there was never a frame to regenerate).
+#   2. present at HEAD and present (non-deleted) in this diff -> fresh,
+#      whether regenerated or newly added.
+#   3. anything else (present at HEAD but untouched by the diff, OR present
+#      at MERGE_BASE but deleted at HEAD) -> STALE. The deleted-at-HEAD case
+#      is flagged "(deleted in this diff)" so a reviewer can tell a dropped
+#      frame apart from a plain stale one.
+STALE=""
+while IFS= read -r changed_baseline; do
+  [[ -z "$changed_baseline" ]] && continue
+  while IFS=$'\t' read -r device app slot_name row_baseline locale; do
+    [[ "$row_baseline" == "$changed_baseline" ]] || continue
+    if [[ "$locale" == "*" ]]; then
+      locales_to_check=("${ALL_LOCALES[@]}")
+    else
+      locales_to_check=("$locale")
+    fi
+    for loc in "${locales_to_check[@]}"; do
+      frame="${ASCSPEC_PREFIX}${app}/${device}/${loc}/${slot_name}.png"
+      head_exists=0
+      git cat-file -e "HEAD:${frame}" 2>/dev/null && head_exists=1
+      base_exists=0
+      git cat-file -e "${MERGE_BASE}:${frame}" 2>/dev/null && base_exists=1
+      # Rule 1: never existed on either side (SKIPPED-NO-COPY locale) — skip.
+      [[ "$head_exists" -eq 0 && "$base_exists" -eq 0 ]] && continue
+      # Rule 2: present at HEAD and present (not deleted) in the diff — fresh.
+      if [[ "$head_exists" -eq 1 ]] && grep -qxF "$frame" <<<"$CHANGED_PRESENT"; then
+        continue
+      fi
+      # Rule 3: everything else is STALE — including a frame that existed at
+      # MERGE_BASE but was deleted at HEAD (annotated below), which `grep`ing
+      # CHANGED alone would have mistaken for "regenerated".
+      frame_entry="$frame"
+      if [[ "$head_exists" -eq 0 && "$base_exists" -eq 1 ]]; then
+        frame_entry="${frame}  (deleted in this diff)"
+      fi
+      # Ordered device/app/slot/baseline/frame so a plain sort groups every
+      # stale frame under its (device, app, slot, baseline) block below.
+      STALE+="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${changed_baseline}"$'\t'"${frame_entry}"$'\n'
+    done
+  done <<<"$ROWS"
+done <<<"$CHANGED_MAPPED"
+STALE="$(printf '%s' "$STALE" | sort -u | sed '/^$/d')"
+
+if [[ -z "$STALE" ]]; then
+  echo "PASS [store_frame_drift]: every store frame fed by a changed baseline was regenerated in this diff."
+  exit 0
+fi
+
+# One block per (device, app, slot, baseline): a header line naming the slot
+# and the baseline that changed, then one "missing: <path>" line per stale
+# frame — copy-paste-able, never comma-joined.
+print_stale_blocks() {
+  local prev_key="" device app slot_name baseline_relpath frame key
+  while IFS=$'\t' read -r device app slot_name baseline_relpath frame; do
+    [[ -z "$device" ]] && continue
+    key="${device}"$'\t'"${app}"$'\t'"${slot_name}"$'\t'"${baseline_relpath}"
+    if [[ "$key" != "$prev_key" ]]; then
+      echo "  - ${device}/${app}/${slot_name}  (baseline changed: ${baseline_relpath})"
+      prev_key="$key"
+    fi
+    echo "      missing: ${frame}"
+  done <<<"$STALE"
+}
 
 # ── Escape hatch ──────────────────────────────────────────────────────────────
 ESCAPE_REASON=""
@@ -244,31 +319,30 @@ elif TRAILER="$(git log --format=%B "${MERGE_BASE}..HEAD" | grep -iE '^Frame-Dri
 fi
 
 if [[ -n "$ESCAPE_REASON" ]]; then
-  echo "WARN [store_frame_drift]: mapped baseline(s) changed without a screenshots-ascspec/ update, but the escape hatch was used ($ESCAPE_REASON) — passing."
-  while IFS= read -r baseline_relpath; do
-    [[ -z "$baseline_relpath" ]] && continue
-    echo "  - $baseline_relpath"
-  done <<<"$CHANGED_MAPPED"
+  echo "WARN [store_frame_drift]: mapped baseline(s) changed without regenerating every frame they feed, but the escape hatch was used ($ESCAPE_REASON) — passing."
+  echo
+  echo "Stale slot(s) the escape hatch is covering for — review these before approving:"
+  print_stale_blocks
   exit 0
 fi
 
 {
-  echo "FAIL [store_frame_drift]: mapped snapshot baseline(s) changed without a matching update under docs/app-store/screenshots-ascspec/ (the #995/#998 failure mode)."
+  echo "FAIL [store_frame_drift]: mapped snapshot baseline(s) changed without regenerating every store frame they feed (the #995/#998/#1112 failure mode)."
   echo
-  echo "Changed baseline(s) and the store slot(s) they feed:"
-  while IFS= read -r baseline_relpath; do
-    [[ -z "$baseline_relpath" ]] && continue
-    echo "  - $baseline_relpath"
-    echo "      feeds: $(slots_for_baseline "$baseline_relpath")"
-  done <<<"$CHANGED_MAPPED"
+  echo "Stale frame(s) — not updated in this diff:"
+  print_stale_blocks
   echo
-  echo "Fix: on macOS (the generator needs system fonts not present on this runner), run"
-  echo "    python3 scripts/build-ascspec-screenshots.py"
-  echo "  then commit the regenerated PNGs under docs/app-store/screenshots-ascspec/."
-  echo
-  echo "Escape hatch, only if this baseline change genuinely does not alter any ASC"
-  echo "frame (e.g. an unrelated test refactor produced byte-identical pixels): add"
-  echo "the PR label 'frame-drift-verified', or add a commit-message trailer:"
-  echo "    Frame-Drift-Verified: <why the frame doesn't need regenerating>"
+  echo "Fix — one of the following:"
+  echo "  (a) Regenerate: on macOS (the generator needs system fonts not present"
+  echo "      on this runner), run"
+  echo "          python3 scripts/build-ascspec-screenshots.py"
+  echo "      then commit every \"missing:\" frame listed above under"
+  echo "      docs/app-store/screenshots-ascspec/."
+  echo "  (b) Escape hatch — only if regenerating produces a byte-identical frame"
+  echo "      (the compositor can absorb a small baseline change, e.g. an"
+  echo "      unrelated test refactor, with no visible pixel difference, so"
+  echo "      there is nothing to commit): add the PR label 'frame-drift-verified',"
+  echo "      or add a commit-message trailer:"
+  echo "          Frame-Drift-Verified: <why the frame doesn't need regenerating>"
 } >&2
 exit 1

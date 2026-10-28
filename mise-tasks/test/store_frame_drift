@@ -1,0 +1,400 @@
+#!/usr/bin/env bash
+#MISE description="Self-test for the store frame-drift gate (#1112): drives mise-tasks/scan/store_frame_drift with real git commits in a disposable repo, covering per-slot and per-locale drift (not just per-diff) plus both escape hatches. Pure bash + git — no Python, no Pillow, no simulator."
+#USAGE flag "--gate <path>" help="Gate script to test (default: mise-tasks/scan/store_frame_drift in this repo)"
+#
+# Why this exists:
+#   store_frame_drift (#1001) must catch a drifted baseline/capture that
+#   isn't matched by a regenerated frame for the SAME slot and locale it
+#   feeds — "any file under docs/app-store/screenshots-ascspec/ changed" is
+#   not enough, since that's blind to the wrong slot being regenerated
+#   instead (#1112) or to a partial-locale regeneration (#998).
+#
+#   This harness seeds a disposable git repo with a copy of
+#   scripts/build-ascspec-screenshots.py and placeholder fixture files for
+#   every baseline/capture + frame the SLOTS table maps, then makes real
+#   commits reproducing specific drift scenarios and runs the gate against
+#   each one.
+#
+# Expected result against the current gate: all 13 cases PASS, exit 0. Run
+# with --gate pointing at an older (pre-#1112) copy of the gate to confirm
+# cases 1-3, 11, and 13 FAIL instead (case 12 stays PASS even on an older
+# gate — it's a sanity check for an honest slot retirement, not a
+# regression probe) — that regression is exactly what this harness exists
+# to catch.
+#
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+GENERATOR="$REPO_ROOT/scripts/build-ascspec-screenshots.py"
+GATE="$REPO_ROOT/mise-tasks/scan/store_frame_drift"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --gate) GATE="$2"; shift 2 ;;
+    -h|--help) sed -n '2,3p' "$0" | sed 's/^#MISE[^=]*=//; s/^#USAGE[^=]*=//; s/^"//; s/"$//'; exit 0 ;;
+    *) echo "error: unknown argument '$1'" >&2; exit 1 ;;
+  esac
+done
+
+case "$GATE" in
+  /*) : ;;
+  *) GATE="$REPO_ROOT/$GATE" ;;
+esac
+
+if [[ ! -f "$GATE" ]]; then
+  echo "ERROR [test/store_frame_drift]: gate script not found at $GATE" >&2
+  exit 1
+fi
+if [[ ! -f "$GENERATOR" ]]; then
+  echo "ERROR [test/store_frame_drift]: generator not found at $GENERATOR" >&2
+  exit 1
+fi
+
+# ── Build the disposable repo ────────────────────────────────────────────────
+TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/store-frame-drift-harness.XXXXXX")"
+# shellcheck disable=SC2329  # invoked indirectly via the trap below
+cleanup() { rm -rf "$TMP_REPO"; }
+trap cleanup EXIT
+
+git init -q "$TMP_REPO"
+git -C "$TMP_REPO" symbolic-ref HEAD refs/heads/main
+git -C "$TMP_REPO" config user.name "Frame Drift Harness"
+git -C "$TMP_REPO" config user.email "harness@example.invalid"
+git -C "$TMP_REPO" config commit.gpgsign false
+
+mkdir -p "$TMP_REPO/scripts"
+cp "$GENERATOR" "$TMP_REPO/scripts/build-ascspec-screenshots.py"
+
+cd "$TMP_REPO"
+
+# ── Parse LOCALES the same way the gate does ─────────────────────────────────
+LOCALES_RAW="$(grep -E '^LOCALES = \[' scripts/build-ascspec-screenshots.py | sed -E 's/^LOCALES = \[(.*)\]/\1/' | tr -d '"' | tr ',' ' ')"
+read -r -a ALL_LOCALES <<<"$LOCALES_RAW"
+if [[ ${#ALL_LOCALES[@]} -eq 0 ]]; then
+  echo "ERROR [test/store_frame_drift]: could not parse LOCALES out of the generator — harness needs updating." >&2
+  exit 1
+fi
+th_found=0
+for loc in "${ALL_LOCALES[@]}"; do
+  [[ "$loc" == "th" ]] && th_found=1
+done
+if [[ "$th_found" -eq 0 ]]; then
+  echo "ERROR [test/store_frame_drift]: locale 'th' not in parsed LOCALES — update the harness fixtures (partial-locale case)." >&2
+  exit 1
+fi
+
+# ── Derive the baseline/capture -> (device, app, slot) mapping via --list ────
+LIST_OUTPUT="$(bash "$GATE" --list)"
+ROWS_BODY="$(tail -n +2 <<<"$LIST_OUTPUT")"
+if [[ -z "$ROWS_BODY" ]]; then
+  echo "ERROR [test/store_frame_drift]: gate --list produced no rows." >&2
+  exit 1
+fi
+NORM_ROWS="$(awk '{print $1, $2, $3, $4}' <<<"$ROWS_BODY")"
+
+require_line() {
+  local line="$1" desc="$2"
+  if ! grep -qxF "$line" <<<"$NORM_ROWS"; then
+    echo "ERROR [test/store_frame_drift]: SLOTS table changed — update the harness fixtures ($desc not found via --list)." >&2
+    exit 1
+  fi
+}
+require_prefix() {
+  local prefix="$1" desc="$2"
+  if ! grep -qE "^${prefix}" <<<"$NORM_ROWS"; then
+    echo "ERROR [test/store_frame_drift]: SLOTS table changed — update the harness fixtures ($desc not found via --list)." >&2
+    exit 1
+  fi
+}
+
+BASELINE_A="Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/ProgressScreenTests/snapshotStoreIPhoneLight.ProgressScreen-iPhone-light-store.png"
+CAPTURE_C="docs/app-store/captures/minesweeper/iphone-6.9/ja/03-board.png"
+UNMAPPED_BASELINE="Packages/SudokuKit/Tests/SudokuUITests/__Snapshots__/UnmappedTests/unmapped.png"
+
+require_line "iphone-6.9 sudoku 01-home ${BASELINE_A}" "baseline A (iphone-6.9/sudoku/01-home)"
+require_prefix "iphone-6\\.9 sudoku 02-daily " "slot B (iphone-6.9/sudoku/02-daily)"
+require_line "iphone-6.9 minesweeper 03-board ${CAPTURE_C}" "capture C (iphone-6.9/minesweeper/03-board ja)"
+
+# ── Seed fixture files: one per watched baseline/capture row, and 7 per-locale
+#    frames per (device, app, slot) triple that --list derived. ─────────────
+SLOT_TRIPLES="$(awk '{print $1, $2, $3}' <<<"$ROWS_BODY" | sort -u)"
+BASELINE_PATHS="$(awk '{print $4}' <<<"$ROWS_BODY" | sort -u)"
+
+while IFS= read -r relpath; do
+  [[ -z "$relpath" ]] && continue
+  mkdir -p "$(dirname "$relpath")"
+  printf 'fixture baseline source: %s\n' "$relpath" > "$relpath"
+done <<<"$BASELINE_PATHS"
+
+while IFS=' ' read -r device app slot; do
+  [[ -z "$device" ]] && continue
+  for loc in "${ALL_LOCALES[@]}"; do
+    framepath="docs/app-store/screenshots-ascspec/${app}/${device}/${loc}/${slot}.png"
+    mkdir -p "$(dirname "$framepath")"
+    printf 'fixture frame: %s %s %s %s\n' "$device" "$app" "$slot" "$loc" > "$framepath"
+  done
+done <<<"$SLOT_TRIPLES"
+
+# A baseline deliberately absent from the SLOTS table, for the
+# unmapped-baseline case.
+mkdir -p "$(dirname "$UNMAPPED_BASELINE")"
+printf 'fixture baseline source: %s (deliberately unmapped)\n' "$UNMAPPED_BASELINE" > "$UNMAPPED_BASELINE"
+
+git add -A
+git commit -q --no-gpg-sign -m "fixture: seed baselines, captures, and ascspec frames for every SLOTS entry"
+
+# ── Case helpers ──────────────────────────────────────────────────────────────
+PASS_COUNT=0
+FAIL_COUNT=0
+
+mutate() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  printf '# drift\n' >> "$path"
+}
+
+slot_a_frame() { printf 'docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/%s/01-home.png' "$1"; }
+slot_b_frame() { printf 'docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/%s/02-daily.png' "$1"; }
+CAPTURE_C_FRAME_JA="docs/app-store/screenshots-ascspec/minesweeper/iphone-6.9/ja/03-board.png"
+
+check_result() {
+  # check_result <name> <expected_exit> <actual_exit> <output> [needle ...]
+  # A needle prefixed with "!" must be ABSENT from the output instead.
+  local name="$1" expected_exit="$2" actual_exit="$3" output="$4"
+  shift 4
+  local ok=1
+  if [[ "$actual_exit" -ne "$expected_exit" ]]; then
+    ok=0
+  fi
+  local needle
+  for needle in "$@"; do
+    case "$needle" in
+      '!'*)
+        if grep -qF -- "${needle#!}" <<<"$output"; then
+          ok=0
+        fi
+        ;;
+      *)
+        if ! grep -qF -- "$needle" <<<"$output"; then
+          ok=0
+        fi
+        ;;
+    esac
+  done
+  if [[ "$ok" -eq 1 ]]; then
+    echo "PASS $name"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo "FAIL $name (expected exit $expected_exit, got $actual_exit)"
+    echo "  --- gate output ---"
+    while IFS= read -r line; do
+      echo "  $line"
+    done <<<"$output"
+    echo "  --- end gate output ---"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+
+run_gate() {
+  set +e
+  GATE_OUTPUT="$(bash "$GATE" --base main 2>&1)"
+  GATE_EXIT=$?
+  set -e
+}
+
+run_gate_with_label() {
+  set +e
+  GATE_OUTPUT="$(FRAME_DRIFT_LABEL_OVERRIDE=1 bash "$GATE" --base main 2>&1)"
+  GATE_EXIT=$?
+  set -e
+}
+
+# ── Case 1: cross-slot-snapshot (#1112) ──────────────────────────────────────
+# Baseline A drifts, but only slot B's frames get regenerated. The gate's
+# "any ascspec/ path changed" check is satisfied by an unrelated slot.
+git checkout -q -b test/cross-slot-snapshot main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: cross-slot-snapshot"
+run_gate
+check_result "cross-slot-snapshot" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/en/01-home.png" "Frame-Drift-Verified:"
+
+# ── Case 2: cross-slot-capture ───────────────────────────────────────────────
+# Same shape, but the drifted source is a live-simulator capture (#1054)
+# instead of a snapshot baseline.
+git checkout -q -b test/cross-slot-capture main
+mutate "$CAPTURE_C"
+for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: cross-slot-capture"
+run_gate
+check_result "cross-slot-capture" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/minesweeper/03-board" "minesweeper/iphone-6.9/ja/03-board.png" "!minesweeper/iphone-6.9/en/03-board.png"
+
+# ── Case 3: partial-locale (#998) ────────────────────────────────────────────
+# Baseline A drifts, slot A's frames get regenerated for every locale except
+# th — a partial regeneration the "any file under ascspec/ changed" check
+# cannot see.
+git checkout -q -b test/partial-locale main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do
+  [[ "$loc" == "th" ]] && continue
+  mutate "$(slot_a_frame "$loc")"
+done
+git add -A
+git commit -q --no-gpg-sign -m "case: partial-locale"
+run_gate
+check_result "partial-locale" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png"
+
+# ── Case 4: honest-snapshot ──────────────────────────────────────────────────
+# Baseline A drifts and slot A's frames are regenerated for all 7 locales —
+# the gate should pass this legitimately.
+git checkout -q -b test/honest-snapshot main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_a_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: honest-snapshot"
+run_gate
+check_result "honest-snapshot" 0 "$GATE_EXIT" "$GATE_OUTPUT"
+
+# ── Case 5: honest-capture ───────────────────────────────────────────────────
+# Capture C (ja) drifts and only its own ja frame is regenerated — correct,
+# since a capture-sourced slot genuinely localizes per #1054.
+git checkout -q -b test/honest-capture main
+mutate "$CAPTURE_C"
+mutate "$CAPTURE_C_FRAME_JA"
+git add -A
+git commit -q --no-gpg-sign -m "case: honest-capture"
+run_gate
+check_result "honest-capture" 0 "$GATE_EXIT" "$GATE_OUTPUT"
+
+# ── Case 6: unmapped-baseline ────────────────────────────────────────────────
+# A baseline the SLOTS table never references drifts — no frame regeneration
+# is required at all.
+git checkout -q -b test/unmapped-baseline main
+mutate "$UNMAPPED_BASELINE"
+git add -A
+git commit -q --no-gpg-sign -m "case: unmapped-baseline"
+run_gate
+check_result "unmapped-baseline" 0 "$GATE_EXIT" "$GATE_OUTPUT"
+
+# ── Case 7: no-frames (#995) ─────────────────────────────────────────────────
+# Baseline A drifts and nothing under ascspec/ changes at all — the
+# straightforward case the gate was built to catch.
+git checkout -q -b test/no-frames main
+mutate "$BASELINE_A"
+git add -A
+git commit -q --no-gpg-sign -m "case: no-frames"
+run_gate
+check_result "no-frames" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home"
+
+# ── Case 8: escape-trailer ───────────────────────────────────────────────────
+# Same diff as no-frames, but the commit carries a Frame-Drift-Verified
+# trailer.
+git checkout -q -b test/escape-trailer main
+mutate "$BASELINE_A"
+git add -A
+git commit -q --no-gpg-sign -m "case: escape-trailer" -m "Frame-Drift-Verified: harness"
+run_gate
+check_result "escape-trailer" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN"
+
+# ── Case 9: escape-label ─────────────────────────────────────────────────────
+# Same diff as no-frames, escaped via FRAME_DRIFT_LABEL_OVERRIDE=1 instead of
+# a commit trailer.
+git checkout -q -b test/escape-label main
+mutate "$BASELINE_A"
+git add -A
+git commit -q --no-gpg-sign -m "case: escape-label"
+run_gate_with_label
+check_result "escape-label" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN"
+
+# ── Case 10: escape-trailer-cross-slot ───────────────────────────────────────
+# Same diff as cross-slot-snapshot (case 1), but with the escape-hatch
+# trailer. Under the per-slot gate, baseline A's own slot (01-home) is
+# stale regardless of slot B's frames changing, so this diff now genuinely
+# reaches the escape-hatch branch — confirming the hatch still works for a
+# cross-slot diff, not just the plain no-frames shape.
+git checkout -q -b test/escape-trailer-cross-slot main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do mutate "$(slot_b_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: escape-trailer-cross-slot" -m "Frame-Drift-Verified: harness"
+run_gate
+check_result "escape-trailer-cross-slot" 0 "$GATE_EXIT" "$GATE_OUTPUT" "WARN" "iphone-6.9/sudoku/01-home"
+
+# ── Case 11: deleted-frames (#1112) ──────────────────────────────────────────
+# Baseline A drifts, and every frame it feeds is `git rm`'d instead of
+# regenerated — the shape a gate that reads "HEAD:${frame} doesn't exist" as
+# "generator never produced it" would wrongly pass, since deleting the frame
+# makes it look like a locale the generator SKIPPED-NO-COPY.
+git checkout -q -b test/deleted-frames main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do git rm -q "$(slot_a_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: deleted-frames"
+run_gate
+check_result "deleted-frames" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png" "deleted in this diff"
+
+# ── Case 12: slot-retired ────────────────────────────────────────────────────
+# Honest slot retirement: deleting the Slot() line itself out of the
+# generator's SLOTS table (not just letting a baseline drift) means the
+# mapping no longer requires those frames at all — a legitimate "we dropped
+# this screen" diff must not be blocked, even though baseline A still
+# drifts and its old frames are all gone too. The gate reads the mapping
+# from the checked-out working tree's generator (== HEAD in CI), so once
+# HEAD no longer has this Slot(), its baseline isn't "mapped" any more.
+git checkout -q -b test/slot-retired main
+SLOT_SIGNATURE='Slot("01-home", "ProgressScreenTests", "ProgressScreen-iPhone-light-store", "snapshotStoreIPhoneLight"),'
+SLOT_SIGNATURE_COUNT_BEFORE="$(grep -cF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py || true)"
+if [[ "$SLOT_SIGNATURE_COUNT_BEFORE" -ne 2 ]]; then
+  echo "ERROR [test/store_frame_drift]: expected 2 copies of the 01-home Slot() signature (sudoku's iphone-6.9 row and minesweeper's, which share identical Slot() arguments and differ only by their BASELINES_SUDOKU/BASELINES_MS root) before retiring one — got $SLOT_SIGNATURE_COUNT_BEFORE; update the harness fixtures." >&2
+  exit 1
+fi
+# Retire the FIRST occurrence only — sudoku's row, which appears before
+# minesweeper's identical-looking row in the SLOTS table (sudoku's app
+# context is declared first under "iphone-6.9"). Deleting by line number
+# (not a text substitution) is what guarantees we remove exactly one row,
+# since the two rows' Slot() text is byte-identical.
+SLOT_LINE="$(grep -nF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py | head -1 | cut -d: -f1)"
+if [[ -z "$SLOT_LINE" ]]; then
+  echo "ERROR [test/store_frame_drift]: could not locate the 01-home Slot() line to retire — update the harness fixtures." >&2
+  exit 1
+fi
+sed -i.bak "${SLOT_LINE}d" scripts/build-ascspec-screenshots.py
+rm -f scripts/build-ascspec-screenshots.py.bak
+SLOT_SIGNATURE_COUNT_AFTER="$(grep -cF "$SLOT_SIGNATURE" scripts/build-ascspec-screenshots.py || true)"
+if [[ "$SLOT_SIGNATURE_COUNT_AFTER" -ne 1 ]]; then
+  echo "ERROR [test/store_frame_drift]: expected exactly 1 copy of the 01-home Slot() signature to remain (minesweeper's) after retiring sudoku's — got $SLOT_SIGNATURE_COUNT_AFTER; update the harness fixtures." >&2
+  exit 1
+fi
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do git rm -q "$(slot_a_frame "$loc")"; done
+git add -A
+git commit -q --no-gpg-sign -m "case: slot-retired"
+run_gate
+check_result "slot-retired" 0 "$GATE_EXIT" "$GATE_OUTPUT"
+
+# ── Case 13: deleted-frames-partial (#1112) ──────────────────────────────────
+# Baseline A drifts; 6 of 7 locale frames are honestly regenerated, but the
+# th frame is `git rm`'d instead of regenerated — the gate must flag
+# exactly th as stale (with the deleted annotation) and must NOT flag any
+# of the 6 honestly-regenerated locales.
+git checkout -q -b test/deleted-frames-partial main
+mutate "$BASELINE_A"
+for loc in "${ALL_LOCALES[@]}"; do
+  [[ "$loc" == "th" ]] && continue
+  mutate "$(slot_a_frame "$loc")"
+done
+git rm -q "$(slot_a_frame "th")"
+git add -A
+git commit -q --no-gpg-sign -m "case: deleted-frames-partial"
+run_gate
+check_result "deleted-frames-partial" 1 "$GATE_EXIT" "$GATE_OUTPUT" "iphone-6.9/sudoku/01-home" "missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/th/01-home.png" "deleted in this diff" "!missing: docs/app-store/screenshots-ascspec/sudoku/iphone-6.9/en/01-home.png"
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo
+echo "Summary: $PASS_COUNT passed, $FAIL_COUNT failed (of $((PASS_COUNT + FAIL_COUNT)))"
+if [[ "$FAIL_COUNT" -gt 0 ]]; then
+  exit 1
+fi
+exit 0
