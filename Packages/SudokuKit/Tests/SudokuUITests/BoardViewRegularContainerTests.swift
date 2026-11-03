@@ -1,6 +1,6 @@
 // BoardViewRegularContainerTests — pins BoardView's regular-width container
 // mapping (#1105), mirroring MinesweeperKit's `RegularBoardContainerTests`
-// for the Sudoku-specific numbers (960/640 outer/board caps, center/topLeading
+// for the Sudoku-specific numbers (960/640 outer/board caps, center/leading
 // board alignment).
 
 import GameShellUI
@@ -17,15 +17,21 @@ struct BoardViewRegularContainerTests {
         #expect(BoardView.regularOuterMaxWidth(for: .fillsColumn) == .infinity)
     }
 
-    @Test("regularBoardMaxSide maps cappedDetailPane to 640 and fillsColumn to infinity")
-    func regularBoardMaxSideMapsPerContainer() {
-        #expect(BoardView.regularBoardMaxSide(for: .cappedDetailPane) == 640)
-        #expect(BoardView.regularBoardMaxSide(for: .fillsColumn) == .infinity)
+    @Test("regularBoardMaxWidth maps cappedDetailPane to 640 and fillsColumn to infinity")
+    func regularBoardMaxWidthMapsPerContainer() {
+        #expect(BoardView.regularBoardMaxWidth(for: .cappedDetailPane) == 640)
+        #expect(BoardView.regularBoardMaxWidth(for: .fillsColumn) == .infinity)
     }
 
-    @Test("regularBoardAlignment maps cappedDetailPane to center and fillsColumn to topLeading")
+    @Test("regularBoardMaxHeight maps cappedDetailPane to 640 and fillsColumn to nil")
+    func regularBoardMaxHeightMapsPerContainer() {
+        #expect(BoardView.regularBoardMaxHeight(for: .cappedDetailPane) == 640)
+        #expect(BoardView.regularBoardMaxHeight(for: .fillsColumn) == nil)
+    }
+
+    @Test("regularBoardAlignment maps cappedDetailPane to center and fillsColumn to leading")
     func regularBoardAlignmentMapsPerContainer() {
         #expect(BoardView.regularBoardAlignment(for: .cappedDetailPane) == .center)
-        #expect(BoardView.regularBoardAlignment(for: .fillsColumn) == .topLeading)
+        #expect(BoardView.regularBoardAlignment(for: .fillsColumn) == .leading)
     }
 }

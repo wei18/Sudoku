@@ -110,28 +110,34 @@ extension BoardView {
         }
     }
 
-    // #1105: capped (Mac) keeps the locked 640pt square; fillsColumn (iPad)
-    // removes both axis caps so the board viewport is the full column
-    // (width AND height), leaving cell size to `boardWithOverlay`'s own
-    // `GeometryReader`.
-    nonisolated static func regularBoardMaxSide(for container: RegularBoardContainer) -> CGFloat {
+    // #1105 PM ruling B: capped (Mac) keeps the locked 640pt width cap;
+    // fillsColumn (iPad) lifts it so the board takes the column width.
+    nonisolated static func regularBoardMaxWidth(for container: RegularBoardContainer) -> CGFloat {
         switch container {
         case .cappedDetailPane: Self.macBoardMaxSide
         case .fillsColumn: .infinity
         }
     }
 
-    // #1105 PM ruling: under `.fillsColumn` the lifted caps above make this
-    // frame greedy, so the alignment decides where the fitted square sits in
-    // the full column — top-leading puts it flush under the header at the
-    // column's leading edge, leftover height landing below it, consistent
-    // with #1101's `fittedAlignment` for Minesweeper. `.cappedDetailPane`
-    // keeps the default `.center`: the 640pt square cap above already
-    // prevents the stack from ever receiving a tall column.
+    // #1105 PM ruling B: width cap lifted so the board takes the column
+    // width; height cap left `nil` so the frame hugs the fitted square and
+    // the whole regular stack keeps centring as a block in portrait (#1101
+    // top-aligned MS because its frame improved, Sudoku's got worse under
+    // top-align, so Sudoku keeps today's centred block — change only with
+    // a new frame in hand).
+    nonisolated static func regularBoardMaxHeight(for container: RegularBoardContainer) -> CGFloat? {
+        switch container {
+        case .cappedDetailPane: Self.macBoardMaxSide
+        case .fillsColumn: nil
+        }
+    }
+
+    // `.leading` keeps the board flush under the header title in
+    // landscape, where the square is height-bound.
     nonisolated static func regularBoardAlignment(for container: RegularBoardContainer) -> Alignment {
         switch container {
         case .cappedDetailPane: .center
-        case .fillsColumn: .topLeading
+        case .fillsColumn: .leading
         }
     }
 
@@ -158,9 +164,12 @@ extension BoardView {
     }
 
     private var macBoardColumn: some View {
-        let side = Self.regularBoardMaxSide(for: regularBoardContainer)
-        return boardWithOverlay
-            .frame(maxWidth: side, maxHeight: side, alignment: Self.regularBoardAlignment(for: regularBoardContainer))
+        boardWithOverlay
+            .frame(
+                maxWidth: Self.regularBoardMaxWidth(for: regularBoardContainer),
+                maxHeight: Self.regularBoardMaxHeight(for: regularBoardContainer),
+                alignment: Self.regularBoardAlignment(for: regularBoardContainer)
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
