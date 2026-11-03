@@ -355,11 +355,23 @@ CALLOUTS = {
         # header text and the grid), horizontally still centered in the
         # "Easy"...pause-controls gap (x=146-1706 of 2064, 76% of width) so
         # the leader line still reads as pointing at the same row.
-        # ipad-13 keeps the snapshot-era values (the iPad slot is snapshot-
-        # sourced until #1110); only iphone-6.9 was re-measured against the
-        # capture panel. Re-measure ipad-13 when #1110 flips it to CaptureSlot.
-        "anchor": {"iphone-6.9": (0.500, 0.136), "ipad-13": (0.207, 0.315)},
-        "chip_at": {"iphone-6.9": (0.408, 0.043), "ipad-13": (0.360, 0.210)},
+        # ipad-13 is snapshot-sourced (the iPad slot stays on
+        # BoardViewPencilNotesTests until #1110 flips it to CaptureSlot);
+        # only iphone-6.9 was re-measured against the capture panel above.
+        # #1105 round 4 RE-MEASURED ipad-13's anchor against the re-recorded
+        # `snapshotPencilNotesWithError_iPad_light` baseline (board 684pt,
+        # width-bound in portrait so the `.leading`/`.center` alignment is
+        # moot — the whole header/board/rail stack centres as one block,
+        # matching today's shipped layout per the #1105 PM ruling): red
+        # error cell bbox 368-517 x 752-902 px of the 2064x2752 PNG, centre
+        # (442.5, 827) → fraction (0.214, 0.301). chip_at raised 0.210 →
+        # 0.165: the 684pt board pushes the floating header ~22pt up, and at
+        # 0.210 the chip sat level with the header row, its bottom edge on
+        # the grid's first row; at 0.165 it is back in the empty band above
+        # the header (eyeballed on the regenerated en frame, dot on the red
+        # "4" cell).
+        "anchor": {"iphone-6.9": (0.500, 0.136), "ipad-13": (0.214, 0.301)},
+        "chip_at": {"iphone-6.9": (0.408, 0.043), "ipad-13": (0.360, 0.165)},
         "en": "Catches mistakes instantly", "zh-Hant": "即時抓出錯誤", "zh-Hans": "实时揪出错误",
         "ja": "ミスをその場で検出", "ko": "실수를 즉시 잡아냄",
         "es": "Detecta errores al instante", "th": "จับข้อผิดพลาดได้ทันที",
