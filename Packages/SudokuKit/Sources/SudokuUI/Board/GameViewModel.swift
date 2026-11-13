@@ -115,8 +115,10 @@ public final class GameViewModel {
     /// #1018: unit-sweep feedback. The view reads it to draw the sweep; the VM
     /// only ever WRITES to it (see `GameViewModel+CellFeedback.swift`), so
     /// feedback can never block or drop input.
-    public let cellFeedback = CellFeedbackState<SudokuCellFeedbackEvent>()
-    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand.
+    let cellFeedback = CellFeedbackState<SudokuCellFeedbackEvent>()
+    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand. The
+    /// public inits take it as a parameter, which is why `GameShellUI` is a
+    /// `public import` in this file.
     let cellFeedbackSleeper: CellFeedbackSleeper
 
     // MARK: - Init

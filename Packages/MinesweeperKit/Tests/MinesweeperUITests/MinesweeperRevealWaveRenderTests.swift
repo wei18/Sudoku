@@ -1,8 +1,8 @@
 // MinesweeperRevealWaveRenderTests (#1018, design.md §6 M13) — pixels of the
-// REAL `MinesweeperBoardView`, not unit tests of a plan. #1065 shipped a
-// Reduce Motion form that was computed and never consumed by the rendered
-// view while every unit test stayed green, so each claim here is proved by
-// comparing renders taken before and after a reveal.
+// REAL `MinesweeperBoardView`, not unit tests of a plan. A Reduce Motion form
+// can be computed and never consumed by the rendered view while every unit
+// test stays green (#1065), so each claim here is proved by comparing renders
+// taken before and after a reveal.
 //
 // Measured facts the harness relies on (toy-view spike, #1018): a render of an
 // `NSHostingView` taken right after a state change shows the FINAL state for an
@@ -205,8 +205,24 @@ struct MinesweeperRevealWaveRenderTests {
         let outside = outsideDeltas(before, settled, grid)
         for value in outside { #expect(value < Rig.unlitThreshold, "a cell outside the region changed (delta \(value))") }
 
+        // After expiry: release the held sleeper, let the event end, render again in the same window.
         await gate.release()
         await viewModel.cellFeedback.waitForPendingExpiries()
+        #expect(viewModel.cellFeedback.isIdle)
+        let expired = try WaveFrame(host)
+        var worstAfterExpiry = 0.0
+        var worstExpiredCell = (row: 0, col: 0)
+        for row in 0..<9 {
+            for col in 0..<9 {
+                let difference = Rig.delta(reference, expired, grid, row: row, col: col)
+                if difference > worstAfterExpiry { worstAfterExpiry = difference; worstExpiredCell = (row, col) }
+            }
+        }
+        Rig.report("W4 worst post-expiry-vs-instant cell delta", [worstAfterExpiry])
+        #expect(
+            worstAfterExpiry < Rig.unlitThreshold,
+            "after expiry cell (\(worstExpiredCell.row),\(worstExpiredCell.col)) differs from the instant render by \(worstAfterExpiry)"
+        )
     }
 }
 #endif

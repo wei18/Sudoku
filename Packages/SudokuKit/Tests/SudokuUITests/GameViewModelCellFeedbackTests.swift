@@ -15,11 +15,10 @@ import SudokuEngine
 import Testing
 @testable import SudokuUI
 
-/// A hand-released sleeper gate. A watchdog releases it after 30 s (wall-clock; a
-/// full-suite run can starve the main actor for seconds, which a 5 s bound did
-/// not survive in the Minesweeper twin of this test) so a
+/// A hand-released sleeper gate. A watchdog releases it after 30 s so a
 /// regression (e.g. placement awaiting expiry) fails an assertion instead of
-/// hanging the run.
+/// hanging the run. The bound is wall-clock and generous on purpose: in a
+/// full-suite run the main actor can be busy for seconds with other suites.
 private actor Gate {
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private(set) var isReleased = false
@@ -248,6 +247,26 @@ struct GameViewModelCellFeedbackTests {
         await settle(viewModel)
         #expect(viewModel.cellFeedback.isIdle)
         #expect(viewModel.cellFeedback.pendingExpiries.isEmpty, "pending expiries not empty after a full sequence")
+    }
+
+    // MARK: winning placement
+
+    /// The placement that solves the board also begins its sweep (the audio
+    /// plays only the win cue there; the sweep is independent of that).
+    /// Reachable only on the live path: the preview path never completes the game.
+    @Test("the placement that wins the game begins one event with the completed units")
+    func winningPlacementBeginsItsSweep() async throws {
+        let gate = makeGate()
+        let viewModel = try await makeViewModel(.live, blanks: [coord(0, 0)], sleeper: { _ in await gate.wait() })
+
+        await viewModel.placeDigit(solution(0, 0), at: coord(0, 0))
+
+        #expect(viewModel.status == .completed)
+        #expect(viewModel.cellFeedback.activeEvents.map(\.event.units) == [[.row(0), .column(0), .box(0)]])
+        #expect(viewModel.cellFeedback.activeEvents.count == 1)
+        await gate.release()
+        await settle(viewModel)
+        #expect(viewModel.cellFeedback.isIdle)
     }
 
     // MARK: 6. digit-first entry point

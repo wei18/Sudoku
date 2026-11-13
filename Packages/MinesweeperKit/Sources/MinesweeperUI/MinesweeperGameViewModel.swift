@@ -84,8 +84,10 @@ public final class MinesweeperGameViewModel {
 
     /// Region-reveal wave events. The view reads it to time each cell's fade;
     /// the VM only ever WRITES to it (MinesweeperGameViewModel+CellFeedback.swift).
-    public let cellFeedback = CellFeedbackState<MinesweeperRevealEvent>()
-    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand.
+    let cellFeedback = CellFeedbackState<MinesweeperRevealEvent>()
+    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand. The
+    /// public inits take it as a parameter, which is why `GameShellUI` is a
+    /// `public import` in this file.
     let cellFeedbackSleeper: CellFeedbackSleeper
 
     // MARK: - Persistence (#455 step 4)
@@ -291,9 +293,14 @@ public final class MinesweeperGameViewModel {
         // the outcome of this reveal into the right audio event.
         let previousStatus = snapshot.status
         let revealedBefore = revealedCount(in: snapshot)
-        let cellsBefore = snapshot.cells
+        // The wave's "before" cells are read synchronously at the moment the new
+        // snapshot is assigned, not before the await: two reveals interleaved
+        // across it then each compare against the state the other left.
+        var cellsBefore = snapshot.cells
         do {
-            snapshot = try await session.reveal(row: row, col: col)
+            let updated = try await session.reveal(row: row, col: col)
+            cellsBefore = snapshot.cells
+            snapshot = updated
         } catch {
             // MVP: out-of-bounds shouldn't happen from a well-formed grid view.
             // Swallow — the ViewModel state stays consistent with the last
@@ -366,8 +373,7 @@ public final class MinesweeperGameViewModel {
     }
 
     // Reveal audio classification (#330 P2): `revealedCount(in:)` and
-    // `fireRevealAudio(...)` live in MinesweeperGameViewModel+RevealAudio.swift
-    // (moved verbatim in #1018 to keep this file under the 400-line ceiling).
+    // `fireRevealAudio(...)` live in MinesweeperGameViewModel+RevealAudio.swift.
 
     // Pause / resume (#434): `pause()` / `resume()` live in
     // MinesweeperGameViewModel+Persistence.swift (pause is itself a persist

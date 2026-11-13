@@ -7,26 +7,27 @@
 // Hard constraint: feedback must never block or drop input. The view model
 // only WRITES to `cellFeedback` — `reveal`, `toggleFlag` and every other input
 // path neither read it nor await the expiry task. Newly revealed cells are
-// found by comparing the cells before and after the reveal; the session API
-// and MinesweeperCoreKit are untouched.
+// found by comparing the cells before and after the reveal; the "before" cells
+// are read at the moment the new snapshot is assigned. The session API and
+// MinesweeperCoreKit are untouched.
 
-public import GameShellUI
+import GameShellUI
 import MinesweeperEngine
 
 /// A flood reveal: the tapped origin and, for every cell this reveal newly
 /// revealed, its ring (Chebyshev distance from the origin).
-public struct MinesweeperRevealEvent: Sendable, Equatable {
-    public let originRow: Int
-    public let originColumn: Int
+struct MinesweeperRevealEvent: Sendable, Equatable {
+    let originRow: Int
+    let originColumn: Int
     /// Grid width, to map a flat index back to (row, column).
-    public let columns: Int
+    let columns: Int
     /// Ring of every newly revealed cell, keyed by flat index (`row * columns + col`).
-    public let rings: [Int: Int]
+    let rings: [Int: Int]
     /// The largest ring in `rings`.
-    public let maxRing: Int
+    let maxRing: Int
 
     /// The cell's ring, or `nil` when this reveal did not newly reveal it.
-    public func ring(row: Int, col: Int) -> Int? {
+    func ring(row: Int, col: Int) -> Int? {
         rings[row * columns + col]
     }
 }

@@ -1,6 +1,7 @@
 // CellFeedbackStateTests — #1018: the idle -> animating -> idle lifecycle.
 // Tests settle by awaiting the expiry Task's value, never by Task.yield().
 
+import Observation
 import Testing
 @testable import GameShellUI
 
@@ -117,6 +118,40 @@ struct CellFeedbackStateTests {
         #expect(state.isIdle)
         await gate.release()
         await scheduled.task.value
+    }
+
+    @Test("an early end cancels a cancellation-aware sleeper instead of leaving it running")
+    func earlyEndCancelsTheSleeper() async {
+        let state = CellFeedbackState<Int>()
+        // A real, cancellation-aware sleep; 5 s is the hard bound if the cancel is missing.
+        let scheduled = state.begin(1, lifetime: .seconds(5)) { duration in
+            try? await Task.sleep(for: duration)
+        }
+        state.end(scheduled.token)
+        let elapsed = await ContinuousClock().measure { await scheduled.task.value }
+        #expect(elapsed < .seconds(2), "the sleeper kept running after an early end (took \(elapsed))")
+        #expect(state.pendingExpiries.isEmpty)
+    }
+
+    /// Flips when an observed property of the state changes.
+    private final class ChangeFlag: @unchecked Sendable {
+        var fired = false
+    }
+
+    @Test("ending an unknown or already-ended token mutates nothing")
+    func endingUnknownTokenNotifiesNoObserver() {
+        let state = CellFeedbackState<Int>()
+        let token = state.begin(1)
+        state.end(token)
+        let flag = ChangeFlag()
+        withObservationTracking {
+            _ = state.activeEvents
+            _ = state.pendingExpiries
+        } onChange: {
+            flag.fired = true
+        }
+        state.end(token)
+        #expect(!flag.fired, "ending an already-ended token still mutated observed state")
     }
 
     @Test("the pending expiry task does not keep the state alive")

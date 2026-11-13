@@ -9,18 +9,18 @@
 // detection that audio's section-cleared cue shares, so there is exactly one
 // detector.
 
-public import GameShellUI
+import GameShellUI
 import SudokuEngine
 
 /// One row, column or box of the board. Box indices run 0...8 in reading order.
-public enum SudokuUnit: Sendable, Hashable {
+enum SudokuUnit: Sendable, Hashable {
     case row(Int)
     case column(Int)
     case box(Int)
 
-    /// The unit's nine board indices in sweep order: row left→right, column
-    /// top→bottom, box in reading order.
-    public var cellIndices: [Int] {
+    /// The unit's nine board indices in sweep order: row first→last cell in
+    /// reading order, column top→bottom, box in reading order.
+    var cellIndices: [Int] {
         switch self {
         case let .row(row):
             return (0..<Board.dimension).map { Board.index(row: row, column: $0) }
@@ -47,9 +47,9 @@ public enum SudokuUnit: Sendable, Hashable {
 
 /// A unit-sweep feedback event: the placed cell plus the units that placement
 /// newly completed (row, column, box order).
-public struct SudokuCellFeedbackEvent: Sendable, Equatable {
-    public let coordinate: GridCoordinate
-    public let units: [SudokuUnit]
+struct SudokuCellFeedbackEvent: Sendable, Equatable {
+    let coordinate: GridCoordinate
+    let units: [SudokuUnit]
 }
 
 extension GameViewModel {

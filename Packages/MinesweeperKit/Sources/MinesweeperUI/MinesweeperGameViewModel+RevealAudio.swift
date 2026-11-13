@@ -1,11 +1,11 @@
 // MinesweeperGameViewModel+RevealAudio — the reveal-outcome → audio-event
-// classification (#330 P2), moved verbatim out of MinesweeperGameViewModel.swift
-// (#1018) to keep that file under the 400-line lint ceiling. No behaviour
-// change; `soundPlayer` widened from `private` to internal so this file can
-// reach it, the same file-split treatment as `isSeeded`.
+// classification (#330 P2). Split out of MinesweeperGameViewModel.swift to keep
+// that file under the 400-line lint ceiling (bodies unchanged); `soundPlayer`
+// is internal rather than private so this file can reach it, the same
+// file-split treatment as `isSeeded`.
 
-public import MinesweeperEngine
-public import MinesweeperGameState
+import MinesweeperEngine
+import MinesweeperGameState
 
 extension MinesweeperGameViewModel {
     // MARK: - Audio classification (#330 P2)

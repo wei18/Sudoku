@@ -235,15 +235,12 @@ extension BoardView {
                     }
                 }
                 .frame(width: side, height: side)
-                // #1018: unit sweep above the grid. A bare ForEach — nothing
-                // is inserted into the hierarchy while no event is active.
+                // #1018: unit sweep above the grid. Its body is a `ZStack`
+                // around a `ForEach` that is empty while no event is active,
+                // so it adds no pixels then.
                 UnitSweepOverlay(
                     entries: viewModel.cellFeedback.activeEvents,
-                    plan: CellFeedbackMotionPlan.resolved(
-                        reduceMotionOverride: cellFeedbackReduceMotionOverride,
-                        systemReduceMotion: systemReduceMotion,
-                        timing: cellFeedbackTiming
-                    ),
+                    plan: cellFeedbackMotionPlan,
                     boardSide: side
                 )
             }

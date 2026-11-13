@@ -1,8 +1,8 @@
 // BoardUnitSweepRenderTests (#1018) — pixels of the REAL `BoardView`, not unit
-// tests of a plan. #1065 shipped a Reduce Motion form that was computed and
-// never consumed by the rendered view while every unit test stayed green, so
-// each claim here is proved by comparing renders taken before and after a
-// placement. Harness: BoardSweepRenderSupport.swift.
+// tests of a plan. A Reduce Motion form can be computed and never consumed by
+// the rendered view while every unit test stays green (#1065), so each claim
+// here is proved by comparing renders taken before and after a placement.
+// Harness: BoardSweepRenderSupport.swift.
 //
 // Measured facts the harness relies on (toy-view spike, #1018): a render of an
 // `NSHostingView` taken right after a state change shows the FINAL state for an
@@ -86,11 +86,12 @@ struct BoardUnitSweepRenderTests {
 
     // MARK: R3 — slow timing in a window: the band travels
 
-    @Test("R3 slow timing in an offscreen window: lit at the leading cell, then reaches the trailing cell")
+    @Test("R3 slow sweep in an offscreen window: lit at the leading cell, then the light moves on to later cells")
     func r3BandTravels() async throws {
         let gate = makeSweepGate()
         let viewModel = try Rig.makeViewModel(blanks: Rig.rowBlanks, gate: gate)
-        let slow = CellFeedbackMotionPlan.Timing(unitSweep: 3, waveStagger: 0.5, cellFade: 1, waveCap: 9)
+        // A 12 s sweep: the first cell stops being lit after ~1 s and some later cell stays lit until ~11 s.
+        let slow = CellFeedbackMotionPlan.Timing(unitSweep: 12, waveStagger: 0.5, cellFade: 1, waveCap: 9)
         let host = Rig.makeHost(viewModel, reduceMotion: false, timing: slow)
         // Never ordered front, never made key; torn down even on failure.
         let window = Rig.makeWindow(containing: host)
@@ -108,22 +109,25 @@ struct BoardUnitSweepRenderTests {
         Rig.report("R3 start", startDeltas)
         #expect(startDeltas[0] > Rig.litThreshold, "leading cell not lit at the start (delta \(startDeltas[0]))")
 
-        // Poll (hard bound 8 s, no retries around an assertion) for the band to reach the trailing cell.
+        // One-sided poll (hard bound 8 s, no retries around an assertion): wait until the light has left
+        // the first cell AND is over a later one. Once true it stays true for many seconds, so a stalled
+        // main actor can delay it but cannot make it unreachable inside the bound.
         let deadline = Date().addingTimeInterval(8)
-        var lastTrailing = startDeltas[8]
         var lastLeading = startDeltas[0]
-        var reached = lastTrailing > Rig.touchedThreshold
-        while !reached, Date() < deadline {
+        var laterMax = 0.0
+        var travelled = false
+        while !travelled, Date() < deadline {
             spinRunLoop(0.05)
             let frame = try SweepFrame(host)
-            lastTrailing = Rig.delta(before, frame, grid, 8)
-            lastLeading = Rig.delta(before, frame, grid, 0)
-            reached = lastTrailing > Rig.touchedThreshold
+            lastLeading = Rig.delta(before, frame, grid, rowIndices(0)[0])
+            laterMax = rowIndices(0).dropFirst().map { Rig.delta(before, frame, grid, $0) }.max() ?? 0
+            travelled = lastLeading < Rig.unlitThreshold && laterMax > Rig.touchedThreshold
         }
-        Rig.report("R3 trailing / leading when the band reached the trailing cell", [lastTrailing, lastLeading])
-        #expect(reached, "waiting for the trailing cell (row 0, column 8) to light; last delta \(lastTrailing) after 8 s")
-        // The light travelled: by the time it reaches the trailing end it has left the leading cell.
-        #expect(lastLeading < Rig.unlitThreshold, "leading cell still lit (delta \(lastLeading)) when the band reached the trailing cell")
+        Rig.report("R3 first-cell / later-cell max when the light had moved on", [lastLeading, laterMax])
+        #expect(
+            travelled,
+            "waiting for the light to leave the first cell and reach a later one; last first-cell delta \(lastLeading), later-cell max \(laterMax) after 8 s"
+        )
 
         await gate.release()
         await viewModel.cellFeedback.waitForPendingExpiries()
@@ -171,16 +175,55 @@ struct BoardUnitSweepRenderTests {
         )
     }
 
+    // MARK: R6 — right-to-left: the light follows the mirrored grid
+
+    @Test("R6 right-to-left, Reduce Motion: a column lights exactly that column's cells")
+    func r6ColumnInRightToLeft() async throws {
+        try await assertLitCells(
+            blanks: [Rig.coord(0, 0), Rig.coord(0, 1)], place: Rig.coord(0, 0), unit: .column(0),
+            layoutDirection: .rightToLeft
+        )
+    }
+
+    @Test("R6 right-to-left, Reduce Motion: a box lights exactly that box's cells")
+    func r6BoxInRightToLeft() async throws {
+        try await assertLitCells(
+            blanks: [Rig.coord(0, 0), Rig.coord(0, 3), Rig.coord(4, 0)], place: Rig.coord(0, 0), unit: .box(0),
+            layoutDirection: .rightToLeft
+        )
+    }
+
+    @Test("R6 right-to-left, default motion: a row's first frame lights its first cell in reading order, not its last")
+    func r6RowStartsAtReadingStartInRightToLeft() async throws {
+        let gate = makeSweepGate()
+        let viewModel = try Rig.makeViewModel(blanks: Rig.rowBlanks, gate: gate)
+        let host = Rig.makeHost(viewModel, reduceMotion: false, layoutDirection: .rightToLeft)
+        let before = try SweepFrame(host)
+        let grid = try Rig.findGrid(before, rightToLeft: true)
+
+        await viewModel.placeDigit(Rig.solution(0, 0), at: Rig.coord(0, 0))
+        let after = try SweepFrame(host)
+
+        // Board column 0 is the visually rightmost cell under RTL; `grid` maps the index to it.
+        let rowDeltas = rowIndices(0).map { Rig.delta(before, after, grid, $0) }
+        Rig.report("R6 RTL row (reading order)", rowDeltas)
+        #expect(rowDeltas[0] > Rig.litThreshold, "first cell in reading order not lit (delta \(rowDeltas[0]))")
+        #expect(rowDeltas[8] < Rig.unlitThreshold, "last cell in reading order already lit (delta \(rowDeltas[8]))")
+        await gate.release()
+        await viewModel.cellFeedback.waitForPendingExpiries()
+    }
+
     private func assertLitCells(
         blanks: Set<GridCoordinate>,
         place: GridCoordinate,
-        unit: SudokuUnit
+        unit: SudokuUnit,
+        layoutDirection: LayoutDirection = .leftToRight
     ) async throws {
         let gate = makeSweepGate()
         let viewModel = try Rig.makeViewModel(blanks: blanks, gate: gate)
-        let host = Rig.makeHost(viewModel, reduceMotion: true)
+        let host = Rig.makeHost(viewModel, reduceMotion: true, layoutDirection: layoutDirection)
         let before = try SweepFrame(host)
-        let grid = try Rig.findGrid(before)
+        let grid = try Rig.findGrid(before, rightToLeft: layoutDirection == .rightToLeft)
 
         await viewModel.placeDigit(Rig.solution(place.row, place.column), at: place)
         #expect(viewModel.cellFeedback.activeEvents.map(\.event.units) == [[unit]])

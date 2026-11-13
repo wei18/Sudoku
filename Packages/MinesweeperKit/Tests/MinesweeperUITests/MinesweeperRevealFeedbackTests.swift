@@ -108,7 +108,7 @@ struct MinesweeperRevealFeedbackTests {
         #expect(await gate.isReleased == false)
 
         // Second, separate region while A's sleeper is still held. If `reveal`
-        // awaited expiry it would only return after the 5 s watchdog, by which
+        // awaited expiry it would only return after the watchdog, by which
         // time A would already have ended and the asserts below fail.
         await viewModel.reveal(row: 0, col: 15)
         #expect(await gate.isReleased == false, "the second reveal returned only after the watchdog released the sleeper")
@@ -129,6 +129,38 @@ struct MinesweeperRevealFeedbackTests {
         await settle(viewModel)
         #expect(viewModel.cellFeedback.isIdle)
         #expect(viewModel.cellFeedback.pendingExpiries.isEmpty, "pending expiries not empty after a full sequence")
+    }
+
+    // MARK: V5 — two reveals interleaved across the session call
+
+    /// Both taps start before either session call returns, so each is suspended
+    /// at `session.reveal` when the other begins. The second event must not
+    /// claim the first reveal's cells.
+    @Test("V5 two interleaved reveals: each event holds only its own region's cells")
+    func v5InterleavedRevealsAttributeOnlyTheirOwnCells() async throws {
+        let gate = makeFeedbackGate()
+        let viewModel = try FeedbackBoard.twoRegions.viewModel(gate: gate)
+
+        let left = Task { await viewModel.reveal(row: 0, col: 0) }
+        let right = Task { await viewModel.reveal(row: 0, col: 15) }
+        await left.value
+        await right.value
+
+        let events = viewModel.cellFeedback.activeEvents.map(\.event)
+        try #require(events.count == 2, "expected two events, got \(events.count)")
+        let leftEvent = try #require(events.first { $0.originColumn == 0 })
+        let rightEvent = try #require(events.first { $0.originColumn == 15 })
+        let columns = viewModel.columns
+
+        #expect(Set(leftEvent.rings.keys).isDisjoint(with: Set(rightEvent.rings.keys)), "the two events share cells")
+        #expect(leftEvent.rings.keys.allSatisfy { $0 % columns < 8 }, "the left event holds cells from the right region")
+        #expect(rightEvent.rings.keys.allSatisfy { $0 % columns > 8 }, "the right event holds cells from the left region")
+        let revealed = Set(viewModel.cells.indices.filter { viewModel.cells[$0].state == .revealed })
+        #expect(Set(leftEvent.rings.keys).union(rightEvent.rings.keys) == revealed, "an event is missing newly revealed cells")
+
+        await gate.release()
+        await settle(viewModel)
+        #expect(viewModel.cellFeedback.pendingExpiries.isEmpty)
     }
 
     // MARK: V4 — THE CAP TEST on a real Expert board

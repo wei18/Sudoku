@@ -93,14 +93,25 @@ public struct CellFeedbackMotionPlan: Sendable, Equatable {
         }
     }
 
-    /// Upper bound on how long a unit sweep stays active, valid for BOTH the
-    /// default and the Reduce Motion form — for view models that expire an
-    /// event without knowing the Reduce Motion setting.
-    public static let unitSweepLifetime = Duration.seconds(Timing.design.unitSweep)
+    /// Extra life an event gets on top of its animation. An event's expiry
+    /// timer starts when it begins, but its animation only starts at the next
+    /// render, so a busy main actor could otherwise remove the event before
+    /// its last frames (or before its first). An event is invisible once its
+    /// animation has finished, so a longer life costs nothing.
+    static let lifetimeSlack = Duration.milliseconds(300)
 
-    /// Upper bound on a region reveal, valid for both forms (the wave
-    /// finishes within its cap; the simultaneous form is shorter).
-    public static let regionRevealLifetime = Duration.seconds(Timing.design.waveCap)
+    /// How long a unit-sweep event stays active: the sweep's length plus
+    /// `lifetimeSlack`, valid for BOTH the default and the Reduce Motion form,
+    /// for view models that expire an event without knowing the Reduce Motion
+    /// setting. This is the EVENT's life, not the animation: the animation is
+    /// `Timing.design.unitSweep`.
+    public static let unitSweepLifetime = Duration.seconds(Timing.design.unitSweep) + lifetimeSlack
+
+    /// How long a region-reveal event stays active: the wave's cap plus
+    /// `lifetimeSlack`, valid for both forms (the simultaneous form is
+    /// instant). The 200 ms cap bounds the ANIMATION (`totalDuration`), not
+    /// this event life.
+    public static let regionRevealLifetime = Duration.seconds(Timing.design.waveCap) + lifetimeSlack
 }
 
 public extension CellFeedbackMotionPlan {

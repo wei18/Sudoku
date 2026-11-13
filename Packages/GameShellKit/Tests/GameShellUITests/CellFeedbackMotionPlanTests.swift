@@ -116,18 +116,20 @@ struct CellFeedbackMotionPlanTests {
 
     // MARK: Lifetimes
 
-    @Test("lifetime upper bounds cover both forms of their row")
-    func lifetimesCoverBothForms() {
+    @Test("an event's lifetime covers the animation of both forms plus the slack")
+    func lifetimesCoverBothFormsPlusSlack() {
+        let slack = CellFeedbackMotionPlan.lifetimeSlack
+        #expect(slack >= .milliseconds(200), "the slack must be generous enough to absorb a busy main actor")
         for reduceMotion in [false, true] {
             let plan = CellFeedbackMotionPlan.plan(reduceMotion: reduceMotion)
             let sweepSeconds: Double
             switch plan.unitSweep {
             case let .sweep(duration), let .staticFlash(duration): sweepSeconds = duration
             }
-            #expect(CellFeedbackMotionPlan.unitSweepLifetime >= .seconds(sweepSeconds))
+            #expect(CellFeedbackMotionPlan.unitSweepLifetime >= .seconds(sweepSeconds) + slack)
             // Same 1e-9 s float slack as the cap test (compressed total can be one ulp over 0.2).
-            #expect(CellFeedbackMotionPlan.regionRevealLifetime >= .seconds(plan.regionReveal.totalDuration(maxRing: 29) - 1e-9))
-            #expect(CellFeedbackMotionPlan.regionRevealLifetime >= .seconds(plan.regionReveal.totalDuration(maxRing: 0) - 1e-9))
+            #expect(CellFeedbackMotionPlan.regionRevealLifetime >= .seconds(plan.regionReveal.totalDuration(maxRing: 29) - 1e-9) + slack)
+            #expect(CellFeedbackMotionPlan.regionRevealLifetime >= .seconds(plan.regionReveal.totalDuration(maxRing: 0) - 1e-9) + slack)
         }
     }
 }

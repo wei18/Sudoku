@@ -21,6 +21,20 @@ struct CellFeedbackReduceMotionTests {
         #expect(values.cellFeedbackTiming == slow)
     }
 
+    @Test("the shared plan follows the override and the timing")
+    func sharedPlanFollowsOverrideAndTiming() {
+        var values = EnvironmentValues()
+        #expect(values.cellFeedbackMotionPlan == CellFeedbackMotionPlan.plan(reduceMotion: false))
+
+        values.cellFeedbackReduceMotionOverride = true
+        #expect(values.cellFeedbackMotionPlan == CellFeedbackMotionPlan.plan(reduceMotion: true))
+
+        let slow = CellFeedbackMotionPlan.Timing(unitSweep: 2, waveStagger: 0.5, cellFade: 1, waveCap: 9)
+        values.cellFeedbackReduceMotionOverride = false
+        values.cellFeedbackTiming = slow
+        #expect(values.cellFeedbackMotionPlan == CellFeedbackMotionPlan.plan(reduceMotion: false, timing: slow))
+    }
+
     @Test("an injected override reads back")
     func overrideReadsBack() {
         var values = EnvironmentValues()

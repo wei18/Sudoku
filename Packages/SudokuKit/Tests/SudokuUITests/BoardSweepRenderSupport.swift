@@ -93,12 +93,19 @@ struct SweepFrame {
 struct SweepGrid {
     let originY: Double
     let cell: Double
+    /// True under a right-to-left layout: the grid mirrors, so board column `c`
+    /// sits at physical column `8 - c`.
+    var mirrored = false
 
-    /// Sample spot for a board index: bottom-trailing corner of its cell.
+    /// Sample spot for a board index: the lower, inset corner of its cell,
+    /// where digit ink never reaches (physical x measured from the left edge).
     func sample(_ index: Int) -> CGPoint {
         let row = Double(index / 9)
         let column = Double(index % 9)
-        return CGPoint(x: (column + 0.82) * cell, y: originY + (row + 0.82) * cell)
+        // Mirrored: the same spot of the mirrored cell (the leading edge is on the right).
+        let physicalColumn = mirrored ? 8 - column : column
+        let fraction = mirrored ? 0.18 : 0.82
+        return CGPoint(x: (physicalColumn + fraction) * cell, y: originY + (row + 0.82) * cell)
     }
 }
 
@@ -139,10 +146,12 @@ enum SweepRig {
         _ viewModel: GameViewModel,
         reduceMotion: Bool?,
         timing: CellFeedbackMotionPlan.Timing = .design,
-        scheme: ColorScheme = .light
+        scheme: ColorScheme = .light,
+        layoutDirection: LayoutDirection = .leftToRight
     ) -> NSView {
         hostingView(
             adFreeBoard(viewModel)
+                .environment(\.layoutDirection, layoutDirection)
                 .environment(\.cellFeedbackReduceMotionOverride, reduceMotion)
                 .environment(\.cellFeedbackTiming, timing),
             size: size,
@@ -163,7 +172,7 @@ enum SweepRig {
     /// Finds the grid's top edge by scanning the leftmost strip (clear of the
     /// header's horizontal padding) for the first row that leaves the page
     /// background, and checks the grid's bottom lands one board-width lower.
-    static func findGrid(_ frame: SweepFrame) throws -> SweepGrid {
+    static func findGrid(_ frame: SweepFrame, rightToLeft: Bool = false) throws -> SweepGrid {
         let cell = Double(size.width) / 9
         let background = frame.rgb(CGPoint(x: 3, y: 2))
         func leavesBackground(_ scanY: Double) -> Bool {
@@ -179,7 +188,7 @@ enum SweepRig {
         let originY = try #require(top, "grid top edge not found in the leftmost strip")
         #expect(leavesBackground(originY + cell * 9 - 3), "grid bottom is not one board-width below its top")
         #expect(!leavesBackground(originY + cell * 9 + 4), "something sits right below the grid's bottom edge")
-        return SweepGrid(originY: originY, cell: cell)
+        return SweepGrid(originY: originY, cell: cell, mirrored: rightToLeft)
     }
 
     /// Summed absolute RGB difference between two frames at a board index.
@@ -187,7 +196,7 @@ enum SweepRig {
         zip(before.rgb(grid.sample(index)), after.rgb(grid.sample(index))).map { abs($0 - $1) }.reduce(0, +)
     }
 
-    /// Print the measured numbers (the task report quotes them).
+    /// Print the measured numbers (visible in the test output).
     static func report(_ label: String, _ values: [Double]) {
         print("SWEEP-MEASURE \(label): " + values.map { String(format: "%.1f", $0) }.joined(separator: " "))
     }

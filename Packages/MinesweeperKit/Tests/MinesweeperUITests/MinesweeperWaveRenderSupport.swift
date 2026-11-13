@@ -191,12 +191,14 @@ enum WaveRig {
         return zip(before.rgb(point), after.rgb(point)).map { abs($0 - $1) }.reduce(0, +)
     }
 
-    /// Print the measured numbers (the task report quotes them).
+    /// Print the measured numbers (visible in the test output).
     static func report(_ label: String, _ values: [Double]) {
         print("WAVE-MEASURE \(label): " + values.map { String(format: "%.1f", $0) }.joined(separator: " "))
     }
 
-    // MARK: Thresholds (summed |ΔRGB| over 0...765) — set from the measured values in the task report.
+    // MARK: Thresholds (summed |ΔRGB| over 0...765)
+    // Measured on this machine (light theme): a fully revealed tile reads about 80 to 99, a tile
+    // mid-fade about 60, an untouched tile exactly 0.0.
 
     static let litThreshold = 30.0
     static let unlitThreshold = 2.0

@@ -32,6 +32,20 @@ public extension EnvironmentValues {
     }
 }
 
+public extension EnvironmentValues {
+    /// The plan both boards draw from, so each reads ONE key path instead of
+    /// three environment values: the system Reduce Motion setting, the
+    /// `cellFeedbackReduceMotionOverride` test seam and `cellFeedbackTiming`,
+    /// resolved by `CellFeedbackMotionPlan.resolved`. Read-only.
+    var cellFeedbackMotionPlan: CellFeedbackMotionPlan {
+        CellFeedbackMotionPlan.resolved(
+            reduceMotionOverride: cellFeedbackReduceMotionOverride,
+            systemReduceMotion: accessibilityReduceMotion,
+            timing: cellFeedbackTiming
+        )
+    }
+}
+
 public extension CellFeedbackMotionPlan {
     /// The seam falls through to the live `accessibilityReduceMotion` unless
     /// a test set it.

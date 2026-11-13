@@ -17,6 +17,13 @@
 // is empty, so the ZStack contributes no pixels and settled-state snapshots
 // cannot move. It never reads or writes the view model's feedback state
 // beyond the entries it is handed.
+//
+// Right-to-left: the grid's `HStack`s mirror under an RTL environment, but the
+// light is positioned with physical offsets. So the light is laid out in a
+// fixed left-to-right space (`.layoutDirection` pinned inside) and the whole
+// layer is mirrored about the board's centre when the real environment is RTL.
+// Column / box x positions and the row direction then follow the grid: a row
+// sweeps from its first cell in reading order to its last.
 
 import GameShellUI
 import SudokuEngine
@@ -37,6 +44,7 @@ struct UnitSweepOverlay: View {
     /// Side of the square 9x9 grid, in points.
     let boardSide: CGFloat
     @Environment(\.theme) private var theme
+    @Environment(\.layoutDirection) private var layoutDirection
 
     /// Opacity of the light at its brightest — low enough to read as "light
     /// passing" in both themes without hiding digits.
@@ -56,7 +64,8 @@ struct UnitSweepOverlay: View {
                         form: plan.unitSweep,
                         unit: item.unit,
                         cellSide: boardSide / CGFloat(Board.dimension),
-                        tint: theme.accent.primary.resolved
+                        tint: theme.accent.primary.resolved,
+                        mirrored: layoutDirection == .rightToLeft
                     ))
             }
         }
@@ -105,16 +114,22 @@ private struct UnitSweepTransition: Transition {
     let unit: SudokuUnit
     let cellSide: CGFloat
     let tint: Color
+    /// True under a right-to-left environment: the layer is mirrored to follow the grid.
+    let mirrored: Bool
 
     func body(content: Content, phase: TransitionPhase) -> some View {
         let rect = UnitSweepOverlay.rect(of: unit, cellSide: cellSide)
         let isFirstFrame = phase == .willAppear
-        return content.overlay(alignment: .topLeading) {
-            light(in: rect, isFirstFrame: isFirstFrame)
-                .frame(width: rect.width, height: rect.height, alignment: .topLeading)
-                .clipped()
-                .offset(x: rect.minX, y: rect.minY)
-        }
+        return content
+            .overlay(alignment: .topLeading) {
+                light(in: rect, isFirstFrame: isFirstFrame)
+                    .frame(width: rect.width, height: rect.height, alignment: .topLeading)
+                    .clipped()
+                    .offset(x: rect.minX, y: rect.minY)
+            }
+            // Fixed left-to-right space, so `.topLeading` is the physical top-left.
+            .environment(\.layoutDirection, .leftToRight)
+            .scaleEffect(x: mirrored ? -1 : 1, y: 1)
     }
 
     @ViewBuilder

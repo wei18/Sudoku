@@ -59,10 +59,12 @@ public final class CellFeedbackState<Event: Sendable> {
         return token
     }
 
-    /// Ending an unknown or already-ended token is a no-op. Also drops the
+    /// Ending an unknown or already-ended token is a true no-op: it mutates
+    /// nothing, so observers are not notified. Otherwise it also drops the
     /// token's pending expiry task and cancels it (an early end must not leave
     /// a sleeper running).
     public func end(_ token: Token) {
+        guard activeEvents.contains(where: { $0.token == token }) else { return }
         activeEvents.removeAll { $0.token == token }
         for entry in pending where entry.token == token { entry.task.cancel() }
         pending.removeAll { $0.token == token }

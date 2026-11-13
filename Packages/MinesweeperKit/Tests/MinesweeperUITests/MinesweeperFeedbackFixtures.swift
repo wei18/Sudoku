@@ -14,10 +14,10 @@ import Testing
 
 /// Releases held sleepers by hand; a watchdog frees it so a regression (e.g.
 /// `reveal` awaiting expiry) fails an assertion instead of hanging the run.
-/// The watchdog is WALL-clock, and in a full-suite run the main actor is busy
-/// for seconds with other suites (measured: the V3 test took 7.0 s there vs
-/// 0.01 s alone, so a 5 s watchdog fired before its assertions ran). 30 s is
-/// still a hard bound but clears that contention.
+/// The watchdog is WALL-clock and generous on purpose: in a full-suite run the
+/// main actor can be busy for seconds with other suites, and a short bound
+/// would release the gate before the test's own assertions ran. 30 s is still
+/// a hard bound.
 actor FeedbackGate {
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private(set) var isReleased = false
