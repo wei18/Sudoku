@@ -235,6 +235,17 @@ extension BoardView {
                     }
                 }
                 .frame(width: side, height: side)
+                // #1018: unit sweep above the grid. A bare ForEach — nothing
+                // is inserted into the hierarchy while no event is active.
+                UnitSweepOverlay(
+                    entries: viewModel.cellFeedback.activeEvents,
+                    plan: CellFeedbackMotionPlan.resolved(
+                        reduceMotionOverride: cellFeedbackReduceMotionOverride,
+                        systemReduceMotion: systemReduceMotion,
+                        timing: cellFeedbackTiming
+                    ),
+                    boardSide: side
+                )
             }
             // Centre the square grid within the GR's offered rectangle so
             // the board sits inline with the surrounding header/digit pad

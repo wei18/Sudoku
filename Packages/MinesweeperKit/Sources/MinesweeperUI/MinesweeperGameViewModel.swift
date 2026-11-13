@@ -11,6 +11,7 @@
 import IssueReporting
 public import GameAudio
 public import GameCenterClient
+public import GameShellUI
 public import MinesweeperEngine
 public import MinesweeperGameState
 public import MinesweeperPersistence
@@ -77,7 +78,15 @@ public final class MinesweeperGameViewModel {
     /// player stay silent. `AVFoundation` never reaches this layer — the VM holds
     /// only the protocol. Production wires `LiveSoundPlayer` via the composition
     /// root.
-    private let soundPlayer: any SoundPlaying
+    let soundPlayer: any SoundPlaying
+
+    // MARK: - Reveal-wave feedback (#1018)
+
+    /// Region-reveal wave events. The view reads it to time each cell's fade;
+    /// the VM only ever WRITES to it (MinesweeperGameViewModel+CellFeedback.swift).
+    public let cellFeedback = CellFeedbackState<MinesweeperRevealEvent>()
+    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand.
+    let cellFeedbackSleeper: CellFeedbackSleeper
 
     // MARK: - Persistence (#455 step 4)
 
@@ -165,7 +174,8 @@ public final class MinesweeperGameViewModel {
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
-        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore()
+        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore(),
+        cellFeedbackSleeper: @escaping CellFeedbackSleeper = liveCellFeedbackSleeper
     ) {
         self.init(
             session: MinesweeperSession(difficulty: difficulty, seed: seed),
@@ -176,7 +186,8 @@ public final class MinesweeperGameViewModel {
             store: store,
             recordName: recordName,
             personalRecordStore: personalRecordStore,
-            winCountStore: winCountStore
+            winCountStore: winCountStore,
+            cellFeedbackSleeper: cellFeedbackSleeper
         )
     }
 
@@ -191,8 +202,10 @@ public final class MinesweeperGameViewModel {
         store: MinesweeperSavedGameStore? = nil,
         recordName: String? = nil,
         personalRecordStore: MinesweeperPersonalRecordStore? = nil,
-        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore()
+        winCountStore: MinesweeperWinCountStore = MinesweeperWinCountStore(),
+        cellFeedbackSleeper: @escaping CellFeedbackSleeper = liveCellFeedbackSleeper
     ) {
+        self.cellFeedbackSleeper = cellFeedbackSleeper
         self.session = session
         self.mode = mode
         self.gameCenter = gameCenter
@@ -227,6 +240,7 @@ public final class MinesweeperGameViewModel {
     /// states; production callsites use the actor-backed inits above.
     public init(seeded snapshot: MinesweeperSessionSnapshot) {
         self.session = MinesweeperSession(difficulty: snapshot.difficulty, seed: 0)
+        self.cellFeedbackSleeper = liveCellFeedbackSleeper
         self.mode = .practice
         self.gameCenter = nil
         self.errorReporter = nil
@@ -277,6 +291,7 @@ public final class MinesweeperGameViewModel {
         // the outcome of this reveal into the right audio event.
         let previousStatus = snapshot.status
         let revealedBefore = revealedCount(in: snapshot)
+        let cellsBefore = snapshot.cells
         do {
             snapshot = try await session.reveal(row: row, col: col)
         } catch {
@@ -287,6 +302,7 @@ public final class MinesweeperGameViewModel {
             reportIssue("reveal out-of-bounds from well-formed grid: \(error)")
         }
         fireRevealAudio(previousStatus: previousStatus, revealedBefore: revealedBefore)
+        beginRevealWaveFeedback(row: row, col: col, before: cellsBefore)
         // Post-flip chain, in the original order: #291 GC submit-on-win →
         // #700 achievement evaluation (LIVE-transition-gated: a no-op reveal
         // on a restored already-won board must not re-inflate the
@@ -349,41 +365,9 @@ public final class MinesweeperGameViewModel {
         // ViewModel-instance latch, so it survives save/resume.
     }
 
-    // MARK: - Audio classification (#330 P2)
-
-    /// Number of currently-revealed cells in a snapshot — used to tell a single
-    /// reveal (delta 1) from a flood-clear (delta > 1).
-    private func revealedCount(in snapshot: MinesweeperSessionSnapshot) -> Int {
-        var count = 0
-        for cell in snapshot.cells where cell.state == .revealed { count += 1 }
-        return count
-    }
-
-    /// Map the outcome of a `reveal` onto exactly one audio event:
-    ///   - crossed into `.lost`  → explosion (mine hit)
-    ///   - crossed into `.won`   → win
-    ///   - revealed > 1 new cell → floodClear
-    ///   - revealed exactly 1    → reveal (SFX only, no haptic)
-    ///   - revealed 0            → silent (tap on an already-revealed/flagged cell)
-    /// Win/lose take precedence over the cell-delta so a winning flood-clear plays
-    /// the win cue, not the flood cue.
-    private func fireRevealAudio(previousStatus: MinesweeperSessionStatus, revealedBefore: Int) {
-        let status = snapshot.status
-        if status == .lost, previousStatus != .lost {
-            soundPlayer.play(.minesweeperExplosion)
-            return
-        }
-        if status == .won, previousStatus != .won {
-            soundPlayer.play(.minesweeperWin)
-            return
-        }
-        let delta = revealedCount(in: snapshot) - revealedBefore
-        if delta > 1 {
-            soundPlayer.play(.minesweeperFloodClear)
-        } else if delta == 1 {
-            soundPlayer.play(.minesweeperReveal)
-        }
-    }
+    // Reveal audio classification (#330 P2): `revealedCount(in:)` and
+    // `fireRevealAudio(...)` live in MinesweeperGameViewModel+RevealAudio.swift
+    // (moved verbatim in #1018 to keep this file under the 400-line ceiling).
 
     // Pause / resume (#434): `pause()` / `resume()` live in
     // MinesweeperGameViewModel+Persistence.swift (pause is itself a persist

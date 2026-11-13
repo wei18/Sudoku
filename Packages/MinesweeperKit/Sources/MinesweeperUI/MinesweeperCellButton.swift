@@ -45,6 +45,11 @@ struct MinesweeperCellButton: View {
     let revealMines: Bool
     let onReveal: () -> Void
     let onToggleFlag: () -> Void
+    /// #1018 (design.md §6 M13): set only for a cell newly revealed by a flood
+    /// in an active reveal-wave event, and only under the `.wave` form. Within
+    /// a wave BOTH the background and the content reveal animate over `fade`,
+    /// after `delay`. `nil` → the cell behaves exactly as it did before.
+    var revealWave: MinesweeperRevealWave?
 
     /// True when this cell should be drawn as a surfaced (non-detonated) mine:
     /// the game is lost, the cell holds a mine, and it isn't already revealed
@@ -65,8 +70,21 @@ struct MinesweeperCellButton: View {
                     // scale 0.9→1.0 ease-out) — MS's equivalent content-
                     // appearing moment is a cell's reveal glyph (number/mine)
                     // or its flag icon; both surface through this one
-                    // `content` switch, so one gate covers both.
-                    .animation(contentAnimation, value: cell.state)
+                    // `content` switch, so one gate covers both. Inside a
+                    // reveal wave (#1018) the same change takes the wave's
+                    // fade, delayed by the cell's ring.
+                    .animation(waveAnimation ?? contentAnimation, value: cell.state)
+            }
+            // #1018 (design.md §6 M13): inside a reveal wave the BACKGROUND
+            // swap takes the wave's fade, delayed by the cell's ring; it is
+            // not animated today. Measured: a modifier attached directly to
+            // the `if`/`else` `background` view gives its structural swap no
+            // animation context (every tile popped at once), so it has to sit
+            // on this container. `transaction(value:)` touches the
+            // transaction only for a wave cell, so every other cell is
+            // unchanged.
+            .transaction(value: cell.state) { transaction in
+                if let waveAnimation { transaction.animation = waveAnimation }
             }
             .frame(width: side, height: side)
             // Ensure the whole cell square is hit-testable under .plain, not
@@ -224,7 +242,7 @@ struct MinesweeperCellButton: View {
                     Text("\(cell.neighborMineCount)")
                         .font(.system(size: glyphSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(numberColor(cell.neighborMineCount))
-                        .transition(.scale(scale: 0.9))
+                        .transition(numberTransition)
                 } else {
                     EmptyView()
                 }
@@ -236,6 +254,21 @@ struct MinesweeperCellButton: View {
     // 0.9→1.0 scale itself lives on the `.transition`s above).
     private var contentAnimation: Animation? {
         MotionGate.animation(.easeOut(duration: 0.08), reduceMotion: reduceMotion)
+    }
+
+    /// The revealed-number glyph's transition. Outside a wave it is exactly
+    /// the scale it always was. Inside a wave (#1018) it also fades in:
+    /// measured, a delayed insertion leaves the glyph at its transition's
+    /// INITIAL state during the delay, and `.scale` alone is fully opaque, so
+    /// every number showed up at once, ahead of its tile. Starting at opacity 0
+    /// keeps it invisible until its own turn.
+    private var numberTransition: AnyTransition {
+        revealWave == nil ? .scale(scale: 0.9) : .scale(scale: 0.9).combined(with: .opacity)
+    }
+
+    /// #1018: the cell's own fade, delayed by its ring; `nil` outside a wave.
+    private var waveAnimation: Animation? {
+        revealWave.map { .easeOut(duration: $0.fade).delay($0.delay) }
     }
 
     // #298 #8: the mine glyph. A filled `xmark.octagon` reads more clearly as a

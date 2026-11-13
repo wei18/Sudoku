@@ -50,6 +50,13 @@ public struct BoardView: View {
     // #1105: which regular-width host (iPad vs Mac) `macLayout` is rendering
     // into — read by BoardView+Layout.swift, so `internal` like `sizeClass`.
     @Environment(\.regularBoardContainer) var regularBoardContainer
+    // #1018: the unit sweep's plan is resolved HERE (Reduce Motion form +
+    // timing) and handed to `UnitSweepOverlay` as a plain argument, so the
+    // overlay never reads the environment. `internal` — read by
+    // BoardView+Layout.swift. Nothing in Sources sets either seam.
+    @Environment(\.accessibilityReduceMotion) var systemReduceMotion
+    @Environment(\.cellFeedbackReduceMotionOverride) var cellFeedbackReduceMotionOverride
+    @Environment(\.cellFeedbackTiming) var cellFeedbackTiming
     @Environment(\.scenePhase) private var scenePhase
     // #610 fix *2: dismiss the fullScreenCover when Close is tapped on the
     // completion overlay. `DismissAction` is a no-op outside a presented context
