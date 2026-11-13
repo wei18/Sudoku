@@ -52,6 +52,10 @@ public struct MinesweeperBoardView: View {
     // regular-width host — iPad fills the column, Mac stays capped to the
     // 900/600 detail-pane rule. Platform-defaulted; tests override it.
     @Environment(\.regularBoardContainer) private var regularBoardContainer
+    // #1018 (design.md §6 M13): the reveal wave's plan (Reduce Motion form +
+    // timing), resolved once by GameShellUI's `cellFeedbackMotionPlan`; each
+    // cell gets its own input from it, mirroring SudokuUI's `BoardView`.
+    @Environment(\.cellFeedbackMotionPlan) private var cellFeedbackMotionPlan
     // #455 step 4: app-backgrounding is a save point (the other two are pause
     // and terminal reveal, both inside the VM). Mirrors Sudoku's
     // scenePhase-triggered flush (§How.5.5).
@@ -1095,7 +1099,10 @@ public struct MinesweeperBoardView: View {
     }
 
     private func gridStack(rows: Int, cols: Int, cellSide: CGFloat, spacing: CGFloat) -> some View {
-        VStack(spacing: spacing) {
+        // #1018: read-only — the board never writes the feedback state.
+        let regionReveal = cellFeedbackMotionPlan.regionReveal
+        let waveEntries = viewModel.cellFeedback.activeEvents
+        return VStack(spacing: spacing) {
             ForEach(0..<rows, id: \.self) { row in
                 HStack(spacing: spacing) {
                     ForEach(0..<cols, id: \.self) { col in
@@ -1114,7 +1121,10 @@ public struct MinesweeperBoardView: View {
                             },
                             onToggleFlag: {
                                 Task { await viewModel.toggleFlag(row: row, col: col) }
-                            }
+                            },
+                            revealWave: MinesweeperRevealWave.resolve(
+                                form: regionReveal, entries: waveEntries, row: row, col: col
+                            )
                         )
                     }
                 }

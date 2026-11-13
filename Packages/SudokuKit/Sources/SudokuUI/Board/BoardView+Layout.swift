@@ -235,6 +235,14 @@ extension BoardView {
                     }
                 }
                 .frame(width: side, height: side)
+                // #1018: unit sweep above the grid. Its body is a `ZStack`
+                // around a `ForEach` that is empty while no event is active,
+                // so it adds no pixels then.
+                UnitSweepOverlay(
+                    entries: viewModel.cellFeedback.activeEvents,
+                    plan: cellFeedbackMotionPlan,
+                    boardSide: side
+                )
             }
             // Centre the square grid within the GR's offered rectangle so
             // the board sits inline with the surrounding header/digit pad

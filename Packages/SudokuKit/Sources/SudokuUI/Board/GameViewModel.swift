@@ -19,6 +19,7 @@
 public import Foundation
 import IssueReporting
 public import GameAudio
+public import GameShellUI
 public import SudokuGameState
 public import Persistence
 public import SudokuPersistence
@@ -111,6 +112,15 @@ public final class GameViewModel {
     /// from a past UTC day. Defaults to `Date()`; tests fast-forward.
     private let clock: @Sendable () -> Date
 
+    /// #1018: unit-sweep feedback. The view reads it to draw the sweep; the VM
+    /// only ever WRITES to it (see `GameViewModel+CellFeedback.swift`), so
+    /// feedback can never block or drop input.
+    let cellFeedback = CellFeedbackState<SudokuCellFeedbackEvent>()
+    /// Expiry sleeper for `cellFeedback` events; tests hold it by hand. The
+    /// public inits take it as a parameter, which is why `GameShellUI` is a
+    /// `public import` in this file.
+    let cellFeedbackSleeper: CellFeedbackSleeper
+
     // MARK: - Init
 
     /// Live init — bind to a real `GameSession` + `Persistence`.
@@ -136,10 +146,12 @@ public final class GameViewModel {
         errorReporter: any ErrorReporter = NoopErrorReporter(),
         soundPlayer: any SoundPlaying = NoopSoundPlaying(),
         saveDebounceNanos: UInt64 = 500_000_000,
-        clock: @escaping @Sendable () -> Date = { Date() }
+        clock: @escaping @Sendable () -> Date = { Date() },
+        cellFeedbackSleeper: @escaping CellFeedbackSleeper = liveCellFeedbackSleeper
     ) {
         self.identity = identity
         self.session = session
+        self.cellFeedbackSleeper = cellFeedbackSleeper
         self.board = initialBoard
         self.notes = initialNotes
         self.status = initialStatus
@@ -169,9 +181,11 @@ public final class GameViewModel {
         pencilMode: Bool = false,
         canUndo: Bool = false,
         canRedo: Bool = false,
-        clock: @escaping @Sendable () -> Date = { Date() }
+        clock: @escaping @Sendable () -> Date = { Date() },
+        cellFeedbackSleeper: @escaping CellFeedbackSleeper = liveCellFeedbackSleeper
     ) {
         self.identity = identity
+        self.cellFeedbackSleeper = cellFeedbackSleeper
         self.session = nil
         self.persistence = nil
         self.errorReporter = NoopErrorReporter()
@@ -277,7 +291,7 @@ public final class GameViewModel {
             // #330 P2: capture pre-mutation state so we can fire the right audio
             // cue after the re-sync (which is the authoritative post-state).
             let wasCompleted = status == .completed
-            let unitsCompleteBefore = digit == nil ? 0 : completedUnitCount(touching: coord)
+            let unitsCompleteBefore: Set<SudokuUnit> = digit == nil ? [] : completedUnits(touching: coord)
 
             if let digit {
                 await runSession("placeDigit") {
@@ -295,6 +309,7 @@ public final class GameViewModel {
             await resyncFromSession()
 
             if let digit {
+                beginUnitSweepFeedback(at: coord, before: unitsCompleteBefore)
                 fireAudio(forDigit: digit, at: coord, wasCompleted: wasCompleted, unitsCompleteBefore: unitsCompleteBefore)
                 // #610 fix *3: clear the save's inProgress status so the hub stops
                 // offering a resume for a completed game.
@@ -304,12 +319,14 @@ public final class GameViewModel {
             // Preview / test path: poke the mirror without crossing actor.
             // An invalid coord here is a programmer error in fixture wiring,
             // never a runtime user path — make it loud in DEBUG.
+            let unitsCompleteBefore: Set<SudokuUnit> = digit == nil ? [] : completedUnits(touching: coord)
             do {
                 try board.setDigit(digit, atRow: coord.row, column: coord.column)
             } catch {
                 reportIssue("preview fixture wiring bug: \(error)")
             }
             recomputeErrors()
+            if digit != nil { beginUnitSweepFeedback(at: coord, before: unitsCompleteBefore) }
         }
         scheduleSave()
     }
@@ -531,7 +548,7 @@ public final class GameViewModel {
     /// order: a solve (win) trumps everything; otherwise a mistake (the placed
     /// cell now conflicts); otherwise a plain placement, optionally followed by
     /// a section-cleared cue when this move newly completed a row / column / box.
-    private func fireAudio(forDigit digit: Int, at coord: GridCoordinate, wasCompleted: Bool, unitsCompleteBefore: Int) {
+    private func fireAudio(forDigit digit: Int, at coord: GridCoordinate, wasCompleted: Bool, unitsCompleteBefore: Set<SudokuUnit>) {
         // Win: the live `.playing → .completed` transition. Fires exactly once
         // (a re-placed digit on an already-completed board won't re-transition).
         if status == .completed, !wasCompleted {
@@ -551,50 +568,11 @@ public final class GameViewModel {
 
         // Section cleared: this move newly completed at least one of the three
         // units (row / column / box) that contain the cell.
-        if completedUnitCount(touching: coord) > unitsCompleteBefore {
+        // Unit detection lives in `GameViewModel+CellFeedback.swift` (#1018),
+        // shared with the unit-sweep feedback so there is one detector.
+        if !newlyCompletedUnits(touching: coord, before: unitsCompleteBefore).isEmpty {
             soundPlayer.play(.sudokuSectionCleared)
         }
-    }
-
-    /// Count how many of the three units (row, column, box) containing `coord`
-    /// are fully filled with NO conflict — i.e. correctly completed. Compared
-    /// before vs after a placement to detect a NEWLY completed section.
-    private func completedUnitCount(touching coord: GridCoordinate) -> Int {
-        var count = 0
-        if isUnitComplete(rowIndices(coord.row)) { count += 1 }
-        if isUnitComplete(columnIndices(coord.column)) { count += 1 }
-        if isUnitComplete(boxIndices(row: coord.row, column: coord.column)) { count += 1 }
-        return count
-    }
-
-    /// A unit is "complete" when every cell holds a digit and none is flagged as
-    /// an error (a fully-filled-but-conflicting unit is not a real completion).
-    private func isUnitComplete(_ indices: [Int]) -> Bool {
-        for index in indices {
-            guard board.digit(atIndex: index) != nil else { return false }
-            if errorIndices.contains(index) { return false }
-        }
-        return true
-    }
-
-    private func rowIndices(_ row: Int) -> [Int] {
-        (0..<Board.dimension).map { Board.index(row: row, column: $0) }
-    }
-
-    private func columnIndices(_ column: Int) -> [Int] {
-        (0..<Board.dimension).map { Board.index(row: $0, column: column) }
-    }
-
-    private func boxIndices(row: Int, column: Int) -> [Int] {
-        let boxRow = (row / 3) * 3
-        let boxCol = (column / 3) * 3
-        var indices: [Int] = []
-        for boxR in boxRow..<boxRow + 3 {
-            for boxC in boxCol..<boxCol + 3 {
-                indices.append(Board.index(row: boxR, column: boxC))
-            }
-        }
-        return indices
     }
 
     // MARK: - Completion side-effect

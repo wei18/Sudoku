@@ -50,6 +50,10 @@ public struct BoardView: View {
     // #1105: which regular-width host (iPad vs Mac) `macLayout` is rendering
     // into — read by BoardView+Layout.swift, so `internal` like `sizeClass`.
     @Environment(\.regularBoardContainer) var regularBoardContainer
+    // #1018: the unit sweep's plan (Reduce Motion form + timing), resolved once
+    // by GameShellUI's `cellFeedbackMotionPlan` and handed to `UnitSweepOverlay`
+    // as a plain argument. `internal` — read by BoardView+Layout.swift.
+    @Environment(\.cellFeedbackMotionPlan) var cellFeedbackMotionPlan
     @Environment(\.scenePhase) private var scenePhase
     // #610 fix *2: dismiss the fullScreenCover when Close is tapped on the
     // completion overlay. `DismissAction` is a no-op outside a presented context
