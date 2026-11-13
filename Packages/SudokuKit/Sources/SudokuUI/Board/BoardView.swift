@@ -47,6 +47,9 @@ public struct BoardView: View {
     let fetchStreakAdvance: (@MainActor () async -> CompletionStreakAdvance?)?
     @Environment(\.theme) var theme
     @Environment(\.horizontalSizeClass) var sizeClass
+    // #1105: which regular-width host (iPad vs Mac) `macLayout` is rendering
+    // into — read by BoardView+Layout.swift, so `internal` like `sizeClass`.
+    @Environment(\.regularBoardContainer) var regularBoardContainer
     @Environment(\.scenePhase) private var scenePhase
     // #610 fix *2: dismiss the fullScreenCover when Close is tapped on the
     // completion overlay. `DismissAction` is a no-op outside a presented context

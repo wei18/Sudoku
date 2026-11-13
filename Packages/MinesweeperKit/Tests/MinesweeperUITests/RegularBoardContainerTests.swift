@@ -1,27 +1,17 @@
-// RegularBoardContainerTests — #1101: pins the platform default and the
-// un-injected `EnvironmentValues` default so a future edit to either can't
-// silently drift them apart.
+// RegularBoardContainerTests — MS-specific `fittedAlignment` mapping.
+//
+// The platform-default / un-injected-EnvironmentValues pins moved to
+// GameShellKit's `RegularBoardContainerTests` (#1105) alongside the
+// `RegularBoardContainer` type itself; only the MS-specific mapping below
+// stays here.
 
+import GameShellUI
 import SwiftUI
 import Testing
 @testable import MinesweeperUI
 
-@Suite("RegularBoardContainer — platform default (#1101)")
+@Suite("MinesweeperBoardView.fittedAlignment — per container (#1101)")
 struct RegularBoardContainerTests {
-
-    @Test("platformDefault matches the current platform's board-viewport rule")
-    func platformDefaultMatchesPlatform() {
-        #if os(iOS)
-        #expect(RegularBoardContainer.platformDefault == .fillsColumn)
-        #else
-        #expect(RegularBoardContainer.platformDefault == .cappedDetailPane)
-        #endif
-    }
-
-    @Test("un-injected EnvironmentValues defaults to platformDefault")
-    func environmentDefaultsToPlatformDefault() {
-        #expect(EnvironmentValues().regularBoardContainer == RegularBoardContainer.platformDefault)
-    }
 
     // #1101 round 2: `.fitted` boards top-align under `.fillsColumn` (iPad,
     // so leftover column space lands below the board, not split above/below

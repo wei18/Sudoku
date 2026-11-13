@@ -15,6 +15,7 @@ import SwiftUI
 import Testing
 @testable import SudokuUI
 
+import GameShellUI
 import SudokuEngine
 import SudokuGameState
 import SudokuPersistence
@@ -41,6 +42,31 @@ struct BoardViewPencilNotesTests {
         kind: .practice,
         difficulty: .easy
     )
+
+    /// Shared fixture for every "pencil notes + error cell" variant below
+    /// (iPad portrait, iPad landscape, the regularCapped Mac-rule sibling,
+    /// and the Mac device test) — same clue string, notes, error cell, and
+    /// selection, so all of them prove the same game state under a
+    /// different device/container combination. See the class doc comment
+    /// for why the iPhone sibling keeps this exact cell layout.
+    private static func pencilNotesWithErrorViewModel() throws -> GameViewModel {
+        var notes = NotesGrid()
+        for digit in [2, 4, 8] { _ = notes.toggle(digit: digit, row: 0, col: 6) }
+        for digit in [1, 3, 7] { _ = notes.toggle(digit: digit, row: 2, col: 4) }
+        for digit in [5, 6, 9] { _ = notes.toggle(digit: digit, row: 6, col: 3) }
+        var board = try Board(clues: Self.inProgressClues)
+        try board.setDigit(4, atRow: 0, column: 2)
+        try board.setDigit(6, atRow: 0, column: 3)
+        try board.setDigit(5, atRow: 4, column: 4)
+        return GameViewModel(
+            identity: Self.identityEasy,
+            board: board,
+            notes: notes,
+            elapsedSeconds: 201,
+            errorIndices: [Board.index(row: 0, column: 2)],
+            selection: GridCoordinate(row: 4, column: 4)
+        )
+    }
 
     #if canImport(AppKit)
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotes_iPhone_light() throws {
@@ -116,24 +142,14 @@ struct BoardViewPencilNotesTests {
     }
 
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotesWithError_iPad_light() throws {
-        var notes = NotesGrid()
-        for digit in [2, 4, 8] { _ = notes.toggle(digit: digit, row: 0, col: 6) }
-        for digit in [1, 3, 7] { _ = notes.toggle(digit: digit, row: 2, col: 4) }
-        for digit in [5, 6, 9] { _ = notes.toggle(digit: digit, row: 6, col: 3) }
-        var board = try Board(clues: Self.inProgressClues)
-        try board.setDigit(4, atRow: 0, column: 2)
-        try board.setDigit(6, atRow: 0, column: 3)
-        try board.setDigit(5, atRow: 4, column: 4)
-        let viewModel = GameViewModel(
-            identity: Self.identityEasy,
-            board: board,
-            notes: notes,
-            elapsedSeconds: 201,
-            errorIndices: [Board.index(row: 0, column: 2)],
-            selection: GridCoordinate(row: 4, column: 4)
-        )
+        let viewModel = try Self.pencilNotesWithErrorViewModel()
+        // #1105: the macOS test host has no notion of "iPad" beyond the
+        // injected size class, so it must be told explicitly which
+        // board-viewport rule to apply — un-injected, `regularBoardContainer`
+        // would default to `.cappedDetailPane` (this process's platform is
+        // macOS), silently testing the wrong rule for an iPad baseline.
         let host = hostingView(
-            adFreeBoard(viewModel),
+            adFreeBoard(viewModel).environment(\.regularBoardContainer, .fillsColumn),
             size: SnapshotLayouts.iPad,
             colorScheme: .light,
             sizeClass: .regular
@@ -143,6 +159,55 @@ struct BoardViewPencilNotesTests {
         }
     }
 
+    // #1105: in-scope landscape pin — at 1376×1032 the board column is wider
+    // than it is tall, so the fitted square is height-bound and the lifted
+    // caps are what bind. It is also the ONLY baseline where the `.leading`
+    // vs `.center` mapping is visible: at 1032×1376 portrait the column width
+    // already equals the board width, so a horizontal flip changes no
+    // portrait pixel.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotesWithError_iPadLandscape_light() throws {
+        let viewModel = try Self.pencilNotesWithErrorViewModel()
+        let host = hostingView(
+            adFreeBoard(viewModel).environment(\.regularBoardContainer, .fillsColumn),
+            size: SnapshotLayouts.iPadLandscape,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(of: host, as: .image, named: "Board-iPadLandscape-light-pencilNotesWithError")
+        }
+    }
+
+    // #1105: same view/model/size as the iPad test above but forcing
+    // `.cappedDetailPane` via an un-injected environment — this process's
+    // platform is macOS, so the un-injected default already resolves to the
+    // Mac rule (`RegularBoardContainer.platformDefault`'s `#else` branch).
+    // (a) This pins that fact: flipping that `#else` branch to `.fillsColumn`
+    // turns this PNG red (see mutation M2 in the dispatch verification).
+    // (b) Its baseline is the pre-#1105 iPad pencil-notes PNG, moved
+    // byte-for-byte via `git mv` — it must pass WITHOUT re-recording, which
+    // is the mechanical proof that the capped Mac rule still renders
+    // pixel-identically at this size now that `regularBoardContainer` exists
+    // and iPad's default has flipped to `.fillsColumn`.
+    #if os(macOS)
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotesWithError_regularCapped_light() throws {
+        let viewModel = try Self.pencilNotesWithErrorViewModel()
+        let host = hostingView(
+            adFreeBoard(viewModel),
+            size: SnapshotLayouts.iPad,
+            colorScheme: .light,
+            sizeClass: .regular
+        )
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: host,
+                as: .image,
+                named: "Board-Regular-light-pencilNotesWithError-cappedDetailPane"
+            )
+        }
+    }
+    #endif
+
     /// macOS counterpart (#984 audit): the mac `03-board` marketing slot
     /// previously sourced `BoardViewTests.snapshotInProgress_Mac_light`,
     /// which has zero in-grid pencil notes — the mac frame claimed "Notes
@@ -151,22 +216,7 @@ struct BoardViewPencilNotesTests {
     /// layout box, so all three devices prove the same claim from the same
     /// underlying game state.
     @Test(.enabled(if: !SnapshotEnv.isXcodeCloud)) func snapshotPencilNotesWithError_Mac_light() throws {
-        var notes = NotesGrid()
-        for digit in [2, 4, 8] { _ = notes.toggle(digit: digit, row: 0, col: 6) }
-        for digit in [1, 3, 7] { _ = notes.toggle(digit: digit, row: 2, col: 4) }
-        for digit in [5, 6, 9] { _ = notes.toggle(digit: digit, row: 6, col: 3) }
-        var board = try Board(clues: Self.inProgressClues)
-        try board.setDigit(4, atRow: 0, column: 2)
-        try board.setDigit(6, atRow: 0, column: 3)
-        try board.setDigit(5, atRow: 4, column: 4)
-        let viewModel = GameViewModel(
-            identity: Self.identityEasy,
-            board: board,
-            notes: notes,
-            elapsedSeconds: 201,
-            errorIndices: [Board.index(row: 0, column: 2)],
-            selection: GridCoordinate(row: 4, column: 4)
-        )
+        let viewModel = try Self.pencilNotesWithErrorViewModel()
         let host = hostingView(
             adFreeBoard(viewModel),
             size: SnapshotLayouts.mac,

@@ -235,8 +235,11 @@ struct ASCScreenshotEmitTests {
 
     @Test(.enabled(if: ASCScreenshotEmit.isEnabled))
     func emit_iPad_board() throws {
+        // #1105: tell the macOS test host this is the iPad board rule (MS pattern).
         try emitASCScreenshot(
-            try boardView().environment(\.bannerSession, .disabled),
+            try boardView()
+                .environment(\.bannerSession, .disabled)
+                .environment(\.regularBoardContainer, .fillsColumn),
             profile: .iPad13, app: Self.app, device: "ipad-13", locale: "en",
             slot: "03-board", background: Self.background,
             host: hostingView

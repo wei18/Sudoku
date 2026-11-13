@@ -11,6 +11,7 @@
 // why the board keeps its size when the cluster unmounts.
 
 internal import GameAppKit
+import GameShellUI
 import MonetizationUI
 import SudokuEngine
 import SwiftUI
@@ -53,13 +54,18 @@ extension BoardView {
         .padding(.vertical, theme.spacing.medium)
     }
 
-    // MARK: - Mac (regular) 2-column layout
+    // MARK: - iPad + Mac (regular) 2-column layout
     //
     // Per docs/designs/05-board.md §b Mac wireframe (locked 2026-05-30):
     //   - outer maxWidth 960 pt, centered
     //   - left: 9×9 board (capped to ≤ 640 pt square)
     //   - right: 260 pt control rail (history / Notes / 3×3 digit / Erase)
     //   - 24 pt gap between board and rail
+    // #1105: this VStack/HStack shape is shared by BOTH iPad and Mac (both
+    // report `.regular`); `regularBoardContainer` decides whether the outer
+    // column and board viewport are capped to the Mac numbers above
+    // (`.cappedDetailPane`) or fill the column (`.fillsColumn`, iPad) — see
+    // the three static mapping functions below.
     var macLayout: some View {
         // Structural (#762 PR2 two-tier spacing contract) — same rationale
         // as `compactLayout` above.
@@ -75,7 +81,7 @@ extension BoardView {
             // Pause-time banner suppression preserved on Mac too.
             themedBanner(horizontalPadding: 0)
         }
-        .frame(maxWidth: 960)
+        .frame(maxWidth: Self.regularOuterMaxWidth(for: regularBoardContainer))
         .frame(maxWidth: .infinity, alignment: .center)
         // Structural (#762 PR2 two-tier spacing contract) — additive to the
         // screen-margin padding below (→ ≥ 32 pt combined); fixed for
@@ -84,8 +90,55 @@ extension BoardView {
         // #1022: the screen margin `body` used to apply to BOTH layouts.
         // Full-bleed is an iPhone-board rule (§3.4's cell table is three
         // iPhone widths); the Mac board sits in a capped 960/640 detail
-        // column, so it keeps the margin it had and is unchanged by #1022.
+        // column and iPad fills it (#1105), so both keep the margin they
+        // had and are unchanged by #1022.
         .padding(theme.spacing.medium)
+    }
+
+    nonisolated private static let macOuterMaxWidth: CGFloat = 960
+    nonisolated private static let macBoardMaxSide: CGFloat = 640
+
+    // #1105: capped (Mac) keeps the locked 960pt outer column; fillsColumn
+    // (iPad) removes the cap so the column takes the full width the parent
+    // offers. `.infinity`, not `nil` — `.frame(maxWidth: nil)` logs a
+    // SwiftUI runtime warning (same reason MS gives in
+    // `MinesweeperBoardView.macOuterFrameMaxWidth`).
+    nonisolated static func regularOuterMaxWidth(for container: RegularBoardContainer) -> CGFloat {
+        switch container {
+        case .cappedDetailPane: Self.macOuterMaxWidth
+        case .fillsColumn: .infinity
+        }
+    }
+
+    // #1105 PM ruling B: capped (Mac) keeps the locked 640pt width cap;
+    // fillsColumn (iPad) lifts it so the board takes the column width.
+    nonisolated static func regularBoardMaxWidth(for container: RegularBoardContainer) -> CGFloat {
+        switch container {
+        case .cappedDetailPane: Self.macBoardMaxSide
+        case .fillsColumn: .infinity
+        }
+    }
+
+    // #1105 PM ruling B: width cap lifted so the board takes the column
+    // width; height cap left `nil` so the frame hugs the fitted square and
+    // the whole regular stack keeps centring as a block in portrait (#1101
+    // top-aligned MS because its frame improved, Sudoku's got worse under
+    // top-align, so Sudoku keeps today's centred block — change only with
+    // a new frame in hand).
+    nonisolated static func regularBoardMaxHeight(for container: RegularBoardContainer) -> CGFloat? {
+        switch container {
+        case .cappedDetailPane: Self.macBoardMaxSide
+        case .fillsColumn: nil
+        }
+    }
+
+    // `.leading` keeps the board flush under the header title in
+    // landscape, where the square is height-bound.
+    nonisolated static func regularBoardAlignment(for container: RegularBoardContainer) -> Alignment {
+        switch container {
+        case .cappedDetailPane: .center
+        case .fillsColumn: .leading
+        }
     }
 
     /// Themed shared `MonetizationUI.BannerSlotView` (#441). The session model
@@ -112,7 +165,11 @@ extension BoardView {
 
     private var macBoardColumn: some View {
         boardWithOverlay
-            .frame(maxWidth: 640, maxHeight: 640)
+            .frame(
+                maxWidth: Self.regularBoardMaxWidth(for: regularBoardContainer),
+                maxHeight: Self.regularBoardMaxHeight(for: regularBoardContainer),
+                alignment: Self.regularBoardAlignment(for: regularBoardContainer)
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
