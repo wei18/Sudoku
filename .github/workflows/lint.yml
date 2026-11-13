@@ -101,10 +101,18 @@ jobs:
 
   swift-lint:
     name: SwiftLint (changed files)
-    # ubuntu-latest: swiftlint ships a linux x86_64 binary via mise (no Swift
-    # toolchain needed for lint-only). swiftformat removed 2026-05-26 (user
-    # decision: swiftlint coverage sufficient; swiftformat is redundant).
-    runs-on: ubuntu-latest
+    # swiftlint ships a linux x86_64 binary via mise (no Swift toolchain
+    # needed for lint-only). swiftformat removed 2026-05-26 (user decision:
+    # swiftlint coverage sufficient; swiftformat is redundant).
+    #
+    # ubuntu-24.04, NOT ubuntu-latest (#1116): the 26.04 image dropped
+    # libxml2.so.2 on 2026-11-01 and every released SwiftLint Linux binary
+    # (0.57 … 0.65.1) dynamically links it (realm/SwiftLint#6966), so the
+    # job died before linting a file. 24.04 still ships libxml2.so.2.
+    # Exit condition: once realm/SwiftLint#6967 (binaries built against
+    # libxml2.so.16) is in a release, bump `swiftlint` in .mise.toml and
+    # return this job to ubuntu-latest.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
