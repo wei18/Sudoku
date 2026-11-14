@@ -50,7 +50,7 @@ Subagent 執行期間：
 
 7. Subagent 每完成一個大段落就 commit，impl-notes 也一起 commit。中途的 WIP commit 可以用 `CONTRIBUTING.md` §Pre-commit hooks 的例外；push 前的最後一個 commit 必須通過 hooks。
 8. Subagent 的操作被 sandbox 拒絕時（`git rebase`、`git merge`、`kill`、push、進入別的 worktree），停下來回報，由 Leader 執行。push 一律由 Leader 做。
-9. `swift test` 卡住時，subagent 不重跑；回報卡住的 PID，由 Leader 處理（指令見 `CLAUDE.md` §Commands）。
+9. `swift test` 卡住時，不要再開第二個 run。Subagent 停不掉卡住的程序時，回報 PID，由 Leader 處理（做法見 `CLAUDE.md` §Commands）。
 10. Subagent 卡關或進度差時，Leader 不接手實作：清理環境、寫更精確的 brief、重新派發。
 11. 等 subagent 的時候，Leader 做不衝突的工作：下一個 brief、文件交叉檢查。不改 subagent 正在改的檔案。
 

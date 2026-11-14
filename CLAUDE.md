@@ -47,7 +47,7 @@ test support (never in app products):    GameTestSupportKit
 mise tasks ls                                              # every ops task; check here before hand-rolling a command
 swift test --package-path Packages/<Kit>                   # one package; use a repo-relative path (cd does not persist)
 swift test --package-path Packages/<Kit> --filter <Suite>  # one suite
-swift test --package-path Packages/GameCenterKit --no-parallel   # this package hangs in parallel mode
+swift test --package-path Packages/GameCenterKit --no-parallel   # this package can hang in parallel mode
 mise run tuist:generate                                    # resolve packages, generate Game.xcworkspace, do not open Xcode
 mise run scan:l10n                                         # 7 locales complete + test fixtures in sync
 mise run scan:design_contracts                             # screen-contract anchors still resolve
@@ -56,7 +56,7 @@ mise run scan:design_contracts                             # screen-contract anc
 - In a new worktree, run `mise trust` before the first commit; without it the pre-commit hooks fail open. Before an app build, run `mise run worktree:seed <path>` from the main checkout to copy the gitignored xcconfig and secrets.
 - If a `swift test` run crashes or hangs, do not start a second run. Stop the stuck `swiftpm-testing-helper`, re-run suite by suite with `--filter`, and report the substitution.
 - Trust `swift test`, not SourceKit: "no such module" diagnostics after an edit are usually stale.
-- `swift build` skips test targets, and macOS `swift test` skips `#if os(iOS)` code. After changing a shared protocol requirement, run `swift test` on every package with a conformer, and build iOS-only conformers with `xcodebuild -destination 'generic/platform=iOS Simulator' build`.
+- `swift build` skips test targets, and macOS `swift test` skips `#if os(iOS)` code. After changing a shared protocol requirement, run `swift test` on every package with a conformer, and build iOS-only conformers from the package directory with `xcodebuild -scheme <Target> -destination 'generic/platform=iOS Simulator' build`.
 - Snapshot baselines are committed. A failing snapshot means behavior changed: investigate, never re-record to pass. A fully blank snapshot means the `AssetCatalogCompiler` plugin is missing from the target's `plugins:`.
 
 ## What CI covers
