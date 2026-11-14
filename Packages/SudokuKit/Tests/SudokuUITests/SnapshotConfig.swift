@@ -26,6 +26,7 @@
 #if canImport(AppKit)
 import AppKit
 import Foundation
+import GameTestSupportKit
 import SnapshotTesting
 import SwiftUI
 @testable import SudokuUI
@@ -284,7 +285,7 @@ func hostingView<V: SwiftUI.View>(
 ///   - sizeClass:   horizontal size class. Defaults to `.regular` (Mac), the
 ///                  whole point of this harness; iPhone fixtures pass `.compact`.
 /// - Returns: the window's `contentView`, plus the owning `NSWindow` the caller
-///   must keep alive until after the snapshot is captured (release closes it).
+///   must keep alive until after the snapshot is captured, then `close()`.
 @MainActor
 func windowSnapshotView<V: SwiftUI.View>(
     _ view: V,
@@ -306,25 +307,20 @@ func windowSnapshotView<V: SwiftUI.View>(
     let controller = NSHostingController(rootView: wrapped)
     controller.sizingOptions = []
 
-    let window = NSWindow(
-        contentRect: CGRect(origin: .zero, size: size),
+    let window = makeOffscreenTestWindow(
+        size: size,
         styleMask: [.titled, .closable, .fullSizeContentView],
-        backing: .buffered,
-        defer: false
+        appearance: NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
     )
-    window.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
     window.contentViewController = controller
     // Pin the content size after assigning the controller so the hosting
     // controller's preferred size can't grow the window past our box.
     window.setContentSize(size)
-    // Position far offscreen (below the visible coordinate space) so the
-    // window gets a real window-server backing store + display pass WITHOUT
-    // ever flashing on a visible screen. A never-ordered window has no backing
-    // store, so `bitmapImageRepForCachingDisplay` / layer rendering capture a
-    // blank image — ordering it front (offscreen) forces the SwiftUI layer
-    // tree to actually draw. This is what makes Form/SplitView chrome appear.
+    // Positioned offscreen and never ordered front or made key (a window taking
+    // focus corrupts other sessions' runs on this shared machine).
+    // `windowSnapshotImage` captures via `displayIgnoringOpacity` into a bitmap
+    // context, so no window-server backing store is needed.
     window.setFrameOrigin(CGPoint(x: -10_000, y: -10_000))
-    window.orderFrontRegardless()
 
     guard let contentView = window.contentView else {
         // `contentViewController` always materialises a contentView; this
@@ -334,8 +330,8 @@ func windowSnapshotView<V: SwiftUI.View>(
     contentView.frame = CGRect(origin: .zero, size: size)
     // Force a synchronous layout + display pass so capture is deterministic
     // (no async layout race). `layoutSubtreeIfNeeded` drives AppKit + embedded
-    // SwiftUI layout to completion; `displayIfNeeded` flushes the draw into the
-    // now-existing backing store.
+    // SwiftUI layout to completion; `displayIfNeeded` runs any pending display
+    // pass. The capture itself is `windowSnapshotImage`'s draw into a bitmap.
     contentView.layoutSubtreeIfNeeded()
     window.displayIfNeeded()
     return (contentView, window)

@@ -18,7 +18,9 @@
 //   - `window_mac_renders_form_chrome` asserts the harness produces a *non-blank*
 //     capture and is gated to run only where a window server actually renders
 //     (it self-skips when the capture comes back blank, the headless signature),
-//     and records/diffs a committed PNG baseline when it does run.
+//     and diffs the committed PNG baseline when it does run. That baseline was
+//     first recorded on macOS 27.0 (#1103); from a terminal inside a logged-in
+//     GUI session the capture is NOT blank, so the test does run there.
 //   - `window_harness_mounts_real_window` always runs: it asserts the structural
 //     contract (real NSWindow + NSHostingController containment + sizing), which
 //     is what makes the Form/SplitView layout pipeline run, independent of
