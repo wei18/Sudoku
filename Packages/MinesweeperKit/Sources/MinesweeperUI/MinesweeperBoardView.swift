@@ -598,7 +598,6 @@ public struct MinesweeperBoardView: View {
 
     private static let macOuterMaxWidth: CGFloat = 900
     private static let macBoardMaxSide: CGFloat = 600
-    private static let macRailWidth: CGFloat = 260
 
     // #1101: capped (Mac) keeps the locked 900pt outer column; fillsColumn
     // (iPad) removes the cap so the column takes the full width the parent
@@ -636,7 +635,7 @@ public struct MinesweeperBoardView: View {
             controlCluster
             Spacer(minLength: 0)
         }
-        .frame(width: Self.macRailWidth)
+        .frame(width: BoardControlRail.width)
     }
 
     // MARK: - Banner slot

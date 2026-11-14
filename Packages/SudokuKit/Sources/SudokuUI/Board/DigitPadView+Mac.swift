@@ -23,8 +23,12 @@ extension DigitPadView {
         } input: {
             macDigitGrid
         }
-        .frame(maxWidth: 260)
+        .frame(maxWidth: BoardControlRail.width)
     }
+
+    nonisolated static let macDigitColumns = 3
+    nonisolated static let macDigitLabelMinWidth: CGFloat =
+        BoardControlRail.keyLabelMinWidth(columns: macDigitColumns)
 
     // Edit group on the rail: history row, Notes toggle, Erase — the same four
     // controls as the compact edit row, in the rail's vertical arrangement
@@ -92,14 +96,17 @@ extension DigitPadView {
     }
 
     private var macDigitGrid: some View {
-        // 3×3 fixed grid — each cell ≥ 64 pt per docs/designs/05-board.md §b
-        // Mac wireframe. `Grid` (not `LazyVGrid`) keeps a fixed cell template
-        // so the rail width never reflows when the parent resizes.
-        Grid {
-            ForEach(0..<3, id: \.self) { row in
+        // 3×3 fixed grid — key WIDTH is derived from the shared rail width
+        // (#1114, `BoardControlRail`); 64 pt is the key HEIGHT per
+        // docs/designs/05-board.md §b Mac wireframe. `Grid` (not `LazyVGrid`)
+        // keeps a fixed cell template so the rail width never reflows when the
+        // parent resizes.
+        Grid(horizontalSpacing: BoardControlRail.keyGridSpacing,
+             verticalSpacing: BoardControlRail.keyGridSpacing) {
+            ForEach(0..<Self.macDigitColumns, id: \.self) { row in
                 GridRow {
-                    ForEach(1...3, id: \.self) { col in
-                        macDigitButton(digit: row * 3 + col)
+                    ForEach(1...Self.macDigitColumns, id: \.self) { col in
+                        macDigitButton(digit: row * Self.macDigitColumns + col)
                     }
                 }
             }
@@ -140,7 +147,7 @@ extension DigitPadView {
     private func macDigitLabel(digit: Int) -> some View {
         Text("\(digit)")
             .font(.title2.weight(.medium))
-            .frame(minWidth: 64, minHeight: 64)
+            .frame(minWidth: Self.macDigitLabelMinWidth, minHeight: 64)
             .frame(maxWidth: .infinity)
     }
 
