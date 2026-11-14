@@ -162,7 +162,7 @@ struct CompletionOverlayScaffoldTests {
         )
     }
 
-    private let pageTitle = CompletionPageTitle(difficultyKey: "Easy", utcDay: "2026-11-14")
+    private let pageTitle = CompletionPageTitle(difficultyKey: "Easy", day: Date(timeIntervalSince1970: 1_794_614_400))
 
     /// iPhone untouched: a compact `.pushedPage` must render the SAME pixels
     /// as the compact overlay. Compared against the overlay's own render, so

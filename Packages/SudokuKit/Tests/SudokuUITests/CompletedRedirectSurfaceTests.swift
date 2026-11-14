@@ -90,19 +90,4 @@ struct CompletedRedirectSurfaceTests {
             #expect(!(child.value is any HapticPlaying), "CompletionOverlayScaffold must not hold a HapticPlaying instance")
         }
     }
-
-    // MARK: - #1049 page title
-
-    @Test("a daily puzzleId titles the page with its difficulty and UTC day")
-    func dailyPuzzleIdTitle() {
-        #expect(
-            CompletionPageTitle(sudokuDailyPuzzleId: "2026-11-14-medium")
-                == CompletionPageTitle(difficultyKey: "Medium", utcDay: "2026-11-14")
-        )
-    }
-
-    @Test("a practice puzzleId has no page title")
-    func practicePuzzleIdHasNoTitle() {
-        #expect(CompletionPageTitle(sudokuDailyPuzzleId: "practice-0A1B2C-hard") == nil)
-    }
 }

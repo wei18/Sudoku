@@ -86,17 +86,3 @@ public struct CompletedRedirectSurface: View {
         }
     }
 }
-
-extension CompletionPageTitle {
-    /// The pushed review route's title for a Daily `puzzleId`
-    /// (`"YYYY-MM-DD-<difficulty>"`, #1049). `nil` for a practice id, which
-    /// never reaches that route.
-    public init?(sudokuDailyPuzzleId puzzleId: String) {
-        guard SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId),
-              let dash = puzzleId.lastIndex(of: "-") else { return nil }
-        self.init(
-            difficultyKey: String(puzzleId[puzzleId.index(after: dash)...]).capitalized,
-            utcDay: String(puzzleId[..<dash])
-        )
-    }
-}

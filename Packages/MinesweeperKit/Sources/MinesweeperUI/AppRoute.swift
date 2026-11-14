@@ -46,8 +46,9 @@ public enum AppRoute: Hashable, Sendable {
     // review distinct from today's — defaulted to `nil` so every pre-#826
     // call site (today's completed-card re-view) keeps compiling unchanged;
     // `nil` means "today" exactly as before. NOTE: inside `LiveRouteFactory`'s
-    // `.completion` case `day` only titles the regular-width page (#1049) and
-    // keys route/Hashable identity — the leaderboard-slice fetch this was meant to
+    // `.completion` case `day` only titles the regular-width page (#1049; a
+    // `nil` day gets no title, so every hub push passes it) and keys
+    // route/Hashable identity — the leaderboard-slice fetch this was meant to
     // key was already deleted in #698 before #826 landed (`MinesweeperCompletionViewModel`
     // is fully synthetic: hardcoded `didWin: true, elapsedSeconds: 0`). Kept
     // per owner-adjudication for future re-wiring if the slice returns.

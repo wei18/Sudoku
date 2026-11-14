@@ -270,9 +270,7 @@ public struct LiveRouteFactory: RouteFactory {
                         }
                     },
                     onClose: { closePath?.wrappedValue.removeLast() },
-                    // #1049: titled page in regular width; iPhone keeps the overlay layout.
-                    presentation: CompletionPageTitle(sudokuDailyPuzzleId: puzzleId)
-                        .map(CompletionPresentation.pushedPage) ?? .overlay
+                    presentation: Self.reviewPresentation(puzzleId: puzzleId)
                 )
             )
         case .settings:

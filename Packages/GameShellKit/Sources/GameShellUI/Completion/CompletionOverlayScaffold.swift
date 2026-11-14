@@ -107,10 +107,14 @@ public struct CompletionOverlayScaffold<Card: View>: View {
             // underneath stays LIVE in the a11y tree while this overlay presents.
             // `.isModal` alone isolates it (sim-verified via `idb ui describe-all`
             // on both apps: every board/digit-pad element drops out of the
-            // reported tree, leaving only the hero + CTAs). Also applied to the
-            // standalone pushed `.completion` route (macOS) — harmless there since
-            // that route has no board sibling to begin with.
-            .accessibilityAddTraits(.isModal)
+            // reported tree, leaving only the hero + CTAs). #1049: not on the
+            // regular-width page, whose title, back button and tabs VoiceOver
+            // must still reach.
+            .accessibilityAddTraits(pageTitle == nil ? .isModal : [])
+    }
+
+    private var pageTitle: CompletionPageTitle? {
+        presentation.pageTitle(in: horizontalSizeClass)
     }
 
     /// Split from `body` so `.onAppear` sits on the ALWAYS-fully-opaque
@@ -123,32 +127,34 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         ZStack {
             accentGlow
             glassPanel
-            if let pageTitle = presentation.pageTitle(in: horizontalSizeClass) {
-                // #1049: the pushed review in regular width is a page in its
-                // tab, so the column starts under the title instead of
-                // floating in the middle of the detail column.
-                ScrollView {
+            Group {
+                if let pageTitle {
+                    // #1049: in regular width the pushed review is a page in its
+                    // tab, so the column starts under the title. Crossing the
+                    // size-class boundary (iPad Split View) rebuilds the card
+                    // subtree; accepted for this rare resize on a review screen,
+                    // because one shared wrapper would risk the compact pixels.
+                    ScrollView {
+                        column
+                            .padding(.top, theme.spacing.large)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .completionPageTitle(pageTitle)
+                } else {
                     column
-                        .padding(.top, theme.spacing.large)
-                        .frame(maxWidth: .infinity)
                 }
-                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
-                .completionPageTitle(pageTitle)
-            } else {
-                column
-                    // Cap Dynamic Type so the (non-scrolling) group can't grow past the
-                    // screen — mirrors the board status bar's cap. Extreme-AX overflow
-                    // scroll is a possible follow-up; the cap keeps it on-screen.
-                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             }
+            // Cap Dynamic Type so the (non-scrolling) overlay group can't grow
+            // past the screen — mirrors the board status bar's cap. The page
+            // keeps the same cap so its card renders exactly like the overlay's.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
         .onAppear { panelRevealed = true }
     }
 
     // Section gap (#762 PR1 two-tier spacing contract) — structural,
-    // fixed rhythm between the result card and its CTA group;
-    // reinforced by the `.dynamicTypeSize` cap at both call sites, which
-    // exists specifically so this overlay can't grow past the screen.
+    // fixed rhythm between the result card and its CTA group.
     private var column: some View {
         VStack(spacing: theme.spacing.large) {
             card()

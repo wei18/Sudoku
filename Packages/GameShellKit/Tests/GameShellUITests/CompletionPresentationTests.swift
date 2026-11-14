@@ -5,7 +5,8 @@ import Testing
 
 @Suite("CompletionPresentation — #1049 pushed review page")
 struct CompletionPresentationTests {
-    private let title = CompletionPageTitle(difficultyKey: "Easy", utcDay: "2026-11-14")
+    /// 2026-11-14 00:00 UTC, a Saturday.
+    private let title = CompletionPageTitle(difficultyKey: "Easy", day: Date(timeIntervalSince1970: 1_794_614_400))
 
     @Test("only a pushed page in regular width gets the page layout")
     func pageLayoutGate() {
@@ -16,22 +17,10 @@ struct CompletionPresentationTests {
         #expect(CompletionPresentation.overlay.pageTitle(in: .compact) == nil)
     }
 
-    @Test("a UTC day parses to midnight UTC")
-    func dayParsesAsUTCMidnight() throws {
-        let day = try #require(title.day)
-        #expect(day == Date(timeIntervalSince1970: 1_794_614_400))
-    }
-
-    @Test("malformed days degrade to no date", arguments: ["", "2026-11", "2026-11-1", "2026-13-01", "2026-02-30", "26-11-14", "abcd-ef-gh"])
-    func malformedDayIsNil(utcDay: String) {
-        #expect(CompletionPageTitle(difficultyKey: "Easy", utcDay: utcDay).day == nil)
-    }
-
     @Test("the day prints as the UTC day, not the device's local day")
-    func dayFormatsInUTC() throws {
-        let day = try #require(title.day)
+    func dayFormatsInUTC() {
         let format = CompletionPageTitle.dayFormat.locale(Locale(identifier: "en_US"))
-        #expect(day.formatted(format) == "Sat, Nov 14")
-        #expect(day.addingTimeInterval(86_399).formatted(format) == "Sat, Nov 14", "23:59:59 UTC is already Sunday east of UTC")
+        #expect(title.day.formatted(format) == "Sat, Nov 14")
+        #expect(title.day.addingTimeInterval(86_399).formatted(format) == "Sat, Nov 14", "23:59:59 UTC is already Sunday east of UTC")
     }
 }

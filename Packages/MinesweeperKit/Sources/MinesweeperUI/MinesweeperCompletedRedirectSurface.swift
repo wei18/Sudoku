@@ -18,11 +18,11 @@ public struct MinesweeperCompletedRedirectSurface: View {
     let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
     let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
     let onClose: () -> Void
-    /// `.pushedPage` only from the Daily hub's pushed review route (#1049).
-    let presentation: CompletionPresentation
     /// MS re-view has no stored elapsed (#284/#386) — the hero omits the time
     /// row entirely when `false`. Defaults `true` (has-time callers unchanged).
     let showsElapsedTime: Bool
+    /// `.pushedPage` only from the Daily hub's pushed review route (#1049).
+    let presentation: CompletionPresentation
 
     /// `.allDone` default — never claims a "Next" that doesn't exist while
     /// `fetchDailyProgress` is still resolving.
@@ -42,8 +42,8 @@ public struct MinesweeperCompletedRedirectSurface: View {
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
         self.onClose = onClose
-        self.presentation = presentation
         self.showsElapsedTime = showsElapsedTime
+        self.presentation = presentation
     }
 
     public var body: some View {

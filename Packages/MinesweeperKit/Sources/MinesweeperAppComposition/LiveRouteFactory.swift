@@ -48,8 +48,6 @@ public import Telemetry
 public import GameAudio
 
 internal import Foundation
-// #1049: `UTCDay` (TimeKit, re-exported here) titles the pushed review page.
-internal import MinesweeperGameState
 // refactor/settingskit-target (2026-06-09): `SettingsNoticesConfig` moved out of
 // GameShellUI into SettingsUI. Used only in the private `makeSettingsNotices()`,
 // so the import is internal. #330 P2 also names `AudioSettingsModel` (SettingsUI).
@@ -246,8 +244,7 @@ public struct LiveRouteFactory: RouteFactory {
             )
 
         case .completion(let difficulty, let mode, let day):
-            // #826: `day` keys no fetch (the slice fetch was deleted in #698;
-            // see `AppRoute`'s case doc). Since #1049 it only titles the page.
+            // #826: see `AppRoute`'s case doc for what `day` is used for.
             // #386: re-viewing an already-solved daily. Build the same
             // `MinesweeperCompletionView` the live board overlay uses, but
             // standalone (no board behind it) and seeded as a WIN — a solved
@@ -291,12 +288,7 @@ public struct LiveRouteFactory: RouteFactory {
                     },
                     onClose: { closePath?.wrappedValue.removeLast() },
                     showsElapsedTime: false,
-                    // #1049: titled page in regular width; iPhone keeps the
-                    // overlay layout. `day == nil` means today (#826).
-                    presentation: .pushedPage(CompletionPageTitle(
-                        difficultyKey: difficulty.rawValue.capitalized,
-                        utcDay: day ?? UTCDay.string(from: Date())
-                    ))
+                    presentation: Self.reviewPresentation(difficulty: difficulty, mode: mode, day: day)
                 )
             )
         case .settings:
