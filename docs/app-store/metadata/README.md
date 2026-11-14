@@ -63,8 +63,8 @@ match the ASC API JSON keys.
 | `review_information.notes_source` / `notes_summary` | per submission | the canonical Notes block is the fenced text in `docs/app-store/review/{sudoku-v2.5,minesweeper-v1}.md` — paste THAT verbatim; the summary just points to it |
 
 **Flagged placeholders (need user confirmation before any ASC upload):**
-`review_information.email_address` (the ASC account email — lives in private
-memory `asc-api-credentials`, deliberately not committed), `phone_number`
+`review_information.email_address` (the ASC account email — deliberately not
+committed; the user supplies it at submission time), `phone_number`
 (E.164 contact number), and the reviewer-contact `first_name` / `last_name`.
 
 **Legacy note:** `primary_category`, `secondary_category`, and `age_rating`

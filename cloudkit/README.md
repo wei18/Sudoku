@@ -8,7 +8,8 @@ Committed CloudKit schema source of truth — one `.ckdb` per app:
 | `minesweeper.ckdb` | `iCloud.com.wei18.minesweeper` | `MonetizationState`, `SavedGame` (#455 resume) |
 
 These files are produced and deployed by `mise run ck:schema …`
-(`mise-tasks/ck/schema`, GitHub issue #337). See `docs/foundations.md §7.7.2`.
+(`mise-tasks/ck/schema`). The procedure and the rules for editing a schema are in
+`.claude/skills/cloudkit-schema-ops/SKILL.md`.
 
 ## Workflow
 
@@ -29,8 +30,8 @@ mise run ck:schema validate --app sudoku
 # 3. deploy to Development (freely runnable, declarative):
 mise run ck:schema deploy --app sudoku --env development
 
-# 4. promote to PRODUCTION — USER-OWNED, CONSOLE-ONLY (2026-06-10: cktool
-#    import-schema rejects production, and no promote subcommand exists):
+# 4. promote to PRODUCTION — USER-OWNED, CONSOLE-ONLY (cktool import-schema
+#    rejects production, and no promote subcommand exists):
 #    CloudKit Console → container → Development → Schema
 #    → "Deploy Schema Changes to Production…" → review diff → Deploy.
 #    Production indexes/fields are ADD-ONLY — they can never be removed.
@@ -40,6 +41,3 @@ The `.ckdb` files are **not** secrets (they are schema definitions, no tokens),
 so they are committed. The management token is the secret and lives only in
 `secrets/.env` (gitignored).
 
-> The `.ckdb` files are seeded by the user (step 1 needs the live token + a
-> populated Development container). They are intentionally absent from the
-> issue #337 PR, which adds only the tooling + docs.

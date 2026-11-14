@@ -1,13 +1,13 @@
 ---
 name: game-factory-composition
-description: The shared composition template that lets multiple games (Sudoku / Minesweeper) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (3-tab root shell + tab-root chrome / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp".
+description: The shared composition template that lets multiple games (Sudoku / Minesweeper) share ONE live stack — `GameConfig<Route>` + `makeGameApp(config:)` in GameAppKit, `<Game><Concern>` target naming, and shared non-gameplay UI (3-tab root shell + tab-root chrome / DailyHub skeleton / board-redirect / GC dashboard). Only the Game module is per-game; everything else is reusable module + DI config. Invoke when adding a new game, migrating a game's composition root, deciding what is shared vs per-game, writing a `GameConfig`, or when asked "how do I bootstrap game N / why is there a makeGameApp". Not for gameplay engine or board code inside one game, and not for general SwiftPM target layout (see apple-dev-skills:swiftpm-modularization).
 ---
 
 # Game Factory Composition
 
 ## When to invoke
 
-- Bootstrapping a **new game** (the "game N" / new-game-scaffold path, #479/#501).
+- Bootstrapping a **new game** (start with `mise run new_game:scaffold <Name>`).
 - Migrating a game's composition root onto the shared backbone.
 - Deciding whether a surface is **shared** or legitimately **per-game**.
 - Writing or reviewing a `GameConfig<Route>` / a `makeGameApp` call site.
@@ -16,31 +16,27 @@ description: The shared composition template that lets multiple games (Sudoku / 
 - User asks "how do I add a third/fourth game", "what does makeGameApp wire",
   "what stays per-game".
 
-This is the **shipped** shape of SDD-005 platform convergence (2026-06-19). The
-third game (Tiles2048 / SDD-004) was prototyped then **removed 2026-06-29** — only
-Sudoku + Minesweeper remain. The SDD's *future* DI-config refinements are not yet
-here; this skill describes only what is live in `GameAppKit` today.
+This skill describes what is live in `GameAppKit` today. The design record is
+SDD-005 (`docs/superpowers/specs/2026-06-17-sdd-005-platform-convergence-rfc.md`);
+where the two differ, the code is right. The games are Sudoku and Minesweeper.
 
 ## The prime shape
 
 > Only the **Game module** is per-game. Everything else = reusable module + DI
 > config. A 4th game ≈ fill one `GameConfig` + supply engine / board / tokens.
 
-Payoff: fix/verify a bug **once** in the shared path, not per-app. Proven both
-ways — #544 fixed in the shared gateway fixed both apps; #536/#554 lived in
-per-app-duplicated code and had to be fixed twice. The mirror principle
-(`minesweeper-mirrors-sudoku`) is enforced *structurally* here, not by discipline.
+Reason: a bug in the shared path is fixed and verified once for both apps; a bug
+in duplicated per-app code must be fixed twice (#536, #554). This structure is how
+the mirror principle (`CLAUDE.md` §Mirror principle) is enforced.
 
 ## Three pillars
 
 ### A. Naming — `<Game><Concern>` targets
 
-- Targets are `SudokuGameState` / `SudokuAppComposition` / `SudokuPersistence`,
-  `Minesweeper…`. **Minesweeper is the canonical clean shape** to template from;
-  Sudoku was the drifted one and was renamed (#561/#562) + had its `LiveRouteFactory`
-  moved into `SudokuAppComposition` (#640) to match.
-- `<Game>UI` internals are **prefix-none** (don't over-prefix every file; MS
-  historically over-prefixed, Sudoku didn't — settle on prefix-none).
+- Targets are named `<Game><Concern>`: `SudokuAppComposition`, `SudokuPersistence`,
+  `MinesweeperAppComposition`, `MinesweeperPersistence`. Use Minesweeper as the
+  template for a new game.
+- New files inside `<Game>UI` take no game prefix. Older Minesweeper files still have one.
 
 ### B. Composition-as-template — `GameConfig` + `makeGameApp`
 
@@ -69,10 +65,10 @@ per-app-duplicated code and had to be fixed twice. The mirror principle
   (`GameShellUI/RootShellView.swift`: Today / Practice / Progress, one path per
   tab) with per-game tab roots supplied through `config.makeTabRoot` (built
   once per tab per launch — treat it as a factory with stable identity). The
-  Today root is wrapped in `TodayTabHost` (ResumePill + banner slot + ATT
-  primer anchor); every tab root gets the shared Settings gear
-  (`TabRootChrome`); Progress hosts the shared `AchievementsRow`. The former
-  universal HOME (`GameHomeView` / `GameHomeViewModel`, #557) is retired.
+  Today root is wrapped in `TodayTabHost` (resume pill); the banner and the ATT
+  primer anchor live in one shared `BannerAccessoryView` (`tabViewBottomAccessory`);
+  every tab root gets the shared Settings gear (`TabRootChrome`); Progress hosts
+  the shared `GameCenterEntryRow`. There is no HOME screen.
 - **DailyHub** — the two VMs are legitimately gameplay-divergent; only the
   bug-prone **two-phase-load skeleton** (`performDailyBootstrap`) is shared in
   GameShellUI (#558).
@@ -90,19 +86,19 @@ fix during its migration**, NOT modelled as an `Optional` capability. Filling th
 gap means adding the seam wiring **and** its L10n keys (see the scan:l10n blind
 spot in `apple-dev-skills:ai-translated-localization`).
 
-## The recurring lesson (5×: #558 / #559 / #560 / MS / 2048)
+## Before you merge two per-game implementations
 
-The SDD's "near-identical / generate-from-config / collapse N wrappers" claims
-were **optimistic every single time**. Per-game `view` / VM / route enums are
-legit gameplay and do NOT collapse. **Audit the actual code before trusting a
-spec's "near-identical" claim**, extract only the genuinely-shared bug-prone
-scaffolding (a ~15-line generic skeleton, not a god-VM), and **surface the scope
-correction to the user before implementing**. Convergence scope is per-surface,
-not blanket.
+Per-game views, view models and route enums are gameplay and do not collapse.
+Every "near-identical" claim in a spec so far overstated the overlap (#558, #559, #560).
+
+1. Read both implementations before trusting a claim that they are near-identical.
+2. Extract only the shared, bug-prone scaffolding (a small generic skeleton, not one large view model).
+3. If the real overlap is smaller than the spec says, tell the user before implementing.
 
 ## Adding a new game (checklist)
 
-- [ ] New `<Game>Core` (engine/state, Foundation-only) + `<Game>Kit` (UI/board/tokens).
+- [ ] Run `mise run new_game:scaffold <Name>`. It copies Minesweeper into a compiling skeleton and never touches git state.
+- [ ] Fill `<Name>CoreKit` (engine and state, Foundation-only) and `<Name>Kit` (UI, board, tokens).
 - [ ] Build a `GameConfig<Route>`: values + `makeRouteFactory` + `makeTabRoot` + `settingsRoute` +
       `fetchResume` (if it has a resume surface) + `makeCompletionSinks` (if it
       uses the shared GC pipeline — see `apple-dev-skills:telemetry-facade-pattern`).

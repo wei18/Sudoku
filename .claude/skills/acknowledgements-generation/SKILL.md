@@ -1,6 +1,6 @@
 ---
 name: acknowledgements-generation
-description: Regenerate each app's Settings.bundle Acknowledgements (open-source license) page from the SwiftPM dependency graph via `mise run gen:acknowledgements` (wraps LicensePlist, configured by `App/<App>/license_plist.yml`). Invoke when adding / removing / upgrading a third-party SwiftPM dependency (especially the AdMob / UMP graph under AppMonetizationKit), when license disclosure must be refreshed before a release, when editing a `license_plist.yml`, or when asked "how is the Acknowledgements / licenses page generated".
+description: Regenerate each app's Settings.bundle Acknowledgements (open-source license) page from the SwiftPM dependency graph via `mise run gen:acknowledgements` (wraps LicensePlist, configured by `App/<App>/license_plist.yml`). Invoke when adding / removing / upgrading a third-party SwiftPM dependency (especially the AdMob / UMP graph under AppMonetizationKit), when license disclosure must be refreshed before a release, when editing a `license_plist.yml`, or when asked "how is the Acknowledgements / licenses page generated". Not for adding the dependency itself (see apple-dev-skills:monetization-sdk-integration) and not for the in-app Settings screen.
 ---
 
 # Acknowledgements Generation

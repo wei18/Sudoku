@@ -94,8 +94,8 @@ case).
       Console: Development → Schema → "Deploy Schema Changes to Production…"
       (cktool cannot push prod). Sync Dev first: `mise run ck:schema deploy --app sudoku --env development`.
 - [ ] Sandbox Apple Account provisioned for reviewer's region.
-- [ ] Production AdMob App ID + banner unit ID swapped in (paired flip, see memory `admob-production-ids`).
-- [ ] App Privacy questionnaire in ASC matches `Sudoku/Resources/PrivacyInfo.xcprivacy`.
+- [ ] The uploaded build carries the production AdMob App ID + banner unit ID: `SUDOKU_ADMOB_APP_ID` and `SUDOKU_ADMOB_BANNER_UNIT_ID` are set in `secrets/.env`, and `mise run tf:upload` renders them into `Tuist/AdMob.xcconfig`. No source file changes.
+- [ ] App Privacy questionnaire in ASC matches `App/Sudoku/Resources/PrivacyInfo.xcprivacy`.
 - [ ] Remove Ads IAP (`com.wei18.sudoku.iap.remove_ads`) status = **Ready to Submit** and attached to this version.
 - [ ] Contact fields above filled in **by the user directly** — **not committed, not in secrets/.env**.
 - [ ] Screenshots uploaded for all required device classes (see `screenshot-strategy.md`).

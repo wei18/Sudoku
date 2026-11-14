@@ -1,6 +1,6 @@
 # Sudoku + Minesweeper 3.0 — 完整設計(v3.3 定稿)
 
-**狀態:** SIGN-OFF CANDIDATE · **日期:** 2026-08-17 · **作者:** UX Designer
+**狀態:** 現行設計(living)· owner 已 sign-off,實作自 #1020 起落地 · **作者:** UX Designer
 
 **這是一份完整、自洽的設計文件。** 讀這一份就夠,不需要回頭讀 v3.1 / v3.2 / v3.2.1。
 那三份仍在 scratchpad 作為歷程紀錄,但**本文為準**。

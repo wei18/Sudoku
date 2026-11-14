@@ -30,7 +30,7 @@ This installs the pinned versions of:
 > of SwiftLint-only coverage. Don't add it back without discussion.
 
 The Swift toolchain itself is provided by Xcode / Xcode Cloud, not by mise.
-The deployment floor is iOS 26 / macOS 26.
+The deployment floor is iOS 26.1 / macOS 26.
 
 ### Activate the git hooks
 
@@ -47,11 +47,12 @@ The umbrella `Game.xcodeproj` / `Game.xcworkspace` are **generated and
 gitignored** — `Project.swift` is the source of truth. Generate them with:
 
 ```sh
-tuist generate
+mise run tuist:generate
 ```
 
-This produces the `Game` workspace at the repo root with two schemes
-(`Sudoku`, `Minesweeper`). Never commit the generated `*.xcodeproj` /
+The task resolves packages, syncs the shared `Settings.bundle` and runs
+`tuist generate --no-open`. Add `--open` to open Xcode afterwards. It produces
+the `Game` workspace at the repo root with two schemes (`Sudoku`, `Minesweeper`). Never commit the generated `*.xcodeproj` /
 `*.xcworkspace`.
 
 ## Running tests
@@ -65,8 +66,9 @@ swift test --package-path Packages/SudokuCoreKit
 ```
 
 Substitute any kit (e.g. `Packages/MinesweeperCoreKit`, `Packages/GameShellKit`,
-`Packages/SudokuKit`). The full suite (including the app-level test plans) runs
-through the generated workspace; Xcode Cloud is the primary CI track for that.
+`Packages/SudokuKit`). CI does not build or run tests, so run the tests for
+every package you changed before you open a PR. The host-driven end-to-end
+suites run through the generated workspace: `mise run test:ui`.
 
 The test stack is [swift-testing](https://github.com/swiftlang/swift-testing)
 (no XCTest) plus
@@ -86,8 +88,13 @@ mise invocations deadlock on mise's cache lock):
    `*.swift` files. PR CI runs the strict variant (`lint:swift_strict`), which
    fails on warnings.
 
-Don't bypass with `--no-verify`: a secret leak in a public repo is treated as
-already leaked. See [`SECURITY.md`](SECURITY.md).
+Don't bypass the hooks with `--no-verify`: a secret leak in a public repo is
+treated as already leaked. See [`SECURITY.md`](SECURITY.md). One exception: an
+agent may skip the hooks on an intermediate work-in-progress commit on its own
+branch. The last commit before a push must pass them.
+
+In a new git worktree, run `mise trust` once before the first commit. Without
+it every hook errors out and the commit still succeeds.
 
 ## Pull requests
 
@@ -117,10 +124,12 @@ individual commits — is what CI gates.
 The same workflow also runs:
 
 - **Markdown link check (lychee)** over changed files in `docs/` and
-  `meetings/` — so keep links resolving (this is also enforced locally by
-  lefthook on commit).
+  `meetings/` — so keep links resolving.
 - **SwiftLint (strict)** on changed `*.swift` files.
 - **L10n completeness** — all 7 locales present, no `<TRANSLATE>` placeholders.
+- **Repo gates** — `scan:settings_root`, `scan:store_frame_drift`,
+  `scan:store_baseline_orphans`, `scan:design_contracts` (run any of them
+  locally with `mise run <task>`).
 
 CI must be green before merge.
 
@@ -135,7 +144,7 @@ These community-health files (this file, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
 issue/PR templates) are **English-only**, per GitHub convention. App-facing
 strings are different: they follow the project's 7-locale flow
 (`zh-Hant`, `en`, `ja`, `zh-Hans`, `es`, `th`, `ko`) in `Localizable.xcstrings`,
-translated via the `ai-translated-localization` agent flow. The L10n CI gate
+translated via the `apple-dev-skills:ai-translated-localization` skill. The L10n CI gate
 above enforces completeness.
 
 ## Repository layout

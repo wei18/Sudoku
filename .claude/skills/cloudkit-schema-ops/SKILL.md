@@ -1,15 +1,14 @@
 ---
 name: cloudkit-schema-ops
-description: Export, validate, and deploy the CloudKit schema for Sudoku / Minesweeper via the `mise run ck:schema …` task (wraps `xcrun cktool`). Codifies the `.ckdb` source-of-truth workflow, the `CK_MANAGEMENT_TOKEN` / `CK_TEAM_ID` auth from `secrets/.env`, and the user-owned Production-deploy gate. Invoke when changing a CloudKit record type / index, when a Persistence schema change needs to reach a CloudKit container, before a Production schema deploy, or when asked "how do I push the CloudKit schema / what is `ck:schema` / why is the .ckdb committed".
+description: Export, validate, and deploy the CloudKit schema for Sudoku / Minesweeper via the `mise run ck:schema …` task (wraps `xcrun cktool`). Codifies the `.ckdb` source-of-truth workflow, the `CK_MANAGEMENT_TOKEN` / `CK_TEAM_ID` auth from `secrets/.env`, and the user-owned Production-deploy gate. Invoke when changing a CloudKit record type / index, when a Persistence schema change needs to reach a CloudKit container, before a Production schema deploy, or when asked "how do I push the CloudKit schema / what is `ck:schema` / why is the .ckdb committed". This is the repo-specific procedure; the general pattern and its reasons are in apple-dev-skills:cloudkit-schema-source-of-truth. Not for the Swift persistence code that reads and writes the records.
 ---
 
 # CloudKit Schema Ops
 
-The `mise-tasks/ck/schema` task (GitHub issue #337) makes the CloudKit
-Development → Production schema deploy a commit-trackable, Leader-orderable step,
-mirroring how ASCRegister made ASC metadata / Game Center deploys scriptable. It
-wraps `xcrun cktool`. The schema source of truth is one `.ckdb` per app under
-`cloudkit/` (`cloudkit/<app>.ckdb`).
+The `mise-tasks/ck/schema` task wraps `xcrun cktool`. The schema source of truth
+is one committed file per app: `cloudkit/sudoku.ckdb` and `cloudkit/minesweeper.ckdb`.
+An agent may export, validate and deploy to Development. Only the user promotes
+to Production.
 
 ## When to invoke
 
@@ -26,9 +25,8 @@ The two credentials live in `secrets/.env` (gitignored; see `secrets/.env.exampl
   CloudKit Dashboard → Settings → Tokens → Create Token (Management).
 - `CK_TEAM_ID` — the 10-char Apple Developer Team ID.
 
-The token is the secret; the task passes it to `xcrun cktool save-token` as a
-**positional argument** (cktool rejects stdin piping in non-interactive mode —
-see Live-run gotchas) and a trap purges it from cktool's keychain store on exit.
+The token is the secret. The task hands it to `xcrun cktool save-token` and
+removes it from cktool's keychain store on exit.
 Container IDs (`iCloud.com.wei18.sudoku`, `iCloud.com.wei18.minesweeper`) are
 public and hardcoded in the task.
 
@@ -56,51 +54,49 @@ mise run ck:schema deploy   --app sudoku|minesweeper --env development
 
 - **Input**: `secrets/.env` creds; the live container (`export`) or `cloudkit/<app>.ckdb` (`validate` / `deploy`).
 - **Output**: `export` writes/overwrites `cloudkit/<app>.ckdb` — review the git diff, then **commit it as the schema source of truth**. `deploy` mutates the named container's schema (import is `--validate`'d).
-- `.ckdb` files are **not secrets** (schema definitions, no tokens) → committed. They are seeded by the user (needs the live token + a populated Dev container) and were intentionally absent from the #337 PR.
+- `.ckdb` files are **not secrets** (schema definitions, no tokens), so they are committed.
 
 ## Safety gate — Production promotion is user-owned, Console-only, irreversible
 
-**cktool cannot push schema to Production** (verified live 2026-06-10):
-`import-schema` rejects `--environment production` with *"endpoint not applicable
-in the environment 'production'"*, and no promote subcommand exists. The dev→prod
-promotion happens ONLY in CloudKit Console:
+**cktool cannot push schema to Production.** `import-schema` rejects
+`--environment production`, and no promote subcommand exists.
+`mise run ck:schema deploy --env production` prints the Console steps and exits
+with code 2. The promotion happens only in CloudKit Console:
 
 1. Bring Development in sync: `mise run ck:schema deploy --app <app> --env development`.
 2. Console → container → environment **Development** → Schema →
    **"Deploy Schema Changes to Production…"** → review the field/index diff → Deploy.
 
-CloudKit Production fields/indexes are **add-only** (Apple rule): once deployed
-they can never be removed. The Console requirement keeps this naturally
-user-owned — the Leader prepares `.ckdb` + Dev deploy; the user clicks the button.
+CloudKit Production fields and indexes are **add-only**: once deployed they can
+never be removed. The agent prepares the `.ckdb` and the Development deploy; the
+user clicks the button.
 
 `export` / `validate` / `deploy --env development` are reversible and freely runnable.
 
-## Live-run gotchas (first real-token run, 2026-06-10 — all bit us)
+## Rules when you edit a schema
 
-1. **`save-token` takes the token as a positional argument only.** Piping via
-   stdin fails non-interactively with *"Interaction was required"*. Brief argv
-   exposure is accepted; the EXIT trap purges the keychain entry.
-2. **`validate-schema` REQUIRES `--environment`** — omitting it is a hard error.
-3. **`import-schema` is Development-only; Production promote is Console-only**
-   (see safety gate above). The original #337 task scripted a production import
-   that could never have worked — it was never live-tested. Smoke-test ops
-   scripts with real credentials before trusting them.
-4. **Just-in-time schema exists ONLY in Development.** Debug builds auto-create
-   record types/fields on first write in Dev; Production never does. Corollary:
-   any field the code writes that was never JIT-seeded in Dev *before* the last
-   Console promote is **missing in Production**, and live writes of it fail
-   (caught only by error funnels). Found this way: Sudoku Production's
-   `MonetizationState` lacked `lastShownDate` / `dismissedDate` /
-   `lastSeenWallClock` — banner-dismiss persistence was silently broken in prod.
-   **Audit method:** `export-schema --environment production` to a temp file and
-   diff against the full field set the code can write.
-5. **JIT sprays `QUERYABLE SEARCHABLE SORTABLE` on every field** it creates.
-   Hand-written `.ckdb` should declare the **minimal** index set instead (e.g.
-   only the field a `statusEquals` query needs as `QUERYABLE`) — because prod
-   indexes are add-only, start minimal and extend later.
-6. **`deploy` is a declarative import** — the `.ckdb` can be hand-authored
-   outright (no Dashboard clicking, no seed build required); use an exported
-   file as the syntax template (system `"___*"` fields + `GRANT` block included).
+These need your action:
+
+1. **Production has no just-in-time schema.** A Debug build creates record types
+   and fields on first write in Development only. A field the code writes that
+   Production lacks fails at runtime, and only the error funnels show it. Before
+   asking the user to promote, export the Production schema to a temporary file
+   and compare it with every field the code can write:
+   `xcrun cktool export-schema --environment production …`.
+2. **Declare the smallest index set.** A just-in-time field gets
+   `QUERYABLE SEARCHABLE SORTABLE`. In a hand-written `.ckdb`, declare only the
+   index a query needs (for example `QUERYABLE` on the one field a predicate
+   filters on). Production indexes cannot be removed later.
+3. **You may write the `.ckdb` by hand.** `deploy` is a declarative import, so no
+   Dashboard clicks and no seed build are needed. Use an exported file as the
+   syntax template, including the system `"___*"` fields and the `GRANT` block.
+
+The task already handles these; do not work around them:
+
+- `cktool save-token` takes the token as a positional argument only. Piping it on
+  stdin fails when not interactive.
+- `cktool validate-schema` requires `--environment`.
+- `cktool import-schema` works for Development only.
 
 ## Idempotency
 

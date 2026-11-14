@@ -1,64 +1,83 @@
 ---
 name: mise-task-operations
-description: Index + entry point for EVERY repo ops / build / release task. Before running or hand-rolling any infra command (TestFlight upload, CloudKit schema, screenshots, acknowledgements, l10n gate, secret scan, lint, provisioning) — or before grepping the repo to "find how X is done" — consult this: the pipeline is almost always already a `mise run <task>`. Lists each task with its invocation, safety gate, and the deeper owning skill. Invoke when asked to build / archive / upload / deploy / scan / lint / generate / provision anything, or when wiring a new ops script.
+description: Index of this repo's `mise run` tasks - build, test, scan, lint, generate, screenshots, TestFlight upload, CloudKit schema, App Store Connect preflight. Use before running or writing any ops command, before searching the repo for "how is X done", and when adding a new ops script. Each row gives the invocation, whether the task is safe or user-gated, and the skill with the details. Not a tutorial on mise itself (see apple-dev-skills:mise-tool-management).
 ---
 
-# mise Task Operations (ops entry point)
+# mise Task Operations
 
-**Before re-discovering any ops pipeline by grepping the repo: it is almost
-certainly already a `mise` task.** Run `mise tasks ls` to see them live, then use
-the matching task below. Re-implementing or hand-grepping a pipeline that already
-exists wastes time and tokens — this index exists so that never happens.
+Most ops pipelines in this repo already exist as a `mise` task. Check this index before you write a command by hand.
 
-## All tasks (run `mise tasks ls` for the live list)
+- `mise tasks ls` prints the live list. When it differs from this file, `mise tasks ls` is right; update this file in the same PR.
+- Task bodies are files under `mise-tasks/` (`mise-tasks/lint/swift` is the task `lint:swift`). `mise run <task> --help` prints usage.
 
-| Task | What | Safety | Deeper skill |
+Safety column: **safe** means the task changes only local, regenerable or git-tracked files. **gated** means a step writes to a live service and needs the user's go-ahead.
+
+## Build and test
+
+| Task | What it does | Safety | Details |
 |---|---|---|---|
-| `mise run tf:upload <app\|all> <ios\|macos\|all> [--archive-only\|--i-am-sure]` | archive → export → TestFlight upload (`all` apps: serial archive, parallel upload) | upload gated `--i-am-sure` (user-owned, covers the whole batch); archive/export safe | [[local-testflight-upload]] |
-| `mise run preflight:submission <app\|all> <ios\|macos\|all> [--fix]` | READ-ONLY ASC submission-readiness gate — releaseType, build attach, copyright, price schedule, age rating, content rights, review contact record, screenshot coverage, IAP, stray reviewSubmissions; prints PASS/BLOCK/MANUAL-VERIFY per item, exits non-zero on any BLOCK | safe (all GETs); `--fix` PATCHes ONLY copyright/releaseType/build-attach — never pricing, age rating, content rights, or review-contact PII | [[asc-ops-handoff]] |
-| `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e]` | CloudKit schema export / validate / dev-deploy | prod promote = Console-only (user-owned); task prints steps + exit 2 | [[cloudkit-schema-ops]] |
-| `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | sync ASC screenshot PREVIEWS from snapshot baselines (symlinks) | safe; PREVIEW-ONLY (not ASC-spec) | [[appstore-screenshot-pipeline]] |
-| `mise run gen:acknowledgements [--config-path …]` | regenerate Settings.bundle license page | safe; output gitignored | [[acknowledgements-generation]] |
-| `mise run gen:settings_root` | sync the shared `App/Shared/Settings.bundle/Root.plist` into both apps' per-app copies (#832 single-sourcing; run by `tuist:generate` and `ci_post_clone.sh` before every generate) | safe; output git-tracked (Tuist needs a physical file pre-generate) | — (#832/#837) |
-| `mise run scan:settings_root` | drift gate: both per-app `Root.plist` copies must stay byte-identical to the shared source (#837, required CI job in `lint.yml`) | safe (read-only gate) | — (#832/#837/#839) |
-| `mise run scan:store_frame_drift [--base <ref>\|--list]` | ASC frame drift gate: fails when a changed baseline/capture's EVERY fed frame under `docs/app-store/screenshots-ascspec/` wasn't regenerated — per slot and per locale, not just "did any file under that path change", so it names which `device/app/slot` is stale (#995/#998/#1112, required CI job in `lint.yml`); mapping is parsed fresh from the script every run, no hardcoded slot list | safe (read-only gate) | — (#1001) |
-| `mise run test:store_frame_drift [--gate <path>]` | self-test for the drift gate above: drives it with real commits in a disposable repo, including per-slot/per-locale drift and both escape hatches (required CI step in `lint.yml`, runs before the gate itself) | safe (throwaway repo, no writes to this repo) | — (#1112) |
-| `mise run gen:l10n_fixture` | regenerate AppCompositionTests L10n fixture (byte-copy of Sudoku catalog) | safe | [[apple-dev-skills:ai-translated-localization]] |
-| `mise run gen:privacy_fixture` | regenerate SudokuAppCompositionTests PrivacyInfo fixture (byte-copy of shipping manifest, #361 group C) | safe | — (#361) |
-| `mise run tuist:generate [--open]` | resolve packages + regenerate Game.xcworkspace (tuist install + generate) | safe; run after Project.swift / package changes | [[game-factory-composition]] |
-| `mise run new_game:scaffold <Name>` | stamp a compiling game-N skeleton (copies Minesweeper at run time, renames tokens; SDD-006 #479 PR1) | safe; refuses existing destination; never touches git state | [[game-factory-composition]] |
-| `mise run scan:l10n` | L10n gate: 0 `<TRANSLATE>`, all 7 locales per key, **+ shared-code dotted-key parity** (dotted keys referenced from GameAppKit/GameShellUI/SettingsUI/MonetizationUI must exist in every app catalog, #594) | safe (read-only gate) | [[apple-dev-skills:ai-translated-localization]] |
-| `mise run scan:secrets` | gitleaks over staged files | safe | [[apple-dev-skills:apple-public-repo-security]] |
-| `mise run scan:hygiene` | block secret-shaped files (`.p8`/`.p12`/`.pem`/`.env`) from history | safe | [[apple-dev-skills:apple-public-repo-security]] |
-| `mise run scan:admob` | AdMob SDK isolation gate: only LiveAdMobBridge.swift may `import GoogleMobileAds` | safe (read-only gate) | [[apple-dev-skills:monetization-sdk-integration]] |
-| `mise run lint:swift [files]` | SwiftLint, warn-only (lefthook pre-commit) | safe | [[apple-dev-skills:mise-tool-management]] |
-| `mise run lint:swift_strict [files]` | SwiftLint, warnings-fail (PR CI) | safe | [[apple-dev-skills:mise-tool-management]] |
-| `mise run new_app:provisioning` | render provisioning walkthrough HTML (public IDs only) | safe | [[asc-ops-handoff]] |
-| `mise run verify:audio` | check each #330 gameplay soundKey resolves to a bundled asset (stem == soundKey, resolver-ext) | safe (read-only) | — (#330) |
-| `mise run ui:tour [--app <app>] [--udid u] [--no-build]` | deep-link + screenshot every screen (home/daily/practice/board/settings) in light & dark for designer review; uses the #510 DEBUG launch hooks | safe; builds a DEBUG sim app, output gitignored under `build/tour/`; post-build gate refuses to `simctl install` if the built Info.plist still has an unresolved `$(VAR)` (#863) | — (#510, #863) |
-| `mise run worktree:seed <path>` | copy every gitignored file matched by `.worktreeinclude` (`Tuist/*.xcconfig`, `secrets/`) from the repo root into a hand-created worktree — run from the MAIN checkout, pointed at the worktree | safe; idempotent; refuses a `<path>` that isn't a registered `git worktree` | — (#863) |
-| `mise run test:ui [<app>] [--udid u] [--no-generate]` | run host-driven XCUITest E2E suites via the `<App>-E2E` schemes (both apps: launch smoke + full win→completion) | safe; local on-demand substitute for the per-PR CI gate while XCC quota is out (NOT a GitHub Actions gate) | — (#510 Phase 3) |
-| `mise run watch:pr <number> [interval-s]` | watch a PR until a terminal state — one stdout line on MERGED / CLOSED / DIRTY / failing checks, then exit (0 only on MERGED). Built as a Monitor-tool command: `Monitor(command: "mise run watch:pr <n>")`; every terminal outcome emits, so silence = still pending | safe (read-only gh polling, 45s default interval) | — |
+| `mise run tuist:generate [--open] [--no-install]` | `gen:settings_root`, `tuist install`, `tuist generate --no-open` → `Game.xcworkspace` | safe | `game-factory-composition` |
+| `mise run worktree:seed <path>` | Copy the gitignored files listed in `.worktreeinclude` (`Tuist/*.xcconfig`, `secrets/`) into a worktree. Run from the main checkout | safe | — |
+| `mise run test:ui [<app>] [--udid u] [--no-generate]` | Host-driven XCUITest end-to-end suites (`<App>-E2E` schemes). Not run by CI | safe; runs `xcodebuild test` on a simulator | `apple-dev-skills:host-driven-xcuitest-e2e` |
+| `mise run ui:tour [--app <app>] [--udid u] [--no-build]` | Build a Debug simulator app, open every screen in light and dark, save screenshots to `build/tour/` | safe; pass `--udid` of your own simulator | `interactive-sim-ux-audit` |
+| `mise run new_game:scaffold <Name>` | Create a compiling skeleton for a new game by copying Minesweeper | safe; refuses an existing destination | `game-factory-composition` |
 
-## CI scripts (Xcode Cloud)
+Unit and snapshot tests are plain SwiftPM: `swift test --package-path Packages/<Kit>` (see `CLAUDE.md` §Commands).
 
-- `ci_scripts/ci_post_clone.sh` — runs on every XCC clone: installs mise tools,
-  injects build-time secrets, regenerates acknowledgements. Second line of secret
-  defence. → [[apple-dev-skills:xcode-cloud-single-track-ci]], [[apple-dev-skills:apple-public-repo-security]]
-- `ci_scripts/ci_pre_xcodebuild.sh` — pre-build hook. → [[apple-dev-skills:xcode-cloud-single-track-ci]]
+## Gates (read-only checks)
 
-## Conventions every ops task shares
+| Task | Fails when | In CI |
+|---|---|---|
+| `mise run scan:l10n` | A catalog has a `<TRANSLATE>` marker, a stale entry or a key missing one of the 7 locales; a shared dotted key is missing from an app catalog; a test fixture differs from the shipping file | yes |
+| `mise run scan:settings_root` | A per-app `Settings.bundle/Root.plist` differs from `App/Shared/Settings.bundle/Root.plist` | yes |
+| `mise run scan:design_contracts` | A row in `scripts/design/contracts.py` points at a section missing from `docs/screen-contracts.md` or `docs/navigation-flows.md` | yes |
+| `mise run scan:store_frame_drift [--base <ref>\|--list]` | A baseline or capture that feeds a store frame changed without regenerating every frame it feeds | yes |
+| `mise run scan:store_baseline_orphans` | A baseline mapped to a store slot is missing or no test records it | yes |
+| `mise run test:store_frame_drift` | The self-test of the drift gate fails | yes |
+| `mise run lint:swift_strict [files]` | SwiftLint reports any warning | yes (changed files) |
+| `mise run lint:swift [files]` | Never: warn-only | pre-commit |
+| `mise run scan:secrets` | gitleaks finds a secret in staged files | pre-commit |
+| `mise run scan:hygiene` | A secret-shaped file (`.p8`, `.p12`, `.pem`, `.env`) or an unfilled doc placeholder is staged | pre-commit |
+| `mise run scan:admob` | A file other than `LiveAdMobBridge.swift` imports `GoogleMobileAds` | no |
+| `mise run verify:audio` | A gameplay sound key has no bundled audio file | no |
 
-- **Secrets** come from `secrets/.env` (gitignored) — never argv, never echoed.
-  See [[apple-dev-skills:build-time-secret-injection]].
-- **Irreversible / live-service steps are user-owned**: tf:upload's upload is
-  gated behind `--i-am-sure`; ck:schema's production promote is CloudKit
-  Console-only (cktool cannot push prod). archive / export / validate /
-  dev-deploy / scans / lint / generate are Leader-orderable + safe.
-- **Tool versions** are pinned in `.mise.toml` ([[apple-dev-skills:mise-tool-management]]); CI and
-  dev share them for parity.
+Details for the l10n gate: `apple-dev-skills:ai-translated-localization`. For the store gates: `appstore-screenshot-pipeline`.
 
-## See also
+## Generate
 
-- [[asc-ops-handoff]] — the user-owned vs Leader-orderable taxonomy for ASC / TestFlight / Apple Developer ops.
-- [[apple-dev-skills:xcode-cloud-single-track-ci]] — the CI workflows these tasks mirror or temporarily substitute.
+| Task | What it does | Safety | Details |
+|---|---|---|---|
+| `mise run gen:acknowledgements [--config-path …]` | Regenerate the `Settings.bundle` license page | safe; output gitignored | `acknowledgements-generation` |
+| `mise run gen:settings_root` | Copy the shared `Root.plist` into both apps (also run by `tuist:generate`) | safe; output tracked | — |
+| `mise run gen:l10n_fixture` | Regenerate the l10n test fixture from the Sudoku catalog | safe | `apple-dev-skills:ai-translated-localization` |
+| `mise run gen:privacy_fixture` | Regenerate the PrivacyInfo test fixture from the shipping manifest | safe | — |
+
+## Release and store
+
+| Task | What it does | Safety | Details |
+|---|---|---|---|
+| `mise run tf:upload <app\|all> <ios\|macos\|all> [--archive-only\|--i-am-sure]` | Archive, export, upload to TestFlight | archive and export safe; upload **gated** by `--i-am-sure` | `local-testflight-upload` |
+| `mise run preflight:submission <app\|all> <ios\|macos\|all> [--fix]` | Check App Store Connect submission prerequisites | read-only; `--fix` writes copyright, release type and build attachment only | `asc-ops-handoff` |
+| `mise run ck:schema <export\|validate\|deploy> --app <app> [--env e]` | Export, validate or deploy the CloudKit schema to Development | Development safe; Production is a Console step, **user-owned** | `cloudkit-schema-ops` |
+| `mise run store:capture [--app a] [--device d] [--verify]` | Capture the `03-board` store source from a live simulator | safe; builds and boots its own simulators | `appstore-screenshot-pipeline` |
+| `mise run store:screenshots build-ascspec [--verify-only]` | Build the App Store Connect screenshot frames | safe; needs macOS fonts and Pillow | `appstore-screenshot-pipeline` |
+| `mise run store:screenshots <list\|sync\|clean> [--app <app>]` | Maintain the preview links to snapshot baselines | safe; preview only, never uploaded | `appstore-screenshot-pipeline` |
+| `mise run new_app:provisioning <asc\|admob\|cloudkit\|all> --app <name>` | Render a provisioning walkthrough as HTML (public IDs only) | safe | `asc-ops-handoff` |
+
+## Watching a PR
+
+`mise run watch:pr <number> [interval-seconds]` prints one line when the PR is merged, closed, conflicted or has a failing check, then exits (0 only on merge). It is read-only.
+
+## Xcode Cloud scripts
+
+- `ci_scripts/ci_post_clone.sh`: installs mise tools, writes the `Tuist/*.xcconfig` files from workflow secrets, regenerates acknowledgements.
+- `ci_scripts/ci_pre_xcodebuild.sh`: pre-build hook.
+
+Details: `apple-dev-skills:xcode-cloud-single-track-ci`.
+
+## Conventions for every ops task
+
+- Secrets come from `secrets/.env` (gitignored). Never pass them as arguments and never print them. See `apple-dev-skills:build-time-secret-injection`.
+- A step that writes to a live service is user-owned: the TestFlight upload, the CloudKit Production deploy, any `ASCRegister … apply` or `--i-am-sure`.
+- Tool versions are pinned in `.mise.toml`, shared by local runs and CI.
+- A new ops script goes in `mise-tasks/<group>/<name>` with a `#MISE description=` header and `set -euo pipefail`, and gets a row here.

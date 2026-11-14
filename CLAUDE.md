@@ -1,139 +1,118 @@
-# CLAUDE.md — agent operating guide for this repo
+# CLAUDE.md — agent operating guide
 
-Two **unreleased** Apple-platform games — **Sudoku** and **Minesweeper** (both v2.6, synced
-versioning) — built spec-first by an AI Leader/Developer workflow on shared modules.
-Neither has ever been on the App Store: v2.6 targets the **first** release, distribution
-is TestFlight-only today, and the 2.6.0 submissions were withdrawn (`DEVELOPER_REJECTED`).
-Do not reason as though live users exist — that mistake reframed #1058 as a revenue
-incident when there is no revenue yet. (A third game,
-Tiles2048 / SDD-004, was prototyped then **removed** 2026-06-29 to keep MS + Sudoku
-the focus; SDD-004 is abandoned.) This file is the distilled operating
-knowledge for agents; deeper truth lives in the pointers below, not here.
+## Status
 
-## Prime directive: the mirror principle
+- Two games, **Sudoku** and **Minesweeper**, share one codebase and one store version (2.6.0).
+- Neither app is on the App Store. Distribution is TestFlight only. The 2.6.0 submissions were withdrawn (`DEVELOPER_REJECTED`); v2.6 is still the first release target.
+- There are no live users and no revenue. Do not treat a bug as a production incident.
 
-The two apps differ **only** in gameplay screens and resources. Everything else —
-view layout, navigation (push/present), buttons, **and source code** — must be one
-shared implementation. When MS needs something Sudoku has, extract a shared
-parameterized target (the `GameAppKit` / `GameShellKit` / `SettingsKit` pattern);
-never copy-paste-and-adapt. Every cross-app drift so far (#448: phantom button,
-dead banner, missing resume) lived in hand-written per-app wrappers.
+## Mirror principle
 
-## Architecture in one breath
+The two apps differ only in gameplay screens and resources. Layout, navigation, buttons and source code are one shared implementation.
+
+- When Minesweeper needs something Sudoku has, extract a shared parameterized target (as `GameAppKit`, `GameShellKit` and `SettingsKit` do). Never copy and adapt: cross-app drift has always come from hand-written per-app wrappers (#448).
+- Verify every change to shared code in both apps.
+- When unsure, read the Sudoku implementation of the same surface first. It is the reference shape.
+
+## Architecture
 
 ```
 leaf cores (Foundation-only, portable):  SudokuCoreKit · MinesweeperCoreKit · TimeKit · DeterminismKit
 seams (restricted framework imports):    PersistenceKit(CloudKit) · GameCenterKit(GameKit) · RemindersKit(UserNotifications)
                                          GameAudioKit(AVFoundation) · AppMonetizationKit(AdMob/StoreKit) · TelemetryKit(OSLog)
-shared UI (GameShellKit = ZERO deps):    GameShellUI · SettingsUI(SettingsKit)
-shared composition (deps allowed):       GameAppKit — GameRootViewModel<Route> · GameRoot · ResumePill · ResumeCandidate
+shared UI (GameShellKit = zero deps):    GameShellUI · SettingsUI(SettingsKit)
+shared composition (deps allowed):       GameAppKit — GameConfig · makeGameApp · GameRoot · ResumePill
 apps (thin shells):                      SudokuKit · MinesweeperKit  →  App/Sudoku · App/Minesweeper (Tuist-generated)
-tooling:                                 ASCRegisterKit (standalone CLI; deliberately does NOT depend on the cores)
-test support (never in app products):    GameTestSupportKit — shared ASC-screenshot render; consumed only by *UITests targets
+tooling:                                 ASCRegisterKit (standalone CLI; does not depend on the cores)
+test support (never in app products):    GameTestSupportKit
 ```
 
-Key seams agents get wrong:
-- `GameShellKit` is **deliberately zero-dependency**. Anything needing Persistence /
-  GameCenter / Telemetry goes in `GameAppKit`, not the shell.
-- Resume is game-agnostic via `ResumeCandidate<Route>` + an injected `fetchResume`
-  closure — per-game persistence stays per-game (`MinesweeperPersistence` returns an
-  MS-native summary; the shared `SavedGameSummary` is Sudoku-typed, don't force it).
-- The deterministic RNG (`SplitMix64`) drives puzzle/board generation. Changes there
-  are **determinism-critical**: frozen seed vectors must not move.
+- `GameShellKit` has zero dependencies. Code that needs Persistence, Game Center or Telemetry goes in `GameAppKit`.
+- Resume is game-agnostic: `ResumeCandidate<Route>` plus an injected `fetchResume` closure. Persistence stays per game; do not force Minesweeper onto the Sudoku-typed `SavedGameSummary`.
+- `SplitMix64` drives puzzle and board generation. The frozen seed vectors must not change.
+- CloudKit resolution stays lazy (`PrivateCKGatewayFactory`). Tests that build `.live()` run without entitlements, and an eager `CKContainer.default()` crashes them.
 
-## Workflow contract
+## Roles
 
-- **Leader coordinates; Developers implement.** Dispatch impl to subagents with
-  `model: "sonnet"` (coding) or `"haiku"` (mechanical edits). **Probe subagent write
-  capability first** (one cheap haiku write-test) — some harness versions deny all
-  subagent file writes; if denied, the Leader implements inline and read-only agents
-  do verification.
-- **Code Reviewer is mandatory** when a diff is >50 LOC **OR** touches
-  Persistence / AppComposition / MonetizationCore / AdsAdMob / IAPStoreKit2 /
-  Project.swift / PrivacyInfo.xcprivacy. The 50-LOC rule applies to doc-only PRs too.
-  Round-1 cosmetic findings: Leader applies inline; substantive: re-dispatch.
-- Dispatch prompts carry 5 elements: scope+verifiable target · files to read ·
-  skills to invoke · return format · verification criteria. Forbid heredocs and
-  destructive git in reviewer prompts.
-- Upkeep audit issues (label `audit`): triage first — many findings re-detect
-  already-tracked items (screenshots → #236) or established won't-fixes (intentional
-  snapshot equalities, `moduleAnchor()` smoke anchors, guarded test fixtures).
-  Post the triage comment before fixing anything.
+- **Leader**: the session the user talks to. It plans, dispatches, reviews and reports. **Developer**: a subagent that implements one dispatched task. If you were dispatched, you are a Developer.
+- The Leader dispatches implementation. It edits directly only for docs, a one-line fix, when the user says so, or when subagent file writes are denied.
+- Dispatch coding with `model: "sonnet"` and mechanical edits with `model: "haiku"`. Before the first dispatch of a session, run one haiku write test: some harness versions deny subagent file writes.
+- Dispatch brief, review rounds and repo-specific Leader rules: `docs/methodology.md`.
+- Code review: follow the global engineering rules. Repo addition: when a diff touches a high-risk path, name it in the reviewer brief. High-risk paths: `*Persistence`, `*AppComposition`, `GameCenterClient`, `AppMonetizationKit` (`MonetizationCore`, `AdsAdMob`, `IAPStoreKit2`), `Project.swift`, `Package.swift`, `PrivacyInfo.xcprivacy`.
+- Issues labeled `audit` come from Upkeep, the daily AI repo audit (`.github/workflows/audit.yml`). Post a triage comment before fixing anything: many findings repeat tracked items or accepted won't-fixes.
 
-## Build / test / verify
+## Commands
 
 ```bash
-swift test --package-path Packages/<Kit>     # ALWAYS absolute or repo-relative path; cd does not persist across Bash calls
-mise tasks ls                                # ops entry point — check BEFORE hand-rolling any infra command
-mise run scan:l10n                           # L10n gate: 7 locales complete + fixture byte-sync (CI-enforced)
-tuist generate                               # workspace; new sibling packages are auto-discovered via the umbrella Kits
-mise run store:capture                       # live-simulator capture for the 03-board ASC slot (#1054); see appstore-screenshot-pipeline skill
+mise tasks ls                                              # every ops task; check here before hand-rolling a command
+swift test --package-path Packages/<Kit>                   # one package; use a repo-relative path (cd does not persist)
+swift test --package-path Packages/<Kit> --filter <Suite>  # one suite
+swift test --package-path Packages/GameCenterKit --no-parallel   # this package can hang in parallel mode
+mise run tuist:generate                                    # resolve packages, generate Game.xcworkspace, do not open Xcode
+mise run scan:l10n                                         # 7 locales complete + test fixtures in sync
+mise run scan:design_contracts                             # screen-contract anchors still resolve
 ```
 
-- Verify with `swift test`, not SourceKit: post-edit `new-diagnostics` ("no such
-  module X") in fresh/cross-target files are usually **stale noise**.
-- Snapshot baselines are committed; suites failing on PNGs = behavior changed —
-  STOP and investigate, don't re-record to make tests pass.
-  Themed views render under `swift test` because GameShellKit's
-  `AssetCatalogCompiler` build-tool plugin (#1032) runs actool over
-  `Colors.xcassets` + writes the bundle `Info.plist` for SwiftPM CLI builds
-  (no-op under Xcode / Linux). A fully **blank** snapshot means that plugin
-  isn't attached to the target (`plugins:` in Package.swift), not a theme bug.
-- Don't trust "it compiles": tests that construct `.live()` run in an
-  **unentitled runner** — eager `CKContainer.default()` crashes with an uncatchable
-  ObjC `CKException`. CloudKit resolution must stay lazy (see `PrivateCKGatewayFactory`).
+- In a new worktree, run `mise trust` before the first commit; without it the pre-commit hooks fail open. Before an app build, run `mise run worktree:seed <path>` from the main checkout to copy the gitignored xcconfig and secrets.
+- If a `swift test` run crashes or hangs, do not start a second run. Stop the stuck `swiftpm-testing-helper`, re-run suite by suite with `--filter`, and report the substitution.
+- Trust `swift test`, not SourceKit: "no such module" diagnostics after an edit are usually stale.
+- `swift build` skips test targets, and macOS `swift test` skips `#if os(iOS)` code. After changing a shared protocol requirement, run `swift test` on every package with a conformer, and build iOS-only conformers from the package directory with `xcodebuild -scheme <Target> -destination 'generic/platform=iOS Simulator' build`.
+- Snapshot baselines are committed. A failing snapshot means behavior changed: investigate, never re-record to pass. A fully blank snapshot means the `AssetCatalogCompiler` plugin is missing from the target's `plugins:`.
 
-## Hard gates (user-owned — prepare, never execute unprompted)
+## What CI covers
 
-- **TestFlight upload**: `mise run tf:upload <app> <platform> --i-am-sure`.
-- **CloudKit Production schema**: cktool **cannot** push prod; promotion is the
-  Console button only ("Deploy Schema Changes to Production…"). `.ckdb` files in
-  `cloudkit/` are the committed source of truth; prod fields/indexes are add-only.
-  JIT schema exists **only in Development** — a field the code writes but prod
-  lacks fails silently behind error funnels.
-- ASC submissions / IAP / signing — see `asc-ops-handoff` skill.
-- Production AdMob/ASC identifiers never appear in code, comments, or PR diffs —
-  memory + `secrets/.env` + xcconfig `$()` substitution only.
+GitHub Actions (`.github/workflows/lint.yml`) runs on every PR: PR title, markdown links in `docs/` and `meetings/`, SwiftLint `--strict` on changed files, `scan:l10n`, `scan:settings_root`, `scan:store_frame_drift`, `scan:store_baseline_orphans`, `scan:design_contracts`.
 
-## Conventions that bite
+CI builds nothing and runs no tests (owner decision, recorded on #1039). This overrides the global engineering rules for "Build and test on CI":
 
-- Commits: `git commit --no-gpg-sign -F <msgfile>` (signing hangs; heredocs are
-  blocked by hooks). End body with the `Co-Authored-By: Claude …` trailer.
-- PR titles: Conventional Commits, **subject must not start with an uppercase
-  letter** — a lowercase letter OR a leading digit both pass (`^[a-z0-9]`, so
-  "fix(ui): 44pt target" is fine); CI (`lint.yml`) validates.
-- SwiftLint runs `--strict` in CI: `file_length` 400 (Live.swift sits at the
-  ceiling — extract `Live+Feature.swift` instead of growing it), `identifier_name`
-  (1-char names hard-fail; 2-char like `vm` pass 0.57.1 in practice — #757
-  triage — but prefer ≥3-char descriptive names in new code), no `TODO`
-  without an issue reference.
-- Swift 6 strict concurrency + `InternalImportsByDefault` everywhere; new shared
-  types are `Sendable`; `@Sendable` closures can't capture MainActor statics
-  (mark test fixtures `nonisolated`).
-- The **app-root composition bootstrap** (`GameRoot` / `MakeGameApp`) goes in
-  `.onAppear { Task { … } }`, not `.task` — that is where the Xcode 26 `.task`
-  lowering broke the arm64 device Release link (#361). Leaf-view one-shot `.task`
-  bootstraps (Settings / Daily hub / banner) are **fine** — an arm64 device Release
-  archive links them clean (verified #607, Sudoku Release build 202606260559). So
-  don't blanket-ban `.task`: it's the idiomatic choice for view-lifecycle async
-  work. If a device-Release archive ever fails to link an opaque `.task` descriptor,
-  move that one site to `.onAppear { Task }`.
-- After merging from a worktree, `git fetch && git reset --hard origin/main` on the
-  main checkout and verify clean (worktree index bleed is real).
-- L10n: user-visible strings need all 7 locales (`ai-translated-localization`
-  skill); test fixtures regenerate via `gen:l10n_fixture` / `gen:privacy_fixture`,
-  never hand-edit.
+- Run `swift test` locally for every package you changed, and report the result with its output.
+- `mise run test:ui` (host-driven XCUITest) is on demand. Run it when the user or the task brief asks. This overrides the global rule against local `xcodebuild test` for that task only.
+
+## Change procedure
+
+1. Write the test first, then the code (`docs/methodology.md`).
+2. Run `swift test` for each package you changed and `mise run lint:swift_strict -- <changed .swift files>`. If you touched user-visible strings, run `mise run scan:l10n`.
+3. Get the diff reviewed as the global engineering rules say.
+4. Open the PR. The title follows Conventional Commits and its subject starts with a lowercase letter or a digit (`^[a-z0-9]`); CI checks it.
+5. Never put `close`, `fix` or `resolve` next to `#NNN` in a PR title, PR body or commit message unless the PR must close that issue. GitHub ignores "does not". Write "part of #NNN".
+6. Merge rules (CI green, squash): `CONTRIBUTING.md`.
+7. After a merge from a worktree, run `git fetch && git reset --hard origin/main` in the main checkout and confirm it is clean. Worktree index changes can leak into it.
+
+## Hard gates (user-owned: prepare, never run unprompted)
+
+- TestFlight upload: `mise run tf:upload <app> <platform> --i-am-sure`. See the `local-testflight-upload` skill.
+- CloudKit Production schema: promotion is the CloudKit Console button only. `cloudkit/*.ckdb` is the source of truth. Production fields and indexes are add-only. See the `cloudkit-schema-ops` skill.
+- App Store Connect submission, IAP pricing, signing: see the `asc-ops-handoff` skill.
+- Production AdMob and ASC identifiers never appear in code, comments, docs or PR diffs. They live in `secrets/.env` and the gitignored `Tuist/*.xcconfig`, and reach the app through `$(…)` substitution.
+
+## Conventions
+
+- Commit with `git commit --no-gpg-sign -F <msgfile>`: signing hangs and hooks block heredocs. End the body with the `Co-Authored-By: Claude …` trailer.
+- SwiftLint runs `--strict` in CI. A file over 400 lines fails: extract a sibling file (`Live+Feature.swift`). One-character names fail; use names of three or more characters. `TODO` comments fail: open an issue instead.
+- Swift 6 strict concurrency and `InternalImportsByDefault` apply everywhere. New shared types are `Sendable`. A `@Sendable` closure cannot capture MainActor statics: mark test fixtures `nonisolated`.
+- The app-root bootstrap (`GameRoot`, `makeGameApp`) uses `.onAppear { Task { … } }`, not `.task`: `.task` there broke the arm64 device Release link (#361). `.task` is correct in leaf views (#607).
+- A deliberate difference between the two apps carries a code comment with the reason and issue number at both the present site and the absent site, for example `// Sudoku-only: <reason> (#NNN)`.
+- User-visible strings need all 7 locales (`apple-dev-skills:ai-translated-localization`). Regenerate test fixtures with `mise run gen:l10n_fixture` and `mise run gen:privacy_fixture`; never hand-edit them.
 
 ## Where truth lives
 
 | What | Where |
 |---|---|
-| Every ops/release pipeline | `.claude/skills/mise-task-operations` (index) + the owning skill |
-| Project skills | `.claude/skills/` — 8 project-bound skills (flat) + the `apple-dev-skills` marketplace submodule (2 plugins / 32 portable skills, namespaces `apple-dev-skills:` + `collaboration-skills:`, wired via `.claude/settings.json`); committed, public |
-| Architecture & decisions | `docs/foundations.md` · `docs/v1/design.md` · `docs/superpowers/specs/` |
-| Design prototypes | `docs/designs/*.prototype.html` — re-tag build-status when features ship (recurring audit finding) |
-| Collaboration patterns | `docs/methodology.md` · `meetings/*.md` |
-| Session memory | `~/.claude/projects/<this-repo>/memory/` — feedback rules are binding |
+| Index of all docs, with status | `docs/README.md` |
+| Current UI design (3.0) | `docs/designs/v3/design.md` |
+| Per-screen behavior and navigation | `docs/screen-contracts.md` · `docs/navigation-flows.md` |
+| Gate that ties the design to those contracts | `mise run scan:design_contracts` (`scripts/design/contracts.py`) |
+| App Store submission steps | `docs/app-store/SUBMISSION-CHECKLIST.md` |
+| Engineering platform decisions | `docs/foundations.md` |
+| Ops tasks and release pipelines | `mise tasks ls` · `.claude/skills/mise-task-operations` |
+| Skills | `.claude/skills/README.md` (project skills, plus the `apple-dev-skills` submodule that provides `apple-dev-skills:` and `collaboration-skills:`) |
+| Collaboration rules | `docs/methodology.md` |
+| Past decisions and their reasons | `meetings/*.md` · `docs/v1/` · `docs/v2/` · `docs/superpowers/specs/` (historical records) |
 
-When in doubt: read the Sudoku implementation of the same surface first — it is the
-reference shape for everything Minesweeper mirrors.
+## Glossary
+
+- **3.0 / v3**: the current UI design generation (3-tab shell, Liquid Glass). Not a store version.
+- **v2.6 / 2.6.0**: the store version both apps will ship first.
+- **SDD-NNN**: a numbered platform design spec in `docs/superpowers/specs/`.
+- **ASC**: App Store Connect. **XCC**: Xcode Cloud. **GC**: Game Center. **MS**: Minesweeper.
+- **Seam**: a protocol boundary that keeps an Apple or third-party framework inside one package.

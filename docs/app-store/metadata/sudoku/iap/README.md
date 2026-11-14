@@ -22,15 +22,18 @@ Each `<product-slug>.yaml` is a single source-of-truth file covering:
 - `screenshot` — App Review screenshot spec + status (user-owned capture)
 
 en + zh-Hant are author-written sources. Other 5 locales are AI-translated per the
-[`ai-translated-localization`](../../../../../.claude/skills/ai-translated-localization/SKILL.md) skill convention.
+plugin skill `apple-dev-skills:ai-translated-localization`.
 
 ## Sync to ASC
 
-**Today (manual)**: for each IAP, open ASC → My Apps → Sudoku → App 內購買項目 →
-the product → 本地化 (Localization). Paste `name` + `description` per locale.
-Paste `review_notes` into 「審查備註」. Paste pricing tier. Upload screenshot.
+The IAP is synced with the `ASCRegister` CLI, not from this YAML:
 
-**Future**: issue [#200](https://github.com/wei18/Sudoku/issues/200) extends
-ASCRegister to consume these YAML files and drive the ASC API directly — at
-which point edits land via `mise run asc:apply` and become commit-trackable in
-the same flow as Game Center.
+- `ASCRegister iap plan` / `iap apply` create or update the product and its
+  localizations. Product ids and review notes come from `Config.iaps`
+  (`Packages/ASCRegisterKit/Sources/ASCRegister/Config.swift`); names and
+  descriptions come from the app's `Localizable.xcstrings`.
+- `ASCRegister iap screenshots` uploads `remove-ads/review-screenshot.png`.
+- The price and the `Ready to Submit` status are set by the user in the ASC web UI.
+
+Keep this YAML in step with those sources when either changes. Who may run each
+command: `.claude/skills/asc-ops-handoff/SKILL.md`.

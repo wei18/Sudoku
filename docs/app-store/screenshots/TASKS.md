@@ -1,5 +1,7 @@
 # App Store Screenshot Generation — Task Spec (handoff)
 
+> **Historical record.** This headless-capture approach was not pursued. Store screenshots are built by `mise run store:screenshots build-ascspec`; see `.claude/skills/appstore-screenshot-pipeline/SKILL.md`.
+
 > ## STATUS: DEFERRED (2026-06-06)
 > Headless emit was attempted THREE ways under `swift test`, all failed to render
 > distinct content (every screen of a device collapsed to one image / or empty bytes):

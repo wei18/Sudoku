@@ -1,36 +1,59 @@
-# ASC `ENTITY_ERROR` fix recipes (ASCRegister apply rounds)
+# ASC error recipes
 
-Hard-won map from the Game Center registration retry loop (issues #17 #19 #22 #24
-#26 #31 #37 #40). Each recipe is a hint, not a guarantee — always verify against
-the current `Packages/ASCRegisterKit/Sources/ASCRegister/Config.swift`.
+Use this file when an App Store Connect (ASC) call made by `ASCRegister` or `mise run preflight:submission` returns an error.
 
-Migrated from the retired `.claude/workflows/asc-apply-round.js` (2026-06-12); the
-loop itself is now manual: `swift run ASCRegister plan|apply` → decode
-`ENTITY_ERROR.<CODE>` below → patch Config.swift → re-run.
+How to use it:
 
-## Submission-preflight recipes (`mise run preflight:submission`, 2026-07-28/29)
+1. Find the error code in a table below.
+2. Apply the fix. For Game Center codes the fix is an edit to `Packages/ASCRegisterKit/Sources/ASCRegister/Config.swift`.
+3. Run the `plan` form again, then `apply`.
 
-Found live during the v2.6 submission attempt that the new preflight gate now
-catches READ-ONLY, before any of these get hit as a mutation-time surprise.
-`STATE_ERROR` is a distinct error family from `ENTITY_ERROR` (it fires on the
-submission-creating call itself, not on a resource PATCH/POST), kept in this
-same table since the diagnose-and-fix workflow is identical.
+Each recipe is a hint. Check it against the current `Config.swift` and the ASC response before relying on it. "User-owned" means only the user can do it, in the ASC web UI.
 
-| Code | Cause | Likely fix | Rounds |
+`ENTITY_ERROR` comes from a create or update of one resource. `STATE_ERROR` comes from the call that creates a submission.
+
+## Submission errors
+
+| Code | Cause | Fix | Who |
 |---|---|---|---|
-| `STATE_ERROR.APP_PRICING_REQUIRED` | The app has never had a price schedule set — ASC refuses `reviewSubmissions` create (and app-store-version submit) outright | User-owned, web UI: My Apps → app → Pricing and Availability → set a base territory + price tier. **No API-only fix** — `preflight` can only detect this (GET `/v1/apps/{id}/appPriceSchedule`, BLOCK if it 404s / has no data), never fill in a price decision. If you DO script the POST: `POST /v1/appPriceSchedules` takes no attributes, only three relationships (`app`, `territory` base territory, `manualPrices`) — and per Apple's own forum guidance the request is a JSON:API *compound document*: the new `appPriceVersions`/manual-price resource is created in the SAME POST's `included[]` array with a **client-generated local id** of the literal form `"id": "${some-local-id}"`, then referenced by that same string from the `manualPrices` relationship — Apple's error response for a malformed request literally names the missing `${…}` local-id shape, i.e. the error dictates the fix. (Sourced from Apple Developer Forums thread 722733 + WWDC23-10014 "What's new in App Store pricing" — the formal API reference page for this specific POST returned 404 when checked 2026-07-29; treat the exact local-id syntax as UNCONFIRMED against the primary reference until a live POST round confirms it.) |  first sighting, v2.6 preflight, 2026-07-28 |
-| `ENTITY_ERROR.ATTRIBUTE.REQUIRED` (copyright) | `appStoreVersions.copyright` was never set — empty string blocks submission | The value already lives in `docs/app-store/metadata/<app>/app-meta.yaml` (`copyright: "2026 Wei18"`) but nothing was pushing it to ASC. Fixed by `mise run preflight:submission <app> <platform> --fix`, which `PATCH /v1/appStoreVersions/{id}` with `attributes.copyright` from that YAML — Leader-orderable, not a decision (the value is already committed repo truth). | first sighting, v2.6 preflight, 2026-07-28 |
-| (no code — `reviewSubmissions` stuck) | A stray `reviewSubmissions` record in a non-`COMPLETE` state (e.g. `READY_FOR_REVIEW`) blocks `POST /v1/reviewSubmissions` for a new submission on that platform | **No DELETE operation exists** for `reviewSubmissions` (confirmed against Apple's official API reference, 2026-07-29 — only GET/POST/PATCH are documented). The only mutation is `PATCH .../reviewSubmissions/{id}` with `attributes.state` set to `CANCELING`, and that PATCH is itself only accepted while the submission is actively `IN_REVIEW` / `UNRESOLVED_ISSUES` (live 2026-07-28 finding: attempting to cancel a submission in `READY_FOR_REVIEW` was rejected — it hadn't entered review yet, so there was nothing to cancel). Practical fix: wait for the submission to either enter review (then cancel) or reach a terminal state on its own; `preflight` flags any submission whose state isn't `COMPLETE` so this is caught before a NEW submission attempt collides with it, not after. | first sighting, MS v2.6 submission, 2026-07-28 |
+| `STATE_ERROR.APP_PRICING_REQUIRED` | The app has no price schedule | ASC → app → Pricing and Availability: set a base territory and a price | User-owned |
+| `ENTITY_ERROR.ATTRIBUTE.REQUIRED` (copyright) | `appStoreVersions.copyright` is empty | `mise run preflight:submission <app> <platform> --fix` (copies the value from `docs/app-store/metadata/<app>/app-meta.yaml`) | Agent |
+| No code; creating a `reviewSubmissions` record fails | An earlier `reviewSubmissions` record is not in state `COMPLETE` | Wait until it enters review, then cancel it; or wait until it completes. See note 1 | User-owned |
 
-## Game Center registration recipes (issues #17 #19 #22 #24 #26 #31 #37 #40)
+Note 1, `reviewSubmissions`:
 
-| ENTITY_ERROR code | Cause | Likely fix | Rounds |
+- The API has no DELETE for this resource.
+- The only change is `PATCH /v1/reviewSubmissions/{id}` with `attributes.state = CANCELING`.
+- ASC accepts that PATCH only while the record is `IN_REVIEW` or `UNRESOLVED_ISSUES`. It rejects it for `READY_FOR_REVIEW`.
+- The preflight reports any record that is not `COMPLETE`.
+
+Note 2, scripting a price schedule (not done in this repo, unconfirmed against Apple's reference):
+
+- `POST /v1/appPriceSchedules` takes no attributes, only the relationships `app`, `territory` (the base territory) and `manualPrices`.
+- The manual price is created in the same request's `included[]` array with a client-made local id of the form `"${local-id}"`, and `manualPrices` refers to that id.
+- The preflight only detects a missing schedule (`GET /v1/apps/{id}/appPriceSchedule`). The price is a decision and stays user-owned.
+
+## Game Center registration errors
+
+| `ENTITY_ERROR` code | Cause | Fix |
+|---|---|---|
+| `LOCALE_INVALID` | ASC rejects the locale code | In `Config.ascLocaleCode` use `zh-Hant` and `zh-Hans` (no region), and bare `th` and `ko`. `en-US` and `es-ES` are accepted |
+| `INVALID_POINTS_RANGE` | Achievement points outside 0–100 | Clamp every points value to 0–100 |
+| `RECURRENCE_RULE_INVALID` | ASC wants an RFC 5545 rule | `"DAILY"` → `"FREQ=DAILY;INTERVAL=1"`; update `ConfigConsistencyTests` |
+| `RECURRENCE_START_CANNOT_BE_PAST` | `recurrenceStartDate` is not in the future | Use `LeaderboardConfig.nextRecurrenceStartDateUTC()` |
+| `RECURRENCE_DURATION_INVALID` | Duration lacks a time component | `"P1D"` → `"PT24H"`; update the tests |
+| `RECURRENCE_START_DATE_REQUIRED` | A recurring leaderboard lacks `recurrenceStartDate` or `recurrenceDuration` | Send both fields; assert it in `ConfigConsistencyTests` |
+| `SCORE_SORT_TYPE_INVALID` | Bad `scoreSortType`, or `submissionType` is missing | `scoreSortType` is `ASCENDING` or `DESCENDING`; `submissionType` is `RECURRING` or `MANUAL` |
+
+## IAP review screenshot errors
+
+| Code | Cause | Fix | Who |
 |---|---|---|---|
-| `LOCALE_INVALID` | Apple rejects the leaderboard/achievement locale code | `Config.ascLocaleCode`: script-only `zh-Hant`/`zh-Hans` (not `zh-Hant-TW`), and **bare `th`/`ko` for Game Center too** — GC rejects region-suffixed `th-TH`/`ko-KR` (live leaderboard-loc apply 2026-06-15), same as IAP/metadata. Region forms `en-US`/`es-ES` ARE accepted by GC. | #31 #37 + th/ko 2026-06-15 |
-| `INVALID_POINTS_RANGE` | Achievement points must be 0–100 | Clamp every achievement points value to 0–100 (no raw centiseconds / large counts) | #40 |
-| `RECURRENCE_RULE_INVALID` | Apple wants RFC 5545 RRULE, not plain `DAILY` | `recurrenceRule: "DAILY"` → `"FREQ=DAILY;INTERVAL=1"`; update ConfigConsistencyTests | #26 |
-| `RECURRENCE_START_CANNOT_BE_PAST` | `recurrenceStartDate` must be future-only | Use `LeaderboardConfig.nextRecurrenceStartDateUTC()` (tomorrow UTC 00:00); NextRecurrenceStartDateTests covers the 23:59 UTC edge | #26 |
-| `RECURRENCE_DURATION_INVALID` | Duration needs ISO 8601 *with time components* | `"P1D"` → `"PT24H"`; update tests | #24 |
-| `RECURRENCE_START_DATE_REQUIRED` | `recurrenceStartDate` + `recurrenceDuration` both required | Recurring leaderboards include both fields; assert in ConfigConsistencyTests | #22 |
-| `SCORE_SORT_TYPE_INVALID` | Invalid `scoreSortType` OR missing `submissionType` | `scoreSortType ∈ {ASCENDING, DESCENDING}`; `submissionType ∈ {RECURRING, MANUAL}`; verify ASCClient request shape | #19 |
-| `MEDIA_ASSET_DELETE_NOT_ALLOWED` (`DELETE /v1/inAppPurchaseAppStoreReviewScreenshots/{id}` → 409, "You cannot delete this asset") | Apple locks an IAP's review screenshot from API-level delete once the IAP has moved into a submission-adjacent state (observed with MS `remove-ads` IAP 6775734068, state `READY_TO_SUBMIT`; mirrors the well-documented ASC pattern where an "Approved"/on-sale in-app purchase can't be DELETEd until reverted via web UI). `ASCRegisterKit`'s `iap screenshots` evict-then-replace flow (`main.swift:uploadIAPScreenshot`) hits this on the EVICT step before it ever reserves the new upload. | **No API-only fix exists.** Verified against Apple's own OpenAPI spec (`components/schemas/InAppPurchaseAppStoreReviewScreenshotUpdateRequest`): `PATCH /v1/inAppPurchaseAppStoreReviewScreenshots/{id}` accepts ONLY `sourceFileChecksum` + `uploaded` — no `fileName`/`fileSize` — so PATCH can commit a reservation but can never re-target new image bytes onto an existing screenshot resource; replacing content is DELETE-then-POST by design, and DELETE is exactly what's locked. Do not attempt a PATCH-based replace — it cannot change the asset's content and risks marking a stale reservation `uploaded:true`. The only path is web UI: ASC → My Apps → app → In-App Purchases → the IAP → Review Information → replace the screenshot there (the web UI apparently drives a different internal mutation than the public DELETE endpoint, or first reverts the IAP's state).<br><br>**Live-state confirmation (2026-07-29, read-only GET, run by a teammate with ASC credentials):** `assetDeliveryState.state="COMPLETE"` (healthy, not stuck mid-upload) with a public CDN `templateUrl` (`is1-ssl.mzstatic.com/image/thumb/<token>/{w}x{h}bb.{f}`). Fetching the actual image showed it is genuinely **stale**: "Remove Ads **$2.99**" and missing the "Background Music"/"Haptics" Settings rows, vs. the current committed screenshot which shows "$0.99" and both newer rows — real content drift, not just an MD5 formality. The old `sourceFileChecksum` (`6f4881f…`) matches no commit of this repo's tracked `review-screenshot.png` (that file has only ever had one committed version, the current $0.99 one) — the stale ASC asset predates this file's git history, likely uploaded once outside `ASCRegister` and never touched since. **Verdict: replacement is warranted**, but per the PATCH-schema finding above it can only happen through the ASC web UI (user-owned) until the IAP leaves `READY_TO_SUBMIT`.<br><br>Aside: `main.swift:1325`'s `existing?.attributes["assetDeliveryState"] == "COMPLETE"` reads a plain string even though the raw JSON:API attribute is a nested `{state, errors, warnings}` object — this works because `APIResource.flattenAttributes` (`ASCClient.swift` ~L471-476) special-cases `assetDeliveryState` and flattens it to just `.state` before the comparison; not a bug, just worth knowing when reading that line in isolation. | first sighting, MS v2.6 IAP screenshot upload, 2026-07-28/29 |
+| `MEDIA_ASSET_DELETE_NOT_ALLOWED` (HTTP 409 on `DELETE /v1/inAppPurchaseAppStoreReviewScreenshots/{id}`) | ASC locks the review screenshot once the IAP is `READY_TO_SUBMIT` or later. `ASCRegister iap screenshots` deletes the old asset before uploading, so it stops here | ASC → app → In-App Purchases → the IAP → Review Information: replace the screenshot | User-owned |
+
+Note 3, why the API cannot replace it:
+
+- `PATCH /v1/inAppPurchaseAppStoreReviewScreenshots/{id}` accepts only `sourceFileChecksum` and `uploaded`. It cannot attach new image bytes to an existing screenshot.
+- Replacing content therefore needs DELETE then POST, and DELETE is the locked call.
+- Do not try a PATCH-based replace: it cannot change the image and can mark a stale reservation as uploaded.
+- When reading `ASCRegister` code: `assetDeliveryState` is a nested object in the raw response; `APIResource.flattenAttributes` reduces it to its `state` string.

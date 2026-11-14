@@ -1,120 +1,100 @@
 ---
 name: asc-ops-handoff
-description: Use when planning, scoping, or executing user-owned App Store Connect / TestFlight / Apple Developer operations for the repo apps (Sudoku / Minesweeper) — IAP product registration, App Privacy questionnaire, AdMob console linkage, sandbox tester provisioning, TestFlight upload + review, ASC submission, App Metadata uploads. Codifies which steps are user-owned (require Apple ID / 2FA / web UI) vs Leader-orderable (via ASC API + ASCRegister CLI), and the canonical doc + verification checklist for each.
+description: Decide who does each App Store Connect (ASC), TestFlight, AdMob or Apple Developer step for Sudoku and Minesweeper - the user (Apple ID, 2FA, web UI, decisions) or an agent (ASC API through the ASCRegister CLI and mise tasks). Use when planning a release or submission, before running any ASCRegister command, when a subagent asks "can I do X in ASC", when an ASC call returns ENTITY_ERROR or STATE_ERROR, or when asked how production AdMob IDs reach a build. Not for the TestFlight upload procedure (see local-testflight-upload) or screenshot generation (see appstore-screenshot-pipeline).
 ---
 
 # ASC Ops Handoff
 
-## When to invoke
+Terms: **user-owned** means only the user may do it (needs their Apple ID, a web UI, a decision or personal data). **Leader-orderable** means an agent may run it through a scripted, repeatable command.
 
-- Planning a release ship (current target: **v2.6 first App Store release**, both apps) → which steps are user vs Leader-orderable
-- Subagent asks "should I do X" where X involves ASC web UI
-- Drafting a release readiness checklist for user
-- User says "I'm about to submit to App Store — what do I need to check"
-- Code Reviewer flags an Apple-platform-ops question
-- An `ASCRegister apply` run returns `ENTITY_ERROR.<CODE>` → see [`asc-entity-error-recipes.md`](asc-entity-error-recipes.md)
+## Current documents
 
-## Canonical doc
+| Need | File |
+|---|---|
+| Submission steps, in order | `docs/app-store/SUBMISSION-CHECKLIST.md` |
+| App Review notes and contact table | `docs/app-store/review/<app>-v2.6-review-information.md` |
+| Listing metadata schema | `docs/app-store/metadata/README.md` |
+| Error codes and fixes | [`asc-entity-error-recipes.md`](asc-entity-error-recipes.md) |
 
-`docs/v2/v2.5-readiness.md` is the authoritative ops checklist as of v2.5 (a v2.6 readiness doc should supersede it at submission time). This skill explains WHO does WHAT and HOW; the readiness doc is WHAT'S DONE / OUTSTANDING.
+`docs/v2/v2.5-readiness.md` is the v2.5 record. Do not use it for v2.6.
 
-## Pre-submission preflight (run this FIRST, every time)
+## Step 1: run the preflight (read-only)
 
-A real v2.6 submission attempt (2026-07-28) hit nine ASC-side prerequisites
-one at a time — each discovered only when a mutating call was already
-rejected, because nothing in this repo tracked them: `releaseType` left at
-the auto-release default, no build attached, empty copyright, no app price
-schedule (`STATE_ERROR.APP_PRICING_REQUIRED`), an unanswered age rating
-questionnaire, no content rights declaration, a missing App Review contact
-record, screenshots for only 2 of 7 locales, and a stray non-cancellable
-`reviewSubmissions` record.
+```
+mise run preflight:submission <sudoku|minesweeper|all> <ios|macos|all>
+```
 
-`mise run preflight:submission <app|all> <ios|macos|all>` (read-only) checks
-all nine plus version/editable-state, screenshot-coverage-per-locale, and IAP
-review-screenshot presence, printing a PASS/BLOCK/MANUAL-VERIFY table and
-exiting non-zero on any BLOCK. `--fix` auto-fills ONLY `copyright` (from
-`app-meta.yaml`), `releaseType=MANUAL`, and attaching the newest processed
-build — never pricing/availability, age rating, content rights, or
-review-contact details (those are decisions or PII, and stay user-owned).
-See `docs/app-store/SUBMISSION-CHECKLIST.md` Step 0 and
-`asc-entity-error-recipes.md` for the per-item recipes. Run it before
-starting the manual checklist AND again immediately before clicking Submit.
+- It prints PASS, BLOCK or MANUAL-VERIFY per prerequisite and exits non-zero on any BLOCK.
+- Run it before starting the checklist, and again right before the user clicks Submit.
+- `--fix` changes only three things: `copyright` (from `app-meta.yaml`), `releaseType=MANUAL`, and attaching the newest processed build. It never sets pricing, age rating, content rights or review contact details.
 
-## Operation taxonomy
+## Step 2: classify the operation
 
-### 🙋 User-owned (require human + Apple ID + 2FA)
+### User-owned
 
-Cannot be subagent-driven. Document in `v2.5-readiness.md` as `- [ ]` items; track via GitHub issue (e.g. #132).
+Do not attempt these. Add them as unchecked items to the submission checklist or the tracking issue, and tell the user.
 
-| Op | Where | Notes |
+| Operation | Where |
+|---|---|
+| Apple Developer Program enrolment and renewal | developer.apple.com |
+| Create the ASC API key (`.p8`, Key ID, Issuer ID) | ASC → Users and Access → Keys |
+| Create the ASC app record | Developer Portal (App ID), then ASC → My Apps → + |
+| App Privacy questionnaire and nutrition labels | ASC web UI. No API exists. Must match `App/<App>/Resources/PrivacyInfo.xcprivacy` |
+| App pricing and availability | ASC → Pricing and Availability |
+| Age rating, content rights | ASC → App Information |
+| App Review contact name, email, phone | Typed by the user in ASC at submission time. Not stored in the repo or in `secrets/.env` |
+| IAP price and the `Ready to Submit` status | ASC → In-App Purchases |
+| Sandbox tester accounts | ASC → Users and Access → Sandbox |
+| AdMob console: link the app, create the banner unit | apps.admob.com |
+| TestFlight upload | `mise run tf:upload … --i-am-sure`, only when the user asks |
+| Submit for Review, reply to App Review, cancel a review | ASC web UI |
+
+### Leader-orderable
+
+Run ASCRegister with `swift run --package-path Packages/ASCRegisterKit ASCRegister <command>`. Credentials come from `secrets/.env` (`source secrets/.env`). `ASCRegister --help` lists every flag.
+
+| Operation | Command | Writes to ASC? |
 |---|---|---|
-| Apple Developer Program enrolment / annual renewal | developer.apple.com | One-time + yearly |
-| Generate ASC API Key (.p8 + Key ID + Issuer ID) | App Store Connect → Users and Access → Keys | Required for ASCRegister + Xcode Cloud signing |
-| App Privacy questionnaire | ASC web UI → My Apps → Sudoku → App Privacy | No REST API exists (verified 2026-05-23) — must align manually with PrivacyInfo.xcprivacy |
-| IAP pricing tier + `Ready to Submit` | ASC → My Apps → … → In-App Purchases | Product creation, per-locale localization, AND the review screenshot are now automated (`ASCRegister iap apply` / `iap screenshots`, see Leader-orderable table); what remains web-UI is the price/availability and flipping status to `Ready to Submit` |
-| Sandbox tester account | ASC → Users and Access → Sandbox | One per region you want to test |
-| AdMob console linkage | apps.admob.com | Link to ASC App ID; create banner ad unit |
-| Create the ASC app record | Developer Portal (App ID) + ASC web UI (My Apps → +) | ASCRegister consumes `--app-id` — it cannot create the app; do this first, then feed the app-id to the tools |
-| App Store nutrition labels | ASC web UI → App Privacy | Must align with PrivacyInfo |
-| TestFlight build promotion to production | ASC → TestFlight → Build → Distribute | Tap "Submit for Review" |
-| Apple Review response (rejection / approval) | ASC → App Store → Submission | Reply to Apple's notes |
-| Production AdMob ID swap (paired with IAP unit) | `App/Info.plist` GADApplicationIdentifier + `LiveAdMobBridge.swift` Release branch | Triggered AT v2.5.3 submit; must be paired flip (see v2.5-readiness.md §v2.5.3) |
+| Submission preflight | `mise run preflight:submission …` | No (`--fix`: the three fields above) |
+| Game Center leaderboards and achievements | `ASCRegister validate` / `plan` / `apply` | `apply` only |
+| IAP product and its localizations | `ASCRegister iap plan` / `iap apply` | `apply` only |
+| IAP review screenshot | `ASCRegister iap screenshots --iap-id <id> --screenshot <png> --i-am-sure` | Only with `--i-am-sure` |
+| Listing text (description, keywords, what's new) | `ASCRegister metadata plan` / `metadata apply` | `apply` only |
+| Version string | `ASCRegister metadata set-version --version <s>` | Yes |
+| Screenshots | `ASCRegister metadata screenshots … --i-am-sure` (see `appstore-screenshot-pipeline`) | Only with `--i-am-sure` |
+| Provisioning walkthrough HTML for the user | `mise run new_app:provisioning <asc\|admob\|cloudkit\|all> --app <name>` | No |
+| Archive and export a build | `mise run tf:upload <app> <platform> --archive-only` | No |
 
-### 🤖 Leader-orderable (via ASCRegister CLI + ASC REST API)
+Rules for these commands:
 
-Subagent-driveable. Document as "automated by ASCRegister X mode".
+1. Run the `plan` (dry-run) form first and read its output.
+2. Run an `apply` or `--i-am-sure` form only when the user asked for that change.
+3. ASCRegister needs an existing app record (`--app-id`, or `apple_id` in `app-meta.yaml`). It cannot create one.
 
-| Op | Tool | Status |
+### Shared (agent prepares, user acts)
+
+| Operation | Agent | User |
 |---|---|---|
-| Register Game Center leaderboards (3) | `tools/ASCRegister` | ✅ shipped (v1) |
-| Register Game Center achievements (8) | `tools/ASCRegister` | ✅ shipped (v1) |
-| Register IAP product | `ASCRegister iap plan\|apply` | ✅ **SHIPPED** — `iap` subcommand creates/updates the IAP from metadata xcstrings (the 2026-05-26 cancellation was later reversed; confirm via `ASCRegister --help`). Requires the ASC app record to already exist (`--app-id`). |
-| Upload IAP review screenshot | `ASCRegister iap screenshots --iap-id <id> --screenshot <png> --i-am-sure` | ✅ **SHIPPED** — reserve→PUT→commit to `/v1/inAppPurchaseAppStoreReviewScreenshots`, idempotent (GET→skip-if-matching / evict-and-replace-on-drift); WRITE gated behind `--i-am-sure`. Verified live on both apps 2026-07-20. Screenshot source: any accepted portrait dimension (e.g. 1290×2796) showing the Remove Ads purchase point — `mise run ui:tour` emits a Settings frame. |
-| Upload App Metadata (description / keywords / screenshots / what's new) | `ASCRegister metadata plan\|apply\|set-version\|screenshots` | ✅ **SHIPPED** — `metadata` subcommand uploads listings + screenshots per locale (the 2026-05-26 backlog item was implemented; `screenshots` gated behind `--i-am-sure`). |
+| Xcode Cloud signing | `ci_scripts/ci_post_clone.sh` writes `Tuist/Signing.xcconfig` from `$CI_TEAM_ID` | Connect ASC to Xcode Cloud once |
+| Xcode Cloud secrets | Name the variables the scripts read (`SUDOKU_ADMOB_APP_ID`, `SUDOKU_ADMOB_BANNER_UNIT_ID`, `SUDOKU_APP_STORE_ID`, and the `MINESWEEPER_` set) | Enter the values as Secret environment variables in the workflow |
+| Branch protection on `main` | Keep the workflow job names stable | Settings → Branches → required checks |
 
-### 🤝 Hybrid (Leader prepares; user pushes the button)
+## Production AdMob IDs
 
-| Op | Leader does | User does |
-|---|---|---|
-| Xcode Cloud signing | Pin Xcode version in `.mise.toml`; ci_post_clone.sh writes Tuist/Signing.xcconfig from `$CI_TEAM_ID` | One-time: connect ASC to Xcode Cloud, configure team |
-| Branch protection on `main` | Methodology doc + workflow yml | Settings → Branches → required status checks |
-| GitHub App bot identity (audit-trail clean) | `scripts/bot-gh-token.sh` JWT helper; `.gitignore` + foundations §7 | Create the GitHub App, install on repo, save `.pem` |
+Production AdMob IDs never appear in code, comments, docs or diffs. No source file changes when a build switches from test IDs to production IDs.
 
-## When subagent asks "can I do X for ASC?"
+- `App/<App>/Info.plist` holds `$(ADMOB_APP_ID)` and `$(ADMOB_BANNER_UNIT_ID)`.
+- The values come from the gitignored `Tuist/AdMob.xcconfig`. The committed template `Tuist/AdMob.xcconfig.example` holds Google's public test IDs.
+- Local release builds: `mise run tf:upload` writes `Tuist/AdMob.xcconfig` from `<APP>_ADMOB_APP_ID` and `<APP>_ADMOB_BANNER_UNIT_ID` in `secrets/.env`. The user fills `secrets/.env`.
+- Xcode Cloud builds: `ci_scripts/ci_post_clone.sh` writes the same file from the workflow's Secret environment variables.
+- Debug builds always request Google's test banner unit, whatever the xcconfig holds. Release builds, including TestFlight builds, use the injected IDs.
+- `mise run scan:admob` checks that only `LiveAdMobBridge.swift` imports the ads SDK. No gate detects an AdMob ID in a diff: read your diff before every commit.
 
-Cross-reference the taxonomy above. If user-owned → respond "this is user step, add to the appropriate *-readiness.md checklist and surface to user". If Leader-orderable → confirm tool exists or scope the CLI extension. If hybrid → split the work in dispatch prompt.
+If a task seems to need a production ID in a file, stop and ask the user. Mechanism details: `apple-dev-skills:build-time-secret-injection`.
 
-## Documentation pointers
+## Facts that are often assumed wrong
 
-- **`docs/v2/v2.5-readiness.md`** — current ship checklist; user-owned items as `- [ ]`
-- **`docs/v2/plan.md` §v2.5** — phase summary; defers to readiness doc for detail
-- **`tools/ASCRegister/`** (project source: `Packages/ASCRegisterKit/Sources/ASCRegister/`) — existing CLI
-- **`docs/app-store/metadata/README.md`** — yaml schema consumed by ASCRegister metadata mode (shipped)
-- **`docs/foundations.md §Backlog`** — ASC API ops backlog entries
-- **`docs/v2/design.md §Backlog`** — historical CANCELLED/BACKLOG ASC ops (note: the IAP + metadata modes listed there were later implemented — `ASCRegister --help` is current truth)
-
-## Anti-patterns
-
-- **"The App Review contact email/phone live in `secrets/.env`"** — NO (corrected
-  2026-07-29). `docs/app-store/metadata/<app>/app-meta.yaml` and the
-  `review/<app>-v2.6-review-information.md` contact tables previously claimed
-  `ASC_REVIEW_EMAIL`/`ASC_REVIEW_PHONE` keys existed in `secrets/.env`; they do
-  not, and never did — the 2026-07-28 submission got the contact name/email/
-  phone from the user directly, typed into the ASC web UI at submission time.
-  Don't invent or expect those env keys; don't try to script the contact fields.
-- **"IAP is fully automated, no user step"** — NO. `ASCRegister iap apply` creates the product + localizations and `iap screenshots` uploads the review screenshot, but **pricing/availability and the final `Ready to Submit` flip remain web-UI (user-owned)** — there is no ASC REST API for IAP price schedules in this tool. Automate creation + localization + review screenshot; hand price + submit to the user.
-- **"We'll fill App Privacy questionnaire later via API"** — NO. There is no API. Verified 2026-05-23.
-- **Shipping with test AdMob IDs in production**: paired flip exists for a reason. Per RCA #149 Fix N1, Release build with test app ID + production ad unit ID will silently no-fill at best.
-- **Conflating "ASCRegister handles Game Center" with "ASCRegister handles everything"**: explicit mode-by-mode tracking required. Game Center / IAP / metadata modes are all SHIPPED (`ASCRegister --help` is the source of truth). The one thing ASCRegister does NOT do is create the app record — it consumes `--app-id`, so the ASC app must be created in the web UI first (user-owned).
-
-## Example application
-
-User asks: "Should we automate the v2.5.3 production AdMob ID swap?"
-
-Cross-reference:
-- The swap touches `App/Info.plist` + `LiveAdMobBridge.swift` — both source-controlled
-- Trigger: user-owned (decides WHEN to flip)
-- Execution: Leader-orderable (it's just a 2-file PR)
-- Verification: user-owned (TestFlight + real-device test ads run by user per `v2.5-readiness.md §v2.5.2`)
-
-Verdict: hybrid. Recommend: at v2.5.3 user-says-ready, dispatch a subagent to do the 2-file flip in one PR, user merges + uploads TestFlight build.
+- IAP is not fully automated. ASCRegister creates the product, its localizations and the review screenshot. Price and the `Ready to Submit` status stay in the web UI.
+- The App Privacy questionnaire has no API.
+- A `reviewSubmissions` record cannot be deleted. It can be cancelled only while in review. See the recipes file.
+- An ASCRegister mode that works for Game Center says nothing about other modes. Check `ASCRegister --help` per mode.

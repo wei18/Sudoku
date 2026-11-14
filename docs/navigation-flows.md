@@ -1,6 +1,6 @@
 # Navigation Flows — Sudoku & Minesweeper (AS-BUILT)
 
-**Status:** AS-BUILT · **Date:** 2026-07-05 · **main @** `9d6bf71`
+**Status:** as-built at `9d6bf71` (2026-07-05) · partially superseded by 3.0 (see the note below) · anchored by `mise run scan:design_contracts`
 
 > ⚠️ **Partially superseded by 3.0 (#1020 / #1038, 2026-08-25).** `HOME` is
 > retired: the root is a 3-tab `sidebarAdaptable` shell with one path per tab
