@@ -27,6 +27,7 @@ extension DigitPadView {
     }
 
     nonisolated static let macDigitColumns = 3
+    nonisolated static let macDigitRows = 3
     nonisolated static let macDigitLabelMinWidth: CGFloat =
         BoardControlRail.keyLabelMinWidth(columns: macDigitColumns)
 
@@ -103,7 +104,7 @@ extension DigitPadView {
         // parent resizes.
         Grid(horizontalSpacing: BoardControlRail.keyGridSpacing,
              verticalSpacing: BoardControlRail.keyGridSpacing) {
-            ForEach(0..<Self.macDigitColumns, id: \.self) { row in
+            ForEach(0..<Self.macDigitRows, id: \.self) { row in
                 GridRow {
                     ForEach(1...Self.macDigitColumns, id: \.self) { col in
                         macDigitButton(digit: row * Self.macDigitColumns + col)

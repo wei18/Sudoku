@@ -24,7 +24,7 @@ public enum BoardControlRail {
     public static let widestButtonChromeInset: CGFloat = 12
 
     /// Width of one key, chrome included, for a grid of `columns` filling the rail.
-    public static func keyWidth(columns: Int) -> CGFloat {
+    static func keyWidth(columns: Int) -> CGFloat {
         (width - CGFloat(columns - 1) * keyGridSpacing) / CGFloat(columns)
     }
 
