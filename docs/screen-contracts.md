@@ -758,8 +758,9 @@ without `onPlayAgain`) and the reminder primer is re-derived fresh
 
 **Covering behavior (updated 2026-09-01, #1023):** same `CompletionOverlayScaffold`
 shape as the overlay — full-height Liquid-Glass panel (`.ignoresSafeArea()`),
-NOT the pre-#1023 opaque warm-paper background — visually indistinguishable
-from `SUD-COMPLETION-OVERLAY` even though this is a genuine stack push, not
+NOT the pre-#1023 opaque warm-paper background — in compact width visually
+indistinguishable from `SUD-COMPLETION-OVERLAY` (regular width differs, see
+below) even though this is a genuine stack push, not
 an in-board overlay (there is no board behind a pushed route to show through,
 so the glass sits over the plain page background here). `variant: .review`
 — no ritual/panel-rise, no streak section (design.md §3.5). **State
@@ -822,7 +823,8 @@ save/resume/replay, `MinesweeperDailyOpenGuardView`'s today-only re-check).
 
 **Covering behavior / state variants:** same scaffold shape as
 `SUD-COMPLETION-REVIEW`, including its regular-width page treatment (#1049;
-the title day is the route's `day`, or today when `nil`); no Play Again; no
+the title day is the route's `day`, which every hub push resolves; a `nil`
+`day` falls back to the untitled `.overlay` layout); no Play Again; no
 mistake row.
 
 ---
