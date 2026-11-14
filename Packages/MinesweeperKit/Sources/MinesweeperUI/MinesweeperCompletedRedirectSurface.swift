@@ -9,7 +9,7 @@
 // "completed but lost" daily state — so `outcomeKind` is always `.success`.
 
 public import SwiftUI
-import GameShellUI
+public import GameShellUI
 public import SettingsUI
 
 public struct MinesweeperCompletedRedirectSurface: View {
@@ -18,6 +18,8 @@ public struct MinesweeperCompletedRedirectSurface: View {
     let fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?
     let onDailyNext: ((MinesweeperDailyEntry) -> Void)?
     let onClose: () -> Void
+    /// `.pushedPage` only from the Daily hub's pushed review route (#1049).
+    let presentation: CompletionPresentation
     /// MS re-view has no stored elapsed (#284/#386) — the hero omits the time
     /// row entirely when `false`. Defaults `true` (has-time callers unchanged).
     let showsElapsedTime: Bool
@@ -32,13 +34,15 @@ public struct MinesweeperCompletedRedirectSurface: View {
         fetchDailyProgress: (@MainActor () async -> MinesweeperDailyCompletionProgress)?,
         onDailyNext: ((MinesweeperDailyEntry) -> Void)?,
         onClose: @escaping () -> Void,
-        showsElapsedTime: Bool = true
+        showsElapsedTime: Bool = true,
+        presentation: CompletionPresentation = .overlay
     ) {
         self.completionViewModel = completionViewModel
         self.reminderPrimer = reminderPrimer
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
         self.onClose = onClose
+        self.presentation = presentation
         self.showsElapsedTime = showsElapsedTime
     }
 
@@ -48,6 +52,7 @@ public struct MinesweeperCompletedRedirectSurface: View {
             outcomeKind: .success,
             context: context,
             onClose: onClose,
+            presentation: presentation,
             card: {
                 MinesweeperCompletionView(
                     viewModel: completionViewModel,

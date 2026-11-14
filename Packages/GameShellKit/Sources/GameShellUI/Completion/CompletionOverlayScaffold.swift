@@ -40,8 +40,10 @@ public struct CompletionOverlayScaffold<Card: View>: View {
     // is ALSO onAppear-driven, so it needs the same offline-renderer escape
     // hatch (snapshot tests / ASC screenshot emitter never fire `.onAppear`).
     @Environment(\.completionHeroSkipsReveal) private var skipsReveal
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private let variant: CompletionVariant
+    private let presentation: CompletionPresentation
     private let outcomeKind: CompletionOutcome.Kind
     private let context: CompletionContext
     private let onClose: () -> Void
@@ -64,6 +66,7 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         context: CompletionContext,
         onClose: @escaping () -> Void,
         streakAdvance: CompletionStreakAdvance? = nil,
+        presentation: CompletionPresentation = .overlay,
         @ViewBuilder card: @escaping () -> Card
     ) {
         self.variant = variant
@@ -71,6 +74,7 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         self.context = context
         self.onClose = onClose
         self.streakAdvance = streakAdvance
+        self.presentation = presentation
         self.card = card
     }
 
@@ -119,27 +123,43 @@ public struct CompletionOverlayScaffold<Card: View>: View {
         ZStack {
             accentGlow
             glassPanel
-            // Section gap (#762 PR1 two-tier spacing contract) — structural,
-            // fixed rhythm between the result card and its CTA group;
-            // reinforced by the `.dynamicTypeSize` cap just below, which
-            // exists specifically so this overlay can't grow past the
-            // screen.
-            VStack(spacing: theme.spacing.large) {
-                card()
-                    .environment(\.completionVariant, variant)
-                if showsStreakSection, let streakAdvance {
-                    CompletionStreakView(advance: streakAdvance, motionPlan: motionPlan)
+            if let pageTitle = presentation.pageTitle(in: horizontalSizeClass) {
+                // #1049: the pushed review in regular width is a page in its
+                // tab, so the column starts under the title instead of
+                // floating in the middle of the detail column.
+                ScrollView {
+                    column
+                        .padding(.top, theme.spacing.large)
+                        .frame(maxWidth: .infinity)
                 }
-                ctas
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .completionPageTitle(pageTitle)
+            } else {
+                column
+                    // Cap Dynamic Type so the (non-scrolling) group can't grow past the
+                    // screen — mirrors the board status bar's cap. Extreme-AX overflow
+                    // scroll is a possible follow-up; the cap keeps it on-screen.
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             }
-            .frame(maxWidth: 480)
-            .padding(.horizontal, theme.spacing.large)
-            // Cap Dynamic Type so the (non-scrolling) group can't grow past the
-            // screen — mirrors the board status bar's cap. Extreme-AX overflow
-            // scroll is a possible follow-up; the cap keeps it on-screen.
-            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
         .onAppear { panelRevealed = true }
+    }
+
+    // Section gap (#762 PR1 two-tier spacing contract) — structural,
+    // fixed rhythm between the result card and its CTA group;
+    // reinforced by the `.dynamicTypeSize` cap at both call sites, which
+    // exists specifically so this overlay can't grow past the screen.
+    private var column: some View {
+        VStack(spacing: theme.spacing.large) {
+            card()
+                .environment(\.completionVariant, variant)
+            if showsStreakSection, let streakAdvance {
+                CompletionStreakView(advance: streakAdvance, motionPlan: motionPlan)
+            }
+            ctas
+        }
+        .frame(maxWidth: 480)
+        .padding(.horizontal, theme.spacing.large)
     }
 
     // MARK: - Panel rise (M10)

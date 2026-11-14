@@ -24,6 +24,8 @@ public struct CompletedRedirectSurface: View {
     let fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?
     let onDailyNext: ((String) -> Void)?
     let onClose: () -> Void
+    /// `.pushedPage` only from the Daily hub's pushed review route (#1049).
+    let presentation: CompletionPresentation
 
     /// `.allDone` default — never claims a "Next" that doesn't exist while
     /// `fetchDailyProgress` is still resolving.
@@ -34,13 +36,15 @@ public struct CompletedRedirectSurface: View {
         reminderPrimer: ReminderPrimerCoordinator?,
         fetchDailyProgress: (@MainActor () async -> DailyCompletionProgress)?,
         onDailyNext: ((String) -> Void)?,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        presentation: CompletionPresentation = .overlay
     ) {
         self.completionViewModel = completionViewModel
         self.reminderPrimer = reminderPrimer
         self.fetchDailyProgress = fetchDailyProgress
         self.onDailyNext = onDailyNext
         self.onClose = onClose
+        self.presentation = presentation
     }
 
     public var body: some View {
@@ -51,6 +55,7 @@ public struct CompletedRedirectSurface: View {
             outcomeKind: .success,
             context: context,
             onClose: onClose,
+            presentation: presentation,
             card: {
                 CompletionView(
                     viewModel: completionViewModel,
@@ -79,5 +84,19 @@ public struct CompletedRedirectSurface: View {
         case .allDone:
             return .dailyAllDone
         }
+    }
+}
+
+extension CompletionPageTitle {
+    /// The pushed review route's title for a Daily `puzzleId`
+    /// (`"YYYY-MM-DD-<difficulty>"`, #1049). `nil` for a practice id, which
+    /// never reaches that route.
+    public init?(sudokuDailyPuzzleId puzzleId: String) {
+        guard SudokuLeaderboardRouting.isDaily(puzzleId: puzzleId),
+              let dash = puzzleId.lastIndex(of: "-") else { return nil }
+        self.init(
+            difficultyKey: String(puzzleId[puzzleId.index(after: dash)...]).capitalized,
+            utcDay: String(puzzleId[..<dash])
+        )
     }
 }

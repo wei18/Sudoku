@@ -765,6 +765,14 @@ so the glass sits over the plain page background here). `variant: .review`
 — no ritual/panel-rise, no streak section (design.md §3.5). **State
 variants:** none; frozen snapshot values passed at construction (no live VM).
 
+**Regular width (iPad / macOS, #1049, owner ruling B):** the route passes
+`presentation: .pushedPage(CompletionPageTitle)` to the scaffold. In regular
+width the page carries an inline navigation title "<Difficulty> · <UTC day>"
+(e.g. "Easy · Sat, Nov 14", catalog key `%@ · %@`) and the column is
+top-aligned in a `ScrollView` (480 pt cap kept). Compact width (iPhone)
+ignores `.pushedPage` and keeps the centred overlay layout pixel-for-pixel.
+Push / Close / back semantics are unchanged.
+
 **E2E coverage (#935 batch 3):** N12 (`docs/navigation-flows.md`) anchors
 `App/SudokuE2ETests/SudokuE2ETests.swift`'s
 `test_completionReviewCloseLandsOnDailyHub_N12` — Close pops exactly one path
@@ -813,7 +821,9 @@ stand in without widening the concrete store's other consumers (board
 save/resume/replay, `MinesweeperDailyOpenGuardView`'s today-only re-check).
 
 **Covering behavior / state variants:** same scaffold shape as
-`SUD-COMPLETION-REVIEW`; no Play Again; no mistake row.
+`SUD-COMPLETION-REVIEW`, including its regular-width page treatment (#1049;
+the title day is the route's `day`, or today when `nil`); no Play Again; no
+mistake row.
 
 ---
 
