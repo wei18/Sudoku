@@ -68,6 +68,16 @@ CI builds nothing and runs no tests (owner decision, recorded on #1039). This ov
 - Run `swift test` locally for every package you changed, and report the result with its output.
 - `mise run test:ui` (host-driven XCUITest) is on demand. Run it when the user or the task brief asks. This overrides the global rule against local `xcodebuild test` for that task only.
 
+## Change procedure
+
+1. Write the test first, then the code (`docs/methodology.md`).
+2. Run `swift test` for each package you changed and `mise run lint:swift_strict -- <changed .swift files>`. If you touched user-visible strings, run `mise run scan:l10n`.
+3. Get the diff reviewed as the global engineering rules say.
+4. Open the PR. The title follows Conventional Commits and its subject starts with a lowercase letter or a digit (`^[a-z0-9]`); CI checks it.
+5. Never put `close`, `fix` or `resolve` next to `#NNN` in a PR title, PR body or commit message unless the PR must close that issue. GitHub ignores "does not". Write "part of #NNN".
+6. Merge rules (CI green, squash): `CONTRIBUTING.md`.
+7. After a merge from a worktree, run `git fetch && git reset --hard origin/main` in the main checkout and confirm it is clean. Worktree index changes can leak into it.
+
 ## Hard gates (user-owned: prepare, never run unprompted)
 
 - TestFlight upload: `mise run tf:upload <app> <platform> --i-am-sure`. See the `local-testflight-upload` skill.
@@ -78,14 +88,11 @@ CI builds nothing and runs no tests (owner decision, recorded on #1039). This ov
 ## Conventions
 
 - Commit with `git commit --no-gpg-sign -F <msgfile>`: signing hangs and hooks block heredocs. End the body with the `Co-Authored-By: Claude …` trailer.
-- PR titles follow Conventional Commits, and the subject starts with a lowercase letter or a digit (`^[a-z0-9]`). CI checks it. Merge rules: `CONTRIBUTING.md`.
-- Never put `close`, `fix` or `resolve` next to `#NNN` in a PR title, PR body or commit message unless the PR must close that issue. GitHub ignores "does not". Write "part of #NNN".
 - SwiftLint runs `--strict` in CI. A file over 400 lines fails: extract a sibling file (`Live+Feature.swift`). One-character names fail; use names of three or more characters. `TODO` comments fail: open an issue instead.
 - Swift 6 strict concurrency and `InternalImportsByDefault` apply everywhere. New shared types are `Sendable`. A `@Sendable` closure cannot capture MainActor statics: mark test fixtures `nonisolated`.
 - The app-root bootstrap (`GameRoot`, `makeGameApp`) uses `.onAppear { Task { … } }`, not `.task`: `.task` there broke the arm64 device Release link (#361). `.task` is correct in leaf views (#607).
 - A deliberate difference between the two apps carries a code comment with the reason and issue number at both the present site and the absent site, for example `// Sudoku-only: <reason> (#NNN)`.
 - User-visible strings need all 7 locales (`apple-dev-skills:ai-translated-localization`). Regenerate test fixtures with `mise run gen:l10n_fixture` and `mise run gen:privacy_fixture`; never hand-edit them.
-- After merging from a worktree, run `git fetch && git reset --hard origin/main` in the main checkout and confirm it is clean. Worktree index changes can leak into it.
 
 ## Where truth lives
 
