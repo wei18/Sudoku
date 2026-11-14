@@ -46,7 +46,7 @@ a MANUAL-VERIFY line, never a silent PASS. It stays 🙋 user, always.
       contact name/phone/email are supplied by the user directly at
       submission time; they are **not** stored anywhere in this repo (correcting
       a prior false claim that they lived in `secrets/.env`).
-- [ ] Have `memory/project/asc-api-credentials.md` open (Apple ID numbers).
+- [ ] Have the numeric ASC app ids at hand: `ASC_APP_ID_SUDOKU` and `ASC_APP_ID_MINESWEEPER` in `secrets/.env`.
 - [ ] Log in to [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
 
 ---

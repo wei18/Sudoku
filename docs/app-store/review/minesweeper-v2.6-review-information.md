@@ -110,8 +110,8 @@ case).
 - [ ] CloudKit schema deployed to **Production** — container `iCloud.com.wei18.minesweeper`.
       Console: Development → Schema → "Deploy Schema Changes to Production…"
       (done 2026-06-10 per review doc — re-verify if schema changed since).
-- [ ] `Minesweeper/Resources/PrivacyInfo.xcprivacy` reflects live AdMob integration.
-- [ ] Production AdMob App ID + banner unit ID swapped in (see memory `minesweeper-admob-ids`).
+- [ ] `App/Minesweeper/Resources/PrivacyInfo.xcprivacy` reflects live AdMob integration.
+- [ ] The uploaded build carries the production AdMob App ID + banner unit ID: `MINESWEEPER_ADMOB_APP_ID` and `MINESWEEPER_ADMOB_BANNER_UNIT_ID` are set in `secrets/.env`, and `mise run tf:upload` renders them into `Tuist/AdMob.xcconfig`. No source file changes.
 - [ ] App Privacy questionnaire in ASC matches the MS PrivacyInfo.
 - [ ] Remove Ads IAP (`com.wei18.minesweeper.iap.remove_ads`) created in ASC + status **Ready to Submit**.
 - [ ] `ITSAppUsesNonExemptEncryption=false` present in Info.plist (confirmed, skips export prompt).
