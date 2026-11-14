@@ -330,8 +330,8 @@ func windowSnapshotView<V: SwiftUI.View>(
     contentView.frame = CGRect(origin: .zero, size: size)
     // Force a synchronous layout + display pass so capture is deterministic
     // (no async layout race). `layoutSubtreeIfNeeded` drives AppKit + embedded
-    // SwiftUI layout to completion; `displayIfNeeded` flushes the draw into the
-    // now-existing backing store.
+    // SwiftUI layout to completion; `displayIfNeeded` runs any pending display
+    // pass. The capture itself is `windowSnapshotImage`'s draw into a bitmap.
     contentView.layoutSubtreeIfNeeded()
     window.displayIfNeeded()
     return (contentView, window)

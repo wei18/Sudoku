@@ -9,16 +9,16 @@ public import AppKit
 /// `contentView` / `contentViewController` themselves and `close()` the window
 /// when done.
 ///
-/// Two rules every test window must follow, which is why this is the only place
-/// that constructs one:
+/// Two rules every test window must follow, which is why the Sudoku and
+/// Minesweeper UI tests construct theirs only here:
 ///
 /// 1. `isReleasedWhenClosed = false`. Under ARC a `close()` on a
 ///    release-when-closed window over-releases it: SIGSEGV in `objc_release` at
 ///    the next main-queue autorelease-pool pop (#1103).
 /// 2. The window is never ordered front or made key. The machine is shared, and
 ///    a window taking focus corrupts other sessions' simulator and UI runs.
-///    Callers that need pixels capture through a synchronous draw into a bitmap
-///    context (`displayIgnoringOpacity(_:in:)`) instead.
+///    Callers that need pixels draw the content view into a bitmap themselves
+///    (`cacheDisplay(in:to:)` or `displayIgnoringOpacity(_:in:)`) instead.
 ///
 /// - Parameters:
 ///   - size: content size in points; the content rect's origin is zero.
