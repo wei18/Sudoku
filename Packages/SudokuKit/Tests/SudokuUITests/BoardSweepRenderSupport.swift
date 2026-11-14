@@ -8,6 +8,7 @@
 
 import Foundation
 import GameShellUI
+import GameTestSupportKit
 import SudokuEngine
 import SudokuGameState
 import SudokuPersistence
@@ -163,8 +164,7 @@ enum SweepRig {
     /// A borderless window that is never ordered front or made key; the caller
     /// closes it (`defer`) even on failure.
     static func makeWindow(containing host: NSView) -> NSWindow {
-        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
+        let window = makeOffscreenTestWindow(size: size)
         window.contentView = host
         return window
     }

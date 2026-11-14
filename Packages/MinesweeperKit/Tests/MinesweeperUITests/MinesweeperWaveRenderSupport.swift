@@ -10,6 +10,7 @@
 
 import Foundation
 import GameShellUI
+import GameTestSupportKit
 import MinesweeperEngine
 import MonetizationUI
 import SwiftUI
@@ -120,9 +121,10 @@ enum WaveRig {
     /// A borderless window that is never ordered front or made key; the caller
     /// closes it (`defer`) even on failure.
     static func makeWindow(containing host: NSView, scheme: ColorScheme = .light) -> NSWindow {
-        let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        let window = makeOffscreenTestWindow(
+            size: size,
+            appearance: NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        )
         window.contentView = host
         return window
     }
