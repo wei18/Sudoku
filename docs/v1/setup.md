@@ -1,6 +1,6 @@
 # Setup — first-time clone + deferred Phase 1 items
 
-Status: **DRAFT** — Phase 1 bootstrap (2026-05-17).
+Status: **historical** — Phase 1 bootstrap record (2026-05-17). For current setup see `CONTRIBUTING.md`.
 Audience: a new contributor (or future-you) cloning this repo.
 
 This file covers two things:

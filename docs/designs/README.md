@@ -1,64 +1,44 @@
-# `docs/designs/` — v1 visual design artifacts
+# `docs/designs/` index
 
-Text-based design spec for the 8 Views defined in `docs/v1/design.md §How.5.1`. No `.fig` / `.sketch` binaries — most artifacts here are reviewable in plain markdown + reproducible in a SwiftUI Preview; a couple are self-contained `.prototype.html` flow mocks (re-tagged with build-status annotations as features ship — see the Index).
+Design documents for both apps. The current design is in `v3/`. Everything else in this folder is the v1/v2 record.
 
-## Index
+Status values are defined in [`docs/README.md`](../README.md).
 
-| File | One-liner |
+## Current design (3.0)
+
+| File | What it is | Status |
+|---|---|---|
+| [`v3/design.md`](v3/design.md) | The complete 3.0 design for Sudoku and Minesweeper: 3-tab shell, board-first layout, Liquid Glass, color layers | living |
+| [`v3/prototype.html`](v3/prototype.html) | Full-screen prototype of that design | living |
+| [`v3/README.md`](v3/README.md) | How the design reached its final revision | living |
+
+The behavior of each shipped screen is specified outside this folder:
+
+- [`docs/screen-contracts.md`](../screen-contracts.md): elements, interactions and state variants per screen.
+- [`docs/navigation-flows.md`](../navigation-flows.md): routes, flow chains and negative flows.
+- `mise run scan:design_contracts` checks that the 3.0 change table (`scripts/design/contracts.py`) still points at existing sections of those two files. CI runs it.
+
+When you rename or remove a section heading or a row id in those two files, update `scripts/design/contracts.py` in the same PR and run the gate.
+
+## v1/v2 record (historical)
+
+These files describe the pre-3.0 UI. The HOME screen, the hand-written sidebar and the Leaderboard screen they describe no longer exist. Read them for the reasons behind a decision, not for the current layout.
+
+| File | What it is |
 |---|---|
-| [`design-system.md`](./design-system.md) | Tokens (color / type / spacing), Liquid Glass usage table, A11y baseline, SF Symbols inventory |
-| [`01-root.md`](./01-root.md) | RootView — auth bootstrap + resume pill, NavigationStack vs NavigationSplitView |
-| [`02-home.md`](./02-home.md) | HomeView — 4 mode cards (Daily / Practice / Leaderboard / Settings) |
-| [`03-daily-hub.md`](./03-daily-hub.md) | DailyHubView — 3 puzzle cards + completion checks + empty/error states |
-| [`04-practice-hub.md`](./04-practice-hub.md) | PracticeHubView — difficulty segment + "Draw new puzzle" CTA |
-| [`05-board.md`](./05-board.md) | BoardView — 9×9 grid, digit pad, undo/redo, pencil, pause overlay (no glass) |
-| [`06-completion.md`](./06-completion.md) | CompletionView — hero + leaderboard slice; 3 state variants |
-| [`07-leaderboard.md`](./07-leaderboard.md) | LeaderboardView — scope × difficulty pickers; auth/error/empty states |
-| [`08-settings.md`](./08-settings.md) | SettingsView — native Form, GC status, language, version, clear cache |
-| [`captureguard-kit.md`](./captureguard-kit.md) | RFC — CaptureGuardKit, surface-scoped black-on-capture guard (screen-recording/mirroring blackout) |
-| [`code/SnapshotMatrix.md`](./code/SnapshotMatrix.md) | Snapshot Matrix — tracks every PNG snapshot the snapshot-test target must produce (v1 UI baseline) |
-| [`sudoku-app-flow.prototype.html`](./sudoku-app-flow.prototype.html) | HTML flow mock — Sudoku app-wide screen flow (S01–S11); re-tagged HTML, not markdown; SUPERSEDED frames annotated inline as features ship (per-frame labels, not this Index) |
-| [`reminders-flow.prototype.html`](./reminders-flow.prototype.html) | HTML flow mock — RemindersKit usage flow; SHIPPED (Phase 2), re-tagged HTML per the same convention |
+| [`design-system.md`](design-system.md) | v1 tokens (color, type, spacing), accessibility baseline, SF Symbols list. Superseded in part by `v3/design.md` |
+| [`01-root.md`](01-root.md) … [`08-settings.md`](08-settings.md) | Per-screen v1 specs: Root, Home, Daily hub, Practice hub, Board, Completion, Leaderboard, Settings |
+| [`code/SnapshotMatrix.md`](code/SnapshotMatrix.md) | The v1 snapshot matrix. The live baselines are under `Packages/*/Tests/*/__Snapshots__/` |
+| `code/` (`Package.swift`, `Sources/`, `Tests/`) | A standalone SwiftPM package of v1 design previews |
+| [`captureguard-kit.md`](captureguard-kit.md) | RFC for a screen-capture guard (#286, parked) |
+| [`sudoku-app-flow.prototype.html`](sudoku-app-flow.prototype.html) | Pre-3.0 Sudoku flow prototype; superseded frames are labelled inside the file |
+| [`reminders-flow.prototype.html`](reminders-flow.prototype.html) | Reminders flow prototype (shipped) |
+| [`../minesweeper/minesweeper-app-flow.prototype.html`](../minesweeper/minesweeper-app-flow.prototype.html) | Pre-3.0 Minesweeper flow prototype |
 
-`code/` holds `SnapshotMatrix.md` plus a standalone SwiftPM package (`Package.swift` / `Sources/` / `Tests/`) — not `*_Designs.swift` preview files (there are none in this directory). The two `.prototype.html` files are self-contained flow mocks (iPhone-frame + navigation-arrow canvases), not markdown — see `CLAUDE.md` §Where truth lives ("Design prototypes").
+Each per-screen v1 spec has the same sections: identity, ASCII wireframe, SwiftUI preview skeleton, spec table, accessibility, rationale.
 
-## How to read these docs (Developer perspective)
+## Not in this folder
 
-For each View:
-
-1. **§a Identity** — what this View does and what async ops trigger it. Cross-reference `docs/v1/design.md §How.5.1` table.
-2. **§b ASCII wireframe** — confirm the layout structure (which elements, what order) before writing SwiftUI.
-3. **§c SwiftUI preview skeleton** — copy into `docs/designs/code/<View>_Designs.swift` (or directly inline a `#Preview` in the production target). Stubs are **preview-only**: they invent placeholder ViewModels because the real protocols (`PuzzleStoreProtocol`, `PersistenceProtocol`, `GameCenterClient`) don't exist yet (per `plan.md`). When real protocols land, replace the stub VMs with the real ones.
-4. **§d Spec table** — drives implementation. Token names map to `design-system.md`. Specific values (44 pt min height, 16 pt padding, `.borderedProminent`, etc.) are non-negotiable unless flagged.
-5. **§e A11y** — VoiceOver labels, Dynamic Type, color-blind, reduce-motion. None of these are afterthoughts; they're part of the AA acceptance criteria.
-6. **§f Rationale** — why this layout. Read this if you disagree with the spec before opening a counter-proposal.
-
-## Cross-links
-
-- Architecture / state machines / View map → `docs/v1/design.md §How.5`
-- Module / target boundaries → `docs/foundations.md §2`
-- Swift 6 / Sendable / `@MainActor` rules → `docs/foundations.md §1` + skill `swift6-concurrency`
-- Snapshot baseline (58 images per `code/SnapshotMatrix.md` §Coverage summary; the 25-image count at plan.md §8.11 is a historical v1-lock snapshot, since grown — see `docs/v1/design.md §How.5.8`)
-- L10n hook policy → `docs/v1/design.md §How.5.6` + skill `ai-translated-localization`
-- A11y baseline → `docs/v1/design.md §How.5.7` + `design-system.md` (this folder)
-
-## Preview compilation note
-
-The SwiftUI snippets in each per-View doc are designed to compile **standalone** — they only depend on `SwiftUI` and stub types defined in the snippet itself. They do **not** import `SudokuKit`, `SudokuEngine`, `GameState`, `Persistence`, `PuzzleStore`, `GameCenterClient`, or `Telemetry`, because none of those targets exist yet at this point in `plan.md`. Each snippet has `// DESIGN PREVIEW ONLY` at the top to mark this status.
-
-When real targets land, port the layouts (not the stubs) into `Sources/SudokuUI/`.
-
-## Decision log
-
-All initial `<USER-INPUT-NEEDED>` markers have been resolved. See:
-- `design-system.md` §Decision log — surface warmth, accent anchor, cell-digit rounded design
-- `05-board.md` §c — user-digit weight (regular + accent tint)
-
-Future open questions surface as `<USER-INPUT-NEEDED>` or `<DESIGNER-DECISION>` markers inside the relevant file; grep this folder for either tag.
-
-## What is NOT in this folder
-
-- Production Swift code (lives in `Sources/SudokuUI/` once `plan.md` reaches that phase)
-- Binary design files (`.fig`, `.sketch`, `.psd`) — the v1 brand color anchor is recorded in `design-system.md` §Decision log (sage `#5C7A4F` / `#9BB87E`); a human visual designer may want to take a pass
-- Animation timing tuning curves beyond named durations — defer to implementation; designer specifies "100 ms ease-out", developer chooses `.easeOut(duration: 0.1)` literal
-- Marketing screenshots / App Store assets — out of scope for v1 visual spec
+- Production Swift code: `Packages/SudokuKit/Sources/SudokuUI/`, `Packages/MinesweeperKit/Sources/MinesweeperUI/` and the shared kits.
+- App Store screenshots and marketing assets: `docs/app-store/`.
+- Binary design files (`.fig`, `.sketch`): the repo keeps none.

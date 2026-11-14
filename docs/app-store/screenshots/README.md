@@ -1,73 +1,23 @@
-# App Store screenshots — snapshot-sourced staging tree
+# App Store screenshots — preview tree
 
-> ## ⚠️ CURRENT STATE: PLACEHOLDERS, NOT REAL RENDERS
-> The PNGs currently committed in this tree are **byte-identical placeholders**, not
-> distinct per-screen renders — within each device folder every screen is the same file
-> (e.g. all five Sudoku iPhone PNGs share one set of bytes). They are committed as regular
-> files, not the symlinks described below. This is the known-deferred snapshot→screenshot
-> harness gap tracked in [`TASKS.md`](TASKS.md) (the `swift test` headless emit collapsed
-> every screen to one image). The `sync` / distinctness behaviour documented below describes
-> the **intended** pipeline once that harness lands — it does **not** reflect the bytes on
-> disk today. Do not treat these as real or submission-ready assets.
+This tree is a preview of the store storyline. It is never uploaded.
 
-This directory is **generated**, not hand-authored. Run:
+- The PNG files committed here today are placeholders: regular files, many with identical bytes. They do not show the real screens.
+- The screenshots that go to App Store Connect are in [`../screenshots-ascspec/`](../screenshots-ascspec/), built by `mise run store:screenshots build-ascspec`.
+- The full procedure (capture, build, check, upload) is in `.claude/skills/appstore-screenshot-pipeline/SKILL.md`.
+
+## What `sync` produces
 
 ```sh
-mise run store:screenshots sync          # all apps
-mise run store:screenshots sync --app sudoku
-mise run store:screenshots list          # print the mapping + gaps
-mise run store:screenshots clean         # remove the symlinks
+mise run store:screenshots list                 # print the mapping and any missing baseline
+mise run store:screenshots sync [--app sudoku]  # create or refresh the links
+mise run store:screenshots clean                # remove the links
 ```
 
-`sync` materializes relative **symlinks** under
-`<app>/<device>/<locale>/NN-screen.png` pointing at the committed
-snapshot-test baselines in `Packages/.../__Snapshots__/`. The baseline is the
-single source of truth: re-recording the snapshots (`swift test --record`)
-auto-refreshes these previews. No PNGs are duplicated — git stores the links as
-link entries, not copies. The task body and mapping live in
-`mise-tasks/store/screenshots`.
+`sync` creates relative symlinks at `<app>/<device>/<locale>/NN-screen.png` that point at the committed snapshot-test baselines under `Packages/*/Tests/*/__Snapshots__/`. Re-recording a snapshot therefore updates the preview with no copy step. The mapping is the `MAP` array in `mise-tasks/store/screenshots`.
 
-## ⚠️ PREVIEW-ONLY — these are NOT App Store submission assets
+## Why this tree cannot be uploaded
 
-The baselines are raw `NSHostingView` renders at the snapshot layout sizes
-**with an alpha channel**:
+Snapshot baselines are raw renders with an alpha channel, at the snapshot layout size. App Store Connect requires exact pixel sizes and no alpha, and rejects these files before review. `build-ascspec` composites the same sources into framed images at the required size (iPhone 6.9" 1290×2796, iPad 13" 2064×2752, Mac 2880×1800), RGB, no alpha.
 
-| Source | Baseline pixels | ASC requires | Verdict |
-|---|---|---|---|
-| iPhone snapshot | 786 × 1704, RGBA | 1290 × 2796 (exact, no tolerance), **no alpha** | ✗ size + alpha |
-| Mac snapshot | 1800 × 1200, RGBA | ≥ 1280 × 800, **no alpha** | ✗ alpha (size ok) |
-| iPad 13" (#506) | 2064 × 2752, RGBA | 2048 × 2732 or 2064 × 2752 | ✗ alpha only (size already ASC-exact) |
-
-App Store Connect rejects the upload at the dimension/alpha check before review.
-So this tree lets reviewers and the Leader eyeball the 5-shot store storyline
-from a single source — it does **not** replace the marketing-frame / upscale
-pass that produces ASC-exact RGB assets. See
-[`../screenshot-strategy.md`](../screenshot-strategy.md) §Snapshot-sourced
-pipeline for the gap and the path to submission-ready assets.
-
-## Uploading to ASC — `ASCRegister metadata screenshots`
-
-`ASCRegister metadata screenshots` uploads the PNGs in this tree to App Store
-Connect via Apple's multi-part reservation flow (reserve → PUT → commit), per
-app + platform, into the correct `appScreenshotSet`:
-
-```sh
-# DRY-RUN (default): prints what WOULD upload + what is already present. No mutation.
-ASCRegister metadata screenshots --key <p8> --key-id <id> --issuer <id> \
-  --app sudoku --platform all --locale en
-
-# EXECUTE: actually uploads (gated behind --i-am-sure, mirrors `metadata apply`).
-ASCRegister metadata screenshots ... --i-am-sure
-```
-
-- **Device → display type**: `iphone-6.9 → APP_IPHONE_67`,
-  `ipad-13 → APP_IPAD_PRO_3GEN_129` (Apple reuses the 12.9" enum for 13"),
-  `mac → APP_DESKTOP`.
-- **Idempotency**: a PNG whose `fileName` already lives in the matching set is
-  **skipped** (never duplicated). It does not replace existing screenshots.
-- **Checksum**: the commit PATCH sends the MD5 of the file bytes
-  (`sourceFileChecksum`); ASC verifies it against the uploaded bytes.
-- ⚠️ Because these baselines are PREVIEW-ONLY (see the table above), ASC will
-  reject them server-side at the dimension/alpha check even with `--i-am-sure`.
-  The command implements the upload *flow* correctly; submission-ready assets
-  come from the marketing-frame pass (#236).
+`TASKS.md` in this folder is a historical task spec for an approach that was not pursued.

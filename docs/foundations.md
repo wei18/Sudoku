@@ -1,7 +1,6 @@
 # Foundations — 工程底層與工具
 
-狀態：**FINAL** — §1–§8 全部於 plan.md Phase 0–9 落地驗證（2026-05-19）。
-最後更新：2026-05-19
+狀態：**現行文件（living）** — 隨工程決策更新；變更紀錄見 git log。
 
 本文件記錄 Sudoku 專案的工程平台選擇：語言版本、模組化、測試、CI、Logger、Tracking、Agent skills。這些決策在產品規格（`docs/v1/design.md`）之前定下，是 `docs/v1/design.md §How` 與 `plan.md` 的依附基礎。
 
@@ -9,11 +8,12 @@
 1. Swift 6 / strict concurrency
 2. Swift Package 模組化策略
 3. Testing（swift-testing + swift-snapshot-testing）
-4. CI（Xcode Cloud 單軌）
+4. CI
 5. Logger
 6. Tracking / Analytics
 7. Secrets 與 public repo 規範
 8. Agent skills 選用
+9. 第三方 SDK 例外條款
 
 ---
 
@@ -23,7 +23,7 @@
 
 **牽連**：
 - 工具鏈最低需求：**Xcode 16+**（首個正式支援 Swift 6 language mode 的版本）。
-- 部署目標最低需求：**iOS 26.1 / macOS 26**（#1079：`tabViewBottomAccessory(isEnabled:)` 需要 26.1）。理由：對齊 §4 鎖定的 Xcode 26.5 工具鏈、保留 Liquid Glass（`.glassEffect()` 為 iOS 26+ API）；本 App 無向下相容歷史包袱、屬個人作品兼案例展示，cut off 26 以下用戶可接受。**偏離 [[apple-platform-targets]] 的 iOS 18 / macOS 15 預設**——該 skill 為一般專案預設，本專案因 Liquid Glass 採用而上調。
+- 部署目標最低需求：**iOS 26.1 / macOS 26**（#1079：`tabViewBottomAccessory(isEnabled:)` 需要 26.1）。理由：對齊 §4 鎖定的 Xcode 26.5 工具鏈、保留 Liquid Glass（`.glassEffect()` 為 iOS 26+ API）；本 App 無向下相容歷史包袱、屬個人作品兼案例展示，cut off 26 以下用戶可接受。**偏離 `apple-dev-skills:apple-platform-targets` 的 iOS 18 / macOS 15 預設**——該 skill 為一般專案預設，本專案因 Liquid Glass 採用而上調。
 - 所有自寫型別預設視為需要 `Sendable`；跨 actor 共享型別必須顯式宣告。
 - 第三方相依若尚未支援 Swift 6 complete check，需評估：(a) 用 `@preconcurrency` 隔離匯入、(b) 換套件、(c) 暫緩採用。此議題在 §2、§3、§5、§6 各別套件選擇時逐一核對。
 
@@ -137,11 +137,16 @@ SudokuEngine  ←  GameState
 
 
 
-## §4 CI（Xcode Cloud 單軌）
+## §4 CI
 
-**決策**：v1 CI 全押 **Xcode Cloud**；GitHub Actions 暫不採用（見 backlog 第 6 條的啟用條件）。Repo 仍 host 在 GitHub。
+**現況**：
 
-**Phase 1 GH Actions 補強（2026-05-26，advisory only）**：合併成單一 `.github/workflows/lint.yml`，內含 3 個 sibling jobs — `pr-metadata`（PR title Conventional Commits lint, ubuntu）、`docs-link-check`（`docs/` + `meetings/` lychee 連結檢查, ubuntu）、`swift-lint`（SwiftLint strict, ubuntu — swiftlint linux binary via mise；2026-05-26 user 決定移除 swiftformat 為 redundant）。三 job 透過 `gh api pulls/{n}/files` 拿改動檔案列表（不再用 `git diff` + fetch-depth 0）。皆為 advisory（未 required）；branch protection 與 required status check 屬 Phase 3（user-owned，issue #158）。Phase 2（PR 上的 review agent + meetings index 自動更新）待 GitHub App bot 身分就位再做（issue #156、blocked on #157）。
+- **PR**：GitHub Actions `.github/workflows/lint.yml`。檢查 PR title、`docs/` 與 `meetings/` 的連結、改動檔的 SwiftLint（strict）、`scan:l10n`，以及 repo gates（`scan:settings_root`、`scan:store_frame_drift`、`scan:store_baseline_orphans`、`scan:design_contracts`）。
+- **Build 與測試**：CI 不 build、不跑測試。`swift test` 在本機跑，是唯一的測試把關（owner 決定，記於 #1039）。
+- **TestFlight build**：Xcode Cloud 的 Main CI；Xcode Cloud 額度用完時改用本機 `mise run tf:upload`。
+- **每日稽核**：`.github/workflows/audit.yml`（Upkeep），結果開成 label `audit` 的 issue。
+
+下面的 workflow 表是原本的 Xcode Cloud 設計。其中 PR CI 一列已停用（決定記於 #169 與 #1039），保留作為設計紀錄。
 
 ### Workflow 配置
 
@@ -153,29 +158,11 @@ v1 共 **3 條 workflow**（PR / Main / Release）；無排程 / cron 類 workfl
 | **Main CI** | merge 到 `main` | Build + Archive + **上傳 internal TestFlight**；**不重跑 test**（已由 PR CI 在 pre-merged 狀態驗證）|
 | **Release** | git tag `v*` | Build + 上傳 App Store Connect（手動送審）|
 
-### 臨時替代：本機 `mise run tf:upload`（XCC quota 耗盡時）
+### 本機 TestFlight 上傳：`mise run tf:upload`
 
-當 Xcode Cloud 當月 compute quota 用罄、上述 **Main CI** 的 "Build + Archive + 上傳 internal TestFlight" 無法跑時，用本機 `mise-tasks/tf/upload`（task `tf:upload`）暫代。它沿用 `ck:schema`（#337）/ `store:screenshots`（#311）的 scriptable-ops 慣例：commit-tracked、idempotent、Production-gated 的 Apple-CLI wrapper。XCC quota 重置後優先回到 Main CI；本工具只是 bridge，不是長期 CI 取代品。
+Xcode Cloud 的 Main CI 不能跑時，用本機 `mise run tf:upload` 做同一件事：archive、export、上傳 internal TestFlight。上傳是使用者專屬的步驟，必須加 `--i-am-sure`。
 
-**命令面**：
-
-```
-mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
-  --archive-only   只 archive + export（產 .ipa/.pkg），永不上傳（預設安全）
-  --build <N>      指定 CFBundleVersion（build number）；預設 = $(date -u +%Y%m%d%H%M)
-  --config <name>  xcodebuild configuration（預設 Release）
-  --i-am-sure      上傳到 TestFlight 的**必填** gate（user-owned、不可逆）
-```
-
-**Pipeline**：`tuist generate`（產 gitignored 的 `Game.xcworkspace`）→ `xcodebuild archive` → 用 PlistBuddy 把 archive 內 app 的 `CFBundleVersion` 改成唯一 build number → `xcodebuild -exportArchive`（runtime 產 App-Store-Connect `ExportOptions.plist`，`method=app-store-connect`、`destination=export`）→ `xcrun altool --upload-app --type ios|macos --file <pkg> --apiKey <KEY_ID> --apiIssuer <ISSUER>`。
-
-**Build number 唯一性**：兩支 App 的 `CFBundleVersion` 在各自 `Info.plist` 是 hardcoded literal `1`（版本不走 `CURRENT_PROJECT_VERSION` build setting），所以 xcodebuild build-setting override 無效。本工具改在 **archive 後 / export 前**用 PlistBuddy patch archive 內 `*.app/Info.plist` 的 `CFBundleVersion`，預設值為 UTC 時間戳（分鐘精度，`YYYYMMDDHHmm`）以避免 TestFlight 重號拒絕；需要可重現的號碼時用 `--build <N>`。`CFBundleShortVersionString`（marketing version，Sudoku `2.3.5` / Minesweeper `1.0.0`）不動，仍由 `Info.plist` source-of-truth 控制。
-
-**認證**：沿用 `secrets/.env` 既有 ASC key（`ASC_API_KEY_PATH` / `ASC_API_KEY_ID` / `ASC_API_ISSUER_ID`）+ `CK_TEAM_ID`（同一 10-char Team ID）。腳本把 `.p8` 以 per-run symlink 暫掛到 altool 會搜尋的 `./private_keys/AuthKey_<KEY_ID>.p8`（位於 gitignored 的 `build/`），exit 時清掉；key 路徑 / 內容不經 argv、不印出。
-
-**Upload guard**：`archive` + `export` 只動 `build/`（gitignored），可反覆執行；唯一不可逆的 `altool --upload-app` 必須 `--i-am-sure`，否則印 user-owned 簽章確認 banner 後 `exit 2`。
-
-> **本機簽章前置**：archive 用 Automatic signing（`DEVELOPMENT_TEAM=$CK_TEAM_ID`），需登入 Xcode 的 Apple Developer 帳號讓 Xcode 自動管理 App Store distribution 憑證 + provisioning profile（`-allowProvisioningUpdates`）。憑證 / profile 不在 repo —是 user 機器的 keychain 資產。
+指令、flag、pipeline、認證與注意事項只寫在 `.claude/skills/local-testflight-upload/SKILL.md`，本檔不重複。
 
 ### Scheme 結構：`Sudoku` vs `Sudoku-Workspace`
 
@@ -183,7 +170,7 @@ mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
 
 | Scheme | 來源 | runAction `storeKitConfigurationPath` | testAction | 用途 |
 |---|---|---|---|---|
-| **`Sudoku`** | `Project.swift` 顯式宣告（schemes block）| ✅ wired 到 `App/Resources/Sudoku.storekit` | 透過 `.xctestplan` 包 SPM-package test targets（PR #185） | **日常 Run（Cmd+R）+ PR CI Tests** |
+| **`Sudoku`** | `Project.swift` 顯式宣告（schemes block）| ✅ wired 到 `App/Sudoku/Resources/Sudoku.storekit` | 透過 `.xctestplan` 包 SPM-package test targets（PR #185） | **日常 Run（Cmd+R）+ PR CI Tests** |
 | `Sudoku-Workspace` | Tuist auto-generated workspace scheme | ❌ 無 | 預設包全部 target | **不要日常 Run** — 點 Cmd+R 會炸 `product not found: com.wei18.sudoku.iap.remove_ads`（StoreKit testing mock 沒掛）|
 
 > **本機開發按 Cmd+R 前，先確認 Xcode 左上角 scheme picker 選的是 `Sudoku`，不是 `Sudoku-Workspace`。** 後者只用來在某些 CI 場景跑整包 test；它沒帶 `.storekit` mock 配置，sim 上 IAP product lookup 一定失敗。
@@ -194,8 +181,8 @@ mise run tf:upload <sudoku|minesweeper> <ios|macos|all> [flags]
 - 升 Xcode 時 → 開一張集中更新所有 snapshot 基準圖的 PR。
 - Test 環境關閉 iCloud / Game Center 登入；所有 test 走 protocol fakes（§3）。
 - `ci_scripts/` 內任何工具優先透過 `mise` 啟用，避免 Xcode Cloud 預裝版本飄移。
-- **工具呼叫 SSOT — `mise-tasks/` 檔案任務（2026-05-26）**：lefthook / GitHub Actions / Xcode Cloud `ci_scripts/` 三邊呼叫同一支工具時，命令 body 一律抽到 `mise-tasks/` 下的可執行 shell 檔（dir-nested 自動 colon-prefix：`mise-tasks/lint/swift` → task `lint:swift`），呼叫端只寫 `mise run <task>`。任務檔含 `#MISE description="..."` header + `set -euo pipefail`；改 flag 只改一處。Strict-vs-relaxed 變體用兩個 task name（如 `lint:swift` 本機 warn-only / `lint:swift:strict` PR CI 警告升 error）區分，避免 env-flag 黑魔法。File-based 取代先前的 `.mise.toml [tasks.*]` inline 寫法（理由：個別檔案可單獨 `chmod +x` 測試、syntax highlighting 較佳、多行 shell 不需 TOML triple-quote escape）。
-- **Acknowledgements 頁（App Store 第三方授權清單）**：由 LicensePlist 在 `ci_post_clone.sh` 跑 `mise run gen:acknowledgements`（task body = `mise exec ubi:mono0926/LicensePlist -- license-plist`）從 SwiftPM dep graph 自動產 `App/Resources/Settings.bundle/`（iOS 標準位置，顯示於 Settings.app → Sudoku → Acknowledgements）。Source of truth: 倉庫根 `license_plist.yml`；產出檔 `.gitignore`'d，每次 build 重生。**本機 dev 環境不自動重生**（`Project.swift` 用 `.glob` 容忍空匹配，App 仍能本地 build；Acknowledgements 頁僅 release surface）；若需本機驗證，手動跑 `mise run gen:acknowledgements`。
+- **工具呼叫 SSOT — `mise-tasks/` 檔案任務（2026-05-26）**：lefthook / GitHub Actions / Xcode Cloud `ci_scripts/` 三邊呼叫同一支工具時，命令 body 一律抽到 `mise-tasks/` 下的可執行 shell 檔（dir-nested 自動 colon-prefix：`mise-tasks/lint/swift` → task `lint:swift`），呼叫端只寫 `mise run <task>`。任務檔含 `#MISE description="..."` header + `set -euo pipefail`；改 flag 只改一處。Strict-vs-relaxed 變體用兩個 task name（如 `lint:swift` 本機 warn-only / `lint:swift_strict` PR CI 警告升 error）區分，避免 env-flag 黑魔法。File-based 取代先前的 `.mise.toml [tasks.*]` inline 寫法（理由：個別檔案可單獨 `chmod +x` 測試、syntax highlighting 較佳、多行 shell 不需 TOML triple-quote escape）。
+- **Acknowledgements 頁（App Store 第三方授權清單）**：由 LicensePlist 在 `ci_post_clone.sh` 跑 `mise run gen:acknowledgements`（task body = `mise exec ubi:mono0926/LicensePlist -- license-plist`）從 SwiftPM dep graph 自動產 `App/<App>/Resources/Settings.bundle/`（iOS 標準位置，顯示於 Settings.app → App 名稱 → Acknowledgements）。Source of truth: `App/<App>/license_plist.yml`；產出檔 `.gitignore`'d，每次 build 重生。**本機 dev 環境不自動重生**（`Project.swift` 用 `.glob` 容忍空匹配，App 仍能本地 build；Acknowledgements 頁僅 release surface）；若需本機驗證，手動跑 `mise run gen:acknowledgements`。
 
 ### 已知 race condition
 
@@ -391,7 +378,7 @@ pre-commit:
       run: mise run scan:hygiene
     swiftlint:
       glob: "*.{swift}"
-      run: mise run lint:swift -- {staged_files}   # 本機 warn-only；PR CI 用 lint:swift:strict
+      run: mise run lint:swift -- {staged_files}   # 本機 warn-only；PR CI 用 lint:swift_strict
 ```
 
 `mise install` 同時把 `lefthook` 也裝起來；首次 clone 後執行 `lefthook install` 即啟用 hooks。
@@ -435,46 +422,12 @@ repo 內附以下檔案，作為「鍵名 + 用途」的 documentation，**值�
 
 對「上架後本就 app-public（嵌進 binary / Info.plist），但 pre-launch 期間不該進 public repo」的識別碼（AdMob `GADApplicationIdentifier` / `GADBannerUnitID` 等），採 build-time 注入而非 hardcode：`Tuist/{Signing,AdMob}.xcconfig`（gitignored，`.example` committed）持有真值，`Config-{Debug,Release}.xcconfig` 以 `#include?` 串接，Info.plist 用 `$()` 在 build 時代入，runtime 經 `Bundle.main.object(forInfoDictionaryKey:)` 讀取並 guard（nil / 空 / 未解析 `$()`）。CI 端由 `ci_post_clone.sh` 從 XCC env vars 寫出 xcconfig。這是此類值的標準做法，完整 pattern 見 skill `build-time-secret-injection`（2026-06-03 鎖定，PR #265）。
 
-#### §7.7.2 CloudKit schema deploy（Dev → Production via `cktool`，issue #337）
+#### §7.7.2 CloudKit schema deploy
 
-CloudKit 的 schema（record types + indexes）Development→Production 升版，過去是
-user-owned 的 CK Dashboard 手動 promote。issue #337 把它做成 commit-trackable、
-Leader-orderable 的步驟，做法與 ASCRegister 把 ASC metadata / GC leaderboard 變成
-可腳本化一致——只是 `cktool` 已是 Mac toolchain 內建 binary，故 wrapper 為一支
-`mise-tasks/ck/schema` shell task（非 Swift CLI），namespaced 成 `ck:schema`。
+**決策**：CloudKit schema 的 source of truth 是 commit 進 repo 的 `cloudkit/<app>.ckdb`。`mise run ck:schema`（包 `xcrun cktool`）負責 export、validate 與部署到 Development。推到 Production 只能由使用者在 CloudKit Console 操作；Production 的欄位與索引只能新增、不能移除。
 
-**命令面**（`mise run ck:schema <subcmd> --app sudoku|minesweeper`）：
-
-| Subcommand | 作用 | Production? |
-|---|---|---|
-| `export` | 從 Development 拉 schema → 寫 `cloudkit/<app>.ckdb`（commit 作為 source of truth）| 否 |
-| `validate` | 對 container 預檢 `cloudkit/<app>.ckdb` | 否 |
-| `deploy --env development` | 把 `.ckdb` import 回 Development（自由可跑）| 否 |
-| `deploy --env production` | **不可腳本化**（cktool import 僅限 Development）——印出 Console 步驟後 `exit 2` | — |
-
-**Production promote（2026-06-10 實跑修正）**：`cktool import-schema` 只接受
-Development——Production 回 "endpoint not applicable"，且 cktool 沒有 promote
-子指令。dev→prod 推進**只能**在 CloudKit Console（container → Development →
-Schema → "Deploy Schema Changes to Production…" → review diff → Deploy），
-天然 user-owned。`deploy --env production` 會印出上述步驟後 `exit 2`。
-Production 欄位/索引為 add-only（永不可移除）。詳見
-`.claude/skills/cloudkit-schema-ops` §Live-run gotchas。
-
-**Auth**：CloudKit *management* token，user 在 CloudKit Dashboard → Settings →
-Tokens 產生一次（cktool 的 ASC `.p8` 對應物），存進 `secrets/.env` 的
-`CK_MANAGEMENT_TOKEN`（外加 `CK_TEAM_ID`）。script 於執行期 `source secrets/.env`
-後以 stdin 餵給 `cktool save-token`——**永不**進 argv、永不 echo、永不 commit。範本
-鍵名見 `secrets/.env.example`；container id（`iCloud.com.wei18.{sudoku,minesweeper}`）
-為公開識別碼，直接寫死在 script 的 app→container map。
-
-**Schema 來源檔**：`cloudkit/<app>.ckdb`。seed 流程（一次性、user-owned）：跑一次
-debug build 讓 app 寫進 Development container → `mise run ck:schema export` →
-review diff → commit。MS 目前只有 `MonetizationState`（無 SavedGame，無存檔流程）；
-Sudoku 為 `SavedGame` + `PersonalRecord`。
-
-> 自動化 + 文件 only：本 task 不在此 PR 做任何 live Production deploy。實際
-> Production promote 仍是 user-owned（`docs/app-store/review/sudoku-v2.5.md` +
-> `minesweeper-v1.md` 的 release gate）。
+- 認證用 CloudKit management token，放在 `secrets/.env` 的 `CK_MANAGEMENT_TOKEN`（加上 `CK_TEAM_ID`）；不 commit、不印出。鍵名見 `secrets/.env.example`。
+- 指令、步驟與修改 schema 時的規則只寫在 `.claude/skills/cloudkit-schema-ops/SKILL.md`；record type 對照表在 `cloudkit/README.md`。
 
 ### §7.8 Privacy / telemetry 的公開承諾
 
@@ -504,7 +457,7 @@ App 對使用者的承諾（與 `PrivacyInfo.xcprivacy` 一致、且本 repo sou
 - Privacy 聲明若有改動 → `PrivacyInfo.xcprivacy` + App Store metadata 同步更新
 - 任何「為了 debug 暫時 log 出 PII」的 helper 在合併前移除
 
-Review 工具走 `superpowers:requesting-code-review` / `receiving-code-review`（見 `methodology.md`）。
+Review 的流程與 reviewer 的選擇依全域 engineering 規則；上面的清單是本 repo 給 reviewer 的額外檢查項。
 
 ### §7.10 與既有規則對齊
 
@@ -527,7 +480,7 @@ Review 工具走 `superpowers:requesting-code-review` / `receiving-code-review`�
 
 ## §8 Agent skills 選用
 
-Skill 選用矩陣與觸發時機屬於**協作流程**範疇，已寫入 `methodology.md §Agent skills 使用矩陣` 一節，請從那裡查閱。
+Skill 選用矩陣與觸發時機屬於**協作流程**範疇，專案 skill 的使用時機寫在 `docs/methodology.md` 的「專案 skill 使用時機」一節；plugin skill 依各自的 description 觸發。
 
 本節僅記錄一條結構性決策：
 

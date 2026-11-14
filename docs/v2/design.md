@@ -1,6 +1,6 @@
 # Sudoku v2 — Monetization Design
 
-狀態：**DRAFT** — brainstorm 2026-05-20 收線，待 plan.md v2 起跑。
+狀態：**歷史紀錄** — v2 變現設計，已實作。現況以程式碼為準；文件索引見 `docs/README.md`。
 最後更新：2026-05-21
 
 本文件是 Sudoku v2 第一個 deliverable：`AppMonetizationKit` Swift package（廣告 + IAP），跨未來 Wei18 App reuse。

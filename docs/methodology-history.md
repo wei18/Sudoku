@@ -178,7 +178,7 @@
 
 ## 已封存的 §Backlog 條目
 
-以下兩條在 2026-05-20 記入 `methodology.md §Backlog`，觸發條件已過期，移到這裡存查。
+以下兩條在 2026-05-20 記入 `methodology.md §Backlog`，觸發條件已過期，移到這裡存查。新的 backlog 項目一律開 GitHub issue（見 `docs/foundations.md` §Backlog）。
 
 - **遷移到 GitHub 平台原生專案管理工具**（2026-05-20）：目前 `meetings/*.impl-notes.md` + `docs/*` + GitHub issues (#15-#49) 三套並行追蹤；隨 issue 數量增加（已 49 條）+ Phase 10 操作流程上線後維護成本會變高。評估升級到 **GitHub Projects (v2)** 看板統籌 issues / PRs / milestones / status；其中 impl-notes 可改用 issue comment thread 或 wiki 收納。觸發點：(a) issue 數超過 100；(b) Phase 10 子任務開始平行；(c) 想做 release notes 自動化（從 closed issues 抓 changelog）。動工時需把現存 49 個 issues 分類進 backlog/v1/v2 columns，並把 49 條 PRs 對應到 issue 上（多數 PR 已 close 對應 issue 但 milestone 沒設）。同時補上 `.github/` 範本：issue/PR template、CODEOWNERS、labels schema。
 - **GitHub App (bot) 身份取代用 user 個人 gh token**（2026-05-20）：目前所有 commits / PRs / merges 都用 user 個人 gh CLI auth 執行，audit trail 顯示為 user 本人，雖然實際上是 Leader subagent 在跑。user 不接受這個歸屬。解法：建立 GitHub App `wei18-sudoku-bot`、安裝在 Wei18/Sudoku、用 App ID + Installation ID + `.pem` 私鑰簽 JWT 拿 1-hour installation token，全部自動化 ops 走 bot token；local repo git config 改用 `wei18-sudoku-bot[bot]` 身份；commit message `Co-Authored-By: Wei <noreply@github>` trailer 取代現在的 `Co-Authored-By: Claude`。觸發點：當前 in-flight 結束後即動工（2026-05-20 已 unblocked，剩 user 端建 App）。實作含：`scripts/bot-gh-token.sh` 自動取 token、`.gitignore` 補 `.pem`（已有但 reaffirm）、`docs/foundations.md §7` 補 bot 身份章節、README 更新。

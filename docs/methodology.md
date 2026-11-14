@@ -66,7 +66,7 @@ Subagent 執行期間：
 
     每一條 match 必須屬於下列之一，否則不能宣告完成：
     - 已在本次修掉。
-    - 已記到對應文件的 §Backlog 或 issue，並附來源 `file:line`。
+    - 已開 issue，並在 issue 附來源 `file:line`。
     - 在 PR 描述寫明刻意保留，並附後續追蹤的 issue。
 
     沒有 `TODO` 字樣的 stub 或 placeholder 程式碼也算。這個檢查由 Leader 做，不交給 subagent。
@@ -75,7 +75,7 @@ Subagent 執行期間：
 
 15. 使用者中途追加約束時，先把它寫進負責的文件（`CLAUDE.md`、`docs/foundations.md` 或 issue），再繼續原本的工作。
 16. 不熟的工具或 API，先讀 man page、官方文件或 README，再下指令。不用試錯的方式反推規格。
-17. 與當下任務無關的想法不就地展開，依 `collaboration-skills:backlog-routing-by-topic` 記到對應文件的 §Backlog（對應表見 `docs/README.md`）。
+17. 與當下任務無關的想法不就地展開：開一個帶 `backlog` label 的 GitHub issue（指令與 label 見 `docs/foundations.md` §Backlog）。本 repo 不在文件裡維護 §Backlog 清單。
 
 ## 專案 skill 使用時機
 
@@ -91,7 +91,3 @@ Subagent 執行期間：
 | `appstore-screenshot-pipeline` | Developer、Leader | 產生或更新 App Store 截圖 |
 | `acknowledgements-generation` | Developer | 新增、移除或升級第三方 SwiftPM 相依 |
 | `asc-ops-handoff` | Leader | 規劃或執行 App Store Connect 操作，判斷哪一步屬於使用者 |
-
-## §Backlog
-
-_協作流程的改善想法，每條一行。目前沒有條目；已封存的舊條目在 `docs/methodology-history.md`。_
