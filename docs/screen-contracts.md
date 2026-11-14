@@ -758,12 +758,21 @@ without `onPlayAgain`) and the reminder primer is re-derived fresh
 
 **Covering behavior (updated 2026-09-01, #1023):** same `CompletionOverlayScaffold`
 shape as the overlay — full-height Liquid-Glass panel (`.ignoresSafeArea()`),
-NOT the pre-#1023 opaque warm-paper background — visually indistinguishable
-from `SUD-COMPLETION-OVERLAY` even though this is a genuine stack push, not
+NOT the pre-#1023 opaque warm-paper background — in compact width visually
+indistinguishable from `SUD-COMPLETION-OVERLAY` (regular width differs, see
+below) even though this is a genuine stack push, not
 an in-board overlay (there is no board behind a pushed route to show through,
 so the glass sits over the plain page background here). `variant: .review`
 — no ritual/panel-rise, no streak section (design.md §3.5). **State
 variants:** none; frozen snapshot values passed at construction (no live VM).
+
+**Regular width (iPad / macOS, #1049, owner ruling B):** the route passes
+`presentation: .pushedPage(CompletionPageTitle)` to the scaffold. In regular
+width the page carries an inline navigation title "<Difficulty> · <UTC day>"
+(e.g. "Easy · Sat, Nov 14", catalog key `%@ · %@`) and the column is
+top-aligned in a `ScrollView` (480 pt cap kept). Compact width (iPhone)
+ignores `.pushedPage` and keeps the centred overlay layout pixel-for-pixel.
+Push / Close / back semantics are unchanged.
 
 **E2E coverage (#935 batch 3):** N12 (`docs/navigation-flows.md`) anchors
 `App/SudokuE2ETests/SudokuE2ETests.swift`'s
@@ -813,7 +822,10 @@ stand in without widening the concrete store's other consumers (board
 save/resume/replay, `MinesweeperDailyOpenGuardView`'s today-only re-check).
 
 **Covering behavior / state variants:** same scaffold shape as
-`SUD-COMPLETION-REVIEW`; no Play Again; no mistake row.
+`SUD-COMPLETION-REVIEW`, including its regular-width page treatment (#1049;
+the title day is the route's `day`, which every hub push resolves; a `nil`
+`day` falls back to the untitled `.overlay` layout); no Play Again; no
+mistake row.
 
 ---
 

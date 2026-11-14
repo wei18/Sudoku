@@ -36,4 +36,18 @@ public enum UTCDay {
         let day = components.day ?? 0
         return String(format: "%04d-%02d-%02d", year, month, day)
     }
+
+    /// Midnight UTC of a `"YYYY-MM-DD"` day key, or `nil` when `string` is
+    /// not one. The inverse of `string(from:)`.
+    public static func date(from string: String) -> Date? {
+        let parts = string.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3,
+              parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
+              parts.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isNumber } }),
+              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2])
+        else { return nil }
+        let components = DateComponents(year: year, month: month, day: day)
+        guard components.isValidDate(in: utcCalendar) else { return nil }
+        return utcCalendar.date(from: components)
+    }
 }

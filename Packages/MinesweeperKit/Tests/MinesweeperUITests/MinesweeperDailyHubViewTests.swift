@@ -92,7 +92,8 @@ import MinesweeperEngine
         let entry = LiveMinesweeperDailyProvider().dailyTrio(date: date)[0]
         let solved = MinesweeperDailyCard(entry: entry, isCompleted: true)
         viewModel.cardTapped(solved)
-        #expect(path == [.completion(difficulty: solved.difficulty, mode: .daily)])
+        // #1049: the card's own UTC day travels with the route.
+        #expect(path == [.completion(difficulty: solved.difficulty, mode: .daily, day: "2023-11-14")])
     }
 
     // #386: an un-solved daily card still pushes the daily-mode board (unchanged

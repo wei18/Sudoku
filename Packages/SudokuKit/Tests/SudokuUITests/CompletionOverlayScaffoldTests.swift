@@ -138,5 +138,84 @@ struct CompletionOverlayScaffoldTests {
             )
         }
     }
+
+    // MARK: - #1049: pushed review page (regular width only)
+
+    private func reviewHost(
+        _ presentation: CompletionPresentation,
+        size: CGSize,
+        sizeClass: UserInterfaceSizeClass
+    ) -> NSView {
+        hostingView(
+            CompletionOverlayScaffold(
+                variant: .review,
+                outcomeKind: .success,
+                context: .dailyAllDone,
+                onClose: {},
+                presentation: presentation,
+                card: { sampleCard }
+            )
+            .environment(\.completionHeroSkipsReveal, true),
+            size: size,
+            colorScheme: .light,
+            sizeClass: sizeClass
+        )
+    }
+
+    private let pageTitle = CompletionPageTitle(difficultyKey: "Easy", day: Date(timeIntervalSince1970: 1_794_614_400))
+
+    /// iPhone untouched: a compact `.pushedPage` must render the SAME pixels
+    /// as the compact overlay. Compared against the overlay's own render, so
+    /// this goes red the moment the page layout leaks into compact width.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func pushedPage_compact_rendersTheOverlayLayout() {
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: reviewHost(.pushedPage(pageTitle), size: SnapshotLayouts.iPhone, sizeClass: .compact),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPhone-light-review-dailyAllDone"
+            )
+            assertSnapshot(
+                of: reviewHost(.overlay, size: SnapshotLayouts.iPhone, sizeClass: .compact),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPhone-light-review-dailyAllDone"
+            )
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshot_pushedPage_iPadPortrait() {
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: reviewHost(.pushedPage(pageTitle), size: SnapshotLayouts.iPad, sizeClass: .regular),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPad-light-pushedPage"
+            )
+        }
+    }
+
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshot_pushedPage_iPadLandscape() {
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: reviewHost(.pushedPage(pageTitle), size: SnapshotLayouts.iPadLandscape, sizeClass: .regular),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPadLandscape-light-pushedPage"
+            )
+        }
+    }
+
+    /// The live overlay and the `.completedRedirect` loader state stay
+    /// centred in regular width: only the pushed route opted into the page.
+    @Test(.enabled(if: !SnapshotEnv.isXcodeCloud))
+    func snapshot_overlay_iPadPortrait() {
+        withSnapshotTesting(record: SnapshotMode.recordMode) {
+            assertSnapshot(
+                of: reviewHost(.overlay, size: SnapshotLayouts.iPad, sizeClass: .regular),
+                as: .image,
+                named: "CompletionOverlayScaffold-iPad-light-overlay"
+            )
+        }
+    }
 }
 #endif

@@ -48,4 +48,20 @@ private func utcDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 12, _ 
         #expect(UTCDay.string(from: justBefore) == "2026-06-04")
         #expect(UTCDay.string(from: justAfter) == "2026-06-05")
     }
+
+    // MARK: Parse — inverse of `string(from:)` (#1049)
+
+    @Test func parsesToUTCMidnight() {
+        #expect(UTCDay.date(from: "2026-11-14") == utcDate(2026, 11, 14, 0, 0))
+    }
+
+    @Test func roundTripsThroughString() throws {
+        let day = try #require(UTCDay.date(from: "2026-02-28"))
+        #expect(UTCDay.string(from: day) == "2026-02-28")
+    }
+
+    @Test(arguments: ["", "2026-11", "2026-11-1", "2026-13-01", "2026-02-30", "26-11-14", "abcd-ef-gh", "2026-11-14-easy", "+026-11-14", "2026-+1-14"])
+    func rejectsNonDayKeys(_ string: String) {
+        #expect(UTCDay.date(from: string) == nil)
+    }
 }

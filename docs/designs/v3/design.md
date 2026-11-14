@@ -748,6 +748,7 @@ pip 數量冗餘編碼(●○○ / ●●○ / ●●●)在 IC 下仍有效,**�
 | **D-3.2** | IC 只動前景不動 surface | ✅ **記為明示裁定**(§5.4) |
 | **D-3.3** | Completion 改系統 sheet? | ✅ **A:維持盤內 overlay**,G6 記為明示例外(§4.4) |
 | **D-3.4** | G5 Resume 改 standard material | ✅ **接受** |
+| **#1049** | Pushed review 在 regular width 的版面 | ✅ **B:頁面處理** —— inline 標題 + 內容置頂;機制仍是 tab 內 detail push(D-3.3),compact 不變 |
 
 ### 8.2 22 條既有決策的存廢
 

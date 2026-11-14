@@ -269,7 +269,8 @@ public struct LiveRouteFactory: RouteFactory {
                             presenter(.board(puzzleId: nextPuzzleId))
                         }
                     },
-                    onClose: { closePath?.wrappedValue.removeLast() }
+                    onClose: { closePath?.wrappedValue.removeLast() },
+                    presentation: Self.reviewPresentation(puzzleId: puzzleId)
                 )
             )
         case .settings:

@@ -324,7 +324,13 @@ public final class MinesweeperDailyHubViewModel {
         // `MinesweeperDailyOpenGuardView`'s job, not this gate's — see
         // `isPhase2Pending`'s doc.
         if card.isCompleted {
-            path.wrappedValue.append(.completion(difficulty: card.difficulty, mode: .daily))
+            // #1049: the day is resolved now, from the card's own puzzleId, so the
+            // review's page title cannot drift past UTC midnight.
+            path.wrappedValue.append(.completion(
+                difficulty: card.difficulty,
+                mode: .daily,
+                day: MinesweeperSavedGameStore.dailyDay(fromRecordName: card.entry.puzzleId)
+            ))
         } else if card.isFailed {
             path.wrappedValue.append(
                 .replayDailyBoard(difficulty: card.difficulty, seed: card.seed)

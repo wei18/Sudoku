@@ -243,9 +243,8 @@ public struct LiveRouteFactory: RouteFactory {
                 onPresentBoard: onPresentBoard
             )
 
-        case .completion(let difficulty, let mode, _):
-            // #826: `day` intentionally unused — the slice fetch it would key
-            // was deleted in #698; see `AppRoute`'s case doc for the rationale.
+        case .completion(let difficulty, let mode, let day):
+            // #826: see `AppRoute`'s case doc for what `day` is used for.
             // #386: re-viewing an already-solved daily. Build the same
             // `MinesweeperCompletionView` the live board overlay uses, but
             // standalone (no board behind it) and seeded as a WIN — a solved
@@ -288,7 +287,8 @@ public struct LiveRouteFactory: RouteFactory {
                         }
                     },
                     onClose: { closePath?.wrappedValue.removeLast() },
-                    showsElapsedTime: false
+                    showsElapsedTime: false,
+                    presentation: Self.reviewPresentation(difficulty: difficulty, mode: mode, day: day)
                 )
             )
         case .settings:
