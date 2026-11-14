@@ -41,14 +41,11 @@ public enum AppRoute: Hashable, Sendable {
     // Sudoku #379). MS stores no elapsed (no save-flow, #284), so the route
     // carries only `difficulty` (→ the daily leaderboard id) and `mode`; the
     // hero time is a placeholder and the real ranked time shows in the slice.
-    // #826: widened with `day` (a `UTCDay.string(from:)` value, e.g.
-    // "2026-07-14") so a past-day dot tap in the #774 week strip can push a
-    // review distinct from today's — defaulted to `nil` so every pre-#826
-    // call site (today's completed-card re-view) keeps compiling unchanged;
-    // `nil` means "today" exactly as before. NOTE: inside `LiveRouteFactory`'s
-    // `.completion` case `day` only titles the regular-width page (#1049; a
-    // `nil` day gets no title, so every hub push passes it) and keys
-    // route/Hashable identity — the leaderboard-slice fetch this was meant to
+    // `day` (#826) is the reviewed daily's UTC day key (`UTCDay.string(from:)`,
+    // e.g. "2026-07-14"); both hub pushes pass it. Inside `LiveRouteFactory`'s
+    // `.completion` case it titles the regular-width page (#1049; `nil` keeps
+    // the untitled overlay layout) and keys route/Hashable identity — the
+    // leaderboard-slice fetch it was first meant to
     // key was already deleted in #698 before #826 landed (`MinesweeperCompletionViewModel`
     // is fully synthetic: hardcoded `didWin: true, elapsedSeconds: 0`). Kept
     // per owner-adjudication for future re-wiring if the slice returns.

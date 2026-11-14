@@ -38,8 +38,8 @@ public struct CompletionPageTitle: Sendable, Equatable {
         self.day = day
     }
 
-    /// Formatted in UTC: the day is a UTC day, so a time zone east of UTC
-    /// would otherwise print the next day for a late-UTC instant.
+    /// Formatted in UTC: `day` is a UTC day, so any other time zone could
+    /// print a neighbouring date.
     static let dayFormat = Date.FormatStyle(timeZone: .gmt)
         .weekday(.abbreviated)
         .month(.abbreviated)

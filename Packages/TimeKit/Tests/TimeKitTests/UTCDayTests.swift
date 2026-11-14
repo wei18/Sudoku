@@ -60,7 +60,7 @@ private func utcDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 12, _ 
         #expect(UTCDay.string(from: day) == "2026-02-28")
     }
 
-    @Test(arguments: ["", "2026-11", "2026-11-1", "2026-13-01", "2026-02-30", "26-11-14", "abcd-ef-gh", "2026-11-14-easy"])
+    @Test(arguments: ["", "2026-11", "2026-11-1", "2026-13-01", "2026-02-30", "26-11-14", "abcd-ef-gh", "2026-11-14-easy", "+026-11-14", "2026-+1-14"])
     func rejectsNonDayKeys(_ string: String) {
         #expect(UTCDay.date(from: string) == nil)
     }
