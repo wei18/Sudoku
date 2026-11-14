@@ -1,144 +1,99 @@
 ---
 name: appstore-screenshot-pipeline
-description: Sync App Store screenshot PREVIEWS from committed snapshot-test baselines via `mise run store:screenshots` (list / sync / clean). Symlinks selected baseline PNGs into docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png so re-recording snapshots auto-refreshes previews. PREVIEW-ONLY — baselines carry an alpha channel and wrong dimensions, so they are NOT ASC submission-spec; a separate marketing-frame/upscale pass is still required before any real upload. Invoke when wiring or refreshing store-preview screenshots, running/debugging `store:screenshots`, eyeballing the storefront storyline, or when asked "can I upload these snapshot PNGs to App Store Connect" (answer: not directly).
+description: Produce App Store screenshots for Sudoku and Minesweeper - capture the live board (`mise run store:capture`), build the App Store Connect frames (`mise run store:screenshots build-ascspec`), preview the storyline (`store:screenshots list / sync / clean`) and upload (`ASCRegister metadata screenshots`). Use when a snapshot baseline or capture that feeds a store frame changes, when the `scan:store_frame_drift` or `scan:store_baseline_orphans` gate fails, when adding a store slot or locale, or before uploading screenshots. Not for the listing text (see asc-ops-handoff) or for recording snapshot baselines (see apple-dev-skills:swift-testing-baseline).
 ---
 
 # App Store Screenshot Pipeline
 
-## When to invoke
+Two trees exist. Only one is uploaded.
 
-- Wiring or refreshing the store-preview screenshot tree.
-- Running or debugging `mise run store:screenshots`.
-- Eyeballing the App Store storefront storyline from a single source.
-- Someone proposes uploading the snapshot PNGs straight to ASC.
-
-## What it is
-
-`mise-tasks/store/screenshots` (task `store:screenshots`) maps selected
-snapshot-test baseline PNGs into a staging tree using **relative symlinks**:
-
-```
-docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png
-  → Packages/.../__Snapshots__/<...>.png
-```
-
-This keeps the snapshot baseline the **single source of truth**: re-recording the
-snapshots (`swift test --record`) auto-updates the store preview with no copy
-step. Git stores the symlinks as links, not PNG copies. Mirrors the
-scriptable-ops precedent of `mise-tasks/ck/schema` and the ASCRegister CLI.
-
-## Invocation
-
-```
-mise run store:screenshots list                              # print mapping + gaps
-mise run store:screenshots sync  [--app sudoku|minesweeper|all]
-mise run store:screenshots clean [--app sudoku|minesweeper|all]
-```
-
-- `list` — prints every wired slot with an `[ok]` / `[MISSING-BASELINE]` mark,
-  plus the standing reminders (preview-only; no iPad baselines).
-- `sync` — creates/refreshes the symlinks; skips slots whose baseline is missing.
-- `clean` — removes only the symlinks (`-L` checked) and prunes empty dirs.
-
-The mapping table lives inline in the task (one row per store slot that has a
-baseline today). `--app` filters to one app.
-
-## What is wired today
-
-Light-mode, `en`/default-locale slots that have a baseline (per the inline MAP):
-
-- **Sudoku** — iPhone: Home / Daily / Board / Completion / Settings; Mac: Home /
-  Board / Settings.
-- **Minesweeper** — iPhone: Home / Daily / Board / Completion; Mac: Home / Daily.
-
-Run `mise run store:screenshots list` for the authoritative live mapping. Only
-light-mode renders are wired (ASC v1 storyline is light-mode per
-`docs/app-store/screenshot-strategy.md §Capture conventions`).
-
-## PREVIEW-ONLY — these are NOT submission-ready
-
-The baselines are raw `NSHostingView` renders at snapshot layout sizes **with an
-alpha channel**. ASC's screenshot spec is exact-dimension, zero-tolerance, no
-alpha — so ASC rejects them at the dimension/alpha check **before** review:
-
-| Source | Baseline pixels | ASC requirement | Verdict |
+| Tree | Made by | Content | Upload it? |
 |---|---|---|---|
-| iPhone snapshot | 786 × 1704, RGBA | 6.9": 1290×2796 / 1320×2868, no alpha | ✗ size + alpha |
-| Mac snapshot | 1800 × 1200, RGBA | ≥ 1280×800, no alpha | ✗ alpha |
-| iPad | 1032×1376 baselines exist (#506) | 13": 2048×2732 / 2064×2752 | ✗ size + alpha (use build-ascspec) |
+| `docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-screen.png` | `mise run store:screenshots build-ascspec` | Framed marketing images at the exact App Store Connect (ASC) size, RGB, no alpha | Yes |
+| `docs/app-store/screenshots/<app>/<device>/<locale>/NN-screen.png` | `mise run store:screenshots sync` | Preview links to raw snapshot baselines | Never: wrong size and has alpha, ASC rejects it |
 
-The symlinked tree is for eyeballing the storyline from one source — **it is not
-an upload path.**
+Devices in the upload tree: `iphone-6.9` (1290×2796), `ipad-13` (2064×2752), `mac` (2880×1800). Locales: the 7 listing locales.
 
-## The marketing-frame pass NOW EXISTS — and is the real upload path (#311 / #506)
+## Sources of a frame
 
-The "separate pass" below is no longer hypothetical. `mise run store:screenshots
-build-ascspec` (→ `scripts/build-ascspec-screenshots.py`) composites the baselines
-into ASC-exact **1290×2796 (iPhone 6.9") + 2064×2752 (iPad 13") RGB, no-alpha** PNGs
-with on-brand frames + the strategy-doc caption copy, written to their OWN tree:
+Each slot (`01-home`, `02-daily`, `03-board`, …) has one source, set in the `SLOTS` table of `scripts/build-ascspec-screenshots.py`:
+
+- `Slot(...)`: a committed snapshot-test baseline under `Packages/*/Tests/*/__Snapshots__/`. One baseline feeds all 7 locales.
+- `CaptureSlot(...)`: a live-simulator capture under `docs/app-store/captures/<app>/<device>/<locale>/`. One capture feeds one locale. Used for `03-board` on `iphone-6.9` in both apps, because the snapshot renderer cannot draw Liquid Glass.
+
+`03-board` on `ipad-13` and `mac` still uses a snapshot baseline and shows no glass (#1110 for iPad, #1054 for Mac).
+
+## Procedure: a source image changed
+
+1. If a capture-sourced board changed, re-capture it. This builds a Debug app and boots simulators that the task creates and deletes itself:
+
+   ```
+   mise run store:capture --app <sudoku|minesweeper|all> --device iphone-6.9
+   ```
+
+   - `--verify` re-captures and compares against the committed captures without changing them.
+   - `--staging-only` captures into `build/store-capture/staging/` without publishing.
+   - The task publishes all cells of the run or none.
+2. Rebuild the frames (needs macOS: the script loads system fonts):
+
+   ```
+   mise run store:screenshots build-ascspec
+   mise run store:screenshots build-ascspec --verify-only   # check size and mode only
+   ```
+
+3. Open one frame per locale and look at it. The size check passes even when the text is wrong: CJK and Thai captions have rendered as empty boxes before.
+4. Commit the changed captures and every regenerated frame in the same PR.
+5. Run the gates locally:
+
+   ```
+   mise run scan:store_frame_drift --base origin/main
+   mise run scan:store_baseline_orphans
+   ```
+
+## Procedure: upload (user-owned gate)
+
+Upload only when the user asks. Without `--i-am-sure` the command is a dry run that prints what it would upload.
 
 ```
-docs/app-store/screenshots-ascspec/<app>/<device>/<locale>/NN-screen.png
+source secrets/.env
+swift run --package-path Packages/ASCRegisterKit ASCRegister metadata screenshots \
+  --key "$ASC_API_KEY_PATH" --key-id "$ASC_API_KEY_ID" --issuer "$ASC_API_ISSUER_ID" \
+  --app <sudoku|minesweeper> --platform <ios|macos|all> --locale <repo-locale> \
+  --screenshots-dir docs/app-store/screenshots-ascspec [--i-am-sure]
 ```
 
-This path is separate from the preview symlinks (so it never clobbers them) AND
-matches the uploader contract `<app>/<device>/<locale>` exactly. Key facts:
-- **Per-locale fonts:** CJK locales (zh-Hant/zh-Hans/ja/ko) load Hiragino/PingFang —
-  SFNS has zero CJK glyphs and renders Chinese as tofu (the #504 regression).
-- **iPad baselines now exist** (#506 added iPad-13 snapshot configs + the generator's
-  `ipad-13` arm) — the "unwired" row above is historical.
-- **Upload (Leader-orderable, gated):**
-  `ASCRegister metadata screenshots --app <app> --app-id <id> --platform ios
-  --locale <repo-code> --screenshots-dir docs/app-store/screenshots-ascspec --i-am-sure`
-  (run per locale; device auto-detected from the dir; iPhone+iPad both picked up,
-  already-present slots skipped). Other locales fall back to en in ASC.
-- **EYEBALL the output per locale** (esp. CJK) before upload — the dimension/mode
-  check passed even while every zh-Hant caption was tofu (#504). See [[interactive-sim-ux-audit]]
-  discipline: verify content, not just dims.
+- Run once per locale.
+- A file whose name is already in the ASC screenshot set is skipped, not replaced.
+- `mise run preflight:submission <app> <platform>` reports which locales still lack screenshots.
 
-## Capture-sourced slots (#1054) — 03-board is NOT always baseline-sourced
+## Preview tree
 
-`03-board` for Sudoku iPhone/iPad and Minesweeper iPhone is sourced from a
-**live-simulator capture**, not a snapshot baseline — the snapshot host
-(`NSHostingView`/`ImageRenderer`) cannot render Liquid Glass at all, so a
-snapshot-sourced `03-board` would show bare, surface-less controls. `mise
-run store:capture` (`mise-tasks/store/capture`) publishes these to
-`docs/app-store/captures/<app>/<device>/<locale>/03-board.png`, already
-cropped of device safe-area bands; the generator's `SLOTS` table points
-those 3 (app, device) cells at a `CaptureSlot` instead of a `Slot`, and
-`build_asc_image(..., source_kind="capture")` composites them with a
-fit-height (not width-fill) scale so the full control cluster stays inside
-the canvas. Minesweeper iPad 13" and both apps' Mac `03-board` stay
-snapshot-sourced (`Slot`) — Mac has no simulator at all (owner-deferred);
-Minesweeper iPad's capture doesn't yet converge to a byte-identical hash
-across relaunches, pending a region-scoped tolerance. Full rationale,
-Release≡DEBUG identity evidence, and the fit-height rule:
-`docs/app-store/screenshot-strategy.md` §"Live-simulator capture for
-03-board (#1054)". Both scan gates (`scan:store_baseline_orphans`,
-`scan:store_frame_drift`) parse `CaptureSlot(...)` the same way they parse
-`Slot(...)` — a capture-sourced slot is just as watched as a
-snapshot-sourced one.
+```
+mise run store:screenshots list                               # mapping, with [ok] or [MISSING-BASELINE] per slot
+mise run store:screenshots sync  [--app sudoku|minesweeper|all]   # create or refresh the relative symlinks
+mise run store:screenshots clean [--app sudoku|minesweeper|all]   # remove the symlinks
+```
 
-## Known footguns
+- The mapping is the `MAP` array in `mise-tasks/store/screenshots`. It holds light-mode, `en` slots only.
+- `sync` skips a slot whose baseline is missing and reports it. That is not an error.
+- The PNG files committed in `docs/app-store/screenshots/` today are placeholders, not `sync` output: regular files, many with identical bytes. Do not use them as evidence of what a screen looks like. Run `sync` to replace them with links.
 
-- **Do not upload the symlinked PNGs to App Store Connect.** They fail the
-  dimension + alpha pre-check. The `sync` output and `list` both reprint this.
-- **The gap to submission-ready is now CLOSED** by `build-ascspec` (see the section
-  above). Do not upload the *preview symlinks*; do upload the `screenshots-ascspec/`
-  tree. #311 delivered the marketing-frame pass + CJK-font fix + uploader-contract
-  path; #506 added the iPad-13 arm. Both apps' iPhone 6.9" + iPad 13" (en + zh-Hant)
-  are uploaded to ASC as of 2026-06-15.
-- **Missing baseline ≠ error.** `sync` skips a slot whose source PNG is absent and
-  reports it; that's expected when a snapshot hasn't been recorded yet.
-- **Re-record refreshes automatically.** Because the previews are symlinks, you
-  never re-run anything after `swift test --record` — the preview follows.
+## Gates (CI, `lint.yml`)
+
+| Gate | Fails when |
+|---|---|
+| `mise run scan:store_frame_drift` | A baseline or capture that feeds a frame changed, and not every frame it feeds was regenerated in the same PR |
+| `mise run scan:store_baseline_orphans` | A mapped baseline is missing, or no test function records it any more |
+
+## Adding or changing a slot
+
+1. Edit `SLOTS` (and the caption tables) in `scripts/build-ascspec-screenshots.py`.
+2. Mirror the change in `MAP` in `mise-tasks/store/screenshots`.
+3. Prefer a baseline rendered inside its production container over an isolated component render when both exist.
+4. Run the procedure above.
 
 ## See also
 
-- `docs/app-store/screenshot-strategy.md` — the full storyline (5 shots × device
-  classes × 7 locales), overlay copy, capture conventions, and the
-  §"Snapshot-sourced pipeline" / §gap that this task implements.
-- [[asc-ops-handoff]] — uploading App Metadata (incl. screenshots) to ASC is a
-  user-owned / future-ASCRegister-mode op; this task only stages previews.
-- [[apple-dev-skills:swift-testing-baseline]] — the snapshot baselines that are the source of truth.
-- [[mise-task-operations]] — the ops-task index this task belongs to.
+- `docs/app-store/screenshot-strategy.md`: storyline, caption copy, capture rules.
+- `asc-ops-handoff`: which App Store Connect steps the user owns.
+- `mise-task-operations`: index of all ops tasks.

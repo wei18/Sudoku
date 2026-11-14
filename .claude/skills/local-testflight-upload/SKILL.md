@@ -1,27 +1,13 @@
 ---
 name: local-testflight-upload
-description: Local archive → export → TestFlight upload via `mise run tf:upload`, the temporary stand-in for the Xcode Cloud "Main CI" workflow while the XCC monthly compute quota is exhausted. Covers the per-app/per-platform pipeline (tuist generate → xcodebuild archive → CFBundleVersion bump → App-Store-Connect export → gated altool upload), ASC API auth from secrets/.env, and the user-owned --i-am-sure upload gate. Invoke when a build needs to reach TestFlight without Xcode Cloud, when running or debugging `tf:upload`, when deciding archive-only vs upload, or when asked "how do I get a build to TestFlight locally / why is the export plist failing / what build number do I use".
+description: Archive, export and upload a Sudoku or Minesweeper build to TestFlight from this machine with `mise run tf:upload`. Use when a build must reach TestFlight, when running or debugging `tf:upload`, when choosing between archive-only and a real upload, when regenerating the "What to Test" changelog, or when asked what build number to use or why the export fails. Not for App Store submission steps (see asc-ops-handoff) and not for simulator builds (see interactive-sim-ux-audit).
 ---
 
 # Local TestFlight Upload
 
-## When to invoke
+`mise-tasks/tf/upload` wraps `tuist`, `xcodebuild` and `xcrun altool`. It does locally what the Xcode Cloud "Main CI" workflow does: archive, export, upload to internal TestFlight.
 
-- XCC "Main CI" can't run (quota out) but a build must reach internal TestFlight.
-- Running or debugging `mise run tf:upload` for Sudoku or Minesweeper.
-- Deciding between a safe archive-only dry run and a real upload.
-- Diagnosing an ExportOptions.plist / build-number / export-compliance failure.
-- User asks "how do I ship a TestFlight build without Xcode Cloud".
-
-## What it is
-
-`mise-tasks/tf/upload` is a commit-tracked, idempotent wrapper around the Apple
-CLIs (`tuist`, `xcodebuild`, `xcrun altool`) that reproduces the Xcode Cloud
-**Main CI** action (Build + Archive + upload to internal TestFlight) on a local
-machine. It is a **temporary substitute** for the XCC workflow described in
-`docs/foundations.md §4`, for the window where the XCC monthly compute quota is
-exhausted. It mirrors the scriptable-ops precedent of `mise-tasks/ck/schema` and
-`mise-tasks/store/screenshots`.
+The upload is a user-owned gate. Run it only when the user asks for an upload.
 
 ## Invocation
 
@@ -29,171 +15,75 @@ exhausted. It mirrors the scriptable-ops precedent of `mise-tasks/ck/schema` and
 mise run tf:upload <sudoku|minesweeper|all> <ios|macos|all> [flags]
 ```
 
-`all` for `<app>` expands to sudoku + minesweeper (#670 PR2): archive/export
-still runs SEQUENTIALLY per app (see the pipeline note below); only the
-network-bound upload step parallelizes across apps. With `all`, one
-`--i-am-sure` covers the whole batch (not one prompt per app).
+What happens, by gate flag:
+
+| Flags | Archive and export | Upload | Exit code |
+|---|---|---|---|
+| `--archive-only` | Yes | No | 0 |
+| neither flag | Yes | No: the task prints a confirmation banner and refuses | 2 |
+| `--i-am-sure` | Yes | Yes | 0 on success |
+
+Other flags:
 
 | Flag | Effect |
 |---|---|
-| `--archive-only` | archive + export only; never upload (default-safe) |
-| `--build <N>` | explicit `CFBundleVersion` (build number); default `$(date -u +%Y%m%d%H%M)` |
-| `--config <name>` | xcodebuild configuration (default `Release`) |
-| `--force-archive` | skip the fingerprint check and always re-archive (#670 PR1) |
-| `--i-am-sure` | **REQUIRED** to actually upload to TestFlight (user-owned) |
-| `--changelog-only` | print + write the What-to-Test changelog only; no archive/export/upload/tag |
-| `--full` | changelog: include ALL commits (no docs/chore/ci/skill/spec/meetings filter), keep `(#NNN)` refs |
-| `--since <ref>` | changelog base ref when no prior `tf/<app>-<plat>/*` tag exists (ignored once a prior tag exists) |
-| `--whats-new-only` | backfill mode: poll ASC + sync betaBuildLocalization whatsNew for an already-uploaded build (requires `--build`; gated by `--i-am-sure` or `--dry-run`) |
-| `--whats-new-timeout <secs>` | seconds to poll ASC before giving up (default 900 = 15min) |
-| `--dry-run` | with `--whats-new-only`: print the payload, write nothing |
-| `-h`, `--help` | usage |
+| `--build <N>` | Set the build number (`CFBundleVersion`). Default: UTC time as `YYYYMMDDhhmm` |
+| `--config <name>` | xcodebuild configuration. Default: `Release` |
+| `--force-archive` | Archive again even when the source fingerprint is unchanged |
+| `--changelog-only` | Write and print the "What to Test" changelog. No archive, export, upload or tag |
+| `--full` | With the changelog: keep every commit and the `(#NNN)` references |
+| `--since <ref>` | Changelog start when no earlier `tf/<app>-<plat>/*` tag exists |
+| `--whats-new-only` | For a build already uploaded: wait for ASC processing, then set its `whatsNew` text. Needs `--build`, and `--i-am-sure` or `--dry-run` |
+| `--whats-new-timeout <secs>` | How long to wait for ASC processing. Default: 900 |
+| `--dry-run` | With `--whats-new-only`: print the payload, write nothing |
 
 Examples:
+
 ```
-mise run tf:upload sudoku ios --archive-only            # safe: produce .ipa
-mise run tf:upload sudoku all --archive-only            # iOS .ipa + macOS .pkg
-mise run tf:upload sudoku ios --i-am-sure               # archive+export+UPLOAD
-mise run tf:upload minesweeper macos --build 20260605 --i-am-sure
-mise run tf:upload sudoku ios --changelog-only                  # dry-run changelog only
-mise run tf:upload sudoku ios --changelog-only --since abc1234  # first-run baseline
-mise run tf:upload sudoku ios --changelog-only --full           # unfiltered, with (#NNN)
-mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --dry-run     # preview payload, no write
-mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --i-am-sure   # backfill whatsNew for real
+mise run tf:upload sudoku ios --archive-only                 # build the .ipa, no upload
+mise run tf:upload all all --archive-only                    # both apps, iOS .ipa and macOS .pkg
+mise run tf:upload sudoku ios --i-am-sure                    # archive, export, upload
+mise run tf:upload sudoku ios --changelog-only               # preview the changelog
+mise run tf:upload sudoku ios --whats-new-only --build 202607061321 --dry-run
 ```
 
-## Pipeline (per app + platform)
+## Before you run it
 
-0. **admob render** — if `secrets/.env` carries `<APP>_ADMOB_APP_ID` +
-   `<APP>_ADMOB_BANNER_UNIT_ID` (SUDOKU_*/MINESWEEPER_*), the task (re)writes
-   `Tuist/AdMob.xcconfig` for the app being built — local parity with XCC's
-   `ci_post_clone.sh` §3.1b. Absent keys → existing file used unchanged. Debug
-   builds force Google's test ad unit in code, so prod values here never serve
-   live ads from a dev run.
-0.5. **acknowledgements** — `tuist install` (resolve SwiftPM) → `mise run gen:acknowledgements` → THEN `tuist generate`. Order matters (#433): `gen:acknowledgements` needs resolved checkouts to enumerate deps, and Tuist globs the `Settings.bundle` at *generate* time — so the bundle must be populated before generate or the installed build ships an EMPTY Acknowledgements page. See [[acknowledgements-generation]].
-1. **generate** — `tuist generate` (the `Game.xcworkspace` is gitignored).
-2. **archive** — `xcodebuild archive` → `build/testflight/<app>-<plat>.xcarchive`.
-   **SKIPPED when the source fingerprint matches** (#670 PR1): a hash of
-   HEAD + dirty tree (untracked included) + app/plat/config + the rendered
-   `Tuist/AdMob.xcconfig` content is kept in
-   `build/testflight/<app>-<plat>.fingerprint`; on a match with an existing
-   `.xcarchive`, the task jumps straight to bump/export/upload (a failed-upload
-   retry no longer pays the ~5-8 min re-archive). The fingerprint is written
-   only after a successful archive. `--force-archive` bypasses the check.
-   Known blind spot: an untracked file whose CONTENT changes (name/status
-   unchanged) does not move the fingerprint.
-3. **bump** — PlistBuddy `Set :CFBundleVersion` on the **archived app's** embedded
-   Info.plist. `CFBundleVersion` is a hardcoded `"1"` literal in the app's
-   Info.plist (not driven by `CURRENT_PROJECT_VERSION`), so a build-setting
-   override would be a no-op — the patch must happen post-archive / pre-export.
-4. **export** — `xcodebuild -exportArchive` with a runtime-generated
-   `ExportOptions` plist (`method=app-store-connect`, `destination=export`) →
-   `.ipa` (iOS) / `.pkg` (macOS).
-5. **upload** — `xcrun altool --upload-app` to TestFlight. **GATED** (see below).
-   `<app> all` note (#670 PR2): archive/export loops over both apps ONE AT A
-   TIME — `Tuist/AdMob.xcconfig` and `Game.xcworkspace` are single,
-   app-agnostic repo paths, so concurrent archiving would race both files and
-   could silently compile the wrong app's AdMob ID into a binary. Only the
-   upload step (network-bound, independent per app) fans out into background
-   `xcrun altool` jobs, `wait`ed with per-app exit-code aggregation — one app's
-   upload failure never blocks or hides the other app's upload/changelog/tag,
-   but the task overall exits non-zero.
-6. **changelog + tag (#694 P1)** — on a REAL upload success, first writes a
-   Fixes/Features/Other changelog from squash-merge PR-title subjects since the
-   previous `tf/<app>-<plat>/*` tag to
-   `build/testflight/<app>-<plat>-<build>-changelog.md` (also printed), THEN
-   tags `tf/<app>-<plat>/<build>` (pushed, best-effort — a failed tag/push only
-   warns, never fails the task). Changelog-before-tag order is load-bearing:
-   tagging first would make the range `HEAD..HEAD` and the changelog empty.
-   `--changelog-only` runs just this step for any app/platform/build without
-   touching archive/export/upload — use it to preview or regenerate the
-   TestFlight "What to Test" note. First run (no prior tag): pass `--since
-   <ref>`, or it falls back to full history with an explicit warning. A base
-   ref that doesn't resolve (bad `--since`, corrupt tag) never emits a lying
-   "(none)/(none)" changelog: under `--changelog-only` it fails loudly (exit 1,
-   no `.md` written); on the real post-upload path it downgrades to a warning
-   so a completed upload is never reported as failed and the tag step still
-   runs.
-7. **whatsNew sync (#704, P2 of #694)** — on a REAL upload success, polls ASC
-   until the build's processingState leaves PROCESSING (default 15min timeout,
-   `--whats-new-timeout` to adjust), then creates/updates its en-US
-   betaBuildLocalization `whatsNew` from the step-6 changelog file. Warn-only,
-   same posture as changelog/tag: a completed upload is never reported failed
-   over a slow/failed ASC sync. `--whats-new-only --build <N>` runs just this
-   step for an already-uploaded build (its own `--i-am-sure` gate, waived by
-   `--dry-run`); it errors loudly (non-zero exit) in that standalone mode since
-   there's no "upload already succeeded" to protect.
+1. In a worktree, seed the gitignored files first: `mise run worktree:seed <path>` from the main checkout.
+2. `secrets/.env` must hold `ASC_API_KEY_PATH`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID` and `CK_TEAM_ID`. The task stops before doing any work if one is missing or still a placeholder. The user supplies these values; they are not in the repo.
+3. Xcode must be signed in to the Apple Developer account: the archive uses automatic signing.
+4. This is a heavy build. Apply the disk and load checks from the global engineering rules.
 
-## Auth
+## Pipeline (per app and platform)
 
-Reads ASC API credentials from `secrets/.env` (never echoed, never on argv):
+1. **Render xcconfig.** Write `Tuist/AdMob.xcconfig` and `Tuist/AppStore.xcconfig` from `secrets/.env` (`<APP>_ADMOB_APP_ID`, `<APP>_ADMOB_BANNER_UNIT_ID`, `ASC_APP_ID_<APP>`). If the keys are absent, the existing files are used unchanged.
+2. **Resolve and generate.** `tuist install`, then `tuist generate --no-open` if the workspace is missing.
+3. **Acknowledgements.** `mise run gen:acknowledgements`, then `tuist generate --no-open` again. Tuist reads the `Settings.bundle` at generate time, so the bundle must exist before the second generate.
+4. **Archive.** `xcodebuild archive` to `build/testflight/<app>-<plat>.xcarchive`. Skipped when the fingerprint (HEAD, dirty tree, app, platform, configuration, rendered xcconfig) matches the previous archive. An untracked file whose content changed does not change the fingerprint: use `--force-archive` then.
+5. **Set the build number.** Patch `CFBundleVersion` in the archived app's Info.plist. A build setting cannot do this: the value in Info.plist is a literal.
+6. **Export.** `xcodebuild -exportArchive` with a generated options file (`method=app-store-connect`) to `.ipa` (iOS) or `.pkg` (macOS).
+7. **Upload** (gated). `xcrun altool --upload-app`.
+8. **After a successful upload.** In this order: write the changelog to `build/testflight/<app>-<plat>-<build>-changelog.md`, create and push the tag `tf/<app>-<plat>/<build>`, wait for ASC processing and set the en-US `whatsNew` text from the changelog. A failure in this step is a warning; the task does not report the upload as failed.
 
-- `ASC_API_KEY_PATH` → the `AuthKey_<KEY_ID>.p8` (gitignored, under `secrets/`)
-- `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`
-- `CK_TEAM_ID` — reuses the single 10-char Apple Developer Team ID already in
-  `.env` for cktool (used for `DEVELOPMENT_TEAM` at archive + export team id).
+With `<app> all`, steps 1 to 6 run one app at a time, because both apps share `Tuist/AdMob.xcconfig` and `Game.xcworkspace`. Only the uploads run in parallel. One `--i-am-sure` covers both apps. If one app's upload fails, the other still completes and the task exits non-zero.
 
-Nothing new is invented. The `.p8` is staged as a per-run symlink under
-`build/testflight/private_keys/` where altool searches by key id, and removed on
-exit. If any key is missing/placeholder the task aborts before doing work; fill
-from project memory (`asc-api-credentials` + the Team ID).
+## Rules
 
-## Safety gates
-
-- **archive + export are safe and repeatable** — they touch only `build/`
-  (gitignored). Use `--archive-only` freely as a dry run.
-- **upload is the only irreversible, user-owned step.** It signs with the App
-  Store distribution identity and pushes to ASC/TestFlight. The task prints a
-  "user-owned, confirm" banner and **REFUSES without `--i-am-sure`** (exit 2).
-  Per [[asc-ops-handoff]], the WHEN-to-upload decision is the user's; archive/export
-  are Leader-orderable.
-
-## Known footguns
-
-- **ExportOptions plist must NOT be pre-`touch`ed.** PlistBuddy cannot parse a
-  0-byte file ("Cannot parse a NULL or zero-length data"). The task `rm -f`s the
-  path so PlistBuddy auto-creates it on the first `Add`. Do not "helpfully" add a
-  `touch` before `write_export_options`. (This was the real failure on the first
-  end-to-end run, 2026-06-09 — fixed by removing the `touch` + the `Clear dict`.)
-- **Build-number uniqueness.** TestFlight/ASC reject a duplicate `CFBundleVersion`
-  for the same `CFBundleShortVersionString`. The UTC-minute default is unique per
-  minute; if you re-run within the same minute or pass an explicit `--build`,
-  ensure it hasn't been used for this marketing version already.
-- **Export-compliance is already handled for Sudoku + Minesweeper — do NOT flag
-  it.** Both `App/Sudoku/Info.plist` and `App/Minesweeper/Info.plist` statically
-  declare `ITSAppUsesNonExemptEncryption = <false/>`, so ASC never prompts for an
-  encryption/export-compliance answer and the build is never held on that gate.
-  When reporting an upload result, omit the compliance step. (Processing delay is
-  still real — uploading ≠ instantly testable — but no compliance answer is
-  needed.) A NEW app (a future game) must add the same Info.plist key before its
-  first TF build, or it WILL be held pending the ASC web-UI compliance answer.
-- **macOS export method.** Xcode 15+ renamed `app-store` → `app-store-connect`;
-  the task uses the new name (accepted by 16/26). Don't revert it.
-- **Workspace is gitignored.** A clean checkout has no `Game.xcworkspace`; the
-  task runs `tuist install` + `tuist generate --no-open` to produce it.
-- **whatsNew sync uses python3 + openssl only** (`mise-tasks/tf/asc_whats_new.py`)
-  — no `cryptography`/`PyJWT` install. openssl's EC signature is ASN.1 DER;
-  JOSE ES256 needs raw R||S, so the script hand-parses the DER. Don't
-  "simplify" this with a pip package — the repo's no-new-deps policy holds.
-- **macOS's stock bash is 3.2.57.** `"${empty_array[@]}"` throws `unbound
-  variable` under `set -u` on a genuinely empty array (fixed only in bash
-  4.4+) — the upload task uses plain-scalar optional-flag variables instead of
-  arrays for that reason. Don't "clean up" a scalar flag back into an array
-  without checking the bash version.
-- **`whatsNew` is capped at 4000 chars** — the sync script truncates with a
-  warning if the changelog exceeds it; it never fails the sync over length.
-- **Changelog noise filter is scope-aware, not just type-aware.** A
-  `feat(skills): ...` or `feat(spec): ...` commit is still dropped from the
-  default (non `--full`) changelog even though its type is `feat` — the filter
-  also checks the Conventional-Commits scope for `skill`/`spec`/`meetings`. Use
-  `--full` to see everything with `(#NNN)` refs kept.
+- TestFlight builds are Release builds and carry the production AdMob IDs from `secrets/.env`. Debug builds always use Google's test ad unit.
+- A build number can be used once per marketing version. Do not reuse a `--build` value.
+- Do not report export compliance as a pending step. Both Info.plist files declare `ITSAppUsesNonExemptEncryption = false`. A new app must add the same key before its first upload.
+- An uploaded build is not testable at once: ASC processes it first.
+- Do not create the export options file beforehand (`touch`). PlistBuddy cannot read an empty file; the task creates it.
+- Keep the export method `app-store-connect`. The older name `app-store` is not accepted.
+- `mise-tasks/tf/asc_whats_new.py` uses only `python3` and `openssl`. Do not add a pip dependency.
+- The task must run under macOS's bash 3.2. Optional flags are plain variables, not arrays, because an empty array fails under `set -u` there.
+- The default changelog drops commits whose type is `docs`, `chore` or `ci` and commits whose scope is `skill`, `spec` or `meetings`. `--full` keeps them.
+- `whatsNew` is cut to 4000 characters with a warning.
 
 ## See also
 
-- [[apple-dev-skills:xcode-cloud-single-track-ci]] — the **Main CI** workflow this task temporarily
-  substitutes; restore XCC once quota returns and retire local uploads.
-- [[asc-ops-handoff]] — user-owned vs Leader-orderable taxonomy; TestFlight
-  upload + promotion sit on the user-owned side.
-- [[apple-dev-skills:build-time-secret-injection]] — the `secrets/.env` + `.p8` handling pattern
-  this task reuses.
-- [[mise-task-operations]] — the ops-task index this task belongs to.
+- `asc-ops-handoff`: which App Store Connect steps the user owns.
+- `acknowledgements-generation`: the license page built in step 3.
+- `apple-dev-skills:xcode-cloud-single-track-ci`: the Xcode Cloud workflow this task stands in for.
+- `apple-dev-skills:build-time-secret-injection`: how `secrets/.env` and the xcconfig files are used.
+- `mise-task-operations`: index of all ops tasks.

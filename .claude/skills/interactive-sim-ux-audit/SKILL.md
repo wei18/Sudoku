@@ -1,104 +1,95 @@
 ---
 name: interactive-sim-ux-audit
-description: Drive the running game apps in the iOS Simulator with idb (tap / describe / screenshot) to find UX + layout bugs that snapshot tests cannot — navigation, modals, back-stack, completion, safe-area/Dynamic-Island clipping, offline/signed-out flows. Use when asked to "test the UI", "find UX problems", or verify an interactive flow.
+description: Project-specific setup for driving Sudoku or Minesweeper in the iOS Simulator - how to build and install a current Debug app, the DEBUG launch arguments that jump to a screen or a near-win board, which iCloud and Game Center sign-in states each check needs, and what to probe. Use together with apple-dev-skills:interactive-simulator-ux-audit when asked to test the UI, find UX problems, or verify a navigation, modal or completion flow in the running app. Not for scripted end-to-end tests (use `mise run test:ui`) and not for App Store captures (use appstore-screenshot-pipeline).
 ---
 
-# Interactive Simulator UX Audit (idb-driven)
+# Interactive Simulator UX Audit (project setup)
 
-Snapshot tests render views in a fixed-size `NSHostingView` — they do **not** model
-navigation, taps, the device safe area, or the Dynamic Island. A whole class of bugs
-only shows when you actually drive the app: blank-board-after-tap (#491), unplayable
-when iCloud signed out (#512), completion icon clipped by the Dynamic Island (#518).
-This skill is how to run that audit.
+This skill holds only what is specific to this repo. The general method is in the plugin skills:
 
-## Prereq: idb (one-time install — NOT Homebrew)
+| Need | Skill |
+|---|---|
+| Install `idb`, the describe → tap → screenshot loop, coordinate rules | `apple-dev-skills:interactive-simulator-ux-audit` |
+| Create, use and delete your own simulator; DerivedData location | `apple-dev-skills:parallel-agent-xcode-hygiene` |
+| Decide whether a change needs a runtime check at all | `apple-dev-skills:simulator-runtime-verification` |
 
-The no-Homebrew/CocoaPods policy does **not** forbid idb. Install via **direct GitHub
-release download** (user-authorized path). Verified on macOS 26 / Xcode 26 / arm64:
+## Procedure
 
-1. `idb_companion`: download `idb-companion.universal.tar.gz` (latest = v1.1.8; 2022 but
-   works) from https://github.com/facebook/idb/releases → extract to
-   `~/idb-tools/companion/idb-companion.universal/` (binary in `bin/`, `Frameworks/`
-   sibling). The objc duplicate-class warning for `FBProcess` is non-fatal.
-2. `idb` CLI: `pip3 install --user fb-idb` → `~/Library/Python/3.9/bin/idb`.
-3. Put both on PATH at `~/.local/bin` (already on the MCP-inherited PATH): symlink `idb`;
-   for the companion use a **wrapper script** that `exec`s the real binary's absolute
-   path (a bare symlink breaks `@executable_path/../Frameworks` rpath).
-4. Verify: `idb list-targets`, then `idb ui describe-all --udid <booted-sim>` returns the
-   a11y tree (frames + AXLabel) in device-**point** space (iPhone 17 Pro = 402×874 pt).
+1. Create your own simulator and boot it, as `apple-dev-skills:parallel-agent-xcode-hygiene` describes. Keep its UDID. Never use a simulator another session booted.
+2. In a worktree, seed the gitignored build files first. Run this from the main checkout:
 
-See [[idb-sim-ui-driving-works]] (memory) for the exact commands.
+   ```
+   mise run worktree:seed <worktree-path>
+   ```
 
-## Build + install the app under test — use a CURRENT build, from the MAIN checkout
+   Without it the app is built with empty AdMob and App Store values and stops at launch. That stop is a setup fault, not an app bug.
+3. Build, install and capture every screen in light and dark:
 
-- **Check the installed version first.** A stale build silently invalidates findings —
-  e.g. the sim once held a `1.0.0` build; Settings → Version exposes it. Confirm it's the
-  version you mean to test before reporting any bug.
-- Build for the sim: `xcodebuild -workspace Game.xcworkspace -scheme <Sudoku|Minesweeper>
-  -sdk iphonesimulator -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-  -derivedDataPath build/sim build`, then `xcrun simctl install <udid> <App.app>`.
-- **Build from the main checkout, NOT an agent worktree.** Worktrees lack the gitignored
-  `Tuist/AdMob.xcconfig` + `secrets/.env`, so the Debug build's `AppComposition.live()`
-  hits an assertion at launch (`EXC_BREAKPOINT`) → app drops to springboard. That crash is
-  an env artifact, not a code bug. (Tuist needs `tuist install && tuist generate --no-open`
-  first; the workspace is gitignored.)
+   ```
+   mise run ui:tour --app <sudoku|minesweeper|all> --udid <UDID>
+   ```
 
-## The drive loop
+   - Always pass `--udid`. Without it the task picks whichever simulator is already booted.
+   - The task builds a Debug app into `build/tour-sim/`, refuses to install an app whose Info.plist has unresolved values, and writes screenshots to `build/tour/<app>/<light|dark>/`.
+   - `--no-build` reuses the installed app.
+4. Mute the background music before driving, then relaunch the app:
 
-```
-idb ui describe-all --udid <udid>   # get element frames + AXLabel (pipe to python/jq)
-idb ui tap --udid <udid> <x> <y>    # tap at device-point coords (center of a frame)
-xcrun simctl io <udid> screenshot <path.png>   # capture; then Read the PNG and eyeball
-```
+   ```
+   xcrun simctl spawn <UDID> defaults write com.wei18.sudoku      com.wei18.sudoku.audio.musicEnabled      -bool false
+   xcrun simctl spawn <UDID> defaults write com.wei18.minesweeper com.wei18.minesweeper.audio.musicEnabled -bool false
+   ```
 
-- **Get coords from `describe-all`**, not from screenshot pixels (screenshot is 3× the
-  point space). Tap the center of an element's `frame`.
-- **EYEBALL every screenshot** (Read the PNG). The a11y tree tells you *what* nodes exist;
-  only the image shows clipping, overlap, empty space, tofu glyphs, z-order.
-- After each tap, `describe-all` again to confirm where you landed (a tap can miss / hit
-  springboard / over-navigate on double-back).
+5. Confirm the installed version in the app (Settings → Version) matches the commit you mean to test.
+6. Drive the app with the plugin skill's loop.
+7. Delete your simulator and `build/tour-sim/` when done.
 
-## Gotchas (each cost a real failure here)
+## Launch arguments (DEBUG builds only)
 
-- **zsh does NOT word-split unquoted `$var`.** `idb ui tap --udid $S $xy` with `xy="201 488"`
-  fails (`invalid int value: '201 488'`). Use `${=xy}` (zsh split) or literal ints. Bare
-  literals work; variables need `${=...}`.
-- **`idb ui describe-all` / `ui_tap` need `idb` on PATH** — without it the ios-simulator-MCP
-  errors `spawn idb ENOENT`. simctl can screenshot but cannot tap.
-- **One booted sim = serialize.** Don't run concurrent sim-driving subagents against the
-  same sim — they collide. Leader drives; analysis can fan out afterward.
-- **Layout stress:** `xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large`
-  then relaunch to test Dynamic Type; reset with `content_size large`. `appearance dark|light`
-  for color scheme. System alerts (e.g. StoreKit "Sign in to Apple Account") persist across
-  app relaunch — dismiss them before reading the app.
-- **Reaching win/completion:** blind taps can't solve Sudoku or clear Minesweeper. Use the
-  DEBUG near-win launch hook (`-uitest-near-win`) to land one move from a win. A loss is
-  reachable by tapping cells until a mine.
+Pass them after the bundle id: `xcrun simctl launch <UDID> com.wei18.sudoku <argument>`.
 
-## What to probe (this finds what snapshots miss)
+| Argument | Effect |
+|---|---|
+| `-uitest-route daily` / `practice` / `settings` | Open that tab or screen directly |
+| `-uitest-near-win` | Open a board one move from a win (both apps) |
+| `-uitest-near-win-modal` | Sudoku only: the same board, presented through the modal path |
+| `-uitest-seed-completed-daily` | Report today's daily puzzles as already completed |
+| `-uitest-gc-signed-out` | Make Game Center sign-in fail, to show the signed-out alert |
+| `-uitest-loader-fail` | Make the board loader fail |
+| `-uitest-iap-script` | Make purchases return cancelled, failed, then pending; Restore finds nothing |
+| `-uitest-open-ad-gate` | Force the banner slot open so a test ad renders |
 
-- **Negative / offline:** iCloud signed out, no Game Center, airplane mode mid-game, Retry,
-  Restore-with-nothing, IAP cancel. (Core gameplay must never gate on iCloud — #512.)
-- **Online + iCloud-signed-out ≠ offline — test BOTH.** For any CloudKit-dependent screen
-  (Daily Hub, ResumePill, leaderboard) these diverge: **offline**, CK calls fail-fast (throw
-  immediately); **online-but-signed-out**, CK calls can **HANG** (network round-trip stalls
-  with no authenticated container). A prior offline "pass" can mask an online hang — #536's
-  Daily Hub infinite spinner only reproduced online+signed-out (the AdMob banner's network
-  load triggered the re-render that exposed it). Drive the sim with network ON + iCloud OUT
-  and watch for a spinner that never resolves.
-- **Resume / save / Game Center cases need an iCloud-signed-in sim.** Signed out,
-  `latestInProgress()` returns nil by graceful-degrade design (#515) so no ResumePill ever
-  shows — #4(pill)/#12/#19/#20/#38 + GC completion are un-testable until the user signs a
-  **sandbox** Apple ID into Simulator → Settings → Apple Account (iCloud and Game Center are
-  SEPARATE sign-ins — GC alone does not enable CloudKit). GKGameCenterViewController is a
-  system overlay idb can't introspect; absence of the #513 sign-in alert is the signal GC is
-  recognized.
-- **Navigation / modals:** does the board actually appear after picking difficulty (#491);
-  Close → Leave-Game confirmation; pause; back-stack pressure.
-- **Safe area / Dynamic Island:** completion/overlay content clipped or overlapping board
-  chrome on a notch/island device (#518) — snapshots can't see this.
-- **End-game:** win + loss completion flow, leaderboard submit when GC unavailable.
+The full list, with the exact behavior of each argument, is `Packages/GameAppKit/Sources/GameAppKit/UITestLaunchArg.swift`.
 
-File each finding with the screenshot evidence + repro; note when it's environmental
-(no iCloud / stale build) vs a genuine current bug, and re-validate on a fresh main build
-before calling it real.
+A win cannot be reached by blind taps. Use `-uitest-near-win`. A Minesweeper loss can be reached by tapping covered cells until one is a mine.
+
+## Sign-in states
+
+iCloud and Game Center are separate sign-ins in Simulator → Settings.
+
+| State | What it is for | Expected behavior |
+|---|---|---|
+| Network on, iCloud signed out | Daily hub, resume, leaderboard screens | Core gameplay still works. No spinner may stay forever: CloudKit calls can hang in this state |
+| Network off | The same screens | CloudKit calls fail at once; screens show their offline state |
+| iCloud signed in (sandbox Apple ID) | Resume pill, saved games, records | Only this state shows a resume pill. Signed out, `latestInProgress()` returns nil by design |
+| Game Center signed in | Score submit, achievements | The Game Center dashboard is a system overlay; `idb` cannot read it |
+
+Test both "network on, iCloud signed out" and "network off". They fail differently, and a pass in one does not cover the other.
+
+Signing an Apple ID into the simulator is the user's step. Ask the user; do not enter credentials.
+
+## What to probe
+
+- Navigation: the board appears after choosing a difficulty; Close leads to the Leave Game confirmation; pause; repeated back.
+- End of game: win and loss completion, and score submit when Game Center is unavailable.
+- Safe area: completion and overlay content is not clipped by the Dynamic Island and does not overlap the board controls.
+- Purchases: cancel the Remove Ads purchase; Restore with nothing to restore (`-uitest-iap-script`).
+- Negative flows: the numbered rows N1… in `docs/navigation-flows.md` list each failure path and its expected result.
+- Dynamic Type: `xcrun simctl ui <UDID> content_size accessibility-extra-extra-extra-large`, relaunch, check, then reset with `content_size large`.
+- Both apps: check every shared screen in Sudoku and in Minesweeper.
+
+## Reporting a finding
+
+1. Attach the screenshot path and the steps to reproduce.
+2. State the sign-in state and the installed version.
+3. Say whether the cause is the environment (no iCloud, stale build, unseeded worktree) or the app.
+4. Reproduce on a fresh build of `origin/main` before calling it an app bug.
