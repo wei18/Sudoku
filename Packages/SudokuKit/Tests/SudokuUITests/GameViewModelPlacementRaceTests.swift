@@ -184,6 +184,46 @@ struct GameViewModelPlacementRaceTests {
         await viewModel.cellFeedback.waitForPendingExpiries()
     }
 
+    // MARK: Mistake — a placement that conflicts with the one before it
+
+    /// (0,0) takes the solution digit, then (0,1) takes the same digit again:
+    /// the second placement conflicts in row 0 and must be the only mistake.
+    @Test("serial: a second identical digit in the row plays place then mistake")
+    func serialConflictingPlacementPlaysMistake() async throws {
+        let gate = makePlacementRaceGate()
+        let (viewModel, sound) = try await makeViewModel(blanks: Self.rowBlanks, gate: gate)
+
+        viewModel.select(row: 0, column: 0)
+        await viewModel.keypadDigit(solution(0, 0))
+        await viewModel.tapCell(row: 0, column: 1)
+        await viewModel.keypadDigit(solution(0, 0))
+
+        #expect(sound.playedEvents == [.sudokuPlace, .sudokuMistake], "\(sound.playedEvents)")
+
+        await gate.release()
+        await viewModel.cellFeedback.waitForPendingExpiries()
+    }
+
+    @Test("interleaved: a second identical digit in the row plays place then mistake")
+    func interleavedConflictingPlacementPlaysMistakeOnce() async throws {
+        let gate = makePlacementRaceGate()
+        let (viewModel, sound) = try await makeViewModel(blanks: Self.rowBlanks, gate: gate)
+        viewModel.select(row: 0, column: 0)
+
+        let digit = solution(0, 0)
+        let digitOne = Task { await viewModel.keypadDigit(digit) }
+        let cellTap = Task { await viewModel.tapCell(row: 0, column: 1) }
+        let digitTwo = Task { await viewModel.keypadDigit(digit) }
+        await digitOne.value
+        await cellTap.value
+        await digitTwo.value
+
+        #expect(sound.playedEvents == [.sudokuPlace, .sudokuMistake], "\(sound.playedEvents)")
+
+        await gate.release()
+        await viewModel.cellFeedback.waitForPendingExpiries()
+    }
+
     // MARK: Digit-first — two cell taps with one armed digit
 
     /// The shortest UI route: a sticky-armed digit and two board-cell taps,
