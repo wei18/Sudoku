@@ -1,13 +1,11 @@
-import SudokuEngine
+public import SudokuEngine
 
 extension Board {
     /// Returns `true` when `digit` at (`row`, `col`) conflicts with any
-    /// other cell in the same row, column, or 3×3 box. Used at placement
-    /// time to decide whether to increment `mistakeCount`. Logic is identical
-    /// to `Board.conflictingUserIndices()` in SudokuUI — that is the UI-layer
-    /// duplicate (MainActor) which cannot call into this module's internals;
-    /// CoreKit is the authoritative copy.
-    func hasConflict(digit: Int, row: Int, col: Int) -> Bool {
+    /// other cell in the same row, column, or 3×3 box. The single conflict
+    /// rule: the session uses it for `mistakeCount`, SudokuUI for error
+    /// highlighting and unit-completion detection.
+    public func hasConflict(digit: Int, row: Int, col: Int) -> Bool {
         for col2 in 0..<Board.dimension where col2 != col {
             if self.digit(atRow: row, column: col2) == digit { return true }
         }
