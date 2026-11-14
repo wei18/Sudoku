@@ -288,13 +288,12 @@ public final class GameViewModel {
         if board.givenMask[index] { return }
 
         if let session {
-            // #330 P2: capture pre-mutation state so we can fire the right audio
-            // cue after the re-sync (which is the authoritative post-state).
-            let wasCompleted = status == .completed
-            let unitsCompleteBefore: Set<SudokuUnit> = digit == nil ? [] : completedUnits(touching: coord)
-
+            // #1119: cues come from the before/after pair the session produced
+            // for THIS call, never from state captured around the await — a
+            // second placement may run while this one is suspended.
+            var outcome: PlacementOutcome?
             if let digit {
-                await runSession("placeDigit") {
+                outcome = await runSession("placeDigit") {
                     try await session.placeDigit(row: coord.row, col: coord.column, digit: digit)
                 }
             } else {
@@ -308,25 +307,34 @@ public final class GameViewModel {
             }
             await resyncFromSession()
 
-            if let digit {
-                beginUnitSweepFeedback(at: coord, before: unitsCompleteBefore)
-                fireAudio(forDigit: digit, at: coord, wasCompleted: wasCompleted, unitsCompleteBefore: unitsCompleteBefore)
+            if digit != nil {
+                // A rejected placement (outcome nil) falls back to the mirror
+                // for both sides: no new units, not a completion.
+                let before = outcome?.boardBefore ?? board
+                let after = outcome?.boardAfter ?? board
+                let completedGame = outcome?.completedGame ?? false
+                let units = SudokuUnit.newlyCompleted(touching: coord, from: before, to: after)
+                beginUnitSweepFeedback(at: coord, units: units)
+                fireAudio(at: coord, after: after, completedGame: completedGame, newlyCompletedUnits: units)
                 // #610 fix *3: clear the save's inProgress status so the hub stops
                 // offering a resume for a completed game.
-                await markCompletedIfNeeded(wasCompleted: wasCompleted)
+                await markCompletedIfNeeded(completedGame: completedGame)
             }
         } else {
             // Preview / test path: poke the mirror without crossing actor.
             // An invalid coord here is a programmer error in fixture wiring,
             // never a runtime user path — make it loud in DEBUG.
-            let unitsCompleteBefore: Set<SudokuUnit> = digit == nil ? [] : completedUnits(touching: coord)
+            let before = board
             do {
                 try board.setDigit(digit, atRow: coord.row, column: coord.column)
             } catch {
                 reportIssue("preview fixture wiring bug: \(error)")
             }
             recomputeErrors()
-            if digit != nil { beginUnitSweepFeedback(at: coord, before: unitsCompleteBefore) }
+            if digit != nil {
+                let units = SudokuUnit.newlyCompleted(touching: coord, from: before, to: board)
+                beginUnitSweepFeedback(at: coord, units: units)
+            }
         }
         scheduleSave()
     }
@@ -459,18 +467,20 @@ public final class GameViewModel {
     /// has no recovery surface for these failures — see design.md §How.5.4
     /// + §How.6.1 principle 1: in-flight game must never crash on save
     /// failures). Source string identifies the specific actor method.
-    private func runSession(
+    @discardableResult
+    private func runSession<Result>(
         _ method: String,
-        _ body: () async throws -> Void
-    ) async {
+        _ body: () async throws -> Result
+    ) async -> Result? {
         do {
-            try await body()
+            return try await body()
         } catch {
             await errorReporter.report(
                 UserFacingError.classify(error),
                 underlying: error,
                 source: "GameViewModel.\(method)"
             )
+            return nil
         }
     }
 
@@ -548,17 +558,22 @@ public final class GameViewModel {
     /// order: a solve (win) trumps everything; otherwise a mistake (the placed
     /// cell now conflicts); otherwise a plain placement, optionally followed by
     /// a section-cleared cue when this move newly completed a row / column / box.
-    private func fireAudio(forDigit digit: Int, at coord: GridCoordinate, wasCompleted: Bool, unitsCompleteBefore: Set<SudokuUnit>) {
-        // Win: the live `.playing → .completed` transition. Fires exactly once
-        // (a re-placed digit on an already-completed board won't re-transition).
-        if status == .completed, !wasCompleted {
+    private func fireAudio(
+        at coord: GridCoordinate,
+        after: Board,
+        completedGame: Bool,
+        newlyCompletedUnits: [SudokuUnit]
+    ) {
+        // Win: the session reports the `.playing → .completed` transition on
+        // the one call that made it, so it fires exactly once.
+        if completedGame {
             soundPlayer.play(.sudokuWin)
             return
         }
 
         // Mistake: the placed cell is now flagged as conflicting.
         let index = Board.index(row: coord.row, column: coord.column)
-        if errorIndices.contains(index) {
+        if after.conflictingUserIndices().contains(index) {
             soundPlayer.play(.sudokuMistake)
             return
         }
@@ -570,7 +585,7 @@ public final class GameViewModel {
         // units (row / column / box) that contain the cell.
         // Unit detection lives in `GameViewModel+CellFeedback.swift` (#1018),
         // shared with the unit-sweep feedback so there is one detector.
-        if !newlyCompletedUnits(touching: coord, before: unitsCompleteBefore).isEmpty {
+        if !newlyCompletedUnits.isEmpty {
             soundPlayer.play(.sudokuSectionCleared)
         }
     }
@@ -578,14 +593,14 @@ public final class GameViewModel {
     // MARK: - Completion side-effect
 
     /// Call `persistence.markCompleted` exactly once on the `.playing → .completed`
-    /// edge (#610 fix *3). Gated on `wasCompleted` captured before `resyncFromSession`.
+    /// edge (#610 fix *3). Gated on the session outcome's `completedGame`.
     ///
     /// `SavedGameStore.recordName(for:mode:)` is internal; we mirror the same
     /// `"\(mode.rawValue)-\(puzzleId)"` formula here since `GameViewModel` owns both
     /// halves via `identity`. Only the `recordName` field is read by the store's
     /// `markCompleted` implementation (it fetches by name, then flips `status`).
-    private func markCompletedIfNeeded(wasCompleted: Bool) async {
-        guard status == .completed, !wasCompleted, let persistence else { return }
+    private func markCompletedIfNeeded(completedGame: Bool) async {
+        guard completedGame, status == .completed, let persistence else { return }
         // `SavedGameStore.markCompleted` reads ONLY `summary.recordName` (it fetches
         // the live CloudKit record by name and flips its `status` field). The other
         // fields below are inert for this call — they satisfy the struct's memberwise
@@ -708,35 +723,7 @@ public final class GameViewModel {
     /// Mark every user-filled cell whose digit conflicts (row/col/box) with
     /// another cell as an error. Givens are excluded since they're trusted.
     private func recomputeErrors() {
-        var errors: Set<Int> = []
-        for row in 0..<Board.dimension {
-            for col in 0..<Board.dimension {
-                let index = Board.index(row: row, column: col)
-                guard !board.givenMask[index],
-                      let digit = board.digit(atIndex: index) else { continue }
-                if hasConflict(digit: digit, row: row, col: col) {
-                    errors.insert(index)
-                }
-            }
-        }
-        self.errorIndices = errors
-    }
-
-    private func hasConflict(digit: Int, row: Int, col: Int) -> Bool {
-        for col2 in 0..<Board.dimension where col2 != col {
-            if board.digit(atRow: row, column: col2) == digit { return true }
-        }
-        for row2 in 0..<Board.dimension where row2 != row {
-            if board.digit(atRow: row2, column: col) == digit { return true }
-        }
-        let boxRowOrigin = (row / 3) * 3
-        let boxColOrigin = (col / 3) * 3
-        for row2 in boxRowOrigin..<boxRowOrigin + 3 {
-            for col2 in boxColOrigin..<boxColOrigin + 3 where !(row2 == row && col2 == col) {
-                if board.digit(atRow: row2, column: col2) == digit { return true }
-            }
-        }
-        return false
+        self.errorIndices = board.conflictingUserIndices()
     }
 }
 

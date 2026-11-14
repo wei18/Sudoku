@@ -134,8 +134,14 @@ public actor GameSession {
     /// Place a digit (1...9) in a non-clue cell. Pushes the move onto the
     /// undo stack with the cell's prior digit captured BEFORE the write
     /// (Phase 2 follow-up #3). Triggers completion if the board is now
-    /// solved.
-    public func placeDigit(row: Int, col: Int, digit: Int) async throws {
+    /// solved. Returns the before/after pair this call produced itself.
+    ///
+    /// The actor is re-entrant at every `await`, so everything that defines
+    /// the outcome (write, mistake count, completion) happens before the first
+    /// one; a concurrent placement can neither leak into this call's pair nor
+    /// take its completion.
+    @discardableResult
+    public func placeDigit(row: Int, col: Int, digit: Int) async throws -> PlacementOutcome {
         guard status == .playing else {
             throw GameSessionError.invalidStateForAction(status: status)
         }
@@ -149,6 +155,7 @@ public actor GameSession {
             throw GameSessionError.cellImmutable(row: row, col: col)
         }
 
+        let boardBefore = currentBoard
         // CRITICAL (Phase 2 follow-up #3): capture previous value BEFORE write.
         let previous = currentBoard.digit(atIndex: index)
 
@@ -157,20 +164,29 @@ public actor GameSession {
 
         // SDD-003 AC-3.4: increment mistake counter when the newly placed digit
         // conflicts with another cell in the same row / column / 3×3 box.
-        if Self.hasConflict(digit: digit, row: row, col: col, board: currentBoard) {
+        if currentBoard.hasConflict(digit: digit, row: row, col: col) {
             mistakeCount += 1
         }
-
-        await telemetry.dispatch(.digitPlaced(row: row, col: col, digit: digit, previous: previous))
+        let boardAfter = currentBoard
 
         // Sticky completion: once the board matches the solution, transition
         // .playing -> .completed. Subsequent undo does NOT reopen the game
-        // (documented behavior: completion is sticky).
+        // (documented behavior: completion is sticky). Decided before the
+        // telemetry await so exactly one of two interleaved calls completes.
+        var completion: (elapsedSeconds: Int, mistakeCount: Int)?
         if currentBoard.cells == puzzle.solution.cells {
             try transition(.complete)
             freezeRunningClock()
-            await telemetry.dispatch(.sessionCompleted(elapsedSeconds: accumulatedSeconds, mistakeCount: mistakeCount))
+            completion = (accumulatedSeconds, mistakeCount)
         }
+
+        await telemetry.dispatch(.digitPlaced(row: row, col: col, digit: digit, previous: previous))
+        if let completion {
+            await telemetry.dispatch(.sessionCompleted(
+                elapsedSeconds: completion.elapsedSeconds, mistakeCount: completion.mistakeCount
+            ))
+        }
+        return PlacementOutcome(boardBefore: boardBefore, boardAfter: boardAfter, completedGame: completion != nil)
     }
 
     /// Clear the digit at (row, col). Pushes the move onto the undo stack
@@ -353,29 +369,6 @@ public actor GameSession {
             throw GameSessionError.illegalTransition(from: status, applying: transition)
         }
         status = next
-    }
-
-    /// Returns `true` when `digit` at (`row`, `col`) conflicts with any
-    /// other cell in the same row, column, or 3×3 box. Used at placement
-    /// time to decide whether to increment `mistakeCount`. Logic is identical
-    /// to `GameViewModel.hasConflict` — that VM method is the UI-layer
-    /// duplicate (MainActor) which cannot call into this actor; CoreKit is
-    /// the authoritative copy.
-    private static func hasConflict(digit: Int, row: Int, col: Int, board: Board) -> Bool {
-        for col2 in 0..<Board.dimension where col2 != col {
-            if board.digit(atRow: row, column: col2) == digit { return true }
-        }
-        for row2 in 0..<Board.dimension where row2 != row {
-            if board.digit(atRow: row2, column: col) == digit { return true }
-        }
-        let boxRowOrigin = (row / 3) * 3
-        let boxColOrigin = (col / 3) * 3
-        for row2 in boxRowOrigin..<boxRowOrigin + 3 {
-            for col2 in boxColOrigin..<boxColOrigin + 3 where !(row2 == row && col2 == col) {
-                if board.digit(atRow: row2, column: col2) == digit { return true }
-            }
-        }
-        return false
     }
 
     private func revert(_ move: Move) throws {
