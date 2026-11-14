@@ -46,8 +46,9 @@ private actor RecordingTelemetry: GameStateTelemetry {
     func dispatch(_ event: GameStateEvent) async { events.append(event) }
 }
 
-/// Solution digit at (row, column) is `column + 1` (shifted Latin square, as
-/// `TestPuzzles.nearSolved`); every coordinate in `missing` is blank.
+/// Solution digit at (row, column) is `column + 1`. Not Sudoku-valid (every
+/// column repeats one digit, as in `TestPuzzles.nearSolved`), so every user
+/// placement counts as a mistake. Every coordinate in `missing` is blank.
 private func puzzle(missing: [(row: Int, col: Int)]) -> Puzzle {
     var solution = Board()
     var clues = ""
@@ -98,7 +99,7 @@ struct GameSessionPlacementOutcomeTests {
     @Test("telemetry order: digitPlaced precedes sessionCompleted, payloads unchanged")
     func completionTelemetryOrder() async throws {
         let spy = RecordingTelemetry()
-        let session = GameSession(puzzle: puzzle(missing: [(0, 0)]), telemetry: spy)
+        let session = GameSession(puzzle: puzzle(missing: [(0, 0)]), clock: FakeMonotonicClock(), telemetry: spy)
         try await session.start()
         try await session.placeDigit(row: 0, col: 0, digit: 1)
 
@@ -110,7 +111,10 @@ struct GameSessionPlacementOutcomeTests {
         ])
     }
 
-    @Test("re-entrancy: two placements suspended in telemetry complete the game exactly once")
+    @Test(
+        "re-entrancy: two placements suspended in telemetry complete the game exactly once",
+        .timeLimit(.minutes(1))
+    )
     func interleavedLastTwoCells() async throws {
         let gated = GatedTelemetry()
         let session = GameSession(puzzle: puzzle(missing: [(0, 0), (0, 1)]), telemetry: gated)

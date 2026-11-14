@@ -79,10 +79,9 @@ struct SudokuShowcaseBoardTests {
         #expect(first == second, "showcase snapshot must be bit-identical across calls")
     }
 
-    // Mirrors `GameViewModel.hasConflict` (private, MainActor) — duplicated
-    // here so the test independently proves the same conflict property the
-    // production `recomputeErrors()` will compute, without reaching into a
-    // private VM method.
+    // Mirrors `Board.hasConflict(digit:row:col:)` (SudokuEngine) — duplicated
+    // here so the test independently proves the conflict property the
+    // production `conflictingUserIndices()` computes, without calling it.
     private static func hasConflict(digit: Int, atRow row: Int, col: Int, in board: Board) -> Bool {
         for col2 in 0..<Board.dimension where col2 != col {
             if board.digit(atRow: row, column: col2) == digit { return true }

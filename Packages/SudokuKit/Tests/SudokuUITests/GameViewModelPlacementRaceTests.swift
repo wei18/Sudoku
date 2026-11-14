@@ -14,7 +14,7 @@ import GameAudioTesting
 import GameShellUI
 import SudokuGameState
 import Persistence
-import PersistenceTesting
+import SudokuKitTesting
 import SudokuPersistence
 import SudokuEngine
 import Testing
@@ -69,7 +69,8 @@ struct GameViewModelPlacementRaceTests {
 
     private func makeViewModel(
         blanks: Set<GridCoordinate>,
-        gate: PlacementRaceGate
+        gate: PlacementRaceGate,
+        persistence: FakePersistence = FakePersistence()
     ) async throws -> (GameViewModel, FakeSoundPlaying) {
         var solved = Board()
         var cluesString = ""
@@ -89,7 +90,7 @@ struct GameViewModelPlacementRaceTests {
             session: GameSession(puzzle: puzzle),
             initialBoard: puzzle.clues,
             initialStatus: .idle,
-            persistence: FakePersistence(),
+            persistence: persistence,
             soundPlayer: sound,
             saveDebounceNanos: 0,
             cellFeedbackSleeper: { _ in await gate.wait() }
@@ -105,6 +106,13 @@ struct GameViewModelPlacementRaceTests {
         GridCoordinate(row: 0, column: 0), GridCoordinate(row: 0, column: 1),
         GridCoordinate(row: 1, column: 0), GridCoordinate(row: 1, column: 1),
     ]
+
+    private func markCompletedCount(_ persistence: FakePersistence) async -> Int {
+        await persistence.operations.filter {
+            if case .markCompleted = $0 { return true }
+            return false
+        }.count
+    }
 
     private func sectionCleared(_ sound: FakeSoundPlaying) -> Int {
         sound.playedEvents.filter { $0 == .sudokuSectionCleared }.count
@@ -164,7 +172,10 @@ struct GameViewModelPlacementRaceTests {
     @Test("interleaved: the last two cells of the board play one win sound")
     func interleavedFinalPlacementsWinOnce() async throws {
         let gate = makePlacementRaceGate()
-        let (viewModel, sound) = try await makeViewModel(blanks: [coord(0, 0), coord(0, 1)], gate: gate)
+        let persistence = FakePersistence()
+        let (viewModel, sound) = try await makeViewModel(
+            blanks: [coord(0, 0), coord(0, 1)], gate: gate, persistence: persistence
+        )
         viewModel.select(row: 0, column: 0)
 
         let first = solution(0, 0)
@@ -179,6 +190,7 @@ struct GameViewModelPlacementRaceTests {
         #expect(viewModel.status == .completed)
         let wins = sound.playedEvents.filter { $0 == .sudokuWin }.count
         #expect(wins == 1, "win played \(wins) times: \(sound.playedEvents)")
+        #expect(await markCompletedCount(persistence) == 1)
 
         await gate.release()
         await viewModel.cellFeedback.waitForPendingExpiries()
@@ -218,7 +230,36 @@ struct GameViewModelPlacementRaceTests {
         await cellTap.value
         await digitTwo.value
 
-        #expect(sound.playedEvents == [.sudokuPlace, .sudokuMistake], "\(sound.playedEvents)")
+        // Which task resumes first is not specified, so assert counts, not order.
+        let places = sound.playedEvents.filter { $0 == .sudokuPlace }.count
+        let mistakes = sound.playedEvents.filter { $0 == .sudokuMistake }.count
+        #expect(places == 1 && mistakes == 1 && sound.playedEvents.count == 2, "\(sound.playedEvents)")
+        #expect(viewModel.errorIndices.contains(Board.index(row: 0, column: 1)))
+
+        await gate.release()
+        await viewModel.cellFeedback.waitForPendingExpiries()
+    }
+
+    // MARK: Rejected placement — the kept-on-purpose cue
+
+    /// A placement the session rejects (the game is already `.completed`) still
+    /// plays `sudokuPlace`. This pins the behaviour kept on purpose; the oddity
+    /// itself is tracked in #1124.
+    @Test("rejected placement after completion keeps one place sound and no win, section-cleared or sweep")
+    func rejectedPlacementKeepsPlaceCue() async throws {
+        let gate = makePlacementRaceGate()
+        let (viewModel, sound) = try await makeViewModel(blanks: [coord(0, 0)], gate: gate)
+        viewModel.select(row: 0, column: 0)
+        await viewModel.keypadDigit(solution(0, 0))
+        #expect(viewModel.status == .completed)
+        let eventsBefore = viewModel.cellFeedback.activeEvents.count
+        let soundsBefore = sound.playedEvents.count
+
+        await viewModel.placeDigit(solution(0, 0), at: coord(0, 0))
+
+        let added = Array(sound.playedEvents.dropFirst(soundsBefore))
+        #expect(added == [.sudokuPlace], "\(added)")
+        #expect(viewModel.cellFeedback.activeEvents.count == eventsBefore, "no sweep begun by the rejected placement")
 
         await gate.release()
         await viewModel.cellFeedback.waitForPendingExpiries()
@@ -231,7 +272,10 @@ struct GameViewModelPlacementRaceTests {
     @Test("digit-first: two cell taps filling the last two cells play one win sound")
     func digitFirstFinalTapsWinOnce() async throws {
         let gate = makePlacementRaceGate()
-        let (viewModel, sound) = try await makeViewModel(blanks: [coord(0, 0), coord(1, 5)], gate: gate)
+        let persistence = FakePersistence()
+        let (viewModel, sound) = try await makeViewModel(
+            blanks: [coord(0, 0), coord(1, 5)], gate: gate, persistence: persistence
+        )
         #expect(solution(0, 0) == solution(1, 5))
         viewModel.armDigit(solution(0, 0))
 
@@ -243,6 +287,7 @@ struct GameViewModelPlacementRaceTests {
         #expect(viewModel.status == .completed)
         let wins = sound.playedEvents.filter { $0 == .sudokuWin }.count
         #expect(wins == 1, "win played \(wins) times: \(sound.playedEvents)")
+        #expect(await markCompletedCount(persistence) == 1)
 
         await gate.release()
         await viewModel.cellFeedback.waitForPendingExpiries()

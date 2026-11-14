@@ -11,7 +11,6 @@
 
 import GameShellUI
 import SudokuEngine
-import SudokuGameState
 
 /// One row, column or box of the board. Box indices run 0...8 in reading order.
 enum SudokuUnit: Sendable, Hashable {

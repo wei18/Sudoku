@@ -468,10 +468,10 @@ public final class GameViewModel {
     /// + §How.6.1 principle 1: in-flight game must never crash on save
     /// failures). Source string identifies the specific actor method.
     @discardableResult
-    private func runSession<Result>(
+    private func runSession<Value>(
         _ method: String,
-        _ body: () async throws -> Result
-    ) async -> Result? {
+        _ body: () async throws -> Value
+    ) async -> Value? {
         do {
             return try await body()
         } catch {
